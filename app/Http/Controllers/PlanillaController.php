@@ -1618,32 +1618,95 @@ class PlanillaController extends Controller
     }
 
     //------------------------------------------------------------------------------------ DESTROY()
+
+    // 🔽 Añade estos helpers PRIVADOS en tu PlanillaController
+
+    /**
+     * Devuelve los IDs de máquinas que tienen entradas en orden_planillas
+     * para cualquiera de las planillas indicadas.
+     */
+    private function obtenerMaquinasAfectadasPorPlanillas(array $planillaIds): array
+    {
+        if (empty($planillaIds)) return [];
+        return OrdenPlanilla::query()
+            ->whereIn('planilla_id', $planillaIds)
+            ->distinct()
+            ->pluck('maquina_id')
+            ->map(fn($v) => (int) $v)
+            ->all();
+    }
+
+    /**
+     * Recalcula la columna 'posicion' para una máquina, compactando a 1..N
+     * respetando el orden actual.
+     */
+    private function recalcularOrdenParaMaquina(int $maquinaId): void
+    {
+        $ordenes = OrdenPlanilla::query()
+            ->where('maquina_id', $maquinaId)
+            ->orderBy('posicion', 'asc')
+            ->get(['id', 'posicion']);
+
+        $nuevaPosicion = 1;
+        foreach ($ordenes as $fila) {
+            if ((int) $fila->posicion !== $nuevaPosicion) {
+                OrdenPlanilla::where('id', $fila->id)->update(['posicion' => $nuevaPosicion]);
+            }
+            $nuevaPosicion++;
+        }
+    }
+
+    /**
+     * Recalcula el orden para todas las máquinas indicadas.
+     */
+    private function recalcularOrdenParaMaquinas(array $maquinaIds): void
+    {
+        $maquinaIds = array_values(array_unique(array_filter($maquinaIds, fn($x) => !is_null($x))));
+        foreach ($maquinaIds as $maquinaId) {
+            $this->recalcularOrdenParaMaquina((int) $maquinaId);
+        }
+    }
+
     // Eliminar una planilla y sus elementos asociados
     public function destroy($id)
     {
         if (auth()->user()->rol !== 'oficina') {
             return redirect()->route('planillas.index')->with('abort', 'No tienes los permisos necesarios.');
         }
+
         DB::beginTransaction();
         try {
-            // Buscar la planilla a eliminar
             $planilla = Planilla::with('elementos')->findOrFail($id);
 
-            // Eliminar los elementos asociados directamente
-            foreach ($planilla->elementos as $elemento) {
-                $elemento->delete();
+            // 1) Máquinas afectadas antes de borrar ordenes
+            $maquinasAfectadas = $this->obtenerMaquinasAfectadasPorPlanillas([$planilla->id]);
+
+            // 2) Borrar orden_planillas de esta planilla
+            OrdenPlanilla::where('planilla_id', $planilla->id)->delete();
+
+            // 3) Borrar elementos asociados (si no hay ON DELETE CASCADE)
+            $planilla->elementos()->delete();
+
+            // (Opcional recomendado) borrar etiquetas huérfanas de la planilla
+            if (method_exists($planilla, 'etiquetas')) {
+                $planilla->etiquetas()->delete();
             }
 
-            // Eliminar la planilla
+            // 4) Borrar la planilla
             $planilla->delete();
 
-            DB::commit(); // Confirmamos la transacción
+            // 5) Recalcular posiciones por máquina afectada
+            $this->recalcularOrdenParaMaquinas($maquinasAfectadas);
+
+            DB::commit();
             return redirect()->route('planillas.index')->with('success', 'Planilla eliminada correctamente.');
-        } catch (Exception $e) {
-            DB::rollBack(); // Si ocurre un error, revertimos la transacción
+        } catch (\Throwable $e) {
+            DB::rollBack();
             return redirect()->back()->with('error', 'Ocurrió un error al eliminar la planilla: ' . $e->getMessage());
         }
     }
+    // 🔽 Sustituye tu destroyMultiple por este
+
     public function destroyMultiple(Request $request)
     {
         if (auth()->user()->rol !== 'oficina') {
@@ -1651,7 +1714,6 @@ class PlanillaController extends Controller
         }
 
         $ids = $request->input('seleccionados', []);
-        // 🐛 Debug: ver qué IDs llegan
         Log::info('🗑️ IDs recibidos para eliminar múltiples:', $ids);
 
         if (empty($ids)) {
@@ -1660,26 +1722,40 @@ class PlanillaController extends Controller
 
         DB::beginTransaction();
         try {
-            // Buscar todas las planillas con sus elementos
             $planillas = Planilla::with('elementos')->whereIn('id', $ids)->get();
-
-            foreach ($planillas as $planilla) {
-                // Eliminar elementos asociados
-                foreach ($planilla->elementos as $elemento) {
-                    $elemento->delete();
-                }
-
-                // Eliminar la planilla
-                $planilla->delete();
+            if ($planillas->isEmpty()) {
+                DB::rollBack();
+                return redirect()->route('planillas.index')->with('error', 'No se encontraron planillas para eliminar.');
             }
+
+            // 1) Máquinas afectadas antes de borrar ordenes
+            $maquinasAfectadas = $this->obtenerMaquinasAfectadasPorPlanillas($planillas->pluck('id')->all());
+
+            // 2) Borrar orden_planillas de todas esas planillas
+            OrdenPlanilla::whereIn('planilla_id', $planillas->pluck('id'))->delete();
+
+            // 3) Borrar elementos en bloque
+            Elemento::whereIn('planilla_id', $planillas->pluck('id'))->delete();
+
+            // (Opcional recomendado) borrar etiquetas de esas planillas
+            if (class_exists(\App\Models\Etiqueta::class)) {
+                Etiqueta::whereIn('planilla_id', $planillas->pluck('id'))->delete();
+            }
+
+            // 4) Borrar las planillas
+            Planilla::whereIn('id', $planillas->pluck('id'))->delete();
+
+            // 5) Recalcular posiciones por máquina afectada
+            $this->recalcularOrdenParaMaquinas($maquinasAfectadas);
 
             DB::commit();
             return redirect()->route('planillas.index')->with('success', 'Planillas eliminadas correctamente.');
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             DB::rollBack();
             return redirect()->back()->with('error', 'Ocurrió un error al eliminar las planillas: ' . $e->getMessage());
         }
     }
+
     //------------------------------------------------------------------------------------ COMPLETAR PLANILLA()
     public function completar(Request $request, PlanillaService $ordenPlanillaService)
     {
