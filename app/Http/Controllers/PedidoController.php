@@ -492,6 +492,37 @@ class PedidoController extends Controller
 
             $fabricanteFinal = $pedido->fabricante_id ?? $request->fabricante_id;
 
+            //COMPROBACION DE QUE NO NOS PASAMOS DE KG 
+            // --- Calcular lo recepcionado hasta ahora en esa línea
+            $recepcionadoHastaAhora = Producto::whereHas(
+                'entrada',
+                fn($q) =>
+                $q->where('pedido_producto_id', $pedidoProducto->id)
+            )->sum('peso_inicial');
+
+            // --- Cantidad pedida
+            $cantidadPedida = (float) $pedidoProducto->cantidad;
+
+            // --- Cantidad que habrá después de este registro
+            $totalConNuevo = $recepcionadoHastaAhora + $peso;
+
+            // Si nos pasamos, avisamos
+            if ($totalConNuevo > $cantidadPedida) {
+                // No lo bloqueamos, solo avisamos
+                Log::warning("⚠️ Recepción excedida en línea {$pedidoProducto->id}", [
+                    'pedido_id' => $pedido->id,
+                    'linea_id'  => $pedidoProducto->id,
+                    'cantidad_pedida' => $cantidadPedida,
+                    'recepcionado'    => $recepcionadoHastaAhora,
+                    'peso_nuevo'      => $peso,
+                    'total_con_nuevo' => $totalConNuevo,
+                ]);
+
+                return back()
+                    ->withInput()
+                    ->with('warning', "⚠️ Atención: la línea {$pedidoProducto->id} tiene pedido {$cantidadPedida} kg, y con esta entrada ya llevamos {$totalConNuevo} kg.");
+            }
+
             // --- Crear producto(s) en esa entrada
             Producto::create([
                 'codigo'            => $codigo,
