@@ -501,18 +501,33 @@ class PedidoController extends Controller
                 ]
             );
             // Normaliza a MAYÚSCULAS antes de crear
-            $obraIdActual = auth()->user()->lugarActualTrabajador();
             $codigo   = strtoupper(trim($request->input('codigo')));
             $codigo2  = $request->filled('codigo_2') ? strtoupper(trim($request->input('codigo_2'))) : null;
             $esDoble  = $request->filled('codigo_2') && $request->filled('n_colada_2') && $request->filled('n_paquete_2');
             $peso     = (float) $request->input('peso');
             $pesoPorPaquete = $esDoble ? round($peso / 2, 3) : $peso;
 
-            $ubicacion = Ubicacion::findOrFail($request->ubicacion_id);
+            $ubicacion = Ubicacion::find($request->ubicacion_id);
 
-            Log::debug('🔍 Buscando línea de pedido...', [
-                'pedido_producto_id' => $request->pedido_producto_id,
-            ]);
+            if (!$ubicacion) {
+                return back()
+                    ->withInput()
+                    ->with('error', 'No se encontró la ubicación seleccionada.');
+            }
+
+            $mapaAlmacenes = [
+                '0A' => 1,
+                '0B' => 2,
+                'AL' => 3,
+            ];
+
+            $obraIdActual = $mapaAlmacenes[$ubicacion->almacen] ?? null;
+
+            if (!$obraIdActual) {
+                return back()
+                    ->withInput()
+                    ->with('error', 'No se puede determinar la obra a partir de la ubicación seleccionada.');
+            }
 
             /** @var PedidoProducto $pedidoProducto */
             $pedidoProducto = PedidoProducto::lockForUpdate()->findOrFail($request->pedido_producto_id);
@@ -521,11 +536,6 @@ class PedidoController extends Controller
                 return redirect()->back()->with('error', 'La línea de pedido no pertenece al pedido actual.');
             }
 
-            Log::debug('✅ Línea de pedido encontrada', [
-                'pedido_producto_id' => $pedidoProducto->id,
-                'pedido_id_en_linea' => $pedidoProducto->pedido_id,
-                'esperado_pedido_id' => $pedido->id,
-            ]);
 
             // ✅ Buscar/crear ENTRADA ABIERTA POR LÍNEA
             $entrada = Entrada::where('pedido_id', $pedido->id)
@@ -534,7 +544,7 @@ class PedidoController extends Controller
                 ->lockForUpdate()
                 ->first();
 
-            $entradaRecienCreada = false;
+
 
             if (!$entrada) {
                 $entrada = new Entrada();
@@ -546,8 +556,6 @@ class PedidoController extends Controller
                 $entrada->estado             = 'abierto';
                 $entrada->otros              = 'Entrada generada desde recepción de pedido';
                 $entrada->save();
-
-                $entradaRecienCreada = true;
             }
 
             // // 🔔 alertas si se creó ahora (como ya tenías)

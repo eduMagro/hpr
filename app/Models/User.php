@@ -267,59 +267,6 @@ class User extends Authenticatable
         return $this->hasMany(PermisoAcceso::class);
     }
 
-    public function lugarActualTrabajador(): ?int
-    {
-        $ahora = Carbon::now();
-        $hora = (int) $ahora->format('H');
-
-        // Determinar fecha de referencia y etiqueta de turno
-        if ($hora >= 22 || $hora < 6) {
-            // Noche empieza el día anterior; si son <06:00 la fechaRef es ayer
-            $etiqueta = 'noche';
-            $fechaRef = ($hora < 6) ? $ahora->copy()->subDay()->toDateString() : $ahora->toDateString();
-        } elseif ($hora < 14) {
-            $etiqueta = 'manana'; // “mañana”
-            $fechaRef = $ahora->toDateString();
-        } else {
-            $etiqueta = 'tarde';
-            $fechaRef = $ahora->toDateString();
-        }
-
-        // Resolver turno_id por nombre (admite “mañana” y “manana”)
-        $turnoId = Turno::where(function ($q) use ($etiqueta) {
-            if ($etiqueta === 'manana') {
-                $q->where('nombre', 'like', 'mañana%')
-                    ->orWhere('nombre', 'like', 'manana%');
-            } else {
-                $q->where('nombre', 'like', $etiqueta . '%');
-            }
-        })
-            ->value('id');
-
-        // Buscar asignación exacta de ese día y turno (sin slug, sin join)
-        $asig = AsignacionTurno::query()
-            ->where('user_id', $this->id)
-            ->whereDate('fecha', $fechaRef)
-            ->when($turnoId, fn($q) => $q->where('turno_id', $turnoId))
-            ->whereNotNull('obra_id')
-            ->latest('id')
-            ->first();
-
-        if ($asig?->obra_id) {
-            return (int) $asig->obra_id;
-        }
-
-        // Fallback: última asignación con obra en los últimos 2 días
-        $asigReciente = AsignacionTurno::query()
-            ->where('user_id', $this->id)
-            ->whereNotNull('obra_id')
-            ->whereDate('fecha', '>=', Carbon::now()->subDays(2)->toDateString())
-            ->orderByDesc('fecha')
-            ->latest('id')
-            ->first();
-
-        return $asigReciente?->obra_id ?: null;
-    }
 
     public function pedidosCreados()
     {
