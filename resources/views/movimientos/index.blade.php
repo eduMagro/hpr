@@ -22,6 +22,8 @@
 
                         <th class="p-2 border">{!! $ordenables['id'] !!}</th>
                         <th class="p-2 border">{!! $ordenables['tipo'] !!}</th>
+                        <th class="p-2 border">{!! $ordenables['pedido_producto_id'] ?? 'Línea Pedido' !!}</th>
+
                         <th class="p-2 border">{!! $ordenables['producto_id'] !!}</th>
                         <th class="p-2 border">{!! $ordenables['descripcion'] !!}</th>
                         <th class="p-2 border">{!! $ordenables['nave'] ?? 'Nave' !!}</th>
@@ -46,6 +48,11 @@
                             <th class="p-1 border">
                                 <x-tabla.input name="tipo" value="{{ request('tipo') }}" />
                             </th>
+                            <th class="p-1 border">
+                                <x-tabla.input name="pedido_producto_id" value="{{ request('pedido_producto_id') }}"
+                                    placeholder="Línea" />
+                            </th>
+
                             <th class="py-1 px-0 border">
                                 <div class="flex gap-2 justify-center">
                                     <input type="text" name="producto_tipo" value="{{ request('producto_tipo') }}"
@@ -122,6 +129,19 @@
                             <td class="px-6 py-4 text-sm text-gray-500 text-center">
                                 {{ ucfirst($movimiento->tipo ?? 'N/A') }}
                             </td>
+                            <td class="px-6 py-4 text-sm text-gray-500 text-center">
+                                @php $linea = $movimiento->pedido_producto_id; @endphp
+
+                                @if ($linea)
+                                    <a href="{{ route('pedidos.index', ['pedido_producto_id' => $linea]) }}"
+                                        class="text-indigo-600 hover:underline">
+                                        #{{ $linea }}
+                                    </a>
+                                @else
+                                    <span class="text-gray-400">—</span>
+                                @endif
+                            </td>
+
                             <td class="px-6 py-4 text-sm text-gray-500 text-center">
                                 @if ($movimiento->productoBase)
                                     {{ ucfirst(strtolower($movimiento->productoBase->tipo)) }}

@@ -35,6 +35,11 @@ class MovimientoController extends Controller
         if ($request->filled('tipo')) {
             $query->where('tipo', 'like', '%' . $request->tipo . '%');
         }
+        // Línea de pedido (pedido_producto_id)
+        if ($request->filled('pedido_producto_id')) {
+            $query->where('pedido_producto_id', (int) $request->pedido_producto_id);
+        }
+
         // Producto Base: filtrar por tipo, diámetro o longitud
         if ($request->filled('producto_tipo') || $request->filled('producto_diametro') || $request->filled('producto_longitud')) {
             $query->whereHas('productoBase', function ($q) use ($request) {
@@ -160,6 +165,10 @@ class MovimientoController extends Controller
         if ($request->filled('tipo')) {
             $filtros[] = 'Tipo: <strong>' . ucfirst($request->tipo) . '</strong>';
         }
+        if ($request->filled('pedido_producto_id')) {
+            $filtros[] = 'Línea pedido: <strong>#' . $request->pedido_producto_id . '</strong>';
+        }
+
         if ($request->filled('producto_tipo')) {
             $filtros[] = 'Tipo: <strong>' . $request->producto_tipo . '</strong>';
         }
@@ -286,8 +295,10 @@ class MovimientoController extends Controller
             'fecha_solicitud',
             'fecha_ejecucion',
             'producto_id',
-            'created_at',   // por si la quieres exponer
+            'pedido_producto_id', // ← nuevo
+            'created_at',
         ];
+
 
         $sort  = $request->input('sort', 'created_at');
         $order = $request->input('order', 'desc');
@@ -313,7 +324,19 @@ class MovimientoController extends Controller
             return redirect()->route('movimientos.create');
         }
         // Base query con relaciones necesarias
-        $query = Movimiento::with(['producto', 'productoBase', 'ejecutadoPor', 'solicitadoPor', 'ubicacionOrigen', 'ubicacionDestino', 'maquinaOrigen', 'maquinaDestino', 'nave']);
+        $query = Movimiento::with([
+            'producto',
+            'productoBase',
+            'ejecutadoPor',
+            'solicitadoPor',
+            'ubicacionOrigen',
+            'ubicacionDestino',
+            'maquinaOrigen',
+            'maquinaDestino',
+            'nave',
+            'pedidoProducto' // ← por si pintas enlace
+        ]);
+
         // Si es 'oficina', no aplicamos restricciones y puede ver todos los movimientos
 
         // Filtros
@@ -327,18 +350,20 @@ class MovimientoController extends Controller
         $registrosMovimientos = $query->paginate($perPage)->appends($request->except('page'));
 
         $ordenables = [
-            'id'              => $this->getOrdenamiento('id', 'ID'),
-            'producto_id'              => $this->getOrdenamiento('producto_id', 'Producto Solicitado'),
-            'tipo'            => $this->getOrdenamiento('tipo', 'Tipo'),
+            'id'                => $this->getOrdenamiento('id', 'ID'),
+            'producto_id'       => $this->getOrdenamiento('producto_id', 'Producto Solicitado'),
+            'tipo'              => $this->getOrdenamiento('tipo', 'Tipo'),
             'descripcion'       => $this->getOrdenamiento('descripcion', 'Descripción'),
-            'nave' => $this->getOrdenamiento('nave', 'Nave'),
-            'prioridad'       => $this->getOrdenamiento('prioridad', 'Prioridad'),
-            'solicitado_por'       => $this->getOrdenamiento('solicitado_por', 'Solicitado por'),
-            'ejecutado_por'       => $this->getOrdenamiento('ejecutado_por', 'Ejecutado por'),
-            'estado'       => $this->getOrdenamiento('estado', 'Estado'),
-            'fecha_solicitud' => $this->getOrdenamiento('fecha_solicitud', 'Fecha Solicitud'),
-            'fecha_ejecucion' => $this->getOrdenamiento('fecha_ejecucion', 'Fecha Ejecución'),
+            'nave'              => $this->getOrdenamiento('nave', 'Nave'),
+            'prioridad'         => $this->getOrdenamiento('prioridad', 'Prioridad'),
+            'solicitado_por'    => $this->getOrdenamiento('solicitado_por', 'Solicitado por'),
+            'ejecutado_por'     => $this->getOrdenamiento('ejecutado_por', 'Ejecutado por'),
+            'estado'            => $this->getOrdenamiento('estado', 'Estado'),
+            'fecha_solicitud'   => $this->getOrdenamiento('fecha_solicitud', 'Fecha Solicitud'),
+            'fecha_ejecucion'   => $this->getOrdenamiento('fecha_ejecucion', 'Fecha Ejecución'),
+            'pedido_producto_id' => $this->getOrdenamiento('pedido_producto_id', 'Línea Pedido'), // ← nuevo
         ];
+
         $navesSelect = Obra::whereHas('cliente', function ($q) {
             $q->whereRaw("UPPER(empresa) LIKE '%PACO REYES%'");
         })
