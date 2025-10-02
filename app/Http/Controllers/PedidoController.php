@@ -358,11 +358,30 @@ class PedidoController extends Controller
         ], $datosStock));
     }
 
-    public function recepcion($id, $producto_base_id)
+    public function recepcion($pedidoId, $productoBaseId, Request $request)
     {
-        // 🔹 Cargar pedido con relaciones
-        $pedido = Pedido::with(['productos', 'entradas.productos', 'obra'])->findOrFail($id);
-        $nave = $pedido->obra?->obra; // "Nave A", "Nave B", etc.
+        // Cargar pedido con relaciones
+        $pedido = Pedido::with(['productos', 'entradas.productos', 'obra'])->findOrFail($pedidoId);
+
+        // Movimiento obligatorio
+        $movimientoId = $request->query('movimiento_id');
+        if (!$movimientoId) {
+            abort(422, 'Falta el movimiento.');
+        }
+
+        /** @var \App\Models\Movimiento $movimiento */
+        $movimiento = Movimiento::with('pedidoProducto')->findOrFail($movimientoId);
+
+        // Validar que pertenece al pedido
+        if ((int) $movimiento->pedido_id !== (int) $pedido->id) {
+            abort(422, 'El movimiento no corresponde al pedido.');
+        }
+
+        $linea = $movimiento->pedidoProducto; // 🔒 Línea asociada al movimiento
+        $productoBase = $pedido->productos->firstWhere('id', $productoBaseId);
+
+        // === resto de tu lógica de recepcion (naves, ubicaciones, fabricantes, últimos, etc.) ===
+        $nave = $pedido->obra?->obra;
         $codigoAlmacen = Ubicacion::codigoDesdeNombreNave($nave);
         $ubicaciones = Ubicacion::where('almacen', $codigoAlmacen)
             ->orderBy('nombre')
@@ -372,184 +391,97 @@ class PedidoController extends Controller
                 return $ubicacion;
             });
 
-        // 🔹 Comprobar si se debe mostrar el campo de fabricante manual
         $requiereFabricanteManual = $pedido->distribuidor_id !== null && $pedido->fabricante_id === null;
-        $ultimoFabricante = null;
-
-        $ultimoProducto = Producto::with(['entrada', 'productoBase'])
+        $ultimoFabricante = Producto::with(['entrada', 'productoBase'])
             ->whereHas('entrada', fn($q) => $q->where('usuario_id', auth()->id()))
             ->latest()
-            ->first();
-
-        $ultimoFabricante = $ultimoProducto?->fabricante_id
-            ?? $ultimoProducto?->productoBase?->fabricante_id;
-
+            ->first()?->fabricante_id ?? null;
 
         $fabricantes = $requiereFabricanteManual ? Fabricante::orderBy('nombre')->get() : collect();
-        // 🔹 Filtrar productos del pedido
-        $productosIds = $pedido->productos->pluck('id')->filter()->all();
 
-        // 🔹 Cálculo de recepcionado por producto_base
-        $recepcionadoPorProducto = [];
-
-        foreach ($pedido->entradas as $entrada) {
-            foreach ($entrada->productos as $producto) {
-                $idBase = $producto->producto_base_id;
-                if (!$idBase) continue;
-
-                $recepcionadoPorProducto[$idBase] = ($recepcionadoPorProducto[$idBase] ?? 0) + $producto->peso_inicial;
-            }
-        }
-
-        // 🔹 Calcular cantidad pendiente por producto
-        $pedido->productos->each(function ($producto) use ($recepcionadoPorProducto) {
-            $idBase = $producto->id;
-            $yaRecepcionado = $recepcionadoPorProducto[$idBase] ?? 0;
-            $producto->pendiente = max(0, $producto->pivot->cantidad - $yaRecepcionado);
-        });
-
-        // 🔹 Buscar solo el producto_base que nos interesa
-        $productoBase = $pedido->productos->firstWhere('id', $producto_base_id);
-
-        // 🔹 Últimas coladas usadas por este usuario
+        // Últimas coladas por producto base para este usuario
         $ultimos = Producto::select('producto_base_id', 'n_colada', 'productos.ubicacion_id')
             ->join('entradas', 'entradas.id', '=', 'productos.entrada_id')
             ->where('entradas.usuario_id', auth()->id())
-            ->where('producto_base_id', $producto_base_id)
+            ->where('producto_base_id', $productoBaseId)
             ->latest('productos.created_at')
             ->get()
             ->unique('producto_base_id')
             ->keyBy('producto_base_id');
-        $linea = PedidoProducto::where('pedido_id', $pedido->id)
-            ->where('producto_base_id', $productoBase->id)
-            ->where('estado', '!=', 'completado')
-            ->orderBy('fecha_estimada_entrega')
-            ->first();
 
-        // ✅ Devolver vista con producto base específico
-        return view('pedidos.recepcion', compact('pedido', 'productoBase', 'ubicaciones', 'ultimos', 'requiereFabricanteManual', 'fabricantes', 'ultimoFabricante', 'linea'));
+        return view('pedidos.recepcion', compact(
+            'pedido',
+            'productoBase',
+            'ubicaciones',
+            'ultimos',
+            'requiereFabricanteManual',
+            'fabricantes',
+            'ultimoFabricante',
+            'linea',
+            'movimiento'
+        ));
     }
 
-    public function procesarRecepcion(Request $request, $id)
+
+    public function procesarRecepcion(Request $request, $pedidoId)
     {
         try {
-            Log::debug('📥 Datos recibidos en procesarRecepcion()', [
-                'pedido_id_param'         => $id,
-                'pedido_producto_id'      => $request->pedido_producto_id,
-                'producto_base_id'        => $request->producto_base_id,
-                'codigo'                  => $request->codigo,
-                'peso'                    => $request->peso,
-                'ubicacion_id'            => $request->ubicacion_id,
+            $request->validate([
+                'movimiento_id' => ['required', 'exists:movimientos,id'],
+                'codigo'        => ['required', 'string', 'max:20', 'unique:productos,codigo', 'regex:/^mp/i'],
+                'codigo_2'      => ['nullable', 'string', 'max:20', 'different:codigo', 'unique:productos,codigo', 'regex:/^mp/i'],
+                'producto_base_id' => 'required|exists:productos_base,id',
+                'peso'             => 'required|numeric|min:1',
+                'n_colada'         => 'required|string|max:50',
+                'n_paquete'        => 'required|string|max:50',
+                'n_colada_2'       => 'nullable|string|max:50',
+                'n_paquete_2'      => 'nullable|string|max:50',
+                'ubicacion_id'     => 'required|exists:ubicaciones,id',
+                'fabricante_id'    => 'nullable|exists:fabricantes,id',
             ]);
-            $pedido = Pedido::with('productos')->findOrFail($id);
+
+            $pedido = Pedido::with('productos')->findOrFail($pedidoId);
 
             if (in_array($pedido->estado, ['completado', 'cancelado'])) {
-                return redirect()->back()->with('error', "El pedido ya está {$pedido->estado} y no puede recepcionarse.");
+                return back()->with('error', "El pedido ya está {$pedido->estado} y no puede recepcionarse.");
             }
 
-            $request->validate(
-                [
-                    'codigo'            => ['required', 'string', 'max:20', 'unique:productos,codigo', 'regex:/^mp/i'],
-                    'codigo_2'          => ['nullable', 'string', 'max:20', 'different:codigo', 'unique:productos,codigo', 'regex:/^mp/i'],
-                    'producto_base_id'   => 'required|exists:productos_base,id',
-                    'peso'               => 'required|numeric|min:1',
-                    'n_colada'           => 'required|string|max:50',
-                    'n_paquete'          => 'required|string|max:50',
-                    'n_colada_2'         => 'nullable|string|max:50',
-                    'n_paquete_2'        => 'nullable|string|max:50',
-                    'ubicacion_id'       => 'required|exists:ubicaciones,id',
-                    'fabricante_id' => 'nullable|exists:fabricantes,id',
-                ],
-                [
-                    'codigo.required'   => 'El código es obligatorio.',
-                    'codigo.string'     => 'El código debe ser un texto.',
-                    'codigo.unique'     => 'Ese código ya existe.',
-                    'codigo.max'        => 'El código no puede tener más de 20 caracteres.',
-                    'codigo.regex'   => 'El código debe empezar por MP.',
-                    'codigo_2.regex' => 'El código del segundo paquete debe empezar por MP.',
-                    'codigo_2.string'   => 'El segundo código debe ser un texto.',
-                    'codigo_2.unique'   => 'Ese segundo código ya existe.',
-                    'codigo_2.max'      => 'El segundo código no puede tener más de 20 caracteres.',
+            /** @var \App\Models\Movimiento $movimiento */
+            $movimiento = Movimiento::with('pedidoProducto')->lockForUpdate()->findOrFail($request->movimiento_id);
 
-                    'producto_base_id.required' => 'El producto base es obligatorio.',
-                    'producto_base_id.exists'   => 'El producto base seleccionado no es válido.',
+            if ((int)$movimiento->pedido_id !== (int)$pedido->id) {
+                return back()->with('error', 'El movimiento no pertenece a este pedido.');
+            }
 
-                    'peso.required'     => 'El peso es obligatorio.',
-                    'peso.numeric'      => 'El peso debe ser un número.',
-                    'peso.min'          => 'El peso debe ser mayor que cero.',
+            /** @var \App\Models\PedidoProducto $pedidoProducto */
+            $pedidoProducto = $movimiento->pedidoProducto;
 
-                    'n_colada.required' => 'El número de colada es obligatorio.',
-                    'n_colada.string'   => 'El número de colada debe ser texto.',
-                    'n_colada.max'      => 'El número de colada no puede tener más de 50 caracteres.',
-
-                    'n_paquete.required' => 'El número de paquete es obligatorio.',
-                    'n_paquete.string'   => 'El número de paquete debe ser texto.',
-                    'n_paquete.max'      => 'El número de paquete no puede tener más de 50 caracteres.',
-
-                    'n_colada_2.string' => 'El número de colada del segundo paquete debe ser texto.',
-                    'n_colada_2.max'    => 'El número de colada del segundo paquete no puede tener más de 50 caracteres.',
-
-                    'n_paquete_2.string' => 'El número de paquete del segundo paquete debe ser texto.',
-                    'n_paquete_2.max'    => 'El número de paquete del segundo paquete no puede tener más de 50 caracteres.',
-
-                    'ubicacion_id.required' => 'La ubicación es obligatoria.',
-                    'ubicacion_id.exists'   => 'La ubicación seleccionada no es válida.',
-
-                    'fabricante_id.exists' => 'El fabricante seleccionado no es válido.',
-                    'fabricante_id.required' => 'El fabricante es obligatorio.',
-
-                ]
-            );
-            // Normaliza a MAYÚSCULAS antes de crear
-            $codigo   = strtoupper(trim($request->input('codigo')));
-            $codigo2  = $request->filled('codigo_2') ? strtoupper(trim($request->input('codigo_2'))) : null;
+            // --- Preparar datos
+            $codigo   = strtoupper(trim($request->codigo));
+            $codigo2  = $request->filled('codigo_2') ? strtoupper(trim($request->codigo_2)) : null;
             $esDoble  = $request->filled('codigo_2') && $request->filled('n_colada_2') && $request->filled('n_paquete_2');
-            $peso     = (float) $request->input('peso');
+            $peso     = (float) $request->peso;
             $pesoPorPaquete = $esDoble ? round($peso / 2, 3) : $peso;
 
-            $ubicacion = Ubicacion::find($request->ubicacion_id);
+            $ubicacion = Ubicacion::findOrFail($request->ubicacion_id);
 
-            if (!$ubicacion) {
-                return back()
-                    ->withInput()
-                    ->with('error', 'No se encontró la ubicación seleccionada.');
-            }
-
-            $mapaAlmacenes = [
-                '0A' => 1,
-                '0B' => 2,
-                'AL' => 3,
-            ];
-
+            $mapaAlmacenes = ['0A' => 1, '0B' => 2, 'AL' => 3];
             $obraIdActual = $mapaAlmacenes[$ubicacion->almacen] ?? null;
-
             if (!$obraIdActual) {
-                return back()
-                    ->withInput()
-                    ->with('error', 'No se puede determinar la obra a partir de la ubicación seleccionada.');
+                return back()->with('error', 'No se puede determinar la obra a partir de la ubicación seleccionada.');
             }
 
-            /** @var PedidoProducto $pedidoProducto */
-            $pedidoProducto = PedidoProducto::lockForUpdate()->findOrFail($request->pedido_producto_id);
-
-            if ($pedidoProducto->pedido_id !== $pedido->id) {
-                return redirect()->back()->with('error', 'La línea de pedido no pertenece al pedido actual.');
-            }
-
-
-            // ✅ Buscar/crear ENTRADA ABIERTA POR LÍNEA
+            // --- Buscar/crear entrada abierta para la línea del movimiento
             $entrada = Entrada::where('pedido_id', $pedido->id)
                 ->where('pedido_producto_id', $pedidoProducto->id)
                 ->where('estado', 'abierto')
                 ->lockForUpdate()
                 ->first();
 
-
-
             if (!$entrada) {
                 $entrada = new Entrada();
                 $entrada->pedido_id          = $pedido->id;
-                $entrada->pedido_producto_id = $pedidoProducto->id; // 🔒 clave: por línea
+                $entrada->pedido_producto_id = $pedidoProducto->id;
                 $entrada->albaran            = $this->generarCodigoAlbaran();
                 $entrada->usuario_id         = auth()->id();
                 $entrada->peso_total         = 0;
@@ -558,32 +490,9 @@ class PedidoController extends Controller
                 $entrada->save();
             }
 
-            // // 🔔 alertas si se creó ahora (como ya tenías)
-            // if ($entradaRecienCreada) {
-            //     $alertaService = app(AlertaService::class);
-            //     $emisorId = auth()->id();
-
-            //     $fabricante = $entrada->pedido->fabricante->nombre ?? 'Desconocido';
-            //     $pedidoCodigo = $entrada->pedido->codigo ?? $entrada->pedido->id ?? '—';
-
-            //     $usuariosAdmin = User::whereHas('departamentos', function ($q) {
-            //         $q->where('nombre', 'Administración');
-            //     })->get();
-
-            //     foreach ($usuariosAdmin as $usuario) {
-            //         $alertaService->crearAlerta(
-            //             emisorId: $emisorId,
-            //             destinatarioId: $usuario->id,
-            //             mensaje: "Camión de ($fabricante) recibido. Pedido $pedidoCodigo. Línea de pedido ({$pedidoProducto->id})",
-            //             tipo: 'Entrada material',
-            //         );
-            //     }
-            // }
-
-            // Fabricante final como ya tenías
             $fabricanteFinal = $pedido->fabricante_id ?? $request->fabricante_id;
 
-            // ➕ Crear producto(s) siempre colgando de ESTA entrada (de la línea correcta)
+            // --- Crear producto(s) en esa entrada
             Producto::create([
                 'codigo'            => $codigo,
                 'producto_base_id'  => $request->producto_base_id,
@@ -606,7 +515,7 @@ class PedidoController extends Controller
                     'producto_base_id'  => $request->producto_base_id,
                     'fabricante_id'     => $fabricanteFinal,
                     'obra_id'           => $obraIdActual,
-                    'entrada_id'        => $entrada->id, // 👈 misma entrada (misma línea)
+                    'entrada_id'        => $entrada->id,
                     'n_colada'          => $request->n_colada_2,
                     'n_paquete'         => $request->n_paquete_2,
                     'peso_inicial'      => $pesoPorPaquete,
@@ -618,24 +527,18 @@ class PedidoController extends Controller
                 ]);
             }
 
-            // Actualizar peso total de ESA entrada/linea
+            // --- Actualizar peso de la entrada
             $entrada->peso_total += $peso;
             $entrada->save();
 
-            $pedido->save();
-
-            return redirect()->back()->with('success', 'Producto(s) recepcionado(s) correctamente.');
-        } catch (\Exception $e) {
+            return back()->with('success', 'Producto(s) recepcionado(s) correctamente.');
+        } catch (\Throwable $e) {
             Log::error('❌ Error en procesarRecepcion()', [
                 'error' => $e->getMessage(),
                 'linea' => $e->getLine(),
                 'file'  => $e->getFile(),
-                'trace' => $e->getTraceAsString(),
             ]);
-
-            return redirect()->back()
-                ->withInput()
-                ->with('error', 'Error: ' . $e->getMessage());
+            return back()->withInput()->with('error', 'Error: ' . $e->getMessage());
         }
     }
 

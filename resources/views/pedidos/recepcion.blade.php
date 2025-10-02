@@ -1,8 +1,8 @@
 <x-app-layout>
     <x-slot name="header">
         <h2 class="text-lg font-semibold text-gray-800">
-            <a href="{{ route('pedidos.index') }}" class="text-blue-600">
-                {{ __('Pedidos de Compra') }}
+            <a href="{{ route('maquinas.index') }}" class="text-blue-600">
+                {{ __('Movimientos') }}
             </a>
             <span class="mx-2">/</span>
             {{ __('Recepción del ') }}{{ $pedido->codigo }}
@@ -12,8 +12,6 @@
     <div class="py-6">
         @php
             $producto = $productoBase;
-            $productoActivo = old('producto_id') == $producto->id;
-
             $defecto = $ultimos[$producto->id] ?? null;
             $coladaPorDefecto = $defecto?->n_colada ?? null;
             $ubicacionPorDefecto = $defecto?->ubicacion_id ?? null;
@@ -24,6 +22,9 @@
                 ->where('producto_base_id', $producto->id)
                 ->with('productoBase')
                 ->get();
+
+            // 👇 Cargamos el movimiento pendiente asociado a la línea actual
+            $movimientoPendiente = $linea?->movimientos()->where('estado', 'pendiente')->first();
         @endphp
 
         @if ($entradaAbierta && $productosDeEstaEntrada->isNotEmpty())
@@ -36,7 +37,9 @@
                         action="{{ route('entradas.cerrar', $entradaAbierta->id) }}" class="hidden">
                         @csrf
                         @method('PATCH')
+                        <input type="hidden" name="movimiento_id" value="{{ $movimientoPendiente?->id }}">
                     </form>
+
                     <button onclick="confirmarCerrarAlbaran()"
                         class="bg-red-600 text-white text-xs px-3 py-1 rounded hover:bg-red-700">
                         Cerrar Albarán
@@ -63,11 +66,9 @@
                             </span>
                         </li>
                     @endforeach
-
                 </ul>
             </div>
         @endif
-
 
         <div class="text-center mt-4">
             <button onclick="iniciarRecepcion()"
@@ -75,13 +76,15 @@
                 ➕ Registrar nuevo paquete
             </button>
         </div>
+
         {{-- Formulario oculto --}}
         <form id="recepcionForm" method="POST"
             action="{{ route('pedidos.recepcion.guardar', ['pedido' => $pedido->id, 'producto_base' => $producto->id]) }}"
             style="display:none;">
             @csrf
             <input type="hidden" name="pedido_id" value="{{ $pedido->id }}">
-            <input type="hidden" name="pedido_producto_id" id="pedido_producto_id_input" value="{{ $linea?->id }}">
+            {{-- se manda aún, pero backend debe fiarse del movimiento --}}
+            <input type="hidden" name="pedido_producto_id" value="{{ $linea?->id }}">
             <input type="hidden" name="producto_base_id" value="{{ $producto->id }}">
             <input type="hidden" name="cantidad_paquetes" id="cantidad_paquetes_input">
             <input type="hidden" name="codigo" id="codigo_input">
@@ -94,9 +97,11 @@
             <input type="hidden" name="peso" id="peso_input">
             <input type="hidden" name="ubicacion_id" id="ubicacion_input">
             <input type="hidden" name="otros" id="otros_input">
+            {{-- 👇 Aquí enviamos el movimiento_id también --}}
+            <input type="hidden" name="movimiento_id" value="{{ $movimientoPendiente?->id }}">
         </form>
-
     </div>
+
 
     <script>
         const requiereFabricante = @json($requiereFabricanteManual);

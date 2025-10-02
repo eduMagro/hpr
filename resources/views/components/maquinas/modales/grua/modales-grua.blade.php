@@ -292,7 +292,8 @@
 
           // ⚠️ Importante: pasamos pedido_producto_id por query para que el back lo coja.
           const hrefRecepcion =
-              `/pedidos/${pedido.id}/recepcion/${producto?.id ?? movimiento.producto_base_id}?pedido_producto_id=${linea.id}`;
+              `/pedidos/${pedido.id}/recepcion/${producto?.id ?? movimiento.producto_base_id}?movimiento_id=${movimiento.id}`;
+
 
           contenedor.innerHTML = `
     <p><strong>Proveedor:</strong> ${proveedor}</p>

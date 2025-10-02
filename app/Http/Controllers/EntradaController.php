@@ -549,98 +549,125 @@ class EntradaController extends Controller
             'Content-Disposition' => 'inline; filename="Albaran_' . $entrada->id . '.pdf"',
         ]);
     }
-    public function cerrar($id)
+    public function cerrar(Request $request, $id)
     {
-        DB::transaction(function () use ($id) {
-            // Cargar entrada con relaciones necesarias
+        // Necesitamos saber qué movimiento estás completando
+        $request->validate([
+            'movimiento_id' => ['required', 'exists:movimientos,id'],
+        ], [
+            'movimiento_id.required' => 'Falta el movimiento que estás completando.',
+            'movimiento_id.exists'   => 'El movimiento indicado no existe.',
+        ]);
+
+        DB::transaction(function () use ($request, $id) {
+            // 1) Cargar y bloquear recursos
+            /** @var \App\Models\Entrada $entrada */
             $entrada = Entrada::with(['pedido'])->lockForUpdate()->findOrFail($id);
 
             if ($entrada->estado === 'cerrado') {
                 abort(400, 'Este albarán ya está cerrado.');
             }
 
-            // Verificar existencia de la línea de pedido asociada
-            $pivot = PedidoProducto::lockForUpdate()->find($entrada->pedido_producto_id);
+            /** @var \App\Models\Movimiento $movimiento */
+            $movimiento = Movimiento::lockForUpdate()->findOrFail($request->movimiento_id);
 
-            if (!$pivot) {
-                abort(422, 'No se ha vinculado correctamente la entrada con la línea del pedido.');
+            if ($movimiento->tipo !== 'entrada') {
+                abort(422, 'El movimiento indicado no es de tipo entrada.');
+            }
+            if ($movimiento->estado === 'completado') {
+                abort(422, 'Ese movimiento ya estaba completado.');
             }
 
-            // Calcular peso recepcionado específicamente para esta línea del pedido
+            // Deben pertenecer al mismo pedido
+            if ((int)$movimiento->pedido_id !== (int)$entrada->pedido_id) {
+                abort(422, 'El movimiento y el albarán pertenecen a pedidos distintos.');
+            }
+
+            /** @var \App\Models\PedidoProducto $pivot */
+            $pivot = PedidoProducto::lockForUpdate()->findOrFail($movimiento->pedido_producto_id);
+
+            // 2) Si la entrada está asociada a otra línea, revisa integridad y reasigna
+            if ((int)$entrada->pedido_producto_id !== (int)$pivot->id) {
+                // Verificar que todos los productos de la entrada coinciden en producto_base_id con la línea del movimiento
+                $mismatch = Producto::where('entrada_id', $entrada->id)
+                    ->where('producto_base_id', '!=', $pivot->producto_base_id)
+                    ->count();
+
+                if ($mismatch > 0) {
+                    abort(422, 'No se puede asociar este albarán a la línea del movimiento porque contiene productos de otro producto base.');
+                }
+
+                // Reasignar la entrada a la línea del movimiento
+                $entrada->pedido_producto_id = $pivot->id;
+                $entrada->save();
+            }
+
+            // 3) Peso recepcionado para ESTA línea (sumando todos los productos de todas las entradas de la línea)
             $pesoRecepcionado = Producto::where('producto_base_id', $pivot->producto_base_id)
                 ->whereHas('entrada', fn($q) => $q->where('pedido_producto_id', $pivot->id))
                 ->sum('peso_inicial');
 
-            // Log inicial de control
-            Log::info('📦 Cierre de albarán', [
-                'entrada_id' => $entrada->id,
-                'pedido_producto_id' => $pivot->id,
-                'producto_base_id' => $pivot->producto_base_id,
-                'cantidad_pedida' => $pivot->cantidad,
-                'peso_recepcionado' => $pesoRecepcionado,
+            Log::info('📦 Cierre de albarán por movimiento', [
+                'entrada_id'           => $entrada->id,
+                'movimiento_id'        => $movimiento->id,
+                'pedido_producto_id'   => $pivot->id,
+                'producto_base_id'     => $pivot->producto_base_id,
+                'cantidad_pedida'      => $pivot->cantidad,
+                'peso_recepcionado'    => $pesoRecepcionado,
             ]);
 
-            // Determinar estado de la línea
+            // 4) Estado de la línea
             $estado = match (true) {
                 $pesoRecepcionado >= $pivot->cantidad * 0.8 => 'completado',
                 $pesoRecepcionado > 0 => 'parcial',
                 default => 'pendiente',
             };
 
-            // Actualizar línea
-            PedidoProducto::where('id', $pivot->id)->update([
+            PedidoProducto::whereKey($pivot->id)->update([
                 'cantidad_recepcionada' => $pesoRecepcionado,
-                'estado' => $estado,
+                'estado'                => $estado,
+                // Si esta fecha era "prevista original", quítala. Si es "última recepción", entonces ok.
                 'fecha_estimada_entrega' => now(),
             ]);
 
-            // Cerrar entrada
+            // 5) Cerrar entrada
             $entrada->estado = 'cerrado';
             $entrada->save();
 
-            // Actualizar movimientos relacionados
-            Movimiento::where('pedido_id', $entrada->pedido_id)
-                ->where('pedido_producto_id', $pivot->id)
-                ->where('estado', '!=', 'completado')
+            // 6) Completar el movimiento que estás cerrando y, de paso, todos los pendientes de esa misma línea
+            Movimiento::where('id', $movimiento->id)
+                ->orWhere(function ($q) use ($entrada, $pivot) {
+                    $q->where('pedido_id', $entrada->pedido_id)
+                        ->where('pedido_producto_id', $pivot->id)
+                        ->where('estado', '!=', 'completado');
+                })
                 ->lockForUpdate()
                 ->update([
-                    'estado' => 'completado',
-                    'ejecutado_por' => auth()->id(),
+                    'estado'          => 'completado',
+                    'ejecutado_por'   => auth()->id(),
                     'fecha_ejecucion' => now(),
                 ]);
 
-            // Recargar líneas desde la base de datos
+            // 7) ¿Pedido completo?
             $lineas = PedidoProducto::where('pedido_id', $entrada->pedido_id)->get();
-
-            // Comprobación de estado global
-            $todosCompletados = $lineas->every(fn($linea) => $linea->estado === 'completado');
+            $todosCompletados = $lineas->every(fn($l) => $l->estado === 'completado');
 
             if ($todosCompletados) {
                 $entrada->pedido->estado = 'completado';
                 $entrada->pedido->save();
-                Log::info('✅ Pedido completado automáticamente', [
-                    'pedido_id' => $entrada->pedido->id,
-                ]);
+                Log::info('✅ Pedido completado automáticamente', ['pedido_id' => $entrada->pedido->id]);
             } else {
-                Log::info('ℹ️ Pedido aún tiene líneas pendientes/parciales', [
-                    'pedido_id' => $entrada->pedido->id,
-                ]);
+                Log::info('ℹ️ Pedido con líneas pendientes/parciales', ['pedido_id' => $entrada->pedido->id]);
             }
 
-            // Logs finales
-            Log::info('✅ Línea de pedido actualizada', [
+            Log::info('✅ Línea de pedido actualizada (cierre desde movimiento)', [
                 'pedido_producto_id' => $pivot->id,
-                'nuevo_estado' => $estado,
-                'peso_recepcionado' => $pesoRecepcionado,
+                'nuevo_estado'       => $estado,
+                'peso_recepcionado'  => $pesoRecepcionado,
             ]);
-
-            Log::info('🔍 Estados de TODAS las líneas del pedido', $lineas->mapWithKeys(
-                fn($linea) => [$linea->id => $linea->estado]
-            )->toArray());
         });
 
-        return redirect()->route('maquinas.index')
-            ->with('success', 'Albarán cerrado correctamente.');
+        return redirect()->route('maquinas.index')->with('success', 'Albarán cerrado correctamente.');
     }
 
     // Eliminar una entrada y sus productos asociados
