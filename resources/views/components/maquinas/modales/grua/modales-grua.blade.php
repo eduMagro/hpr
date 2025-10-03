@@ -17,8 +17,8 @@
               <!-- Ubicación destino (campo libre) -->
               <div class="mt-4">
                   <x-tabla.input-movil name="ubicacion_destino" id="ubicacion_destino_general"
-                      label="Escanear Ubicación destino" placeholder="Escanea ubicación o escribe código"
-                      autocomplete="off" inputmode="none" />
+                      label="Escanear Ubicación destino" placeholder="Escanea ubicación o escribe" autocomplete="off" />
+
               </div>
 
               <!-- Máquina destino (select filtrado por obra_id de la grúa) -->
