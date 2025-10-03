@@ -47,6 +47,21 @@
           </form>
       </div>
   </div>
+  <script>
+      document.addEventListener('DOMContentLoaded', function() {
+          // Selecciona solo los inputs del modal movimiento general
+          const inputs = document.querySelectorAll('#modalMovimientoGeneral input');
+
+          inputs.forEach(input => {
+              input.addEventListener('keydown', function(e) {
+                  if (e.key === 'Enter') {
+                      e.preventDefault(); // ⛔ Bloquea el enter automático del escáner
+                      // No hace ni submit ni salta a otro campo
+                  }
+              });
+          });
+      });
+  </script>
 
   {{-- 🔄 MODAL BAJADA PAQUETE --}}
   <div id="modal-bajada-paquete"
