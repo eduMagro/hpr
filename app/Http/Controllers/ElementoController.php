@@ -464,8 +464,8 @@ class ElementoController extends Controller
 
         if ($tipo1 === 'ensambladora') return $e->maquina_id_2;
         if ($tipo1 === 'soldadora')    return $e->maquina_id_3 ?? $e->maquina_id;
-        if ($tipo1 === 'dobladora manual') return $e->maquina_id;
-        if ($tipo2 === 'dobladora manual') return $e->maquina_id_2;
+        if ($tipo1 === 'dobladora_manual') return $e->maquina_id;
+        if ($tipo2 === 'dobladora_manual') return $e->maquina_id_2;
 
         return $e->maquina_id;
     }

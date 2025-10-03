@@ -741,7 +741,7 @@ class MaquinaController extends Controller
             $request->validate([
                 'codigo'       => 'required|string|unique:maquinas,codigo',
                 'nombre'       => 'required|string|max:40|unique:maquinas,nombre',
-                'tipo'         => 'nullable|string|max:50|in:grua,cortadora_dobladora,ensambladora,soldadora,cortadora manual,dobladora manual',
+                'tipo'         => 'nullable|string|max:50|in:grua,cortadora_dobladora,ensambladora,soldadora,cortadora_manual,dobladora_manual',
                 'obra_id'      => 'nullable|exists:obras,id',
                 'diametro_min' => 'nullable|integer',
                 'diametro_max' => 'nullable|integer',
@@ -878,7 +878,7 @@ class MaquinaController extends Controller
         $validatedData = $request->validate([
             'codigo'       => 'required|string|unique:maquinas,codigo,' . $id,
             'nombre'       => 'required|string|max:40',
-            'tipo'         => 'nullable|string|max:50|in:cortadora_dobladora,ensambladora,soldadora,cortadora manual,dobladora manual,grua',
+            'tipo'         => 'nullable|string|max:50|in:cortadora_dobladora,ensambladora,soldadora,cortadora manual,dobladora_manual,grua',
             'obra_id'      => 'nullable|exists:obras,id',
             'diametro_min' => 'nullable|integer',
             'diametro_max' => 'nullable|integer',

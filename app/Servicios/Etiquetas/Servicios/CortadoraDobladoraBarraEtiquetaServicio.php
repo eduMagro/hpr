@@ -106,7 +106,7 @@ class CortadoraDobladoraBarraEtiquetaServicio extends ServicioEtiquetaBase imple
                 case 'fabricada':
                 case 'parcialmente completada':
                     // Derivar automáticamente a dobladora manual si aplica
-                    $dobladora = Maquina::where('tipo', 'dobladora manual')
+                    $dobladora = Maquina::where('tipo', 'dobladora_manual')
                         ->when($maquina->obra_id, fn($q) => $q->where('obra_id', $maquina->obra_id))
                         ->orderBy('id')
                         ->first();
@@ -397,7 +397,7 @@ class CortadoraDobladoraBarraEtiquetaServicio extends ServicioEtiquetaBase imple
                 $etiqueta->fecha_finalizacion = now();
                 $etiqueta->save();
 
-                $dobladora = Maquina::where('tipo', 'dobladora manual')
+                $dobladora = Maquina::where('tipo', 'dobladora_manual')
                     ->when($maquina->obra_id, fn($q) => $q->where('obra_id', $maquina->obra_id))
                     ->orderBy('id')
                     ->first();

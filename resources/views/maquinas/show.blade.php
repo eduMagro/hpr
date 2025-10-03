@@ -41,12 +41,12 @@
                     <x-maquinas.tipo.tipo-grua :movimientos-pendientes="$movimientosPendientes" :movimientos-completados="$movimientosCompletados" :ubicaciones-disponibles-por-producto-base="$ubicacionesDisponiblesPorProductoBase" />
 
                     @include('components.maquinas.modales.grua.modales-grua')
-                @elseif ($maquina->tipo === 'dobladora manual')
+                @elseif ($maquina->tipo === 'dobladora_manual')
                     <div class="grid grid-cols-1 sm:grid-cols-8 gap-6">
                         <x-maquinas.tipo.tipo-dobladora-manual :maquina="$maquina" :maquinas="$maquinas" :elementosAgrupados="$elementosAgrupados"
                             :productosBaseCompatibles="$productosBaseCompatibles" />
                     </div>
-                @elseif ($maquina->tipo === 'cortadora manual')
+                @elseif ($maquina->tipo === 'cortadora_manual')
                     <div class="grid grid-cols-1 sm:grid-cols-8 gap-6">
                         <x-maquinas.tipo.tipo-cortadora-manual :maquina="$maquina" :maquinas="$maquinas" :elementosAgrupados="$elementosAgrupados"
                             :productosBaseCompatibles="$productosBaseCompatibles" />

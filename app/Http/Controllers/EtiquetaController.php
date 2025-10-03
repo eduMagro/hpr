@@ -1613,7 +1613,7 @@ class EtiquetaController extends Controller
                         $etiqueta->soldador1_id =  $operario1;
                         $etiqueta->soldador2_id =  $operario2;
                         $etiqueta->save();
-                    } elseif ($maquina->tipo === 'dobladora manual') {
+                    } elseif ($maquina->tipo === 'dobladora_manual') {
                         // Si la máquina es de tipo soldadora, se inicia la fase de soldadura:
                         $etiqueta->fecha_inicio_soldadura = now();
                         $etiqueta->estado = 'doblando';
@@ -2087,7 +2087,7 @@ class EtiquetaController extends Controller
                     $etiqueta->save();
 
                     // 2) Buscar una máquina tipo "dobladora_manual"
-                    $dobladora = Maquina::where('tipo', 'dobladora manual')
+                    $dobladora = Maquina::where('tipo', 'dobladora_manual')
                         // si quieres priorizar la misma obra:
                         ->when($maquina->obra_id, fn($q) => $q->where('obra_id', $maquina->obra_id))
                         ->orderBy('id')

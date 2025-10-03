@@ -392,7 +392,7 @@ abstract class ServicioEtiquetaBase
                 DB::transaction(function () use ($etiqueta, $maquina) {
 
                     // 2) buscar dobladora manual (preferir misma obra)
-                    $dobladora = Maquina::where('tipo', 'dobladora manual')
+                    $dobladora = Maquina::where('tipo', 'dobladora_manual')
                         ->when($maquina->obra_id, fn($q) => $q->where('obra_id', $maquina->obra_id))
                         ->orderBy('id')
                         ->first();

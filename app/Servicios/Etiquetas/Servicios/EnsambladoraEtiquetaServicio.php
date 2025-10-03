@@ -303,7 +303,7 @@ class EnsambladoraEtiquetaServicio extends ServicioEtiquetaBase implements Etiqu
                         $etiqueta->soldador1_id =  $operario1;
                         $etiqueta->soldador2_id =  $operario2;
                         $etiqueta->save();
-                    } elseif ($maquina->tipo === 'dobladora manual') {
+                    } elseif ($maquina->tipo === 'dobladora_manual') {
                         $etiqueta->fecha_inicio_soldadura = now();
                         $etiqueta->estado = 'doblando';
                         $etiqueta->soldador1_id =  $operario1;
@@ -706,7 +706,7 @@ class EnsambladoraEtiquetaServicio extends ServicioEtiquetaBase implements Etiqu
                     $etiqueta->fecha_finalizacion = now();
                     $etiqueta->save();
 
-                    $dobladora = Maquina::where('tipo', 'dobladora manual')
+                    $dobladora = Maquina::where('tipo', 'dobladora_manual')
                         ->when($maquina->obra_id, fn($q) => $q->where('obra_id', $maquina->obra_id))
                         ->orderBy('id')
                         ->first();

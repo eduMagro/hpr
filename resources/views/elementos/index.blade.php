@@ -250,7 +250,7 @@
                                 <select class="text-xs border rounded px-1 py-0.5" data-id="{{ $elemento->id }}"
                                     data-field="maquina_id_2" onchange="actualizarCampoElemento(this)">
                                     <option value="">N/A</option>
-                                    @foreach ($maquinas->whereIn('tipo', ['cortadora_dobladora', 'estribadora', 'cortadora manual', 'dobladora manual', 'soldadora']) as $maquina)
+                                    @foreach ($maquinas->whereIn('tipo', ['cortadora_dobladora', 'estribadora', 'cortadora_manual', 'dobladora_manual', 'soldadora']) as $maquina)
                                         <option value="{{ $maquina->id }}" @selected($elemento->maquina_id_2 === $maquina->id)>
                                             {{ $maquina->nombre }}
                                         </option>

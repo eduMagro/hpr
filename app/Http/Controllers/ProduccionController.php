@@ -395,12 +395,12 @@ class ProduccionController extends Controller
             }
 
             // Dobladora manual en primaria
-            if ($tipo1 === 'dobladora manual') {
+            if ($tipo1 === 'dobladora_manual') {
                 return $e->maquina_id;
             }
 
             // Dobladora manual en secundaria (ej. etiquetas "pates" que derivamos a dobladora)
-            if ($tipo2 === 'dobladora manual') {
+            if ($tipo2 === 'dobladora_manual') {
                 return $e->maquina_id_2;
             }
 
