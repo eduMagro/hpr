@@ -12,12 +12,13 @@
 
               <!-- Producto -->
               <x-tabla.input-movil name="codigo_general" id="codigo_general_general" label="Escanear Producto o Paquete"
-                  placeholder="Escanea QR" autocomplete="off" inputmode="none" required />
+                  placeholder="Escanea QR Ferralla" autocomplete="off" inputmode="none" required />
 
               <!-- Ubicación destino (campo libre) -->
               <div class="mt-4">
                   <x-tabla.input-movil name="ubicacion_destino" id="ubicacion_destino_general"
-                      label="Escanear Ubicación destino" placeholder="Escanea ubicación o escribe" autocomplete="off" />
+                      label="Escanear Ubicación destino" placeholder="Escanea ubicación o escribe Nº"
+                      autocomplete="off" />
 
               </div>
 
