@@ -1,5 +1,5 @@
   {{-- 🔄 MODAL MOVIMIENTO GENERAL --}}
-  <div id="modalMovimientoGeneral"
+  <div id="modalMovimientoLibre"
       class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center">
       <div class="bg-white p-6 rounded-2xl shadow-xl w-full max-w-lg">
           <h2 class="text-lg sm:text-xl font-bold mb-4 text-center text-gray-800">
@@ -39,7 +39,7 @@
 
               <!-- Botones -->
               <div class="flex justify-end gap-3 mt-6">
-                  <button type="button" onclick="cerrarModalMovimientoGeneral()"
+                  <button type="button" onclick="cerrarModalMovimientoLibre()"
                       class="px-4 py-2 bg-gray-300 hover:bg-gray-400 rounded-lg">Cancelar</button>
                   <button type="submit"
                       class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg">Registrar</button>
@@ -50,7 +50,7 @@
   <script>
       document.addEventListener('DOMContentLoaded', function() {
           // Selecciona solo los inputs del modal movimiento general
-          const inputs = document.querySelectorAll('#modalMovimientoGeneral input');
+          const inputs = document.querySelectorAll('#modalMovimientoLibre input');
 
           inputs.forEach(input => {
               input.addEventListener('keydown', function(e) {
@@ -219,7 +219,7 @@
       }
 
       function abrirModalMovimientoLibre() {
-          const modal = document.getElementById('modalMovimientoGeneral');
+          const modal = document.getElementById('modalMovimientoLibre');
           modal.classList.remove('hidden');
           modal.classList.add('flex');
           setTimeout(() => {
@@ -228,7 +228,7 @@
       }
 
       function cerrarModalMovimientoLibre() {
-          const modal = document.getElementById('modalMovimientoGeneral');
+          const modal = document.getElementById('modalMovimientoLibre');
           modal.classList.add('hidden');
           modal.classList.remove('flex');
       }
