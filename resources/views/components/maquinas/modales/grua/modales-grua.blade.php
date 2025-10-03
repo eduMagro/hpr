@@ -48,20 +48,6 @@
       </div>
   </div>
 
-  <script>
-      document.addEventListener('DOMContentLoaded', function() {
-          const inputCodigo = document.getElementById('codigo_general');
-          const inputUbicacion = document.querySelector('input[name="ubicacion_destino"]');
-
-          inputCodigo.addEventListener('keydown', function(e) {
-              if (e.key === 'Enter') {
-                  e.preventDefault(); // ⛔ Evita el envío del formulario
-                  inputUbicacion.focus(); // ✅ Salta al siguiente campo
-              }
-          });
-      });
-  </script>
-
   {{-- 🔄 MODAL BAJADA PAQUETE --}}
   <div id="modal-bajada-paquete"
       class="fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center z-50 hidden">
