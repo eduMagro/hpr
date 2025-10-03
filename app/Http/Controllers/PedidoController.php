@@ -506,22 +506,11 @@ class PedidoController extends Controller
             // --- Cantidad que habrá después de este registro
             $totalConNuevo = $recepcionadoHastaAhora + $peso;
 
-            // Si nos pasamos, avisamos
             if ($totalConNuevo > $cantidadPedida) {
-                // No lo bloqueamos, solo avisamos
-                Log::warning("⚠️ Recepción excedida en línea {$pedidoProducto->id}", [
-                    'pedido_id' => $pedido->id,
-                    'linea_id'  => $pedidoProducto->id,
-                    'cantidad_pedida' => $cantidadPedida,
-                    'recepcionado'    => $recepcionadoHastaAhora,
-                    'peso_nuevo'      => $peso,
-                    'total_con_nuevo' => $totalConNuevo,
-                ]);
 
-                return back()
-                    ->withInput()
-                    ->with('warning', "⚠️ Atención: la línea {$pedidoProducto->id} tiene pedido {$cantidadPedida} kg, y con esta entrada ya llevamos {$totalConNuevo} kg.");
+                session()->flash('warning', "⚠️ Atención: se han recepcionado {$totalConNuevo} kg, superando lo pedido ({$cantidadPedida} kg).");
             }
+
 
             // --- Crear producto(s) en esa entrada
             Producto::create([
