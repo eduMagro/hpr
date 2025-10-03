@@ -410,6 +410,14 @@ class MaquinaController extends Controller
         // Nave (obra) de esta máquina
         $obraId = $maquina->obra_id;
 
+        // 🟢 Máquinas de la misma nave
+        $maquinasDisponibles = Maquina::select('id', 'nombre', 'codigo', 'diametro_min', 'diametro_max', 'obra_id')
+            ->where('obra_id', $obraId)
+            ->where('tipo', '!=', 'grua')   // 👈 fuera las grúas
+            ->orderBy('nombre')
+            ->get();
+
+
         // PENDIENTES: eager load estrecho + columns mínimos + misma nave
         $movimientosPendientes = Movimiento::with([
             'solicitadoPor:id,name',
@@ -564,6 +572,7 @@ class MaquinaController extends Controller
             'movimientosCompletadosJson'            => $movsComplJson->values(),
             'ubicacionesDisponiblesPorProductoBase' => $ubicacionesDisponiblesPorProductoBase,
             'pedidosActivos'                        => $pedidosActivos,
+            'maquinasDisponibles'                   => $maquinasDisponibles,
         ];
     }
 

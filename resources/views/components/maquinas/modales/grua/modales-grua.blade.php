@@ -1,28 +1,45 @@
-  {{-- 🔄 MODAL MOVIMIENTO LIBRE --}}
-  <div id="modalMovimientoLibre" class="fixed inset-0 z-50 bg-black bg-opacity-50 hidden items-center justify-center">
-      <div class="bg-white p-6 rounded-2xl shadow-xl w-full max-w-md mx-4 sm:mx-0">
-          <form method="POST" action="{{ route('movimientos.store') }}" id="form-movimiento-libre">
+  {{-- 🔄 MODAL MOVIMIENTO GENERAL --}}
+  <div id="modalMovimientoGeneral"
+      class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center">
+      <div class="bg-white p-6 rounded-2xl shadow-xl w-full max-w-lg">
+          <h2 class="text-lg sm:text-xl font-bold mb-4 text-center text-gray-800">
+              ➕ Nuevo Movimiento
+          </h2>
+
+          <form method="POST" action="{{ route('movimientos.store') }}" id="form-movimiento-general">
               @csrf
               <input type="hidden" name="tipo" value="movimiento libre">
 
-              <!-- Código general (producto o paquete) -->
-              <div class="mb-4">
+              <!-- Producto -->
+              <x-tabla.input-movil name="codigo_general" id="codigo_general_general" label="Escanear Producto o Paquete"
+                  placeholder="Escanea QR" autocomplete="off" inputmode="none" required />
 
-                  <x-tabla.input-movil name="codigo_general" id="codigo_general"
-                      label="Escanear Código de Materia Prima o Paquete" placeholder="Escanear QR"
-                      value="{{ old('codigo_general') }}" inputmode="none" autocomplete="off" />
+              <!-- Ubicación destino (campo libre) -->
+              <div class="mt-4">
+                  <x-tabla.input-movil name="ubicacion_destino" id="ubicacion_destino_general"
+                      label="Escanear Ubicación destino" placeholder="Escanea ubicación o escribe código"
+                      autocomplete="off" inputmode="none" />
               </div>
 
-              <!-- Ubicación destino -->
-              <div class="mb-4">
+              <!-- Máquina destino (select filtrado por obra_id de la grúa) -->
+              <div class="mt-4">
+                  <label for="maquina_destino" class="block text-sm font-medium text-gray-700">Máquina destino</label>
+                  <select name="maquina_destino" id="maquina_destino"
+                      class="w-full border border-gray-300 rounded text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      style="height:2cm; padding:0.75rem 1rem; font-size:1.5rem;">
+                      <option value="">-- Selecciona máquina --</option>
+                      @foreach ($maquinasDisponibles as $maq)
+                          <option value="{{ $maq->id }}">
+                              {{ $maq->nombre }}
+                          </option>
+                      @endforeach
+                  </select>
 
-                  <x-tabla.input-movil name="ubicacion_destino" placeholder="Escanear ubicación"
-                      value="{{ old('ubicacion_destino') }}" inputmode="none" autocomplete="off" />
               </div>
 
               <!-- Botones -->
               <div class="flex justify-end gap-3 mt-6">
-                  <button type="button" onclick="cerrarModalMovimientoLibre()"
+                  <button type="button" onclick="cerrarModalMovimientoGeneral()"
                       class="px-4 py-2 bg-gray-300 hover:bg-gray-400 rounded-lg">Cancelar</button>
                   <button type="submit"
                       class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg">Registrar</button>
@@ -30,6 +47,7 @@
           </form>
       </div>
   </div>
+
   <script>
       document.addEventListener('DOMContentLoaded', function() {
           const inputCodigo = document.getElementById('codigo_general');
@@ -200,17 +218,20 @@
       }
 
       function abrirModalMovimientoLibre() {
-          document.getElementById('modalMovimientoLibre').classList.remove('hidden');
-          document.getElementById('modalMovimientoLibre').classList.add('flex');
+          const modal = document.getElementById('modalMovimientoGeneral');
+          modal.classList.remove('hidden');
+          modal.classList.add('flex');
           setTimeout(() => {
-              document.getElementById("codigo_general")?.focus();
+              document.getElementById("codigo_general_general")?.focus();
           }, 100);
       }
 
       function cerrarModalMovimientoLibre() {
-          document.getElementById('modalMovimientoLibre').classList.add('hidden');
-          document.getElementById('modalMovimientoLibre').classList.remove('flex');
+          const modal = document.getElementById('modalMovimientoGeneral');
+          modal.classList.add('hidden');
+          modal.classList.remove('flex');
       }
+
 
       // Mostrar/ocultar campos según tipo
       document.addEventListener('DOMContentLoaded', function() {
