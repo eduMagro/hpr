@@ -465,7 +465,7 @@ class PedidoController extends Controller
 
             $ubicacion = Ubicacion::findOrFail($request->ubicacion_id);
 
-            $mapaAlmacenes = ['0A' => 1, '0B' => 2, 'AL' => 3];
+            $mapaAlmacenes = ['0A' => 1, '0B' => 2, 'AL' => 350];
             $obraIdActual = $mapaAlmacenes[$ubicacion->almacen] ?? null;
             if (!$obraIdActual) {
                 return back()->with('error', 'No se puede determinar la obra a partir de la ubicación seleccionada.');
