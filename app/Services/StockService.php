@@ -242,7 +242,7 @@ class StockService
             ->join('pedidos as p', 'p.id', '=', 'pp.pedido_id')
             ->join('productos_base as pb', 'pb.id', '=', 'pp.producto_base_id')
             ->when($idsObrasFiltradas, fn($q) => $q->whereIn('p.obra_id', $idsObrasFiltradas))
-            ->where('pp.estado', 'pendiente')
+            ->whereIn('pp.estado', ['pendiente', 'activo'])
             ->groupBy('pb.tipo', 'pb.diametro', 'pb.longitud')
             ->select('pb.tipo', 'pb.diametro', 'pb.longitud', DB::raw('SUM(pp.cantidad) as total'))
             ->get();

@@ -377,6 +377,7 @@ class EstadisticasController extends Controller
 
         return $proporcionPrimerMes + $mesesCompletos + $proporcionUltimoMes;
     }
+
     private function aniosProporcionales(Carbon $desde, Carbon $hasta): float
     {
         if ($desde->greaterThan($hasta)) return 1;
