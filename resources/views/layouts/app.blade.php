@@ -48,6 +48,31 @@
             display: none !important;
         }
     </style>
+    <style>
+        /* 📏 Ajuste global del tamaño base */
+        html {
+            font-size: 70%;
+            /* Reduce todo proporcionalmente, sin romper layout */
+        }
+
+        /* 🔧 Asegura que no haya márgenes ni overflow */
+        body {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow-x: hidden;
+            background-color: #f9fafb;
+            /* opcional: color de fondo base */
+        }
+
+        /* 🪶 Opcional: suaviza textos y mantiene proporciones */
+        * {
+            box-sizing: border-box;
+            -webkit-font-smoothing: antialiased;
+            text-rendering: optimizeLegibility;
+        }
+    </style>
 
 </head>
 

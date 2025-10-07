@@ -65,9 +65,16 @@ class PlanificacionController extends Controller
         // 👉 Obtenemos camiones con su empresa
         $camiones = Camion::with('empresaTransporte:id,nombre')
             ->get(['id', 'modelo', 'empresa_id']);
+
+        $obras = Obra::where('estado', 'activa')
+            ->orderBy('obra')
+            ->get(['id', 'obra']);
+
         return view('planificacion.index', [
             'fechas' => $fechas,
             'camiones' => $camiones,
+            'obras' => $obras,
+            'eventos' => $eventos,
         ]);
     }
     /**
