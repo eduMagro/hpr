@@ -200,8 +200,16 @@
                                                 $esCompletado = $estado === 'completado';
                                                 $esFacturado = $estado === 'facturado';
                                                 $esEntregaDirecta = !$pedido->obra?->es_nave_paco_reyes;
+                                                $esAlmacen = $pedido->obra?->es_almacen;
+
                                                 $pedidoCompletado = strtolower($pedido->estado) === 'completado';
+
+                                                $obra = $pedido->obra;
+                                                $esNaveA = $obra?->es_nave_a;
+                                                $esNaveB = $obra?->es_nave_b;
+                                                $esNaveValida = $esNaveA || $esNaveB;
                                             @endphp
+
 
                                             <div class="flex items-center justify-center gap-1"
                                                 @if ($esCancelado) style="pointer-events:none;opacity:.5" @endif>
@@ -217,7 +225,7 @@
                                                     {{-- === LÍNEA ABIERTA: mostramos acciones según caso === --}}
 
                                                     {{-- Entrega directa: botón Completar línea --}}
-                                                    @if ($esEntregaDirecta && !$pedidoCompletado)
+                                                    @if (($esEntregaDirecta || $esAlmacen) && !$pedidoCompletado)
                                                         <form method="POST"
                                                             action="{{ route('pedidos.editarCompletarLineaManual', ['pedido' => $pedido->id, 'linea' => $linea['id']]) }}"
                                                             onsubmit="return confirmarCompletarLinea(this);">
@@ -228,6 +236,7 @@
                                                             </button>
                                                         </form>
                                                     @endif
+
 
                                                     {{-- Flujo normal HPR --}}
                                                     @if ($estado === 'activo')
@@ -240,7 +249,7 @@
                                                                 Desactivar
                                                             </button>
                                                         </form>
-                                                    @elseif ($estado === 'pendiente' || ($estado === 'parcial' && $pedido->obra?->es_nave_paco_reyes))
+                                                    @elseif (($estado === 'pendiente' || $estado === 'parcial') && $esNaveValida)
                                                         {{-- activar SOLO si es nave Paco Reyes --}}
                                                         <form method="POST"
                                                             action="{{ route('pedidos.lineas.editarActivar', [$pedido->id, $linea['id']]) }}">

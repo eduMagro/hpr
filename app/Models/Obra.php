@@ -95,4 +95,19 @@ class Obra extends Model
     {
         return $this->hasMany(Entrada::class, 'nave_id');
     }
+
+    public function getEsAlmacenAttribute(): bool
+    {
+        return preg_match('/almac.*n/i', $this->obra ?? '') > 0;
+    }
+
+    public function getEsNaveAAttribute(): bool
+    {
+        return stripos($this->obra ?? '', 'nave a') !== false;
+    }
+
+    public function getEsNaveBAttribute(): bool
+    {
+        return stripos($this->obra ?? '', 'nave b') !== false;
+    }
 }

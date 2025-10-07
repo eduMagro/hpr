@@ -225,6 +225,7 @@ class PedidoController extends Controller
         // Cargamos todos los modelos y relaciones necesarios
         $query = Pedido::with([
             'fabricante',
+            'obra',
             'distribuidor',
             'productos',
             'pedidoGlobal',
