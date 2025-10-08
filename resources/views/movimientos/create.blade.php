@@ -1,7 +1,7 @@
 <x-app-layout>
     <x-slot name="title">Planillas - {{ config('app.name') }}</x-slot>
     @if (auth()->user()->rol !== 'operario')
-    <x-menu.movimientos />
+        <x-menu.movimientos />
     @endif
     <div class="max-w-3xl mx-auto mt-10">
         <div class="bg-white rounded-lg shadow-lg overflow-hidden">
@@ -17,11 +17,6 @@
                     <x-tabla.input-movil name="codigo_general" id="codigo_general"
                         label="Código de Materia Prima o Paquete" placeholder="Escanear QR" :value="old('codigo_general', $codigoMateriaPrima ?? '')"
                         inputmode="none" autocomplete="off" />
-
-                    <!-- en este div van apareciendo los codigos escaneados -->
-                    <div id="qr_escaneados"></div>
-                    <input type="hidden" name="lista_qrs" id="lista_qrs">
-
 
 
                     {{-- Ubicación destino --}}
@@ -149,11 +144,6 @@
             }
         });
     </script>
-
-
-    @push('scripts')
-    @vite(['resources/js/views/movimientos/anadir_qr_lista.js'])
-    @endpush
 
 
 </x-app-layout>
