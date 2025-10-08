@@ -447,39 +447,27 @@ class PlanillaController extends Controller
             ->values();
 
         // Colección agrupada (por si la usas en Blade o en otros JS)
-        $elementosAgrupados = $elementosFiltrados
-            ->filter(fn($e) => filled($e->etiqueta_sub_id))
+        // Colección agrupada (por si la usas en Blade o en otros JS)
+        $elementosAgrupados = $elementos
             ->groupBy('etiqueta_sub_id')
-            ->sortBy(function ($grupo, $subId) {
-                if (preg_match('/^(.*?)[\.\-](\d+)$/', (string) $subId, $m)) {
-                    return sprintf('%s-%010d', $m[1], (int) $m[2]);
-                }
-                return (string) $subId . '-0000000000';
-            });
+            ->sortBy($ordenSub);
 
-        $elementosAgrupadosScript = $elementosAgrupados->map(function ($grupo, $subId) {
-            $primero = $grupo->first();
-
-            return [
-                'etiqueta_sub_id' => (string) $subId,                                // ← usa esto para pintar
-                'codigo_sub'      => (string) $subId,                                // alias
-                'codigo_base'     => optional($primero->etiquetaRelacion)->codigo,   // info, no para pintar
-                'etiqueta_base'   => $primero->etiquetaRelacion,                     // renombrado
-                'planilla'        => $primero->planilla,
-                'elementos'       => $grupo->map(fn($e) => [
-                    'id'          => $e->id,
-                    'codigo'      => $e->codigo,
-                    'dimensiones' => $e->dimensiones,
-                    'estado'      => $e->estado,
-                    'peso'        => $e->peso ?? $e->peso_kg ?? 0,
-                    'diametro'    => $e->diametro ?? $e->diametro_mm ?? null,
-                    'longitud'    => $e->longitud_cm ?? null,
-                    'barras'      => $e->barras,
-                    'figura'      => $e->figura,
-                ])->values(),
-                'pesoTotal'       => $grupo->sum(fn($e) => $e->peso ?? $e->peso_kg ?? 0),
-            ];
-        })->values();
+        // Payload “rico” para scripts (idéntico al de máquinas)
+        $elementosAgrupadosScript = $elementosAgrupados->map(fn($grupo) => [
+            'etiqueta'  => $planilla->etiquetas->firstWhere('etiqueta_sub_id', $grupo->first()?->etiqueta_sub_id),
+            'planilla'  => $planilla,
+            'elementos' => $grupo->map(fn($e) => [
+                'id'          => $e->id,
+                'codigo'      => $e->codigo ?? null,
+                'dimensiones' => $e->dimensiones ?? null,
+                'estado'      => $e->estado,
+                'peso'        => $e->peso_kg ?? $e->peso,       // usa accessor si existe
+                'diametro'    => $e->diametro_mm ?? $e->diametro,
+                'longitud'    => $e->longitud_cm ?? ($e->longitud ?? null),
+                'barras'      => $e->barras ?? null,
+                'figura'      => $e->figura ?? null,
+            ])->values(),
+        ])->values();
 
         return view('planillas.show', compact(
             'planilla',
@@ -493,6 +481,8 @@ class PlanillaController extends Controller
             'elementosAgrupadosScript',
         ));
     }
+
+
 
 
 
