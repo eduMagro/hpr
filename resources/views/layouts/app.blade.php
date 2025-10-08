@@ -8,6 +8,7 @@
     <meta name="google" content="notranslate">
 
     <title>{{ $title ?? config('app.name') }}</title>
+    
 
     <!-- ✅ Preconexión a fuentes (mejora FCP) -->
     <link rel="preconnect" href="https://fonts.bunny.net" crossorigin>
