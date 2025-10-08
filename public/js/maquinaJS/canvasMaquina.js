@@ -5,7 +5,7 @@ const FIGURE_LINE_COLOR = "rgba(0, 0, 0, 0.8)";
 const VALOR_COTA_COLOR = "rgba(0, 0, 0, 1)";
 const BARS_TEXT_COLOR = "rgba(0, 0, 0, 1)";
 
-const marginX = 1;
+const marginX = 50;
 const marginY = 1;
 
 // “recrecimiento” (en UNIDADES del modelo, no px)
@@ -134,39 +134,42 @@ function indexToLetters(n) {
     return s;
 }
 
-/** Dibuja la leyenda compacta y registra sus cajas para evitar solapes */
+// ——— Padding exclusivo para la leyenda (0 = pegado al borde) ———
+const LEGEND_PAD_X = 0;
+const LEGEND_PAD_Y = 0;
+
+/** Dibuja la leyenda SIEMPRE abajo-izquierda del SVG */
 function drawLegendBottomLeft(svg, entries, width, height) {
     if (!entries || !entries.length) return;
 
-    const gap = 2; // separación mínima entre líneas
-    const size = 12; // tamaño del texto
+    const gap = 2; // separación entre líneas
+    const size = 12; // tamaño de texto
+    const lineH = size + gap;
 
     const lines = entries.map(
         (e) => (e.letter ? e.letter + " " : "") + (e.text || "")
     );
 
-    // altura total de la caja (sin padding extra)
-    const boxH = lines.length * size + (lines.length - 1) * gap;
+    // Altura total de la leyenda
+    const totalH = size * lines.length + gap * (lines.length - 1);
 
-    // posición: esquina inferior izquierda
-    const x = marginX;
-    const y = height - boxH - marginY;
+    // Esquina inferior izquierda, sin usar marginX/marginY
+    const x = LEGEND_PAD_X;
+    // Como usamos alignment-baseline="middle", arrancamos a mitad de la primera línea
+    let y = height - LEGEND_PAD_Y - totalH + size / 2;
 
+    // Guarda cajas para evitar solapes con cotas/ángulos/letras
     window.__legendBoxesGroup = window.__legendBoxesGroup || [];
 
-    let cy = y + size / 2; // primera línea
     for (let i = 0; i < lines.length; i++) {
         const text = lines[i];
-        const w = approxTextBox(text, size).w;
-        const left = x;
-        const right = left + w;
 
         const t = document.createElementNS(
             "http://www.w3.org/2000/svg",
             "text"
         );
-        t.setAttribute("x", left);
-        t.setAttribute("y", cy);
+        t.setAttribute("x", x);
+        t.setAttribute("y", y);
         t.setAttribute("fill", BARS_TEXT_COLOR);
         t.setAttribute("font-size", size);
         t.setAttribute("text-anchor", "start");
@@ -175,14 +178,16 @@ function drawLegendBottomLeft(svg, entries, width, height) {
         t.textContent = text;
         svg.appendChild(t);
 
+        // Caja de colisión por línea (ancho aproximado)
+        const w = approxTextBox(text, size).w;
         window.__legendBoxesGroup.push({
-            left,
-            right,
-            top: cy - size / 2,
-            bottom: cy + size / 2,
+            left: x,
+            right: x + w,
+            top: y - size / 2,
+            bottom: y + size / 2,
         });
 
-        cy += size + gap;
+        y += lineH;
     }
 }
 

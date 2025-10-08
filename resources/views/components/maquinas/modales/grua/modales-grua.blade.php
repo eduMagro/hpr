@@ -35,7 +35,6 @@
                           </option>
                       @endforeach
                   </select>
-
               </div>
 
               <!-- Botones -->

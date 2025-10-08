@@ -960,7 +960,6 @@ class EtiquetaController extends Controller
         return implode('|', $ids);
     }
 
-
     /** Mapea a la estructura esperada por el canvas, SIN N+1. */
     private function construirGruposParaCanvas(array $conteoPorSubid, Collection $mapaEtiquetas): array
     {
