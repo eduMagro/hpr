@@ -47,21 +47,9 @@ class ProductoController extends Controller
         }
 
 
-        if ($request->filled('fabricante')) {
-            $fabricante = $request->fabricante;
-
-            $query->where(function ($q) use ($fabricante) {
-                if (is_numeric($fabricante)) {
-                    $q->where('fabricante_id', (int) $fabricante);
-                } else {
-                    // buscar por nombre del fabricante (contiene)
-                    $q->whereHas('fabricante', function ($fq) use ($fabricante) {
-                        $fq->where('nombre', 'like', '%' . $fabricante . '%');
-                    });
-                }
-            });
+        if ($request->filled('fabricante') && is_numeric($request->fabricante)) {
+            $query->where('fabricante_id', (int) $request->fabricante);
         }
-
 
         if ($request->filled('tipo')) {
             $query->whereHas('productoBase', function ($q) use ($request) {
