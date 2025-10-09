@@ -347,9 +347,9 @@ Inesperados: ${inesperados.join(', ') || '—'}
         </h2>
     </x-slot>
 
-    <div id="contenido" class="max-w-7xl gap-2 flex flex-col h-[calc(100vh-90px)] absolute w-screen opacity-0 transform transition-all duration-200">
+    <div id="contenido" class="max-w-7xl gap-2 flex flex-col h-[calc(100vh-90px)] w-screen mx-auto opacity-0 transform transition-all duration-200">
         @foreach ($ubicacionesPorSector as $sector => $ubicaciones)
-            <div x-data="{ abierto: false }" class="h-full escondible relative">
+            <div x-data="{ abierto: false }" class="h-full escondible">
 
                 <!-- Encabezado del sector con botón para expandir -->
                 <button @click="abierto = !abierto"
