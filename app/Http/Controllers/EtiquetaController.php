@@ -134,35 +134,39 @@ class EtiquetaController extends Controller
     }
     private function aplicarOrdenamiento($query, Request $request)
     {
-        $columnasPermitidas = [
-            'id',
-            'codigo',
-            'codigo_planilla',
-            'etiqueta',
-            'etiqueta_sub_id',
-            'paquete_id',
-            'maquina',
-            'maquina_2',
-            'maquina3',
-            'producto1',
-            'producto2',
-            'producto3',
-            'figura',
-            'peso',
-            'diametro',
-            'longitud',
-            'estado',
-            'created_at',
-        ];
-
-        $sort = $request->input('sort', 'created_at');
+        $sort  = $request->input('sort', 'created_at');
         $order = strtolower($request->input('order', 'desc')) === 'asc' ? 'asc' : 'desc';
 
-        if (!in_array($sort, $columnasPermitidas, true)) {
-            $sort = 'created_at';
+        $map = [
+            'id'              => 'etiquetas.id',
+            'codigo'          => 'etiquetas.codigo',
+            'codigo_planilla' => 'planillas.codigo',    //es otra tabla
+            'etiqueta'        => 'etiquetas.etiqueta',
+            'etiqueta_sub_id' => 'etiquetas.etiqueta_sub_id',
+            'paquete_id'      => 'etiquetas.paquete_id',
+            'maquina'         => 'etiquetas.maquina',
+            'maquina_2'       => 'etiquetas.maquina_2',
+            'maquina3'        => 'etiquetas.maquina3',
+            'producto1'       => 'etiquetas.producto1',
+            'producto2'       => 'etiquetas.producto2',
+            'producto3'       => 'etiquetas.producto3',
+            'figura'          => 'etiquetas.figura',
+            'peso'            => 'etiquetas.peso',
+            'diametro'        => 'etiquetas.diametro',
+            'longitud'        => 'etiquetas.longitud',
+            'estado'          => 'etiquetas.estado',
+            'created_at'      => 'etiquetas.created_at',
+        ];
+
+        $column = $map[$sort] ?? 'etiquetas.created_at';
+
+        // Si ordenamos por una columna de planillas, añadimos el JOIN
+        if (str_starts_with($column, 'planillas.')) {
+            $query->leftJoin('planillas', 'planillas.id', '=', 'etiquetas.planilla_id')
+                ->select('etiquetas.*'); // evita colisiones de columnas
         }
 
-        return $query->orderBy($sort, $order);
+        return $query->orderBy($column, $order);
     }
 
     public function index(Request $request)
