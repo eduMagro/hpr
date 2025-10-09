@@ -14,6 +14,8 @@
               <x-tabla.input-movil name="codigo_general" id="codigo_general_general" label="Escanear Producto o Paquete"
                   placeholder="Escanea QR Ferralla" autocomplete="off" inputmode="none" required />
 
+                  <div id="lista_qrs"></div>
+
               <!-- Ubicación destino (campo libre) -->
               <div class="mt-4">
                   <x-tabla.input-movil name="ubicacion_destino" id="ubicacion_destino_general"
@@ -30,9 +32,9 @@
                       style="height:2cm; padding:0.75rem 1rem; font-size:1.5rem;">
                       <option value="">-- Selecciona máquina --</option>
                       @foreach ($maquinasDisponibles as $maq)
-                          <option value="{{ $maq->id }}">
-                              {{ $maq->nombre }}
-                          </option>
+                      <option value="{{ $maq->id }}">
+                          {{ $maq->nombre }}
+                      </option>
                       @endforeach
                   </select>
               </div>
@@ -89,7 +91,7 @@
 
               <!-- Botones -->
               <div class="flex justify-end gap-3 mt-6">
-                  <button type="button" onclick="cerrarModalBajadaPaquete()"
+                  <button type="button" id="cancelar_btn" onclick="cerrarModalBajadaPaquete()"
                       class="px-4 py-2 bg-gray-300 hover:bg-gray-400 rounded-lg">Cancelar</button>
                   <button type="submit"
                       class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg">Registrar</button>
@@ -348,3 +350,8 @@
           document.getElementById('modal-ver-pedido').classList.add('hidden');
       }
   </script>
+
+
+  @push('scripts')
+  @vite('resources/js/movimientos/movimientosgrua.js')
+  @endpush
