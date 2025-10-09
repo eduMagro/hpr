@@ -73,6 +73,7 @@ return [
         'manuel.reyes@pacoreyes.com',
         'alvarofaces@gruporeyestejero.com',
         'pabloperez@gruporeyestejero.com',
+        'marcosloldorado@gmail.com',
     ],
 
 ];
