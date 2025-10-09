@@ -347,13 +347,13 @@ Inesperados: ${inesperados.join(', ') || '—'}
         </h2>
     </x-slot>
 
-    <div class="max-w-7xl mx-auto px-4 py-6">
+    <div id="contenido" class="max-w-7xl gap-2 flex flex-col h-[calc(100vh-90px)] absolute w-screen opacity-0 transform transition-all duration-200">
         @foreach ($ubicacionesPorSector as $sector => $ubicaciones)
-            <div x-data="{ abierto: false }" class="mt-6 border rounded-xl shadow">
+            <div x-data="{ abierto: false }" class="h-full escondible relative">
 
                 <!-- Encabezado del sector con botón para expandir -->
                 <button @click="abierto = !abierto"
-                    class="w-full flex items-center justify-between px-4 py-3 bg-gray-800 text-white font-semibold text-left text-lg hover:bg-gray-700">
+                    class="w-full h-full flex items-center justify-between px-4 py-3 bg-gray-800  text-white font-semibold text-left text-xl hover:bg-gray-700 min-h-20">
                     <span>Sector {{ $sector }}</span>
                     <svg :class="abierto ? 'rotate-90' : ''" class="w-4 h-4 transition-transform" fill="none"
                         stroke="currentColor" viewBox="0 0 24 24">
@@ -592,7 +592,7 @@ Inesperados: ${inesperados.join(', ') || '—'}
         @endforeach
 
         <div
-            class="mt-10 flex flex-col sm:flex-row items-stretch sm:items-center justify-start sm:justify-between gap-4">
+            class="mt-10 flex flex-col sm:flex-row items-stretch sm:items-center justify-start sm:justify-between gap-4 hidden">
             <button onclick="limpiarTodos()"
                 class="bg-red-600 hover:bg-red-700 text-white font-semibold px-4 py-2 rounded shadow text-center">
                 Limpiar TODOS los escaneos
@@ -638,4 +638,15 @@ Inesperados: ${inesperados.join(', ') || '—'}
             });
         };
     </script>
+    
+    <style>
+        .no-click {
+            pointer-events: none;
+        }
+    </style>
+
+    @section('scripts')
+        @vite(['resources/js/inventario/inventario.js'])
+    @endsection
+
 </x-app-layout>
