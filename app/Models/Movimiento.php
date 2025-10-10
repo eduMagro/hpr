@@ -116,64 +116,99 @@ class Movimiento extends Model
     {
         $d = (string) $this->descripcion;
 
-        // Si ya trae HTML, no tocar
         if ($d !== strip_tags($d)) {
-            return $d;
+            return $d; // ya viene con HTML
         }
 
-        // ---------- PRODUCTO ----------
-        // Ej: "Movemos barra (Código: MP123) Ø20 mm L:14 mm de ORIGEN a máquina|ubicación DESTINO"
-        $reProducto = '/^(Pasamos|Movemos)\s+(.+?)\s+\(Código:\s*([^)]+)\)\s+Ø(\d+)\s*mm(?:\s+L:\s*(\d+)\s*mm)?\s+de\s+(.+?)\s+a\s+(máquina|maquina|ubicación|ubicacion)\s+(.+)$/u';
+        // Helper: formatea "Almacén 0A, Sector 1, Ubicación 3"
+        // → "Almacén [<strong>0A</strong>] Sector [<strong>1</strong>] Ubicación [<strong>3</strong>]"
+        $fmtUbicacion = function (string $txt): string {
+            $out = e(trim($txt));
 
+            // Almacén
+            $out = preg_replace_callback(
+                '/\b(Almac[eé]n)\s+([A-Za-z0-9\-]+)/u',
+                fn($m) => e($m[1]) . ' <strong>' . e($m[2]) . '</strong>',
+                $out
+            );
+
+            // Sector
+            $out = preg_replace_callback(
+                '/\b(Sector)\s+([A-Za-z0-9\-]+)/u',
+                fn($m) => e($m[1]) . ' <strong>' . e($m[2]) . '</strong>',
+                $out
+            );
+
+            // Ubicación
+            $out = preg_replace_callback(
+                '/\b(Ubicaci[oó]n)\s+([A-Za-z0-9\-]+)/u',
+                fn($m) => e($m[1]) . ' <strong>' . e($m[2]) . '</strong>',
+                $out
+            );
+
+            return $out;
+        };
+
+        // ----------------- PRODUCTO -----------------
+        $reProducto = '/^(Pasamos|Movemos)\s+(.+?)\s+\(Código:\s*([^)]+)\)\s+Ø(\d+)\s*mm(?:\s+L:\s*(\d+)\s*mm)?\s+de\s+(.+?)\s+a\s+(máquina|maquina|ubicación|ubicacion)\s+(.+)$/u';
         if (preg_match($reProducto, $d, $m)) {
             [, $verbo, $tipo, $codigo, $diam, $long, $origen, $destTipo, $destNombre] = $m;
 
-            $tipoNorm        = mb_strtolower(trim($tipo), 'UTF-8');
-            $esEncarretado   = preg_match('/\bencarretado\b/u', $tipoNorm) === 1;
+            $tipoLower       = mb_strtolower(trim($tipo), 'UTF-8');
+            $tipoUpper       = mb_strtoupper($tipoLower, 'UTF-8'); // ← para mostrar
+            $esEncarretado   = preg_match('/\bencarretado\b/u', $tipoLower) === 1;
+
+
 
             // Chips
             $chips = [];
-            // Código (pill)
             $chips[] = '<span style="background:#e5e7eb;border-radius:9999px;padding:2px 10px;display:inline-block;margin-right:6px;">' . e($codigo) . '</span>';
-            // Ø siempre
             $chips[] = '<span style="background:#eef;border-radius:6px;padding:2px 8px;display:inline-block;margin-right:6px;">Ø' . e($diam) . ' mm</span>';
-            // L solo si NO es encarretado y hay valor
             if (!$esEncarretado && !empty($long)) {
                 $chips[] = '<span style="background:#eef;border-radius:6px;padding:2px 8px;display:inline-block;margin-right:6px;">L:' . e($long) . ' mm</span>';
             }
 
-            $materialHtml = e($verbo) . ' <strong>' . e($tipoNorm) . '</strong> ' . implode(' ', $chips);
-            $origenHtml   = '<span style="color:#b45309;">' . e($origen) . '</span>';
+            // 🔸 Origen formateado (si tiene patrón de Almacén/Sector/Ubicación)
+            $origenHtml = '<span style="color:#b45309;">' . $fmtUbicacion($origen) . '</span>';
+
+            // 🔹 Destino: si es máquina, normal; si es ubicación, aplicar formateo al nombre
             $destTipoNorm = mb_strtolower($destTipo, 'UTF-8');
             $esMaquina    = in_array($destTipoNorm, ['máquina', 'maquina'], true);
             $destColor    = $esMaquina ? '#1d4ed8' : '#047857';
-            $destinoHtml  = '<span style="color:' . $destColor . ';">' . e($destTipo . ' ' . $destNombre) . '</span>';
+            $destNombreHtml = $esMaquina
+                ? '<strong>' . e($destNombre) . '</strong>'
+                : $fmtUbicacion($destNombre);
+
+            $destinoHtml = '<span style="color:' . $destColor . ';"> ' . $destNombreHtml . '</span>';
+
+            $materialHtml = e($verbo) . ' <strong>' . e($tipoUpper) . '</strong> ' . implode(' ', $chips);
 
             return $materialHtml . ' ' . $origenHtml . ' <span style="opacity:.6;">➜</span> ' . $destinoHtml;
         }
 
-        // ---------- PAQUETE ----------
-        // Ej: "Movemos paquete (Código: P123) de ORIGEN a máquina|ubicación DESTINO"
+        // ----------------- PAQUETE -----------------
         $rePaquete = '/^(Pasamos|Movemos)\s+paquete\s+\(Código:\s*([^)]+)\)\s+de\s+(.+?)\s+a\s+(máquina|maquina|ubicación|ubicacion)\s+(.+)$/u';
-
         if (preg_match($rePaquete, $d, $m)) {
             [, $verbo, $codigo, $origen, $destTipo, $destNombre] = $m;
 
             $chips = [];
-            // Código (pill)
             $chips[] = '<span style="background:#e5e7eb;border-radius:9999px;padding:2px 10px;display:inline-block;margin-right:6px;">' . e($codigo) . '</span>';
 
-            $materialHtml = e($verbo) . ' <strong>paquete</strong> ' . implode(' ', $chips);
-            $origenHtml   = '<span style="color:#b45309;">' . e($origen) . '</span>';
+            $origenHtml = '<span style="color:#b45309;">' . $fmtUbicacion($origen) . '</span>';
+
             $destTipoNorm = mb_strtolower($destTipo, 'UTF-8');
             $esMaquina    = in_array($destTipoNorm, ['máquina', 'maquina'], true);
             $destColor    = $esMaquina ? '#1d4ed8' : '#047857';
-            $destinoHtml  = '<span style="color:' . $destColor . ';">' . e($destTipo . ' ' . $destNombre) . '</span>';
+            $destNombreHtml = $esMaquina ? '<strong>' . e($destNombre) . '</strong>' : $fmtUbicacion($destNombre);
+
+            $destinoHtml = '<span style="color:' . $destColor . ';">' . $destNombreHtml . '</span>';
+
+            $materialHtml = e($verbo) . ' <strong>paquete</strong> ' . implode(' ', $chips);
 
             return $materialHtml . ' ' . $origenHtml . ' <span style="opacity:.6;">➜</span> ' . $destinoHtml;
         }
 
-        // Si no casa ningún formato, devuelve texto escapado
+        // Fallback
         return e($d);
     }
 }
