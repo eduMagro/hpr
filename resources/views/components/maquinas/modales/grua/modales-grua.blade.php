@@ -14,8 +14,8 @@
               <x-tabla.input-movil id="codigo_general_general" label="Escanear Producto o Paquete"
                   placeholder="Escanea QR Ferralla" autocomplete="off" inputmode="none" />
 
-                  <div id="mostrar_qrs"></div>
-                  <input type="hidden" name="lista_qrs" id="lista_qrs">
+              <div id="mostrar_qrs"></div>
+              <input type="hidden" name="lista_qrs" id="lista_qrs">
 
               <!-- Ubicación destino (campo libre) -->
               <div class="mt-4">
@@ -351,6 +351,74 @@
           document.getElementById('modal-ver-pedido').classList.add('hidden');
       }
   </script>
+
+  <style>
+      /* Contenedor de los códigos mostrados como píldoras */
+      #mostrar_qrs {
+          display: flex;
+          flex-wrap: wrap;
+          gap: .5rem;
+          margin-top: .5rem;
+      }
+
+      /* Estilo de cada “píldora” de código (clicable para borrar) */
+      .qr-chip {
+          display: inline-flex;
+          align-items: center;
+          padding: .25rem .6rem;
+          border-radius: 9999px;
+          background: #e5e7eb;
+          font-weight: 600;
+          cursor: pointer;
+          user-select: none;
+          transition: background .15s ease, color .15s ease, transform .05s ease;
+          white-space: nowrap;
+      }
+
+      .qr-chip:hover {
+          background: #fee2e2;
+          color: #991b1b;
+      }
+
+      .qr-chip:active {
+          transform: scale(0.98);
+      }
+
+      /* Estado cargando (spinner simple con dots) */
+      .qr-chip.loading {
+          position: relative;
+          color: #374151;
+          /* slate-700 */
+      }
+
+      .qr-chip.loading::after {
+          content: "";
+          width: 12px;
+          height: 12px;
+          margin-left: .4rem;
+          border-radius: 50%;
+          border: 2px solid currentColor;
+          border-top-color: transparent;
+          display: inline-block;
+          animation: spin .8s linear infinite;
+      }
+
+      @keyframes spin {
+          to {
+              transform: rotate(360deg);
+          }
+      }
+
+      /* Estado error (píldora en tono más rojizo) */
+      .qr-chip.error {
+          background: #fecaca;
+          color: #7f1d1d;
+      }
+  </style>
+
+
+
+
 
 
   @push('scripts')
