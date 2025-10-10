@@ -1,7 +1,8 @@
 document.addEventListener("DOMContentLoaded", () => {
     const QRINPUT = document.getElementById("codigo_general_general");
-    const LISTAQRS = document.getElementById("lista_qrs")
+    const LISTAQRS = document.getElementById("mostrar_qrs")
     const CANCELAR_BTN = document.getElementById("cancelar_btn");
+    const INPUT_OCULTO = document.getElementById("lista_qrs");
     let yaEscaneados = [];
 
     CANCELAR_BTN.addEventListener("click", () => {
@@ -28,12 +29,15 @@ document.addEventListener("DOMContentLoaded", () => {
                     LISTAQRS.textContent = escaneado;
                 }
                 yaEscaneados.push(escaneado)
+                INPUT_OCULTO.value = JSON.stringify(yaEscaneados);
+                console.log(INPUT_OCULTO.value)
+                navigator.vibrate(100);
             } else {
                 alert("yaescaneado")
             }
 
 
-            qrinput.value = "";
+            QRINPUT.value = "";
 
         } else if (!escaneado.startsWith("MP") && escaneado.length > 10) {
             QRINPUT.value = ""
@@ -41,3 +45,11 @@ document.addEventListener("DOMContentLoaded", () => {
     }
     )
 });
+
+// agregar el codigo a la lista si no se ha agregado aun
+function agregarQrALista(anterioresQr, nuevoQr) {
+    if (!anterioresQr.includes(nuevoQr)) {
+        anterioresQr.push(nuevoQr);
+    }
+    return anterioresQr;
+}

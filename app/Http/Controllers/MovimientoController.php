@@ -654,12 +654,20 @@ class MovimientoController extends Controller
 
                         if ($tipo === 'producto') {
                             $tipoBase = strtolower($producto->productoBase->tipo);
-                            $descripcion = "Pasamos {$tipoBase} Ø{$producto->productoBase->diametro} mm"
-                                . " L:{$producto->productoBase->longitud} mm"
-                                . " de " . ($producto->ubicacion->nombre ?? 'origen desconocido')
-                                . " a " . ($maquinaDetectada
-                                    ? 'máquina ' . $maquinaDetectada->nombre
+                            $diam     = $producto->productoBase->diametro;
+                            $long     = $producto->productoBase->longitud;
+                            $origen   = $producto->ubicacion->nombre ?? 'origen desconocido';
+                            $codigo   = $producto->codigo; // <<-- aquí está el código MP...
+
+                            $descripcion = "Movemos {$tipoBase} (Código: {$codigo}) Ø{$diam} mm"
+                                . ($tipoBase !== 'encarretado' ? " L:{$long} mm" : "")
+                                . " de {$origen}"
+                                . " a " . ($maquinaDetectada ? 'máquina ' . $maquinaDetectada->nombre
                                     : 'ubicación ' . $ubicacion->nombre);
+
+                            // ----------------------------------------------
+
+
 
                             if ($maquinaDetectada) {
                                 $maquinasEncarretado = ['MSR20', 'MS16', 'PS12', 'F12'];
@@ -746,10 +754,12 @@ class MovimientoController extends Controller
                         }
 
                         if ($tipo === 'paquete') {
-                            $descripcion = "Movemos paquete de " . ($paquete->ubicacion->nombre ?? 'origen desconocido')
-                                . " a " . ($maquinaDetectada
-                                    ? ('máquina ' . $maquinaDetectada->nombre)
-                                    : $ubicacion->nombre);
+                            $codigo = $paquete->codigo;
+                            $descripcion = "Movemos paquete (Código: {$codigo})"
+                                . " de " . ($paquete->ubicacion->nombre ?? 'origen desconocido')
+                                . " a " . ($maquinaDetectada ? 'máquina ' . $maquinaDetectada->nombre
+                                    : 'ubicación ' . $ubicacion->nombre);
+
 
                             $movPend = Movimiento::where('paquete_id', $paquete->id)
                                 ->where(function ($q) use ($ubicacion, $maquinaDetectada) {

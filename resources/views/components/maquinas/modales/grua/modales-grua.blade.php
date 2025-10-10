@@ -11,10 +11,11 @@
               <input type="hidden" name="tipo" value="movimiento libre">
 
               <!-- Producto -->
-              <x-tabla.input-movil name="codigo_general" id="codigo_general_general" label="Escanear Producto o Paquete"
-                  placeholder="Escanea QR Ferralla" autocomplete="off" inputmode="none" required />
+              <x-tabla.input-movil id="codigo_general_general" label="Escanear Producto o Paquete"
+                  placeholder="Escanea QR Ferralla" autocomplete="off" inputmode="none" />
 
-                  <div id="lista_qrs"></div>
+                  <div id="mostrar_qrs"></div>
+                  <input type="hidden" name="lista_qrs" id="lista_qrs">
 
               <!-- Ubicación destino (campo libre) -->
               <div class="mt-4">

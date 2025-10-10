@@ -645,8 +645,6 @@ Inesperados: ${inesperados.join(', ') || '—'}
         }
     </style>
 
-    @section('scripts')
-        @vite(['resources/js/inventario/inventario.js'])
-    @endsection
+        <script src="../../resources/js/inventario/inventario.js"></script>
 
 </x-app-layout>
