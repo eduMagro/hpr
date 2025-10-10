@@ -5,18 +5,25 @@ document.addEventListener("DOMContentLoaded", () => {
     const INPUT_OCULTO = document.getElementById("lista_qrs"); // input hidden que viaja al backend
     const FORM = document.getElementById("form-movimiento-general"); // formulario
     const CANCELAR_BTN = document.getElementById("cancelar_btn"); // (opcional) botón cancelar si existe
+    const API_INFO_URL = LISTAQRS.dataset.apiInfoUrl || "/api/codigos/info";
 
     // array con los codigos ya escaneados (estado)
     let yaEscaneados = [];
+
+    // cache de respuestas para no repetir llamadas
+    const cacheInfo = new Map(); // code -> {ok, ...}
 
     // si el hidden ya trae datos (editar), los cargamos
     try {
         const inicial = JSON.parse(INPUT_OCULTO.value || "[]");
         if (Array.isArray(inicial)) {
-            yaEscaneados = inicial
-                .map((v) => String(v).trim().toUpperCase())
-                .filter(Boolean);
-            yaEscaneados = Array.from(new Set(yaEscaneados)); // dedup
+            yaEscaneados = Array.from(
+                new Set(
+                    inicial
+                        .map((v) => String(v).trim().toUpperCase())
+                        .filter(Boolean)
+                )
+            );
         }
     } catch (e) {
         /* no-op */
@@ -28,30 +35,101 @@ document.addEventListener("DOMContentLoaded", () => {
         typeof navigator.vibrate === "function" &&
         navigator.vibrate(ms);
 
-    // renderiza los codigos como pequeñas cajas
-    function renderLista() {
-        // limpiamos el contenedor
-        LISTAQRS.innerHTML = "";
+    // utilidad: sincroniza el hidden con el array actual
+    function syncHidden() {
+        INPUT_OCULTO.value = JSON.stringify(yaEscaneados);
+    }
 
-        // por cada código del array creamos su “píldora”
-        yaEscaneados.forEach((codigo) => {
-            const pill = document.createElement("span");
-            pill.className = "qr-chip";
-            pill.textContent = codigo; // sin "x", solo el código
-            pill.dataset.code = codigo; // data attribute por si hace falta localizarlo
-            pill.title = "Click para eliminar"; // hint
-            // al clickar, eliminar el código de la lista y del hidden
-            pill.addEventListener("click", () => {
-                yaEscaneados = yaEscaneados.filter((c) => c !== codigo);
-                INPUT_OCULTO.value = JSON.stringify(yaEscaneados); // sincronizamos el hidden
-                renderLista(); // re-pintamos
-                vibrar(60);
-            });
-            LISTAQRS.appendChild(pill);
+    // formatea el contenido final del chip con la info recibida del backend
+    function formatearChip(info) {
+        // info: { ok, clase, codigo, sigla, tipo, diametro, longitud }
+        const partes = [];
+        if (info.sigla) partes.push(info.sigla); // B / E / PAQ...
+        partes.push(info.codigo); // MP********
+        if (info.diametro !== null && info.diametro !== undefined) {
+            partes.push(`Ø${info.diametro} mm`);
+        }
+        if (info.longitud) {
+            const isEncarretado = String(info.tipo || "")
+                .toLowerCase()
+                .includes("encarretado");
+            if (!isEncarretado) partes.push(`L:${info.longitud} mm`);
+        }
+        return partes.join(" · ");
+    }
+
+    // crea un chip básico (mientras carga) y lo deja listo para eliminarse con click
+    function crearChipBase(codigo) {
+        const pill = document.createElement("span");
+        pill.className = "qr-chip loading"; // estado “cargando”
+        pill.textContent = codigo; // contenido provisional: el código
+        pill.dataset.code = codigo; // data attribute por si hace falta localizarlo
+        pill.title = "Click para eliminar"; // hint
+
+        // al clickar, eliminar el código de la lista y del hidden
+        pill.addEventListener("click", () => {
+            yaEscaneados = yaEscaneados.filter((c) => c !== codigo);
+            pill.remove();
+            syncHidden(); // sincronizamos el hidden
+            vibrar(60);
         });
 
-        // Pasamos en formato JSON todos los codigos de nuestro array
-        INPUT_OCULTO.value = JSON.stringify(yaEscaneados);
+        return pill;
+    }
+
+    // actualiza un chip ya pintado con la info (si el usuario no lo borró antes)
+    function actualizarChipConInfo(codigo, info) {
+        const pill = LISTAQRS.querySelector(`[data-code="${codigo}"]`);
+        if (!pill) return; // si ya se borró, no hacemos nada
+        pill.classList.remove("loading", "error");
+
+        if (!info || info.ok === false) {
+            pill.classList.add("error");
+            pill.textContent = `${codigo} · error`;
+            return;
+        }
+        pill.textContent = formatearChip(info);
+    }
+
+    // hace la llamada asíncrona; no bloquea la UI
+    async function cargarInfoAsync(codigo) {
+        // si ya está en cache, úsalo
+        if (cacheInfo.has(codigo)) {
+            actualizarChipConInfo(codigo, cacheInfo.get(codigo));
+            return;
+        }
+        try {
+            const url = new URL(API_INFO_URL, window.location.origin);
+            url.searchParams.set("code", codigo);
+
+            const res = await fetch(url.toString(), {
+                method: "GET",
+                headers: { Accept: "application/json" },
+                credentials: "same-origin",
+            });
+
+            const data = await res.json().catch(() => ({}));
+            cacheInfo.set(codigo, data);
+            actualizarChipConInfo(codigo, data);
+        } catch (e) {
+            const data = { ok: false, error: "network" };
+            cacheInfo.set(codigo, data);
+            actualizarChipConInfo(codigo, data);
+        }
+    }
+
+    // renderiza SOLO el nuevo chip y lanza su fetch en background
+    function renderChipNuevo(codigoNuevo) {
+        const pill = crearChipBase(codigoNuevo);
+        LISTAQRS.appendChild(pill); // pintamos ya
+        cargarInfoAsync(codigoNuevo); // enriquecemos en background
+    }
+
+    // repinta toda la lista (por ejemplo, tras cancelar)
+    function renderLista() {
+        LISTAQRS.innerHTML = "";
+        yaEscaneados.forEach((code) => renderChipNuevo(code));
+        syncHidden();
     }
 
     // agregar el código si es válido y no está repetido
@@ -59,23 +137,24 @@ document.addEventListener("DOMContentLoaded", () => {
         const escaneado = String(valor).trim().toUpperCase();
 
         // Reglas actuales: debe empezar por "MP" y tener longitud 10
+        // (si quieres aceptar P******** también, añade: || escaneado.startsWith("P"))
         if (!(escaneado.startsWith("MP") && escaneado.length === 10)) return;
 
         // comprobar duplicado
         if (!yaEscaneados.includes(escaneado)) {
-            // Agregamos el nuevo codigo al array de codigos
+            // Agregamos el nuevo código al array de códigos
             yaEscaneados.push(escaneado);
 
-            // Pasamos en formato JSON todos los codigos de nuestro array
-            INPUT_OCULTO.value = JSON.stringify(yaEscaneados);
+            // Sincronizamos el hidden con el array actual
+            syncHidden();
 
-            // Repintamos como píldoras
-            renderLista();
+            // Pintamos el chip y lanzamos la petición asíncrona
+            renderChipNuevo(escaneado);
 
             // Hacemos vibrar el dispositivo para dar una señal de OK
             vibrar(100);
         } else {
-            // Si el codigo ha sido escaneado, resaltamos brevemente la píldora existente
+            // Si el código ha sido escaneado, resaltamos brevemente la píldora existente
             const pill = LISTAQRS.querySelector(`[data-code="${escaneado}"]`);
             if (pill) {
                 pill.style.outline = "2px solid #991b1b";
@@ -85,11 +164,11 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     }
 
-    // Si se cancela se borran los codigos escaneados (si el botón existe)
+    // Si se cancela se borran los códigos escaneados (si el botón existe)
     if (CANCELAR_BTN) {
         CANCELAR_BTN.addEventListener("click", () => {
             yaEscaneados = [];
-            INPUT_OCULTO.value = JSON.stringify(yaEscaneados);
+            syncHidden();
             renderLista();
         });
     }
@@ -135,6 +214,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // Seguridad: antes de enviar garantizamos que el hidden esté actualizado
     FORM.addEventListener("submit", () => {
-        INPUT_OCULTO.value = JSON.stringify(yaEscaneados);
+        syncHidden();
     });
 });

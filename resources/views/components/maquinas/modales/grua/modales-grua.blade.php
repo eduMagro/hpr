@@ -14,8 +14,9 @@
               <x-tabla.input-movil id="codigo_general_general" label="Escanear Producto o Paquete"
                   placeholder="Escanea QR Ferralla" autocomplete="off" inputmode="none" />
 
-              <div id="mostrar_qrs"></div>
+              <div id="mostrar_qrs" data-api-info-url="{{ route('api.codigos.info') }}"></div>
               <input type="hidden" name="lista_qrs" id="lista_qrs">
+
 
               <!-- Ubicación destino (campo libre) -->
               <div class="mt-4">
