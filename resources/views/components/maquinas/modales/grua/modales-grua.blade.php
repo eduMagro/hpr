@@ -34,9 +34,9 @@
                       style="height:2cm; padding:0.75rem 1rem; font-size:1.5rem;">
                       <option value="">-- Selecciona máquina --</option>
                       @foreach ($maquinasDisponibles as $maq)
-                      <option value="{{ $maq->id }}">
-                          {{ $maq->nombre }}
-                      </option>
+                          <option value="{{ $maq->id }}">
+                              {{ $maq->nombre }}
+                          </option>
                       @endforeach
                   </select>
               </div>
@@ -417,11 +417,4 @@
       }
   </style>
 
-
-
-
-
-
-  @push('scripts')
-  @vite('resources/js/movimientos/movimientosgrua.js')
-  @endpush
+  <script src="{{ asset('js/movimientos/movimientosgrua.js') }}"></script>

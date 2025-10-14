@@ -1,7 +1,7 @@
 <x-app-layout>
     <x-slot name="title">Planillas - {{ config('app.name') }}</x-slot>
     @if (auth()->user()->rol !== 'operario')
-    <x-menu.movimientos />
+        <x-menu.movimientos />
     @endif
     <div class="max-w-3xl mx-auto mt-10">
         <div class="bg-white rounded-lg shadow-lg overflow-hidden">
@@ -148,8 +148,5 @@
         });
     </script>
 
-    @push('scripts')
-    @vite(['resources/js/movimientos/anadir_qr_lista.js'])
-    @endpush
-
+    <script src="{{ asset('js/movimientos/anadir_qr_lista.js') }}"></script>
 </x-app-layout>

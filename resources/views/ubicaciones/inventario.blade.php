@@ -647,6 +647,5 @@ Inesperados: ${inesperados.join(', ') || '—'}
         };
     </script>
 
-    @vite('resources/js/inventario/inventario.js')
-
+    <script src="{{ asset('js/inventario/inventario.js') }}"></script>
 </x-app-layout>
