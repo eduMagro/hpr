@@ -553,30 +553,58 @@ Inesperados: ${inesperados.join(', ') || '—'}
                                 </template>
                             </div>
 
-                            <!-- Productos inesperados -->
+                           <!-- Productos inesperados -->
                             <div x-cloak class="px-4 py-3" x-show="sospechosos.length">
-                                <h3 class="text-sm font-semibold text-red-600 mb-1">Productos inesperados:</h3>
-                                <ul class="list-disc list-inside text-xs text-red-700 space-y-0.5">
-                                    <template x-for="codigo in sospechosos" :key="codigo">
-                                        <li class="flex items-center justify-between">
-                                            <div>
-                                                <span x-text="codigo"></span>
-                                                <template x-if="asignados[codigo]">
-                                                    <span class="text-xs text-gray-500">
-                                                        → asignado a ubicación con ID =
-                                                        <strong x-text="asignados[codigo]"></strong>
-                                                    </span>
-                                                </template>
+                            <h3 class="text-sm font-semibold text-red-600 mb-1">Inesperado:</h3>
+
+                            <ul class="space-y-2">
+                                <template x-for="(codigo, idx) in sospechosos" :key="codigo">
+                                    <li
+                                        class="grid grid-cols-[1fr_auto] items-center gap-3 rounded-lg border px-3 py-2 shadow-sm"
+                                        :class="idx % 2 === 0 ? 'bg-white border-gray-200' : 'bg-gray-50 border-gray-200'"
+                                        x-data="{ ubic: null, hasId: false, misma: false }"
+                                        x-init="
+                                        ubic  = (asignados && Object.prototype.hasOwnProperty.call(asignados, codigo)) ? asignados[codigo] : null;
+                                        hasId = (ubic !== null && ubic !== '' && ubic !== undefined);
+                                        misma = (hasId && ubic.toString() === nombreUbicacion.toString());
+                                        "
+                                    >
+                                        <!-- IZQUIERDA: código + estado -->
+                                        <div class="min-w-0 flex gap-1 items-center">
+                                            <div class="flex items-center gap-2">
+                                                <!-- Punto de estado: rojo = sin ubicación, naranja = con ubicación -->
+                                                <span class="inline-block h-2.5 w-2.5 rounded-full"
+                                                    :class="hasId ? 'bg-amber-500/80' : 'bg-red-500/80'"></span>
+
+                                                <span class="text-xs sm:text-base break-all font-sans" :class="hasId ? 'text-amber-500' : 'text-red-800'" x-text="codigo"></span>
+
+                                                <!-- Subtexto de estado (siempre visible en táctil) -->
+                                                <div class="inline-flex items-center px-1.5 py-0.5 text-sm sm:text-base rounded bg-gray-200 italic">
+                                                    <span class="text-gray-900"   x-show="hasId && !misma">Ubicación: <span x-text="ubic"></span></span>
+                                                    <span class="text-gray-900" x-show="!hasId">Sin registrar</span>
+                                                </div>
+
                                             </div>
-                                            <button
-                                                class="ml-2 bg-blue-600 hover:bg-blue-700 text-white text-xs px-2 py-1 rounded"
-                                                @click="reasignarProducto(codigo)">
-                                                Asignar a esta ubicación
-                                            </button>
-                                        </li>
-                                    </template>
-                                </ul>
+                                        </div>
+
+                                        <!-- DERECHA: acción -->
+                                        <button
+                                            class="bg-blue-600 text-white px-3 py-1.5 rounded-md text-xs sm:text-base w-24 sm:w-auto"
+                                            x-show="hasId && !misma"
+                                            @click="reasignarProducto(codigo)"
+                                        >
+                                            Asignar aquí
+                                        </button>
+
+                                        <span class="text-gray-800 px-3 py-1.5 rounded-md text-xs sm:text-base w-24 sm:w-auto"    x-show="!hasId">No asignable</span>
+                                        </div>
+                                    </li>
+                                </template>
+                            </ul>
+
+
                             </div>
+
 
                             <!-- Botones -->
                             <div class="flex justify-end gap-3 px-4 py-4">
