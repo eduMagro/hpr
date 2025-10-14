@@ -349,11 +349,11 @@ Inesperados: ${inesperados.join(', ') || '—'}
 
     <div id="contenido" class="max-w-7xl gap-2 flex flex-col h-[calc(100vh-90px)] w-screen mx-auto opacity-0 transform transition-all duration-200">
         @foreach ($ubicacionesPorSector as $sector => $ubicaciones)
-            <div x-data="{ abierto: false }" class="h-full escondible">
+            <div x-data="{ abierto: false }" class="h-full">
 
                 <!-- Encabezado del sector con botón para expandir -->
                 <button @click="abierto = !abierto"
-                    class="w-full h-full flex items-center justify-between px-4 py-3 bg-gray-800  text-white font-semibold text-left text-xl hover:bg-gray-700 min-h-20">
+                    class="escondible w-full h-full flex items-center justify-between px-4 py-3 bg-gray-800  text-white font-semibold text-left text-xl hover:bg-gray-700 min-h-20">
                     <span>Sector {{ $sector }}</span>
                     <svg :class="abierto ? 'rotate-90' : ''" class="w-4 h-4 transition-transform" fill="none"
                         stroke="currentColor" viewBox="0 0 24 24">
@@ -639,12 +639,6 @@ Inesperados: ${inesperados.join(', ') || '—'}
         };
     </script>
     
-    <style>
-        .no-click {
-            pointer-events: none;
-        }
-    </style>
-
     @section('scripts')
         @vite(['resources/js/inventario/inventario.js'])
     @endsection
