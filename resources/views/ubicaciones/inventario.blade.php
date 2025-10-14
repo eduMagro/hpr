@@ -347,13 +347,13 @@ Inesperados: ${inesperados.join(', ') || '—'}
         </h2>
     </x-slot>
 
-    <div class="max-w-7xl mx-auto px-4 py-6">
+    <div id="contenido" class="max-w-7xl gap-2 flex flex-col h-[calc(100vh-90px)] w-screen mx-auto opacity-0 transform transition-all duration-200">
         @foreach ($ubicacionesPorSector as $sector => $ubicaciones)
-            <div x-data="{ abierto: false }" class="mt-6 border rounded-xl shadow">
+            <div x-data="{ abierto: false }" class="h-full w-full">
 
                 <!-- Encabezado del sector con botón para expandir -->
                 <button @click="abierto = !abierto"
-                    class="w-full flex items-center justify-between px-4 py-3 bg-gray-800 text-white font-semibold text-left text-lg hover:bg-gray-700">
+                    class="escondible w-full h-full flex items-center justify-between px-4 py-3 bg-gray-800  text-white font-semibold text-left text-xl hover:bg-gray-700 min-h-20">
                     <span>Sector {{ $sector }}</span>
                     <svg :class="abierto ? 'rotate-90' : ''" class="w-4 h-4 transition-transform" fill="none"
                         stroke="currentColor" viewBox="0 0 24 24">
@@ -371,7 +371,7 @@ Inesperados: ${inesperados.join(', ') || '—'}
 
                             <!-- Cabecera -->
                             <div
-                                class="flex flex-col sm:flex-row sm:justify-between sm:items-center bg-gray-800 text-white px-4 py-3 gap-3">
+                                class="desplegar-subcontenido flex flex-row justify-between items-center bg-gray-800 text-white px-4 py-3 gap-3 hover:bg-gray-700 cursor-pointer">
                                 <div class="text-sm sm:text-base">
                                     <span><strong>{{ $ubicacion->id }} -- {{ $ubicacion->codigo }} --
                                             {{ $ubicacion->descripcion }}</strong></span>
@@ -382,11 +382,16 @@ Inesperados: ${inesperados.join(', ') || '—'}
                                 </div>
                                 <!-- Input de escaneo para ESTA ubicación -->
                                 <input type="text"
-                                    class="w-full sm:w-64 border border-gray-300 rounded-md px-3 py-2 text-xs text-gray-900 placeholder-gray-400 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 shadow"
+                                    class="hidden qr-input w-64 border border-gray-300 rounded-md px-3 py-2 text-xs text-gray-900 placeholder-gray-400 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 shadow"
                                     placeholder="Escanea aquí…"
                                     x-on:keydown.enter.prevent="procesarQR($event.target.value); $event.target.value = ''"
                                     x-ref="inputQR" inputmode="none" autocomplete="off">
+
+                                <div class="qr-desplegable-info">></div>
                             </div>
+
+                            <!-- ///////////////////////////////// -->
+                            <div class="subcontenido overflow-hidden h-0 opacity-0">
 
                             <div class="h-2 bg-gray-200">
                                 <div class="h-full bg-blue-500 transition-all duration-300"
@@ -584,6 +589,7 @@ Inesperados: ${inesperados.join(', ') || '—'}
                                     Reportar errores
                                 </button>
                             </div>
+                            </div>
 
                         </div>
                     @endforeach
@@ -592,7 +598,7 @@ Inesperados: ${inesperados.join(', ') || '—'}
         @endforeach
 
         <div
-            class="mt-10 flex flex-col sm:flex-row items-stretch sm:items-center justify-start sm:justify-between gap-4">
+            class="mt-10 flex flex-col sm:flex-row items-stretch sm:items-center justify-start sm:justify-between gap-4 hidden">
             <button onclick="limpiarTodos()"
                 class="bg-red-600 hover:bg-red-700 text-white font-semibold px-4 py-2 rounded shadow text-center">
                 Limpiar TODOS los escaneos
@@ -638,4 +644,8 @@ Inesperados: ${inesperados.join(', ') || '—'}
             });
         };
     </script>
+    
+    @vite('resources/js/inventario/inventario.js')
+
+
 </x-app-layout>

@@ -1,5 +1,5 @@
 import "./bootstrap";
-import "./calendario-trabajadores/index.js";
+// import "./calendario-trabajadores/index.js";
 import Alpine from "alpinejs";
 
 window.Alpine = Alpine;
