@@ -610,8 +610,34 @@ class MovimientoController extends Controller
         // Determinar nave
         $naveId = null;
         if ($ubicacion) {
-            $mapaAlmacenes = ['0A' => 1, '0B' => 2, 'AL' => 3];
-            $naveId = $mapaAlmacenes[$ubicacion->almacen] ?? null;
+            // Normalizamos el código del almacén (por si viene en minúscula o con espacios)
+            $codigoAlmacen = strtoupper(trim($ubicacion->almacen));
+
+            // Traducimos a nombre de nave según el patrón
+            $nombreNave = match ($codigoAlmacen) {
+                '0A' => 'A',
+                '0B' => 'B',
+                'AL' => 'Almacén',
+                default => null,
+            };
+
+            if ($nombreNave) {
+                // Buscamos la nave en la base de datos
+                $nave = Obra::where('obra', $nombreNave)->first();
+
+                if ($nave) {
+                    $naveId = $nave->id;
+                } else {
+                    Log::warning('⚠️ No se encontró la nave en BD', [
+                        'codigo_almacen' => $codigoAlmacen,
+                        'nombre_buscado' => $nombreNave,
+                    ]);
+                    $naveId = null;
+                }
+            } else {
+                Log::warning('⚠️ Código de almacén desconocido', ['almacen' => $codigoAlmacen]);
+                $naveId = null;
+            }
         } elseif ($maquinaDetectada) {
             $naveId = $maquinaDetectada->obra_id ?? null;
         }
@@ -660,9 +686,25 @@ class MovimientoController extends Controller
                         // Si hay máquina
                         if ($maquinaDetectada) {
 
-                            $maquinasEncarretado = ['MSR20', 'MS16', 'PS12', 'F12'];
-                            if (in_array($maquinaDetectada->codigo, $maquinasEncarretado) && $tipoBase === 'barras') {
+                            $tipoMaquina = strtolower($maquinaDetectada->tipo_material);
+                            $tipoProducto = strtolower($tipoBase); // viene de productoBase->tipo
+
+                            if ($tipoMaquina === 'encarretado' && $tipoProducto === 'barras') {
+                                Log::warning('⚠️ Máquina solo acepta productos encarretados', [
+                                    'maquina' => $maquinaDetectada->codigo,
+                                    'tipo_producto' => $tipoProducto,
+                                    'codigo_producto' => $codigo,
+                                ]);
                                 throw new \Exception('La máquina seleccionada solo acepta productos de tipo encarretado.');
+                            }
+
+                            if ($tipoMaquina === 'barra' && $tipoProducto === 'encarretado') {
+                                Log::warning('⚠️ Máquina solo acepta productos tipo barra', [
+                                    'maquina' => $maquinaDetectada->codigo,
+                                    'tipo_producto' => $tipoProducto,
+                                    'codigo_producto' => $codigo,
+                                ]);
+                                throw new \Exception('La máquina seleccionada solo acepta productos de tipo barra.');
                             }
 
                             if (

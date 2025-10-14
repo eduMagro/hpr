@@ -108,11 +108,6 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
     Route::post('/productos/{codigo}/reasignar', [ProductoController::class, 'editarUbicacionInventario'])
         ->name('productos.editarUbicacionInventario');
 
-    // 📦 Vistas por nave
-    Route::get('/ubicaciones/nave-a', [UbicacionController::class, 'naveA'])->name('ubicaciones.verNave-a');
-    Route::get('/ubicaciones/nave-b', [UbicacionController::class, 'naveB'])->name('ubicaciones.verNave-b');
-    Route::get('/ubicaciones/almacen', [UbicacionController::class, 'almacen'])->name('ubicaciones.verAlmacen');
-
     Route::get('/ubicaciones/inventario', [UbicacionController::class, 'inventario'])->name('ubicaciones.verInventario');
     Route::resource('ubicaciones', UbicacionController::class);
     Route::get('/ubicaciones/{ubicacion}', [UbicacionController::class, 'show'])->name('ubicaciones.show');
