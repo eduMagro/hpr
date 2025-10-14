@@ -349,7 +349,7 @@ Inesperados: ${inesperados.join(', ') || '—'}
 
     <div id="contenido" class="max-w-7xl gap-2 flex flex-col h-[calc(100vh-90px)] w-screen mx-auto opacity-0 transform transition-all duration-200">
         @foreach ($ubicacionesPorSector as $sector => $ubicaciones)
-            <div x-data="{ abierto: false }" class="h-full">
+            <div x-data="{ abierto: false }" class="h-full w-full">
 
                 <!-- Encabezado del sector con botón para expandir -->
                 <button @click="abierto = !abierto"
@@ -371,7 +371,7 @@ Inesperados: ${inesperados.join(', ') || '—'}
 
                             <!-- Cabecera -->
                             <div
-                                class="flex flex-col sm:flex-row sm:justify-between sm:items-center bg-gray-800 text-white px-4 py-3 gap-3">
+                                class="desplegar-subcontenido flex flex-row justify-between items-center bg-gray-800 text-white px-4 py-3 gap-3 hover:bg-gray-700 cursor-pointer">
                                 <div class="text-sm sm:text-base">
                                     <span><strong>{{ $ubicacion->id }} -- {{ $ubicacion->codigo }} --
                                             {{ $ubicacion->descripcion }}</strong></span>
@@ -382,11 +382,16 @@ Inesperados: ${inesperados.join(', ') || '—'}
                                 </div>
                                 <!-- Input de escaneo para ESTA ubicación -->
                                 <input type="text"
-                                    class="w-full sm:w-64 border border-gray-300 rounded-md px-3 py-2 text-xs text-gray-900 placeholder-gray-400 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 shadow"
+                                    class="hidden qr-input w-64 border border-gray-300 rounded-md px-3 py-2 text-xs text-gray-900 placeholder-gray-400 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 shadow"
                                     placeholder="Escanea aquí…"
                                     x-on:keydown.enter.prevent="procesarQR($event.target.value); $event.target.value = ''"
                                     x-ref="inputQR" inputmode="none" autocomplete="off">
+
+                                <div class="qr-desplegable-info">></div>
                             </div>
+
+                            <!-- ///////////////////////////////// -->
+                            <div class="subcontenido overflow-hidden h-0 opacity-0">
 
                             <div class="h-2 bg-gray-200">
                                 <div class="h-full bg-blue-500 transition-all duration-300"
@@ -583,6 +588,7 @@ Inesperados: ${inesperados.join(', ') || '—'}
                                     class="bg-red-600 hover:bg-red-700 text-white font-semibold px-3 py-1.5 rounded-md text-xs shadow">
                                     Reportar errores
                                 </button>
+                            </div>
                             </div>
 
                         </div>
