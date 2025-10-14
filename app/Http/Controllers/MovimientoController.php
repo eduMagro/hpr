@@ -18,6 +18,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Termwind\Components\Dd;
 use Illuminate\Validation\ValidationException;
+use App\Services\ContextoGruaService;
 
 
 class MovimientoController extends Controller
@@ -317,14 +318,12 @@ class MovimientoController extends Controller
     //------------------------------------------------ INDEX() --------------------------------------------------------
     public function index(Request $request)
     {
-        // Obtener el usuario autenticado
         $usuario = auth()->user();
 
-        // 👉 Redirigir a 'create' si el usuario es operario
         if ($usuario->rol === 'operario') {
             return redirect()->route('movimientos.create');
         }
-        // Base query con relaciones necesarias
+
         $query = Movimiento::with([
             'producto',
             'productoBase',
@@ -335,15 +334,11 @@ class MovimientoController extends Controller
             'maquinaOrigen',
             'maquinaDestino',
             'nave',
-            'pedidoProducto' // ← por si pintas enlace
+            'pedidoProducto'
         ]);
 
-        // Si es 'oficina', no aplicamos restricciones y puede ver todos los movimientos
-
-        // Filtros
+        // Filtros + orden
         $query = $this->aplicarFiltros($query, $request);
-
-        // Ordenamiento (nuevo método modular)
         $query = $this->aplicarOrdenamiento($query, $request);
 
         // Paginación
@@ -351,31 +346,44 @@ class MovimientoController extends Controller
         $registrosMovimientos = $query->paginate($perPage)->appends($request->except('page'));
 
         $ordenables = [
-            'id'                => $this->getOrdenamiento('id', 'ID'),
-            'producto_id'       => $this->getOrdenamiento('producto_id', 'Producto Solicitado'),
-            'tipo'              => $this->getOrdenamiento('tipo', 'Tipo'),
-            'descripcion'       => $this->getOrdenamiento('descripcion', 'Descripción'),
-            'nave'              => $this->getOrdenamiento('nave', 'Nave'),
-            'prioridad'         => $this->getOrdenamiento('prioridad', 'Prioridad'),
-            'solicitado_por'    => $this->getOrdenamiento('solicitado_por', 'Solicitado por'),
-            'ejecutado_por'     => $this->getOrdenamiento('ejecutado_por', 'Ejecutado por'),
-            'estado'            => $this->getOrdenamiento('estado', 'Estado'),
-            'fecha_solicitud'   => $this->getOrdenamiento('fecha_solicitud', 'Fecha Solicitud'),
-            'fecha_ejecucion'   => $this->getOrdenamiento('fecha_ejecucion', 'Fecha Ejecución'),
-            'pedido_producto_id' => $this->getOrdenamiento('pedido_producto_id', 'Línea Pedido'), // ← nuevo
+            'id'                 => $this->getOrdenamiento('id', 'ID'),
+            'producto_id'        => $this->getOrdenamiento('producto_id', 'Producto Solicitado'),
+            'tipo'               => $this->getOrdenamiento('tipo', 'Tipo'),
+            'descripcion'        => $this->getOrdenamiento('descripcion', 'Descripción'),
+            'nave'               => $this->getOrdenamiento('nave', 'Nave'),
+            'prioridad'          => $this->getOrdenamiento('prioridad', 'Prioridad'),
+            'solicitado_por'     => $this->getOrdenamiento('solicitado_por', 'Solicitado por'),
+            'ejecutado_por'      => $this->getOrdenamiento('ejecutado_por', 'Ejecutado por'),
+            'estado'             => $this->getOrdenamiento('estado', 'Estado'),
+            'fecha_solicitud'    => $this->getOrdenamiento('fecha_solicitud', 'Fecha Solicitud'),
+            'fecha_ejecucion'    => $this->getOrdenamiento('fecha_ejecucion', 'Fecha Ejecución'),
+            'pedido_producto_id' => $this->getOrdenamiento('pedido_producto_id', 'Línea Pedido'),
         ];
 
         $navesSelect = Obra::whereHas('cliente', function ($q) {
             $q->whereRaw("UPPER(empresa) LIKE '%PACO REYES%'");
         })
             ->orderBy('obra')
-            ->pluck('obra', 'id')   // ['id' => 'Obra']
+            ->pluck('obra', 'id')
             ->toArray();
-        // 🔟 Obtener texto de filtros aplicados para mostrar en la vista
+
+        // 🔹 NUEVO: todas las máquinas (excepto grúas), para el modal reutilizable
+        $maquinasDisponibles = Maquina::select('id', 'nombre', 'codigo', 'diametro_min', 'diametro_max', 'obra_id')
+            ->where('tipo', '!=', 'grua')
+            ->orderBy('nombre')
+            ->get();
+
         $filtrosActivos = $this->filtrosActivos($request);
-        // Retornar vista con los datos paginados
-        return view('movimientos.index', compact('registrosMovimientos', 'ordenables', 'filtrosActivos', 'navesSelect'));
+
+        return view('movimientos.index', compact(
+            'registrosMovimientos',
+            'ordenables',
+            'filtrosActivos',
+            'navesSelect',
+            'maquinasDisponibles' // ⬅️ pásalo a la vista
+        ));
     }
+
 
     //------------------------------------------------ CREATE() --------------------------------------------------------
 
