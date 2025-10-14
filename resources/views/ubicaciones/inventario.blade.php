@@ -648,4 +648,5 @@ Inesperados: ${inesperados.join(', ') || '—'}
     </script>
 
     <script src="{{ asset('js/inventario/inventario.js') }}"></script>
+
 </x-app-layout>
