@@ -347,8 +347,7 @@ Inesperados: ${inesperados.join(', ') || '—'}
         </h2>
     </x-slot>
 
-    <div id="contenido"
-        class="max-w-7xl gap-2 flex flex-col h-[calc(100vh-90px)] w-screen mx-auto opacity-0 transform transition-all duration-200">
+    <div id="contenido" class="max-w-7xl gap-2 flex flex-col altura-c h-[calc(100vh-90px)] w-screen mx-auto opacity-0 transform transition-all duration-200">
         @foreach ($ubicacionesPorSector as $sector => $ubicaciones)
             <div x-data="{ abierto: false }" class="h-full w-full">
 
@@ -549,48 +548,82 @@ Inesperados: ${inesperados.join(', ') || '—'}
                                             </div>
                                             <div class="text-right ml-2">
                                                 <span
-                                                    class="inline-block px-2 py-0.5 rounded-full bg-green-100 text-green-800 text-[10px] font-semibold">OK</span>
+                                                    x-text="(window.detallesProductos[codigo]?.peso_inicial ?? 0).toLocaleString('es-ES', {minimumFractionDigits:1, maximumFractionDigits:1})"></span>
+                                                kg
+                                            </p>
+                                        </div>
+                                        <div class="text-right ml-2">
+                                            <span
+                                                class="inline-block px-2 py-0.5 rounded-full bg-green-100 text-green-800 text-[10px] font-semibold">OK</span>
+                                        </div>
+                                    </div>
+                                </template>
+                            </div>
+
+                           <!-- Productos inesperados -->
+                            <div x-cloak class="px-4 py-3" x-show="sospechosos.length">
+                            <h3 class="text-sm font-semibold text-red-600 mb-1">Inesperado:</h3>
+
+                            <ul class="space-y-2">
+                                <template x-for="(codigo, idx) in sospechosos" :key="codigo">
+                                    <li
+                                        class="grid grid-cols-[1fr_auto] items-center gap-3 rounded-lg border px-3 py-2 shadow-sm"
+                                        :class="idx % 2 === 0 ? 'bg-white border-gray-200' : 'bg-gray-50 border-gray-200'"
+                                        x-data="{ ubic: null, hasId: false, misma: false }"
+                                        x-init="
+                                        ubic  = (asignados && Object.prototype.hasOwnProperty.call(asignados, codigo)) ? asignados[codigo] : null;
+                                        hasId = (ubic !== null && ubic !== '' && ubic !== undefined);
+                                        misma = (hasId && ubic.toString() === nombreUbicacion.toString());
+                                        "
+                                    >
+                                        <!-- IZQUIERDA: código + estado -->
+                                        <div class="min-w-0 flex gap-1 items-center">
+                                            <div class="flex items-center gap-2">
+                                                <!-- Punto de estado: rojo = sin ubicación, naranja = con ubicación -->
+                                                <span class="inline-block h-2.5 w-2.5 rounded-full"
+                                                    :class="hasId ? 'bg-amber-500/80' : 'bg-red-500/80'"></span>
+
+                                                <span class="text-xs sm:text-base break-all font-sans" :class="hasId ? 'text-amber-500' : 'text-red-800'" x-text="codigo"></span>
+
+                                                <!-- Subtexto de estado (siempre visible en táctil) -->
+                                                <div class="inline-flex items-center px-1.5 py-0.5 text-sm sm:text-base rounded bg-gray-200 italic">
+                                                    <span class="text-gray-900"   x-show="hasId && !misma">Ubicación: <span x-text="ubic"></span></span>
+                                                    <span class="text-gray-900" x-show="!hasId">Sin registrar</span>
+                                                </div>
+
                                             </div>
                                         </div>
-                                    </template>
-                                </div>
 
-                                <!-- Productos inesperados -->
-                                <div x-cloak class="px-4 py-3" x-show="sospechosos.length">
-                                    <h3 class="text-sm font-semibold text-red-600 mb-1">Productos inesperados:</h3>
-                                    <ul class="list-disc list-inside text-xs text-red-700 space-y-0.5">
-                                        <template x-for="codigo in sospechosos" :key="codigo">
-                                            <li class="flex items-center justify-between">
-                                                <div>
-                                                    <span x-text="codigo"></span>
-                                                    <template x-if="asignados[codigo]">
-                                                        <span class="text-xs text-gray-500">
-                                                            → asignado a ubicación con ID =
-                                                            <strong x-text="asignados[codigo]"></strong>
-                                                        </span>
-                                                    </template>
-                                                </div>
-                                                <button
-                                                    class="ml-2 bg-blue-600 hover:bg-blue-700 text-white text-xs px-2 py-1 rounded"
-                                                    @click="reasignarProducto(codigo)">
-                                                    Asignar a esta ubicación
-                                                </button>
-                                            </li>
-                                        </template>
-                                    </ul>
-                                </div>
+                                        <!-- DERECHA: acción -->
+                                        <button
+                                            class="bg-blue-600 text-white px-3 py-1.5 rounded-md text-xs sm:text-base w-24 sm:w-auto"
+                                            x-show="hasId && !misma"
+                                            @click="reasignarProducto(codigo)"
+                                        >
+                                            Asignar aquí
+                                        </button>
 
-                                <!-- Botones -->
-                                <div class="flex justify-end gap-3 px-4 py-4">
-                                    <button @click="resetear()"
-                                        class="bg-gray-500 hover:bg-gray-600 text-white font-semibold px-3 py-1.5 rounded-md text-xs shadow">
-                                        Limpiar escaneos
-                                    </button>
-                                    <button @click="reportarErrores()"
-                                        class="bg-red-600 hover:bg-red-700 text-white font-semibold px-3 py-1.5 rounded-md text-xs shadow">
-                                        Reportar errores
-                                    </button>
-                                </div>
+                                        <span class="text-gray-800 px-3 py-1.5 rounded-md text-xs sm:text-base w-24 sm:w-auto"    x-show="!hasId">No asignable</span>
+                                        </div>
+                                    </li>
+                                </template>
+                            </ul>
+
+
+                            </div>
+
+
+                            <!-- Botones -->
+                            <div class="flex justify-end gap-3 px-4 py-4">
+                                <button @click="resetear()"
+                                    class="bg-gray-500 hover:bg-gray-600 text-white font-semibold px-3 py-1.5 rounded-md text-xs shadow">
+                                    Limpiar escaneos
+                                </button>
+                                <button @click="reportarErrores()"
+                                    class="bg-red-600 hover:bg-red-700 text-white font-semibold px-3 py-1.5 rounded-md text-xs shadow">
+                                    Reportar errores
+                                </button>
+                            </div>
                             </div>
 
                         </div>
@@ -646,6 +679,14 @@ Inesperados: ${inesperados.join(', ') || '—'}
             });
         };
     </script>
+
+    <style>
+        .altura-c {
+            height: calc(100vh - 90px);
+        }
+    </style>
+    
+    @vite('resources/js/inventario/inventario.js')
 
     <script src="{{ asset('js/inventario/inventario.js') }}"></script>
 
