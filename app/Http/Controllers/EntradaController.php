@@ -32,53 +32,82 @@ class EntradaController extends Controller
     private function aplicarFiltrosEntradas($query, Request $request)
     {
         // ===== Filtros =====
+
+        // Línea de pedido (numérico exacto)
         if ($request->filled('pedido_producto_id')) {
-            $query->where('pedido_producto_id', (int) $request->pedido_producto_id);
+            $valor = trim((string) $request->pedido_producto_id);
+            $query->whereRaw('CAST(pedido_producto_id AS CHAR) LIKE ?', ['%' . $valor . '%']);
         }
 
+
+
+        // Albarán - contains, case-insensitive
         if ($request->filled('albaran')) {
-            $query->where('albaran', 'like', '%' . $request->albaran . '%');
+            $albaran = trim($request->albaran);
+            $query->whereRaw('LOWER(albaran) LIKE ?', ['%' . mb_strtolower($albaran, 'UTF-8') . '%']);
         }
 
+        // Código SAGE - contains, case-insensitive
         if ($request->filled('codigo_sage')) {
-            $query->where('codigo_sage', 'like', '%' . $request->codigo_sage . '%');
+            $codigoSage = trim($request->codigo_sage);
+            $query->whereRaw('LOWER(codigo_sage) LIKE ?', ['%' . mb_strtolower($codigoSage, 'UTF-8') . '%']);
         }
+
+        // Nave por nombre (relación ->nave->obra) - contains, case-insensitive
         if ($request->filled('obra')) {
-            $texto = $request->obra;
-            $query->whereHas('nave', fn($q) => $q->where('obra', 'like', "%{$texto}%"));
+            $texto = trim($request->obra);
+            $query->whereHas('nave', function ($q) use ($texto) {
+                $q->whereRaw('LOWER(obra) LIKE ?', ['%' . mb_strtolower($texto, 'UTF-8') . '%']);
+            });
         }
 
+        // Nave por ID (si lo envías desde un select)
+        if ($request->filled('nave_id') && is_numeric($request->nave_id)) {
+            $query->where('nave_id', (int) $request->nave_id);
+        }
+
+        // Pedido por código (relación pedido) - contains, case-insensitive
         if ($request->filled('pedido_codigo')) {
-            $codigo = $request->pedido_codigo;
-            $query->whereHas('pedido', fn($q) => $q->where('codigo', 'like', "%{$codigo}%"));
+            $codigo = trim($request->pedido_codigo);
+            $query->whereHas('pedido', function ($q) use ($codigo) {
+                $q->whereRaw('LOWER(codigo) LIKE ?', ['%' . mb_strtolower($codigo, 'UTF-8') . '%']);
+            });
         }
 
+        // Usuario (relación user) - contains, case-insensitive
         if ($request->filled('usuario')) {
-            $usuario = $request->usuario;
-            $query->whereHas('user', fn($q) => $q->where('name', 'like', "%{$usuario}%"));
+            $usuario = trim($request->usuario);
+            $query->whereHas('user', function ($q) use ($usuario) {
+                $q->whereRaw('LOWER(name) LIKE ?', ['%' . mb_strtolower($usuario, 'UTF-8') . '%']);
+            });
         }
 
         // ===== Orden =====
         $sort  = $request->input('sort', 'created_at');
-        $order = $request->input('order', 'desc');
+        $order = strtolower($request->input('order', 'desc')) === 'asc' ? 'asc' : 'desc';
 
-        // Limpia órdenes previas (evita que 'latest()' u otros se impongan)
+        // Limpia órdenes previas
         $query->reorder();
 
         switch ($sort) {
             case 'pedido_producto_id':
             case 'albaran':
-            case 'nave_id':   // 👈 añadido
-                $query->orderBy($sort, $order);
-                break;
             case 'created_at':
                 $query->orderBy($sort, $order);
+                break;
+
+            case 'nave_id':
+            case 'nave': // por si usas 'nave' como key en la cabecera
+                // Ordenar por nombre de la nave (obras.obra) en vez de por id
+                $query->leftJoin('obras as o', 'entradas.nave_id', '=', 'o.id')
+                    ->orderBy('o.obra', $order)
+                    ->select('entradas.*');
                 break;
 
             case 'pedido_codigo':
                 // subselect por pedido.codigo
                 $query->orderBy(
-                    Pedido::select('codigo')->whereColumn('pedidos.id', 'entradas.pedido_id'),
+                    \App\Models\Pedido::select('codigo')->whereColumn('pedidos.id', 'entradas.pedido_id'),
                     $order
                 );
                 break;
@@ -86,7 +115,7 @@ class EntradaController extends Controller
             case 'usuario':
                 // subselect por users.name
                 $query->orderBy(
-                    User::select('name')->whereColumn('users.id', 'entradas.usuario_id'),
+                    \App\Models\User::select('name')->whereColumn('users.id', 'entradas.usuario_id'),
                     $order
                 );
                 break;
@@ -98,46 +127,40 @@ class EntradaController extends Controller
 
         return $query;
     }
+
     private function filtrosActivosEntradas(Request $request): array
     {
         $f = [];
 
-        if ($request->filled('pedido_producto_id')) {
-            $f[] = 'ID línea: <strong>' . (int)$request->pedido_producto_id . '</strong>';
-        }
-        if ($request->filled('albaran')) {
-            $f[] = 'Albarán: <strong>' . $request->albaran . '</strong>';
-        }
-        if ($request->filled('codigo_sage')) {
-            $f[] = 'Código SAGE: <strong>' . $request->codigo_sage . '</strong>';
-        }
-        if ($request->filled('obra')) {
-            $f[] = 'Nave: <strong>' . e($request->obra) . '</strong>';
-        }
+        if ($request->filled('pedido_producto_id')) $f[] = 'ID línea: <strong>' . (int)$request->pedido_producto_id . '</strong>';
+        if ($request->filled('albaran'))            $f[] = 'Albarán: <strong>' . e($request->albaran) . '</strong>';
+        if ($request->filled('codigo_sage'))        $f[] = 'Código SAGE: <strong>' . e($request->codigo_sage) . '</strong>';
+        if ($request->filled('obra'))               $f[] = 'Nave: <strong>' . e($request->obra) . '</strong>';
+        if ($request->filled('nave_id'))            $f[] = 'Nave ID: <strong>' . (int)$request->nave_id . '</strong>';
+        if ($request->filled('pedido_codigo'))      $f[] = 'Pedido compra: <strong>' . e($request->pedido_codigo) . '</strong>';
+        if ($request->filled('usuario'))            $f[] = 'Usuario: <strong>' . e($request->usuario) . '</strong>';
 
-        if ($request->filled('pedido_codigo')) {
-            $f[] = 'Pedido compra: <strong>' . $request->pedido_codigo . '</strong>';
-        }
-        if ($request->filled('usuario')) {
-            $f[] = 'Usuario: <strong>' . $request->usuario . '</strong>';
-        }
         if ($request->filled('sort')) {
             $map = [
                 'pedido_producto_id' => 'ID Línea Pedido',
                 'albaran'            => 'Albarán',
+                'nave'               => 'Nave',
+                'nave_id'            => 'Nave',
                 'pedido_codigo'      => 'Pedido Compra',
                 'usuario'            => 'Usuario',
                 'created_at'         => 'Fecha',
             ];
-            $orden = request('order', 'desc') === 'desc' ? 'descendente' : 'ascendente';
+            $orden = strtolower($request->input('order', 'desc')) === 'asc' ? 'ascendente' : 'descendente';
             $f[] = 'Ordenado por <strong>' . ($map[$request->sort] ?? $request->sort) . '</strong> en orden <strong>' . $orden . '</strong>';
         }
+
         if ($request->filled('per_page')) {
             $f[] = 'Mostrando <strong>' . (int)$request->per_page . '</strong> por página';
         }
 
         return $f;
     }
+
 
     private function getOrdenamientoEntradas(string $columna, string $titulo): string
     {

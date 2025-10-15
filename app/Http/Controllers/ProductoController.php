@@ -25,8 +25,9 @@ class ProductoController extends Controller
     private function aplicarFiltros($query, Request $request)
     {
         // ID
-        if ($request->filled('id') && is_numeric($request->id)) {
-            $query->where('id', (int) $request->id);
+        if ($request->filled('id')) {
+            $raw = trim((string) $request->id);
+            $query->whereRaw('CAST(productos.id AS CHAR) LIKE ?', ['%' . $raw . '%']);
         }
 
         // Entrada ID (numérico)
