@@ -18,6 +18,7 @@ use Maatwebsite\Excel\Facades\Excel;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Cache;
+use App\Models\Maquina;
 
 class ProductoController extends Controller
 {
@@ -306,7 +307,12 @@ class ProductoController extends Controller
             ->orderBy('obra')
             ->pluck('obra', 'id')   // ['id' => 'Obra']
             ->toArray();
-        return view('productos.index', compact('registrosProductos', 'productosBase', 'filtrosActivos', 'ordenables', 'totalPesoInicial', 'navesSelect'));
+
+        $maquinasDisponibles = Maquina::select('id', 'nombre', 'codigo', 'diametro_min', 'diametro_max', 'obra_id')
+            ->orderBy('nombre')
+            ->get();
+
+        return view('productos.index', compact('registrosProductos', 'productosBase', 'filtrosActivos', 'ordenables', 'totalPesoInicial', 'navesSelect', 'maquinasDisponibles'));
     }
 
     public function GenerarYExportar(Request $request)
