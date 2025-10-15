@@ -173,10 +173,6 @@ class PedidoController extends Controller
             });
         }
 
-        if ($request->filled('estado')) {
-            $query->where('estado', $request->estado);
-        }
-
         // ✅ Ordenación segura por columnas locales o por nombre de relación
         $sortBy = $request->input('sort', 'created_at'); // o 'fecha_pedido'
         $order  = $request->input('order', 'desc');
