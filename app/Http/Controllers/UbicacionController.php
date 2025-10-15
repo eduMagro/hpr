@@ -21,122 +21,73 @@ class UbicacionController extends Controller
     public function index(Request $request)
     {
         try {
-            // 1) Obtener todas las ubicaciones con productos y paquetes
+            // 1) Obtener todas las obras del cliente "Hierros Paco Reyes"
+            $obras = Obra::with('cliente')
+                ->whereHas(
+                    'cliente',
+                    fn($q) =>
+                    $q->where('empresa', 'LIKE', '%hierros paco reyes%')
+                )
+                ->orderBy('obra')
+                ->get();
+
+            // 2) Determinar la obra activa (?obra=ID) o la primera por defecto
+            $obraActualId = $request->query('obra');
+            $obraActiva = $obras->firstWhere('id', $obraActualId) ?? $obras->first();
+
+            if (!$obraActiva) {
+                throw new Exception('No se encontró ninguna obra activa.');
+            }
+
+            // 3) Traducir nombre de la obra a código de almacén (usado en Ubicacion.almacen)
+            // 3) Normalizar nombre de la obra y deducir código de almacén
+            $nombreObra = strtolower(trim($obraActiva->obra));
+
+            // Sustituir vocales acentuadas por su versión sin tilde
+            $nombreObra = str_replace(
+                ['á', 'é', 'í', 'ó', 'ú'],
+                ['a', 'e', 'i', 'o', 'u'],
+                $nombreObra
+            );
+
+            // Determinar código según el nombre
+            $codigoAlmacen = match (true) {
+                str_contains($nombreObra, 'nave a') => '0A',
+                str_contains($nombreObra, 'nave b') => '0B',
+                str_contains($nombreObra, 'almacen') => 'AL',
+                default => null,
+            };
+            if (!$codigoAlmacen) {
+                throw new Exception('No se pudo determinar el código de almacén para la obra: ' . $obraActiva->obra);
+            }
+
+            // 4) Obtener ubicaciones de ese almacén con productos y paquetes
             $ubicaciones = Ubicacion::with(['productos', 'paquetes'])
-                ->where('almacen', '0A')
+                ->where('almacen', $codigoAlmacen)
                 ->orderBy('sector', 'desc')
                 ->orderBy('ubicacion', 'asc')
                 ->get();
 
-            // 2) Agrupar por sector
+            // 5) Agrupar por sector para mostrar en la vista
             $ubicacionesPorSector = $ubicaciones->groupBy('sector');
 
-            // 3) Obtener todas las obras del cliente "Hierros Paco Reyes"
-            $obras = Obra::with('cliente')
-                ->whereHas('cliente', fn($q) => $q->where('empresa', 'LIKE', '%hierros paco reyes%'))
-                ->orderBy('obra')
-                ->get();
-
-            // 4) Obtener obra activa desde el query (?obra=ID) o la primera
-            $obraActualId = request('obra');
-            $obraActiva   = $obras->firstWhere('id', $obraActualId) ?? $obras->first();
-            $cliente      = $obraActiva?->cliente;
-
-            // 5) Pasar todos los datos necesarios a la vista
+            // 6) Pasar todos los datos necesarios a la vista
             return view('ubicaciones.index', [
                 'ubicacionesPorSector' => $ubicacionesPorSector,
                 'obras' => $obras,
-                'obraActualId' => $obraActiva?->id,
-                'nombreAlmacen' => $obraActiva?->obra,
+                'obraActualId' => $obraActiva->id,
+                'nombreAlmacen' => $obraActiva->obra,
+                'codigoAlmacen' => $codigoAlmacen,
             ]);
         } catch (Exception $e) {
-            return redirect()->back()->with('error', 'Ocurrió un error: ' . $e->getMessage());
-        }
-    }
-    public function naveA(Request $request)
-    {
-        try {
-            $obra = Obra::where('obra', 'Nave A')->firstOrFail();
-
-            $ubicaciones = Ubicacion::with(['productos', 'paquetes'])
-                ->where('almacen', '0A')
-                ->orderBy('sector', 'desc')
-                ->orderBy('ubicacion', 'asc')
-                ->get();
-
-            $ubicacionesPorSector = $ubicaciones->groupBy('sector');
-
-            $obras = Obra::with('cliente')
-                ->whereHas('cliente', fn($q) => $q->where('empresa', 'LIKE', '%hierros paco reyes%'))
-                ->orderBy('obra')
-                ->get();
-
-            return view('ubicaciones.nave-a', [
-                'ubicacionesPorSector' => $ubicacionesPorSector,
-                'obras' => $obras,
-                'obraActualId' => $obra->id,
-                'nombreAlmacen' => $obra?->obra,
+            Log::error('Error en Ubicaciones.index', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
             ]);
-        } catch (Exception $e) {
-            return redirect()->back()->with('error', 'Error en Nave A: ' . $e->getMessage());
+            return back()->with('error', 'Error al cargar ubicaciones: ' . $e->getMessage());
         }
     }
-    public function naveB(Request $request)
-    {
-        try {
-            $obra = Obra::where('obra', 'Nave B')->firstOrFail();
 
-            $ubicaciones = Ubicacion::with(['productos', 'paquetes'])
-                ->where('almacen', '0B')
-                ->orderBy('sector', 'desc')
-                ->orderBy('ubicacion', 'asc')
-                ->get();
-
-            $ubicacionesPorSector = $ubicaciones->groupBy('sector');
-
-            $obras = Obra::with('cliente')
-                ->whereHas('cliente', fn($q) => $q->where('empresa', 'LIKE', '%hierros paco reyes%'))
-                ->orderBy('obra')
-                ->get();
-
-            return view('ubicaciones.nave-b', [
-                'ubicacionesPorSector' => $ubicacionesPorSector,
-                'obras' => $obras,
-                'obraActualId' => $obra->id,
-                'nombreAlmacen' => $obra?->obra,
-            ]);
-        } catch (Exception $e) {
-            return redirect()->back()->with('error', 'Error en Nave B: ' . $e->getMessage());
-        }
-    }
-    public function almacen(Request $request)
-    {
-        try {
-            $obra = Obra::where('obra', 'Almacén')->firstOrFail();
-
-            $ubicaciones = Ubicacion::with(['productos', 'paquetes'])
-                ->where('almacen', 'AL')
-                ->orderBy('sector', 'desc')
-                ->orderBy('ubicacion', 'asc')
-                ->get();
-
-            $ubicacionesPorSector = $ubicaciones->groupBy('sector');
-
-            $obras = Obra::with('cliente')
-                ->whereHas('cliente', fn($q) => $q->where('empresa', 'LIKE', '%hierros paco reyes%'))
-                ->orderBy('obra')
-                ->get();
-
-            return view('ubicaciones.almacen', [
-                'ubicacionesPorSector' => $ubicacionesPorSector,
-                'obras' => $obras,
-                'obraActualId' => $obra->id,
-                'nombreAlmacen' => $obra?->obra,
-            ]);
-        } catch (Exception $e) {
-            return redirect()->back()->with('error', 'Error en Almacén: ' . $e->getMessage());
-        }
-    }
 
     public function inventario(Request $request)
     {

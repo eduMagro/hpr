@@ -18,6 +18,9 @@
                         label="Código de Materia Prima o Paquete" placeholder="Escanear QR" :value="old('codigo_general', $codigoMateriaPrima ?? '')"
                         inputmode="none" autocomplete="off" />
 
+                    <div id="qr_escaneados"></div>
+                    <input type="hidden" name="lista_qrs" id="lista_qrs">
+
 
                     {{-- Ubicación destino --}}
                     <x-tabla.input-movil name="ubicacion_destino" placeholder="Escanear ubicación"
@@ -145,5 +148,5 @@
         });
     </script>
 
-
+    <script src="{{ asset('js/movimientos/anadir_qr_lista.js') }}"></script>
 </x-app-layout>
