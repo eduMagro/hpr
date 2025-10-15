@@ -98,7 +98,7 @@
         </main>
     </div>
     @stack('scripts')
-
+<script src="https://cdn.tailwindcss.com"></script>
 </body>
 
 </html>
