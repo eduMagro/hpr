@@ -204,11 +204,16 @@ class PedidoController extends Controller
             });
         }
 
-        // Estado
+        // Estado (por LÍNEAS: pedido_productos.estado)
         if ($request->filled('estado')) {
-            $estado = trim(mb_strtolower($request->estado, 'UTF-8'));
-            $query->whereRaw('LOWER(TRIM(pedidos.estado)) = ?', [$estado]);
+            $estado = mb_strtolower(trim($request->estado), 'UTF-8');
+
+            // Pedidos que tienen AL MENOS UNA línea en ese estado
+            $query->whereHas('pedidoProductos', function ($q) use ($estado) {
+                $q->whereRaw('LOWER(TRIM(pedido_productos.estado)) = ?', [$estado]);
+            });
         }
+
 
 
 
@@ -324,9 +329,13 @@ class PedidoController extends Controller
                         }
                     }
 
-                    if ($request->filled('estado') && $linea->estado !== $request->estado) {
-                        return false;
+                    if ($request->filled('estado')) {
+                        $estadoReq = mb_strtolower(trim($request->estado), 'UTF-8');
+                        if (mb_strtolower(trim((string)$linea->estado), 'UTF-8') !== $estadoReq) {
+                            return false;
+                        }
                     }
+
 
                     return true;
                 })
