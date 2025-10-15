@@ -34,9 +34,9 @@
                       style="height:2cm; padding:0.75rem 1rem; font-size:1.5rem;">
                       <option value="">-- Selecciona máquina --</option>
                       @foreach ($maquinasDisponibles as $maq)
-                          <option value="{{ $maq->id }}">
-                              {{ $maq->nombre }}
-                          </option>
+                      <option value="{{ $maq->id }}">
+                          {{ $maq->nombre }}
+                      </option>
                       @endforeach
                   </select>
               </div>
@@ -222,14 +222,30 @@
           document.getElementById('modalMovimiento').classList.remove('flex');
       }
 
-      function abrirModalMovimientoLibre() {
+      function abrirModalMovimientoLibre(codigo = null) {
           const modal = document.getElementById('modalMovimientoLibre');
           modal.classList.remove('hidden');
           modal.classList.add('flex');
+
+          const inputQR = document.getElementById("codigo_general_general");
+
           setTimeout(() => {
-              document.getElementById("codigo_general_general")?.focus();
+              if (!inputQR) return;
+
+              if (codigo) {
+                  const code = String(codigo).trim().toUpperCase();
+                  inputQR.value = code;
+
+                //   fuerzo accion input para que se registre el codigo
+                  inputQR.dispatchEvent(new Event('input', {
+                      bubbles: true
+                  }));
+              }
+
+              inputQR.focus();
           }, 100);
       }
+
 
       function cerrarModalMovimientoLibre() {
           const modal = document.getElementById('modalMovimientoLibre');
