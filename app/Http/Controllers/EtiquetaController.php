@@ -32,16 +32,39 @@ use Illuminate\Support\Arr;
 use Illuminate\Support\Collection;
 
 
+
 class EtiquetaController extends Controller
 {
     private function aplicarFiltros($query, Request $request)
     {
-        if ($request->filled('id') && is_numeric($request->id)) {
-            $query->where('id', (int) $request->id);
+        // Normaliza alias -> nombres usados en backend
+        $aliasFechas = [
+            'inicio_fabricacion'        => 'fecha_inicio',
+            'final_fabricacion'         => 'fecha_finalizacion',
+            'inicio_ensamblado'         => 'fecha_inicio_ensamblado',
+            'final_ensamblado'          => 'fecha_finalizacion_ensamblado',
+            'inicio_soldadura'          => 'fecha_inicio_soldadura',
+            'final_soldadura'           => 'fecha_finalizacion_soldadura',
+        ];
+
+        $merge = [];
+        foreach ($aliasFechas as $alias => $destino) {
+            if ($request->filled($alias) && !$request->filled($destino)) {
+                $merge[$destino] = $request->input($alias);
+            }
+        }
+        if ($merge) {
+            $request->merge($merge);
         }
 
+        if ($request->filled('id')) {
+            $input = trim($request->id);
+            $query->where('id', 'like', '%' . $input . '%');
+        }
+
+
         if ($request->filled('codigo')) {
-            $query->where('codigo', $request->codigo);
+            $query->where('codigo', 'like', '%' . $request->codigo . '%');
         }
 
         if ($request->has('etiqueta_sub_id') && $request->etiqueta_sub_id !== '') {
@@ -65,11 +88,58 @@ class EtiquetaController extends Controller
             $query->where('estado', $request->estado);
         }
 
+        /* ── Filtro por código de planilla (formato AAAA-nnnnnn) ──────── */
         if ($request->filled('codigo_planilla')) {
-            $query->whereHas('planilla', function ($q) use ($request) {
-                $q->where('codigo', 'like', '%' . $request->codigo_planilla . '%');
+            $input = trim($request->codigo_planilla);
+
+            $query->whereHas('planilla', function ($q) use ($input) {
+
+                // Caso 1: formato AAAA-nnnnnn (con o sin ceros)
+                if (preg_match('/^(\d{4})-(\d{1,6})$/', $input, $m)) {
+                    $anio = $m[1];
+                    $num  = str_pad($m[2], 6, '0', STR_PAD_LEFT);
+                    $codigoFormateado = "{$anio}-{$num}";
+                    $q->where('codigo', 'like', "%{$codigoFormateado}%");
+                    return;
+                }
+
+                // Caso 2: solo números (por ejemplo, "4512")
+                if (preg_match('/^\d{1,6}$/', $input)) {
+                    $q->where('codigo', 'like', "%{$input}%");
+                    return;
+                }
+
+                // Caso 3: texto o formato libre
+                $q->where('codigo', 'like', "%{$input}%");
             });
         }
+
+        /* ── Fechas: Fabricación ──────── */
+        if ($request->filled('fecha_inicio')) {
+            $query->where('fecha_inicio', '>=', Carbon::parse($request->fecha_inicio)->startOfDay());
+        }
+        if ($request->filled('fecha_finalizacion')) {
+            $query->where('fecha_finalizacion', '<=', Carbon::parse($request->fecha_finalizacion)->endOfDay());
+        }
+
+        /* ── Fechas: Ensamblado ──────── */
+        if ($request->filled('fecha_inicio_ensamblado')) {
+            $query->where('fecha_inicio_ensamblado', '>=', Carbon::parse($request->fecha_inicio_ensamblado)->startOfDay());
+        }
+        if ($request->filled('fecha_finalizacion_ensamblado')) {
+            $query->where('fecha_finalizacion_ensamblado', '<=', Carbon::parse($request->fecha_finalizacion_ensamblado)->endOfDay());
+        }
+
+        /* ── Fechas: Soldadura ──────── */
+        if ($request->filled('fecha_inicio_soldadura')) {
+            $query->where('fecha_inicio_soldadura', '>=', Carbon::parse($request->fecha_inicio_soldadura)->startOfDay());
+        }
+        if ($request->filled('fecha_finalizacion_soldadura')) {
+            $query->where('fecha_finalizacion_soldadura', '<=', Carbon::parse($request->fecha_finalizacion_soldadura)->endOfDay());
+        }
+
+
+
 
         if ($request->filled('numero_etiqueta')) {
             $query->where('id', $request->numero_etiqueta);
@@ -96,6 +166,12 @@ class EtiquetaController extends Controller
                 'numero_etiqueta' => 'Número de Etiqueta',
                 'nombre' => 'Nombre',
                 'etiqueta_sub_id' => 'Subetiqueta',
+                'fecha_inicio' => 'Inicio Fabricación desde',
+                'fecha_finalizacion'  => 'Fin Fabricación hasta',
+                'fecha_inicio_ensamblado'  => 'Inicio Ensamblado desde',
+                'fecha_finalizacion_ensamblado'   => 'Fin Ensamblado hasta',
+                'fecha_inicio_soldadura'   => 'Inicio Soldadura desde',
+                'fecha_finalizacion_soldadura'    => 'Fin Soldadura hasta',
             ] as $campo => $etiqueta
         ) {
             if ($request->filled($campo)) {
