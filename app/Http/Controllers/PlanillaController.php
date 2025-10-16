@@ -189,7 +189,7 @@ class PlanillaController extends Controller
                 array_map('trim', explode(',', $request->codigo))
             );
 
-            $query->where(function ($q) use ($codigos) { 
+            $query->where(function ($q) use ($codigos) {
                 foreach ($codigos as $codigo) {
                     $codigo = trim($codigo);
 
@@ -290,6 +290,31 @@ class PlanillaController extends Controller
                 Carbon::parse($request->fecha_estimada_entrega)->format('Y-m-d')
             );
         }
+
+        // --- Revisada: whitelisting; no filtrar en "todas"/"seleccionar"
+        if ($request->has('revisada')) {
+            $raw = trim((string) $request->input('revisada'));
+
+            // Normaliza acentos y mayúsculas
+            $val = mb_strtolower($raw, 'UTF-8');
+
+            // Acepta equivalentes
+            $mapTrue  = ['1', 'si', 'sí', 'true', 'on'];
+            $mapFalse = ['0', 'no', 'false', 'off'];
+
+            if (in_array($val, $mapTrue, true)) {
+                $request->merge(['revisada' => '1']);
+                $query->where('revisada', 1);
+            } elseif (in_array($val, $mapFalse, true)) {
+                $request->merge(['revisada' => '0']);
+                $query->where('revisada', 0);
+            } else {
+                // "todas", "seleccionar", vacío, etc. -> NO filtrar
+                $request->request->remove('revisada');
+            }
+        }
+
+
 
 
 
