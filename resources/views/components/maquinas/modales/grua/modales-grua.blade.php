@@ -152,6 +152,7 @@
 
               <x-tabla.input-movil type="text" name="codigo_general" id="modal_producto_id"
                   placeholder="ESCANEA QR MATERIA PRIMA" inputmode="none" autocomplete="off" required />
+              <input type="hidden" name="lista_qrs" id="modal_lista_qrs">
 
               <!-- Botones -->
               <div class="flex justify-end gap-3 mt-6">
@@ -163,6 +164,28 @@
 
           </form>
       </div>
+
+      <script>
+          document.addEventListener('DOMContentLoaded', () => {
+              const form = document.getElementById('form-ejecutar-movimiento');
+              const inputQR = document.getElementById('modal_producto_id');
+              const hiddenLista = document.getElementById('modal_lista_qrs');
+
+              form.addEventListener('submit', (e) => {
+                  const valor = inputQR.value.trim();
+
+                  if (valor) {
+                      // Convertimos el valor en array JSON (aunque sea uno solo)
+                      hiddenLista.value = JSON.stringify([valor]);
+                  } else {
+                      // Si está vacío, lo dejamos vacío para que el backend valide
+                      hiddenLista.value = '';
+                  }
+              });
+          });
+      </script>
+
+
   </div>
   {{-- 🔄 MODAL DESCARGA MATERIA PRIMA --}}
   <div id="modal-ver-pedido"
@@ -236,7 +259,7 @@
                   const code = String(codigo).trim().toUpperCase();
                   inputQR.value = code;
 
-                //   fuerzo accion input para que se registre el codigo
+                  //   fuerzo accion input para que se registre el codigo
                   inputQR.dispatchEvent(new Event('input', {
                       bubbles: true
                   }));
