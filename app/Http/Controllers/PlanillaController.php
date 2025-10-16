@@ -503,10 +503,6 @@ class PlanillaController extends Controller
         ));
     }
 
-
-
-
-
     //------------------------------------------------------------------------------------ CREATE()
     public function create()
     {

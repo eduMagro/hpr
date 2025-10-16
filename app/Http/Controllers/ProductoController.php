@@ -24,70 +24,97 @@ class ProductoController extends Controller
     //------------------------------------------------------------------------------------ FILTROS
     private function aplicarFiltros($query, Request $request)
     {
-        if ($request->filled('id') && is_numeric($request->id)) {
-            $query->where('id', (int) $request->id);
+        // ID
+        if ($request->filled('id')) {
+            $raw = trim((string) $request->id);
+            $query->whereRaw('CAST(productos.id AS CHAR) LIKE ?', ['%' . $raw . '%']);
         }
+
+        // Entrada ID (numérico)
         if ($request->filled('entrada_id') && is_numeric($request->entrada_id)) {
             $query->where('entrada_id', (int) $request->entrada_id);
         }
 
+        // Albarán (relación entrada) - contains
         if ($request->filled('albaran')) {
-            $albaran = $request->albaran;
+            $albaran = trim($request->albaran);
             $query->whereHas('entrada', function ($q) use ($albaran) {
-                $q->where('albaran', 'like', "%{$albaran}%");
+                $q->whereRaw('LOWER(albaran) LIKE ?', ['%' . mb_strtolower($albaran, 'UTF-8') . '%']);
             });
         }
 
+        // Código - contains
         if ($request->filled('codigo')) {
-            $query->where('codigo', 'like', '%' . $request->codigo . '%');
+            $codigo = trim($request->codigo);
+            $query->whereRaw('LOWER(codigo) LIKE ?', ['%' . mb_strtolower($codigo, 'UTF-8') . '%']);
         }
 
+        // Nave (obra_id exacto desde select)
         if ($request->filled('nave_id') && is_numeric($request->nave_id)) {
-            $query->where('obra_id', $request->nave_id);
+            $query->where('obra_id', (int) $request->nave_id);
         }
 
-
-        if ($request->filled('fabricante') && is_numeric($request->fabricante)) {
-            $query->where('fabricante_id', (int) $request->fabricante);
+        // Fabricante por NOMBRE (input de texto) - contains
+        if ($request->filled('fabricante')) {
+            $buscar = trim($request->fabricante);
+            $query->whereHas('fabricante', function ($q) use ($buscar) {
+                $q->whereRaw('LOWER(nombre) LIKE ?', ['%' . mb_strtolower($buscar, 'UTF-8') . '%']);
+            });
         }
 
+        // Tipo (ProductoBase) - contains
         if ($request->filled('tipo')) {
-            $query->whereHas('productoBase', function ($q) use ($request) {
-                $q->where('tipo', $request->tipo);
+            $buscar = trim($request->tipo);
+            $query->whereHas('productoBase', function ($q) use ($buscar) {
+                $q->whereRaw('LOWER(tipo) LIKE ?', ['%' . mb_strtolower($buscar, 'UTF-8') . '%']);
             });
         }
 
+        // Diámetro (ProductoBase) - contains (permite 10, 10., 10 mm parciales)
         if ($request->filled('diametro')) {
-            $query->whereHas('productoBase', function ($q) use ($request) {
-                $q->where('diametro', $request->diametro);
+            $buscar = trim($request->diametro);
+            $query->whereHas('productoBase', function ($q) use ($buscar) {
+                $q->whereRaw('LOWER(diametro) LIKE ?', ['%' . mb_strtolower($buscar, 'UTF-8') . '%']);
             });
         }
 
+        // Longitud (ProductoBase) - contains
         if ($request->filled('longitud')) {
-            $query->whereHas('productoBase', function ($q) use ($request) {
-                $q->where('longitud', $request->longitud);
+            $buscar = trim($request->longitud);
+            $query->whereHas('productoBase', function ($q) use ($buscar) {
+                $q->whereRaw('LOWER(longitud) LIKE ?', ['%' . mb_strtolower($buscar, 'UTF-8') . '%']);
             });
         }
 
+        // Nº Colada - contains
         if ($request->filled('n_colada')) {
-            $query->where('n_colada', $request->n_colada);
+            $buscar = trim($request->n_colada);
+            $query->whereRaw('LOWER(n_colada) LIKE ?', ['%' . mb_strtolower($buscar, 'UTF-8') . '%']);
         }
 
+        // Nº Paquete - contains
         if ($request->filled('n_paquete')) {
-            $query->where('n_paquete', $request->n_paquete);
+            $buscar = trim($request->n_paquete);
+            $query->whereRaw('LOWER(n_paquete) LIKE ?', ['%' . mb_strtolower($buscar, 'UTF-8') . '%']);
         }
 
+        // Estado - exacto (ya controlas luego la lógica de “mostrar_todos”)
         if ($request->filled('estado')) {
-            $query->where('estado', 'like', '%' . $request->estado . '%');
+            $query->where('estado', $request->estado);
         }
+
+        // Ubicación por nombre - contains
         if ($request->filled('ubicacion')) {
-            $query->whereHas('ubicacion', function ($q) use ($request) {
-                $q->where('nombre', 'like', '%' . $request->ubicacion . '%');
+            $buscar = trim($request->ubicacion);
+            $query->whereHas('ubicacion', function ($q) use ($buscar) {
+                $q->whereRaw('LOWER(nombre) LIKE ?', ['%' . mb_strtolower($buscar, 'UTF-8') . '%']);
             });
         }
 
         return $query;
     }
+
+
     private function getOrdenamiento(string $columna, string $titulo): string
     {
         $currentSort = request('sort');
@@ -109,6 +136,7 @@ class ProductoController extends Controller
         return '<a href="' . $url . '" class="inline-flex items-center space-x-1">' .
             '<span>' . $titulo . '</span><span class="text-xs">' . $icon . '</span></a>';
     }
+
     private function aplicarOrdenamiento($query, Request $request)
     {
         $columnasPermitidas = [
@@ -116,89 +144,80 @@ class ProductoController extends Controller
             'codigo',
             'fabricante',
             'producto_base_id',
+            'tipo',
+            'diametro',
+            'longitud',
             'n_colada',
             'n_paquete',
             'peso_inicial',
             'peso_stock',
             'estado',
             'ubicacion',
+            'nave',
+            'entrada_id',
             'created_at',
         ];
 
-        $sort = $request->input('sort', 'created_at');
+        $sort  = $request->input('sort', 'created_at');
         $order = strtolower($request->input('order', 'desc')) === 'asc' ? 'asc' : 'desc';
 
         if (!in_array($sort, $columnasPermitidas, true)) {
             $sort = 'created_at';
         }
-        // Ordenar por nombre del fabricante
+
         if ($sort === 'fabricante') {
             $query->leftJoin('fabricantes', 'productos.fabricante_id', '=', 'fabricantes.id')
                 ->orderBy('fabricantes.nombre', $order)
-                ->select('productos.*'); // importante para evitar conflictos en las columnas
+                ->select('productos.*');
         } elseif ($sort === 'nave') {
             $query->leftJoin('obras', 'productos.obra_id', '=', 'obras.id')
                 ->orderBy('obras.obra', $order)
                 ->select('productos.*');
+        } elseif (in_array($sort, ['tipo', 'diametro', 'longitud'], true)) {
+            // Ordenar por campos del producto base
+            $query->leftJoin('productos_base as pb', 'productos.producto_base_id', '=', 'pb.id')
+                ->orderBy("pb.$sort", $order)
+                ->select('productos.*');
+        } elseif ($sort === 'ubicacion') {
+            $query->leftJoin('ubicaciones', 'productos.ubicacion_id', '=', 'ubicaciones.id')
+                ->orderBy('ubicaciones.nombre', $order)
+                ->select('productos.*');
+        } elseif ($sort === 'entrada_id') {
+            // En la tabla lo llamas “Albarán”: ordena por entradas.albaran
+            $query->leftJoin('entradas', 'productos.entrada_id', '=', 'entradas.id')
+                ->orderBy('entradas.albaran', $order)
+                ->select('productos.*');
         } else {
             $query->orderBy($sort, $order);
         }
+
         return $query;
     }
+
     private function filtrosActivos(Request $request): array
     {
         $filtros = [];
 
-        if ($request->filled('id')) {
-            $filtros[] = 'ID: <strong>' . e($request->id) . '</strong>';
-        }
+        if ($request->filled('id'))          $filtros[] = 'ID: <strong>' . e($request->id) . '</strong>';
+        if ($request->filled('entrada_id'))  $filtros[] = 'Entrada ID: <strong>' . e($request->entrada_id) . '</strong>';
+        if ($request->filled('codigo'))      $filtros[] = 'Código: <strong>' . e($request->codigo) . '</strong>';
 
-        if ($request->filled('entrada_id')) {
-            $filtros[] = 'Entrada ID: <strong>' . e($request->entrada_id) . '</strong>';
-        }
-
-        if ($request->filled('codigo')) {
-            $filtros[] = 'Código: <strong>' . e($request->codigo) . '</strong>';
-        }
         if ($request->filled('nave_id')) {
             $obra = \App\Models\Obra::find($request->nave_id);
             $filtros[] = 'Nave: <strong>' . e($obra?->obra ?? 'ID ' . $request->nave_id) . '</strong>';
         }
 
-        if ($request->filled('fabricante')) {
-            $filtros[] = 'Fabricante ID: <strong>' . e($request->fabricante) . '</strong>';
-        }
-
-        if ($request->filled('tipo')) {
-            $filtros[] = 'Tipo: <strong>' . e($request->tipo) . '</strong>';
-        }
-
-        if ($request->filled('diametro')) {
-            $filtros[] = 'Diámetro: <strong>' . e($request->diametro) . '</strong>';
-        }
-
-        if ($request->filled('longitud')) {
-            $filtros[] = 'Longitud: <strong>' . e($request->longitud) . '</strong>';
-        }
-
-        if ($request->filled('n_colada')) {
-            $filtros[] = 'N.º Colada: <strong>' . e($request->n_colada) . '</strong>';
-        }
-
-        if ($request->filled('n_paquete')) {
-            $filtros[] = 'N.º Paquete: <strong>' . e($request->n_paquete) . '</strong>';
-        }
-
-        if ($request->filled('estado')) {
-            $filtros[] = 'Estado: <strong>' . e($request->estado) . '</strong>';
-        }
-        if ($request->filled('ubicacion')) {
-            $filtros[] = 'Ubicación: <strong>' . e($request->ubicacion) . '</strong>';
-        }
+        if ($request->filled('fabricante'))  $filtros[] = 'Fabricante: <strong>' . e($request->fabricante) . '</strong>';
+        if ($request->filled('tipo'))        $filtros[] = 'Tipo: <strong>' . e($request->tipo) . '</strong>';
+        if ($request->filled('diametro'))    $filtros[] = 'Diámetro: <strong>' . e($request->diametro) . '</strong>';
+        if ($request->filled('longitud'))    $filtros[] = 'Longitud: <strong>' . e($request->longitud) . '</strong>';
+        if ($request->filled('n_colada'))    $filtros[] = 'N.º Colada: <strong>' . e($request->n_colada) . '</strong>';
+        if ($request->filled('n_paquete'))   $filtros[] = 'N.º Paquete: <strong>' . e($request->n_paquete) . '</strong>';
+        if ($request->filled('estado'))      $filtros[] = 'Estado: <strong>' . e($request->estado) . '</strong>';
+        if ($request->filled('ubicacion'))   $filtros[] = 'Ubicación: <strong>' . e($request->ubicacion) . '</strong>';
 
         if ($request->filled('sort')) {
             $orden = $request->input('order') === 'asc' ? 'ascendente' : 'descendente';
-
             $nombresBonitos = [
                 'id' => 'ID Materia Prima',
                 'entrada_id' => 'Albarán',
@@ -213,18 +232,17 @@ class ProductoController extends Controller
                 'peso_stock' => 'Peso Stock',
                 'estado' => 'Estado',
                 'ubicacion' => 'Ubicación',
+                'nave' => 'Nave',
                 'created_at' => 'Fecha de Creación',
             ];
-
             $columna = $request->sort;
-            $nombre = $nombresBonitos[$columna] ?? ucfirst($columna);
-
+            $nombre  = $nombresBonitos[$columna] ?? ucfirst($columna);
             $filtros[] = "Ordenado por <strong>$nombre</strong> en orden <strong>$orden</strong>";
         }
 
-
         return $filtros;
     }
+
 
     //------------------------------------------------------------------------------------ INDEX
     public function index(Request $request)
@@ -256,6 +274,7 @@ class ProductoController extends Controller
         // Aplicar filtros y ordenamiento de forma segura
         $query = $this->aplicarFiltros($query, $request);
         $query = $this->aplicarOrdenamiento($query, $request);
+        $query->distinct('productos.id');
         $filtrosActivos = $this->filtrosActivos($request);
         $ordenables = [
             'id'             => $this->getOrdenamiento('id', 'ID Materia Prima'),

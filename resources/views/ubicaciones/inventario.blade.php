@@ -347,13 +347,13 @@ Inesperados: ${inesperados.join(', ') || '—'}
         </h2>
     </x-slot>
 
-    <div class="max-w-7xl mx-auto px-4 py-6">
+    <div id="contenido" class="max-w-7xl gap-2 flex flex-col altura-c h-[calc(100vh-90px)] w-screen mx-auto opacity-0 transform transition-all duration-200">
         @foreach ($ubicacionesPorSector as $sector => $ubicaciones)
-            <div x-data="{ abierto: false }" class="mt-6 border rounded-xl shadow">
+            <div x-data="{ abierto: false }" class="h-full w-full">
 
                 <!-- Encabezado del sector con botón para expandir -->
                 <button @click="abierto = !abierto"
-                    class="w-full flex items-center justify-between px-4 py-3 bg-gray-800 text-white font-semibold text-left text-lg hover:bg-gray-700">
+                    class="escondible w-full h-full flex items-center justify-between px-4 py-3 bg-gray-800  text-white font-semibold text-left text-xl hover:bg-gray-700 min-h-20">
                     <span>Sector {{ $sector }}</span>
                     <svg :class="abierto ? 'rotate-90' : ''" class="w-4 h-4 transition-transform" fill="none"
                         stroke="currentColor" viewBox="0 0 24 24">
@@ -371,7 +371,7 @@ Inesperados: ${inesperados.join(', ') || '—'}
 
                             <!-- Cabecera -->
                             <div
-                                class="flex flex-col sm:flex-row sm:justify-between sm:items-center bg-gray-800 text-white px-4 py-3 gap-3">
+                                class="desplegar-subcontenido flex flex-row justify-between items-center bg-gray-800 text-white px-4 py-3 gap-3 hover:bg-gray-700 cursor-pointer">
                                 <div class="text-sm sm:text-base">
                                     <span><strong>{{ $ubicacion->id }} -- {{ $ubicacion->codigo }} --
                                             {{ $ubicacion->descripcion }}</strong></span>
@@ -382,159 +382,171 @@ Inesperados: ${inesperados.join(', ') || '—'}
                                 </div>
                                 <!-- Input de escaneo para ESTA ubicación -->
                                 <input type="text"
-                                    class="w-full sm:w-64 border border-gray-300 rounded-md px-3 py-2 text-xs text-gray-900 placeholder-gray-400 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 shadow"
+                                    class="hidden qr-input w-64 border border-gray-300 rounded-md px-3 py-2 text-xs text-gray-900 placeholder-gray-400 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 shadow"
                                     placeholder="Escanea aquí…"
                                     x-on:keydown.enter.prevent="procesarQR($event.target.value); $event.target.value = ''"
                                     x-ref="inputQR" inputmode="none" autocomplete="off">
+
+                                <div class="qr-desplegable-info">></div>
                             </div>
 
-                            <div class="h-2 bg-gray-200">
-                                <div class="h-full bg-blue-500 transition-all duration-300"
-                                    :style="`width: ${progreso()}%`"></div>
-                                <div class="text-xs text-right px-4 py-1 text-gray-500">
-                                    <span
-                                        x-text="`${escaneados.length} / ${productosEsperados.length} escaneados`"></span>
+                            <!-- ///////////////////////////////// -->
+                            <div class="subcontenido overflow-hidden h-0 opacity-0">
+
+                                <div class="h-2 bg-gray-200">
+                                    <div class="h-full bg-blue-500 transition-all duration-300"
+                                        :style="`width: ${progreso()}%`"></div>
+                                    <div class="text-xs text-right px-4 py-1 text-gray-500">
+                                        <span
+                                            x-text="`${escaneados.length} / ${productosEsperados.length} escaneados`"></span>
+                                    </div>
                                 </div>
-                            </div>
 
-                            <!-- Tabla de productos (visible >= sm) -->
-                            <div class="hidden sm:block overflow-x-auto">
-                                <table class="min-w-full text-xs md:text-sm divide-y divide-gray-200">
-                                    <thead class="bg-gray-100 text-gray-800">
-                                        <tr>
-                                            <th class="px-2 py-1 text-center w-12">#</th>
-                                            <th class="px-2 py-1 text-center">Código</th>
-                                            <th class="px-2 py-1 text-center">Tipo</th>
-                                            <th class="px-2 py-1 text-center">Ø / Long.</th>
-                                            <th class="px-2 py-1 text-center">Peso</th>
-                                            <th class="px-2 py-1 text-center">Estado</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody class="divide-y divide-gray-100">
-                                        @foreach ($ubicacion->productos as $idx => $producto)
-                                            <tr x-show="(asignados['{{ $producto->codigo }}']?.toString() || '{{ $ubicacion->id }}') === nombreUbicacion.toString()"
-                                                :class="{
-                                                    'bg-green-50': productoEscaneado('{{ $producto->codigo }}'),
-                                                    'ring-2 ring-green-500 shadow-md scale-[1.01] transition-all duration-300 ease-out': ultimoCodigo === '{{ $producto->codigo }}'
-                                                }">
-                                                <td class="px-2 py-1 text-center">{{ $idx + 1 }}</td>
-                                                <td class="px-2 py-1 text-xs text-center">{{ $producto->codigo }}</td>
-                                                <td class="px-2 py-1 capitalize text-center">
-                                                    {{ $producto->productoBase->tipo }}
-                                                </td>
-                                                <td class="px-2 py-1 text-center">
-                                                    @if ($producto->productoBase->tipo === 'encarretado')
-                                                        Ø {{ $producto->productoBase->diametro }} mm
-                                                    @else
-                                                        Ø {{ $producto->productoBase->diametro }} mm /
-                                                        {{ $producto->productoBase->longitud }} m
-                                                    @endif
-                                                </td>
-                                                <td class="px-2 py-1 text-center">
-                                                    {{ number_format($producto->peso_inicial, 1, ',', '.') }}
-                                                </td>
-                                                <td class="px-2 py-1 text-center">
-                                                    <span x-show="productoEscaneado('{{ $producto->codigo }}')"
-                                                        class="inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold bg-green-100 text-green-800">OK</span>
-                                                    <span x-show="!productoEscaneado('{{ $producto->codigo }}')"
-                                                        class="inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold bg-yellow-100 text-yellow-800">Pend.</span>
-                                                </td>
+                                <!-- Tabla de productos (visible >= sm) -->
+                                <div class="hidden sm:block overflow-x-auto">
+                                    <table class="min-w-full text-xs md:text-sm divide-y divide-gray-200">
+                                        <thead class="bg-gray-100 text-gray-800">
+                                            <tr>
+                                                <th class="px-2 py-1 text-center w-12">#</th>
+                                                <th class="px-2 py-1 text-center">Código</th>
+                                                <th class="px-2 py-1 text-center">Tipo</th>
+                                                <th class="px-2 py-1 text-center">Ø / Long.</th>
+                                                <th class="px-2 py-1 text-center">Peso</th>
+                                                <th class="px-2 py-1 text-center">Estado</th>
                                             </tr>
-                                        @endforeach
+                                        </thead>
+                                        <tbody class="divide-y divide-gray-100">
+                                            @foreach ($ubicacion->productos as $idx => $producto)
+                                                <tr x-show="(asignados['{{ $producto->codigo }}']?.toString() || '{{ $ubicacion->id }}') === nombreUbicacion.toString()"
+                                                    :class="{
+                                                        'bg-green-50': productoEscaneado('{{ $producto->codigo }}'),
+                                                        'ring-2 ring-green-500 shadow-md scale-[1.01] transition-all duration-300 ease-out': ultimoCodigo === '{{ $producto->codigo }}'
+                                                    }">
+                                                    <td class="px-2 py-1 text-center">{{ $idx + 1 }}</td>
+                                                    <td class="px-2 py-1 text-xs text-center">{{ $producto->codigo }}
+                                                    </td>
+                                                    <td class="px-2 py-1 capitalize text-center">
+                                                        {{ $producto->productoBase->tipo }}
+                                                    </td>
+                                                    <td class="px-2 py-1 text-center">
+                                                        @if ($producto->productoBase->tipo === 'encarretado')
+                                                            Ø {{ $producto->productoBase->diametro }} mm
+                                                        @else
+                                                            Ø {{ $producto->productoBase->diametro }} mm /
+                                                            {{ $producto->productoBase->longitud }} m
+                                                        @endif
+                                                    </td>
+                                                    <td class="px-2 py-1 text-center">
+                                                        {{ number_format($producto->peso_inicial, 1, ',', '.') }}
+                                                    </td>
+                                                    <td class="px-2 py-1 text-center">
+                                                        <span x-show="productoEscaneado('{{ $producto->codigo }}')"
+                                                            class="inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold bg-green-100 text-green-800">OK</span>
+                                                        <span x-show="!productoEscaneado('{{ $producto->codigo }}')"
+                                                            class="inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold bg-yellow-100 text-yellow-800">Pend.</span>
+                                                    </td>
+                                                </tr>
+                                            @endforeach
 
-                                        <!-- Filas dinámicas añadidas tras reasignar -->
-                                        <template x-for="codigo in productosAnadidos()" :key="codigo">
-                                            <tr class="bg-white">
-                                                <td class="px-2 py-1 text-center">+</td>
-                                                <td class="px-2 py-1 text-xs text-center" x-text="codigo"></td>
-                                                <td class="px-2 py-1 capitalize text-center"
-                                                    x-text="window.detallesProductos[codigo]?.tipo || '—'"></td>
-                                                <td class="px-2 py-1 text-center">
-                                                    <template
-                                                        x-if="(window.detallesProductos[codigo]?.tipo || '') === 'encarretado'">
-                                                        <span>
-                                                            Ø <span
-                                                                x-text="window.detallesProductos[codigo]?.diametro ?? '—'"></span>
-                                                            mm
-                                                        </span>
-                                                    </template>
+                                            <!-- Filas dinámicas añadidas tras reasignar -->
+                                            <template x-for="codigo in productosAnadidos()" :key="codigo">
+                                                <tr class="bg-white">
+                                                    <td class="px-2 py-1 text-center">+</td>
+                                                    <td class="px-2 py-1 text-xs text-center" x-text="codigo"></td>
+                                                    <td class="px-2 py-1 capitalize text-center"
+                                                        x-text="window.detallesProductos[codigo]?.tipo || '—'"></td>
+                                                    <td class="px-2 py-1 text-center">
+                                                        <template
+                                                            x-if="(window.detallesProductos[codigo]?.tipo || '') === 'encarretado'">
+                                                            <span>
+                                                                Ø <span
+                                                                    x-text="window.detallesProductos[codigo]?.diametro ?? '—'"></span>
+                                                                mm
+                                                            </span>
+                                                        </template>
+                                                        <template
+                                                            x-if="(window.detallesProductos[codigo]?.tipo || '') !== 'encarretado'">
+                                                            <span>
+                                                                Ø <span
+                                                                    x-text="window.detallesProductos[codigo]?.diametro ?? '—'"></span>
+                                                                mm /
+                                                                <span
+                                                                    x-text="window.detallesProductos[codigo]?.longitud ?? '—'"></span>
+                                                                m
+                                                            </span>
+                                                        </template>
+                                                    </td>
+                                                    <td class="px-2 py-1 text-center">
+                                                        <span
+                                                            x-text="(window.detallesProductos[codigo]?.peso_inicial ?? 0).toLocaleString('es-ES', {minimumFractionDigits:1, maximumFractionDigits:1})"></span>
+                                                    </td>
+                                                    <td class="px-2 py-1 text-center">
+                                                        <span
+                                                            class="inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold bg-green-100 text-green-800">OK</span>
+                                                    </td>
+                                                </tr>
+                                            </template>
+                                        </tbody>
+                                    </table>
+                                </div>
+
+                                <!-- Vista mobile (cards) -->
+                                <div class="sm:hidden divide-y divide-gray-100 text-xs">
+                                    @foreach ($ubicacion->productos as $producto)
+                                        <div x-show="(asignados['{{ $producto->codigo }}']?.toString() || '{{ $ubicacion->id }}') === nombreUbicacion.toString()"
+                                            class="flex justify-between items-center py-2 px-3"
+                                            :class="productoEscaneado('{{ $producto->codigo }}') ? 'bg-green-50' : ''">
+                                            <div class="flex-1">
+                                                <p class="font-semibold">{{ $producto->codigo }}</p>
+                                                <p class="text-gray-600">{{ $producto->nombre }}</p>
+                                                <p class="text-gray-500">
+                                                    {{ ucfirst($producto->productoBase->tipo) }} —
+                                                    Ø {{ $producto->productoBase->diametro }} mm
+                                                    @if ($producto->productoBase->tipo !== 'encarretado')
+                                                        / {{ $producto->productoBase->longitud }} m
+                                                    @endif
+                                                </p>
+                                                <p class="text-gray-500">
+                                                    {{ number_format($producto->peso_inicial, 1, ',', '.') }} kg
+                                                </p>
+                                            </div>
+                                            <div class="text-right ml-2">
+                                                <span x-cloak x-show="productoEscaneado('{{ $producto->codigo }}')"
+                                                    class="inline-block px-2 py-0.5 rounded-full bg-green-100 text-green-800 text-[10px] font-semibold">OK</span>
+                                                <span x-show="!productoEscaneado('{{ $producto->codigo }}')"
+                                                    class="inline-block px-2 py-0.5 rounded-full bg-yellow-100 text-yellow-800 text-[10px] font-semibold">Pend.</span>
+                                            </div>
+                                        </div>
+                                    @endforeach
+
+                                    <!-- Cards dinámicas añadidas tras reasignar (móvil) -->
+                                    <template x-for="codigo in productosAnadidos()" :key="codigo">
+                                        <div class="flex justify-between items-center py-2 px-3 bg-green-50">
+                                            <div class="flex-1">
+                                                <p class="font-semibold" x-text="codigo"></p>
+                                                <p class="text-gray-600"
+                                                    x-text="window.detallesProductos[codigo]?.nombre || ''"></p>
+                                                <p class="text-gray-500">
+                                                    <span
+                                                        x-text="(window.detallesProductos[codigo]?.tipo || '—').charAt(0).toUpperCase() + (window.detallesProductos[codigo]?.tipo || '—').slice(1)"></span>
+                                                    —
+                                                    Ø <span
+                                                        x-text="window.detallesProductos[codigo]?.diametro ?? '—'"></span>
+                                                    mm
                                                     <template
                                                         x-if="(window.detallesProductos[codigo]?.tipo || '') !== 'encarretado'">
-                                                        <span>
-                                                            Ø <span
-                                                                x-text="window.detallesProductos[codigo]?.diametro ?? '—'"></span>
-                                                            mm /
-                                                            <span
+                                                        <span>/ <span
                                                                 x-text="window.detallesProductos[codigo]?.longitud ?? '—'"></span>
-                                                            m
-                                                        </span>
+                                                            m</span>
                                                     </template>
-                                                </td>
-                                                <td class="px-2 py-1 text-center">
+                                                </p>
+                                                <p class="text-gray-500">
                                                     <span
                                                         x-text="(window.detallesProductos[codigo]?.peso_inicial ?? 0).toLocaleString('es-ES', {minimumFractionDigits:1, maximumFractionDigits:1})"></span>
-                                                </td>
-                                                <td class="px-2 py-1 text-center">
-                                                    <span
-                                                        class="inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold bg-green-100 text-green-800">OK</span>
-                                                </td>
-                                            </tr>
-                                        </template>
-                                    </tbody>
-                                </table>
-                            </div>
-
-                            <!-- Vista mobile (cards) -->
-                            <div class="sm:hidden divide-y divide-gray-100 text-xs">
-                                @foreach ($ubicacion->productos as $producto)
-                                    <div x-show="(asignados['{{ $producto->codigo }}']?.toString() || '{{ $ubicacion->id }}') === nombreUbicacion.toString()"
-                                        class="flex justify-between items-center py-2 px-3"
-                                        :class="productoEscaneado('{{ $producto->codigo }}') ? 'bg-green-50' : ''">
-                                        <div class="flex-1">
-                                            <p class="font-semibold">{{ $producto->codigo }}</p>
-                                            <p class="text-gray-600">{{ $producto->nombre }}</p>
-                                            <p class="text-gray-500">
-                                                {{ ucfirst($producto->productoBase->tipo) }} —
-                                                Ø {{ $producto->productoBase->diametro }} mm
-                                                @if ($producto->productoBase->tipo !== 'encarretado')
-                                                    / {{ $producto->productoBase->longitud }} m
-                                                @endif
-                                            </p>
-                                            <p class="text-gray-500">
-                                                {{ number_format($producto->peso_inicial, 1, ',', '.') }} kg
-                                            </p>
-                                        </div>
-                                        <div class="text-right ml-2">
-                                            <span x-cloak x-show="productoEscaneado('{{ $producto->codigo }}')"
-                                                class="inline-block px-2 py-0.5 rounded-full bg-green-100 text-green-800 text-[10px] font-semibold">OK</span>
-                                            <span x-show="!productoEscaneado('{{ $producto->codigo }}')"
-                                                class="inline-block px-2 py-0.5 rounded-full bg-yellow-100 text-yellow-800 text-[10px] font-semibold">Pend.</span>
-                                        </div>
-                                    </div>
-                                @endforeach
-
-                                <!-- Cards dinámicas añadidas tras reasignar (móvil) -->
-                                <template x-for="codigo in productosAnadidos()" :key="codigo">
-                                    <div class="flex justify-between items-center py-2 px-3 bg-green-50">
-                                        <div class="flex-1">
-                                            <p class="font-semibold" x-text="codigo"></p>
-                                            <p class="text-gray-600"
-                                                x-text="window.detallesProductos[codigo]?.nombre || ''"></p>
-                                            <p class="text-gray-500">
-                                                <span
-                                                    x-text="(window.detallesProductos[codigo]?.tipo || '—').charAt(0).toUpperCase() + (window.detallesProductos[codigo]?.tipo || '—').slice(1)"></span>
-                                                —
-                                                Ø <span
-                                                    x-text="window.detallesProductos[codigo]?.diametro ?? '—'"></span>
-                                                mm
-                                                <template
-                                                    x-if="(window.detallesProductos[codigo]?.tipo || '') !== 'encarretado'">
-                                                    <span>/ <span
-                                                            x-text="window.detallesProductos[codigo]?.longitud ?? '—'"></span>
-                                                        m</span>
-                                                </template>
-                                            </p>
-                                            <p class="text-gray-500">
+                                                    kg
+                                                </p>
+                                            </div>
+                                            <div class="text-right ml-2">
                                                 <span
                                                     x-text="(window.detallesProductos[codigo]?.peso_inicial ?? 0).toLocaleString('es-ES', {minimumFractionDigits:1, maximumFractionDigits:1})"></span>
                                                 kg
@@ -548,30 +560,58 @@ Inesperados: ${inesperados.join(', ') || '—'}
                                 </template>
                             </div>
 
-                            <!-- Productos inesperados -->
+                           <!-- Productos inesperados -->
                             <div x-cloak class="px-4 py-3" x-show="sospechosos.length">
-                                <h3 class="text-sm font-semibold text-red-600 mb-1">Productos inesperados:</h3>
-                                <ul class="list-disc list-inside text-xs text-red-700 space-y-0.5">
-                                    <template x-for="codigo in sospechosos" :key="codigo">
-                                        <li class="flex items-center justify-between">
-                                            <div>
-                                                <span x-text="codigo"></span>
-                                                <template x-if="asignados[codigo]">
-                                                    <span class="text-xs text-gray-500">
-                                                        → asignado a ubicación con ID =
-                                                        <strong x-text="asignados[codigo]"></strong>
-                                                    </span>
-                                                </template>
+                            <h3 class="text-sm font-semibold text-red-600 mb-1">Inesperado:</h3>
+
+                            <ul class="space-y-2">
+                                <template x-for="(codigo, idx) in sospechosos" :key="codigo">
+                                    <li
+                                        class="grid grid-cols-[1fr_auto] items-center gap-3 rounded-lg border px-3 py-2 shadow-sm"
+                                        :class="idx % 2 === 0 ? 'bg-white border-gray-200' : 'bg-gray-50 border-gray-200'"
+                                        x-data="{ ubic: null, hasId: false, misma: false }"
+                                        x-init="
+                                        ubic  = (asignados && Object.prototype.hasOwnProperty.call(asignados, codigo)) ? asignados[codigo] : null;
+                                        hasId = (ubic !== null && ubic !== '' && ubic !== undefined);
+                                        misma = (hasId && ubic.toString() === nombreUbicacion.toString());
+                                        "
+                                    >
+                                        <!-- IZQUIERDA: código + estado -->
+                                        <div class="min-w-0 flex gap-1 items-center">
+                                            <div class="flex items-center gap-2">
+                                                <!-- Punto de estado: rojo = sin ubicación, naranja = con ubicación -->
+                                                <span class="inline-block h-2.5 w-2.5 rounded-full"
+                                                    :class="hasId ? 'bg-amber-500/80' : 'bg-red-500/80'"></span>
+
+                                                <span class="text-xs sm:text-base break-all font-sans" :class="hasId ? 'text-amber-500' : 'text-red-800'" x-text="codigo"></span>
+
+                                                <!-- Subtexto de estado (siempre visible en táctil) -->
+                                                <div class="inline-flex items-center px-1.5 py-0.5 text-sm sm:text-base rounded bg-gray-200 italic">
+                                                    <span class="text-gray-900"   x-show="hasId && !misma">Ubicación: <span x-text="ubic"></span></span>
+                                                    <span class="text-gray-900" x-show="!hasId">Sin registrar</span>
+                                                </div>
+
                                             </div>
-                                            <button
-                                                class="ml-2 bg-blue-600 hover:bg-blue-700 text-white text-xs px-2 py-1 rounded"
-                                                @click="reasignarProducto(codigo)">
-                                                Asignar a esta ubicación
-                                            </button>
-                                        </li>
-                                    </template>
-                                </ul>
+                                        </div>
+
+                                        <!-- DERECHA: acción -->
+                                        <button
+                                            class="bg-blue-600 text-white px-3 py-1.5 rounded-md text-xs sm:text-base w-24 sm:w-auto"
+                                            x-show="hasId && !misma"
+                                            @click="reasignarProducto(codigo)"
+                                        >
+                                            Asignar aquí
+                                        </button>
+
+                                        <span class="text-gray-800 px-3 py-1.5 rounded-md text-xs sm:text-base w-24 sm:w-auto"    x-show="!hasId">No asignable</span>
+                                        </div>
+                                    </li>
+                                </template>
+                            </ul>
+
+
                             </div>
+
 
                             <!-- Botones -->
                             <div class="flex justify-end gap-3 px-4 py-4">
@@ -584,6 +624,7 @@ Inesperados: ${inesperados.join(', ') || '—'}
                                     Reportar errores
                                 </button>
                             </div>
+                            </div>
 
                         </div>
                     @endforeach
@@ -592,7 +633,7 @@ Inesperados: ${inesperados.join(', ') || '—'}
         @endforeach
 
         <div
-            class="mt-10 flex flex-col sm:flex-row items-stretch sm:items-center justify-start sm:justify-between gap-4">
+            class="mt-10 flex flex-col sm:flex-row items-stretch sm:items-center justify-start sm:justify-between gap-4 hidden">
             <button onclick="limpiarTodos()"
                 class="bg-red-600 hover:bg-red-700 text-white font-semibold px-4 py-2 rounded shadow text-center">
                 Limpiar TODOS los escaneos
@@ -638,4 +679,13 @@ Inesperados: ${inesperados.join(', ') || '—'}
             });
         };
     </script>
+
+    <style>
+        .altura-c {
+            height: calc(100vh - 90px);
+        }
+    </style>
+    
+    <script src="{{ asset('js/inventario/inventario.js') }}"></script>
+
 </x-app-layout>

@@ -12,7 +12,6 @@
                 📦 Inventario
             </a>
 
-
             <div x-show="openModal" x-transition
                 class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
                 <div @click.away="openModal = false" class="bg-white w-full max-w-lg p-6 rounded-xl shadow-xl mx-4">
@@ -24,7 +23,8 @@
                         @csrf
 
                         {{-- Campo oculto con el valor de la nave --}}
-                        <input type="hidden" name="almacen" value="0A">
+                        <input type="hidden" name="almacen" value="{{ $obraActualId }}">
+
 
                         {{-- Sector --}}
                         <x-tabla.select name="sector" label="📍 Sector" :options="collect(range(1, 20))

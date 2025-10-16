@@ -7,6 +7,8 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <meta name="google" content="notranslate">
 
+
+
     <title>{{ $title ?? config('app.name') }}</title>
 
     <!-- ✅ Preconexión a fuentes (mejora FCP) -->
@@ -49,13 +51,13 @@
         }
     </style>
     <style>
-        /* 📏 Ajuste global del tamaño base */
-        html {
-            font-size: 70%;
-            /* Reduce todo proporcionalmente, sin romper layout */
+        /* Escala global solo en pantallas grandes */
+        @media (min-width: 768px) {
+            html {
+                font-size: 70%;
+            }
         }
 
-        /* 🔧 Asegura que no haya márgenes ni overflow */
         body {
             margin: 0;
             padding: 0;
@@ -63,16 +65,15 @@
             height: 100%;
             overflow-x: hidden;
             background-color: #f9fafb;
-            /* opcional: color de fondo base */
         }
 
-        /* 🪶 Opcional: suaviza textos y mantiene proporciones */
         * {
             box-sizing: border-box;
             -webkit-font-smoothing: antialiased;
             text-rendering: optimizeLegibility;
         }
     </style>
+
 
 </head>
 
@@ -97,7 +98,7 @@
         </main>
     </div>
     @stack('scripts')
-
+<script src="https://cdn.tailwindcss.com"></script>
 </body>
 
 </html>

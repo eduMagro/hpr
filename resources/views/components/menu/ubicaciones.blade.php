@@ -14,15 +14,17 @@
         'hoverLite' => 'hover:bg-blue-50',
     ];
 
-    function rutaNave($nombre)
+    // Función que devuelve la ruta hacia el controlador index con el ID de la obra
+    function rutaNave($obra)
     {
-        return route('ubicaciones.ver' . Str::ucfirst(Str::slug($nombre)));
+        return route('ubicaciones.index', ['obra' => $obra->id]);
     }
 @endphp
 
 @if ($obras->isNotEmpty())
     <div class="w-full" x-data="{ open: false }">
-        {{-- Menú móvil --}}
+
+        {{-- ===== Menú móvil ===== --}}
         <div class="sm:hidden relative mb-4">
             <button @click="open = !open"
                 class="w-1/2 {{ $colores['bg'] }} {{ $colores['bgHover'] }} {{ $colores['txt'] }} font-semibold px-4 py-2 shadow transition">
@@ -35,7 +37,7 @@
                 @foreach ($obras as $obra)
                     @php
                         $active = $obra->id == $obraActualId;
-                        $ruta = rutaNave($obra->obra);
+                        $ruta = rutaNave($obra);
                     @endphp
                     <a href="{{ $ruta }}"
                         class="relative block px-2 py-3 text-sm font-medium transition
@@ -48,12 +50,12 @@
             </div>
         </div>
 
-        {{-- Menú escritorio --}}
+        {{-- ===== Menú escritorio ===== --}}
         <div class="hidden sm:flex w-full mb-4">
             @foreach ($obras as $obra)
                 @php
                     $active = $obra->id == $obraActualId;
-                    $ruta = rutaNave($obra->obra);
+                    $ruta = rutaNave($obra);
                 @endphp
                 <a href="{{ $ruta }}"
                     class="relative flex-1 text-center px-4 py-2 font-semibold transition
