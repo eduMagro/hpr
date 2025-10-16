@@ -26,13 +26,34 @@ class PaqueteController extends Controller
             $query->where('id', (int) $request->id);
         }
 
-        /* ── Filtro por código limpio de planilla ──────── */
+        /* ── Filtro por código de planilla ──────── */
         if ($request->filled('planilla')) {
-            $input = $request->planilla;
+            $input = trim($request->planilla);
+
             $query->whereHas('planilla', function ($q) use ($input) {
-                $q->where('codigo', 'like', "%{$input}%");
+
+                // Caso 1: formato completo tipo 2025-4512  → se normaliza a 2025-004512
+                if (preg_match('/^(\d{4})-(\d{1,6})$/', $input, $m)) {
+                    $anio = $m[1];
+                    $num  = str_pad($m[2], 6, '0', STR_PAD_LEFT);
+                    $codigoFormateado = "{$anio}-{$num}";
+                    $q->where('planillas.codigo', 'like', "%{$codigoFormateado}%");
+                    return;
+                }
+
+                // Caso 2: solo número final (ej. "4512") → busca cualquier código que lo contenga
+                if (preg_match('/^\d{1,6}$/', $input)) {
+                    $q->where('planillas.codigo', 'like', "%{$input}%");
+                    return;
+                }
+
+                // Caso general: texto libre
+                $q->where('planillas.codigo', 'like', "%{$input}%");
             });
         }
+
+
+
         /* ── Nave (obra) ───────────────────────────── */
         if ($request->filled('nave')) {
             $texto = $request->nave;
