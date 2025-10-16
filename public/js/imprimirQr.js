@@ -96,8 +96,8 @@ function imprimirQR(id, nombre, descripcion, codigo) {
     flex-wrap:nowrap;
 }
 .qr-card{
-    width:350px;   /* fijo */
-    height:500px;  /* fijo */
+    width:300px;   /* fijo */
+    height:440px;  /* fijo */
     display:flex;
     flex-direction:column;
     align-items:center;
