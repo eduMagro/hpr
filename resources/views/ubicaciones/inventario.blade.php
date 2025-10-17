@@ -19,6 +19,8 @@
     /* Mapas globales base (no reactivos) */
     window.productosAsignados = @json(\App\Models\Producto::whereNotNull('ubicacion_id')->pluck('ubicacion_id', 'codigo'));
     window.detallesProductos = @json($detalles);
+
+    window.productosEstados   = @json(\App\Models\Producto::pluck('estado','codigo'));
 </script>
 
 <script>
@@ -71,6 +73,8 @@
                 this.asignados = {
                     ...(window.productosAsignados || {})
                 };
+
+                this.estados   = { ...(window.productosEstados   || {}) };
 
                 /* Escuchar reasignaciones globales */
                 window.addEventListener('producto-reasignado', (e) => {
@@ -567,45 +571,56 @@ Inesperados: ${inesperados.join(', ') || '—'}
                             <ul class="space-y-2">
                                 <template x-for="(codigo, idx) in sospechosos" :key="codigo">
                                     <li
-                                        class="grid grid-cols-[1fr_auto] items-center gap-3 rounded-lg border px-3 py-2 shadow-sm"
-                                        :class="idx % 2 === 0 ? 'bg-white border-gray-200' : 'bg-gray-50 border-gray-200'"
-                                        x-data="{ ubic: null, hasId: false, misma: false }"
-                                        x-init="
-                                        ubic  = (asignados && Object.prototype.hasOwnProperty.call(asignados, codigo)) ? asignados[codigo] : null;
-                                        hasId = (ubic !== null && ubic !== '' && ubic !== undefined);
-                                        misma = (hasId && ubic.toString() === nombreUbicacion.toString());
-                                        "
-                                    >
-                                        <!-- IZQUIERDA: código + estado -->
-                                        <div class="min-w-0 flex gap-1 items-center">
-                                            <div class="flex items-center gap-2">
-                                                <!-- Punto de estado: rojo = sin ubicación, naranja = con ubicación -->
-                                                <span class="inline-block h-2.5 w-2.5 rounded-full"
-                                                    :class="hasId ? 'bg-amber-500/80' : 'bg-red-500/80'"></span>
+  class="grid grid-cols-[1fr_auto] items-center gap-3 rounded-lg border px-3 py-2 shadow-sm"
+  :class="idx % 2 === 0 ? 'bg-white border-gray-200' : 'bg-gray-50 border-gray-200'"
+  x-data="{ ubic: null, hasId: false, misma: false, estado: null, esConsumido: false }"
+  x-init="
+    ubic  = (asignados && Object.prototype.hasOwnProperty.call(asignados, codigo)) ? asignados[codigo] : null;
+    hasId = (ubic !== null && ubic !== '' && ubic !== undefined);
+    misma = (hasId && ubic.toString() === nombreUbicacion.toString());
+    estado = (estados && Object.prototype.hasOwnProperty.call(estados, codigo)) ? (estados[codigo] ?? null) : null;
+    esConsumido = (estado === 'consumido');
+  "
+>
+  <!-- IZQUIERDA: código + estado -->
+  <div class="min-w-0 flex gap-1 items-center">
+    <div class="flex items-center gap-2">
+      <!-- Punto de estado -->
+      <span class="inline-block h-2.5 w-2.5 rounded-full"
+        :class="esConsumido ? 'bg-blue-500/80' : (hasId ? 'bg-amber-500/80' : 'bg-red-500/80')"></span>
 
-                                                <span class="text-xs sm:text-base break-all font-sans" :class="hasId ? 'text-amber-500' : 'text-red-800'" x-text="codigo"></span>
+      <!-- Código -->
+      <span class="text-xs sm:text-base break-all font-sans"
+        :class="esConsumido ? 'text-blue-600' : (hasId ? 'text-amber-500' : 'text-red-800')"
+        x-text="codigo"></span>
 
-                                                <!-- Subtexto de estado (siempre visible en táctil) -->
-                                                <div class="inline-flex items-center px-1.5 py-0.5 text-sm sm:text-base rounded bg-gray-200 italic">
-                                                    <span class="text-gray-900"   x-show="hasId && !misma">Ubicación: <span x-text="ubic"></span></span>
-                                                    <span class="text-gray-900" x-show="!hasId">Sin registrar</span>
-                                                </div>
+      <!-- Subtexto/Chip -->
+      <div class="inline-flex items-center px-1.5 py-0.5 text-sm sm:text-base rounded bg-gray-200 italic">
+        <span class="text-gray-900" x-show="esConsumido">Consumido</span>
+        <span class="text-gray-900" x-show="!esConsumido && hasId && !misma">
+          Ubicación: <span x-text="ubic"></span>
+        </span>
+        <span class="text-gray-900" x-show="!esConsumido && !hasId">Sin registrar</span>
+      </div>
+    </div>
+  </div>
 
-                                            </div>
-                                        </div>
+  <!-- DERECHA: acción -->
+  <button
+    class="bg-blue-600 text-white px-3 py-1.5 rounded-md text-xs sm:text-base w-24 sm:w-auto"
+    x-show="!esConsumido && hasId && !misma"
+    @click="reasignarProducto(codigo)"
+  >
+    Asignar aquí
+  </button>
 
-                                        <!-- DERECHA: acción -->
-                                        <button
-                                            class="bg-blue-600 text-white px-3 py-1.5 rounded-md text-xs sm:text-base w-24 sm:w-auto"
-                                            x-show="hasId && !misma"
-                                            @click="reasignarProducto(codigo)"
-                                        >
-                                            Asignar aquí
-                                        </button>
+  <!-- Sólo si no es consumido -->
+  <span class="text-gray-800 px-3 py-1.5 rounded-md text-xs sm:text-base w-24 sm:w-auto"
+        x-show="!esConsumido && !hasId">
+    No asignable
+  </span>
+</li>
 
-                                        <span class="text-gray-800 px-3 py-1.5 rounded-md text-xs sm:text-base w-24 sm:w-auto"    x-show="!hasId">No asignable</span>
-                                        </div>
-                                    </li>
                                 </template>
                             </ul>
 
