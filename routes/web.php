@@ -381,6 +381,12 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
         return response()->json(['ok' => true]);
     });
     Route::post('/proteger/{seccion}', [ClaveSeccionController::class, 'verificar'])->name('proteger.seccion');
+
+
+
+    // === PLANILLAS 0 ===
+    Route::get('/produccion/planillas0', [App\Http\Controllers\ProduccionController::class, 'verPlanillas0'])
+        ->name('produccion.verPlanillas0');
 });
 
 

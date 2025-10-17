@@ -1509,4 +1509,16 @@ class ProduccionController extends Controller
             return null;
         }
     }
+
+    public function verPlanillas0(Request $request)
+    {
+        $maquinas = Maquina::query()
+            ->where('tipo', '!=', 'grua')
+            ->orderBy('nombre')
+            ->get(['id', 'nombre', 'codigo', 'estado', 'tipo', 'tipo_material', 'diametro_min', 'diametro_max', 'peso_min', 'peso_max']);
+
+
+        // $planillas
+        return view('produccion.planillas0', compact('maquinas'));
+    }
 }
