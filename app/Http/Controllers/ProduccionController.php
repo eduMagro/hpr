@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Models\Maquina;
 use App\Models\Planilla;
+use App\Models\Localizacion;
 use App\Models\OrdenPlanilla;
 use App\Models\Elemento;
 use App\Models\Empresa;
@@ -1517,8 +1518,19 @@ class ProduccionController extends Controller
             ->orderBy('nombre')
             ->get(['id', 'nombre', 'codigo', 'estado', 'tipo', 'tipo_material', 'diametro_min', 'diametro_max', 'peso_min', 'peso_max']);
 
+        $localizacionMaquinas = Localizacion::query()
+            ->get(['maquina_id', 'nave_id']);
 
-        // $planillas
-        return view('produccion.planillas0', compact('maquinas'));
+        $ordenPlanillas = OrdenPlanilla::query()
+            ->orderBy('posicion')
+            ->get(['planilla_id', 'maquina_id', 'posicion']);
+
+        $planillaIds = $ordenPlanillas->pluck('planilla_id')->unique();
+
+        $planillas = Planilla::query()
+            ->whereIn('id', $planillaIds)
+            ->get();
+
+        return view('produccion.planillas0', compact('maquinas', 'localizacionMaquinas', 'ordenPlanillas', 'planillas'));
     }
 }

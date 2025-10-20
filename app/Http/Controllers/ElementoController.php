@@ -1097,4 +1097,17 @@ class ElementoController extends Controller
         $elemento->delete();
         return redirect()->route('elementos.index')->with('success', 'Elemento eliminado exitosamente.');
     }
+
+    public function filtrar(Request $request)
+    {
+        $planilla_id = $request->input('planilla_id');
+        $maquina_id = $request->input('maquina_id');
+
+        $resultado = Elemento::query()
+            ->where('planilla_id', $planilla_id)
+            ->where('maquina_id', $maquina_id)
+            ->get();
+
+        return response()->json($resultado);
+    }
 }
