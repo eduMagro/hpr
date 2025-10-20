@@ -386,8 +386,8 @@ class PaqueteController extends Controller
             }
 
             // 12) Retirar de la cola de ESTA máquina si ya no quedan etiquetas en ESTA máquina
-            (new PlanillaColaService)
-                ->retirarPlanillaDeColaSiNoQuedanEtiquetasEnMaquina($planilla, $maquina);
+            app(PlanillaColaService::class)
+                ->retirarSiPlanillaCompletamentePaquetizadaYCompletada($planilla, $maquina);
 
             // // 13) Movimiento solo si tiene carro
             // if ($maquina->tiene_carro) {

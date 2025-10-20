@@ -7,6 +7,11 @@
 @php
     $safeSubId = str_replace('.', '-', $etiqueta->etiqueta_sub_id);
     $estado = strtolower($etiqueta->estado ?? 'pendiente');
+
+    if (in_array($estado, ['fabricada', 'completada', 'ensamblada', 'soldada']) && $etiqueta->paquete_id) {
+        $estado = 'en-paquete';
+    }
+
 @endphp
 
 <style>
@@ -15,18 +20,19 @@
         --bg-estado: #e5e7eb;
     }
 
+    /* blanco */
     .proceso.estado-pendiente {
         --bg-estado: #ffffff;
     }
 
-    /* blanco */
+    /* amarillo */
     .proceso.estado-fabricando,
     .proceso.estado-ensamblando,
     .proceso.estado-soldando {
         --bg-estado: #facc15;
     }
 
-    /* amarillo */
+    /* verde */
     .proceso.estado-fabricada,
     .proceso.estado-completada,
     .proceso.estado-ensamblada,
@@ -34,7 +40,10 @@
         --bg-estado: #22c55e;
     }
 
-    /* verde */
+    /* rojo */
+    .proceso.estado-en-paquete {
+        --bg-estado: #e3e4FA;
+    }
 
     /* === Contenedor general === */
     .etiqueta-wrapper {

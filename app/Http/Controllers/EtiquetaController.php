@@ -8,6 +8,7 @@ use App\Models\Planilla;
 use App\Models\Paquete;
 use App\Models\OrdenPlanilla;
 use App\Models\Etiqueta;
+use App\Models\Producto;
 use App\Models\ProductoBase;
 use App\Models\Ubicacion;
 use App\Models\Movimiento;
@@ -231,23 +232,47 @@ class EtiquetaController extends Controller
             ], 400);
         }
 
-        $diametro = $request->input('diametro', $elemento->diametro);
+        // ⚙️ Convertimos el diámetro siempre a float
+        $diametro = floatval($request->input('diametro', $elemento->diametro));
+
+        // 🔹 Longitudes disponibles de barras en el catálogo base
         $longitudesDisponibles = ProductoBase::query()
-            ->where('diametro', $diametro)
             ->where('tipo', 'barra')
+            ->whereRaw('ABS(diametro - ?) < 0.01', [$diametro]) // tolerancia
             ->distinct()
-            ->pluck('longitud') // ya viene en metros
+            ->pluck('longitud')
             ->unique()
             ->sort()
             ->values();
 
-
-        if (empty($longitudesDisponibles)) {
+        if ($longitudesDisponibles->isEmpty()) {
             return response()->json([
                 'message' => "No hay longitudes disponibles para Ø{$diametro} mm",
             ], 400);
         }
 
+        // 1️⃣ Obtener ID de la máquina SL28
+        $maquinaSL28 = Maquina::where('codigo', 'SL28')->first();
+        $maquinaId = optional($maquinaSL28)->id;
+
+        // 2️⃣ Buscar productos cargados en esa máquina de ese diámetro y tipo
+        $longitudesEnMaquina = collect();
+
+        if ($maquinaId) {
+            $longitudesEnMaquina = Producto::with('productoBase')
+                ->where('maquina_id', $maquinaId)
+                ->get()
+                ->filter(
+                    fn($p) =>
+                    $p->productoBase?->tipo === 'barra' &&
+                        abs(floatval($p->productoBase?->diametro) - $diametro) < 0.01
+                )
+                ->pluck('productoBase.longitud')
+                ->unique()
+                ->values();
+        }
+
+        // 🧮 Cálculo del patrón
         $longitudElementoM = $elemento->longitud / 100;
         if ($longitudElementoM <= 0) {
             return response()->json([
@@ -268,6 +293,11 @@ class EtiquetaController extends Controller
                 ? implode(' + ', array_fill(0, $porBarra, number_format($elemento->longitud, 2))) . " = {$porBarra} piezas"
                 : "No caben piezas";
 
+            // 3️⃣ ¿Está disponible en la máquina SL28?
+            $disponible = $longitudesEnMaquina->contains(function ($l) use ($longitudM) {
+                return abs(floatval($l) - floatval($longitudM)) < 0.01;
+            });
+
             $patrones[] = [
                 'longitud_m'      => $longitudM,
                 'longitud_cm'     => $longitudM * 100,
@@ -275,18 +305,21 @@ class EtiquetaController extends Controller
                 'sobra_cm'        => $sobraCm,
                 'aprovechamiento' => $aprovechamiento,
                 'patron'          => $patron,
+                'disponible_en_maquina' => $disponible,
             ];
         }
 
-        // Generar HTML si lo necesitas para un SweetAlert o modal
+        // 4️⃣ Generar HTML para el modal o alerta
         $html = "<ul class='text-left space-y-4'>";
         foreach ($patrones as $p) {
             $color = $p['aprovechamiento'] >= 98 ? 'text-green-600'
                 : ($p['aprovechamiento'] >= 90 ? 'text-yellow-500' : 'text-red-600');
 
+            $icono = $p['disponible_en_maquina'] ? '✅' : '❌';
+
             $html .= "<li class='leading-snug'>";
             $html .= "<div class='font-bold text-sm text-gray-800'>Elemento {$elemento->longitud} cm</div>";
-            $html .= "<div>📏 <strong>{$p['longitud_m']} m</strong></div>";
+            $html .= "<div>📏 <strong>{$p['longitud_m']} m</strong> $icono</div>";
             $html .= "<div>🧩 <span class='font-semibold text-gray-700'>Patrón:</span> {$p['patron']}</div>";
             $html .= "<div>🪵 <span class='font-semibold text-gray-700'>Sobra:</span> {$p['sobra_cm']} cm</div>";
             $html .= "<div>📈 <span class='font-semibold {$color}'>Aprovechamiento:</span> ";
@@ -301,6 +334,7 @@ class EtiquetaController extends Controller
             'html'     => $html,
         ]);
     }
+
     /**
      * Devuelve un array de IDs de planilla empezando por la actual
      * y continuando con las siguientes en la cola de la MISMA máquina,
@@ -1012,8 +1046,6 @@ class EtiquetaController extends Controller
                   <div class='text-[11px] text-gray-500'>
   k={$p['k']}, esquema: {$p['esquema']}" . (!empty($p['resumen_letras']) ? " ({$p['resumen_letras']})" : "") . "
 </div>
-
-
                 </li>";
                 }
                 $html .= "</ul>";
@@ -1118,7 +1150,14 @@ class EtiquetaController extends Controller
             }
 
             DB::commit();
-            return response()->json(['success' => true, 'resultados' => $resultados]);
+            return response()->json([
+                'success' => true,
+                'estado' => $resultado->etiqueta->estado ?? null,
+                'fecha_inicio' => $resultado->etiqueta->fecha_inicio,
+                'fecha_finalizacion' => $resultado->etiqueta->fecha_finalizacion,
+                'productos_afectados' => $resultado->productosAfectados ?? [],
+                'warnings' => $resultado->warnings ?? [],
+            ]);
         } catch (\Illuminate\Http\Exceptions\HttpResponseException $e) {
             DB::rollBack();
             return $e->getResponse(); // devolvemos la response real de Laravel

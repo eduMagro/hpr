@@ -99,13 +99,26 @@
             @foreach ($productosBaseCompatibles as $productoBase)
                 @php
                     $productoExistente = $maquina->productos->firstWhere('producto_base_id', $productoBase->id);
-                    // Omitir si está consumido
+
+                    // si no hay producto, saltamos los datos
                     if ($productoExistente && $productoExistente->estado === 'consumido') {
                         continue;
                     }
+
                     $pesoStock = $productoExistente->peso_stock ?? 0;
                     $pesoInicial = $productoExistente->peso_inicial ?? 0;
                     $porcentaje = $pesoInicial > 0 ? ($pesoStock / $pesoInicial) * 100 : 0;
+
+                    // inicializamos vacíos por defecto
+                    $codigoPB = $fabricantePB = $coladaPB = $paquetePB = null;
+
+                    if ($productoExistente) {
+                        $codigoPB = $productoExistente->codigo ?? ($productoExistente->codigo_producto ?? null);
+                        $fabricantePB =
+                            $productoExistente->fabricante->nombre ?? ($productoExistente->fabricante ?? null);
+                        $coladaPB = $productoExistente->n_colada ?? ($productoExistente->colada ?? null);
+                        $paquetePB = $productoExistente->n_paquete ?? ($productoExistente->paquete ?? null);
+                    }
                 @endphp
 
                 <li class="mb-1">
@@ -117,6 +130,7 @@
                                     m</span>
                             @endif
                         </div>
+
 
                         <form method="POST" action="{{ route('movimientos.crear') }}">
                             @csrf
@@ -143,6 +157,7 @@
                     </div>
 
                     @if ($productoExistente)
+                        {{-- Progreso --}}
                         <div id="progreso-container-{{ $productoExistente->id }}"
                             class="relative mt-2 {{ strtoupper($productoBase->tipo) === 'ENCARRETADO' ? 'w-20 h-20' : 'w-full max-w-sm h-4' }} bg-gray-300 overflow-hidden rounded-lg">
                             <div id="progreso-barra-{{ $productoExistente->id }}" class="absolute bottom-0 w-full"
@@ -154,8 +169,32 @@
                                 {{ number_format($pesoInicial, 0, ',', '.') }}
                             </span>
                         </div>
+
+                        {{-- Info técnica --}}
+                        <div class="w-full text-xs text-gray-700 mt-1">
+                            <div class="flex flex-wrap gap-x-4 gap-y-1">
+                                <span>
+                                    <span class="font-semibold">Código:</span>
+                                    {{ $codigoPB ?? '—' }}
+                                </span>
+                                <span>
+                                    <span class="font-semibold">Fabricante:</span>
+                                    {{ $fabricantePB ?? '—' }}
+                                </span>
+                                <span>
+                                    <span class="font-semibold">Colada:</span>
+                                    {{ $coladaPB ?? '—' }}
+                                </span>
+                                <span>
+                                    <span class="font-semibold">Paquete:</span>
+                                    {{ $paquetePB ?? '—' }}
+                                </span>
+                            </div>
+                        </div>
                     @endif
-                    @if (strtoupper($productoBase->tipo) === 'BARRA')
+
+
+                    {{-- @if (strtoupper($productoBase->tipo) === 'BARRA')
                         <label class="flex items-center space-x-2 mt-1">
                             <input type="checkbox" name="activar_longitud" value="{{ $productoBase->longitud }}"
                                 data-diametro="{{ $productoBase->diametro }}"
@@ -163,7 +202,7 @@
                             <span class="text-sm text-gray-700">Usar longitud
                                 {{ $productoBase->longitud }} m</span>
                         </label>
-                    @endif
+                    @endif --}}
 
                     <hr class="my-1">
                 </li>
@@ -178,12 +217,12 @@
                 <div x-data="{ cargando: false }">
                     <button type="button"
                         @click="
-cargando = true;
-let datos = document.getElementById('datos-lote').dataset.lote;
-let lote = JSON.parse(datos);
-Promise.resolve(imprimirEtiquetas(lote))
-    .finally(() => cargando = false);
-"
+                        cargando = true;
+                        let datos = document.getElementById('datos-lote').dataset.lote;
+                        let lote = JSON.parse(datos);
+                        Promise.resolve(imprimirEtiquetas(lote))
+                            .finally(() => cargando = false);
+                        "
                         :disabled="cargando"
                         class="inline-flex items-center gap-2 rounded-md px-4 py-2 font-semibold text-white shadow
        bg-blue-700 hover:bg-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed">
@@ -301,8 +340,6 @@ Promise.resolve(imprimirEtiquetas(lote))
         </div>
 
     </div>
-
-    <!-- --------------------------------------------------------------- COLUMNA DERECHA --------------------------------------------------------------- -->
 
     <!-- --------------------------------------------------------------- COLUMNA DERECHA --------------------------------------------------------------- -->
 
@@ -449,9 +486,37 @@ Promise.resolve(imprimirEtiquetas(lote))
             <div id="contenedorPatron" class="flex flex-col gap-4"></div>
         </div>
     </div>
-
-    {{-- Sugerencias por elemento (id => datos) --}}
     <script>
+        function cerrarModalPatron() {
+            const modal = document.getElementById('modalPatron');
+            if (modal) {
+                modal.classList.add('hidden');
+            }
+        }
+
+        // Cerrar con ESC
+        document.addEventListener('keydown', function(event) {
+            if (event.key === 'Escape') {
+                cerrarModalPatron();
+            }
+        });
+
+        // Cerrar haciendo clic en el fondo del modal (no en el contenido blanco)
+        document.getElementById('modalPatron').addEventListener('click', function(event) {
+            const fondoModal = event.currentTarget;
+            const contenido = fondoModal.querySelector('div.bg-white');
+
+            if (!contenido.contains(event.target)) {
+                cerrarModalPatron();
+            }
+        });
+    </script>
+
+
+
+
+
+    {{-- <script>
         window.SUGERENCIAS = @json($sugerenciasPorElemento ?? []);
         window.ELEMENTOS_AGRUPADOS = @json($elementosAgrupadosScript ?? []);
 
@@ -472,6 +537,12 @@ Promise.resolve(imprimirEtiquetas(lote))
             });
         });
     </script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            console.log('ELEMENTOS_AGRUPADOS →', window.ELEMENTOS_AGRUPADOS);
+        });
+    </script> --}} --}}
+
     @once
         <script>
             // tipo de material para la lógica de fabricación

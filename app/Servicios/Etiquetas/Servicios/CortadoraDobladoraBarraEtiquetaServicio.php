@@ -17,10 +17,11 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use App\Servicios\Exceptions\ServicioEtiquetaException;
 use Illuminate\Support\Str;
+use App\Logger\CorteBarraLogger;
 
 class CortadoraDobladoraBarraEtiquetaServicio extends ServicioEtiquetaBase implements EtiquetaServicio
 {
-    private const MERMA_POR_CORTE_M = 0.01; // m/corte (ajustable)
+    private const MERMA_POR_CORTE_M = 0.00; // m/corte (ajustable)
     private const EPS = 1e-6;
 
     public function actualizar(ActualizarEtiquetaDatos $datos): ActualizarEtiquetaResultado
@@ -307,6 +308,29 @@ class CortadoraDobladoraBarraEtiquetaServicio extends ServicioEtiquetaBase imple
                 $elemento->producto_id_3 = $productosAsignados[2] ?? null;
                 $elemento->estado        = 'fabricado';
                 $elemento->save();
+                // ============================
+                // === CALCULAR SOBRA TOTAL = longitud no utilizada en última barra
+                $sumaLongitudesPiezas = $cantidadPiezas * $longitudPiezaM;
+                $longitudTotalBarras = $barrasNecesarias * $longitudBarraSeleccionada;
+                $sobraTotalM = max(0, $longitudTotalBarras - $sumaLongitudesPiezas);
+
+                app(CorteBarraLogger::class)->registrar([
+                    'timestamp'         => now()->toDateTimeString(),
+                    'usuario'           => auth()->user()->name ?? 'N/A',
+                    'planilla_id'       => $etiqueta->planilla_id,
+                    'etiqueta_sub_id'   => $etiqueta->etiqueta_sub_id,
+                    'elemento_id'       => $elemento->id,
+                    'maquina_id'        => $maquina->id,
+                    'producto_id'       => $productosAsignados[0] ?? null,
+                    'diametro'          => $diametro,
+                    'longitud_pieza_m'  => $longitudPiezaM,
+                    'longitud_barra_m'  => $longitudBarraSeleccionada,
+                    'piezas_por_barra'  => $piezasPorBarra,
+                    'piezas_fabricadas' => $cantidadPiezas,
+                    'barras_usadas'     => $barrasNecesarias,
+                    'sobra_cm'          => round($sobraTotalM * 100, 2),
+                    'comentario'        => 'corte simple',
+                ]);
 
                 Log::info(
                     "🔗 Elemento ID {$elemento->id} asignado a productos: "
@@ -444,63 +468,6 @@ class CortadoraDobladoraBarraEtiquetaServicio extends ServicioEtiquetaBase imple
                 $etiqueta->save();
             }
         }
-
-        // Si ya no quedan elementos de esta planilla en ESTA máquina, sacar de cola (orden_planillas)
-        if ($planilla) {
-            $quedanEnEstaMaquina = Elemento::where('planilla_id', $planilla->id)
-                ->where(fn($q) => $q->where('maquina_id', $maquina->id)
-                    ->orWhere('maquina_id_2', $maquina->id))
-                ->where(fn($q) => $q->whereNull('estado')->orWhere('estado', '!=', 'fabricado'))
-                ->exists();
-
-            if (!$quedanEnEstaMaquina) {
-                // opcional: exigir que todas las etiquetas tengan paquete asignado antes de retirar
-                $todasEtiquetasEnPaquete = $planilla->etiquetas()->whereDoesntHave('paquete')->doesntExist();
-
-                if ($todasEtiquetasEnPaquete) {
-                    DB::transaction(function () use ($planilla, $maquina) {
-                        $registro = OrdenPlanilla::where('planilla_id', $planilla->id)
-                            ->where('maquina_id', $maquina->id)
-                            ->lockForUpdate()
-                            ->first();
-                        if ($registro) {
-                            $pos = $registro->posicion;
-                            $registro->delete();
-                            OrdenPlanilla::where('maquina_id', $maquina->id)
-                                ->where('posicion', '>', $pos)
-                                ->decrement('posicion');
-                        }
-                    });
-                }
-            }
-
-            // Si todos los elementos de la planilla están fabricados, cerrar planilla y compactar posiciones
-            $todosElementosPlanillaFabricados = $planilla->elementos()
-                ->where('estado', '!=', 'fabricado')
-                ->doesntExist();
-
-            if ($todosElementosPlanillaFabricados) {
-                $planilla->fecha_finalizacion = now();
-                $planilla->estado = 'completada';
-                $planilla->save();
-
-                DB::transaction(function () use ($planilla, $maquina) {
-                    OrdenPlanilla::where('planilla_id', $planilla->id)
-                        ->where('maquina_id', $maquina->id)
-                        ->delete();
-
-                    $ordenes = OrdenPlanilla::where('maquina_id', $maquina->id)
-                        ->orderBy('posicion')
-                        ->lockForUpdate()
-                        ->get();
-
-                    foreach ($ordenes as $index => $orden) {
-                        $orden->posicion = $index;
-                        $orden->save();
-                    }
-                });
-            }
-        }
     }
 
     // ----------------------------
@@ -514,8 +481,10 @@ class CortadoraDobladoraBarraEtiquetaServicio extends ServicioEtiquetaBase imple
      * - Si hay varias y no hay selección, se lanza excepción con las opciones.
      */
 
-    private function encontrarProductoBarraPorDiametroYLongitud(Maquina $maquina, int $diametroMm, int $longitudM): Producto
+    private function encontrarProductoBarraPorDiametroYLongitud(Maquina $maquina, int $diametroMm, int $longitudMm): Producto
     {
+        $longitudM = intdiv($longitudMm, 100); // o floor($longitudMm / 1000)
+
         $producto = $maquina->productos()
             ->whereHas('productoBase', function ($q) use ($diametroMm, $longitudM) {
                 $q->where('diametro', $diametroMm)
@@ -525,16 +494,104 @@ class CortadoraDobladoraBarraEtiquetaServicio extends ServicioEtiquetaBase imple
             ->with('productoBase:id,diametro,longitud')
             ->first();
 
+        Log::info("Buscando producto en máquina ID {$maquina->id} para Ø{$diametroMm}mm y longitud {$longitudM}m: " . ($producto ? "Encontrado ID {$producto->id}" : "No encontrado"));
+
         if (!$producto) {
             response()->json([
                 'success' => false,
-                'message' => "No se encontró producto en la máquina con Ø{$diametroMm} mm y longitud {$longitudM} cm.",
+                'message' => "No se encontró ferralla en barra en la máquina con Ø{$diametroMm} mm y longitud {$longitudM} m.",
             ], 404)->throwResponse();
         }
 
         return $producto;
     }
 
+
+    private function calcularKgNecesariosParaEtiqueta($elementos, int $longitudBarraM, int $diametroMm): array
+    {
+        // kg por metro (sección * densidad)
+        $area_m2 = (pi() * pow($diametroMm, 2)) / 4 / 1_000_000;
+        $kgPorMetro = $area_m2 * 7850;
+        $kgPorBarra = $kgPorMetro * $longitudBarraM;
+
+        $totalBarras = 0;
+        foreach ($elementos as $el) {
+            $longPiezaM = max(0, ((float)$el->longitud) / 100.0);
+            if ($longPiezaM <= 0) {
+                continue;
+            }
+            $piezas = max(1, (int)($el->barras ?? 1));
+            $piezasPorBarra = (int)floor($longitudBarraM / $longPiezaM);
+            if ($piezasPorBarra <= 0) {
+                continue;
+            }
+            $totalBarras += (int)ceil($piezas / $piezasPorBarra);
+        }
+
+        return [
+            'barras'       => $totalBarras,
+            'kg_por_barra' => $kgPorBarra,
+            'kg_total'     => $totalBarras * $kgPorBarra,
+        ];
+    }
+
+    private function stockDisponibleKg(Maquina $maquina, int $diametroMm, int $longitudBarraM): float
+    {
+        return (float)$maquina->productos()
+            ->whereHas('productoBase', fn($q) => $q
+                ->where('diametro', $diametroMm)
+                ->where('longitud', $longitudBarraM)
+                ->where('tipo', 'barra'))
+            ->sum('peso_stock');
+    }
+
+    private function precheckMateriaPrima(
+        $elementosEnMaquina,
+        Maquina $maquina,
+        int $longitudBarraM,
+        int $diametroMm,
+        array &$avisos
+    ): array {
+        $need = $this->calcularKgNecesariosParaEtiqueta($elementosEnMaquina, $longitudBarraM, $diametroMm);
+        $have = $this->stockDisponibleKg($maquina, $diametroMm, $longitudBarraM);
+
+        Log::info('🔎 Precheck MP', ['kg_necesarios' => $need['kg_total'], 'kg_disponibles' => $have]);
+
+        $faltan = max(0, $need['kg_total'] - $have);
+        $recargaId = null;
+
+        if ($faltan > self::EPS) {
+            $pb = ProductoBase::where('diametro', $diametroMm)
+                ->where('longitud', $longitudBarraM)
+                ->where('tipo', 'barra')
+                ->first();
+
+            $avisos[] = "Faltan aprox. " . round($faltan, 2) . " kg para completar la etiqueta.";
+            if ($pb) {
+                try {
+                    $mov = $this->generarMovimientoRecargaMateriaPrima($pb, $maquina, null, auth()->id());
+                    $recargaId = $mov->id ?? null;
+                    Log::warning('⚠️ Precheck: recarga solicitada', [
+                        'movimiento_id'   => $recargaId,
+                        'maquina_id'      => $maquina->id,
+                        'producto_base_id' => $pb->id,
+                        'faltan_kg'       => $faltan,
+                    ]);
+                } catch (\Throwable $e) {
+                    Log::error('❌ Precheck: error al solicitar recarga', ['error' => $e->getMessage()]);
+                }
+            }
+        }
+
+        return [
+            'kg_necesarios' => $need['kg_total'],
+            'kg_disponibles' => $have,
+            'kg_faltantes'  => $faltan,
+            'recarga_id'    => $recargaId,
+            'barras'        => $need['barras'],
+            'kg_por_barra'  => $need['kg_por_barra'],
+        ];
+    }
 
     private function kgPorMetro(int $diametroMm): float
     {

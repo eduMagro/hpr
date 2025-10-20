@@ -64,6 +64,11 @@ document.addEventListener("DOMContentLoaded", () => {
             .querySelector('meta[name="csrf-token"]')
             ?.getAttribute("content");
 
+        const safeId = id.replace(/\./g, "-");
+        const estadoActual = document.querySelector(`#etiqueta-${safeId}`)
+            ?.dataset?.estado;
+        const esFabricando =
+            (estadoActual || "").toLowerCase() === "fabricando";
         const esMaquinaBarra =
             (window.MAQUINA_TIPO || "").toLowerCase() === "barra";
 
@@ -71,6 +76,16 @@ document.addEventListener("DOMContentLoaded", () => {
         //  A) MÁQUINAS DE BARRA → SIEMPRE VÍA PATRONES
         // ─────────────────────────────────────────────
         if (esMaquinaBarra) {
+            // 🧠 Si ya está fabricando y hay una decisión previa, la usamos directamente
+            if (esFabricando && window._decisionCortePorEtiqueta?.[id]) {
+                await enviarAFabricacionOptimizada({
+                    ...window._decisionCortePorEtiqueta[id],
+                    csrfToken,
+                    etiquetaId: id,
+                });
+                return;
+            }
+
             while (true) {
                 let decision;
                 try {
@@ -80,11 +95,9 @@ document.addEventListener("DOMContentLoaded", () => {
                     return;
                 }
 
-                // canceló el selector
                 if (!decision) return;
 
                 if (decision.accion === "optimizar") {
-                    // multi-etiqueta (k≥2) → selecciona patrón y devolvemos payload unificado
                     let outcome;
                     try {
                         outcome = await mejorCorteOptimizado(
@@ -99,23 +112,29 @@ document.addEventListener("DOMContentLoaded", () => {
                     }
 
                     if (outcome?.accion === "fabricar") {
-                        await enviarAFabricacionOptimizada({
+                        // 💾 Guardamos la decisión del primer clic
+                        window._decisionCortePorEtiqueta =
+                            window._decisionCortePorEtiqueta || {};
+
+                        window._decisionCortePorEtiqueta[id] = {
                             longitudBarraCm: outcome.longitudBarraCm,
                             etiquetas: outcome.etiquetas,
+                        };
+
+                        await enviarAFabricacionOptimizada({
+                            ...window._decisionCortePorEtiqueta[id],
                             csrfToken,
+                            etiquetaId: id,
                         });
-                        return; // fin del flujo barra
+                        return;
                     } else if (outcome === "volver") {
-                        // regresar al selector de longitudes
                         continue;
                     } else {
-                        // cancelar
                         return;
                     }
                 }
 
                 if (decision.accion === "fabricar_patron_simple") {
-                    // k=1 → fabricar SIEMPRE vía /etiquetas/fabricacion-optimizada
                     const longitudBarraCm = Math.round(
                         Number(decision.longitud_m || 0) * 100
                     );
@@ -124,12 +143,20 @@ document.addEventListener("DOMContentLoaded", () => {
                         return;
                     }
 
-                    await enviarAFabricacionOptimizada({
+                    // 💾 Guardamos la decisión del primer clic
+                    window._decisionCortePorEtiqueta =
+                        window._decisionCortePorEtiqueta || {};
+                    window._decisionCortePorEtiqueta[id] = {
                         longitudBarraCm,
                         etiquetas: [{ etiqueta_sub_id: id, elementos: [] }],
+                    };
+
+                    await enviarAFabricacionOptimizada({
+                        ...window._decisionCortePorEtiqueta[id],
                         csrfToken,
+                        etiquetaId: id,
                     });
-                    return; // fin del flujo barra
+                    return;
                 }
             }
         }
@@ -145,7 +172,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     Accept: "application/json",
                     "X-CSRF-TOKEN": csrfToken,
                 },
-                body: JSON.stringify({}), // ← ya no enviamos longitudSeleccionada
+                body: JSON.stringify({}),
             });
 
             const data = await response.json();
@@ -208,30 +235,36 @@ document.addEventListener("DOMContentLoaded", () => {
                         : p.aprovechamiento >= 90
                         ? "text-yellow-500"
                         : "text-red-600";
+
+                const icono = p.disponible_en_maquina ? "✅" : "❌";
+
                 return `
-      <button type="button"
-        class="opcion-longitud w-full text-left border rounded p-4 hover:bg-gray-50 focus:ring-2 focus:ring-indigo-500 transition"
-        data-longitud="${p.longitud_m}">
-        <div class="flex items-center gap-2">
-          <span class="font-semibold">${p.longitud_m} m</span>
-        </div>
-        <div class="mt-1">🧩 <em>${p.patron}</em></div>
-        <div>🪵 Sobra: <span class="font-medium">${p.sobra_cm} cm</span></div>
-        <div>📈 <span class="font-bold ${color}">${p.aprovechamiento}%</span></div>
-      </button>`;
+  <button type="button"
+    class="opcion-longitud w-full text-left border rounded p-4 hover:bg-gray-50 focus:ring-2 focus:ring-indigo-500 transition"
+    data-longitud="${p.longitud_m}">
+    <div class="flex items-center gap-2">
+      <span class="font-semibold">${p.longitud_m} m</span>
+      <span>${icono}</span>
+    </div>
+    <div class="mt-1">🧩 <em>${p.patron}</em></div>
+    <div>🪵 Sobra: <span class="font-medium">${p.sobra_cm} cm</span></div>
+    <div>📈 <span class="font-bold ${color}">${p.aprovechamiento}%</span></div>
+  </button>`;
             })
             .join("");
 
+        // ⬇️ contenedor con dos columnas en pantallas medianas
         const html = `
-    <div class="space-y-3">
-      ${cards}
-      <div class="pt-2">
-        <button id="btn-patron-corte-optimizado" type="button"
-          class="w-full md:w-auto inline-flex items-center gap-2 rounded px-4 py-2 border text-sm font-medium hover:bg-gray-50">
-          🤝 Buscar compañero de corte
-        </button>
-      </div>
-    </div>`;
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+    ${cards}
+  </div>
+  <div class="pt-4 md:col-span-2">
+    <button id="btn-patron-corte-optimizado" type="button"
+      class="w-full md:w-auto inline-flex items-center gap-2 rounded px-4 py-2 border text-sm font-medium hover:bg-gray-50">
+      🤝 Buscar compañero de corte
+    </button>
+  </div>
+`;
 
         return new Promise(async (resolve) => {
             const dlg = await Swal.fire({
@@ -287,7 +320,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     // ✅ ÚNICO: unifica el envío al backend para cualquier caso (k=1 o k>1)
-    async function enviarAFabricacionOptimizada({
+    async function enviarAFabricacionOptimizada2({
         longitudBarraCm,
         etiquetas,
         csrfToken,
@@ -309,7 +342,15 @@ document.addEventListener("DOMContentLoaded", () => {
         });
 
         const data = await resp.json();
-        if (!resp.ok) throw new Error(data?.message || "Error al fabricar.");
+
+        if (!resp.ok) {
+            Swal.fire({
+                icon: "error",
+                title: "Error al fabricar",
+                text: data?.message ?? "Error inesperado.",
+            });
+            return;
+        }
 
         await Swal.fire({
             icon: "success",
@@ -319,6 +360,78 @@ document.addEventListener("DOMContentLoaded", () => {
         });
 
         window.location.reload();
+    }
+    async function enviarAFabricacionOptimizada({
+        longitudBarraCm,
+        etiquetas,
+        csrfToken,
+        etiquetaId = null, // opcional, si es k=1 actualizamos DOM sin recargar
+    }) {
+        const cuerpoPeticion = {
+            producto_base: { longitud_barra_cm: Number(longitudBarraCm) },
+            repeticiones: 1,
+            etiquetas, // [{ etiqueta_sub_id, elementos: [] }, ...]
+        };
+
+        const resp = await fetch(`/etiquetas/fabricacion-optimizada`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                Accept: "application/json",
+                "X-CSRF-TOKEN": csrfToken,
+            },
+            body: JSON.stringify(cuerpoPeticion),
+        });
+
+        const data = await resp.json();
+
+        if (!resp.ok || data.success === false) {
+            Swal.fire({
+                icon: "error",
+                title: "Error al fabricar",
+                text: data?.message ?? data?.error ?? "Error inesperado.",
+            });
+            return;
+        }
+
+        // Mensaje contextual según estado devuelto
+        const estado = (data.estado || "").toLowerCase();
+        const esFabricando = estado === "fabricando";
+        const esCierre = estado === "fabricada" || estado === "completada";
+
+        // Precheck (primer clic): avisa al operario si faltan kg y ya se solicitó recarga
+        const faltanKg = data?.metricas?.precheck?.kg_faltantes ?? 0;
+        const recargaId = data?.metricas?.precheck?.recarga_id ?? null;
+
+        if (esFabricando) {
+            // k=1 → actualizamos DOM en sitio sin recargar
+            if (etiquetaId) {
+                actualizarDOMEtiqueta(etiquetaId, data);
+                return;
+            }
+
+            // k>1 → recargamos (más fácil para pintar varias etiquetas)
+            window.location.reload();
+            return;
+        }
+
+        if (esCierre) {
+            if (etiquetaId) {
+                actualizarDOMEtiqueta(etiquetaId, data);
+                return;
+            }
+
+            window.location.reload();
+            return;
+        }
+
+        // Fallback
+        await Swal.fire({
+            icon: "info",
+            title: "Respuesta recibida",
+            text: `Estado: ${data.estado ?? "N/D"}`,
+        });
+        if (etiquetaId) actualizarDOMEtiqueta(etiquetaId, data);
     }
 
     /** Corte optimizado: soporta patrones de 2..K cortes.

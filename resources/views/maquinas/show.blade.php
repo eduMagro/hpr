@@ -55,7 +55,7 @@
                     <x-maquinas.tipo.tipo-normal :maquina="$maquina" :maquinas="$maquinas" :elementos-agrupados="$elementosAgrupados"
                         :productos-base-compatibles="$productosBaseCompatibles" :producto-base-solicitados="$productoBaseSolicitados" :planillas-activas="$planillasActivas" :elementos-por-planilla="$elementosPorPlanilla" :mostrar-dos="$mostrarDos"
                         :sugerencias-por-elemento="$sugerenciasPorElemento" {{-- NUEVO: todo lo de barras va por props --}} :es-barra="$esBarra" :longitudes-por-diametro="$longitudesPorDiametro"
-                        :diametro-por-etiqueta="$diametroPorEtiqueta" />
+                        :diametro-por-etiqueta="$diametroPorEtiqueta" :elementos-agrupados-script="$elementosAgrupadosScript" />
 
 
                     @include('components.maquinas.modales.normal.modales-normal')

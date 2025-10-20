@@ -28,6 +28,7 @@ use Illuminate\Support\Collection;
 use App\Services\SugeridorProductoBaseService;
 use Illuminate\Support\Facades\Log;
 use App\Services\ProgressBVBSService;
+use App\Services\PlanillaColaService;
 
 class MaquinaController extends Controller
 {
@@ -131,7 +132,6 @@ class MaquinaController extends Controller
         $maquina = Maquina::with('obra:id,obra')->findOrFail($id);
         return response()->json($maquina);
     }
-
 
     //------------------------------------------------------------------------------------ SHOW
 
@@ -310,6 +310,9 @@ class MaquinaController extends Controller
                 return (int) $c->countBy()->sortDesc()->keys()->first();
             })
             ->toArray();
+        Log::info('[MaquinaController@show] 🧩 Planillas activas en cola:', collect($planillasActivas)->pluck('id')->toArray());
+
+        Log::info('[MaquinaController@show] 🧩 Planillas presentes en elementosFiltrados:', $elementosFiltrados->pluck('planilla_id')->unique()->toArray());
 
         // 11) Devolver vista
         return view('maquinas.show', array_merge($base, [

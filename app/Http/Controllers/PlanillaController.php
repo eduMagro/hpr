@@ -28,7 +28,7 @@ use DOMDocument;
 use App\Services\ColaPlanillasService;
 use App\Services\AsignarMaquinaService;
 use Illuminate\Support\Facades\Schema;
-
+use App\Services\PlanillaColaService;
 
 class PlanillaController extends Controller
 {
