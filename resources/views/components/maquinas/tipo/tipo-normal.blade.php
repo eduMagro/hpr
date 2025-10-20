@@ -74,6 +74,20 @@
                     Ver también la siguiente planilla
                 </label>
             </form>
+            @php
+                $esMsr20 = collect([$maquina->codigo ?? '', $maquina->nombre ?? ''])->contains(function ($v) {
+                    // Coincide con "MSR20", "MSR-20", "msr 20", "MSR20 v2", etc.
+                    return preg_match('/\bmsr\s*-?\s*20\b/i', $v);
+                });
+            @endphp
+
+            @if ($esMsr20)
+                <a href="{{ route('maquinas.exportar-bvbs', $maquina) }}"
+                    class="btn btn-sm bg-blue-600 text-white rounded px-3 py-1">
+                    Exportar BVBS máquina
+                </a>
+            @endif
+
         </div>
     </div>
 

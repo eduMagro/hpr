@@ -806,44 +806,34 @@ class PlanillaController extends Controller
 
     private function completarEtiquetasPorDescripcion(array &$rows): void
     {
-        $IDX_PLANILLA = 10;
-        $IDX_DESC = 22;
-        $IDX_ETIQ = 30;
-        // Planilla → indices
+        $IDX_PLANILLA = 10; // código planilla
+        $IDX_DESC     = 22; // descripción
+        $IDX_ETIQ     = 30; // AE (nº etiqueta)
+
+        // Agrupar índices de filas por planilla
         $porPlan = [];
         foreach ($rows as $i => $r) {
             $porPlan[(string)($r[$IDX_PLANILLA] ?? 'Sin código')][] = $i;
         }
+
         $norm = fn($t) => ($t = mb_strtoupper(preg_replace('/\s+/u', ' ', trim((string)$t)), 'UTF-8')) ?: '—SIN DESCRIPCION—';
 
-        foreach ($porPlan as $cod => $idxs) {
+        foreach ($porPlan as $codPlanilla => $idxs) {
             $desc2num = [];
-            $usados = [];
-            // primera pasada: respetar existentes
-            foreach ($idxs as $i) {
-                $etiq = $rows[$i][$IDX_ETIQ] ?? null;
-                if (is_numeric($etiq) && (int)$etiq > 0) {
-                    $num = (int)$etiq;
-                    $usados[$num] = true;
-                    $d = $norm($rows[$i][$IDX_DESC] ?? '');
-                    $desc2num[$d] = $desc2num[$d] ?? $num;
-                }
-            }
             $next = 1;
-            while (isset($usados[$next])) $next++;
 
-            // segunda pasada: rellenar vacíos por descripción
+            // Recorremos en orden de aparición y ASIGNAMOS SIEMPRE 1..N
             foreach ($idxs as $i) {
-                if (!empty($rows[$i][$IDX_ETIQ])) continue;
                 $d = $norm($rows[$i][$IDX_DESC] ?? '');
                 if (!isset($desc2num[$d])) {
-                    while (isset($usados[$next])) $next++;
-                    $desc2num[$d] = $usados[$next] = $next++;
+                    $desc2num[$d] = $next++;
                 }
+                // Siempre sobreescribimos AE con la numeración compacta
                 $rows[$i][$IDX_ETIQ] = $desc2num[$d];
             }
         }
     }
+
 
     private function resolverClienteObraDeFila(array $row, string $codigoPlanilla, array &$warn): array
     {

@@ -182,6 +182,9 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
     Route::get('/produccion/trabajadores', [ProduccionController::class, 'trabajadores'])->name('produccion.verTrabajadores');
     Route::get('/produccion/trabajadores-obra', [ProduccionController::class, 'trabajadoresObra'])->name('produccion.verTrabajadoresObra');
     Route::get('/produccion/maquinas', [ProduccionController::class, 'maquinas'])->name('produccion.verMaquinas');
+    //MSR20 BVBS
+    Route::get('/maquinas/{maquina}/exportar-bvbs', [MaquinaController::class, 'exportarBVBS'])
+        ->name('maquinas.exportar-bvbs');
 
     // === MOVIMIENTOS ===
     Route::resource('movimientos', MovimientoController::class);
