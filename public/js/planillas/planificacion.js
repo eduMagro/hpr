@@ -1,7 +1,9 @@
 let datos_elementos;
 let datos_elementos_original;
-let btn_cerrar_lista_elementos;
 let div_elementos;
+let modal_elementos
+let modal_transferir
+
 
 document.addEventListener("DOMContentLoaded", () => {
     const MAQUINAS = Array.from(document.getElementsByClassName("maquina"));
@@ -9,16 +11,15 @@ document.addEventListener("DOMContentLoaded", () => {
     const BOTONES = [document.getElementById("nave1"), document.getElementById("nave2"), document.getElementById("ambas")];
     const PLANILLAS = Array.from(document.getElementsByClassName("planilla"));
     const MOVER_MODAL_ELEMENTOS = document.getElementById("mover_modal_elementos")
-    btn_cerrar_lista_elementos = document.getElementById("quit_elementos");
     div_elementos = document.getElementById("div_elementos")
+    modal_elementos = document.getElementById("modal_elementos")
+    modal_transferir = document.getElementById("modal_transferir_a_maquina");
+    modales = [modal_elementos, modal_transferir]
 
     const TODOS = document.getElementById("todosElementos");
     let elementos = TODOS.querySelectorAll("[data-elementos]");
     datos_elementos = Array.from(elementos).map(div => JSON.parse(div.dataset.elementos));
     datos_elementos_original = JSON.parse(JSON.stringify(datos_elementos));
-
-    // console.log(datos_elementos)
-    // console.log(datos_elementos_original == datos_elementos)
 
     BOTONES.forEach(boton => {
         boton.addEventListener("click", () => {
@@ -27,23 +28,24 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     });
 
+    // llamada de funciones
     resaltarCompis(PLANILLAS);
-
     initDragAndDrop(CONTENEDORES, MAQUINAS);
     mostrarElementos(PLANILLAS, div_elementos, MOVER_MODAL_ELEMENTOS, datos_elementos)
-    funcionesQuitElementos(btn_cerrar_lista_elementos, div_elementos)
-    moverModalElementos(MOVER_MODAL_ELEMENTOS, div_elementos)
-    // seleccionarMaquinaParaMovimiento()
 
-    // cerrar modal transferencia
-    const modal = document.getElementById("modal_transferir_a_maquina");
 
-    modal.addEventListener("click", (e) => {
-        if (e.target === modal) {
-            modal.classList.add("hidden");
-        }
+    // Agregar Listener de cierre a los modales cuando se clicka fuera de los hijos del mismo
+    modales.forEach(modal => {
+        modal.addEventListener("click", (e) => {
+            if (e.target === modal) {
+                modal.classList.add("hidden");
+            }
+        });
+
     });
 
+    // cerrar modal elementos por boton cancelar
+    document.getElementById("cancelar_modal_elementos").addEventListener("click", () => modal_elementos.classList.add("hidden"))
 });
 
 function initDragAndDrop(contenedores, maquinas) {
@@ -56,16 +58,20 @@ function initDragAndDrop(contenedores, maquinas) {
 
         card.addEventListener('dragstart', (e) => {
             dragging = e.currentTarget;
-            origen = dragging.parentElement; // .planillas de origen
-            dragging.classList.add('dragging');
-            // para algunos navegadores
+            origen = dragging.parentElement;
+            dragging.classList.add('dragging', 'cursor-grabbing');
+            dragging.classList.remove('cursor-grab');
             e.dataTransfer.effectAllowed = 'move';
             e.dataTransfer.setData('text/plain', dragging.dataset.planillaId || '');
         });
 
+
+
         card.addEventListener('dragend', () => {
             if (!dragging) return;
-            dragging.classList.remove('dragging');
+
+            dragging.classList.remove('dragging', 'cursor-grabbing');
+            dragging.classList.add('cursor-grab');
 
             // reindexar origen y (si cambió) destino
             reindexColumn(origen);
@@ -202,15 +208,12 @@ async function mostrarElementos(planillas, div_elementos, btn, datos_elementos) 
             let padre_elementos = document.getElementById("seleccion_elementos")
             padre_elementos.innerHTML = "";
 
-            div_elementos.classList.remove("-left-96")
-            div_elementos.classList.add("left-3")
-            btn.textContent = ">";
-
+            modal_elementos.classList.remove("hidden")
 
             elementos.forEach((elemento, i) => {
                 anadirElemento(padre_elementos, elemento, i)
             });
-
+            dibujarMiniFiguras(padre_elementos);
             anadirPropiedadTransferible()
         });
     });
@@ -224,45 +227,52 @@ function agregarElementosModal(planilla_id, maquina_id, datos_elementos) {
 
 
 function anadirElemento(padre, elemento, n) {
-    const nuevo_contenido =
-        `<div class="p-2 w-full no_seleccionado text-center bg-blue-300 hover:bg-blue-400 cursor-pointer rounded-xl flex flex-col items-center transition-all duration-150" data-dimensiones="${elemento.dimensiones}" data-id="${elemento.id}">
+    const idCanvas = `cv-el-${elemento.id}`;
+
+    const html = `
+    <div class="p-2 w-full no_seleccionado text-center bg-blue-300 hover:bg-blue-400 cursor-pointer rounded-xl flex flex-col items-center transition-all duration-150"
+         data-peso="${elemento.peso ?? ''}"
+         data-dimensiones="${elemento.dimensiones ?? ''}"
+         data-id="${elemento.id}">
         <div class="flex justify-center gap-4 items-center w-full">
             <div class="text-neutral-600 text-xs font-mono font-semibold">${n + 1}</div>
             <p>${elemento.codigo}</p>
         </div>
-        <div class="min-h-16 min-w-16 bg-white"></div>
+        <canvas id="${idCanvas}" class="w-full h-24 bg-white border border-gray-200 rounded-md"></canvas>
     </div>`;
 
+    padre.insertAdjacentHTML('beforeend', html);
 
-    padre.innerHTML += nuevo_contenido;
-}
+    // 🔧 Ajusta el tamaño real del canvas a su tamaño mostrado, y dibuja
+    const canvas = document.getElementById(idCanvas);
+    if (canvas && typeof window.dibujarFiguraElemento === 'function') {
+        // igualamos dimensiones internas a las CSS para que no se vea borroso
+        const w = Math.max(160, canvas.clientWidth || 160);
+        const h = Math.max(100, canvas.clientHeight || 100);
+        canvas.width = w;
+        canvas.height = h;
 
-function funcionesQuitElementos(quit, div_elementos, cerrar = null) {
-    quit.addEventListener("click", () => {
-        div_elementos.classList.remove("left-3", "left-[calc(100%-15rem)]");
-        div_elementos.classList.add("-left-96")
-    })
-
-    if (cerrar) {
-        div_elementos.classList.remove("left-3", "left-[calc(100%-15rem)]");
-        div_elementos.classList.add("-left-96")
+        window.dibujarFiguraElemento(idCanvas, elemento.dimensiones || '', elemento.peso ?? 'N/A');
     }
 }
 
-function moverModalElementos(btn, div_elementos) {
-    btn.addEventListener("click", (e) => {
-        const flecha = e.target.textContent.trim();
+function dibujarMiniFiguras(padre) {
+    if (typeof window.dibujarFiguraElemento !== 'function') return;
 
-        if (flecha === ">") {
-            div_elementos.classList.replace("left-3", "left-[calc(100%-15rem)]");
-            e.target.textContent = "<";
-        } else {
-            div_elementos.classList.replace("left-[calc(100%-15rem)]", "left-3");
-            e.target.textContent = ">";
-        }
+    padre.querySelectorAll('[data-dimensiones]').forEach(card => {
+        const canvas = card.querySelector('canvas');
+        if (!canvas) return;
+        // ajustar tamaño interno a tamaño CSS
+        const w = Math.max(160, canvas.clientWidth || 160);
+        const h = Math.max(100, canvas.clientHeight || 100);
+        canvas.width = w;
+        canvas.height = h;
+
+        const dims = card.dataset.dimensiones || '';
+        const peso = card.dataset.peso || 'N/A';
+        window.dibujarFiguraElemento(canvas.id, dims, peso);
     });
 }
-
 
 function anadirPropiedadTransferible() {
     const elementosEnLista = Array.from(document.getElementsByClassName("no_seleccionado"));
@@ -319,6 +329,7 @@ function seleccionarMaquinaParaMovimiento() {
     const btnTransferir = document.getElementById("transferir_elementos");
     const maquinas = Array.from(document.getElementsByClassName("maquina_transferir"));
 
+    modal_elementos.classList.add("hidden")
     modal.classList.remove("hidden");
 
     // estado: máquina actualmente seleccioná
@@ -360,6 +371,5 @@ function seleccionarMaquinaParaMovimiento() {
 
         // ejecutar transferencia
         actualizarMaquinaDeElementos(elementos_seleccionados, maquinaSeleccionadaId);
-        funcionesQuitElementos(btn_cerrar_lista_elementos, div_elementos, true)
     };
 }
