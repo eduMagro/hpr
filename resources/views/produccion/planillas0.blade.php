@@ -89,14 +89,14 @@ $numMaquinas = $maquinas->count();
         </div>
 
 
-        <div id="modal_guardar" class="absolute flex bottom-14 left-1/2 -translate-x-1/2 p-2 bg-white shadow-xl gap-3 rounded-xl">
+        <div id="modal_guardar" class="hidden absolute flex bottom-14 left-1/2 -translate-x-1/2 p-2 bg-white shadow-xl gap-3 rounded-xl">
             <button class="p-2 px-10 flex text-center justify-center items-center bg-green-400 rounded-xl hover:bg-green-500 font-semibold transition-all duration-150">Guardar</button>
             <button class="p-2 px-10 flex text-center justify-center items-center bg-neutral-400 rounded-xl hover:bg-red-400 font-semibold transition-all duration-150">Cancelar</button>
         </div>
 
 
-        <div id="elementos_en_seleccion" class="absolute flex flex-col -left-96 top-1/2 transition-all duration-100 -translate-y-1/2 p-3 bg-white rounded-xl shadow-xl gap-3">
-            <div class="flex justify-end gap-2 font-semibold cursor-pointer">
+        <div id="div_elementos" class="absolute flex flex-col -left-96 top-1/2 transition-all duration-100 -translate-y-1/2 p-3 bg-white rounded-xl shadow-xl gap-3 items-center">
+            <div class="flex justify-end gap-2 font-semibold cursor-pointer w-full">
                 <p id="mover_modal_elementos" class="h-7 w-7 hover:bg-blue-300 rounded-full flex items-center justify-center font-bold font-mono leading-none hover:text-white transition-all duration-150 text-blue-300">></p>
                 <p id="quit_elementos" class="h-7 w-7 hover:bg-red-500 rounded-full flex items-center justify-center font-bold font-mono leading-none hover:text-white transition-all duration-150 text-red-500">x</p>
             </div>
@@ -105,7 +105,7 @@ $numMaquinas = $maquinas->count();
                 <p>Elementos de <span id="seleccion_planilla_codigo" class="chip">****-******</span></p>
                 <p>en máquina <span id="seleccion_maquina_tag" class="chip">****</span></p1>
             </div>
-            <div id="seleccion_elementos" class="max-h-96 overflow-auto flex flex-col gap-2 p-3 rounded-xl bg-neutral-200
+            <div id="seleccion_elementos" class="w-full max-h-96 overflow-auto flex flex-col gap-2 p-3 rounded-xl bg-neutral-200
             [&::-webkit-scrollbar]:w-2
           [&::-webkit-scrollbar-track]:bg-neutral-300
           [&::-webkit-scrollbar-thumb]:bg-neutral-400
@@ -114,6 +114,46 @@ $numMaquinas = $maquinas->count();
           dark:[&::-webkit-scrollbar-track]:bg-neutral-700
           dark:[&::-webkit-scrollbar-thumb]:bg-neutral-500">
                 *
+            </div>
+
+            <button onclick="seleccionarMaquinaParaMovimiento()" class="flex p-3 bg-orange-400 hover:bg-orange-500 hover:text-white transition-all duration-150 font-sans font-semibold text-xs uppercase rounded-lg">transferir a otra máquina</button>
+        </div>
+    </div>
+
+    <div id="todosElementos" class="hidden">
+        @foreach ($elementos as $elemento)
+        <div data-elementos="{{ json_encode([
+        'id' => $elemento->id,
+        'codigo' => $elemento->codigo,
+        'maquina_id' => $elemento->maquina_id,
+        'planilla_id' => $elemento->planilla_id
+    ]) }}"></div>
+        @endforeach
+
+
+    </div>
+
+    <div id="modal_transferir_a_maquina" class="bg-black bg-opacity-60 absolute top-0 left-0 w-screen h-screen flex items-center justify-center hidden">
+        <div class="bg-white shadow-lg rounded-lg p-3 flex flex-col gap-4 items-center max-w-3xl">
+            <div class="uppercase font-medium">Seleccione nueva ubicación</div>
+
+            <div class="flex flex-col gap-3 max-h-96 overflow-y-scroll
+            [&::-webkit-scrollbar]:w-2
+          [&::-webkit-scrollbar-thumb]:bg-neutral-400
+          [&::-webkit-scrollbar-track]:rounded-r-xl
+          [&::-webkit-scrollbar-thumb]:rounded-xl
+          dark:[&::-webkit-scrollbar-track]:bg-neutral-700
+          dark:[&::-webkit-scrollbar-thumb]:bg-neutral-500">
+                @forelse($maquinas as $maq)
+                <div data-id="{{ $maq->id }}" class="p-3 flex maquina_transferir justify-between gap-10 items-center cursor-pointer bg-neutral-300 hover:bg-neutral-400  transition-all duration-75 shadow-sm">
+                    <p>{{ $maq->nombre }}</p>
+                    <p class="text-xs font-mono font-semibold p-1 text-white rounded-md bg-neutral-600">{{ $maq->codigo }}</p>
+                </div>
+                @endforeach
+            </div>
+
+            <div>
+                <button id="transferir_elementos" class="p-2 bg-orange-400 w-full hover:bg-orange-500 hover:text-white transition-all duration-150 rounded-lg uppercase font-semibold font-mono shadow-md">Transferir</button>
             </div>
         </div>
     </div>

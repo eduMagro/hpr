@@ -1531,6 +1531,10 @@ class ProduccionController extends Controller
             ->whereIn('id', $planillaIds)
             ->get();
 
-        return view('produccion.planillas0', compact('maquinas', 'localizacionMaquinas', 'ordenPlanillas', 'planillas'));
+
+        $elementos = Elemento::query()
+            ->get();
+
+        return view('produccion.planillas0', compact('maquinas', 'localizacionMaquinas', 'ordenPlanillas', 'planillas', 'elementos'));
     }
 }
