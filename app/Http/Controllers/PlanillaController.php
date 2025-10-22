@@ -191,13 +191,34 @@ class PlanillaController extends Controller
 
             $query->where(function ($q) use ($codigos) {
                 foreach ($codigos as $codigo) {
+                    $codigo = trim($codigo);
+
+                    // 1) Solo dígitos -> contains
+                    if (preg_match('/^\d+$/', $codigo)) {
+                        $q->orWhere('codigo', 'like', "%{$codigo}%");
+                        continue;
+                    }
+
+                    // 2) Dígitos seguidos de guion (prefijo tipo "2025-") -> empieza por ese bloque + guion (pero con % por si hay prefijo como MP-)
+                    if (preg_match('/^(\d+)-$/', $codigo, $m)) {
+                        $izq = $m[1];
+                        $q->orWhere('codigo', 'like', "%{$izq}-%");
+                        continue;
+                    }
+
+                    // 3) Dígitos-guion-dígitos -> pad a 6 el bloque derecho
+                    if (preg_match('/^(\d+)-(\d+)$/', $codigo, $m)) {
+                        $izq = $m[1];
+                        $derPadded = str_pad($m[2], 6, '0', STR_PAD_LEFT);
+                        // Usamos %...% para que matchee también códigos con prefijo: p.ej. MP-2024-008094
+                        $q->orWhere('codigo', 'like', "%{$izq}-{$derPadded}%");
+                        continue;
+                    }
+
+                    // 4) Cualquier otra cosa -> contains
                     $q->orWhere('codigo', 'like', '%' . $codigo . '%');
                 }
             });
-        }
-        if ($request->filled('revisada')) {
-            // valores esperados: '1' o '0'
-            $query->where('revisada', (int) $request->input('revisada'));
         }
 
 
@@ -269,6 +290,31 @@ class PlanillaController extends Controller
                 Carbon::parse($request->fecha_estimada_entrega)->format('Y-m-d')
             );
         }
+
+        // --- Revisada: whitelisting; no filtrar en "todas"/"seleccionar"
+        if ($request->has('revisada')) {
+            $raw = trim((string) $request->input('revisada'));
+
+            // Normaliza acentos y mayúsculas
+            $val = mb_strtolower($raw, 'UTF-8');
+
+            // Acepta equivalentes
+            $mapTrue  = ['1', 'si', 'sí', 'true', 'on'];
+            $mapFalse = ['0', 'no', 'false', 'off'];
+
+            if (in_array($val, $mapTrue, true)) {
+                $request->merge(['revisada' => '1']);
+                $query->where('revisada', 1);
+            } elseif (in_array($val, $mapFalse, true)) {
+                $request->merge(['revisada' => '0']);
+                $query->where('revisada', 0);
+            } else {
+                // "todas", "seleccionar", vacío, etc. -> NO filtrar
+                $request->request->remove('revisada');
+            }
+        }
+
+
 
 
 

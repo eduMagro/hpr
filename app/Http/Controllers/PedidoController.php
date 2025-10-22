@@ -37,44 +37,49 @@ class PedidoController extends Controller
         $filtros = [];
 
         if ($request->filled('codigo')) {
-            $filtros[] = 'Código pedido: <strong>' . $request->codigo . '</strong>';
+            $filtros[] = 'Código pedido: <strong>' . e($request->codigo) . '</strong>';
         }
+
         if ($request->filled('pedido_producto_id')) {
-            $filtros[] = 'ID línea: <strong>' . $request->pedido_producto_id . '</strong>';
+            $filtros[] = 'ID línea: <strong>' . e($request->pedido_producto_id) . '</strong>';
         }
 
         if ($request->filled('pedido_global_id')) {
-            $pg = PedidoGlobal::find($request->pedido_global_id);
+            $pg = \App\Models\PedidoGlobal::find($request->pedido_global_id);
             if ($pg) {
-                $filtros[] = 'Código pedido global: <strong>' . $pg->codigo . '</strong>';
+                $filtros[] = 'Código pedido global: <strong>' . e($pg->codigo) . '</strong>';
             }
         }
 
         if ($request->filled('fabricante_id')) {
-            $fabricante = Fabricante::find($request->fabricante_id);
+            $fabricante = \App\Models\Fabricante::find($request->fabricante_id);
             if ($fabricante) {
-                $filtros[] = 'Fabricante: <strong>' . $fabricante->nombre . '</strong>';
+                $filtros[] = 'Fabricante: <strong>' . e($fabricante->nombre) . '</strong>';
             }
         }
+
         if ($request->filled('distribuidor_id')) {
-            $distribuidor = Fabricante::find($request->distribuidor_id);
+            $distribuidor = \App\Models\Distribuidor::find($request->distribuidor_id);
             if ($distribuidor) {
-                $filtros[] = 'Distribuidor: <strong>' . $distribuidor->nombre . '</strong>';
+                $filtros[] = 'Distribuidor: <strong>' . e($distribuidor->nombre) . '</strong>';
             }
         }
+
         if ($request->filled('obra_id')) {
-            $filtrosActivos['Obra'] = optional(Obra::find($request->obra_id))->obra ?? '—';
+            $obra = \App\Models\Obra::find($request->obra_id);
+            $filtros[] = 'Obra: <strong>' . e($obra?->obra ?? ('ID ' . $request->obra_id)) . '</strong>';
         }
+
         if ($request->filled('fecha_pedido')) {
-            $filtros[] = 'Fecha pedido: <strong>' . $request->fecha_pedido . '</strong>';
+            $filtros[] = 'Fecha pedido: <strong>' . e($request->fecha_pedido) . '</strong>';
         }
 
         if ($request->filled('fecha_entrega')) {
-            $filtros[] = 'Entrega estimada: <strong>' . $request->fecha_entrega . '</strong>';
+            $filtros[] = 'Entrega estimada: <strong>' . e($request->fecha_entrega) . '</strong>';
         }
 
         if ($request->filled('estado')) {
-            $filtros[] = 'Estado: <strong>' . ucfirst($request->estado) . '</strong>';
+            $filtros[] = 'Estado: <strong>' . e(ucfirst($request->estado)) . '</strong>';
         }
 
         if ($request->filled('sort')) {
@@ -87,18 +92,19 @@ class PedidoController extends Controller
                 'fabricante'    => 'Fabricante',
                 'distribuidor'  => 'Distribuidor',
                 'created_by'    => 'Creado por',
+                'obra'          => 'Lugar de entrega',
             ];
-            $orden = $request->order == 'desc' ? 'descendente' : 'ascendente';
-            $filtros[] = 'Ordenado por <strong>' . ($sorts[$request->sort] ?? $request->sort) . "</strong> en orden <strong>$orden</strong>";
+            $orden = strtolower($request->order ?? 'desc') === 'desc' ? 'descendente' : 'ascendente';
+            $filtros[] = 'Ordenado por <strong>' . e($sorts[$request->sort] ?? $request->sort) . "</strong> en orden <strong>$orden</strong>";
         }
 
-
         if ($request->filled('per_page')) {
-            $filtros[] = 'Mostrando <strong>' . $request->per_page . '</strong> registros por página';
+            $filtros[] = 'Mostrando <strong>' . (int) $request->per_page . '</strong> registros por página';
         }
 
         return $filtros;
     }
+
 
     private function getOrdenamientoPedidos(string $columna, string $titulo): string
     {
@@ -119,80 +125,122 @@ class PedidoController extends Controller
 
     public function aplicarFiltrosPedidos($query, Request $request)
     {
-        if ($request->filled('pedido_producto_id')) {
-            $lineaId = (int) $request->pedido_producto_id;
+        // ===== Filtros =====
 
-            $query->whereHas('pedidoProductos', function ($q) use ($lineaId) {
-                $q->where('pedido_productos.id', $lineaId);
+        // ID de línea (pedido_productos.id): contains + exacto con "=123"
+        if ($request->filled('pedido_producto_id')) {
+            $raw = trim((string) $request->pedido_producto_id);
+
+            $query->whereHas('pedidoProductos', function ($q) use ($raw) {
+                if (preg_match('/^=\s*(\d+)$/', $raw, $m)) {
+                    $q->where('pedido_productos.id', (int) $m[1]);
+                } else {
+                    $q->whereRaw('CAST(pedido_productos.id AS CHAR) LIKE ?', ['%' . $raw . '%']);
+                }
             });
         }
 
-        // Filtra por id
+        // ID del pedido (pedidos.id): contains + exacto con "=123"
         if ($request->filled('pedido_id')) {
-            $query->where('id', $request->pedido_id);
+            $raw = trim((string) $request->pedido_id);
+            if (preg_match('/^=\s*(\d+)$/', $raw, $m)) {
+                $query->where('pedidos.id', (int) $m[1]);
+            } else {
+                $query->whereRaw('CAST(pedidos.id AS CHAR) LIKE ?', ['%' . $raw . '%']);
+            }
         }
 
+        // Código de pedido: contains, case-insensitive
         if ($request->filled('codigo')) {
-            $query->where('codigo', 'like', '%' . $request->codigo . '%');
+            $codigo = trim($request->codigo);
+            $query->whereRaw('LOWER(pedidos.codigo) LIKE ?', ['%' . mb_strtolower($codigo, 'UTF-8') . '%']);
         }
-        // Filtro por pedido_global_id
+
+        // Pedido global (id exacto)
         if ($request->filled('pedido_global_id')) {
             $query->where('pedido_global_id', $request->pedido_global_id);
         }
+
+        // Filtros por producto base de sus líneas
         if ($request->filled('producto_tipo') || $request->filled('producto_diametro') || $request->filled('producto_longitud')) {
-            $query->whereHas('pedidoProductos.productoBase', function ($q) use ($request) {
-                if ($request->filled('producto_tipo')) {
-                    $q->where('tipo', 'like', '%' . $request->producto_tipo . '%');
+            $tipo      = $request->filled('producto_tipo')      ? mb_strtolower(trim($request->producto_tipo), 'UTF-8') : null;
+            $diametro  = $request->filled('producto_diametro')  ? mb_strtolower(trim($request->producto_diametro), 'UTF-8') : null;
+            $longitud  = $request->filled('producto_longitud')  ? mb_strtolower(trim($request->producto_longitud), 'UTF-8') : null;
+
+            $query->whereHas('pedidoProductos.productoBase', function ($q) use ($tipo, $diametro, $longitud) {
+                if ($tipo !== null) {
+                    $q->whereRaw('LOWER(tipo) LIKE ?', ['%' . $tipo . '%']);
                 }
-                if ($request->filled('producto_diametro')) {
-                    $q->where('diametro', 'like', '%' . $request->producto_diametro . '%');
+                if ($diametro !== null) {
+                    $q->whereRaw('LOWER(diametro) LIKE ?', ['%' . $diametro . '%']);
                 }
-                if ($request->filled('producto_longitud')) {
-                    $q->where('longitud', 'like', '%' . $request->producto_longitud . '%');
+                if ($longitud !== null) {
+                    $q->whereRaw('LOWER(longitud) LIKE ?', ['%' . $longitud . '%']);
                 }
             });
         }
 
+        // Fabricante / Distribuidor (por id exacto desde selects)
         if ($request->filled('fabricante_id')) {
             $query->where('fabricante_id', $request->fabricante_id);
         }
         if ($request->filled('distribuidor_id')) {
             $query->where('distribuidor_id', $request->distribuidor_id);
         }
-        // 🔎 Filtro por obra_id (del pedido)
+
+        // Obra (id exacto)
         if ($request->filled('obra_id')) {
             $query->where('obra_id', $request->integer('obra_id'));
         }
+
+        // Fechas
         if ($request->filled('fecha_pedido')) {
             $query->whereDate('fecha_pedido', $request->fecha_pedido);
         }
-
         if ($request->filled('fecha_entrega')) {
-            $query->whereHas('pedidoProductos', function ($q) use ($request) {
-                $q->whereDate('fecha_estimada_entrega', $request->fecha_entrega);
+            $fecha = $request->fecha_entrega;
+            $query->whereHas('pedidoProductos', function ($q) use ($fecha) {
+                $q->whereDate('fecha_estimada_entrega', $fecha);
             });
         }
 
-        // ✅ Ordenación segura por columnas locales o por nombre de relación
-        $sortBy = $request->input('sort', 'created_at'); // o 'fecha_pedido'
-        $order  = $request->input('order', 'desc');
+        // Estado (por LÍNEAS: pedido_productos.estado)
+        if ($request->filled('estado')) {
+            $estado = mb_strtolower(trim($request->estado), 'UTF-8');
 
-        // Limpia órdenes previas (importantísimo)
+            // Pedidos que tienen AL MENOS UNA línea en ese estado
+            $query->whereHas('pedidoProductos', function ($q) use ($estado) {
+                $q->whereRaw('LOWER(TRIM(pedido_productos.estado)) = ?', [$estado]);
+            });
+        }
+
+
+
+
+        // ===== Orden =====
+        $sortBy = $request->input('sort', 'created_at');
+        $order  = strtolower($request->input('order', 'desc')) === 'asc' ? 'asc' : 'desc';
+
         $query->reorder();
 
         switch ($sortBy) {
             case 'fabricante':
                 $query->orderBy(
-                    \App\Models\Fabricante::select('nombre')
-                        ->whereColumn('fabricantes.id', 'pedidos.fabricante_id'),
+                    \App\Models\Fabricante::select('nombre')->whereColumn('fabricantes.id', 'pedidos.fabricante_id'),
                     $order
                 );
                 break;
 
             case 'distribuidor':
                 $query->orderBy(
-                    \App\Models\Distribuidor::select('nombre')
-                        ->whereColumn('distribuidores.id', 'pedidos.distribuidor_id'),
+                    \App\Models\Distribuidor::select('nombre')->whereColumn('distribuidores.id', 'pedidos.distribuidor_id'),
+                    $order
+                );
+                break;
+
+            case 'obra': // ordenar por nombre de la obra (lugar de entrega)
+                $query->orderBy(
+                    \App\Models\Obra::select('obra')->whereColumn('obras.id', 'pedidos.obra_id'),
                     $order
                 );
                 break;
@@ -215,6 +263,7 @@ class PedidoController extends Controller
 
         return $query;
     }
+
 
     public function index(Request $request, StockService $stockService)
     {
@@ -280,9 +329,13 @@ class PedidoController extends Controller
                         }
                     }
 
-                    if ($request->filled('estado') && $linea->estado !== $request->estado) {
-                        return false;
+                    if ($request->filled('estado')) {
+                        $estadoReq = mb_strtolower(trim($request->estado), 'UTF-8');
+                        if (mb_strtolower(trim((string)$linea->estado), 'UTF-8') !== $estadoReq) {
+                            return false;
+                        }
                     }
+
 
                     return true;
                 })

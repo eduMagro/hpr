@@ -26,82 +26,166 @@ class MovimientoController extends Controller
     //------------------------------------------------ FILTROS() --------------------------------------------------------
     private function aplicarFiltros($query, Request $request)
     {
+        // Helpers locales
+        $like = function ($term) {
+            $term = trim((string)$term);
+            return $term === '' ? null : '%' . str_replace(['%', '_'], ['\%', '\_'], $term) . '%';
+        };
+
+        $patronesCodigo = function (string $codigo): array {
+            $codigo = trim($codigo);
+            $pats = [];
+
+            // Caso A: AAAA-N (1..6)  → pad a 6 dígitos
+            if (preg_match('/^(\d{4})-(\d{1,6})$/', $codigo, $m)) {
+                $anio = $m[1];
+                $num  = str_pad($m[2], 6, '0', STR_PAD_LEFT);
+                // contains estricto del formato completo
+                $pats[] = "%{$anio}-{$num}%";
+                // por si el usuario escribió con ceros pero quiere contains
+                $pats[] = "%{$m[1]}-{$m[2]}%";
+                return array_values(array_unique($pats));
+            }
+
+            // Caso B: sólo dígitos (1..6) → buscar como sufijo y como contains libre
+            if (preg_match('/^\d{1,6}$/', $codigo)) {
+                $numPad = str_pad($codigo, 6, '0', STR_PAD_LEFT);
+                // coincide con el final típico “-00xxxx”
+                $pats[] = "%-{$numPad}%";
+                // por si aparece en algún otro formato / cortesía de contains
+                $pats[] = "%{$codigo}%";
+                return array_values(array_unique($pats));
+            }
+
+            // Caso C: cualquier otra cosa → contains directo
+            $pats[] = '%' . str_replace(['%', '_'], ['\%', '\_'], $codigo) . '%';
+            return $pats;
+        };
+
         /* ─────────────── Filtros directos por columna ─────────────── */
 
-        // ID de movimiento
+        // ID de movimiento (contains, sobre el CAST a CHAR)
         if ($request->filled('id') || $request->filled('movimiento_id')) {
-            $query->where('id', $request->id ?? $request->movimiento_id);
+            $needle = trim((string) ($request->id ?? $request->movimiento_id));
+            if ($needle !== '') {
+                $needle = '%' . str_replace(['%', '_'], ['\%', '\_'], $needle) . '%';
+                $query->whereRaw("CAST(id AS CHAR) LIKE ?", [$needle]);
+            }
         }
 
-        // Tipo de movimiento
+
+        // Tipo (contains)
         if ($request->filled('tipo')) {
-            $query->where('tipo', 'like', '%' . $request->tipo . '%');
-        }
-        // Línea de pedido (pedido_producto_id)
-        if ($request->filled('pedido_producto_id')) {
-            $query->where('pedido_producto_id', (int) $request->pedido_producto_id);
+            if ($v = $like($request->tipo)) {
+                $query->where('tipo', 'like', $v);
+            }
         }
 
-        // Producto Base: filtrar por tipo, diámetro o longitud
+        // Línea de pedido (contains)
+        if ($request->filled('pedido_producto_id')) {
+            $needle = trim((string) $request->pedido_producto_id);
+            if ($needle !== '') {
+                $needle = '%' . str_replace(['%', '_'], ['\%', '\_'], $needle) . '%';
+                $query->whereRaw("CAST(pedido_producto_id AS CHAR) LIKE ?", [$needle]);
+            }
+        }
+
+
+        // Producto Base: tipo/diámetro/longitud (contains)
         if ($request->filled('producto_tipo') || $request->filled('producto_diametro') || $request->filled('producto_longitud')) {
-            $query->whereHas('productoBase', function ($q) use ($request) {
+            $query->whereHas('productoBase', function ($q) use ($request, $like) {
                 if ($request->filled('producto_tipo')) {
-                    $q->where('tipo', 'like', '%' . $request->producto_tipo . '%');
+                    if ($v = $like($request->producto_tipo)) $q->where('tipo', 'like', $v);
                 }
                 if ($request->filled('producto_diametro')) {
-                    $q->where('diametro', 'like', '%' . $request->producto_diametro . '%');
+                    if ($v = $like($request->producto_diametro)) $q->where('diametro', 'like', $v);
                 }
                 if ($request->filled('producto_longitud')) {
-                    $q->where('longitud', 'like', '%' . $request->producto_longitud . '%');
+                    if ($v = $like($request->producto_longitud)) $q->where('longitud', 'like', $v);
                 }
             });
         }
 
-        // Descripción
+        // Descripción (contains)
         if ($request->filled('descripcion')) {
-            $query->where('descripcion', 'like', '%' . $request->descripcion . '%');
+            if ($v = $like($request->descripcion)) {
+                $query->where('descripcion', 'like', $v);
+            }
         }
+
+        // Nave: si llega nave_id (exacto). Si quieres contains por nombre, usa parámetro 'nave' (texto)
         if ($request->filled('nave_id')) {
             $query->where('nave_id', $request->nave_id);
         }
+        if ($request->filled('nave')) {
+            if ($v = $like($request->nave)) {
+                $query->whereHas('nave', function ($q) use ($v) {
+                    $q->where('obra', 'like', $v);
+                });
+            }
+        }
 
-        // Prioridad exacta (baja, media, alta)
+        // Prioridad y Estado como contains (permitiendo “alta”, “urgente”, etc.)
         if ($request->filled('prioridad')) {
-            $query->where('prioridad', $request->prioridad);
+            if ($v = $like($request->prioridad)) {
+                // Si guardas prioridad numérica y también texto, puedes OR ambos:
+                $query->where(function ($q) use ($v, $request) {
+                    $q->where('prioridad', 'like', $v);
+                    if (is_numeric($request->prioridad)) {
+                        $q->orWhere('prioridad', (int)$request->prioridad);
+                    }
+                });
+            }
         }
-
-        // Estado exacto (pendiente, completado, cancelado…)
         if ($request->filled('estado')) {
-            $query->where('estado', $request->estado);
+            if ($v = $like($request->estado)) {
+                $query->where('estado', 'like', $v);
+            }
         }
 
-        // Origen / Destino (texto libre, ej. “Máquina A-1”)
+        // Origen (campo libre) contains
         if ($request->filled('origen')) {
-            $query->where('origen', 'like', '%' . $request->origen . '%');
+            if ($v = $like($request->origen)) {
+                $query->where('ubicacion_origen', 'like', $v);
+            }
         }
+
+        // Destino: puede ser texto libre (columna ubicacion_destino) o nombre de máquina destino
         if ($request->filled('destino')) {
-            $query->whereHas('maquinaDestino', function ($q) use ($request) {
-                $q->where('nombre', 'like', '%' . $request->destino . '%');
-            });
+            $needle = trim((string) $request->destino);
+            if ($needle !== '') {
+                $like = '%' . str_replace(['%', '_'], ['\%', '\_'], $needle) . '%';
+                $query->where(function ($q) use ($like) {
+                    // Coincidencia en la columna directa
+                    $q->where('ubicacion_destino', 'like', $like)
+                        // O en la relación maquinaDestino.nombre
+                        ->orWhereHas('maquinaDestino', function ($m) use ($like) {
+                            $m->where('nombre', 'like', $like);
+                        });
+                });
+            }
         }
 
 
         /* ─────────────── Filtros por relaciones ─────────────── */
 
-        // Producto (códigos parciales separados por comas)
+        // Producto (códigos parciales separados por comas, con soporte de padding)
         if ($request->filled('producto_codigo')) {
-            $codigos = array_filter(array_map('trim', explode(',', $request->producto_codigo)));
-
-            $query->whereHas('producto', function ($q) use ($codigos) {
-                $q->where(function ($sub) use ($codigos) {
-                    foreach ($codigos as $codigo) {
-                        $sub->orWhere('codigo', 'like', '%' . $codigo . '%');
-                    }
+            $codigos = array_values(array_filter(array_map('trim', explode(',', $request->producto_codigo))));
+            if (!empty($codigos)) {
+                $query->whereHas('producto', function ($q) use ($codigos, $patronesCodigo) {
+                    $q->where(function ($sub) use ($codigos, $patronesCodigo) {
+                        foreach ($codigos as $codigo) {
+                            foreach ($patronesCodigo($codigo) as $pat) {
+                                $sub->orWhere('codigo', 'like', $pat);
+                            }
+                        }
+                    });
                 });
-            });
+            }
         }
 
-        // Filtro por ID de producto o paquete concretos (si llegan)
+        // Filtros por IDs exactos (producto/paquete)
         if ($request->filled('producto_id')) {
             $query->where('producto_id', $request->producto_id);
         }
@@ -109,42 +193,54 @@ class MovimientoController extends Controller
             $query->where('paquete_id', $request->paquete_id);
         }
 
-        // Campo “producto_paquete” (permite buscar código en cualquiera de los dos)
+        // Campo “producto_paquete”: contains en código de ambos
         if ($request->filled('producto_paquete')) {
-            $codigo = $request->producto_paquete;
-            $query->where(function ($q) use ($codigo) {
-                $q->whereHas('producto', fn($p) => $p->where('codigo', 'like', "%$codigo%"))
-                    ->orWhereHas('paquete',  fn($p) => $p->where('codigo', 'like', "%$codigo%"));
+            $codigo = trim($request->producto_paquete);
+            $pats = $patronesCodigo($codigo);
+            $query->where(function ($q) use ($pats) {
+                $q->whereHas('producto', function ($p) use ($pats) {
+                    $p->where(function ($x) use ($pats) {
+                        foreach ($pats as $pat) $x->orWhere('codigo', 'like', $pat);
+                    });
+                })->orWhereHas('paquete', function ($p) use ($pats) {
+                    $p->where(function ($x) use ($pats) {
+                        foreach ($pats as $pat) $x->orWhere('codigo', 'like', $pat);
+                    });
+                });
             });
         }
 
-        // Usuario que solicitó
+        // Usuario que solicitó (contains en nombre completo)
         if ($request->filled('solicitado_por')) {
-            $nombre = $request->solicitado_por;
-            $query->whereHas('solicitadoPor', function ($q) use ($nombre) {
-                $q->where(DB::raw("CONCAT(name, ' ', primer_apellido, ' ', segundo_apellido)"), 'like', "%$nombre%");
-            });
+            if ($v = $like($request->solicitado_por)) {
+                $query->whereHas('solicitadoPor', function ($q) use ($v) {
+                    $q->where(DB::raw("CONCAT(name, ' ', primer_apellido, ' ', segundo_apellido)"), 'like', $v);
+                });
+            }
         }
 
-        // Usuario que ejecutó
+        // Usuario que ejecutó (contains en nombre completo con un solo valor)
         if ($request->filled('ejecutado_por')) {
-            $nombre = $request->ejecutado_por;
-            $query->whereHas('ejecutadoPor', function ($q) use ($nombre) {
-                $q->where(DB::raw("CONCAT(name, ' ', primer_apellido, ' ', segundo_apellido)"), 'like', "%$nombre%");
-            });
+            $needle = trim((string) $request->ejecutado_por);
+            if ($needle !== '') {
+                $like = '%' . str_replace(['%', '_'], ['\%', '\_'], $needle) . '%';
+                $query->whereHas('ejecutadoPor', function ($q) use ($like) {
+                    $q->whereRaw(
+                        "CONCAT_WS(' ', COALESCE(name,''), COALESCE(primer_apellido,''), COALESCE(segundo_apellido,'')) LIKE ?",
+                        [$like]
+                    );
+                });
+            }
         }
+
 
         /* ─────────────── Filtros por fechas ─────────────── */
-
-        // Rangos al estilo planillas
         if ($request->filled('fecha_inicio')) {
             $query->whereDate('created_at', '>=', $request->fecha_inicio);
         }
         if ($request->filled('fecha_finalizacion')) {
             $query->whereDate('created_at', '<=', $request->fecha_finalizacion);
         }
-
-        // Fechas individuales específicas
         if ($request->filled('fecha_solicitud')) {
             $query->whereDate('created_at', $request->fecha_solicitud);
         }
@@ -154,6 +250,7 @@ class MovimientoController extends Controller
 
         return $query;
     }
+
 
     private function filtrosActivos(Request $request): array
     {
