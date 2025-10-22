@@ -1516,7 +1516,7 @@ class ProduccionController extends Controller
         $maquinas = Maquina::query()
             ->where('tipo', '!=', 'grua')
             ->orderBy('nombre')
-            ->get(['id', 'nombre', 'codigo', 'estado', 'tipo', 'tipo_material', 'diametro_min', 'diametro_max', 'peso_min', 'peso_max']);
+            ->get();
 
         $localizacionMaquinas = Localizacion::query()
             ->get(['maquina_id', 'nave_id']);

@@ -75,7 +75,7 @@ document.addEventListener("DOMContentLoaded", () => {
     document.getElementById("btn_cancelar_guardar").addEventListener("click", () => {
         datos_elementos = JSON.parse(JSON.stringify(datos_elementos_original));
         renderPlanillasFromDatos(datos_elementos);
-        document.getElementById("modal_guardar")?.classList.add("hidden");
+        document.getElementById("modal_guardar")?.classList.replace("bottom-14", "-bottom-14");
     });
 
 
@@ -109,7 +109,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
             // 6) Mostrar modal Guardar (si lo usas)
             const modalGuardar = document.getElementById('modal_guardar');
-            if (modalGuardar) modalGuardar.classList.remove('hidden');
+            if (modalGuardar) modalGuardar.classList.replace('-bottom-14', 'bottom-14');
 
             // Cerrar modal fusión
             const modalFusion = document.getElementById("modal_fusionar_planilla");
@@ -123,12 +123,12 @@ document.addEventListener("DOMContentLoaded", () => {
 
     if (BTN_GUARDAR && MODAL_GUARDAR) {
         BTN_GUARDAR.addEventListener('click', async () => {
-            const GUARDAR_URL = MODAL_GUARDAR.dataset.saveUrl; // ← aquí está la ruta buena
+            const GUARDAR_URL = MODAL_GUARDAR.dataset.saveUrl;
             const ordenes = collectOrdenPayload();
             const cambios_elementos = collectCambiosElementosPayload();
 
             if (ordenes.length === 0 && cambios_elementos.length === 0) {
-                MODAL_GUARDAR.classList.add('hidden');
+                MODAL_GUARDAR.classList.replace("bottom-14", "-bottom-14");
                 return;
             }
 
@@ -152,7 +152,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 }
 
                 datos_elementos_original = JSON.parse(JSON.stringify(datos_elementos));
-                MODAL_GUARDAR.classList.add('hidden');
+                MODAL_GUARDAR.classList.replace("bottom-14", "-bottom-14");
                 // console.log('✅ Cambios guardados');
             } catch (e) {
                 console.error('❌ Error de red al guardar:', e);
@@ -247,7 +247,7 @@ function initDragAndDrop(contenedores, maquinas) {
             logDiffDatosElementos(before, datos_elementos, planillaId);
 
             const modalGuardar = document.getElementById('modal_guardar');
-            if (modalGuardar) modalGuardar.classList.remove('hidden');
+            if (modalGuardar) modalGuardar.classList.replace("-bottom-14", "bottom-14");
 
             dragging = null;
             origenCol = null;
@@ -372,7 +372,7 @@ async function mostrarElementos(planillas, div_elementos, btn, datos_elementos) 
             const target = e.currentTarget;
             const codigo = target.children[1]?.textContent?.trim() || "";
             const maquinaTitulo = target.closest('.maquina')
-                ?.querySelector('.bg-neutral-400 p, .bg-slate-300 p')
+                ?.querySelector('.bg-emerald-700 p')
                 ?.textContent?.trim() || "";
 
             const planilla_id = target.dataset.planillaId || target.getAttribute("data-planilla-id");
@@ -425,9 +425,10 @@ function anadirElemento(padre, elemento, n) {
          data-peso="${elemento.peso ?? ''}"
          data-dimensiones="${elemento.dimensiones ?? ''}"
          data-id="${elemento.id}">
-        <div class="flex justify-center gap-4 items-center w-full">
+        <div class="flex justify-between items-center w-full">
             <div class="text-neutral-600 text-xs font-mono font-semibold">${n + 1}</div>
             <p>${elemento.codigo}</p>
+            <p><span class="text-red-500 font-semibold">Ø</span>${elemento.diametro}</p>
         </div>
         <canvas id="${idCanvas}" class="w-full h-24 bg-white border border-gray-200 rounded-md"></canvas>
     </div>`;
@@ -529,6 +530,10 @@ function actualizarMaquinaDeElementos(ids, nuevo_maquina_id) {
             //     console.table(cambios);
             //     console.groupEnd();
             // }
+            const modalGuardar = document.getElementById('modal_guardar');
+            if (modalGuardar) {
+                modalGuardar.classList.replace('-bottom-14', 'bottom-14');
+            }
         });
     }
 
@@ -544,13 +549,10 @@ function seleccionarMaquinaParaMovimiento() {
     modal_elementos.classList.add("hidden")
     modal.classList.remove("hidden");
 
-    // estado: máquina actualmente seleccioná
     let maquinaSeleccionadaId = null;
 
-    // click en cada maquina -> solo actualiza seleccion y estilos
     maquinas.forEach(m => {
         m.addEventListener("click", () => {
-            // estilos
             maquinas.forEach(x => {
                 x.classList.add("hover:bg-neutral-400", "bg-neutral-300");
                 x.classList.remove("bg-neutral-400");
@@ -558,31 +560,46 @@ function seleccionarMaquinaParaMovimiento() {
             m.classList.remove("hover:bg-neutral-400", "bg-neutral-300");
             m.classList.add("bg-neutral-400");
 
-            // guardar seleccion
             maquinaSeleccionadaId = m.getAttribute("data-id");
         });
     });
 
-    // Registrar el click del btn
     btnTransferir.onclick = () => {
         if (!maquinaSeleccionadaId) {
-            // console.log("sin maquina seleccionada");
             return;
         }
 
-        // recoger ids seleccionados actuales
         const elementos_seleccionados = Array.from(document.getElementsByClassName("seleccionado"))
             .map(el => el.getAttribute("data-id"));
 
-        // reset estilos + cerrar modal
+        if (elementos_seleccionados.length === 0) {
+            alert("No hay elementos seleccionados");
+            return;
+        }
+
+        // Validar compatibilidad
+        const { validos, invalidos } = validarCompatibilidadElementos(elementos_seleccionados, maquinaSeleccionadaId);
+
+        // Si todos son válidos, proceder normalmente
+        if (invalidos.length === 0) {
+            maquinas.forEach(x => {
+                x.classList.add("hover:bg-neutral-400", "bg-neutral-300");
+                x.classList.remove("bg-neutral-400");
+            });
+            modal.classList.add("hidden");
+            actualizarMaquinaDeElementos(elementos_seleccionados, maquinaSeleccionadaId);
+            return;
+        }
+
+        // Si hay elementos inválidos, mostrar modal de advertencia
+        mostrarModalAdvertencia(validos, invalidos, maquinaSeleccionadaId);
+
+        // Cerrar modal de transferir
         maquinas.forEach(x => {
             x.classList.add("hover:bg-neutral-400", "bg-neutral-300");
             x.classList.remove("bg-neutral-400");
         });
         modal.classList.add("hidden");
-
-        // ejecutar transferencia
-        actualizarMaquinaDeElementos(elementos_seleccionados, maquinaSeleccionadaId);
     };
 }
 
@@ -775,4 +792,96 @@ function logDiffDatosElementos(beforeArr, afterArr, onlyPlanillaId = null) {
         // }
     });
     console.groupEnd();
+}
+
+// función para obtener los detalles de una máquina por ID
+function getMaquinaDetallesById(maquina_id) {
+    const maquina = document.querySelector(`.maquina[data-maquina-id="${maquina_id}"]`);
+    if (!maquina) return null;
+    try {
+        return JSON.parse(maquina.dataset.detalles);
+    } catch {
+        return null;
+    }
+}
+
+// función para validar compatibilidad entre elementos y maquina
+function validarCompatibilidadElementos(elementos_ids, maquina_id) {
+    const maquinaDetalles = getMaquinaDetallesById(maquina_id);
+    if (!maquinaDetalles) return { validos: elementos_ids, invalidos: [] };
+
+    const diametro_min = Number(maquinaDetalles.diametro_min);
+    const diametro_max = Number(maquinaDetalles.diametro_max);
+
+    const validos = [];
+    const invalidos = [];
+
+    elementos_ids.forEach(id => {
+        const elemento = datos_elementos.find(e => Number(e.id) === Number(id));
+        if (!elemento) return;
+
+        const diametro = Number(elemento.diametro);
+
+        // Validar si el diámetro está dentro del rango
+        if (diametro >= diametro_min && diametro <= diametro_max) {
+            validos.push({ id, codigo: elemento.codigo, diametro });
+        } else {
+            invalidos.push({ id, codigo: elemento.codigo, diametro });
+        }
+    });
+
+    return { validos, invalidos };
+}
+
+// función para mostrar el modal de advertencia
+function mostrarModalAdvertencia(validos, invalidos, maquina_id) {
+    const modalAdvertencia = document.getElementById("modal_advertencia_compatibilidad");
+    const listaIncompatibles = document.getElementById("lista_elementos_incompatibles");
+    const countValidos = document.getElementById("count_validos");
+    const countInvalidos = document.getElementById("count_invalidos");
+    const btnCancelar = document.getElementById("advertencia_cancelar");
+    const btnProseguir = document.getElementById("advertencia_proseguir");
+
+    const maquinaDetalles = getMaquinaDetallesById(maquina_id);
+    const rangoText = maquinaDetalles
+        ? `Rango permitido: ${maquinaDetalles.diametro_min}mm - ${maquinaDetalles.diametro_max}mm`
+        : '';
+
+    // Actualizar contadores
+    countValidos.textContent = validos.length;
+    countInvalidos.textContent = invalidos.length;
+
+    // Llenar lista de incompatibles
+    listaIncompatibles.innerHTML = `
+        <div class="text-xs text-gray-600 mb-2">${rangoText}</div>
+        ${invalidos.map(el => `
+            <div class="bg-white p-2 rounded mb-2 flex justify-between items-center border border-red-200">
+                <span class="font-mono font-semibold">${el.codigo}</span>
+                <span class="text-sm text-red-600">Ø ${el.diametro}mm</span>
+            </div>
+        `).join('')}
+    `;
+
+    // Mostrar modal
+    modalAdvertencia.classList.remove("hidden");
+
+    // Manejar botón cancelar
+    btnCancelar.onclick = () => {
+        modalAdvertencia.classList.add("hidden");
+        // No hacer nada, cancelar todo
+    };
+
+    // Manejar botón proseguir
+    btnProseguir.onclick = () => {
+        modalAdvertencia.classList.add("hidden");
+
+        if (validos.length === 0) {
+            alert("No hay elementos compatibles para transferir");
+            return;
+        }
+
+        // Solo transferir los elementos válidos
+        const idsValidos = validos.map(v => v.id);
+        actualizarMaquinaDeElementos(idsValidos, maquina_id);
+    };
 }
