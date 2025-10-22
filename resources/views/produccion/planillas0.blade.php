@@ -45,7 +45,7 @@ $numMaquinas = $maquinas->count();
             <div class="maquina flex flex-col w-full min-w-24 bg-neutral-200"
                 data-detalles='@json($detalles)'
                 data-maquina-id="{{ $detalles['id'] }}">
-                <div class="bg-emerald-700 w-full h-12 p-1 rounded-t-md flex items-center justify-center text-white">
+                <div class="bg-gradient-to-r from-emerald-600 to-emerald-700 w-full h-12 p-2 rounded-t-xl flex items-center justify-center text-white shadow-md uppercase font-bold text-xl">
                     <p class="uppercase text-2xl font-mono">{{ $detalles["codigo"] }}</p>
                 </div>
 
@@ -54,7 +54,8 @@ $numMaquinas = $maquinas->count();
                 [&::-webkit-scrollbar-track]:bg-neutral-300
                 [&::-webkit-scrollbar-thumb]:bg-emerald-700
                 dark:[&::-webkit-scrollbar-track]:bg-neutral-700
-                dark:[&::-webkit-scrollbar-thumb]:bg-neutral-500"></div>
+                dark:[&::-webkit-scrollbar-thumb]:bg-neutral-500
+                p-1 py-2"></div>
 
             </div>
 
@@ -177,15 +178,25 @@ $numMaquinas = $maquinas->count();
         'peso' => $elemento->peso,
         'dimensiones' => $elemento->dimensiones,
         'diametro' => $elemento->diametro,
+        'diametro' => $elemento->diametro,
     ]) }}"></div>
         @endforeach
-
-
     </div>
+
+    <div id="todasObras" class="hidden">
+        @foreach ($obras as $obra)
+        <div data-elementos="{{ json_encode([
+            'id' => $obra->id,
+            'nombre' => $obra->obra,
+            ]) }}"></div>
+        @endforeach
+    </div>
+
+
 
     <div id="todasPlanillas" class="hidden">
         @foreach ($planillas as $p)
-        <div data-planilla='@json(["id"=>$p->id,"codigo"=>$p->codigo])'></div>
+        <div data-planilla='@json(["id"=>$p->id,"codigo"=>$p->codigo, "obra_id" => $p->obra_id])'></div>
         @endforeach
     </div>
 
@@ -213,10 +224,6 @@ $numMaquinas = $maquinas->count();
     <script src="{{ asset('js/elementosJs/figuraElemento.js') }}" defer></script>
     <script src="{{ asset('js/planillas/planificacion.js') }}"></script>
     <style>
-        .planilla {
-            background-color: #fdba74;
-        }
-
         .planilla.compi-resaltado {
             background-color: #fc9d55 !important;
         }

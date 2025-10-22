@@ -639,7 +639,7 @@ function buildOrdenesMap() {
 // Crea el nodo .planilla
 function createPlanillaCard({ planilla_id, codigo, posicion }) {
     const div = document.createElement('div');
-    div.className = "planilla p-3 flex justify-around items-center bg-orange-300 hover:bg-orange-400 cursor-grab active:cursor-grabbing select-none text-center relative";
+    div.className = "planilla p-3 flex justify-around items-center border border-orange-400 hover:-translate-y-1 transition-all duration-75 ease-in-out rounded-xl bg-white hover:bg-orange-400 cursor-grab active:cursor-grabbing select-none text-center relative";
     div.setAttribute('draggable', 'true');
     div.dataset.planillaId = String(planilla_id);
     if (posicion != null) div.dataset.posicion = String(posicion);

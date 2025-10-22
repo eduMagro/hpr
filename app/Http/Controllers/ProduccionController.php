@@ -1535,7 +1535,9 @@ class ProduccionController extends Controller
         $elementos = Elemento::query()
             ->get();
 
-        return view('produccion.planillas0', compact('maquinas', 'localizacionMaquinas', 'ordenPlanillas', 'planillas', 'elementos'));
+        $obras = Obra::query()->get();
+
+        return view('produccion.planillas0', compact('maquinas', 'localizacionMaquinas', 'ordenPlanillas', 'planillas', 'elementos', 'obras'));
     }
 
     public function guardarPlanificacion(Request $request)
