@@ -37,95 +37,87 @@ use Intervention\Image\Drivers\Gd\Driver as GdDriver;
 
 class ProfileController extends Controller
 {
+    private function escapeLike(string $value): string
+    {
+        $value = str_replace(['\\', '%', '_'], ['\\\\', '\%', '\_'], $value);
+        return "%{$value}%";
+    }
+
     public function exportarUsuarios(Request $request)
     {
         $usuariosFiltrados = $this->aplicarFiltros($request)
             ->with(['empresa', 'categoria'])
             ->get();
 
+
         return Excel::download(new UsersExport($usuariosFiltrados), 'usuarios-app.xlsx');
     }
+    // Limpieza del duplicado en filtrosActivos()
     private function filtrosActivos(Request $request): array
     {
         $filtros = [];
 
-        if ($request->filled('id')) {
-            $filtros[] = 'ID: <strong>' . $request->id . '</strong>';
-        }
-        if ($request->filled('nombre_completo')) {
-            $filtros[] = 'Nombre: <strong>' . $request->nombre_completo . '</strong>';
-        }
-        if ($request->filled('nombre_completo')) {
-            $filtros[] = 'Nombre: <strong>' . $request->nombre_completo . '</strong>';
-        }
+        if ($request->filled('id'))              $filtros[] = 'ID: <strong>' . e($request->id) . '</strong>';
+        if ($request->filled('nombre_completo')) $filtros[] = 'Nombre: <strong>' . e($request->nombre_completo) . '</strong>';
+        if ($request->filled('email'))           $filtros[] = 'Email: <strong>' . e($request->email) . '</strong>';
+        if ($request->filled('movil_personal'))  $filtros[] = 'Móvil Personal: <strong>' . e($request->movil_personal) . '</strong>';
+        if ($request->filled('movil_empresa'))   $filtros[] = 'Móvil Empresa: <strong>' . e($request->movil_empresa) . '</strong>';
+        if ($request->filled('numero_corto'))    $filtros[] = 'Nº Corporativo: <strong>' . e($request->numero_corto) . '</strong>';
+        if ($request->filled('dni'))             $filtros[] = 'DNI: <strong>' . e($request->dni) . '</strong>';
 
-        if ($request->filled('email')) {
-            $filtros[] = 'Email: <strong>' . $request->email . '</strong>';
-        }
-        if ($request->filled('movil_personal')) {
-            $filtros[] = 'Móvil Personal: <strong>' . $request->movil_personal . '</strong>';
-        }
-        if ($request->filled('movil_empresa')) {
-            $filtros[] = 'Móvil Empresa: <strong>' . $request->movil_empresa . '</strong>';
-        }
-        if ($request->filled('numero_corto')) {
-            $filtros[] = 'Nº Corporativo: <strong>' . $request->numero_corto . '</strong>';
-        }
-
-        if ($request->filled('dni')) {
-            $filtros[] = 'DNI: <strong>' . $request->dni . '</strong>';
-        }
-
-        if ($request->filled('empresa')) {
-            $filtros[] = 'Empresa: <strong>' . $request->empresa . '</strong>';
-        }
-
-        if ($request->filled('rol')) {
-            $filtros[] = 'Rol: <strong>' . $request->rol . '</strong>';
+        if ($request->filled('empresa_id')) {
+            $empresa = \App\Models\Empresa::find($request->empresa_id);
+            $filtros[] = 'Empresa: <strong>' . e($empresa->nombre ?? ('ID ' . $request->empresa_id)) . '</strong>';
+        } elseif ($request->filled('empresa')) {
+            $filtros[] = 'Empresa: <strong>' . e($request->empresa) . '</strong>';
         }
 
         if ($request->filled('categoria_id')) {
             $nombreCategoria = Categoria::find($request->categoria_id)?->nombre ?? 'Desconocida';
-            $filtros[] = 'Categoría: <strong>' . $nombreCategoria . '</strong>';
+            $filtros[] = 'Categoría: <strong>' . e($nombreCategoria) . '</strong>';
+        } elseif ($request->filled('categoria')) {
+            $filtros[] = 'Categoría: <strong>' . e($request->categoria) . '</strong>';
         }
 
         if ($request->filled('maquina_id')) {
             $maquina = Maquina::find($request->maquina_id);
-            $filtros[] = 'Máquina: <strong>' . ($maquina->nombre ?? 'ID ' . $request->maquina_id) . '</strong>';
+            $filtros[] = 'Máquina: <strong>' . e($maquina->nombre ?? ('ID ' . $request->maquina_id)) . '</strong>';
+        } elseif ($request->filled('maquina')) {
+            $filtros[] = 'Máquina: <strong>' . e($request->maquina) . '</strong>';
         }
 
-
-        if ($request->filled('turno')) {
-            $filtros[] = 'Turno: <strong>' . $request->turno . '</strong>';
-        }
+        if ($request->filled('turno'))  $filtros[] = 'Turno: <strong>' . e($request->turno) . '</strong>';
+        if ($request->filled('rol'))    $filtros[] = 'Rol: <strong>' . e($request->rol) . '</strong>';
 
         if ($request->filled('estado')) {
-            $filtros[] = 'Estado: <strong>' . ucfirst($request->estado) . '</strong>';
+            $filtros[] = 'Estado: <strong>' . ucfirst(e($request->estado)) . '</strong>';
         }
-
 
         if ($request->filled('sort')) {
             $sorts = [
                 'nombre_completo' => 'Nombre',
-                'email' => 'Email',
-                'dni' => 'DNI',
-                'empresa' => 'Empresa',
-                'rol' => 'Rol',
-                'categoria' => 'Categoría',
-                'maquina' => 'Máquina',
-                'turno' => 'Turno',
-                'estado' => 'Estado',
+                'email'           => 'Email',
+                'dni'             => 'DNI',
+                'empresa'         => 'Empresa',
+                'rol'             => 'Rol',
+                'categoria'       => 'Categoría',
+                'maquina_id'      => 'Máquina',
+                'turno'           => 'Turno',
+                'estado'          => 'Estado',
+                'numero_corto'    => 'Nº Corporativo',
+                'id'              => 'ID',
             ];
-            $orden = $request->order == 'desc' ? 'descendente' : 'ascendente';
-            $filtros[] = 'Ordenado por <strong>' . ($sorts[$request->sort] ?? $request->sort) . "</strong> en orden <strong>$orden</strong>";
+            $orden = strtolower($request->order) === 'desc' ? 'descendente' : 'ascendente';
+            $filtros[] = 'Ordenado por <strong>' . e($sorts[$request->sort] ?? $request->sort) . "</strong> en orden <strong>$orden</strong>";
         }
 
         if ($request->filled('per_page')) {
-            $filtros[] = 'Mostrando <strong>' . $request->per_page . '</strong> registros por página';
+            $filtros[] = 'Mostrando <strong>' . e($request->per_page) . '</strong> registros por página';
         }
 
         return $filtros;
     }
+
 
     private function getOrdenamiento(string $columna, string $titulo): string
     {
@@ -150,78 +142,125 @@ class ProfileController extends Controller
 
     public function aplicarFiltros(Request $request)
     {
+        // Mapa de orden seguro (añadimos nombres "bonitos" cuando haga falta join)
         $ordenables = [
-            'id' => 'users.id',
-            'nombre_completo' => DB::raw("CONCAT_WS(' ', name, primer_apellido, segundo_apellido)"),
-            'email' => 'users.email',
-            'numero_corto' => DB::raw('CAST(users.numero_corto AS UNSIGNED)'),
-            'dni' => 'users.dni',
-            'empresa' => 'empresa_id',
-            'rol' => 'users.rol',
-            'categoria' => 'categoria_id',
-            'maquina_id' => 'maquina_id',
-            'turno' => 'users.turno',
-            'estado' => 'estado',
+            'id'              => 'users.id',
+            'nombre_completo' => DB::raw("CONCAT_WS(' ', users.name, users.primer_apellido, users.segundo_apellido)"),
+            'email'           => 'users.email',
+            'numero_corto'    => DB::raw('CAST(users.numero_corto AS UNSIGNED)'),
+            'dni'             => 'users.dni',
+            // Por defecto ordena por ID; si quieres ordenar por nombre de empresa/categoría, haremos join abajo
+            'empresa'         => 'empresas.nombre',
+            'rol'             => 'users.rol',
+            'categoria'       => 'categorias.nombre',
+            'maquina_id'      => 'users.maquina_id',
+            'turno'           => 'users.turno',
+            'estado'          => 'users.estado', // si existiera columna; tu "estado" de conexión va en colección
         ];
 
         $query = User::query()->select('users.*');
 
+        // 🔹 FILTROS
+
         if ($request->filled('id')) {
-            $query->where('id', $request->id);
+            $query->where('users.id', $request->id);
         }
 
         if ($request->filled('nombre_completo')) {
-            $valor = $request->input('nombre_completo');
-            $query->whereRaw("CONCAT_WS(' ', name, primer_apellido, segundo_apellido) LIKE ?", ["%{$valor}%"]);
+            $like = $this->escapeLike($request->input('nombre_completo'));
+            $query->whereRaw(
+                "CONCAT_WS(' ', users.name, users.primer_apellido, users.segundo_apellido) LIKE ? ESCAPE '\\\\'",
+                [$like]
+            );
         }
 
         if ($request->filled('email')) {
-            $query->where('users.email', 'like', '%' . $request->input('email') . '%');
+            $query->where('users.email', 'like', $this->escapeLike($request->input('email')));
         }
 
         if ($request->filled('movil_personal')) {
-            $query->where('users.movil_personal', 'like', '%' . $request->input('movil_personal') . '%');
+            $query->where('users.movil_personal', 'like', $this->escapeLike($request->input('movil_personal')));
         }
 
         if ($request->filled('movil_empresa')) {
-            $query->where('users.movil_empresa', 'like', '%' . $request->input('movil_empresa') . '%');
+            $query->where('users.movil_empresa', 'like', $this->escapeLike($request->input('movil_empresa')));
         }
 
         if ($request->filled('numero_corto')) {
-            $query->where('users.numero_corto', 'like', '%' . $request->input('numero_corto') . '%');
+            // aunque sea numérico, permitimos contains
+            $query->whereRaw('CAST(users.numero_corto AS CHAR) LIKE ? ESCAPE \'\\\\\'', [$this->escapeLike($request->input('numero_corto'))]);
         }
+
         if ($request->filled('dni')) {
-            $query->where('users.dni', 'like', '%' . $request->input('dni') . '%');
+            $query->where('users.dni', 'like', $this->escapeLike($request->input('dni')));
         }
 
+        // Empresa: por ID exacto…
         if ($request->filled('empresa_id')) {
-            $query->where('empresa_id', $request->empresa_id);
+            $query->where('users.empresa_id', $request->empresa_id);
+        }
+        // …o por nombre contains (param 'empresa')
+        if ($request->filled('empresa')) {
+            $like = $this->escapeLike($request->empresa);
+            $query->whereHas('empresa', function ($q) use ($like) {
+                $q->whereRaw("nombre LIKE ? ESCAPE '\\\\'", [$like]);
+            });
         }
 
-        if ($request->filled('rol')) {
-            $query->where('users.rol', $request->input('rol'));
+        // Categoría: por ID…
+        if ($request->filled('categoria_id')) {
+            $query->where('users.categoria_id', $request->categoria_id);
+        }
+        // …o por nombre (param 'categoria')
+        if ($request->filled('categoria')) {
+            $like = $this->escapeLike($request->categoria);
+            $query->whereHas('categoria', function ($q) use ($like) {
+                $q->whereRaw("nombre LIKE ? ESCAPE '\\\\'", [$like]);
+            });
         }
 
+        // Máquina: por ID exacto
         if ($request->filled('maquina_id')) {
-            $query->where('maquina_id', $request->input('maquina_id'));
+            $query->where('users.maquina_id', $request->input('maquina_id'));
+        }
+        // (Opcional) por nombre
+        if ($request->filled('maquina')) {
+            $like = $this->escapeLike($request->maquina);
+            $query->whereHas('maquina', function ($q) use ($like) {
+                $q->whereRaw("nombre LIKE ? ESCAPE '\\\\'", [$like]);
+            });
         }
 
+        // Turno y rol con contains (cámbialo a '=' si deben ser exactos)
         if ($request->filled('turno')) {
-            $query->where('users.turno', $request->input('turno'));
+            $query->where('users.turno', 'like', $this->escapeLike($request->input('turno')));
+        }
+        if ($request->filled('rol')) {
+            $query->where('users.rol', 'like', $this->escapeLike($request->input('rol')));
         }
 
-        // Aplicar ordenamiento seguro
-        $sort = $request->input('sort');
-        $order = strtolower($request->input('order', 'asc'));
+        // 🔹 ORDENAMIENTO
+        $sort  = $request->input('sort');
+        $order = in_array(strtolower($request->input('order', 'asc')), ['asc', 'desc']) ? strtolower($request->input('order', 'asc')) : 'asc';
 
-        if (isset($ordenables[$sort]) && in_array($order, ['asc', 'desc'])) {
+        // Si el orden implica campos de tablas relacionadas, hacemos join (sin romper el select users.*)
+        if ($sort === 'empresa') {
+            $query->leftJoin('empresas', 'empresas.id', '=', 'users.empresa_id');
+        }
+        if ($sort === 'categoria') {
+            $query->leftJoin('categorias', 'categorias.id', '=', 'users.categoria_id');
+        }
+
+        if (isset($ordenables[$sort])) {
             $query->orderBy($ordenables[$sort], $order);
         } else {
+            // orden por defecto
             $query->orderBy('users.created_at', 'desc');
         }
 
         return $query;
     }
+
 
     public function index(Request $request)
     {
