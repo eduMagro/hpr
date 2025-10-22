@@ -34,9 +34,9 @@
                       style="height:2cm; padding:0.75rem 1rem; font-size:1.5rem;">
                       <option value="">-- Selecciona máquina --</option>
                       @foreach ($maquinasDisponibles as $maq)
-                          <option value="{{ $maq->id }}">
-                              {{ $maq->nombre }}
-                          </option>
+                      <option value="{{ $maq->id }}">
+                          {{ $maq->nombre }}
+                      </option>
                       @endforeach
                   </select>
               </div>
@@ -152,6 +152,7 @@
 
               <x-tabla.input-movil type="text" name="codigo_general" id="modal_producto_id"
                   placeholder="ESCANEA QR MATERIA PRIMA" inputmode="none" autocomplete="off" required />
+              <input type="hidden" name="lista_qrs" id="modal_lista_qrs">
 
               <!-- Botones -->
               <div class="flex justify-end gap-3 mt-6">
@@ -163,6 +164,28 @@
 
           </form>
       </div>
+
+      <script>
+          document.addEventListener('DOMContentLoaded', () => {
+              const form = document.getElementById('form-ejecutar-movimiento');
+              const inputQR = document.getElementById('modal_producto_id');
+              const hiddenLista = document.getElementById('modal_lista_qrs');
+
+              form.addEventListener('submit', (e) => {
+                  const valor = inputQR.value.trim();
+
+                  if (valor) {
+                      // Convertimos el valor en array JSON (aunque sea uno solo)
+                      hiddenLista.value = JSON.stringify([valor]);
+                  } else {
+                      // Si está vacío, lo dejamos vacío para que el backend valide
+                      hiddenLista.value = '';
+                  }
+              });
+          });
+      </script>
+
+
   </div>
   {{-- 🔄 MODAL DESCARGA MATERIA PRIMA --}}
   <div id="modal-ver-pedido"
@@ -222,14 +245,30 @@
           document.getElementById('modalMovimiento').classList.remove('flex');
       }
 
-      function abrirModalMovimientoLibre() {
+      function abrirModalMovimientoLibre(codigo = null) {
           const modal = document.getElementById('modalMovimientoLibre');
           modal.classList.remove('hidden');
           modal.classList.add('flex');
+
+          const inputQR = document.getElementById("codigo_general_general");
+
           setTimeout(() => {
-              document.getElementById("codigo_general_general")?.focus();
+              if (!inputQR) return;
+
+              if (codigo) {
+                  const code = String(codigo).trim().toUpperCase();
+                  inputQR.value = code;
+
+                  //   fuerzo accion input para que se registre el codigo
+                  inputQR.dispatchEvent(new Event('input', {
+                      bubbles: true
+                  }));
+              }
+
+              inputQR.focus();
           }, 100);
       }
+
 
       function cerrarModalMovimientoLibre() {
           const modal = document.getElementById('modalMovimientoLibre');

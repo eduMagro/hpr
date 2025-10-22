@@ -12,6 +12,7 @@ use App\Models\Obra;
 use App\Models\Cliente;
 use App\Models\ProductoBase;
 use App\Models\Pedido;
+use App\Models\Planilla;
 use App\Models\OrdenPlanilla;
 use App\Models\AsignacionTurno;
 use App\Models\User;
@@ -26,6 +27,8 @@ use Illuminate\Support\Str;
 use Illuminate\Support\Collection;
 use App\Services\SugeridorProductoBaseService;
 use Illuminate\Support\Facades\Log;
+use App\Services\ProgressBVBSService;
+use App\Services\PlanillaColaService;
 
 class MaquinaController extends Controller
 {
@@ -129,7 +132,6 @@ class MaquinaController extends Controller
         $maquina = Maquina::with('obra:id,obra')->findOrFail($id);
         return response()->json($maquina);
     }
-
 
     //------------------------------------------------------------------------------------ SHOW
 
@@ -308,6 +310,9 @@ class MaquinaController extends Controller
                 return (int) $c->countBy()->sortDesc()->keys()->first();
             })
             ->toArray();
+        Log::info('[MaquinaController@show] 🧩 Planillas activas en cola:', collect($planillasActivas)->pluck('id')->toArray());
+
+        Log::info('[MaquinaController@show] 🧩 Planillas presentes en elementosFiltrados:', $elementosFiltrados->pluck('planilla_id')->unique()->toArray());
 
         // 11) Devolver vista
         return view('maquinas.show', array_merge($base, [
@@ -980,5 +985,73 @@ class MaquinaController extends Controller
             DB::rollBack();  // Si ocurre un error, revertimos la transacción
             return redirect()->back()->with('error', 'Ocurrió un error al eliminar la entrada: ' . $e->getMessage());
         }
+    }
+
+
+    public function exportarBVBS(Maquina $maquina, ProgressBVBSService $bvbs)
+    {
+        // 1️⃣ Obtener las planillas activas (posición = 1) para esta máquina
+        $planillaIdsActivas = OrdenPlanilla::where('maquina_id', $maquina->id)
+            ->where('posicion', 1)
+            ->pluck('planilla_id');
+        $codigoProyecto = null;
+
+        if ($planillaIdsActivas) {
+            $planilla = Planilla::find($planillaIdsActivas[0]);
+            if ($planilla && preg_match('/-(\d{6})$/', $planilla->codigo, $m)) {
+                $codigoProyecto = ltrim(substr($m[1], -4), '0'); // '006651' → '6651'
+            }
+        }
+
+        // 2️⃣ Obtener los elementos de esas planillas y de esa máquina
+        $elementos = Elemento::with(['planilla.obra', 'etiquetaRelacion'])
+            ->whereIn('planilla_id', $planillaIdsActivas)
+            ->where(function ($q) use ($maquina) {
+                $q->where('maquina_id', $maquina->id)
+                    ->orWhere('maquina_id_2', $maquina->id);
+            })
+            ->get();
+
+        // 3️⃣ Mapear cada elemento a los campos que necesita el servicio BVBS
+        $datos = $elementos->map(fn($el) => [
+            'proyecto' => $codigoProyecto,
+            'plano'       => optional($el->etiquetaRelacion)->nombre,
+            'indice'      => $el->indice,
+            'marca'       => $el->etiqueta,
+            'barras'      => (int)$el->barras,
+            'diametro'    => (int)$el->diametro,
+            'dimensiones' => (string)$el->dimensiones,
+            'longitud'    => $el->longitud_total_cm,
+            'peso'        => $el->peso,
+            'mandril_mm'  => $el->mandril_mm, // opcional
+            'calidad'     => 'B500SD',
+            'capa'        => $el->capa,
+            'box'         => $el->box,
+        ])->all();
+
+        // 4) Generar BVBS
+        $contenido = $bvbs->exportarLote($datos);
+
+        // 5) Nombre de archivo decente
+        $timestamp   = now()->format('Ymd_His');
+        $maquinaTag  = Str::upper(trim($maquina->codigo ?? $maquina->nombre ?? 'MAQUINA'));
+        $maquinaTag  = Str::of($maquinaTag)->replaceMatches('/[^A-Z0-9]+/', '_')->trim('_');
+        $proyectoTag = $codigoProyecto ? 'PRJ' . $codigoProyecto : 'SINPRJ';
+        $filename    = "BVBS_{$maquinaTag}_{$proyectoTag}_{$timestamp}.bvbs";
+        $path        = "exports/bvbs/{$filename}";
+
+        // 6) Guardar en disco y devolver descarga
+        Storage::disk('local')->put($path, $contenido);
+
+        Log::info("Export BVBS guardado en {$path} para máquina {$maquina->id} con " . count($datos) . " líneas.");
+
+        return response()->download(
+            Storage::disk('local')->path($path),
+            $filename,
+            [
+                'Content-Type'  => 'text/plain; charset=UTF-8',
+                'Cache-Control' => 'no-store, no-cache, must-revalidate',
+            ]
+        );
     }
 }

@@ -7,6 +7,11 @@
 @php
     $safeSubId = str_replace('.', '-', $etiqueta->etiqueta_sub_id);
     $estado = strtolower($etiqueta->estado ?? 'pendiente');
+
+    if (in_array($estado, ['fabricada', 'completada', 'ensamblada', 'soldada']) && $etiqueta->paquete_id) {
+        $estado = 'en-paquete';
+    }
+
 @endphp
 
 <style>
@@ -15,18 +20,19 @@
         --bg-estado: #e5e7eb;
     }
 
+    /* blanco */
     .proceso.estado-pendiente {
         --bg-estado: #ffffff;
     }
 
-    /* blanco */
+    /* amarillo */
     .proceso.estado-fabricando,
     .proceso.estado-ensamblando,
     .proceso.estado-soldando {
         --bg-estado: #facc15;
     }
 
-    /* amarillo */
+    /* verde */
     .proceso.estado-fabricada,
     .proceso.estado-completada,
     .proceso.estado-ensamblada,
@@ -34,7 +40,10 @@
         --bg-estado: #22c55e;
     }
 
-    /* verde */
+    /* rojo */
+    .proceso.estado-en-paquete {
+        --bg-estado: #e3e4FA;
+    }
 
     /* === Contenedor general === */
     .etiqueta-wrapper {
@@ -139,10 +148,22 @@
 
         <!-- Botones -->
         <div class="relative">
-            <button onclick="imprimirEtiquetas(['{{ $etiqueta->etiqueta_sub_id }}'])"
-                class="absolute top-2 right-2 no-print" title="Imprimir esta etiqueta">🖨️</button>
+            <div class="absolute top-2 right-20 flex items-center gap-2 no-print">
+                <select id="modo-impresion-{{ $etiqueta->id }}" class="border border-gray-300 rounded px-2 py-1 text-sm">
+                    <option value="a6">A6</option>
+                    <option value="a4">A4</option>
+                </select>
+
+                <button type="button" class="bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700"
+                    onclick="const modo = document.getElementById('modo-impresion-{{ $etiqueta->id }}').value;
+                 imprimirEtiquetas(['{{ $etiqueta->etiqueta_sub_id }}'], modo)">
+                    🖨️
+                </button>
+            </div>
+
+
             <button type="button"
-                class="absolute top-2 right-12 no-print btn-fabricar bg-green-600 text-white px-3 py-1 rounded hover:bg-green-700"
+                class="absolute top-2 right-7 no-print btn-fabricar bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700"
                 data-etiqueta-id="{{ $etiqueta->etiqueta_sub_id }}" title="Fabricar esta etiqueta">⚙️</button>
         </div>
 
@@ -171,7 +192,8 @@
 <script>
     const domSafe = (v) => String(v).replace(/[^A-Za-z0-9_-]/g, '-');
 
-    async function imprimirEtiquetas(ids) {
+    async function imprimirEtiquetas(ids, modo = 'a4') {
+
         if (!Array.isArray(ids)) ids = [ids];
         const etiquetasHtml = [];
 
@@ -254,29 +276,98 @@
         }
 
         // CSS e impresión
-        const css = `
-        <style>
-          @page{size:A4 portrait;margin:10;}
-          body{margin:0;padding:0;background:#fff;}
-          .sheet-grid{
+        let css = '';
+        if (modo === 'a4') {
+            css = `<style>
+        @page{size:A4 portrait;margin:10;}
+        body{margin:0;padding:0;background:#fff;}
+        .sheet-grid{
             display:grid;
             grid-template-columns:105mm 105mm;
             grid-template-rows:repeat(5,59.4mm);
             width:210mm;height:297mm;
-          }
-          .etiqueta-print{
+        }
+        .etiqueta-print{
             position:relative;width:105mm;height:59.4mm;
             box-sizing:border-box;border:0.2mm solid #000;
             overflow:hidden;padding:3mm;background:#fff;
             page-break-inside:avoid;
-          }
-          .etiqueta-print h2{font-size:10pt;margin:0;}
-          .etiqueta-print h3{font-size:9pt;margin:0;}
-          .etiqueta-print img:not(.qr-print){width:100%;height:auto;margin-top:2mm;}
-          .qr-box{position:absolute;top:3mm;right:3mm;border:0.2mm solid #000;padding:1mm;background:#fff;}
-          .qr-box img{width:16mm;height:16mm;}
-          .no-print{display:none!important;}
-        </style>`;
+        }
+        .etiqueta-print h2{font-size:10pt;margin:0;}
+        .etiqueta-print h3{font-size:9pt;margin:0;}
+        .etiqueta-print img:not(.qr-print){width:100%;height:auto;margin-top:2mm;}
+        .qr-box{position:absolute;top:3mm;right:3mm;border:0.2mm solid #000;padding:1mm;background:#fff;}
+        .qr-box img{width:16mm;height:16mm;}
+        .no-print{display:none!important;}
+    </style>`;
+        } else if (modo === 'a6') {
+            css = `<style>
+  @page { size: A6 landscape; margin: 0; }
+
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: #fff;
+    width: 148mm;
+    height: 105mm;
+  }
+
+  body {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .etiqueta-print {
+    width: 140mm;
+    height: 100mm;
+    padding: 4mm;
+    box-sizing: border-box;
+    border: 0.2mm solid #000;
+    background: #fff;
+    overflow: hidden;
+    position: relative;
+    page-break-after: always;
+  }
+
+  .etiqueta-print h2 {
+    font-size: 11pt;
+    margin: 0 0 2mm 0;
+    line-height: 1.3;
+  }
+
+  .etiqueta-print h3 {
+    font-size: 10pt;
+    margin: 0 0 2mm 0;
+  }
+
+  .etiqueta-print img:not(.qr-print) {
+    width: 100%;
+    height: auto;
+    margin-top: 3mm;
+  }
+
+  .qr-box {
+    position: absolute;
+    top: 4mm;
+    right: 4mm;
+    border: 0.2mm solid #000;
+    padding: 1mm;
+    background: #fff;
+  }
+
+  .qr-box img {
+    width: 20mm;
+    height: 20mm;
+  }
+
+  .no-print {
+    display: none !important;
+  }
+</style>`;
+
+        }
+
 
         const w = window.open('', '_blank');
         w.document.open();

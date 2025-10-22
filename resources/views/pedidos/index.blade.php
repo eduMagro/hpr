@@ -596,19 +596,23 @@
         function recolectarLineas() {
             const filas = document.querySelectorAll('#tablaConfirmacionBody tr');
             const lineas = [];
-            filas.forEach((tr, index) => {
+            filas.forEach((tr) => {
+                const td = tr.querySelector('.pg-sugerido');
+                if (!td) return;
                 const peso = parseFloat(tr.querySelector('.peso-total').value || 0);
-                if (peso > 0) {
-                    lineas.push({
-                        index: index,
-                        cantidad: peso
-                    });
-                }
+                if (!(peso > 0)) return;
+
+                const idx = parseInt(td.dataset.index, 10); // índice DOM estable
+                const clave = td.dataset.clave; // clave real para backend
+                lineas.push({
+                    index: idx,
+                    clave: clave,
+                    cantidad: peso
+                });
             });
             return lineas;
         }
 
-        // 🔹 Llama al backend y pinta las sugerencias en cada fila
         function dispararSugerirMultiple() {
             const fabricante = document.getElementById('fabricante').value;
             const distribuidor = document.getElementById('distribuidor').value;
@@ -634,55 +638,50 @@
                     const mensajesGlobales = document.getElementById('mensajesGlobales');
                     mensajesGlobales.innerHTML = '';
 
+                    // Limpia TODAS las celdas antes de volver a pintar (evita “perdidas”)
+                    document.querySelectorAll('#tablaConfirmacionBody .pg-sugerido').forEach(td => {
+                        td.innerHTML = '—';
+                        const h = td.querySelector('input[name$="[pedido_global_id]"]');
+                        if (h) h.remove();
+                    });
+
                     if (data.mensaje) {
                         const div = document.createElement('div');
                         div.className = 'text-yellow-700 font-medium';
                         div.textContent = data.mensaje;
                         mensajesGlobales.appendChild(div);
                     }
-                    data.asignaciones.forEach(asig => {
-                        if (asig.linea_index !== null) {
-                            // Mensajes por línea
-                            const tr = document.querySelector(
-                                `#tablaConfirmacionBody tr:nth-child(${asig.linea_index + 1})`
+
+                    (data.asignaciones || []).forEach(asig => {
+                        if (asig.linea_index !== null && asig.linea_index !== undefined) {
+                            const td = document.querySelector(
+                                `.pg-sugerido[data-index="${asig.linea_index}"]`
                             );
-                            if (tr) {
-                                const td = tr.querySelector('.pg-sugerido');
-                                const clave = td?.dataset?.clave; // 👈 clave real que espera el backend
+                            if (!td) return;
 
-                                if (!clave) return; // por seguridad
+                            const clave = td.dataset.clave;
 
-                                if (asig.codigo) {
-                                    td.innerHTML = `
-                                        <div class="font-bold text-green-700">${asig.codigo}</div>
-                                        <div class="text-xs text-gray-600">${asig.mensaje}</div>
-                                        <div class="text-xs text-blue-600">Quedan ${asig.cantidad_restante} kg</div>
-                                        <input type="hidden" 
-                                                name="detalles[${clave}][pedido_global_id]" 
-                                                value="${asig.pedido_global_id}">
-                                        `;
-                                } else {
-                                    td.innerHTML = `
-                                        <div class="text-red-600">${asig.mensaje}</div>
-                                        <input type="hidden" 
-                                                name="detalles[${clave}][pedido_global_id]" 
-                                                value="">
-                                        `;
-                                }
+                            if (asig.codigo) {
+                                td.innerHTML = `
+              <div class="font-bold text-green-700">${asig.codigo}</div>
+              <div class="text-xs text-gray-600">${asig.mensaje}</div>
+              <div class="text-xs text-blue-600">Quedan ${asig.cantidad_restante} kg</div>
+              <input type="hidden" name="detalles[${clave}][pedido_global_id]" value="${asig.pedido_global_id}">
+            `;
+                            } else {
+                                td.innerHTML = `
+              <div class="text-red-600">${asig.mensaje}</div>
+              <input type="hidden" name="detalles[${clave}][pedido_global_id]" value="">
+            `;
                             }
-
-                        } else {
-                            // Mensajes globales (sin línea asociada)
+                        } else if (asig.mensaje) {
                             const div = document.createElement('div');
                             div.className = 'text-yellow-700 font-medium';
                             div.textContent = asig.mensaje;
                             mensajesGlobales.appendChild(div);
                         }
                     });
-
                 });
-
-
         }
 
         // recalcular cuando el usuario cambie peso en cualquier fila
@@ -817,62 +816,54 @@
 
     <script>
         function mostrarConfirmacion() {
-            const checkboxes = document.querySelectorAll(
-                'input[type="checkbox"]:checked');
+            const checkboxes = document.querySelectorAll('input[type="checkbox"]:checked');
             const tbody = document.getElementById('tablaConfirmacionBody');
-            tbody.innerHTML = ''; // limpiar
+            tbody.innerHTML = '';
 
-            checkboxes.forEach(cb => {
+            checkboxes.forEach((cb) => {
                 const clave = cb.value;
-                const tipo = document.querySelector(
-                    `input[name="detalles[${clave}][tipo]"]`).value;
-                const diametro = document.querySelector(
-                    `input[name="detalles[${clave}][diametro]"]`).value;
-                const cantidad = parseFloat(document.querySelector(
-                        `input[name="detalles[${clave}][cantidad]"]`)
+                const tipo = document.querySelector(`input[name="detalles[${clave}][tipo]"]`).value;
+                const diametro = document.querySelector(`input[name="detalles[${clave}][diametro]"]`).value;
+                const cantidad = parseFloat(document.querySelector(`input[name="detalles[${clave}][cantidad]"]`)
                     .value);
-                const longitudInput = document.querySelector(
-                    `input[name="detalles[${clave}][longitud]"]`);
+                const longitudInput = document.querySelector(`input[name="detalles[${clave}][longitud]"]`);
                 const longitud = longitudInput ? longitudInput.value : null;
 
                 const fila = document.createElement('tr');
                 fila.className = "bg-gray-100";
 
-                const fechasId = `fechas-camion-${clave}`;
+                // índice DOM estable para esta fila
+                const rowIndex = tbody.querySelectorAll('tr').length;
 
                 fila.innerHTML = `
-  <td class="border px-2 py-1">${tipo.charAt(0).toUpperCase() + tipo.slice(1)}</td>
-  <td class="border px-2 py-1">${diametro} mm${longitud ? ` / ${longitud} m` : ''}</td>
-  <td class="border px-2 py-1">
-    <div class="flex flex-col gap-2">
-      <input type="number" class="peso-total w-full px-2 py-1 border rounded"
-             name="detalles[${clave}][cantidad]" value="${cantidad}" step="2500" min="2500">
-      <div class="fechas-camion flex flex-col gap-1" id="fechas-camion-${clave}"></div>
-    </div>
-  </td>
-  <td class="border px-2 py-1 font-semibold text-green-700 pg-sugerido" data-clave="${clave}">—</td>
-  <input type="hidden" name="seleccionados[]" value="${clave}">
-  <input type="hidden" name="detalles[${clave}][tipo]" value="${tipo}">
-  <input type="hidden" name="detalles[${clave}][diametro]" value="${diametro}">
-  ${longitud ? `<input type="hidden" name="detalles[${clave}][longitud]" value="${longitud}">` : ''}
-`;
-
-
+      <td class="border px-2 py-1">${tipo.charAt(0).toUpperCase() + tipo.slice(1)}</td>
+      <td class="border px-2 py-1">${diametro} mm${longitud ? ` / ${longitud} m` : ''}</td>
+      <td class="border px-2 py-1">
+        <div class="flex flex-col gap-2">
+          <input type="number" class="peso-total w-full px-2 py-1 border rounded"
+                 name="detalles[${clave}][cantidad]" value="${cantidad}" step="2500" min="2500">
+          <div class="fechas-camion flex flex-col gap-1" id="fechas-camion-${clave}"></div>
+        </div>
+      </td>
+      <td class="border px-2 py-1 font-semibold text-green-700 pg-sugerido"
+          data-clave="${clave}" data-index="${rowIndex}">—</td>
+      <input type="hidden" name="seleccionados[]" value="${clave}">
+      <input type="hidden" name="detalles[${clave}][tipo]" value="${tipo}">
+      <input type="hidden" name="detalles[${clave}][diametro]" value="${diametro}">
+      ${longitud ? `<input type="hidden" name="detalles[${clave}][longitud]" value="${longitud}">` : ''}
+    `;
                 tbody.appendChild(fila);
 
-                // Generar fechas al cargar
                 const inputPeso = fila.querySelector('.peso-total');
                 generarFechasPorPeso(inputPeso, clave);
-
             });
 
-            // al final de mostrarConfirmacion(), justo antes de abrir el modal:
             dispararSugerirMultiple();
-
             document.getElementById('modalConfirmacion').classList.remove('hidden');
             document.getElementById('modalConfirmacion').classList.add('flex');
-
         }
+
+
 
         function generarFechasPorPeso(input, clave) {
             const peso = parseFloat(input.value || 0);

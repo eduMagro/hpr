@@ -898,18 +898,19 @@ class PedidoController extends Controller
         }
     }
 
-
     /**
      * Algoritmo único para asignar líneas a PedidoGlobal
      * SOLO encaja si la cantidad es EXACTA al restante de un PG.
      * Si ninguna línea cierra el más antiguo, se avisa.
      */
+    /**
+     * Asigna líneas a Pedidos Globales:
+     * - Cierra el PG más antiguo con cualquier línea o combinación exacta.
+     * - No divide líneas.
+     */
     private function asignarPedidosGlobales($lineas, $pedidosGlobales)
     {
         $asignaciones = [];
-        $requiereAjuste = false;
-        $mensaje = null;
-
         $lineasCol = collect($lineas)->values()->map(function ($l, $i) {
             return [
                 'index'    => $l['index'] ?? $i,
@@ -920,53 +921,106 @@ class PedidoController extends Controller
         foreach ($pedidosGlobales as $pg) {
             $restante = (float) $pg->cantidad_restante;
             if ($restante <= 0) continue;
+            if ($lineasCol->isEmpty()) break;
 
-            $sumaLineas = $lineasCol->sum('cantidad');
+            // --- 1) EXACT MATCH con cualquier línea ---
+            $idxExacto = $lineasCol->search(fn($l) => abs($l['cantidad'] - $restante) < 0.001);
 
-            if ($sumaLineas < $restante) {
-                // Todas las líneas entran en este PG parcial
+            if ($idxExacto !== false) {
+                $l = $lineasCol->get($idxExacto);
+                $asignaciones[] = [
+                    'linea_index'       => $l['index'],
+                    'pedido_global_id'  => $pg->id,
+                    'codigo'            => $pg->codigo,
+                    'cantidad_asignada' => $l['cantidad'],
+                    'cantidad_restante' => 0,
+                    'mensaje'           => "Cierra {$pg->codigo}",
+                ];
+                $lineasCol->forget($idxExacto);
+                $lineasCol = $lineasCol->values();
+                continue; // pasamos al siguiente PG
+            }
+
+            // --- 2) INTELIGENTE: combinación de líneas que sume el restante ---
+            $target  = (int) round($restante);
+            $weights = $lineasCol->mapWithKeys(fn($l) => [$l['index'] => (int) round($l['cantidad'])]);
+
+            $dp = [0 => []];
+            foreach ($weights as $idx => $w) {
+                // ITERAMOS SOBRE UN SNAPSHOT DE CLAVES
+                foreach (array_keys($dp) as $s) {
+                    $lista = $dp[$s];
+                    $nueva = $s + $w;
+                    if ($nueva > $target) continue;
+                    if (!isset($dp[$nueva])) {
+                        $dp[$nueva] = array_merge($lista, [$idx]);
+                    }
+                }
+            }
+
+            if (isset($dp[$target]) && !empty($dp[$target])) {
+                foreach ($dp[$target] as $lineIndex) {
+                    $lKey = $lineasCol->search(fn($x) => $x['index'] === $lineIndex);
+                    if ($lKey === false) continue;
+                    $l = $lineasCol->get($lKey);
+
+                    $asignaciones[] = [
+                        'linea_index'       => $l['index'],
+                        'pedido_global_id'  => $pg->id,
+                        'codigo'            => $pg->codigo,
+                        'cantidad_asignada' => $l['cantidad'],
+                        'cantidad_restante' => 0,
+                        'mensaje'           => "Cierra {$pg->codigo}",
+                    ];
+                    $lineasCol->forget($lKey);
+                }
+                $lineasCol = $lineasCol->values();
+                continue; // siguiente PG
+            }
+
+            // --- 3) Si todas caben, asignación parcial y salimos ---
+            $sumaLineas = (float) $lineasCol->sum('cantidad');
+            if ($sumaLineas <= $restante + 0.001) {
+                $r = $restante;
                 foreach ($lineasCol as $l) {
                     $asignaciones[] = [
                         'linea_index'       => $l['index'],
                         'pedido_global_id'  => $pg->id,
                         'codigo'            => $pg->codigo,
                         'cantidad_asignada' => $l['cantidad'],
-                        'cantidad_restante' => $restante - $l['cantidad'],
-                        'mensaje'           => "Asignado parcial a {$pg->codigo}"
+                        'cantidad_restante' => max(0, $r - $l['cantidad']),
+                        'mensaje'           => "Asignado parcial a {$pg->codigo}",
                     ];
-                    $restante -= $l['cantidad'];
+                    $r -= $l['cantidad'];
                 }
-                $lineasCol = collect(); // ya asignamos todas
+                $lineasCol = collect();
                 break;
             }
 
-            // suma >= restante → toca cerrar este PG
-            $idxExacto = $lineasCol->search(fn($l) => abs($l['cantidad'] - $restante) < 0.0001);
-
-            if ($idxExacto === false) {
-                // No hay línea que cierre exacto → error
-                $requiereAjuste = true;
-                $mensaje = "El pedido global más antiguo ({$pg->codigo}) tiene {$restante} kg pendientes. 
-                        Debes ajustar alguna línea a esa cantidad exacta antes de pasar al siguiente.";
-                break;
-            }
-
-            // Asignar la línea exacta que lo cierra
-            $lCierre = $lineasCol[$idxExacto];
+            // --- 4) No se puede cerrar (ni parcial completa) → avisar y bloquear ---
             $asignaciones[] = [
-                'linea_index'       => $lCierre['index'],
-                'pedido_global_id'  => $pg->id,
-                'codigo'            => $pg->codigo,
-                'cantidad_asignada' => $lCierre['cantidad'],
-                'cantidad_restante' => 0,
-                'mensaje'           => "Cierra {$pg->codigo}"
+                'linea_index'       => null,
+                'pedido_global_id'  => null,
+                'codigo'            => null,
+                'cantidad_asignada' => 0,
+                'cantidad_restante' => $restante,
+                'mensaje'           => "El pedido global más antiguo ({$pg->codigo}) tiene {$restante} kg pendientes. Debes ajustar alguna línea a esa cantidad exacta antes de pasar al siguiente.",
             ];
-            $lineasCol->forget($idxExacto);
 
-            // El resto de líneas van al siguiente PG → continuamos loop
+            foreach ($lineasCol as $l) {
+                $asignaciones[] = [
+                    'linea_index'       => $l['index'],
+                    'pedido_global_id'  => null,
+                    'codigo'            => null,
+                    'cantidad_asignada' => 0,
+                    'cantidad_restante' => 0,
+                    'mensaje'           => "Pendiente: primero cierra el PG más antiguo",
+                ];
+            }
+            break; // no miramos siguientes PG hasta resolver éste
         }
 
-        // Lo que sobre no asignado
+        // Lo que quede sin PG
         foreach ($lineasCol as $l) {
             $asignaciones[] = [
                 'linea_index'       => $l['index'],
@@ -974,20 +1028,12 @@ class PedidoController extends Controller
                 'codigo'            => null,
                 'cantidad_asignada' => 0,
                 'cantidad_restante' => 0,
-                'mensaje'           => $requiereAjuste
-                    ? "Pendiente: primero cierra el PG más antiguo"
-                    : "Sin PG disponible"
+                'mensaje'           => "Sin PG disponible",
             ];
         }
 
-        return [
-            'ok'              => !$requiereAjuste,
-            'requiere_ajuste' => $requiereAjuste,
-            'mensaje'         => $mensaje,
-            'asignaciones'    => $asignaciones,
-        ];
+        return ['ok' => true, 'asignaciones' => $asignaciones];
     }
-
 
     public function sugerirPedidoGlobal(Request $request)
     {
@@ -1009,7 +1055,6 @@ class PedidoController extends Controller
             $this->asignarPedidosGlobales($request->lineas, $pedidosGlobales)
         );
     }
-
 
     public function store(Request $request)
     {
@@ -1062,7 +1107,9 @@ class PedidoController extends Controller
             ]);
 
             // Guardar líneas según lo confirmado en el modal
-            $pesoTotal = 0;
+            $pesoTotal      = 0;
+            $pgIdsAfectados = []; // <-- iremos añadiendo los PG usados
+
             foreach ($request->seleccionados as $clave) {
                 $tipo           = $request->input("detalles.$clave.tipo");
                 $diametro       = $request->input("detalles.$clave.diametro");
@@ -1078,7 +1125,7 @@ class PedidoController extends Controller
 
                 $subproductos = data_get($request->input('productos'), $clave, []);
                 foreach ($subproductos as $camion) {
-                    $peso  = floatval($camion['peso'] ?? 0);
+                    $peso  = (float) ($camion['peso'] ?? 0);
                     $fecha = $camion['fecha'] ?? null;
                     if ($peso <= 0 || !$fecha) continue;
 
@@ -1089,6 +1136,7 @@ class PedidoController extends Controller
                         'observaciones'          => null,
                     ]);
 
+                    if ($pedidoGlobalId) $pgIdsAfectados[(int)$pedidoGlobalId] = true;
                     $pesoTotal += $peso;
                 }
             }
@@ -1096,12 +1144,24 @@ class PedidoController extends Controller
             $pedido->peso_total = $pesoTotal;
             $pedido->save();
 
-            return redirect()->route('pedidos.show', $pedido->id)
+            // === Recalcular estado de cada PG afectado ===
+            if (!empty($pgIdsAfectados)) {
+                $ids = array_keys($pgIdsAfectados);
+                $globales = PedidoGlobal::whereIn('id', $ids)->get();
+                foreach ($globales as $pg) {
+                    // usa tu método del modelo
+                    $pg->actualizarEstadoSegunProgreso();
+                }
+            }
+
+            DB::commit();
+
+            return redirect()
+                ->route('pedidos.show', $pedido->id)
                 ->with('success', 'Pedido creado correctamente. Revisa el correo antes de enviarlo.');
         } catch (\Throwable $e) {
-            Log::error('Error al crear pedido: ' . $e->getMessage(), [
-                'trace' => $e->getTraceAsString()
-            ]);
+            DB::rollBack();
+            Log::error('Error al crear pedido: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
             $msg = app()->environment('local') ? $e->getMessage() : 'Hubo un error inesperado al crear el pedido.';
             return back()->withInput()->with('error', $msg);
         }
@@ -1177,54 +1237,6 @@ class PedidoController extends Controller
             'email'  => null,
             'nombre' => null,
         ];
-    }
-
-    private function crearPedidoDesdeRequest(Request $request): Pedido
-    {
-        $pedidoGlobal = PedidoGlobal::where('fabricante_id', $request->fabricante_id)
-            ->whereIn('estado', [PedidoGlobal::ESTADO_EN_CURSO, PedidoGlobal::ESTADO_PENDIENTE])
-            ->orderByRaw("FIELD(estado, ?, ?)", [PedidoGlobal::ESTADO_EN_CURSO, PedidoGlobal::ESTADO_PENDIENTE])
-            ->first();
-
-        if ($pedidoGlobal && $pedidoGlobal->estado === PedidoGlobal::ESTADO_PENDIENTE) {
-            $pedidoGlobal->estado = PedidoGlobal::ESTADO_EN_CURSO;
-            $pedidoGlobal->save();
-        }
-
-        $pedido = new Pedido([
-            'codigo' => Pedido::generarCodigo(),
-            'pedido_global_id' => $pedidoGlobal?->id,
-            'estado' => 'pendiente',
-            'fabricante_id' => $request->fabricante_id,
-            'fecha_pedido' => now(),
-            'fecha_entrega' => $request->fecha_entrega,
-        ]);
-
-        $pesoTotal = 0;
-
-        foreach ($request->seleccionados as $clave) {
-            $tipo = $request->input("detalles.$clave.tipo");
-            $diametro = $request->input("detalles.$clave.diametro");
-            $peso = floatval($request->input("detalles.$clave.cantidad"));
-
-            $productoBase = ProductoBase::where('tipo', $tipo)
-                ->where('diametro', $diametro)
-                ->first();
-
-            if ($peso > 0 && $productoBase) {
-                $pedido->productos->add([
-                    'id' => $productoBase->id,
-                    'cantidad' => $peso,
-                    'observaciones' => "Pedido generado desde comparativa automática",
-                ]);
-
-                $pesoTotal += $peso;
-            }
-        }
-
-        $pedido->peso_total = $pesoTotal;
-
-        return $pedido;
     }
 
     public function edit(string $id)

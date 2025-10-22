@@ -712,8 +712,8 @@ class MovimientoController extends Controller
 
             // Traducimos a nombre de nave según el patrón
             $nombreNave = match ($codigoAlmacen) {
-                '0A' => 'A',
-                '0B' => 'B',
+                '0A' => 'nave A',
+                '0B' => 'nave B',
                 'AL' => 'Almacén',
                 default => null,
             };

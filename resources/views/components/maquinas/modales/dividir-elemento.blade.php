@@ -13,7 +13,7 @@
                 <label class="inline-flex items-center gap-2">
                     <input type="radio" name="accion_etiqueta" value="dividir" checked
                         onchange="toggleCamposDivision()">
-                    <span>✂️ Dividir el elemento</span>
+                    <span>✂️ Dividir en mas etiquetas</span>
                 </label>
                 <label class="inline-flex items-center gap-2">
                     <input type="radio" name="accion_etiqueta" value="mover" onchange="toggleCamposDivision()">
