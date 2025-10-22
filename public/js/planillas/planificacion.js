@@ -524,11 +524,11 @@ function actualizarMaquinaDeElementos(ids, nuevo_maquina_id) {
             }
 
             // Si hubo cambios, los mostramos
-            if (Object.keys(cambios).length > 0) {
-                console.group(`Elemento ${nuevo.id}`);
-                console.table(cambios);
-                console.groupEnd();
-            }
+            // if (Object.keys(cambios).length > 0) {
+            //     console.group(`Elemento ${nuevo.id}`);
+            //     console.table(cambios);
+            //     console.groupEnd();
+            // }
         });
     }
 
@@ -754,7 +754,7 @@ function applyPlanillaMoveToDatos(planillaId, oldMachineId, newMachineId) {
 }
 
 function logDiffDatosElementos(beforeArr, afterArr, onlyPlanillaId = null) {
-    console.group('🔎 Diff elementos');
+    // console.group('🔎 Diff elementos');
     afterArr.forEach(nuevo => {
         if (onlyPlanillaId && Number(nuevo.planilla_id) !== Number(onlyPlanillaId)) return;
         const anterior = beforeArr.find(e => e.id === nuevo.id);
@@ -768,11 +768,11 @@ function logDiffDatosElementos(beforeArr, afterArr, onlyPlanillaId = null) {
                 diffs[k] = { antes: anterior[k], ahora: nuevo[k] };
             }
         }
-        if (Object.keys(diffs).length) {
-            console.group(`Elemento ${nuevo.id}`);
-            console.table(diffs);
-            console.groupEnd();
-        }
+        // if (Object.keys(diffs).length) {
+        //     console.group(`Elemento ${nuevo.id}`);
+        //     console.table(diffs);
+        //     console.groupEnd();
+        // }
     });
     console.groupEnd();
 }
