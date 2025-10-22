@@ -51,29 +51,11 @@ $numMaquinas = $maquinas->count();
 
                 <div class="planillas flex-1 min-h-0 flex flex-col gap-2 overflow-auto 
                 [&::-webkit-scrollbar]:w-2
-              [&::-webkit-scrollbar-track]:bg-neutral-200
-              [&::-webkit-scrollbar-thumb]:bg-neutral-400
-              dark:[&::-webkit-scrollbar-track]:bg-neutral-700
-              dark:[&::-webkit-scrollbar-thumb]:bg-neutral-500
-              ">
-                    @foreach ($ordenPlanillas as $orden)
-                    @if ($orden->maquina_id == $detalles['id'])
-                    @foreach ($planillas as $planilla)
-                    @if ($planilla->id == $orden->planilla_id)
-                    <div class="planilla p-3 flex justify-around items-center bg-orange-300 hover:bg-orange-400 cursor-grab active:cursor-grabbing select-none text-center relative"
-                        draggable="true"
-                        data-planilla-id="{{ $planilla->id }}"
-                        data-posicion="{{ $orden->posicion }}">
-                        <p class="text-neutral-500 text-xs font-bold absolute top-1 left-1 pos-label">
-                            {{ $orden->posicion }}
-                        </p>
-                        <p>{{ $planilla->codigo }}</p>
-                    </div>
-                    @endif
-                    @endforeach
-                    @endif
-                    @endforeach
-                </div>
+                [&::-webkit-scrollbar-track]:bg-neutral-200
+                [&::-webkit-scrollbar-thumb]:bg-neutral-400
+                dark:[&::-webkit-scrollbar-track]:bg-neutral-700
+                dark:[&::-webkit-scrollbar-thumb]:bg-neutral-500"></div>
+
             </div>
 
 
@@ -89,10 +71,17 @@ $numMaquinas = $maquinas->count();
         </div>
 
 
-        <div id="modal_guardar" class="hidden absolute flex bottom-14 left-1/2 -translate-x-1/2 p-2 bg-white shadow-xl gap-3 rounded-xl">
-            <button class="p-2 px-10 flex text-center justify-center items-center bg-green-400 rounded-xl hover:bg-green-500 font-semibold transition-all duration-150">Guardar</button>
-            <button class="p-2 px-10 flex text-center justify-center items-center bg-neutral-400 rounded-xl hover:bg-red-400 font-semibold transition-all duration-150">Cancelar</button>
+        <div id="modal_guardar"
+            data-save-url="{{ route('produccion.planillas.guardar') }}"
+            class="hidden absolute flex bottom-14 left-1/2 -translate-x-1/2 p-2 bg-white shadow-xl gap-3 rounded-xl">
+            <button id="btn_guardar" class="p-2 px-10 bg-green-400 rounded-xl hover:bg-green-500 font-semibold transition-all duration-150">
+                Guardar
+            </button>
+            <button id="btn_cancelar_guardar" class="p-2 px-10 bg-neutral-400 rounded-xl hover:bg-red-400 font-semibold transition-all duration-150">
+                Cancelar
+            </button>
         </div>
+
 
         <div id="modal_elementos" class="absolute top-0 left-0 flex items-center justify-center h-screen w-screen bg-black bg-opacity-60 backdrop-blur-sm hidden">
             <div id="div_elementos" class="flex flex-col transition-all duration-100 p-3 bg-white rounded-xl shadow-xl gap-3 items-center">
@@ -133,6 +122,20 @@ $numMaquinas = $maquinas->count();
 
     </div>
 
+    <div id="todasPlanillas" class="hidden">
+        @foreach ($planillas as $p)
+        <div data-planilla='@json(["id"=>$p->id,"codigo"=>$p->codigo])'></div>
+        @endforeach
+    </div>
+
+    <div id="ordenPlanillas" class="hidden">
+        @foreach ($ordenPlanillas as $o)
+        <div data-orden='@json(["maquina_id"=>$o->maquina_id,"planilla_id"=>$o->planilla_id,"posicion"=>$o->posicion])'></div>
+        @endforeach
+    </div>
+
+
+
     <div id="modal_transferir_a_maquina" class="bg-black bg-opacity-60 absolute top-0 left-0 w-screen h-screen flex items-center justify-center hidden backdrop-blur-sm">
         <div class="bg-white shadow-lg rounded-lg p-3 flex flex-col gap-4 items-center max-w-3xl">
             <div class="uppercase font-medium">Seleccione nueva ubicación</div>
@@ -157,6 +160,21 @@ $numMaquinas = $maquinas->count();
             </div>
         </div>
     </div>
+
+    <div id="modal_fusionar_planilla" class="bg-black bg-opacity-60 absolute top-0 left-0 w-screen h-screen flex items-center justify-center hidden backdrop-blur-sm">
+        <div class="bg-white shadow-lg rounded-lg p-4 flex flex-col gap-4 items-center max-w-md w-full">
+            <div class="uppercase font-medium text-center">
+                La máquina seleccioná ya tiene la <span class="font-mono px-2 py-1 rounded bg-neutral-200" id="fusionar_planilla_codigo">PLANILLA</span>.<br />
+                ¿Quieres fusionar las planillas?
+            </div>
+
+            <div class="flex gap-3">
+                <button id="fusionar_cancelar" class="p-2 px-6 bg-neutral-400 hover:bg-neutral-500 hover:text-white transition-all duration-150 rounded-lg uppercase font-semibold">Cancelar</button>
+                <button id="fusionar_aceptar" class="p-2 px-6 bg-orange-400 hover:bg-orange-500 hover:text-white transition-all duration-150 rounded-lg uppercase font-semibold">Aceptar</button>
+            </div>
+        </div>
+    </div>
+
 
     <script src="{{ asset('js/elementosJs/figuraElemento.js') }}" defer></script>
     <script src="{{ asset('js/planillas/planificacion.js') }}"></script>

@@ -390,6 +390,9 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
 
     // obtener elementos con js
     Route::get('/api/elementos', [ElementoController::class, 'filtrar']);
+
+    Route::post('/produccion/planillas/guardar', [\App\Http\Controllers\ProduccionController::class, 'guardarPlanificacion'])
+        ->name('produccion.planillas.guardar');
 });
 
 

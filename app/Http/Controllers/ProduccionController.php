@@ -22,7 +22,7 @@ use Illuminate\Support\Collection;
 use Illuminate\Support\Arr;
 use App\Models\Festivo;
 use Throwable;
-
+use Illuminate\Validation\Rule;
 
 function toCarbon($valor, $format = 'd/m/Y H:i')
 {
@@ -1536,5 +1536,98 @@ class ProduccionController extends Controller
             ->get();
 
         return view('produccion.planillas0', compact('maquinas', 'localizacionMaquinas', 'ordenPlanillas', 'planillas', 'elementos'));
+    }
+
+    public function guardarPlanificacion(Request $request)
+    {
+        $data = $request->validate([
+            'ordenes' => ['array'],
+            'ordenes.*.maquina_id' => ['required', 'integer', 'exists:maquinas,id'],
+            'ordenes.*.planilla_id' => ['required', 'integer', 'exists:planillas,id'],
+            'ordenes.*.posicion' => ['required', 'integer', 'min:1'],
+
+            'cambios_elementos' => ['array'],
+            'cambios_elementos.*.id' => ['required', 'integer', 'exists:elementos,id'],
+            'cambios_elementos.*.maquina_id' => ['required', 'integer', 'exists:maquinas,id'],
+        ]);
+
+        $ordenes = $data['ordenes'] ?? [];
+        $cambiosElementos = $data['cambios_elementos'] ?? [];
+
+        // Validación extra: posiciones contiguas por máquina
+        $porMaquina = [];
+        foreach ($ordenes as $o) {
+            $porMaquina[$o['maquina_id']][] = $o['posicion'];
+        }
+        foreach ($porMaquina as $mid => $posiciones) {
+            sort($posiciones);
+            // opcional: comprobar 1..N
+            foreach ($posiciones as $i => $p) {
+                if ($p !== $i + 1) {
+                    return response()->json([
+                        'message' => "Posiciones no contiguas en máquina $mid"
+                    ], 422);
+                }
+            }
+        }
+
+        DB::transaction(function () use ($ordenes, $cambiosElementos) {
+
+            // 1️⃣ Guardar orden de planillas
+            if (!empty($ordenes)) {
+                $rows = array_map(fn($o) => [
+                    'planilla_id' => $o['planilla_id'],
+                    'maquina_id'  => $o['maquina_id'],
+                    'posicion'    => $o['posicion'],
+                    'updated_at'  => now(),
+                    'created_at'  => now(),
+                ], $ordenes);
+
+                OrdenPlanilla::upsert(
+                    $rows,
+                    ['planilla_id'],               // columnas que definen conflicto
+                    ['maquina_id', 'posicion', 'updated_at'] // columnas a actualizar
+                );
+
+                // ✅ 1.5 Normalizar posiciones por máquina
+                $maquinasIds = collect($ordenes)->pluck('maquina_id')->unique();
+                foreach ($maquinasIds as $mid) {
+                    $lista = OrdenPlanilla::where('maquina_id', $mid)
+                        ->orderBy('posicion')
+                        ->get();
+
+                    $pos = 1;
+                    foreach ($lista as $fila) {
+                        if ($fila->posicion != $pos) {
+                            $fila->posicion = $pos;
+                            $fila->save();
+                        }
+                        $pos++;
+                    }
+                }
+            }
+
+            // 2️⃣ Guardar cambios de elementos (maquina_id)
+            if (!empty($cambiosElementos)) {
+                collect($cambiosElementos)->chunk(500)->each(function ($chunk) {
+                    $ids = $chunk->pluck('id')->all();
+                    $case = "CASE id ";
+                    $bindings = [];
+                    foreach ($chunk as $row) {
+                        $case .= "WHEN ? THEN ? ";
+                        $bindings[] = $row['id'];
+                        $bindings[] = $row['maquina_id'];
+                    }
+                    $case .= "END";
+
+                    $in = implode(',', array_fill(0, count($ids), '?'));
+                    $sql = "UPDATE elementos SET maquina_id = $case WHERE id IN ($in)";
+                    DB::update($sql, array_merge($bindings, $ids));
+                });
+            }
+        });
+
+
+        return response()->json(['ok' => true]);
     }
 }

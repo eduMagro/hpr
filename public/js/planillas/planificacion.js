@@ -3,6 +3,8 @@ let datos_elementos_original;
 let div_elementos;
 let modal_elementos
 let modal_transferir
+let pendingFusion = null; // { planillaId, codigo, origenCol, destinoCol, draggingEl, origenMachineId, destinoMachineId, originIndex }
+
 
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -20,6 +22,8 @@ document.addEventListener("DOMContentLoaded", () => {
     let elementos = TODOS.querySelectorAll("[data-elementos]");
     datos_elementos = Array.from(elementos).map(div => JSON.parse(div.dataset.elementos));
     datos_elementos_original = JSON.parse(JSON.stringify(datos_elementos));
+    renderPlanillasFromDatos(datos_elementos);
+
 
     BOTONES.forEach(boton => {
         boton.addEventListener("click", () => {
@@ -46,59 +50,224 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // cerrar modal elementos por boton cancelar
     document.getElementById("cancelar_modal_elementos").addEventListener("click", () => modal_elementos.classList.add("hidden"))
+
+    const modalFusion = document.getElementById("modal_fusionar_planilla");
+    const btnFusionCancelar = document.getElementById("fusionar_cancelar");
+    const btnFusionAceptar = document.getElementById("fusionar_aceptar");
+
+    if (btnFusionCancelar) {
+        btnFusionCancelar.onclick = () => {
+            if (!pendingFusion) return;
+            // Revertir la tarjeta a su sitio original
+            const { origenCol, draggingEl, originIndex } = pendingFusion;
+            if (origenCol && draggingEl) {
+                const children = Array.from(origenCol.children);
+                const ref = children[originIndex] || null;
+                origenCol.insertBefore(draggingEl, ref); // vuelve a su índice o al final
+                reindexColumn(origenCol);
+            }
+            modalFusion.classList.add("hidden");
+            pendingFusion = null;
+        };
+    }
+
+    // cancelar cambios
+    document.getElementById("btn_cancelar_guardar").addEventListener("click", () => {
+        datos_elementos = JSON.parse(JSON.stringify(datos_elementos_original));
+        renderPlanillasFromDatos(datos_elementos);
+        document.getElementById("modal_guardar")?.classList.add("hidden");
+    });
+
+
+    if (btnFusionAceptar) {
+        btnFusionAceptar.onclick = () => {
+            if (!pendingFusion) return;
+            const { planillaId, origenMachineId, destinoMachineId, destinoCol } = pendingFusion;
+
+            const before = JSON.parse(JSON.stringify(datos_elementos));
+
+            // 1) Actualizar datos: mover TODOS los elementos de esa planilla a la máquina destino
+            const movidos = applyPlanillaMoveToDatos(planillaId, origenMachineId, destinoMachineId);
+            // console.log(`✅ Fusionar: movidos ${movidos} elementos de planilla ${planillaId} a máquina ${destinoMachineId}`);
+
+            // 2) En el DOM, asegura que solo quede una tarjeta para esa planilla en destino
+            const dups = Array.from(destinoCol.querySelectorAll('.planilla'))
+                .filter(pl => Number(pl.dataset.planillaId) === Number(planillaId));
+            // Dejar la primera, eliminar las demás
+            dups.slice(1).forEach(n => n.remove());
+            reindexColumn(destinoCol);
+
+            // 3) Sincronizar orden desde DOM
+            const nuevosOrdenes = syncOrdenPlanillasDesdeDOM();
+            // console.log('📦 Orden tras fusión:', nuevosOrdenes);
+
+            // 4) Re-render lógico por si hay efectos colaterales
+            renderPlanillasFromDatos(datos_elementos);
+
+            // 5) Diff opcional
+            logDiffDatosElementos(before, datos_elementos, planillaId);
+
+            // 6) Mostrar modal Guardar (si lo usas)
+            const modalGuardar = document.getElementById('modal_guardar');
+            if (modalGuardar) modalGuardar.classList.remove('hidden');
+
+            // Cerrar modal fusión
+            const modalFusion = document.getElementById("modal_fusionar_planilla");
+            modalFusion.classList.add("hidden");
+            pendingFusion = null;
+        };
+    }
+
+    const MODAL_GUARDAR = document.getElementById('modal_guardar');
+    const BTN_GUARDAR = document.getElementById('btn_guardar');
+
+    if (BTN_GUARDAR && MODAL_GUARDAR) {
+        BTN_GUARDAR.addEventListener('click', async () => {
+            const GUARDAR_URL = MODAL_GUARDAR.dataset.saveUrl; // ← aquí está la ruta buena
+            const ordenes = collectOrdenPayload();
+            const cambios_elementos = collectCambiosElementosPayload();
+
+            if (ordenes.length === 0 && cambios_elementos.length === 0) {
+                MODAL_GUARDAR.classList.add('hidden');
+                return;
+            }
+
+            const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+
+            try {
+                const resp = await fetch(GUARDAR_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        ...(token ? { 'X-CSRF-TOKEN': token } : {})
+                    },
+                    body: JSON.stringify({ ordenes, cambios_elementos })
+                });
+
+                if (!resp.ok) {
+                    const err = await resp.json().catch(() => ({}));
+                    console.error('❌ Error al guardar:', err);
+                    alert('No se han podido guardar los cambios.');
+                    return;
+                }
+
+                datos_elementos_original = JSON.parse(JSON.stringify(datos_elementos));
+                MODAL_GUARDAR.classList.add('hidden');
+                // console.log('✅ Cambios guardados');
+            } catch (e) {
+                console.error('❌ Error de red al guardar:', e);
+                alert('Error de red al guardar.');
+            }
+        });
+    }
 });
+
+function indexOfChild(parent, child) {
+    return Array.prototype.indexOf.call(parent.children, child);
+}
+
 
 function initDragAndDrop(contenedores, maquinas) {
     let dragging = null;
-    let origen = null;
+    let origenCol = null;
+    let origenMachineId = null;
+    let originIndex = -1;
 
-    // 1) Eventos en cada tarjeta
     document.querySelectorAll('.planilla').forEach(card => {
         card.setAttribute('draggable', 'true');
 
         card.addEventListener('dragstart', (e) => {
             dragging = e.currentTarget;
-            origen = dragging.parentElement;
+            origenCol = dragging.parentElement;               // .planillas (origen)
+            origenMachineId = getMachineIdFromColumn(origenCol);
+            originIndex = indexOfChild(origenCol, dragging);  // posición original
             dragging.classList.add('dragging', 'cursor-grabbing');
             dragging.classList.remove('cursor-grab');
             e.dataTransfer.effectAllowed = 'move';
             e.dataTransfer.setData('text/plain', dragging.dataset.planillaId || '');
         });
 
-
-
         card.addEventListener('dragend', () => {
             if (!dragging) return;
+
+            const destinoCol = dragging.parentElement;        // .planillas (destino)
+            const destinoMachineId = getMachineIdFromColumn(destinoCol);
+            const planillaId = Number(dragging.dataset.planillaId);
+            const planillaCodigo = dragging.querySelector('p:nth-child(2)')?.textContent?.trim() || `PL-${planillaId}`;
 
             dragging.classList.remove('dragging', 'cursor-grabbing');
             dragging.classList.add('cursor-grab');
 
-            // reindexar origen y (si cambió) destino
-            reindexColumn(origen);
-            const destino = dragging.parentElement;
-            if (destino !== origen) reindexColumn(destino);
+            // Reindex visual
+            reindexColumn(origenCol);
+            if (destinoCol !== origenCol) reindexColumn(destinoCol);
 
-            // ajustar alturas después de mover
-            const MAQUINAS = Array.from(document.getElementsByClassName('maquina'));
+            // --- ¿Hay duplicado en destino? (misma planilla_id) ---
+            const yaExiste = Array.from(destinoCol.querySelectorAll('.planilla'))
+                .some(pl => pl !== dragging && Number(pl.dataset.planillaId) === planillaId);
+
+            if (yaExiste) {
+                // Preparar modal de fusión
+                pendingFusion = {
+                    planillaId,
+                    codigo: planillaCodigo,
+                    origenCol,
+                    destinoCol,
+                    draggingEl: dragging,
+                    origenMachineId,
+                    destinoMachineId,
+                    originIndex
+                };
+
+                const spanCod = document.getElementById('fusionar_planilla_codigo');
+                if (spanCod) spanCod.textContent = planillaCodigo;
+
+                const modalFusion = document.getElementById("modal_fusionar_planilla");
+                modalFusion.classList.remove("hidden");
+
+                // OJO: no actualizamos datos todavía, se hace si aceptan
+                dragging = null;
+                origenCol = null;
+                origenMachineId = null;
+                originIndex = -1;
+                return; // salimos aquí
+            }
+
+            // --- Flujo normal sin duplicado ---
+            const before = JSON.parse(JSON.stringify(datos_elementos));
+
+            if (destinoMachineId != null && origenMachineId != null && destinoMachineId !== origenMachineId) {
+                const n = applyPlanillaMoveToDatos(planillaId, origenMachineId, destinoMachineId);
+                // console.log(`🔁 Movida planilla ${planillaId} de máquina ${origenMachineId} a ${destinoMachineId}. Elementos afectados: ${n}`);
+            }
+
+            const nuevosOrdenes = syncOrdenPlanillasDesdeDOM();
+            // console.log('📦 Orden actualizado desde DOM:', nuevosOrdenes);
+
+            logDiffDatosElementos(before, datos_elementos, planillaId);
+
+            const modalGuardar = document.getElementById('modal_guardar');
+            if (modalGuardar) modalGuardar.classList.remove('hidden');
 
             dragging = null;
-            origen = null;
+            origenCol = null;
+            origenMachineId = null;
+            originIndex = -1;
         });
     });
 
-    // 2) Eventos en cada contenedor de columna (.planillas)
     contenedores.forEach(col => {
         col.addEventListener('dragover', (e) => {
-            e.preventDefault(); // necesario para permitir drop
+            e.preventDefault();
             e.dataTransfer.dropEffect = 'move';
             col.classList.add('drop-target');
 
             const after = getDragAfterElement(col, e.clientY);
-            if (!after) {
-                col.appendChild(document.querySelector('.planilla.dragging'));
-            } else {
-                col.insertBefore(document.querySelector('.planilla.dragging'), after);
-            }
+            const draggingEl = document.querySelector('.planilla.dragging');
+            if (!draggingEl) return;
+
+            if (!after) col.appendChild(draggingEl);
+            else col.insertBefore(draggingEl, after);
         });
 
         col.addEventListener('dragleave', () => {
@@ -107,10 +276,32 @@ function initDragAndDrop(contenedores, maquinas) {
 
         col.addEventListener('drop', () => {
             col.classList.remove('drop-target');
-            // el reindex lo hace dragend
+            // resto se maneja en dragend
         });
     });
 }
+
+function collectOrdenPayload() {
+    return syncOrdenPlanillasDesdeDOM(); // ya la tienes; devuelve [{maquina_id, planilla_id, posicion}, ...]
+}
+
+// 2) Cambios de elementos (solo difs maquina_id)
+function collectCambiosElementosPayload() {
+    const cambios = [];
+    const originalMap = new Map(datos_elementos_original.map(e => [Number(e.id), e]));
+    datos_elementos.forEach(now => {
+        const before = originalMap.get(Number(now.id));
+        if (!before) return;
+        if (Number(before.maquina_id) !== Number(now.maquina_id)) {
+            cambios.push({
+                id: Number(now.id),
+                maquina_id: Number(now.maquina_id)
+            });
+        }
+    });
+    return cambios;
+}
+
 
 // Devuelve el elemento .planilla inmediatamente posterior a la posición del cursor,
 // para saber dónde insertar la tarjeta arrastrada.
@@ -301,8 +492,6 @@ function actualizarMaquinaDeElementos(ids, nuevo_maquina_id) {
     // Convertir IDs a números por si vienen como strings
     const idsNumericos = ids.map(id => Number(id));
     let haCambiado = JSON.stringify(datos_elementos) !== JSON.stringify(datos_elementos_original);
-    console.log("¿Ha cambiado?", haCambiado);
-
 
     // Recorremos el array principal y modificamos los que coincidan
     datos_elementos.forEach(e => {
@@ -311,17 +500,40 @@ function actualizarMaquinaDeElementos(ids, nuevo_maquina_id) {
         }
     });
 
-    console.log(`Actualizados ${idsNumericos.length} elementos a máquina ${nuevo_maquina_id}`);
+    // console.log(`Actualizados ${idsNumericos.length} elementos a máquina ${nuevo_maquina_id}`);
     haCambiado = JSON.stringify(datos_elementos) !== JSON.stringify(datos_elementos_original);
-    console.log("¿Ha cambiado?", haCambiado);
+    renderPlanillasFromDatos(datos_elementos);
 
-    recalcularPlanillas()
+    if (haCambiado) {
+        // console.log("Cambios detectados:");
+
+        // Recorremos todos los elementos nuevos
+        datos_elementos.forEach((nuevo) => {
+            const anterior = datos_elementos_original.find(e => e.id === nuevo.id);
+            if (!anterior) {
+                // console.log(`Nuevo elemento con ID ${nuevo.id}`, nuevo);
+                return;
+            }
+
+            // Comparamos campo a campo
+            const cambios = {};
+            for (const key in nuevo) {
+                if (JSON.stringify(nuevo[key]) !== JSON.stringify(anterior[key])) {
+                    cambios[key] = { antes: anterior[key], ahora: nuevo[key] };
+                }
+            }
+
+            // Si hubo cambios, los mostramos
+            if (Object.keys(cambios).length > 0) {
+                console.group(`Elemento ${nuevo.id}`);
+                console.table(cambios);
+                console.groupEnd();
+            }
+        });
+    }
+
+
 }
-
-function recalcularPlanillas() {
-    console.log(datos_elementos)
-}
-
 
 // transcurso entre que se seleccionan los elementos hasta que se le da al boton de transferir (a otra maquina)
 function seleccionarMaquinaParaMovimiento() {
@@ -354,7 +566,7 @@ function seleccionarMaquinaParaMovimiento() {
     // Registrar el click del btn
     btnTransferir.onclick = () => {
         if (!maquinaSeleccionadaId) {
-            console.log("sin maquina seleccionada");
+            // console.log("sin maquina seleccionada");
             return;
         }
 
@@ -372,4 +584,195 @@ function seleccionarMaquinaParaMovimiento() {
         // ejecutar transferencia
         actualizarMaquinaDeElementos(elementos_seleccionados, maquinaSeleccionadaId);
     };
+}
+
+
+// logica renderizado planillas
+// --- helpers para leer datasets ocultos ---
+function buildPlanillasMap() {
+    const cont = document.getElementById('todasPlanillas');
+    const map = new Map(); // planilla_id -> codigo
+    if (!cont) return map;
+    cont.querySelectorAll('[data-planilla]').forEach(node => {
+        try {
+            const { id, codigo } = JSON.parse(node.dataset.planilla);
+            map.set(Number(id), String(codigo));
+        } catch (_) { }
+    });
+    return map;
+}
+
+function buildOrdenesMap() {
+    const cont = document.getElementById('ordenPlanillas');
+    const byMaquina = new Map(); // maquina_id -> Map(planilla_id -> posicion)
+    if (!cont) return byMaquina;
+    cont.querySelectorAll('[data-orden]').forEach(node => {
+        try {
+            const { maquina_id, planilla_id, posicion } = JSON.parse(node.dataset.orden);
+            const mid = Number(maquina_id);
+            const pid = Number(planilla_id);
+            const pos = Number(posicion);
+            if (!byMaquina.has(mid)) byMaquina.set(mid, new Map());
+            byMaquina.get(mid).set(pid, pos);
+        } catch (_) { }
+    });
+    return byMaquina;
+}
+
+// Crea el nodo .planilla
+function createPlanillaCard({ planilla_id, codigo, posicion }) {
+    const div = document.createElement('div');
+    div.className = "planilla p-3 flex justify-around items-center bg-orange-300 hover:bg-orange-400 cursor-grab active:cursor-grabbing select-none text-center relative";
+    div.setAttribute('draggable', 'true');
+    div.dataset.planillaId = String(planilla_id);
+    if (posicion != null) div.dataset.posicion = String(posicion);
+
+    const posP = document.createElement('p');
+    posP.className = "text-neutral-500 text-xs font-bold absolute top-1 left-1 pos-label";
+    posP.textContent = posicion != null ? String(posicion) : ""; // se rellenará con reindex si no hay orden
+
+    const codeP = document.createElement('p');
+    codeP.textContent = codigo ?? `PL-${planilla_id}`;
+
+    div.appendChild(posP);
+    div.appendChild(codeP);
+    return div;
+}
+
+/**
+ * Rellena cada columna .planillas a partir de datos_elementos
+ * - Agrupa por (maquina_id, planilla_id)
+ * - Usa ordenPlanillas si existe; si no, ordena por codigo asc
+ */
+function renderPlanillasFromDatos(datos_elementos) {
+    const planillasMap = buildPlanillasMap();
+    const ordenesByMaquina = buildOrdenesMap();
+
+    // 1) Agrupar por máquina -> set de planilla_id
+    const porMaquina = new Map(); // maquina_id -> Set(planilla_id)
+    datos_elementos.forEach(e => {
+        const mid = Number(e.maquina_id);
+        const pid = Number(e.planilla_id);
+        if (!porMaquina.has(mid)) porMaquina.set(mid, new Set());
+        porMaquina.get(mid).add(pid);
+    });
+
+    // 2) Para cada máquina del DOM, pintar sus planillas
+    document.querySelectorAll('.maquina').forEach(maq => {
+        const mid = Number(maq.dataset.maquinaId || JSON.parse(maq.dataset.detalles || '{}').id);
+        const cont = maq.querySelector('.planillas');
+        if (!cont) return;
+        cont.innerHTML = '';
+
+        const planillasSet = porMaquina.get(mid) || new Set();
+        let tarjetas = [];
+
+        // construimos array con {planilla_id, codigo, posicion}
+        planillasSet.forEach(pid => {
+            const codigo = planillasMap.get(pid) ?? `PL-${pid}`;
+            const posicion = ordenesByMaquina.get(mid)?.get(pid) ?? null;
+            tarjetas.push({ planilla_id: pid, codigo, posicion });
+        });
+
+        // 3) ordenar: primero por 'posicion' si existe, si no por 'codigo'
+        tarjetas.sort((a, b) => {
+            const ap = a.posicion ?? Infinity;
+            const bp = b.posicion ?? Infinity;
+            if (ap !== bp) return ap - bp;
+            return String(a.codigo).localeCompare(String(b.codigo));
+        });
+
+        // 4) pintar
+        tarjetas.forEach(t => {
+            const card = createPlanillaCard(t);
+            cont.appendChild(card);
+        });
+
+        // 5) si no traíamos posiciones, reindexa para que se vean números
+        reindexColumn(cont);
+    });
+
+    // 6) reengancha drag & drop y eventos dependientes de .planilla
+    initDragAndDrop(
+        Array.from(document.querySelectorAll('.planillas')),
+        Array.from(document.querySelectorAll('.maquina'))
+    );
+
+    // OJO: si tienes otros listeners ligados a .planilla (ej. mostrarElementos),
+    // vuelve a montarlos:
+    const PLANILLAS = Array.from(document.getElementsByClassName("planilla"));
+    resaltarCompis(PLANILLAS);
+    mostrarElementos(
+        PLANILLAS,
+        document.getElementById("div_elementos"),
+        document.getElementById("mover_modal_elementos"),
+        datos_elementos
+    );
+}
+
+
+function getMachineIdFromColumn(columnEl) {
+    const maquina = columnEl.closest('.maquina');
+    if (!maquina) return null;
+    const midAttr = maquina.dataset.maquinaId;
+    if (midAttr) return Number(midAttr);
+    try {
+        return Number(JSON.parse(maquina.dataset.detalles || '{}').id);
+    } catch {
+        return null;
+    }
+}
+
+function syncOrdenPlanillasDesdeDOM() {
+    const nuevosOrdenes = [];
+    document.querySelectorAll('.maquina').forEach(maq => {
+        const mid = Number(maq.dataset.maquinaId);
+        const cont = maq.querySelector('.planillas');
+        if (!cont) return;
+        [...cont.querySelectorAll('.planilla')].forEach((pl, idx) => {
+            nuevosOrdenes.push({
+                maquina_id: mid,
+                planilla_id: Number(pl.dataset.planillaId),
+                posicion: idx + 1
+            });
+        });
+    });
+    return nuevosOrdenes;
+}
+
+function applyPlanillaMoveToDatos(planillaId, oldMachineId, newMachineId) {
+    // Cambia maquina_id de todos los elementos de esa planilla
+    let cambios = 0;
+    datos_elementos.forEach(e => {
+        if (Number(e.planilla_id) === Number(planillaId) &&
+            Number(e.maquina_id) === Number(oldMachineId)) {
+            e.maquina_id = Number(newMachineId);
+            cambios++;
+        }
+    });
+    return cambios;
+}
+
+function logDiffDatosElementos(beforeArr, afterArr, onlyPlanillaId = null) {
+    console.group('🔎 Diff elementos');
+    afterArr.forEach(nuevo => {
+        if (onlyPlanillaId && Number(nuevo.planilla_id) !== Number(onlyPlanillaId)) return;
+        const anterior = beforeArr.find(e => e.id === nuevo.id);
+        if (!anterior) {
+            // console.log(`🆕 Nuevo elemento ${nuevo.id}`, nuevo);
+            return;
+        }
+        const diffs = {};
+        for (const k in nuevo) {
+            if (JSON.stringify(nuevo[k]) !== JSON.stringify(anterior[k])) {
+                diffs[k] = { antes: anterior[k], ahora: nuevo[k] };
+            }
+        }
+        if (Object.keys(diffs).length) {
+            console.group(`Elemento ${nuevo.id}`);
+            console.table(diffs);
+            console.groupEnd();
+        }
+    });
+    console.groupEnd();
 }
