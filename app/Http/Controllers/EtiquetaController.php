@@ -388,30 +388,15 @@ class EtiquetaController extends Controller
                 'disponible_en_maquina' => $disponible,
             ];
         }
-
-        // 4️⃣ Generar HTML para el modal o alerta
-        $html = "<ul class='text-left space-y-4'>";
-        foreach ($patrones as $p) {
-            $color = $p['aprovechamiento'] >= 98 ? 'text-green-600'
-                : ($p['aprovechamiento'] >= 90 ? 'text-yellow-500' : 'text-red-600');
-
-            $icono = $p['disponible_en_maquina'] ? '✅' : '❌';
-
-            $html .= "<li class='leading-snug'>";
-            $html .= "<div class='font-bold text-sm text-gray-800'>Elemento {$elemento->longitud} cm</div>";
-            $html .= "<div>📏 <strong>{$p['longitud_m']} m</strong> $icono</div>";
-            $html .= "<div>🧩 <span class='font-semibold text-gray-700'>Patrón:</span> {$p['patron']}</div>";
-            $html .= "<div>🪵 <span class='font-semibold text-gray-700'>Sobra:</span> {$p['sobra_cm']} cm</div>";
-            $html .= "<div>📈 <span class='font-semibold {$color}'>Aprovechamiento:</span> ";
-            $html .= "<span class='{$color} font-bold'>{$p['aprovechamiento']}%</span></div>";
-            $html .= "</li>";
-        }
-        $html .= "</ul>";
-
+        log::info('Patrones corte simple', [
+            'etiqueta_sub_id' => $etiqueta->etiqueta_sub_id,
+            'diametro_mm'    => $diametro,
+            'patrones'       => $patrones,
+        ]);
         return response()->json([
             'success'  => true,
             'patrones' => $patrones,
-            'html'     => $html,
+
         ]);
     }
 
@@ -691,7 +676,11 @@ class EtiquetaController extends Controller
         }
 
         $htmlResumen = $this->construirHtmlResumenMultiLongitudes($longitudesBarraCm, $progresoPorLongitud);
-
+        log::info('Patrones corte optimizado', [
+            'etiqueta_sub_id'       => $etiquetaSubId,
+            'top_global_98'         => $topGlobal98,
+            'progreso_por_longitud' => $progresoPorLongitud,
+        ]);
         /* ─────────────────────────────
         |  7) Responder
         ───────────────────────────── */

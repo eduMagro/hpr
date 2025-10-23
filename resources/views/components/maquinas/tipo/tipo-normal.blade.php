@@ -541,7 +541,7 @@
         document.addEventListener('DOMContentLoaded', () => {
             console.log('ELEMENTOS_AGRUPADOS →', window.ELEMENTOS_AGRUPADOS);
         });
-    </script> --}} --}}
+    </script> --}}
 
     @once
         <script>
