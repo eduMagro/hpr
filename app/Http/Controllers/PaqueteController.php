@@ -15,6 +15,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
 use Illuminate\Support\Facades\DB;
 use App\Services\PlanillaColaService;
+use Illuminate\Http\JsonResponse;
 
 class PaqueteController extends Controller
 {
@@ -272,15 +273,6 @@ class PaqueteController extends Controller
             'maquina_id' => 'required|integer|exists:maquinas,id'
         ]);
 
-        // 2) Verificación previa
-        $warnings = $this->verificarItems($request->items, $request->input('maquina_id'));
-        if ($warnings !== null && !$request->boolean('confirmar')) {
-            return response()->json([
-                'success' => false,
-                'warning' => $warnings
-            ], 200);
-        }
-
         try {
             DB::beginTransaction();
 
@@ -449,61 +441,61 @@ class PaqueteController extends Controller
     }
 
 
-    private function verificarItems($items, $maquinaId)
+    public function validarParaPaquete(Request $request, string $etiquetaSubId): JsonResponse
     {
-        $warnings = [];
+        $etiqueta = Etiqueta::with('elementos')
+            ->where('etiqueta_sub_id', $etiquetaSubId)
+            ->first();
 
-        // Separar IDs según tipo
-        $etiquetasSubIds = collect($items)->where('type', 'etiqueta')->pluck('id')->toArray();
-        $elementosIds = collect($items)->where('type', 'elemento')->pluck('id')->toArray();
-
-        $etiquetas = Etiqueta::whereIn('etiqueta_sub_id', $etiquetasSubIds)
-            ->with(['planilla', 'elementos'])
-            ->get();
-
-
-        if (count($etiquetas) < count($etiquetasSubIds)) {
-            $idsEncontrados = $etiquetas->pluck('etiqueta_sub_id')->toArray(); // ✅ pluck del mismo campo
-            $faltantes = array_diff($etiquetasSubIds, $idsEncontrados);
-            $warnings['etiquetas_no_encontradas'] = array_values($faltantes);
+        if (!$etiqueta) {
+            return response()->json([
+                'success' => false,
+                'valida' => false,
+                'message' => "Etiqueta {$etiquetaSubId} no encontrada.",
+                'motivo'  => "No se ha encontrado la etiqueta.",
+            ], 404);
         }
 
-        // Verificar existencia de los elementos
-        $elementos = Elemento::whereIn('id', $elementosIds)->get();
-        if (count($elementos) < count($elementosIds)) {
-            $idsEncontrados = $elementos->pluck('id')->toArray();
-            $faltantes = array_diff($elementosIds, $idsEncontrados);
-            $warnings['elementos_no_encontrados'] = array_values($faltantes);
+        $estado     = strtolower($etiqueta->estado ?? 'pendiente');
+        $enPaquete  = !is_null($etiqueta->paquete_id);
+        $estadosOK  = ['fabricada', 'completada', 'ensamblada', 'soldada'];
+        $total      = $etiqueta->elementos->count();
+        $fabricados = $etiqueta->elementos
+            ->whereIn('estado', ['fabricado', 'completado', 'ensamblado', 'soldado'])
+            ->count();
+
+        $motivos = [];
+        $valida = true;
+
+        if ($enPaquete) {
+            $valida = false;
+            $motivos[] = 'La etiqueta ya está en un paquete.';
         }
 
-        // Validar que las etiquetas estén completas
-        foreach ($etiquetas as $etiqueta) {
-            if (!$etiqueta->planilla) {
-                $warnings['etiquetas_incompletas'][] = $etiqueta->id;
-            }
-            if ($etiqueta->elementos->isEmpty() && !$etiqueta->pesoTotal) {
-                $warnings['etiquetas_incompletas'][] = $etiqueta->id;
-            }
+        if (!in_array($estado, $estadosOK, true)) {
+            $valida = false;
+            $motivos[] = "El estado '{$estado}' no es válido para empaquetar.";
         }
 
-        // Validar que los elementos estén completos
-        foreach ($elementos as $elemento) {
-            if (is_null($elemento->peso)) {
-                $warnings['elementos_incompletos'][] = $elemento->id;
-            }
+        if ($fabricados < $total) {
+            $valida = false;
+            $motivos[] = "Hay elementos pendientes ({$fabricados}/{$total}).";
         }
 
-        // Verificar si las etiquetas ya tienen paquete asignado
-        $etiquetasConPaquete = $etiquetas->filter(function ($etiqueta) {
-            return !is_null($etiqueta->paquete_id);
-        })->pluck('id')->toArray();
-
-        if (!empty($etiquetasConPaquete)) {
-            $warnings['etiquetas_ocupadas'] = $etiquetasConPaquete;
-        }
-
-        return !empty($warnings) ? $warnings : null;
+        return response()->json([
+            'success'       => $valida,
+            'valida'        => $valida,
+            'message'       => $valida ? 'Etiqueta válida para empaquetar.' : implode(' ', $motivos),
+            'motivo'        => $valida ? null : implode(' ', $motivos),
+            'estado_actual' => $etiqueta->estado,
+            'paquete_actual' => $etiqueta->paquete_id,
+            'id'            => $etiqueta->etiqueta_sub_id,
+            'nombre'        => $etiqueta->nombre,
+            'peso_etiqueta' => $etiqueta->peso ?? 0,
+            'estado'        => $etiqueta->estado,
+        ]);
     }
+
 
     private function crearPaquete($planillaId, $ubicacionId, $pesoTotal, $codigo, $obraId)
     {

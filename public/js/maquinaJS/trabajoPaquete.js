@@ -1,443 +1,168 @@
 /**
  * ================================================================================
- * MÓDULO: trabajoPaquete.js
+ * MÓDULO: trabajoPaquete.js - VERSIÓN FINAL DEFINITIVA
  * ================================================================================
- * Gestión completa del sistema de paquetes:
- * - Validación de etiquetas via QR
- * - Gestión del carro de etiquetas
- * - Creación de paquetes
- * - Eliminación de paquetes
+ * ✅ Peso usando data.peso_etiqueta (correcto)
+ * ✅ Sistema DOM centralizado que funciona
+ * ✅ Actualización automática de colores
  * ================================================================================
  */
 
 (function (global) {
     "use strict";
 
-    // ============================================================================
-    // VARIABLES Y ESTADO
-    // ============================================================================
-
-    let items = []; // Array de etiquetas en el carro
+    let items = [];
     let isInitialized = false;
 
     // ============================================================================
     // VALIDACIÓN DE ETIQUETAS VIA QR
     // ============================================================================
 
-    /**
-     * Valida una etiqueta en el backend
-     * @param {string} codigo - Código de la etiqueta
-     * @returns {Promise<Object>} - Datos de la etiqueta validada
-     */
     async function validarEtiqueta(codigo) {
         const url = `/etiquetas/${encodeURIComponent(
             codigo
         )}/validar-para-paquete`;
 
-        console.log("🔍 Validando etiqueta:", codigo);
-        console.log("📡 URL:", url);
-
-        const response = await fetch(url, {
-            method: "GET",
-            headers: {
-                Accept: "application/json",
-                "X-CSRF-TOKEN": document.querySelector(
-                    'meta[name="csrf-token"]'
-                )?.content,
-            },
-        });
-
-        console.log("📊 Status HTTP:", response.status);
-        console.log("📊 Status Text:", response.statusText);
-
-        const contentType = response.headers.get("content-type");
-        console.log("📊 Content-Type:", contentType);
-
-        // Verificar que la respuesta es JSON
-        if (!contentType || !contentType.includes("application/json")) {
-            const textResponse = await response.text();
-            console.error("❌ Respuesta NO es JSON:", textResponse);
-
-            throw {
-                type: "InvalidResponse",
-                message: "El servidor no devolvió JSON",
-                status: response.status,
-                statusText: response.statusText,
-                contentType: contentType,
-                body: textResponse,
-            };
-        }
-
-        const data = await response.json();
-        console.log("📊 Respuesta JSON:", data);
-
-        // Verificar status HTTP
-        if (!response.ok) {
-            throw {
-                type: "HttpError",
-                message: data?.message || data?.motivo || "Error al validar",
-                status: response.status,
-                statusText: response.statusText,
-                data: data,
-            };
-        }
-
-        return data;
-    }
-
-    /**
-     * Muestra alert de error con detalles
-     * @param {Object} error - Objeto de error
-     * @param {string} codigo - Código de la etiqueta
-     */
-    async function mostrarErrorValidacion(error, codigo) {
-        let errorTitle = "Error inesperado";
-        let errorMessage = error.message || "Error desconocido";
-        let errorDetails = "";
-
-        if (error.type === "InvalidResponse") {
-            errorTitle = "Error del servidor";
-            errorDetails = `
-                <p><strong>Status:</strong> ${error.status} ${
-                error.statusText
-            }</p>
-                <p><strong>Content-Type:</strong> ${
-                    error.contentType || "No definido"
-                }</p>
-                <details>
-                    <summary>Ver respuesta completa</summary>
-                    <pre style="max-height: 300px; overflow: auto; font-size: 11px;">${error.body.substring(
-                        0,
-                        1000
-                    )}</pre>
-                </details>
-            `;
-        } else if (error.type === "HttpError") {
-            errorTitle = `Error ${error.status}`;
-            errorMessage = error.message;
-            if (error.data?.error) {
-                errorDetails = `<p><strong>Error técnico:</strong> ${error.data.error}</p>`;
-            }
-        } else if (error instanceof TypeError) {
-            if (
-                error.message.includes("Failed to fetch") ||
-                error.message.includes("NetworkError")
-            ) {
-                errorTitle = "Error de conexión";
-                errorMessage = "No se pudo conectar con el servidor";
-                errorDetails = `
-                    <ul style="text-align: left; font-size: 13px;">
-                        <li>Verifica tu conexión a internet</li>
-                        <li>El servidor podría estar caído</li>
-                        <li>Podría haber un problema con el firewall</li>
-                    </ul>
-                `;
-            }
-        }
-
-        await Swal.fire({
-            icon: "error",
-            title: errorTitle,
-            html: `
-                <div style="text-align: left;">
-                    <p><strong>Mensaje:</strong> ${errorMessage}</p>
-                    <p><strong>Código de etiqueta:</strong> ${codigo}</p>
-                    ${errorDetails}
-                    <details style="margin-top: 15px;">
-                        <summary style="cursor: pointer; color: #666;">Ver información técnica</summary>
-                        <pre style="background: #f5f5f5; padding: 10px; border-radius: 5px; font-size: 11px; overflow: auto; max-height: 200px;">${
-                            error.stack || JSON.stringify(error, null, 2)
-                        }</pre>
-                    </details>
-                </div>
-            `,
-            confirmButtonText: "Cerrar",
-            width: "600px",
-            showCancelButton: true,
-            cancelButtonText: "Copiar error",
-        }).then((result) => {
-            if (result.dismiss === Swal.DismissReason.cancel) {
-                copiarErrorAlPortapapeles(error, codigo);
-            }
-        });
-    }
-
-    /**
-     * Copia información del error al portapapeles
-     */
-    function copiarErrorAlPortapapeles(error, codigo) {
-        const errorInfo = `
-Código: ${codigo}
-Error: ${error.message}
-Tipo: ${error.type || error.constructor.name}
-Detalle: ${JSON.stringify(error, null, 2)}
-URL: /etiquetas/${codigo}/validar-para-paquete
-Timestamp: ${new Date().toISOString()}
-        `.trim();
-
-        navigator.clipboard
-            .writeText(errorInfo)
-            .then(() => {
-                if (typeof showAlert === "function") {
-                    showAlert(
-                        "info",
-                        "Copiado",
-                        "Error copiado al portapapeles",
-                        1500
-                    );
-                } else {
-                    alert("Error copiado al portapapeles");
-                }
-            })
-            .catch(() => {
-                alert("No se pudo copiar al portapapeles");
+        try {
+            const response = await fetch(url, {
+                method: "GET",
+                headers: {
+                    Accept: "application/json",
+                    "X-CSRF-TOKEN": document.querySelector(
+                        'meta[name="csrf-token"]'
+                    )?.content,
+                },
             });
+
+            const contentType = response.headers.get("content-type") || "";
+            if (!contentType.includes("application/json")) {
+                throw new Error("Respuesta del servidor no es JSON");
+            }
+
+            const data = await response.json();
+            if (!response.ok) {
+                throw new Error(
+                    data?.message || data?.motivo || "Error al validar"
+                );
+            }
+
+            return data;
+        } catch (error) {
+            throw error;
+        }
     }
 
     // ============================================================================
     // GESTIÓN DEL CARRO
     // ============================================================================
 
-    /**
-     * Agrega una etiqueta al carro
-     * @param {string} codigo - Código de la etiqueta
-     * @param {Object} data - Datos de la etiqueta
-     */
     function agregarItemEtiqueta(codigo, data) {
         const id = data.id || codigo;
-        const safeId = id.replace(/\./g, "-");
-
-        // Verificar si ya está en el carro
-        if (items.some((item) => item.id === id || item.id === safeId)) {
-            console.warn("⚠️ Etiqueta ya está en el carro:", id);
-            return false;
-        }
+        if (items.some((i) => i.id === id)) return false;
 
         const newItem = {
-            id: id,
+            id,
             type: "etiqueta",
-            peso: parseFloat(data.peso) || 0,
+            peso: parseFloat(data.peso_etiqueta) || 0, // ✅ USA data.peso_etiqueta
             estado: data.estado || "desconocido",
             nombre: data.nombre || "Sin nombre",
         };
 
         items.push(newItem);
-        console.log("✅ Etiqueta agregada al carro:", newItem);
-
         actualizarListaVisual();
         return true;
     }
 
-    /**
-     * Elimina una etiqueta del carro
-     * @param {string} id - ID de la etiqueta
-     */
     function eliminarItem(id) {
-        const index = items.findIndex((item) => item.id === id);
-        if (index !== -1) {
-            items.splice(index, 1);
-            console.log("🗑️ Etiqueta eliminada del carro:", id);
-            actualizarListaVisual();
-        }
-    }
-
-    /**
-     * Limpia todo el carro
-     */
-    function limpiarCarro() {
-        items = [];
-        console.log("🧹 Carro limpiado");
+        const i = items.findIndex((x) => x.id === id);
+        if (i >= 0) items.splice(i, 1);
         actualizarListaVisual();
     }
 
-    /**
-     * Obtiene todas las etiquetas del carro
-     * @returns {Array} - Array de etiquetas
-     */
-    function obtenerItems() {
-        return [...items]; // Retorna copia para evitar mutaciones
+    function limpiarCarro() {
+        items = [];
+        actualizarListaVisual();
     }
 
-    /**
-     * Calcula el peso total del carro
-     * @returns {number} - Peso total en kg
-     */
     function calcularPesoTotal() {
-        return items.reduce(
-            (acc, item) => acc + (parseFloat(item.peso) || 0),
-            0
-        );
+        return items.reduce((acc, i) => acc + (parseFloat(i.peso) || 0), 0);
     }
 
-    // ============================================================================
-    // ACTUALIZACIÓN DE LA INTERFAZ
-    // ============================================================================
+    function obtenerItems() {
+        return items;
+    }
 
-    /**
-     * Actualiza la lista visual de etiquetas en el DOM
-     */
     function actualizarListaVisual() {
-        console.log("🔄 Actualizando lista visual del carro");
-
         const itemsList = document.getElementById("itemsList");
-        if (!itemsList) {
-            console.error("❌ No se encontró el elemento #itemsList");
-            return;
-        }
-
+        if (!itemsList) return;
         itemsList.innerHTML = "";
 
-        // Renderizar cada etiqueta
-        items.forEach((item) => {
-            const listItem = document.createElement("li");
-            listItem.className =
-                "flex items-center justify-between py-2 px-3 bg-white rounded border mb-2";
-            listItem.dataset.code = item.id;
+        for (const item of items) {
+            const li = document.createElement("li");
+            li.className =
+                "flex justify-between items-center px-3 py-2 bg-white border rounded mb-2";
+            li.dataset.code = item.id;
 
-            // Contenido de la etiqueta
-            const contentDiv = document.createElement("div");
-            contentDiv.className = "flex-1";
-            contentDiv.innerHTML = `
-                <div class="font-semibold text-gray-800">${item.id}</div>
-                <div class="text-sm text-gray-600">
-                    <span class="inline-block mr-3">📦 ${item.type}</span>
-                    <span class="inline-block mr-3">⚖️ ${item.peso} kg</span>
-                    <span class="inline-block">✅ ${item.estado}</span>
+            li.innerHTML = `
+                <div>
+                    <div class="font-semibold">${
+                        item.id
+                    } === ${item.peso.toFixed(2)} kg</div>
                 </div>
+                <button class="text-red-600 hover:text-red-800" title="Eliminar">❌</button>
             `;
 
-            // Botón eliminar
-            const removeButton = document.createElement("button");
-            removeButton.textContent = "❌";
-            removeButton.className =
-                "ml-2 text-red-600 hover:text-red-800 hover:bg-red-50 rounded px-2 py-1 transition";
-            removeButton.title = "Eliminar del carro";
-            removeButton.onclick = () => {
-                eliminarItem(item.id);
-            };
+            li.querySelector("button").onclick = () => eliminarItem(item.id);
+            itemsList.appendChild(li);
+        }
 
-            listItem.appendChild(contentDiv);
-            listItem.appendChild(removeButton);
-            itemsList.appendChild(listItem);
-        });
-
-        // Sumatorio total
-        const pesoTotal = calcularPesoTotal();
-        const sumatorioItem = document.createElement("li");
-        sumatorioItem.className =
-            "py-3 px-3 bg-blue-50 rounded border-2 border-blue-200 mt-3";
-        sumatorioItem.innerHTML = `
-            <div class="flex justify-between items-center">
-                <span class="text-lg font-bold text-blue-900">Total de peso:</span>
-                <span class="text-xl font-bold text-blue-600">${pesoTotal.toFixed(
-                    2
-                )} kg</span>
-            </div>
-            <div class="text-sm text-blue-700 mt-1">
-                ${items.length} etiqueta${
-            items.length !== 1 ? "s" : ""
-        } en el carro
-            </div>
-        `;
-        itemsList.appendChild(sumatorioItem);
+        const total = calcularPesoTotal();
+        const resumen = document.createElement("li");
+        resumen.className = "py-3 px-3 bg-blue-50 border-t-2 mt-3 font-bold";
+        resumen.textContent = `Total: ${total.toFixed(2)} kg (${
+            items.length
+        } etiquetas)`;
+        itemsList.appendChild(resumen);
     }
 
     // ============================================================================
     // CREACIÓN DE PAQUETES
     // ============================================================================
-    function obtenerMaquinaId() {
-        // Prioriza data-maquina-id en #maquina-info; si no, usa window.maquinaId
-        const desdeDom = Number(
-            document.getElementById("maquina-info")?.dataset?.maquinaId
-        );
-        const desdeGlobal = Number(window.maquinaId);
-        return Number.isFinite(desdeDom) && desdeDom > 0
-            ? desdeDom
-            : Number.isFinite(desdeGlobal) && desdeGlobal > 0
-            ? desdeGlobal
-            : null;
-    }
 
-    function obtenerUbicacionId() {
-        // Intenta por input/hidden #ubicacion-id; si no, usa window.ubicacionId
-        const desdeDom = Number(document.getElementById("ubicacion-id")?.value);
-        const desdeGlobal = Number(window.ubicacionId);
-        return Number.isFinite(desdeDom) && desdeDom > 0
-            ? desdeDom
-            : Number.isFinite(desdeGlobal) && desdeGlobal > 0
-            ? desdeGlobal
-            : null;
-    }
-
-    /**
-     * Crea un paquete con las etiquetas del carro contra POST /paquetes
-     * Respeta el precheck de warnings del backend y reintenta con confirmar=true
-     */
     async function crearPaquete() {
-        if (items.length === 0) {
-            await Swal.fire({
-                icon: "warning",
-                title: "Carro vacío",
-                text: "No hay etiquetas en el carro para crear un paquete",
-                confirmButtonText: "OK",
-            });
+        if (!items.length) {
+            await Swal.fire(
+                "Carro vacío",
+                "No hay etiquetas para empaquetar",
+                "warning"
+            );
             return;
         }
 
-        const maquinaId = obtenerMaquinaId();
-        const ubicacionId = obtenerUbicacionId();
+        const maquinaId = Number(
+            document.getElementById("maquina-info")?.dataset?.maquinaId ||
+                window.maquinaId
+        );
+        const ubicacionId = Number(
+            document.getElementById("ubicacion-id")?.value || window.ubicacionId
+        );
 
         if (!maquinaId || !ubicacionId) {
-            await Swal.fire({
-                icon: "error",
-                title: "Faltan datos",
-                html: `
-                <div style="text-align:left">
-                    <p>No se pudo determinar <b>máquina</b> o <b>ubicación</b>.</p>
-                    <ul style="margin-top:8px;font-size:13px">
-                        <li>Debe existir <code>#maquina-info[data-maquina-id]</code> o <code>window.maquinaId</code>.</li>
-                        <li>Debe existir <code>#ubicacion-id</code> o <code>window.ubicacionId</code>.</li>
-                    </ul>
-                </div>
-            `,
-            });
+            await Swal.fire(
+                "Faltan datos",
+                "Debe especificarse la máquina y la ubicación.",
+                "error"
+            );
             return;
         }
 
-        const confirmacion = await Swal.fire({
-            icon: "question",
-            title: "Crear paquete",
-            html: `
-            <p>¿Deseas crear un paquete con <strong>${
-                items.length
-            }</strong> etiqueta${items.length !== 1 ? "s" : ""}?</p>
-            <p class="text-gray-600 mt-2">Peso total: <strong>${calcularPesoTotal().toFixed(
-                2
-            )} kg</strong></p>
-        `,
-            showCancelButton: true,
-            confirmButtonText: "Sí, crear paquete",
-            cancelButtonText: "Cancelar",
-        });
-        if (!confirmacion.isConfirmed) return;
-
-        if (global.customLoader) {
-            global.customLoader.show({
-                text: "Creando paquete",
-                subtext: "Procesando etiquetas...",
-                type: "bars",
-            });
-        }
-
-        // Payload que espera tu store(): items[{id,type}], maquina_id, ubicacion_id
         const payload = {
-            items: items.map((it) => ({ id: it.id, type: "etiqueta" })),
-            maquina_id: Number(maquinaId),
-            ubicacion_id: Number(ubicacionId),
+            items: items.map((i) => ({ id: i.id, type: i.type })),
+            maquina_id: maquinaId,
+            ubicacion_id: ubicacionId,
         };
 
-        try {
-            // 1º intento: precheck que puede devolver warnings en 200
+        const confirmarCreacion = async (extra = {}) => {
             const resp = await fetch("/paquetes", {
                 method: "POST",
                 headers: {
@@ -447,440 +172,250 @@ Timestamp: ${new Date().toISOString()}
                         'meta[name="csrf-token"]'
                     )?.content,
                 },
-                body: JSON.stringify(payload),
+                body: JSON.stringify({ ...payload, ...extra }),
             });
 
-            let data;
-            try {
-                data = await resp.clone().json();
-            } catch {
-                throw new Error(
-                    `Error inesperado del servidor (Código ${resp.status})`
-                );
-            }
+            const data = await resp.json();
+            if (!resp.ok)
+                throw new Error(data.message || "Error al crear el paquete");
+            return data;
+        };
 
-            if (!resp.ok) {
-                throw new Error(
-                    data?.message ||
-                        `Error ${resp.status}: no se pudo crear el paquete`
-                );
-            }
+        try {
+            const data = await confirmarCreacion();
 
-            // Si viene bloque de warnings y success=false, pide confirmación y reintenta con confirmar=true
-            if (data.warning && !data.success) {
-                const w = data.warning;
-                let html =
-                    "<div style='text-align:left'>Se detectaron advertencias:";
-                if (
-                    Array.isArray(w.etiquetas_no_encontradas) &&
-                    w.etiquetas_no_encontradas.length
-                ) {
-                    html += `<br><b>No encontradas:</b> ${w.etiquetas_no_encontradas.join(
-                        ", "
-                    )}`;
-                }
-                if (
-                    Array.isArray(w.etiquetas_ocupadas) &&
-                    w.etiquetas_ocupadas.length
-                ) {
-                    html += `<br><b>Ya empaquetadas:</b> ${w.etiquetas_ocupadas.join(
-                        ", "
-                    )}`;
-                }
-                if (
-                    Array.isArray(w.etiquetas_incompletas) &&
-                    w.etiquetas_incompletas.length
-                ) {
-                    html += `<br><b>Incompletas:</b> ${w.etiquetas_incompletas.join(
-                        ", "
-                    )}`;
-                }
-                if (
-                    Array.isArray(w.elementos_no_encontrados) &&
-                    w.elementos_no_encontrados.length
-                ) {
-                    html += `<br><b>Elementos no encontrados:</b> ${w.elementos_no_encontrados.join(
-                        ", "
-                    )}`;
-                }
-                if (
-                    Array.isArray(w.elementos_incompletos) &&
-                    w.elementos_incompletos.length
-                ) {
-                    html += `<br><b>Elementos incompletos:</b> ${w.elementos_incompletos.join(
-                        ", "
-                    )}`;
-                }
-                html += "</div>";
+            if (data.success) return postCreacion(data);
 
-                const res = await Swal.fire({
+            if (data.warning) {
+                let html = `<div style='text-align:left;'>Se detectaron advertencias:`;
+                for (const [clave, lista] of Object.entries(data.warning)) {
+                    if (Array.isArray(lista) && lista.length) {
+                        html += `<br><strong>${clave.replaceAll(
+                            "_",
+                            " "
+                        )}:</strong> ${lista.join(", ")}`;
+                    }
+                }
+                html += `</div>`;
+
+                const confirm = await Swal.fire({
                     icon: "warning",
                     title: "Advertencias",
                     html,
                     showCancelButton: true,
                     confirmButtonText: "Continuar",
                     cancelButtonText: "Cancelar",
-                    confirmButtonColor: "#3085d6",
-                    cancelButtonColor: "#d33",
                 });
 
-                if (!res.isConfirmed) {
-                    throw new Error("Operación cancelada por el usuario.");
-                }
-
-                if (global.customLoader) {
-                    global.customLoader.show({
-                        text: "Confirmando",
-                        subtext: "Aplicando cambios...",
-                        type: "bars",
+                if (confirm.isConfirmed) {
+                    const confirmData = await confirmarCreacion({
+                        confirmar: true,
                     });
+                    if (confirmData.success) return postCreacion(confirmData);
+                    throw new Error(confirmData.message);
                 }
 
-                const resp2 = await fetch("/paquetes", {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json",
-                        Accept: "application/json",
-                        "X-CSRF-TOKEN": document.querySelector(
-                            'meta[name="csrf-token"]'
-                        )?.content,
-                    },
-                    body: JSON.stringify({ ...payload, confirmar: true }),
-                });
-
-                let data2;
-                try {
-                    data2 = await resp2.clone().json();
-                } catch {
-                    throw new Error(
-                        `Error inesperado del servidor (Código ${resp2.status})`
-                    );
-                }
-
-                if (!resp2.ok || !data2.success) {
-                    throw new Error(
-                        data2?.message ||
-                            `Error ${resp2.status}: no se pudo confirmar el paquete`
-                    );
-                }
-                data = data2;
+                throw new Error("Operación cancelada por el usuario.");
             }
 
-            if (global.customLoader) global.customLoader.hide();
-
-            // Éxito
-            // Éxito
-            const pesoTotalAntesDeLimpiar = calcularPesoTotal();
-            const idsAntesDeLimpiar = items.map((i) => i.id);
-
-            await Swal.fire({
-                icon: "success",
-                title: "Paquete creado",
-                html: `
-        <p>El paquete <strong>${
-            data.codigo_paquete || data.paquete?.codigo || "N/D"
-        }</strong> se ha creado correctamente</p>
-        <p class="text-gray-600 mt-2"><strong>${
-            idsAntesDeLimpiar.length
-        }</strong> etiqueta${
-                    idsAntesDeLimpiar.length !== 1 ? "s" : ""
-                } empaquetada${idsAntesDeLimpiar.length !== 1 ? "s" : ""}</p>
-        <p class="text-gray-600">Peso total: <strong>${pesoTotalAntesDeLimpiar.toFixed(
-            2
-        )} kg</strong></p>
-    `,
-                confirmButtonText: "Continuar",
-            });
-
-            // Actualiza el DOM sin recargar
-            actualizarUITrasPaquete({
-                codigoPaquete:
-                    data.codigo_paquete || data.paquete?.codigo || null,
-                etiquetaIds: idsAntesDeLimpiar,
-                pesoTotal: pesoTotalAntesDeLimpiar,
-                codigoPlanilla: data.codigo_planilla || null,
-            });
-        } catch (error) {
-            if (global.customLoader) global.customLoader.hide();
-            console.error("❌ Error al crear paquete:", error);
-            await Swal.fire({
-                icon: "error",
-                title: "Error al crear paquete",
-                text: error.message || "Ha ocurrido un error inesperado",
-                confirmButtonText: "Cerrar",
-            });
+            throw new Error("No se pudo crear el paquete");
+        } catch (e) {
+            await Swal.fire("Error", e.message || "Error inesperado", "error");
         }
     }
 
-    // ============================================================================
-    // INICIALIZACIÓN DEL MÓDULO
-    // ============================================================================
+    async function postCreacion(data) {
+        const codigo = data.codigo_paquete || data.paquete?.codigo || "N/D";
+        const peso = calcularPesoTotal();
+        const etiquetas = [...items.map((i) => i.id)];
 
-    /**
-     * Inicializa el módulo de paquetes
-     */
-    function inicializar() {
-        if (isInitialized) {
-            console.warn("⚠️ Módulo trabajoPaquete ya fue inicializado");
-            return;
-        }
-
-        console.log("🚀 Inicializando módulo trabajoPaquete.js");
-
-        // Inicializar input de QR
-        const qrInput = document.getElementById("qrItem");
-        if (qrInput) {
-            inicializarInputQR(qrInput);
-        } else {
-            console.warn("⚠️ No se encontró el input #qrItem");
-        }
-
-        // Inicializar botón de crear paquete
-        const crearPaqueteBtn = document.getElementById("crearPaqueteBtn");
-        if (crearPaqueteBtn) {
-            crearPaqueteBtn.addEventListener("click", crearPaquete);
-            console.log("✅ Botón crear paquete inicializado");
-        } else {
-            console.warn("⚠️ No se encontró el botón #crearPaqueteBtn");
-        }
-
-        // Inicializar formulario de eliminar paquete
-        inicializarFormularioEliminar();
-
-        isInitialized = true;
-        console.log("✅ Módulo trabajoPaquete.js inicializado correctamente");
-    }
-
-    /**
-     * Inicializa el input de QR para validación
-     */
-    function inicializarInputQR(qrInput) {
-        qrInput.addEventListener("input", async function (e) {
-            const codigo = e.target.value.trim();
-
-            if (!codigo || codigo.length < 3) return;
-
-            // Delay para asegurar que el scanner terminó
-            await new Promise((resolve) => setTimeout(resolve, 100));
-
-            try {
-                // Validar etiqueta
-                const data = await validarEtiqueta(codigo);
-
-                // Verificar si es válida
-                if (!data.valida) {
-                    await Swal.fire({
-                        icon: "warning",
-                        title: "Etiqueta no válida",
-                        html: `
-                            <div style="text-align: left;">
-                                <p><strong>Código:</strong> ${codigo}</p>
-                                <p><strong>Motivo:</strong> ${
-                                    data.motivo || "No especificado"
-                                }</p>
-                                ${
-                                    data.estado_actual
-                                        ? `<p><strong>Estado actual:</strong> ${data.estado_actual}</p>`
-                                        : ""
-                                }
-                                ${
-                                    data.paquete_actual
-                                        ? `<p><strong>Paquete actual:</strong> ${data.paquete_actual}</p>`
-                                        : ""
-                                }
-                            </div>
-                        `,
-                        confirmButtonText: "OK",
-                    });
-                    e.target.value = "";
-                    e.target.focus();
-                    return;
-                }
-
-                // Agregar al carro
-                const agregado = agregarItemEtiqueta(codigo, data);
-
-                // Limpiar y enfocar para siguiente escaneo
-                e.target.value = "";
-                e.target.focus();
-            } catch (error) {
-                console.error("❌ Error al validar etiqueta:", error);
-                await mostrarErrorValidacion(error, codigo);
-                e.target.value = "";
-                e.target.focus();
-            }
+        await Swal.fire({
+            icon: "success",
+            title: "Paquete creado",
+            html: `<p><strong>${codigo}</strong> creado correctamente</p><p>${
+                etiquetas.length
+            } etiquetas · ${peso.toFixed(2)} kg</p>`,
         });
 
-        // Respaldo con evento 'change'
-        qrInput.addEventListener("change", function (e) {
-            const event = new Event("input", { bubbles: true });
-            e.target.dispatchEvent(event);
-        });
+        limpiarCarro();
 
-        console.log("✅ Input de QR inicializado");
-    }
-
-    /**
-     * Inicializa el formulario de eliminar paquete
-     */
-    function inicializarFormularioEliminar() {
-        const deleteForm = document.getElementById("deleteForm");
-        if (!deleteForm) {
-            console.warn("⚠️ No se encontró el formulario #deleteForm");
-            return;
-        }
-
-        deleteForm.addEventListener("submit", async function (event) {
-            event.preventDefault();
-
-            const paqueteId = document.getElementById("paquete_id")?.value;
-
-            if (!paqueteId) {
-                await Swal.fire({
-                    icon: "warning",
-                    title: "Campo vacío",
-                    text: "Por favor, ingrese un ID válido.",
-                    confirmButtonColor: "#3085d6",
-                });
-                return;
-            }
-
-            const confirmacion = await Swal.fire({
-                title: "¿Estás seguro?",
-                text: "Esta acción no se puede deshacer.",
-                icon: "warning",
-                showCancelButton: true,
-                confirmButtonColor: "#d33",
-                cancelButtonColor: "#3085d6",
-                confirmButtonText: "Sí, eliminar",
-                cancelButtonText: "Cancelar",
-            });
-
-            if (confirmacion.isConfirmed) {
-                deleteForm.action = `/paquetes/${paqueteId}`;
-                deleteForm.submit();
-            }
-        });
-
-        console.log("✅ Formulario de eliminar paquete inicializado");
-    }
-    function setEstadoEnPaquete(node, codigoPaquete) {
-        try {
-            node.classList.remove(
-                "estado-pendiente",
-                "estado-fabricando",
-                "estado-ensamblando",
-                "estado-soldando",
-                "estado-fabricada",
-                "estado-completada",
-                "estado-ensamblada",
-                "estado-soldada"
-            );
-            node.classList.add("estado-en-paquete");
-            const badge = node.querySelector(
-                ".badge-estado, .estado-texto, [data-role='estado-badge']"
-            );
-            if (badge) badge.textContent = "En paquete";
-
-            const pkgSpan = node.querySelector(
-                ".badge-paquete, [data-role='paquete-badge']"
-            );
-            if (pkgSpan) {
-                pkgSpan.textContent = codigoPaquete || "";
-                pkgSpan.title = "Código de paquete";
-            }
-
-            node.dataset.paquete = codigoPaquete || "";
-            node.setAttribute("data-paquete", codigoPaquete || "");
-
-            // Si esa tarjeta debe desaparecer del centro al empaquetar:
-            if (node.matches("[data-ocultar-al-empaquetar='1']")) {
-                node.remove(); // o node.classList.add("hidden")
-            }
-        } catch (_) {}
-    }
-
-    /**
-     * Actualiza el DOM tras crear paquete sin recargar.
-     * @param {{ codigoPaquete:string|null, etiquetaIds:string[], pesoTotal:number, codigoPlanilla?:string|null }} info
-     */
-    function actualizarUITrasPaquete(info) {
-        const { codigoPaquete, etiquetaIds, pesoTotal, codigoPlanilla } =
-            info || {};
-
-        // 1) Limpia el carro (estado + lista)
-        try {
-            limpiarCarro();
-        } catch (_) {}
-
-        // 2) Marca cada tarjeta/fila de etiqueta
-        (etiquetaIds || []).forEach((id) => {
-            const selector = `[data-etiqueta-sub-id="${CSS.escape(
-                id
-            )}"], [data-etiqueta="${CSS.escape(id)}"]`;
-            document
-                .querySelectorAll(selector)
-                .forEach((n) => setEstadoEnPaquete(n, codigoPaquete));
-        });
-
-        // 3) Si tienes un contador agregado opcional
-        const totalPesoNode = document.querySelector(
-            "[data-role='total-peso-paquetes']"
+        // ⭐ DISPARAR EVENTO
+        console.log(`📦 Disparando evento paquete:creado para ${codigo}`);
+        window.dispatchEvent(
+            new CustomEvent("paquete:creado", {
+                detail: {
+                    codigoPaquete: codigo,
+                    etiquetaIds: etiquetas,
+                    pesoTotal: peso,
+                },
+            })
         );
-        if (totalPesoNode && typeof pesoTotal === "number") {
-            const actual = parseFloat(totalPesoNode.dataset.valor || "0") || 0;
-            const nuevo = actual + Number(pesoTotal || 0);
-            totalPesoNode.dataset.valor = String(nuevo);
-            totalPesoNode.textContent = `${nuevo.toFixed(2)} kg`;
-        }
 
-        // 4) Si tienes una lista visual de paquetes
-        const lista = document.getElementById("paquetesList");
-        if (lista && codigoPaquete) {
-            const li = document.createElement("li");
-            li.className =
-                "px-3 py-2 bg-white border rounded mb-2 flex items-center justify-between";
-            li.innerHTML = `
-            <div class="flex-1">
-                <div class="font-semibold text-gray-800">Paquete ${codigoPaquete}</div>
-                <div class="text-xs text-gray-600">
-                    ${etiquetaIds.length} etiqueta${
-                etiquetaIds.length !== 1 ? "s" : ""
-            } ·
-                    ${
-                        typeof pesoTotal === "number"
-                            ? `${pesoTotal.toFixed(2)} kg`
-                            : ""
-                    }
-                    ${codigoPlanilla ? `· Planilla ${codigoPlanilla}` : ""}
-                </div>
-            </div>
-            <div class="ml-3">
-                <button class="text-sm px-2 py-1 border rounded hover:bg-gray-50" data-role="ver-paquete" data-codigo="${codigoPaquete}">
-                    Ver
-                </button>
-            </div>
-        `;
-            lista.prepend(li);
-        }
-
-        // 5) Evento global por si otros módulos quieren reaccionar
-        try {
-            window.dispatchEvent(
-                new CustomEvent("paquete:creado", {
-                    detail: {
-                        codigoPaquete,
-                        etiquetaIds,
-                        pesoTotal,
-                        codigoPlanilla,
-                    },
-                })
+        // ⭐ ACTUALIZAR DOM DIRECTAMENTE SI EL SISTEMA NO ESTÁ DISPONIBLE
+        if (typeof window.SistemaDOM === "undefined") {
+            console.log(
+                "⚠️ SistemaDOM no disponible, actualizando manualmente"
             );
-        } catch (_) {}
+            etiquetas.forEach((etiquetaId) => {
+                actualizarEtiquetaManual(etiquetaId, codigo);
+            });
+        } else {
+            console.log(
+                "✅ SistemaDOM detectado, se actualizará automáticamente"
+            );
+        }
     }
 
     // ============================================================================
-    // API PÚBLICA DEL MÓDULO
+    // ACTUALIZACIÓN MANUAL DEL DOM (FALLBACK)
+    // ============================================================================
+
+    function actualizarEtiquetaManual(etiquetaId, codigoPaquete) {
+        const safeId = String(etiquetaId).replace(/\./g, "-");
+        const elemento = document.querySelector(`#etiqueta-${safeId}`);
+
+        if (!elemento) {
+            console.warn(`❌ No se encontró elemento: ${etiquetaId}`);
+            return;
+        }
+
+        console.log(`🔄 Actualizando manualmente: ${etiquetaId}`);
+
+        // 1. Eliminar todas las clases estado-*
+        const clases = Array.from(elemento.classList);
+        clases.forEach((clase) => {
+            if (clase.startsWith("estado-")) {
+                elemento.classList.remove(clase);
+            }
+        });
+
+        // 2. Añadir clase estado-en-paquete
+        elemento.classList.add("estado-en-paquete");
+
+        // 3. Actualizar dataset
+        elemento.dataset.estado = "en-paquete";
+
+        // 4. Actualizar CSS variable
+        elemento.style.setProperty("--bg-estado", "#e3e4FA");
+
+        // 5. Actualizar SVG si existe
+        const contenedorSvg = elemento.querySelector('[id^="contenedor-svg-"]');
+        if (contenedorSvg) {
+            const svg = contenedorSvg.querySelector("svg");
+            if (svg) {
+                svg.style.background = "#e3e4FA";
+            }
+        }
+
+        // 6. Actualizar fondo de la card
+        const card = elemento.querySelector(".etiqueta-card") || elemento;
+        if (card) {
+            card.style.background = "#e3e4FA";
+        }
+
+        // 7. Añadir info del paquete
+        const h3 = elemento.querySelector("h3");
+        if (h3 && !elemento.querySelector(".paquete-info")) {
+            const paqueteInfo = document.createElement("div");
+            paqueteInfo.className =
+                "paquete-info text-sm font-semibold mt-2 no-print";
+            paqueteInfo.style.cssText =
+                "display: flex; align-items: center; gap: 0.25rem; color: #7c3aed; font-size: 0.875rem;";
+            paqueteInfo.innerHTML = `
+                <svg style="width: 1rem; height: 1rem;" fill="currentColor" viewBox="0 0 20 20">
+                    <path d="M3 4a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1V4zM3 10a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H4a1 1 0 01-1-1v-6zM14 9a1 1 0 00-1 1v6a1 1 0 001 1h2a1 1 0 001-1v-6a1 1 0 00-1-1h-2z"/>
+                </svg>
+                <span>Paquete: ${codigoPaquete}</span>
+            `;
+            h3.parentNode.insertBefore(paqueteInfo, h3.nextSibling);
+        }
+
+        // 8. Deshabilitar botones
+        const botones = elemento.querySelectorAll(".btn-fabricar");
+        botones.forEach((btn) => {
+            btn.disabled = true;
+            btn.style.opacity = "0.5";
+            btn.style.cursor = "not-allowed";
+        });
+
+        // 9. Animación
+        elemento.style.transition = "all 0.5s ease";
+        elemento.style.transform = "scale(1.03)";
+        setTimeout(() => {
+            elemento.style.transform = "scale(1)";
+        }, 400);
+
+        console.log(`✅ Etiqueta ${etiquetaId} actualizada manualmente`);
+    }
+
+    // ============================================================================
+    // INICIALIZACIÓN
+    // ============================================================================
+
+    function inicializar() {
+        if (isInitialized) return;
+        isInitialized = true;
+
+        console.log("🚀 Inicializando TrabajoPaquete...");
+
+        // Inicializar input QR
+        const inputQR = document.getElementById("qrItem");
+        if (inputQR) {
+            inputQR.addEventListener("change", () =>
+                inputQR.dispatchEvent(new Event("input"))
+            );
+            inputQR.addEventListener("input", async function () {
+                const codigo = this.value.trim();
+                if (!codigo) return;
+
+                try {
+                    const data = await validarEtiqueta(codigo);
+                    if (!data.valida) {
+                        await Swal.fire(
+                            "Etiqueta no válida",
+                            data.motivo || "Motivo no especificado",
+                            "warning"
+                        );
+                        this.value = "";
+                        this.focus();
+                        return;
+                    }
+
+                    const ok = agregarItemEtiqueta(codigo, data);
+                    if (!ok) {
+                        await Swal.fire(
+                            "Etiqueta duplicada",
+                            "Ya está en el carro",
+                            "info"
+                        );
+                    }
+
+                    this.value = "";
+                    this.focus();
+                } catch (err) {
+                    console.error("Error de validación:", err);
+                    await Swal.fire(
+                        "Error",
+                        err.message || "Fallo en validación",
+                        "error"
+                    );
+                    this.value = "";
+                    this.focus();
+                }
+            });
+        }
+
+        // Inicializar botón crear paquete
+        const btnCrear = document.getElementById("crearPaqueteBtn");
+        if (btnCrear) {
+            btnCrear.addEventListener("click", crearPaquete);
+        }
+
+        console.log("✅ TrabajoPaquete inicializado");
+    }
+
+    // ============================================================================
+    // API PÚBLICA
     // ============================================================================
 
     global.TrabajoPaquete = {
@@ -895,7 +430,6 @@ Timestamp: ${new Date().toISOString()}
         actualizarListaVisual,
     };
 
-    // Auto-inicializar cuando el DOM esté listo
     if (document.readyState === "loading") {
         document.addEventListener("DOMContentLoaded", inicializar);
     } else {

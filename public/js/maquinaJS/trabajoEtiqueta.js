@@ -1,17 +1,15 @@
 /**
  * ================================================================================
- * MÓDULO: trabajoEtiqueta.js
+ * MÓDULO: trabajoEtiqueta.js - VERSIÓN CON SISTEMA CENTRALIZADO
  * ================================================================================
- * Gestión del proceso de fabricación de etiquetas:
- * - Inicio y fin de fabricación
- * - Estados de etiquetas
- * - Actualización de stock
- * - Integración con sistema de cortes/patrones
+ * ✅ Usa SistemaDOM para actualizar estados
+ * ✅ Dispara eventos para sincronización
+ * ✅ Control completo de estados de etiquetas
  * ================================================================================
  */
 
 document.addEventListener("DOMContentLoaded", () => {
-    if (window.__trabajoEtiquetaInit) return; // 👈 guard
+    if (window.__trabajoEtiquetaInit) return;
     window.__trabajoEtiquetaInit = true;
 
     console.log("🚀 Inicializando módulo trabajoEtiqueta.js");
@@ -25,7 +23,6 @@ document.addEventListener("DOMContentLoaded", () => {
         if (!btn) return;
         ev.preventDefault();
 
-        // ✅ leer maquinaId en el momento del click
         const maquinaId =
             document.getElementById("maquina-info")?.dataset?.maquinaId;
         if (!maquinaId) {
@@ -47,7 +44,11 @@ document.addEventListener("DOMContentLoaded", () => {
                 elementoEtiqueta.dataset.estado || ""
             ).toLowerCase();
 
-            if (["completada", "en-paquete"].includes(estadoActual)) {
+            if (
+                ["completada", "en-paquete", "empaquetada"].includes(
+                    estadoActual
+                )
+            ) {
                 await Swal.fire({
                     icon: "info",
                     title: "Etiqueta ya completada",
@@ -55,7 +56,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     timer: 2500,
                     showConfirmButton: false,
                 });
-                return; // 🔥 Detenemos aquí para no lanzar flujos de corte ni fabricación
+                return;
             }
         }
 
@@ -114,7 +115,6 @@ document.addEventListener("DOMContentLoaded", () => {
         //  A) MÁQUINAS DE BARRA → SIEMPRE VÍA PATRONES
         // ────────────────────────────────────────────────
         if (esMaquinaBarra) {
-            // 🧠 Si ya está fabricando y hay una decisión previa, la usamos directamente
             if (esFabricando && window._decisionCortePorEtiqueta?.[id]) {
                 await Cortes.enviarAFabricacionOptimizada({
                     ...window._decisionCortePorEtiqueta[id],
@@ -155,7 +155,6 @@ document.addEventListener("DOMContentLoaded", () => {
                     }
 
                     if (outcome?.accion === "fabricar") {
-                        // 💾 Guardamos la decisión del primer clic
                         window._decisionCortePorEtiqueta =
                             window._decisionCortePorEtiqueta || {};
 
@@ -163,6 +162,10 @@ document.addEventListener("DOMContentLoaded", () => {
                             longitudBarraCm: outcome.longitudBarraCm,
                             etiquetas: outcome.etiquetas,
                         };
+                        localStorage.setItem(
+                            "decisionCortePorEtiqueta",
+                            JSON.stringify(window._decisionCortePorEtiqueta)
+                        );
 
                         await Cortes.enviarAFabricacionOptimizada({
                             ...window._decisionCortePorEtiqueta[id],
@@ -187,13 +190,16 @@ document.addEventListener("DOMContentLoaded", () => {
                         return;
                     }
 
-                    // 💾 Guardamos la decisión del primer clic
                     window._decisionCortePorEtiqueta =
                         window._decisionCortePorEtiqueta || {};
                     window._decisionCortePorEtiqueta[id] = {
                         longitudBarraCm,
                         etiquetas: [{ etiqueta_sub_id: id, elementos: [] }],
                     };
+                    localStorage.setItem(
+                        "decisionCortePorEtiqueta",
+                        JSON.stringify(window._decisionCortePorEtiqueta)
+                    );
 
                     await Cortes.enviarAFabricacionOptimizada({
                         ...window._decisionCortePorEtiqueta[id],
@@ -203,15 +209,17 @@ document.addEventListener("DOMContentLoaded", () => {
                     });
                     return;
                 }
+
+                return;
             }
         }
 
         // ────────────────────────────────────────────────
-        //  B) MÁQUINAS NO BARRA → flujo clásico (PUT)
+        //  B) MÁQUINAS NORMALES → LLAMADA DIRECTA
         // ────────────────────────────────────────────────
         try {
-            const response = await fetch(url, {
-                method: "PUT",
+            const res = await fetch(url, {
+                method: "POST",
                 headers: {
                     "Content-Type": "application/json",
                     Accept: "application/json",
@@ -220,101 +228,59 @@ document.addEventListener("DOMContentLoaded", () => {
                 body: JSON.stringify({}),
             });
 
-            const data = await response.json();
-
-            if (!response.ok || data.success === false) {
-                await Swal.fire({
-                    icon: "error",
-                    title: "Error al fabricar",
-                    text: data?.message || "Ha ocurrido un error.",
-                });
-                return;
+            const data = await res.json();
+            if (!res.ok) {
+                throw new Error(data.message || "Error al actualizar");
             }
 
-            if (data.success) {
-                if (Array.isArray(data.warnings) && data.warnings.length) {
-                    await Swal.fire({
-                        icon: "warning",
-                        title: "Atención",
-                        html: data.warnings.join("<br>"),
-                        confirmButtonText: "OK",
-                        allowOutsideClick: false,
-                    });
-                }
-                actualizarDOMEtiqueta(id, data);
-            }
-        } catch (error) {
-            await Swal.fire({
-                icon: "error",
-                title: "Error inesperado",
-                text: error.message || String(error),
-            });
+            actualizarDOMEtiqueta(id, data);
+        } catch (err) {
+            showErrorAlert(err);
         }
     }
 
     // ============================================================================
-    // ALERTAS Y FEEDBACK
-    // ============================================================================
-
-    function showAlert(icon, title, text, timer = 2000) {
-        const Toast = Swal.mixin({
-            toast: true,
-            position: "top-end",
-            showConfirmButton: false,
-            timer,
-            timerProgressBar: true,
-            didOpen: (toast) => {
-                toast.onmouseenter = Swal.stopTimer;
-                toast.onmouseleave = Swal.resumeTimer;
-            },
-        });
-
-        Toast.fire({ icon, title, text });
-    }
-
-    function showErrorAlert(error) {
-        const mensaje =
-            error?.message || error || "Ocurrió un error inesperado.";
-        Swal.fire({
-            icon: "error",
-            title: "Ha ocurrido un error",
-            text: `Problemas: ${mensaje}`,
-            footer: "Por favor, inténtalo de nuevo o contacta al soporte si el problema continua.",
-            showConfirmButton: false,
-            showCancelButton: true,
-            cancelButtonText: "Cerrar",
-            showDenyButton: true,
-            denyButtonText: "Reportar Error",
-        }).then((result) => {
-            if (result.isDenied) notificarProgramador(mensaje);
-        });
-    }
-
-    // ============================================================================
-    // ACTUALIZACIÓN DEL DOM
+    // ACTUALIZAR DOM DE ETIQUETA (USANDO SISTEMA CENTRALIZADO)
     // ============================================================================
 
     function actualizarDOMEtiqueta(id, data) {
         const safeId = id.replace(/\./g, "-");
-        const estado = (data.estado || "").toLowerCase();
 
-        aplicarEstadoAProceso(id, estado);
+        // ✅ USAR SISTEMA CENTRALIZADO
+        if (typeof window.SistemaDOM !== "undefined") {
+            window.SistemaDOM.actualizarEstadoEtiqueta(id, data.estado, {
+                peso: data.peso_etiqueta || data.peso_etiqueta_kg,
+                nombre: data.nombre,
+            });
+        } else {
+            // Fallback: actualización legacy
+            aplicarEstadoAProceso(id, data.estado);
+        }
 
-        switch (estado) {
-            case "pendiente":
+        // Procesar según el estado
+        switch ((data.estado || "").toLowerCase()) {
+            case "cortando":
                 showAlert(
                     "info",
-                    "Pendiente",
-                    "La etiqueta está esperando a ser procesada."
+                    "Cortando",
+                    "El proceso de corte ha iniciado."
                 );
+                break;
+
+            case "cortada":
+                showAlert(
+                    "success",
+                    "Etiqueta cortada",
+                    "El proceso de corte ha finalizado correctamente."
+                );
+                scrollToNextDiv(safeId);
                 break;
 
             case "fabricando":
                 showAlert(
                     "info",
                     "Fabricando",
-                    "La etiqueta está en proceso de fabricación.",
-                    5000
+                    "El proceso de fabricación ha iniciado."
                 );
                 break;
 
@@ -322,7 +288,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 showAlert(
                     "success",
                     "Etiqueta fabricada",
-                    "El proceso de fabricación ha finalizado correctamente."
+                    "La etiqueta ha sido fabricada exitosamente."
                 );
                 scrollToNextDiv(safeId);
 
@@ -330,7 +296,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 if (typeof window.TrabajoPaquete !== "undefined") {
                     window.TrabajoPaquete.agregarItemEtiqueta(id, {
                         id: id,
-                        peso: data.peso || data.peso_kg || 0,
+                        peso: data.peso_etiqueta || data.peso_etiqueta_kg || 0,
                         estado: "fabricada",
                         nombre: data.nombre || "Sin nombre",
                     });
@@ -343,13 +309,23 @@ document.addEventListener("DOMContentLoaded", () => {
                     "Etiqueta completada",
                     "La etiqueta ha sido procesada exitosamente."
                 );
+
+                // 🧹 Limpiar decisión de corte
+                if (window._decisionCortePorEtiqueta?.[id]) {
+                    delete window._decisionCortePorEtiqueta[id];
+                    localStorage.setItem(
+                        "decisionCortePorEtiqueta",
+                        JSON.stringify(window._decisionCortePorEtiqueta)
+                    );
+                }
+
                 scrollToNextDiv(safeId);
 
                 // ✅ Agregar automáticamente al carro de paquetes
                 if (typeof window.TrabajoPaquete !== "undefined") {
                     window.TrabajoPaquete.agregarItemEtiqueta(id, {
                         id: id,
-                        peso: data.peso || data.peso_kg || 0,
+                        peso: data.peso_etiqueta || data.peso_etiqueta_kg || 0,
                         estado: "completada",
                         nombre: data.nombre || "Sin nombre",
                     });
@@ -424,15 +400,11 @@ document.addEventListener("DOMContentLoaded", () => {
                         (producto.peso_stock / producto.peso_inicial) * 100
                     }%`;
             });
-        } else {
-            console.warn(
-                "No se encontraron productos afectados en la respuesta."
-            );
         }
     }
 
     // ============================================================================
-    // ESTADOS VISUALES
+    // ESTADOS VISUALES (FALLBACK LEGACY)
     // ============================================================================
 
     function aplicarEstadoAProceso(etiquetaSubId, estado) {
@@ -493,6 +465,8 @@ document.addEventListener("DOMContentLoaded", () => {
             "terminado",
             "hecha",
             "hecho",
+            "empaquetada",
+            "en-paquete",
         ]);
 
         const estaCompletada = (div) => ES_COMPLETADA.has(leerEstado(div));
@@ -506,10 +480,6 @@ document.addEventListener("DOMContentLoaded", () => {
                 block: "center",
             });
         } else {
-            console.info(
-                "Estados vistos:",
-                allDivs.map((d, i) => ({ i, id: d.id, estado: leerEstado(d) }))
-            );
             Swal.fire({
                 icon: "success",
                 title: "¡Perfecto!",
@@ -518,6 +488,31 @@ document.addEventListener("DOMContentLoaded", () => {
             });
         }
     }
+
+    // ============================================================================
+    // UTILIDADES
+    // ============================================================================
+
+    function showAlert(icon, title, text, timer = 2000) {
+        Swal.fire({
+            icon,
+            title,
+            text,
+            timer,
+            showConfirmButton: false,
+        });
+    }
+
+    function showErrorAlert(error) {
+        Swal.fire({
+            icon: "error",
+            title: "Error",
+            text: error.message || "Ha ocurrido un error inesperado",
+        });
+    }
+
+    // ✅ EXPONER FUNCIONES PÚBLICAS
+    window.actualizarDOMEtiqueta = actualizarDOMEtiqueta;
 
     console.log("✅ Módulo trabajoEtiqueta.js inicializado correctamente");
 });

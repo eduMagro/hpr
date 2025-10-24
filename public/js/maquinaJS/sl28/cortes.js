@@ -21,10 +21,27 @@ window.Cortes = (function () {
 
     const CONFIG = {
         longitudesPorDiametro: window.LONGITUDES_POR_DIAMETRO || {},
+
         endpoints: {
             calcularPatronSimple: "/etiquetas/{id}/patron-corte-simple",
             calcularPatronOptimizado: "/etiquetas/{id}/patron-corte-optimizado",
             fabricacionOptimizada: "/etiquetas/fabricacion-optimizada",
+        },
+
+        // ESTILOS Y UMBRALES
+        corteSimple: {
+            umbralOptimo: 95, // verde
+            umbralAceptable: 90, // amarillo
+            colores: {
+                verde: { borde: "#10b981", fondo: "#f0fdf4", texto: "#10b981" },
+                amarillo: {
+                    borde: "#f59e0b",
+                    fondo: "#fffbeb",
+                    texto: "#f59e0b",
+                },
+                rojo: { borde: "#ef4444", fondo: "#fef2f2", texto: "#ef4444" },
+                gris: { borde: "#d1d5db", fondo: "#f9fafb", texto: "#9ca3af" }, // no disponible
+            },
         },
     };
 
@@ -163,6 +180,7 @@ window.Cortes = (function () {
                 repeticiones: 1,
                 etiquetas: etiquetas.map((e) => ({
                     etiqueta_sub_id: e.etiqueta_sub_id || e,
+                    patron_letras: e.patron?.patron_letras || "",
                 })),
             };
 
@@ -241,77 +259,73 @@ window.Cortes = (function () {
 
     async function mostrarModalSimple(datos) {
         const { etiquetaId, diametro, patrones } = datos;
+        const cfg = CONFIG.corteSimple;
+
+        //Este nos serviria para filtrar patrones simples por los productos que hay disponibles en la SL28
+        //Por el momento comentamos esta parte para mostrar todos los patrones simples posibles
+        // const disponibles = patrones
+        //     .filter((p) => p.disponible_en_maquina && p.por_barra > 0)
+        //     .sort((a, b) => b.aprovechamiento - a.aprovechamiento);
 
         const disponibles = patrones
-            .filter((p) => p.disponible_en_maquina && p.por_barra > 0)
+            .filter((p) => p.por_barra > 0) // aún tiene sentido ocultar los que no caben
             .sort((a, b) => b.aprovechamiento - a.aprovechamiento);
-
-        if (disponibles.length === 0) {
-            await Swal.fire({
-                icon: "error",
-                title: "Sin barras disponibles",
-                timer: 2000,
-            });
-            return null;
-        }
 
         const htmlOpciones = disponibles
             .map((p, i) => {
-                const color =
-                    p.aprovechamiento >= 90
-                        ? "green"
-                        : p.aprovechamiento >= 80
-                        ? "yellow"
-                        : "red";
+                let nivel = "gris";
+                if (p.disponible_en_maquina) {
+                    if (p.aprovechamiento >= cfg.umbralOptimo) {
+                        nivel = "verde";
+                    } else if (p.aprovechamiento >= cfg.umbralAceptable) {
+                        nivel = "amarillo";
+                    } else {
+                        nivel = "rojo";
+                    }
+                }
+                const c = cfg.colores[nivel];
+                const esquemaLetras = Array(p.por_barra).fill("A").join(" + ");
                 return `
-                <div class="patron-simple" data-index="${i}" style="
-                    border: 2px solid ${
-                        color === "green"
-                            ? "#10b981"
-                            : color === "yellow"
-                            ? "#f59e0b"
-                            : "#ef4444"
-                    };
-                    background: ${
-                        color === "green"
-                            ? "#f0fdf4"
-                            : color === "yellow"
-                            ? "#fffbeb"
-                            : "#fef2f2"
-                    };
-                    padding: 12px 16px;
-                    border-radius: 8px;
-                    margin: 8px 0;
-                    cursor: pointer;
-                    display: flex;
-                    justify-content: space-between;
-                    align-items: center;
-                    transition: all 0.2s;
-                ">
-                    <div>
-                        <span style="font-size: 20px; font-weight: bold;">${
-                            p.longitud_m
-                        }m</span>
-                        <span style="margin-left: 12px; color: #6b7280;">→ ${
-                            p.por_barra
-                        } piezas</span>
+            <div class="patron-simple" data-index="${i}" style="
+                border: 2px solid ${c.borde};
+                background: ${c.fondo};
+                padding: 12px 16px;
+                border-radius: 8px;
+                margin: 8px 0;
+                cursor: pointer;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                transition: all 0.2s;
+            ">
+                <div>
+                    <span style="font-size: 20px; font-weight: bold;">${
+                        p.longitud_m
+                    }m</span>
+        
+                    <span style="font-size: 20px; font-weight: bold;">${esquemaLetras}</span>
+        
+                    <span style="margin-left: 12px; color: #6b7280;">→ ${
+                        p.por_barra
+                    } piezas</span>
+                    ${
+                        !p.disponible_en_maquina
+                            ? '<span style="margin-left: 8px; color: #ef4444; font-size: 12px;">(no disponible)</span>'
+                            : ""
+                    }
+                </div>
+                <div style="text-align: right;">
+                    <div style="font-size: 24px; font-weight: bold; color: ${
+                        c.texto
+                    };">
+                        ${p.aprovechamiento.toFixed(1)}%
                     </div>
-                    <div style="text-align: right;">
-                        <div style="font-size: 24px; font-weight: bold; color: ${
-                            color === "green"
-                                ? "#10b981"
-                                : color === "yellow"
-                                ? "#f59e0b"
-                                : "#ef4444"
-                        };">
-                            ${p.aprovechamiento.toFixed(1)}%
-                        </div>
-                        <div style="font-size: 12px; color: #6b7280;">Desperdicio: ${
-                            p.sobra_cm
-                        } cm</div>
+                    <div style="font-size: 12px; color: #6b7280;">
+                        Desperdicio: ${p.sobra_cm} cm
                     </div>
                 </div>
-            `;
+            </div>
+        `;
             })
             .join("");
 
@@ -320,13 +334,13 @@ window.Cortes = (function () {
         const resultado = await Swal.fire({
             title: `📏 Corte Simple - ${etiquetaId}`,
             html: `
-                <div style="text-align: left; max-height: 400px; overflow-y: auto;">
-                    ${htmlOpciones}
-                </div>
-                <p style="margin-top: 16px; font-size: 13px; color: #6b7280;">
-                    💡 Click para seleccionar una opción
-                </p>
-            `,
+            <div style="text-align: left; max-height: 400px; overflow-y: auto;">
+                ${htmlOpciones}
+            </div>
+            <p style="margin-top: 16px; font-size: 13px; color: #6b7280;">
+                💡 Click para seleccionar una opción
+            </p>
+        `,
             showCancelButton: true,
             showDenyButton: true,
             confirmButtonText: "✓ Fabricar",
@@ -368,7 +382,6 @@ window.Cortes = (function () {
 
         return null;
     }
-
     // ============================================================================
     // POPUP OPTIMIZADO (Derecha, draggeable, filtrado dinámico)
     // ============================================================================

@@ -15,36 +15,6 @@
 @endphp
 
 <style>
-    /* === Colores de estado === */
-    .proceso {
-        --bg-estado: #e5e7eb;
-    }
-
-    /* blanco */
-    .proceso.estado-pendiente {
-        --bg-estado: #ffffff;
-    }
-
-    /* amarillo */
-    .proceso.estado-fabricando,
-    .proceso.estado-ensamblando,
-    .proceso.estado-soldando {
-        --bg-estado: #facc15;
-    }
-
-    /* verde */
-    .proceso.estado-fabricada,
-    .proceso.estado-completada,
-    .proceso.estado-ensamblada,
-    .proceso.estado-soldada {
-        --bg-estado: #22c55e;
-    }
-
-    /* rojo */
-    .proceso.estado-en-paquete {
-        --bg-estado: #e3e4FA;
-    }
-
     /* === Contenedor general === */
     .etiqueta-wrapper {
         display: block;

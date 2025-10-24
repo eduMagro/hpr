@@ -66,6 +66,7 @@
         <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 
         <script src="{{ asset('js/maquinaJS/sl28/cortes.js') }}"></script>
+        <script src="{{ asset('js/maquinaJS/actualizarDom.js') }}"></script>
         <script src="{{ asset('js/maquinaJS/trabajoEtiqueta.js') }}"></script>
         <script src="{{ asset('js/maquinaJS/trabajoPaquete.js') }}"></script>
         <script src="{{ asset('js/imprimirQrS.js') }}"></script>
@@ -82,10 +83,6 @@
         </script>
 
         <script src="{{ asset('js/maquinaJS/canvasMaquina.js') }}"></script>
-        <script src="{{ asset('js/maquinaJS/elementInfoPanel.js') }}"></script>
-
-        {{-- <script src="{{ asset('js/maquinaJS/canvasMaquinaSinBoton.js') }}" defer></script> --}}
-
         <script src="{{ asset('js/maquinaJS/crearPaquetes.js') }}" defer></script>
         {{-- Al final del archivo Blade --}}
 
