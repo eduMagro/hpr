@@ -16,13 +16,16 @@ $numMaquinas = $maquinas->count();
                     <option value="{{ $obra->id }}">{{ $obra->obra }}</option>
                     @endforeach
                 </select>
-                <button id="ambas" class="underline text-blue-600">Ambas</button>
-                <button id="nave1" class="underline">Nave 1</button>
-                <button id="nave2" class="underline">Nave 2</button>
+                @php
+                $naves = ["Todas", "Nave 1", "Nave 2"]
+                @endphp
+                @foreach ($naves as $nave)
+                <button id="{{ $nave }}" class="p-2 border border-emerald-600 @if($loop->first) bg-gradient-to-r text-white @else text-emerald-700 @endif from-emerald-600 to-emerald-700 uppercase font-bold text-sm rounded-lg transition-all duration-100 hover:-translate-y-1">{{ $nave }}</button>
+                @endforeach
             </div>
         </div>
 
-        <div class="rounded-xl gap-2 flex overflow-x-scroll  h-[calc(100vh-120px)]">
+        <div class="rounded-xl gap-2 flex overflow-x-scroll  h-[calc(100vh-125px)] mt-3">
             @forelse($maquinas as $maq)
 
             @php
@@ -173,6 +176,14 @@ $numMaquinas = $maquinas->count();
                 </div>
             </div>
         </div>
+
+
+        <div id="modal_detalles_etiqueta" class="absolute bg-black bg-opacity-50 backdrop-blur-sm border border-black">
+            <p>Obra: <span class="obra"></span></p>
+            <p>Estado producción: <span class="estado"></span></p>
+            <p>Fin programado: <span class="fin_programado"></span></p>
+            <p>Fecha estimada entrega: <span class="fecha_estimada_entrega"></span></p>
+        </div>
     </div>
 
     <div id="todosElementos" class="hidden">
@@ -202,6 +213,12 @@ $numMaquinas = $maquinas->count();
         @endforeach
     </div>
 
+    <div id="obras" class="hidden">
+        @foreach ($obras as $o)
+        <div data-obras='@json(["obra_id"=>$o->id, "nombre"=>$o->obra])'></div>
+        @endforeach
+    </div>
+
     <div id="modal_fusionar_planilla" class="bg-black bg-opacity-60 absolute top-0 left-0 w-screen h-screen flex items-center justify-center hidden backdrop-blur-sm">
         <div class="bg-white shadow-lg rounded-lg p-4 flex flex-col gap-4 items-center max-w-md w-full">
             <div class="uppercase font-medium text-center">
@@ -216,12 +233,15 @@ $numMaquinas = $maquinas->count();
         </div>
     </div>
 
+    <!-- emerald-300 #6ee7b7 -->
+    <!-- emerald-400 #34d399 -->
+    <!-- emerald-500 #10b981 -->
 
     <script src="{{ asset('js/elementosJs/figuraElemento.js') }}" defer></script>
     <script src="{{ asset('js/planillas/planificacion.js') }}"></script>
     <style>
         .planilla.compi-resaltado {
-            background-color: #fc9d55 !important;
+            background-color: #6ee7b7 !important;
         }
 
         .planilla.dragging {

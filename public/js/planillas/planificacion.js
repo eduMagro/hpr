@@ -20,11 +20,19 @@ document.addEventListener("DOMContentLoaded", () => {
     modales = [modal_elementos, modal_transferir]
     select_obra = document.getElementById("select_obra")
 
+    // datos de todas las obras (id, nombre)
+    obras = Array.from(document.querySelectorAll("#obras [data-obras]")).map(div => JSON.parse(div.dataset.obras));
+
+    console.log(obras);
+
+
     const TODOS = document.getElementById("todosElementos");
     let elementos = TODOS.querySelectorAll("[data-elementos]");
     datos_elementos = Array.from(elementos).map(div => JSON.parse(div.dataset.elementos));
     datos_elementos_original = JSON.parse(JSON.stringify(datos_elementos));
+    
     renderPlanillasFromDatos(datos_elementos);
+    anadirNombreObraADataPlanilla()
 
 
     BOTONES.forEach(boton => {
@@ -648,7 +656,7 @@ function buildOrdenesMap() {
 // Crea el nodo .planilla
 function createPlanillaCard({ planilla_id, codigo, posicion, obra_id = null }) { // <- NUEVO obra_id
     const div = document.createElement('div');
-    div.className = "planilla p-3 flex justify-around items-center border border-orange-400 hover:-translate-y-1 transition-all duration-75 ease-in-out rounded-xl bg-white hover:bg-orange-400 cursor-grab active:cursor-grabbing select-none text-center relative";
+    div.className = "planilla p-3 flex justify-around items-center border border-emerald-400 hover:-translate-y-1 transition-all duration-75 ease-in-out rounded-xl bg-white hover:bg-emerald-400 cursor-grab active:cursor-grabbing select-none text-center relative";
     div.setAttribute('draggable', 'true');
     div.dataset.planillaId = String(planilla_id);
     if (posicion != null) div.dataset.posicion = String(posicion);
@@ -910,13 +918,13 @@ function resaltarPorObra() {
 
         planillas.forEach(planilla => {
 
-            planilla.classList.remove("border-cyan-500", "bg-cyan-400")
-            planilla.classList.add("hover:bg-orange-400", "border-orange-400")
+            planilla.classList.remove("border-purple-500", "bg-purple-200")
+            planilla.classList.add("hover:bg-emerald-400", "border-emerald-500")
 
             if (planilla.dataset.obraId == seleccion) {
                 encontrados = + 1
-                planilla.classList.remove("hover:bg-orange-400", "border-orange-400")
-                planilla.classList.add("border-cyan-500", "bg-cyan-400")
+                planilla.classList.remove("hover:bg-emerald-400", "border-emerald-500")
+                planilla.classList.add("border-purple-500", "bg-purple-200")
             }
         });
         encontrados_span.textContent = encontrados
@@ -924,5 +932,10 @@ function resaltarPorObra() {
 }
 
 function modalDetallesPlanilla() {
+    let planillas = Array.from(document.getElementsByClassName("planilla"))
+
+}
+
+function anadirNombreObraADataPlanilla() {
 
 }
