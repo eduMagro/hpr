@@ -1575,7 +1575,6 @@ class ProduccionController extends Controller
 
         DB::transaction(function () use ($ordenes, $cambiosElementos) {
 
-            // 1️⃣ Guardar orden de planillas
             if (!empty($ordenes)) {
                 $rows = array_map(fn($o) => [
                     'planilla_id' => $o['planilla_id'],

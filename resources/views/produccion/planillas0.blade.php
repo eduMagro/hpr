@@ -9,6 +9,13 @@ $numMaquinas = $maquinas->count();
         <div class="flex w-full justify-between">
             <h1 class="text-2xl font-bold mb-4">🧾 Planificación por Orden</h1>
             <div class="flex gap-5">
+                <p>Encontrados -> <span id="cantidad_encontrados"></span></p>
+                <select name="obra" id="select_obra">
+                    <option value="0">Resaltar por obra</option>
+                    @foreach($obras as $obra)
+                    <option value="{{ $obra->id }}">{{ $obra->obra }}</option>
+                    @endforeach
+                </select>
                 <button id="ambas" class="underline text-blue-600">Ambas</button>
                 <button id="nave1" class="underline">Nave 1</button>
                 <button id="nave2" class="underline">Nave 2</button>
@@ -42,7 +49,7 @@ $numMaquinas = $maquinas->count();
             ];
             @endphp
 
-            <div class="maquina flex flex-col w-full min-w-24 bg-neutral-200"
+            <div class="maquina flex flex-col w-full min-w-24 bg-neutral-200 rounded-t-xl"
                 data-detalles='@json($detalles)'
                 data-maquina-id="{{ $detalles['id'] }}">
                 <div class="bg-gradient-to-r from-emerald-600 to-emerald-700 w-full h-12 p-2 rounded-t-xl flex items-center justify-center text-white shadow-md uppercase font-bold text-xl">
@@ -182,17 +189,6 @@ $numMaquinas = $maquinas->count();
     ]) }}"></div>
         @endforeach
     </div>
-
-    <div id="todasObras" class="hidden">
-        @foreach ($obras as $obra)
-        <div data-elementos="{{ json_encode([
-            'id' => $obra->id,
-            'nombre' => $obra->obra,
-            ]) }}"></div>
-        @endforeach
-    </div>
-
-
 
     <div id="todasPlanillas" class="hidden">
         @foreach ($planillas as $p)

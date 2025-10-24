@@ -4,7 +4,8 @@ let div_elementos;
 let modal_elementos
 let modal_transferir
 let pendingFusion = null; // { planillaId, codigo, origenCol, destinoCol, draggingEl, origenMachineId, destinoMachineId, originIndex }
-
+let obras
+let select_obra
 
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -17,6 +18,7 @@ document.addEventListener("DOMContentLoaded", () => {
     modal_elementos = document.getElementById("modal_elementos")
     modal_transferir = document.getElementById("modal_transferir_a_maquina");
     modales = [modal_elementos, modal_transferir]
+    select_obra = document.getElementById("select_obra")
 
     const TODOS = document.getElementById("todosElementos");
     let elementos = TODOS.querySelectorAll("[data-elementos]");
@@ -36,6 +38,7 @@ document.addEventListener("DOMContentLoaded", () => {
     resaltarCompis(PLANILLAS);
     initDragAndDrop(CONTENEDORES, MAQUINAS);
     mostrarElementos(PLANILLAS, div_elementos, MOVER_MODAL_ELEMENTOS, datos_elementos)
+    resaltarPorObra()
 
 
     // Agregar Listener de cierre a los modales cuando se clicka fuera de los hijos del mismo
@@ -608,16 +611,22 @@ function seleccionarMaquinaParaMovimiento() {
 // --- helpers para leer datasets ocultos ---
 function buildPlanillasMap() {
     const cont = document.getElementById('todasPlanillas');
-    const map = new Map(); // planilla_id -> codigo
+    const map = new Map(); // planilla_id -> { codigo, obra_id }
     if (!cont) return map;
+
     cont.querySelectorAll('[data-planilla]').forEach(node => {
         try {
-            const { id, codigo } = JSON.parse(node.dataset.planilla);
-            map.set(Number(id), String(codigo));
-        } catch (_) { }
+            const { id, codigo, obra_id } = JSON.parse(node.dataset.planilla);
+            map.set(Number(id), {
+                codigo: String(codigo ?? `PL-${id}`),
+                obra_id: obra_id != null ? Number(obra_id) : null
+            });
+        } catch (_) { /* silencio */ }
     });
+
     return map;
 }
+
 
 function buildOrdenesMap() {
     const cont = document.getElementById('ordenPlanillas');
@@ -637,16 +646,17 @@ function buildOrdenesMap() {
 }
 
 // Crea el nodo .planilla
-function createPlanillaCard({ planilla_id, codigo, posicion }) {
+function createPlanillaCard({ planilla_id, codigo, posicion, obra_id = null }) { // <- NUEVO obra_id
     const div = document.createElement('div');
     div.className = "planilla p-3 flex justify-around items-center border border-orange-400 hover:-translate-y-1 transition-all duration-75 ease-in-out rounded-xl bg-white hover:bg-orange-400 cursor-grab active:cursor-grabbing select-none text-center relative";
     div.setAttribute('draggable', 'true');
     div.dataset.planillaId = String(planilla_id);
     if (posicion != null) div.dataset.posicion = String(posicion);
+    if (obra_id != null) div.dataset.obraId = String(obra_id); // <- NUEVO
 
     const posP = document.createElement('p');
     posP.className = "text-neutral-500 text-xs font-bold absolute top-1 left-1 pos-label";
-    posP.textContent = posicion != null ? String(posicion) : ""; // se rellenará con reindex si no hay orden
+    posP.textContent = posicion != null ? String(posicion) : "";
 
     const codeP = document.createElement('p');
     codeP.textContent = codigo ?? `PL-${planilla_id}`;
@@ -656,17 +666,17 @@ function createPlanillaCard({ planilla_id, codigo, posicion }) {
     return div;
 }
 
+
 /**
  * Rellena cada columna .planillas a partir de datos_elementos
  * - Agrupa por (maquina_id, planilla_id)
  * - Usa ordenPlanillas si existe; si no, ordena por codigo asc
  */
 function renderPlanillasFromDatos(datos_elementos) {
-    const planillasMap = buildPlanillasMap();
+    const planillasMap = buildPlanillasMap(); // Puede ser pid -> "COD" o pid -> {codigo, obra_id}
     const ordenesByMaquina = buildOrdenesMap();
 
-    // 1) Agrupar por máquina -> set de planilla_id
-    const porMaquina = new Map(); // maquina_id -> Set(planilla_id)
+    const porMaquina = new Map();
     datos_elementos.forEach(e => {
         const mid = Number(e.maquina_id);
         const pid = Number(e.planilla_id);
@@ -674,7 +684,6 @@ function renderPlanillasFromDatos(datos_elementos) {
         porMaquina.get(mid).add(pid);
     });
 
-    // 2) Para cada máquina del DOM, pintar sus planillas
     document.querySelectorAll('.maquina').forEach(maq => {
         const mid = Number(maq.dataset.maquinaId || JSON.parse(maq.dataset.detalles || '{}').id);
         const cont = maq.querySelector('.planillas');
@@ -684,14 +693,23 @@ function renderPlanillasFromDatos(datos_elementos) {
         const planillasSet = porMaquina.get(mid) || new Set();
         let tarjetas = [];
 
-        // construimos array con {planilla_id, codigo, posicion}
         planillasSet.forEach(pid => {
-            const codigo = planillasMap.get(pid) ?? `PL-${pid}`;
+            const info = planillasMap.get(pid);
+
+            // Soporta string o objeto {codigo, obra_id}
+            const codigo = (info && typeof info === 'object') ? (info.codigo ?? `PL-${pid}`) : (info ?? `PL-${pid}`);
+            let obra_id = (info && typeof info === 'object') ? (info.obra_id ?? null) : null;
+
+            // Fallback: si no vino en el map, intenta sacarlo de datos_elementos
+            if (obra_id == null) {
+                const e = datos_elementos.find(x => Number(x.planilla_id) === pid && (x.obra_id != null));
+                if (e) obra_id = Number(e.obra_id);
+            }
+
             const posicion = ordenesByMaquina.get(mid)?.get(pid) ?? null;
-            tarjetas.push({ planilla_id: pid, codigo, posicion });
+            tarjetas.push({ planilla_id: pid, codigo, posicion, obra_id }); // <- incluye obra_id
         });
 
-        // 3) ordenar: primero por 'posicion' si existe, si no por 'codigo'
         tarjetas.sort((a, b) => {
             const ap = a.posicion ?? Infinity;
             const bp = b.posicion ?? Infinity;
@@ -699,24 +717,19 @@ function renderPlanillasFromDatos(datos_elementos) {
             return String(a.codigo).localeCompare(String(b.codigo));
         });
 
-        // 4) pintar
         tarjetas.forEach(t => {
-            const card = createPlanillaCard(t);
+            const card = createPlanillaCard(t); // <- ya pasa obra_id
             cont.appendChild(card);
         });
 
-        // 5) si no traíamos posiciones, reindexa para que se vean números
         reindexColumn(cont);
     });
 
-    // 6) reengancha drag & drop y eventos dependientes de .planilla
     initDragAndDrop(
         Array.from(document.querySelectorAll('.planillas')),
         Array.from(document.querySelectorAll('.maquina'))
     );
 
-    // OJO: si tienes otros listeners ligados a .planilla (ej. mostrarElementos),
-    // vuelve a montarlos:
     const PLANILLAS = Array.from(document.getElementsByClassName("planilla"));
     resaltarCompis(PLANILLAS);
     mostrarElementos(
@@ -726,6 +739,7 @@ function renderPlanillasFromDatos(datos_elementos) {
         datos_elementos
     );
 }
+
 
 
 function getMachineIdFromColumn(columnEl) {
@@ -884,4 +898,31 @@ function mostrarModalAdvertencia(validos, invalidos, maquina_id) {
         const idsValidos = validos.map(v => v.id);
         actualizarMaquinaDeElementos(idsValidos, maquina_id);
     };
+}
+
+function resaltarPorObra() {
+    select_obra.addEventListener("change", () => {
+        seleccion = select_obra.value
+        let planillas = Array.from(document.getElementsByClassName("planilla"))
+        let encontrados = 0
+        let encontrados_span = document.getElementById("cantidad_encontrados")
+
+
+        planillas.forEach(planilla => {
+
+            planilla.classList.remove("border-cyan-500", "bg-cyan-400")
+            planilla.classList.add("hover:bg-orange-400", "border-orange-400")
+
+            if (planilla.dataset.obraId == seleccion) {
+                encontrados = + 1
+                planilla.classList.remove("hover:bg-orange-400", "border-orange-400")
+                planilla.classList.add("border-cyan-500", "bg-cyan-400")
+            }
+        });
+        encontrados_span.textContent = encontrados
+    })
+}
+
+function modalDetallesPlanilla() {
+
 }
