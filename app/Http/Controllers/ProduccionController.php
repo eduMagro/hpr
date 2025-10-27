@@ -1523,7 +1523,7 @@ class ProduccionController extends Controller
 
         $ordenPlanillas = OrdenPlanilla::query()
             ->orderBy('posicion')
-            ->get(['planilla_id', 'maquina_id', 'posicion']);
+            ->get();
 
         $planillaIds = $ordenPlanillas->pluck('planilla_id')->unique();
 
@@ -1544,90 +1544,108 @@ class ProduccionController extends Controller
     {
         $data = $request->validate([
             'ordenes' => ['array'],
+            'ordenes.*.orden_id'   => ['nullable', 'integer', 'exists:orden_planillas,id'],
             'ordenes.*.maquina_id' => ['required', 'integer', 'exists:maquinas,id'],
             'ordenes.*.planilla_id' => ['required', 'integer', 'exists:planillas,id'],
-            'ordenes.*.posicion' => ['required', 'integer', 'min:1'],
+            'ordenes.*.posicion'   => ['required', 'integer', 'min:1'],
 
             'cambios_elementos' => ['array'],
-            'cambios_elementos.*.id' => ['required', 'integer', 'exists:elementos,id'],
-            'cambios_elementos.*.maquina_id' => ['required', 'integer', 'exists:maquinas,id'],
+            'cambios_elementos.*.id'                => ['required', 'integer', 'exists:elementos,id'],
+            'cambios_elementos.*.orden_planilla_id' => ['sometimes', 'integer', 'exists:orden_planillas,id'],
+            'cambios_elementos.*.maquina_id'        => ['sometimes', 'integer', 'exists:maquinas,id'],
         ]);
 
         $ordenes = $data['ordenes'] ?? [];
-        $cambiosElementos = $data['cambios_elementos'] ?? [];
+        $cambios  = $data['cambios_elementos'] ?? [];
 
-        // Validación extra: posiciones contiguas por máquina
+        // Validación extra: posiciones 1..N por máquina en el payload
         $porMaquina = [];
         foreach ($ordenes as $o) {
-            $porMaquina[$o['maquina_id']][] = $o['posicion'];
+            $porMaquina[$o['maquina_id']][] = (int)$o['posicion'];
         }
-        foreach ($porMaquina as $mid => $posiciones) {
-            sort($posiciones);
-            // opcional: comprobar 1..N
-            foreach ($posiciones as $i => $p) {
+        foreach ($porMaquina as $mid => $posList) {
+            sort($posList);
+            foreach ($posList as $i => $p) {
                 if ($p !== $i + 1) {
                     return response()->json([
-                        'message' => "Posiciones no contiguas en máquina $mid"
+                        'message' => "Posiciones no contiguas en máquina {$mid}"
                     ], 422);
                 }
             }
         }
 
-        DB::transaction(function () use ($ordenes, $cambiosElementos) {
+        DB::transaction(function () use ($ordenes, $cambios) {
 
-            if (!empty($ordenes)) {
-                $rows = array_map(fn($o) => [
-                    'planilla_id' => $o['planilla_id'],
-                    'maquina_id'  => $o['maquina_id'],
-                    'posicion'    => $o['posicion'],
-                    'updated_at'  => now(),
-                    'created_at'  => now(),
-                ], $ordenes);
+            // 1) Upsert de ordenes (si viene orden_id -> update por id; si no -> create/update por (planilla_id))
+            $maquinasAReindexar = [];
 
-                OrdenPlanilla::upsert(
-                    $rows,
-                    ['planilla_id'],               // columnas que definen conflicto
-                    ['maquina_id', 'posicion', 'updated_at'] // columnas a actualizar
-                );
+            foreach ($ordenes as $o) {
+                $maquinasAReindexar[(int)$o['maquina_id']] = true;
 
-                // ✅ 1.5 Normalizar posiciones por máquina
-                $maquinasIds = collect($ordenes)->pluck('maquina_id')->unique();
-                foreach ($maquinasIds as $mid) {
-                    $lista = OrdenPlanilla::where('maquina_id', $mid)
-                        ->orderBy('posicion')
-                        ->get();
-
-                    $pos = 1;
-                    foreach ($lista as $fila) {
-                        if ($fila->posicion != $pos) {
-                            $fila->posicion = $pos;
-                            $fila->save();
-                        }
-                        $pos++;
-                    }
+                if (!empty($o['orden_id'])) {
+                    // actualizar fila existente por ID
+                    OrdenPlanilla::where('id', $o['orden_id'])->update([
+                        'maquina_id'  => $o['maquina_id'],
+                        'planilla_id' => $o['planilla_id'],
+                        'posicion'    => $o['posicion'],
+                        'updated_at'  => now(),
+                    ]);
+                } else {
+                    // crear o actualizar por planilla (si tu modelo tiene unique en planilla_id)
+                    OrdenPlanilla::updateOrCreate(
+                        ['planilla_id' => $o['planilla_id']],      // clave lógica
+                        [
+                            'maquina_id'  => $o['maquina_id'],
+                            'posicion'    => $o['posicion'],
+                            'updated_at'  => now(),
+                            'created_at'  => now(),
+                        ]
+                    );
                 }
             }
 
-            // 2️⃣ Guardar cambios de elementos (maquina_id)
-            if (!empty($cambiosElementos)) {
-                collect($cambiosElementos)->chunk(500)->each(function ($chunk) {
-                    $ids = $chunk->pluck('id')->all();
-                    $case = "CASE id ";
-                    $bindings = [];
-                    foreach ($chunk as $row) {
-                        $case .= "WHEN ? THEN ? ";
-                        $bindings[] = $row['id'];
-                        $bindings[] = $row['maquina_id'];
-                    }
-                    $case .= "END";
+            // 1.5) Normalizar posiciones por máquina (1..N ordenadas por posicion)
+            foreach (array_keys($maquinasAReindexar) as $mid) {
+                $lista = OrdenPlanilla::where('maquina_id', $mid)
+                    ->orderBy('posicion')->orderBy('id')
+                    ->get();
 
-                    $in = implode(',', array_fill(0, count($ids), '?'));
-                    $sql = "UPDATE elementos SET maquina_id = $case WHERE id IN ($in)";
-                    DB::update($sql, array_merge($bindings, $ids));
-                });
+                $pos = 1;
+                foreach ($lista as $fila) {
+                    if ((int)$fila->posicion !== $pos) {
+                        $fila->posicion = $pos;
+                        $fila->save();
+                    }
+                    $pos++;
+                }
+            }
+
+            // 2) Aplicar cambios de elementos
+            //    - Si viene orden_planilla_id: set orden_planilla_id y sincronizar maquina_id con la de ese orden
+            //    - Si viene solo maquina_id: actualizar maquina_id
+            foreach ($cambios as $c) {
+                $query = Elemento::where('id', $c['id']);
+
+                if (array_key_exists('orden_planilla_id', $c)) {
+                    $op = OrdenPlanilla::select('maquina_id')->find($c['orden_planilla_id']);
+                    if ($op) {
+                        $query->update([
+                            'orden_planilla_id' => $c['orden_planilla_id'],
+                            'maquina_id'        => $op->maquina_id, // coherencia con el orden
+                            'updated_at'        => now(),
+                        ]);
+                        continue;
+                    }
+                }
+
+                if (array_key_exists('maquina_id', $c)) {
+                    $query->update([
+                        'maquina_id' => $c['maquina_id'],
+                        'updated_at' => now(),
+                    ]);
+                }
             }
         });
-
 
         return response()->json(['ok' => true]);
     }

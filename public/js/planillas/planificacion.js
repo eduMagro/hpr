@@ -11,9 +11,13 @@ let select_obra
 document.addEventListener("DOMContentLoaded", () => {
     const MAQUINAS = Array.from(document.getElementsByClassName("maquina"));
     const CONTENEDORES = MAQUINAS.map(m => m.querySelector('.planillas'));
-    const BOTONES = [document.getElementById("nave1"), document.getElementById("nave2"), document.getElementById("ambas")];
+    const BOTONES = [document.getElementById("nave_1"), document.getElementById("nave_2"), document.getElementById("nave_3")];
     const PLANILLAS = Array.from(document.getElementsByClassName("planilla"));
+
     const MOVER_MODAL_ELEMENTOS = document.getElementById("mover_modal_elementos")
+    // abrir el modal de selección de máquina desde el modal de elementos
+    MOVER_MODAL_ELEMENTOS?.addEventListener('click', seleccionarMaquinaParaMovimiento);
+
     div_elementos = document.getElementById("div_elementos")
     modal_elementos = document.getElementById("modal_elementos")
     modal_transferir = document.getElementById("modal_transferir_a_maquina");
@@ -30,14 +34,17 @@ document.addEventListener("DOMContentLoaded", () => {
     let elementos = TODOS.querySelectorAll("[data-elementos]");
     datos_elementos = Array.from(elementos).map(div => JSON.parse(div.dataset.elementos));
     datos_elementos_original = JSON.parse(JSON.stringify(datos_elementos));
-    
+
     renderPlanillasFromDatos(datos_elementos);
     anadirNombreObraADataPlanilla()
 
 
     BOTONES.forEach(boton => {
         boton.addEventListener("click", () => {
-            BOTONES.forEach(b => b.style.color = "black");
+            BOTONES.forEach(b => {
+                b.classList.remove("bg-gradient-to-r", "text-white")
+                b.classList.add("text-emerald-700")
+            });
             mostrarPorNave(MAQUINAS, boton);
         });
     });
@@ -79,6 +86,7 @@ document.addEventListener("DOMContentLoaded", () => {
             }
             modalFusion.classList.add("hidden");
             pendingFusion = null;
+            resetPlanillaTransforms();
         };
     }
 
@@ -93,41 +101,28 @@ document.addEventListener("DOMContentLoaded", () => {
     if (btnFusionAceptar) {
         btnFusionAceptar.onclick = () => {
             if (!pendingFusion) return;
-            const { planillaId, origenMachineId, destinoMachineId, destinoCol } = pendingFusion;
+            const { planillaId, destinoCol, destinoMachineId } = pendingFusion;
 
-            const before = JSON.parse(JSON.stringify(datos_elementos));
+            // localizar la tarjeta destino (la que queda)
+            const targetCard = Array.from(destinoCol.querySelectorAll('.planilla'))
+                .find(pl => Number(pl.dataset.planillaId) === Number(planillaId));
+            const targetOrdenId = Number(targetCard?.dataset.ordenId);
 
-            // 1) Actualizar datos: mover TODOS los elementos de esa planilla a la máquina destino
-            const movidos = applyPlanillaMoveToDatos(planillaId, origenMachineId, destinoMachineId);
-            // console.log(`✅ Fusionar: movidos ${movidos} elementos de planilla ${planillaId} a máquina ${destinoMachineId}`);
+            // mover TODOS los elementos de esa planilla a ese orden + máquina
+            datos_elementos.forEach(e => {
+                if (Number(e.planilla_id) === Number(planillaId)) {
+                    e.orden_planilla_id = targetOrdenId;
+                    e.maquina_id = destinoMachineId; // 👈 también actualizamos máquina
+                }
+            });
 
-            // 2) En el DOM, asegura que solo quede una tarjeta para esa planilla en destino
-            const dups = Array.from(destinoCol.querySelectorAll('.planilla'))
-                .filter(pl => Number(pl.dataset.planillaId) === Number(planillaId));
-            // Dejar la primera, eliminar las demás
-            dups.slice(1).forEach(n => n.remove());
-            reindexColumn(destinoCol);
-
-            // 3) Sincronizar orden desde DOM
-            const nuevosOrdenes = syncOrdenPlanillasDesdeDOM();
-            // console.log('📦 Orden tras fusión:', nuevosOrdenes);
-
-            // 4) Re-render lógico por si hay efectos colaterales
             renderPlanillasFromDatos(datos_elementos);
-
-            // 5) Diff opcional
-            logDiffDatosElementos(before, datos_elementos, planillaId);
-
-            // 6) Mostrar modal Guardar (si lo usas)
-            const modalGuardar = document.getElementById('modal_guardar');
-            if (modalGuardar) modalGuardar.classList.replace('-bottom-14', 'bottom-14');
-
-            // Cerrar modal fusión
-            const modalFusion = document.getElementById("modal_fusionar_planilla");
-            modalFusion.classList.add("hidden");
+            document.getElementById('modal_guardar')?.classList.replace('-bottom-14', 'bottom-14');
+            document.getElementById("modal_fusionar_planilla").classList.add("hidden");
             pendingFusion = null;
         };
     }
+
 
     const MODAL_GUARDAR = document.getElementById('modal_guardar');
     const BTN_GUARDAR = document.getElementById('btn_guardar');
@@ -236,6 +231,8 @@ function initDragAndDrop(contenedores, maquinas) {
                 const modalFusion = document.getElementById("modal_fusionar_planilla");
                 modalFusion.classList.remove("hidden");
 
+                resetPlanillaTransforms();
+
                 // OJO: no actualizamos datos todavía, se hace si aceptan
                 dragging = null;
                 origenCol = null;
@@ -246,11 +243,6 @@ function initDragAndDrop(contenedores, maquinas) {
 
             // --- Flujo normal sin duplicado ---
             const before = JSON.parse(JSON.stringify(datos_elementos));
-
-            if (destinoMachineId != null && origenMachineId != null && destinoMachineId !== origenMachineId) {
-                const n = applyPlanillaMoveToDatos(planillaId, origenMachineId, destinoMachineId);
-                // console.log(`🔁 Movida planilla ${planillaId} de máquina ${origenMachineId} a ${destinoMachineId}. Elementos afectados: ${n}`);
-            }
 
             const nuevosOrdenes = syncOrdenPlanillasDesdeDOM();
             // console.log('📦 Orden actualizado desde DOM:', nuevosOrdenes);
@@ -273,12 +265,41 @@ function initDragAndDrop(contenedores, maquinas) {
             e.dataTransfer.dropEffect = 'move';
             col.classList.add('drop-target');
 
-            const after = getDragAfterElement(col, e.clientY);
             const draggingEl = document.querySelector('.planilla.dragging');
             if (!draggingEl) return;
 
+            // 1) Medimos posiciones ANTES de mover
+            const hermanosAntes = [...col.querySelectorAll('.planilla:not(.dragging)')];
+            const prev = new Map(hermanosAntes.map(el => [el, el.getBoundingClientRect()]));
+
+            // 2) Insertamos en la nueva posición
+            const after = getDragAfterElement(col, e.clientY);
             if (!after) col.appendChild(draggingEl);
             else col.insertBefore(draggingEl, after);
+
+            // 3) Medimos DESPUÉS y animamos (FLIP)
+            const hermanosDespues = [...col.querySelectorAll('.planilla:not(.dragging)')];
+
+            hermanosDespues.forEach(el => {
+                const beforeRect = prev.get(el);
+                if (!beforeRect) return; // elementos nuevos no se animan
+
+                const afterRect = el.getBoundingClientRect();
+                const dx = beforeRect.left - afterRect.left;
+                const dy = beforeRect.top - afterRect.top;
+
+                if (dx !== 0 || dy !== 0) {
+                    // Invertimos
+                    el.style.transition = 'none';
+                    el.style.transform = `translate(${dx}px, ${dy}px)`;
+
+                    // Y reproducimos la animación a su sitio
+                    requestAnimationFrame(() => {
+                        el.style.transition = 'transform 140ms ease';
+                        el.style.transform = '';
+                    });
+                }
+            });
         });
 
         col.addEventListener('dragleave', () => {
@@ -287,10 +308,11 @@ function initDragAndDrop(contenedores, maquinas) {
 
         col.addEventListener('drop', () => {
             col.classList.remove('drop-target');
-            // resto se maneja en dragend
+            // el resto se maneja en dragend
         });
     });
 }
+
 
 function collectOrdenPayload() {
     return syncOrdenPlanillasDesdeDOM(); // ya la tienes; devuelve [{maquina_id, planilla_id, posicion}, ...]
@@ -300,18 +322,34 @@ function collectOrdenPayload() {
 function collectCambiosElementosPayload() {
     const cambios = [];
     const originalMap = new Map(datos_elementos_original.map(e => [Number(e.id), e]));
+
     datos_elementos.forEach(now => {
         const before = originalMap.get(Number(now.id));
         if (!before) return;
-        if (Number(before.maquina_id) !== Number(now.maquina_id)) {
+
+        const diffOrden = Number(before.orden_planilla_id) !== Number(now.orden_planilla_id);
+        const diffMaq = Number(before.maquina_id) !== Number(now.maquina_id);
+
+        if (diffOrden || diffMaq) {
             cambios.push({
                 id: Number(now.id),
-                maquina_id: Number(now.maquina_id)
+                ...(diffOrden ? { orden_planilla_id: Number(now.orden_planilla_id) } : {}),
+                ...(diffMaq ? { maquina_id: Number(now.maquina_id) } : {}),
             });
         }
     });
+
     return cambios;
 }
+
+
+function resetPlanillaTransforms(root = document) {
+    root.querySelectorAll('.planilla').forEach(el => {
+        el.style.transition = '';
+        el.style.transform = '';
+    });
+}
+
 
 
 // Devuelve el elemento .planilla inmediatamente posterior a la posición del cursor,
@@ -354,7 +392,7 @@ function mostrarPorNave(maquinas, boton) {
         maquinas.forEach(maq => { if (getDetalles(maq).nave_id != 2) maq.style.display = "none"; });
     }
 
-    boton.style.color = "#2563eb";
+    boton.classList.add("bg-gradient-to-r", "text-white")
 }
 
 function getDetalles(maquina) { return JSON.parse(maquina.dataset.detalles); }
@@ -383,43 +421,42 @@ async function mostrarElementos(planillas, div_elementos, btn, datos_elementos) 
             const target = e.currentTarget;
             const codigo = target.children[1]?.textContent?.trim() || "";
             const maquinaTitulo = target.closest('.maquina')
-                ?.querySelector('.bg-emerald-700 p')
+                ?.querySelector('.bg-gradient-to-r p')  // o '.rounded-t-xl p'
                 ?.textContent?.trim() || "";
 
-            const planilla_id = target.dataset.planillaId || target.getAttribute("data-planilla-id");
+            const orden_id = Number(target.dataset.ordenId || 0);  // 👈 importante
+            const planilla_id = Number(target.dataset.planillaId || target.getAttribute("data-planilla-id"));
+
+            window.__ctx_planilla_id__ = planilla_id;
+            window.__ctx_orden_id__ = orden_id;
+
+            // info de máquina para pintar cabecera
             const padre_maquina = target.closest('.maquina');
             if (!padre_maquina) return;
-
             const raw = padre_maquina.dataset.detalles || padre_maquina.getAttribute('data-detalles');
             let maquina_id = null;
-            try {
-                maquina_id = JSON.parse(raw).id;
-            } catch (err) {
-                console.error("JSON inválido en data-detalles:", raw, err);
-                return;
-            }
+            try { maquina_id = JSON.parse(raw).id; } catch { return; }
 
-            // pintar UI
+            // pintar cabecera
             const seleccion_planilla_codigo = document.getElementById("seleccion_planilla_codigo");
             const seleccion_maquina_tag = document.getElementById("seleccion_maquina_tag");
             if (seleccion_planilla_codigo) seleccion_planilla_codigo.textContent = codigo;
             if (seleccion_maquina_tag) seleccion_maquina_tag.textContent = maquinaTitulo;
 
-            const elementos = agregarElementosModal(planilla_id, maquina_id, datos_elementos)
+            // 👇 recoger elementos por orden_planilla_id
+            const elementos = datos_elementos.filter(e => Number(e.orden_planilla_id) === orden_id);
 
-            let padre_elementos = document.getElementById("seleccion_elementos")
+            const padre_elementos = document.getElementById("seleccion_elementos");
             padre_elementos.innerHTML = "";
+            modal_elementos.classList.remove("hidden");
 
-            modal_elementos.classList.remove("hidden")
-
-            elementos.forEach((elemento, i) => {
-                anadirElemento(padre_elementos, elemento, i)
-            });
+            elementos.forEach((elemento, i) => anadirElemento(padre_elementos, elemento, i));
             dibujarMiniFiguras(padre_elementos);
-            anadirPropiedadTransferible()
+            anadirPropiedadTransferible();
         });
     });
 }
+
 
 function agregarElementosModal(planilla_id, maquina_id, datos_elementos) {
     return datos_elementos.filter(e =>
@@ -500,55 +537,20 @@ function anadirPropiedadTransferible() {
 }
 
 
-function actualizarMaquinaDeElementos(ids, nuevo_maquina_id) {
-    // Convertir IDs a números por si vienen como strings
-    const idsNumericos = ids.map(id => Number(id));
-    let haCambiado = JSON.stringify(datos_elementos) !== JSON.stringify(datos_elementos_original);
+function actualizarMaquinaDeElementos(ids, nuevo_maquina_id, ordenDestinoId) {
+    const idsNumericos = ids.map(Number);
 
-    // Recorremos el array principal y modificamos los que coincidan
     datos_elementos.forEach(e => {
         if (idsNumericos.includes(Number(e.id))) {
             e.maquina_id = Number(nuevo_maquina_id);
+            if (ordenDestinoId != null) {
+                e.orden_planilla_id = Number(ordenDestinoId);
+            }
         }
     });
 
-    // console.log(`Actualizados ${idsNumericos.length} elementos a máquina ${nuevo_maquina_id}`);
-    haCambiado = JSON.stringify(datos_elementos) !== JSON.stringify(datos_elementos_original);
     renderPlanillasFromDatos(datos_elementos);
-
-    if (haCambiado) {
-        // console.log("Cambios detectados:");
-
-        // Recorremos todos los elementos nuevos
-        datos_elementos.forEach((nuevo) => {
-            const anterior = datos_elementos_original.find(e => e.id === nuevo.id);
-            if (!anterior) {
-                // console.log(`Nuevo elemento con ID ${nuevo.id}`, nuevo);
-                return;
-            }
-
-            // Comparamos campo a campo
-            const cambios = {};
-            for (const key in nuevo) {
-                if (JSON.stringify(nuevo[key]) !== JSON.stringify(anterior[key])) {
-                    cambios[key] = { antes: anterior[key], ahora: nuevo[key] };
-                }
-            }
-
-            // Si hubo cambios, los mostramos
-            // if (Object.keys(cambios).length > 0) {
-            //     console.group(`Elemento ${nuevo.id}`);
-            //     console.table(cambios);
-            //     console.groupEnd();
-            // }
-            const modalGuardar = document.getElementById('modal_guardar');
-            if (modalGuardar) {
-                modalGuardar.classList.replace('-bottom-14', 'bottom-14');
-            }
-        });
-    }
-
-
+    document.getElementById('modal_guardar')?.classList.replace('-bottom-14', 'bottom-14');
 }
 
 // transcurso entre que se seleccionan los elementos hasta que se le da al boton de transferir (a otra maquina)
@@ -598,7 +600,9 @@ function seleccionarMaquinaParaMovimiento() {
                 x.classList.remove("bg-neutral-400");
             });
             modal.classList.add("hidden");
-            actualizarMaquinaDeElementos(elementos_seleccionados, maquinaSeleccionadaId);
+            const ordenDestinoId = obtenerOrdenDestinoId(maquinaSeleccionadaId);
+            actualizarMaquinaDeElementos(elementos_seleccionados, maquinaSeleccionadaId, ordenDestinoId);
+
             return;
         }
 
@@ -612,6 +616,25 @@ function seleccionarMaquinaParaMovimiento() {
         });
         modal.classList.add("hidden");
     };
+}
+
+function obtenerOrdenDestinoId(maquinaSeleccionadaId) {
+    const mid = Number(maquinaSeleccionadaId);
+    const pid = Number(window.__ctx_planilla_id__);
+    if (!mid || !pid) return null;
+
+    const byMaquina = buildOrdenesMap(); // maquina_id -> Array<{id, planilla_id, posicion}>
+    const ordenesDeMaquina = byMaquina.get(mid) || [];
+
+    // 1) Busca misma planilla en esa máquina
+    const match = ordenesDeMaquina.find(o => Number(o.planilla_id) === pid);
+    if (match) return Number(match.id);
+
+    // 2) (Opcional) fallback: primer orden de esa máquina
+    // return ordenesDeMaquina.length ? Number(ordenesDeMaquina[0].id) : null;
+
+    // Si no quieres fallback, deja:
+    return null;
 }
 
 
@@ -638,29 +661,38 @@ function buildPlanillasMap() {
 
 function buildOrdenesMap() {
     const cont = document.getElementById('ordenPlanillas');
-    const byMaquina = new Map(); // maquina_id -> Map(planilla_id -> posicion)
+    const byMaquina = new Map(); // maquina_id -> Array<{id, planilla_id, posicion}>
     if (!cont) return byMaquina;
+
     cont.querySelectorAll('[data-orden]').forEach(node => {
         try {
-            const { maquina_id, planilla_id, posicion } = JSON.parse(node.dataset.orden);
+            const { id, maquina_id, planilla_id, posicion } = JSON.parse(node.dataset.orden);
             const mid = Number(maquina_id);
-            const pid = Number(planilla_id);
-            const pos = Number(posicion);
-            if (!byMaquina.has(mid)) byMaquina.set(mid, new Map());
-            byMaquina.get(mid).set(pid, pos);
+            if (!byMaquina.has(mid)) byMaquina.set(mid, []);
+            byMaquina.get(mid).push({
+                id: Number(id),
+                planilla_id: Number(planilla_id),
+                posicion: Number(posicion)
+            });
         } catch (_) { }
     });
+
+    // ordenar por posicion
+    for (const arr of byMaquina.values()) arr.sort((a, b) => a.posicion - b.posicion);
     return byMaquina;
 }
 
+
 // Crea el nodo .planilla
-function createPlanillaCard({ planilla_id, codigo, posicion, obra_id = null }) { // <- NUEVO obra_id
+function createPlanillaCard({ orden_id, planilla_id, codigo, posicion, obra_id = null }) {
     const div = document.createElement('div');
     div.className = "planilla p-3 flex justify-around items-center border border-emerald-400 hover:-translate-y-1 transition-all duration-75 ease-in-out rounded-xl bg-white hover:bg-emerald-400 cursor-grab active:cursor-grabbing select-none text-center relative";
     div.setAttribute('draggable', 'true');
+
+    div.dataset.ordenId = String(orden_id);
     div.dataset.planillaId = String(planilla_id);
     if (posicion != null) div.dataset.posicion = String(posicion);
-    if (obra_id != null) div.dataset.obraId = String(obra_id); // <- NUEVO
+    if (obra_id != null) div.dataset.obraId = String(obra_id);
 
     const posP = document.createElement('p');
     posP.className = "text-neutral-500 text-xs font-bold absolute top-1 left-1 pos-label";
@@ -675,22 +707,15 @@ function createPlanillaCard({ planilla_id, codigo, posicion, obra_id = null }) {
 }
 
 
+
 /**
  * Rellena cada columna .planillas a partir de datos_elementos
  * - Agrupa por (maquina_id, planilla_id)
  * - Usa ordenPlanillas si existe; si no, ordena por codigo asc
  */
 function renderPlanillasFromDatos(datos_elementos) {
-    const planillasMap = buildPlanillasMap(); // Puede ser pid -> "COD" o pid -> {codigo, obra_id}
-    const ordenesByMaquina = buildOrdenesMap();
-
-    const porMaquina = new Map();
-    datos_elementos.forEach(e => {
-        const mid = Number(e.maquina_id);
-        const pid = Number(e.planilla_id);
-        if (!porMaquina.has(mid)) porMaquina.set(mid, new Set());
-        porMaquina.get(mid).add(pid);
-    });
+    const planillasMap = buildPlanillasMap();   // planilla_id -> {codigo, obra_id}
+    const ordenesByMaquina = buildOrdenesMap();     // maquina_id -> [{id, planilla_id, posicion}, ...]
 
     document.querySelectorAll('.maquina').forEach(maq => {
         const mid = Number(maq.dataset.maquinaId || JSON.parse(maq.dataset.detalles || '{}').id);
@@ -698,35 +723,13 @@ function renderPlanillasFromDatos(datos_elementos) {
         if (!cont) return;
         cont.innerHTML = '';
 
-        const planillasSet = porMaquina.get(mid) || new Set();
-        let tarjetas = [];
+        const ordenes = ordenesByMaquina.get(mid) || [];
+        ordenes.forEach(({ id: orden_id, planilla_id, posicion }) => {
+            const info = planillasMap.get(planilla_id) || {};
+            const codigo = info.codigo ?? `PL-${planilla_id}`;
+            const obraId = info.obra_id ?? null;
 
-        planillasSet.forEach(pid => {
-            const info = planillasMap.get(pid);
-
-            // Soporta string o objeto {codigo, obra_id}
-            const codigo = (info && typeof info === 'object') ? (info.codigo ?? `PL-${pid}`) : (info ?? `PL-${pid}`);
-            let obra_id = (info && typeof info === 'object') ? (info.obra_id ?? null) : null;
-
-            // Fallback: si no vino en el map, intenta sacarlo de datos_elementos
-            if (obra_id == null) {
-                const e = datos_elementos.find(x => Number(x.planilla_id) === pid && (x.obra_id != null));
-                if (e) obra_id = Number(e.obra_id);
-            }
-
-            const posicion = ordenesByMaquina.get(mid)?.get(pid) ?? null;
-            tarjetas.push({ planilla_id: pid, codigo, posicion, obra_id }); // <- incluye obra_id
-        });
-
-        tarjetas.sort((a, b) => {
-            const ap = a.posicion ?? Infinity;
-            const bp = b.posicion ?? Infinity;
-            if (ap !== bp) return ap - bp;
-            return String(a.codigo).localeCompare(String(b.codigo));
-        });
-
-        tarjetas.forEach(t => {
-            const card = createPlanillaCard(t); // <- ya pasa obra_id
+            const card = createPlanillaCard({ orden_id, planilla_id, codigo, posicion, obra_id: obraId });
             cont.appendChild(card);
         });
 
@@ -746,7 +749,10 @@ function renderPlanillasFromDatos(datos_elementos) {
         document.getElementById("mover_modal_elementos"),
         datos_elementos
     );
+
+    resetPlanillaTransforms();
 }
+
 
 
 
@@ -763,33 +769,21 @@ function getMachineIdFromColumn(columnEl) {
 }
 
 function syncOrdenPlanillasDesdeDOM() {
-    const nuevosOrdenes = [];
+    const nuevos = [];
     document.querySelectorAll('.maquina').forEach(maq => {
         const mid = Number(maq.dataset.maquinaId);
         const cont = maq.querySelector('.planillas');
         if (!cont) return;
         [...cont.querySelectorAll('.planilla')].forEach((pl, idx) => {
-            nuevosOrdenes.push({
+            nuevos.push({
+                orden_id: pl.dataset.ordenId ? Number(pl.dataset.ordenId) : null,
                 maquina_id: mid,
                 planilla_id: Number(pl.dataset.planillaId),
                 posicion: idx + 1
             });
         });
     });
-    return nuevosOrdenes;
-}
-
-function applyPlanillaMoveToDatos(planillaId, oldMachineId, newMachineId) {
-    // Cambia maquina_id de todos los elementos de esa planilla
-    let cambios = 0;
-    datos_elementos.forEach(e => {
-        if (Number(e.planilla_id) === Number(planillaId) &&
-            Number(e.maquina_id) === Number(oldMachineId)) {
-            e.maquina_id = Number(newMachineId);
-            cambios++;
-        }
-    });
-    return cambios;
+    return nuevos;
 }
 
 function logDiffDatosElementos(beforeArr, afterArr, onlyPlanillaId = null) {
@@ -865,9 +859,17 @@ function mostrarModalAdvertencia(validos, invalidos, maquina_id) {
     const btnProseguir = document.getElementById("advertencia_proseguir");
 
     const maquinaDetalles = getMaquinaDetallesById(maquina_id);
-    const rangoText = maquinaDetalles
-        ? `Rango permitido: ${maquinaDetalles.diametro_min}mm - ${maquinaDetalles.diametro_max}mm`
-        : '';
+
+    // Si la máquina no tiene restricciones de diámetro, todos son válidos
+    if (!maquinaDetalles || maquinaDetalles.diametro_min == null || maquinaDetalles.diametro_max == null) {
+        const idsTodos = validos.concat(invalidos).map(v => v.id ?? v);
+        const ordenDestinoId = obtenerOrdenDestinoId(maquina_id);
+        actualizarMaquinaDeElementos(idsTodos, maquina_id, ordenDestinoId);
+        return;
+    }
+
+
+    const rangoText = `Rango permitido: ${maquinaDetalles.diametro_min}mm - ${maquinaDetalles.diametro_max}mm`;
 
     // Actualizar contadores
     countValidos.textContent = validos.length;
@@ -890,7 +892,6 @@ function mostrarModalAdvertencia(validos, invalidos, maquina_id) {
     // Manejar botón cancelar
     btnCancelar.onclick = () => {
         modalAdvertencia.classList.add("hidden");
-        // No hacer nada, cancelar todo
     };
 
     // Manejar botón proseguir
@@ -902,19 +903,17 @@ function mostrarModalAdvertencia(validos, invalidos, maquina_id) {
             return;
         }
 
-        // Solo transferir los elementos válidos
         const idsValidos = validos.map(v => v.id);
-        actualizarMaquinaDeElementos(idsValidos, maquina_id);
+        const ordenDestinoId = obtenerOrdenDestinoId(maquina_id);
+        actualizarMaquinaDeElementos(idsValidos, maquina_id, ordenDestinoId);
     };
 }
+
 
 function resaltarPorObra() {
     select_obra.addEventListener("change", () => {
         seleccion = select_obra.value
         let planillas = Array.from(document.getElementsByClassName("planilla"))
-        let encontrados = 0
-        let encontrados_span = document.getElementById("cantidad_encontrados")
-
 
         planillas.forEach(planilla => {
 
@@ -922,12 +921,10 @@ function resaltarPorObra() {
             planilla.classList.add("hover:bg-emerald-400", "border-emerald-500")
 
             if (planilla.dataset.obraId == seleccion) {
-                encontrados = + 1
                 planilla.classList.remove("hover:bg-emerald-400", "border-emerald-500")
                 planilla.classList.add("border-purple-500", "bg-purple-200")
             }
         });
-        encontrados_span.textContent = encontrados
     })
 }
 

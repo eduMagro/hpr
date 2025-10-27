@@ -9,7 +9,6 @@ $numMaquinas = $maquinas->count();
         <div class="flex w-full justify-between">
             <h1 class="text-2xl font-bold mb-4">🧾 Planificación por Orden</h1>
             <div class="flex gap-5">
-                <p>Encontrados -> <span id="cantidad_encontrados"></span></p>
                 <select name="obra" id="select_obra">
                     <option value="0">Resaltar por obra</option>
                     @foreach($obras as $obra)
@@ -20,12 +19,12 @@ $numMaquinas = $maquinas->count();
                 $naves = ["Todas", "Nave 1", "Nave 2"]
                 @endphp
                 @foreach ($naves as $nave)
-                <button id="{{ $nave }}" class="p-2 border border-emerald-600 @if($loop->first) bg-gradient-to-r text-white @else text-emerald-700 @endif from-emerald-600 to-emerald-700 uppercase font-bold text-sm rounded-lg transition-all duration-100 hover:-translate-y-1">{{ $nave }}</button>
+                <button id="nave_{{ $loop->iteration }}" class="p-2 border border-emerald-600 @if($loop->first) bg-gradient-to-r text-white @else text-emerald-700 @endif from-emerald-600 to-emerald-700 uppercase font-bold text-sm rounded-lg transition-all duration-100 hover:-translate-y-1">{{ $nave }}</button>
                 @endforeach
             </div>
         </div>
 
-        <div class="rounded-xl gap-2 flex overflow-x-scroll  h-[calc(100vh-125px)] mt-3">
+        <div id="maquinas" class="rounded-xl gap-2 flex overflow-x-scroll  h-[calc(100vh-125px)] mt-3">
             @forelse($maquinas as $maq)
 
             @php
@@ -101,7 +100,7 @@ $numMaquinas = $maquinas->count();
             [&::-webkit-scrollbar]:w-2
           [&::-webkit-scrollbar-thumb]:bg-neutral-400
           [&::-webkit-scrollbar-track]:rounded-r-xl
-          [&::-webkit-scrollbar-thumb]:rounded-xl
+          
           dark:[&::-webkit-scrollbar-track]:bg-neutral-700
           dark:[&::-webkit-scrollbar-thumb]:bg-neutral-500">
                     @forelse($maquinas as $maq)
@@ -194,6 +193,7 @@ $numMaquinas = $maquinas->count();
         'maquina_id' => $elemento->maquina_id,
         'planilla_id' => $elemento->planilla_id,
         'peso' => $elemento->peso,
+        'orden_planilla_id' => $elemento->orden_planilla_id,
         'dimensiones' => $elemento->dimensiones,
         'diametro' => $elemento->diametro,
         'diametro' => $elemento->diametro,
@@ -209,9 +209,19 @@ $numMaquinas = $maquinas->count();
 
     <div id="ordenPlanillas" class="hidden">
         @foreach ($ordenPlanillas as $o)
-        <div data-orden='@json(["maquina_id"=>$o->maquina_id,"planilla_id"=>$o->planilla_id,"posicion"=>$o->posicion])'></div>
+        <div
+            data-orden='{{ json_encode([
+    "id"          => $o->id,
+    "maquina_id"  => $o->maquina_id,
+    "planilla_id" => $o->planilla_id,
+    "posicion"    => $o->posicion,
+  ], JSON_UNESCAPED_UNICODE) }}'>
+        </div>
+
         @endforeach
     </div>
+
+
 
     <div id="obras" class="hidden">
         @foreach ($obras as $o)
@@ -238,7 +248,8 @@ $numMaquinas = $maquinas->count();
     <!-- emerald-500 #10b981 -->
 
     <script src="{{ asset('js/elementosJs/figuraElemento.js') }}" defer></script>
-    <script src="{{ asset('js/planillas/planificacion.js') }}"></script>
+    <!-- <script src="{{ asset('js/planillas/planificacion.js') }}"></script> -->
+    <script src="{{ asset('js/planillas/planificacion1.js') }}"></script>
     <style>
         .planilla.compi-resaltado {
             background-color: #6ee7b7 !important;
@@ -260,7 +271,13 @@ $numMaquinas = $maquinas->count();
             font-family: monospace;
             font-weight: 700;
         }
+
+        .planilla {
+            will-change: transform;
+        }
     </style>
+
+
 
 
 </x-app-layout>
