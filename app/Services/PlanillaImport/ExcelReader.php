@@ -1,9 +1,10 @@
 <?php
 
-namespace App\Services\Import;
+namespace App\Services\PlanillaImport;
 
 use Illuminate\Http\UploadedFile;
 use PhpOffice\PhpSpreadsheet\IOFactory;
+use App\Services\PlanillaImport\DTOs\DatosImportacion;
 
 /**
  * Lee y procesa archivos Excel para importación de planillas.

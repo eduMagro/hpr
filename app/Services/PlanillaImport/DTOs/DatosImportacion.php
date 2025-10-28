@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Services\Import;
+namespace App\Services\PlanillaImport\DTOs;
 
 /**
  * Encapsula los datos leídos del Excel para importación.

@@ -27,18 +27,23 @@ use ZipArchive;
 use DOMDocument;
 use App\Services\ColaPlanillasService;
 use App\Services\AsignarMaquinaService;
-use App\Services\PlanillaImportService;
+use App\Services\PlanillaImport\PlanillaImportService;
+use App\Services\OrdenPlanillaService;
 use Illuminate\Support\Facades\Schema;
 use App\Services\PlanillaColaService;
 
 class PlanillaController extends Controller
 {
-    // 1. Agregar el service en el constructor
-    public function __construct(
-        protected AsignarMaquinaService $asignador,
-        protected PlanillaImportService $importService  // ← AGREGAR ESTO
-    ) {}
+    private AsignarMaquinaService $asignador;
+    private OrdenPlanillaService $ordenService; // ✅ Nueva inyección
 
+    public function __construct(
+        AsignarMaquinaService $asignador,
+        OrdenPlanillaService $ordenService // ✅ Nueva inyección
+    ) {
+        $this->asignador = $asignador;
+        $this->ordenService = $ordenService;
+    }
     private function filtrosActivos(Request $request): array
     {
         $filtros = [];
@@ -538,39 +543,47 @@ class PlanillaController extends Controller
     //------------------------------------------------------------------------------------ IMPORT()
 
     // 2. OPCIÓN A: Reemplazar completamente el método import() existente
-    public function import(Request $request)
+    public function import(Request $request, PlanillaImportService $importService)
     {
-        // Verificar permisos
+        // 0) Seguridad básica
         abort_unless(auth()->check() && auth()->user()->rol === 'oficina', 403);
 
-        // Validar request
+        // 1) Validación del archivo
         $request->validate([
             'file' => 'required|file|mimes:xlsx,xls'
+        ], [
+            'file.required' => 'Debes seleccionar un archivo.',
+            'file.mimes' => 'El archivo debe ser .xlsx o .xls',
         ]);
 
+        $file = $request->file('file');
+
+        // 2) Delegar todo al servicio de importación
         try {
-            // Delegar al servicio
-            $resultado = $this->importService->importar($request->file('file'));
+            $resultado = $importService->importar($file);
 
             if ($resultado->esExitoso()) {
-                return redirect()->route('planillas.index')
+                return redirect()
+                    ->route('planillas.index')
                     ->with('success', $resultado->mensaje());
             } else {
-                return redirect()->back()
+                return redirect()
+                    ->back()
                     ->with('error', $resultado->mensaje());
             }
         } catch (\Throwable $e) {
-            Log::error('Error en importación', [
-                'usuario' => auth()->user()->email,
-                'archivo' => $request->file('file')->getClientOriginalName(),
-                'error' => $e->getMessage()
+            Log::error('❌ Error en importación de planillas', [
+                'archivo' => $file->getClientOriginalName(),
+                'error' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
             ]);
 
-            return redirect()->back()
-                ->with('error', 'Error al importar: ' . $e->getMessage());
+            return redirect()
+                ->back()
+                ->with('error', 'Error durante la importación: ' . $e->getMessage());
         }
     }
-
     //-----------------------------------------------------------------------------------------------------
     //-----------------------------------------------------------------------------------------------------
     //-----------------------------------------------------------------------------------------------------
@@ -1147,59 +1160,11 @@ class PlanillaController extends Controller
 
     //------------------------------------------------------------------------------------ DESTROY()
 
-    // 🔽 Añade estos helpers PRIVADOS en tu PlanillaController
-
-    /**
-     * Devuelve los IDs de máquinas que tienen entradas en orden_planillas
-     * para cualquiera de las planillas indicadas.
-     */
-    private function obtenerMaquinasAfectadasPorPlanillas(array $planillaIds): array
-    {
-        if (empty($planillaIds)) return [];
-        return OrdenPlanilla::query()
-            ->whereIn('planilla_id', $planillaIds)
-            ->distinct()
-            ->pluck('maquina_id')
-            ->map(fn($v) => (int) $v)
-            ->all();
-    }
-
-    /**
-     * Recalcula la columna 'posicion' para una máquina, compactando a 1..N
-     * respetando el orden actual.
-     */
-    private function recalcularOrdenParaMaquina(int $maquinaId): void
-    {
-        $ordenes = OrdenPlanilla::query()
-            ->where('maquina_id', $maquinaId)
-            ->orderBy('posicion', 'asc')
-            ->get(['id', 'posicion']);
-
-        $nuevaPosicion = 1;
-        foreach ($ordenes as $fila) {
-            if ((int) $fila->posicion !== $nuevaPosicion) {
-                OrdenPlanilla::where('id', $fila->id)->update(['posicion' => $nuevaPosicion]);
-            }
-            $nuevaPosicion++;
-        }
-    }
-
-    /**
-     * Recalcula el orden para todas las máquinas indicadas.
-     */
-    private function recalcularOrdenParaMaquinas(array $maquinaIds): void
-    {
-        $maquinaIds = array_values(array_unique(array_filter($maquinaIds, fn($x) => !is_null($x))));
-        foreach ($maquinaIds as $maquinaId) {
-            $this->recalcularOrdenParaMaquina((int) $maquinaId);
-        }
-    }
-
-    // Eliminar una planilla y sus elementos asociados
     public function destroy($id)
     {
         if (auth()->user()->rol !== 'oficina') {
-            return redirect()->route('planillas.index')->with('abort', 'No tienes los permisos necesarios.');
+            return redirect()->route('planillas.index')
+                ->with('abort', 'No tienes los permisos necesarios.');
         }
 
         DB::beginTransaction();
@@ -1207,10 +1172,10 @@ class PlanillaController extends Controller
             $planilla = Planilla::with('elementos')->findOrFail($id);
 
             // 1) Máquinas afectadas antes de borrar ordenes
-            $maquinasAfectadas = $this->obtenerMaquinasAfectadasPorPlanillas([$planilla->id]);
+            $maquinasAfectadas = $this->ordenService->obtenerMaquinasAfectadas([$planilla->id]);
 
             // 2) Borrar orden_planillas de esta planilla
-            OrdenPlanilla::where('planilla_id', $planilla->id)->delete();
+            $this->ordenService->eliminarOrdenDePlanilla($planilla->id);
 
             // 3) Borrar elementos asociados (si no hay ON DELETE CASCADE)
             $planilla->elementos()->delete();
@@ -1224,43 +1189,53 @@ class PlanillaController extends Controller
             $planilla->delete();
 
             // 5) Recalcular posiciones por máquina afectada
-            $this->recalcularOrdenParaMaquinas($maquinasAfectadas);
+            $this->ordenService->recalcularOrdenDeMaquinas($maquinasAfectadas);
 
             DB::commit();
-            return redirect()->route('planillas.index')->with('success', 'Planilla eliminada correctamente.');
+            return redirect()->route('planillas.index')
+                ->with('success', 'Planilla eliminada correctamente.');
         } catch (\Throwable $e) {
             DB::rollBack();
-            return redirect()->back()->with('error', 'Ocurrió un error al eliminar la planilla: ' . $e->getMessage());
+            return redirect()->back()
+                ->with('error', 'Ocurrió un error al eliminar la planilla: ' . $e->getMessage());
         }
     }
-    // 🔽 Sustituye tu destroyMultiple por este
 
+    // ✅ REEMPLAZAR método destroyMultiple
     public function destroyMultiple(Request $request)
     {
         if (auth()->user()->rol !== 'oficina') {
-            return redirect()->route('planillas.index')->with('abort', 'No tienes los permisos necesarios.');
+            return redirect()->route('planillas.index')
+                ->with('abort', 'No tienes los permisos necesarios.');
         }
 
         $ids = $request->input('seleccionados', []);
         Log::info('🗑️ IDs recibidos para eliminar múltiples:', $ids);
 
         if (empty($ids)) {
-            return redirect()->route('planillas.index')->with('error', 'No seleccionaste ninguna planilla.');
+            return redirect()->route('planillas.index')
+                ->with('error', 'No seleccionaste ninguna planilla.');
         }
 
         DB::beginTransaction();
         try {
             $planillas = Planilla::with('elementos')->whereIn('id', $ids)->get();
+
             if ($planillas->isEmpty()) {
                 DB::rollBack();
-                return redirect()->route('planillas.index')->with('error', 'No se encontraron planillas para eliminar.');
+                return redirect()->route('planillas.index')
+                    ->with('error', 'No se encontraron planillas para eliminar.');
             }
 
             // 1) Máquinas afectadas antes de borrar ordenes
-            $maquinasAfectadas = $this->obtenerMaquinasAfectadasPorPlanillas($planillas->pluck('id')->all());
+            $maquinasAfectadas = $this->ordenService->obtenerMaquinasAfectadas(
+                $planillas->pluck('id')->all()
+            );
 
             // 2) Borrar orden_planillas de todas esas planillas
-            OrdenPlanilla::whereIn('planilla_id', $planillas->pluck('id'))->delete();
+            foreach ($planillas->pluck('id') as $planillaId) {
+                $this->ordenService->eliminarOrdenDePlanilla($planillaId);
+            }
 
             // 3) Borrar elementos en bloque
             Elemento::whereIn('planilla_id', $planillas->pluck('id'))->delete();
@@ -1274,13 +1249,15 @@ class PlanillaController extends Controller
             Planilla::whereIn('id', $planillas->pluck('id'))->delete();
 
             // 5) Recalcular posiciones por máquina afectada
-            $this->recalcularOrdenParaMaquinas($maquinasAfectadas);
+            $this->ordenService->recalcularOrdenDeMaquinas($maquinasAfectadas);
 
             DB::commit();
-            return redirect()->route('planillas.index')->with('success', 'Planillas eliminadas correctamente.');
+            return redirect()->route('planillas.index')
+                ->with('success', 'Planillas eliminadas correctamente.');
         } catch (\Throwable $e) {
             DB::rollBack();
-            return redirect()->back()->with('error', 'Ocurrió un error al eliminar las planillas: ' . $e->getMessage());
+            return redirect()->back()
+                ->with('error', 'Ocurrió un error al eliminar las planillas: ' . $e->getMessage());
         }
     }
 

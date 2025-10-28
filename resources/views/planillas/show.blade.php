@@ -39,6 +39,29 @@
                 </button>
 
 
+                <div class="flex items-center gap-2">
+                    {{-- Flecha anterior --}}
+                    <button type="button"
+                        class="w-9 h-9 rounded-md border bg-white hover:bg-gray-50 flex items-center justify-center"
+                        title="Planilla anterior (←)" aria-label="Planilla anterior" onclick="navegarPlanilla(-1)">
+                        {{-- Heroicon chevron-left --}}
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M15.75 19.5L8.25 12l7.5-7.5" />
+                        </svg>
+                    </button>
+
+                    {{-- Flecha siguiente --}}
+                    <button type="button"
+                        class="w-9 h-9 rounded-md border bg-white hover:bg-gray-50 flex items-center justify-center"
+                        title="Planilla siguiente (→)" aria-label="Planilla siguiente" onclick="navegarPlanilla(1)">
+                        {{-- Heroicon chevron-right --}}
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M8.25 4.5L15.75 12l-7.5 7.5" />
+                        </svg>
+                    </button>
+                </div>
+
+
             </div>
         </div>
 
@@ -340,6 +363,97 @@
             -webkit-tap-highlight-color: transparent;
         }
     </style>
+    <script>
+        async function navegarPlanilla(delta) {
+            const base = new URL(window.location.href);
+            const info = extraerIdNumericoDelPath(base.pathname);
+            if (!info) return;
 
+            const maxSaltos = 25;
+            let candidato = info.value;
+
+            // ❌ No esperes al modal. Muéstralo y continúa.
+            Swal.fire({
+                title: delta > 0 ? 'Buscando planilla siguiente…' : 'Buscando planilla anterior…',
+                html: '<div id="swal-loading-msg" class="text-sm">Comprobando…</div>',
+                allowOutsideClick: false,
+                allowEscapeKey: false,
+                showConfirmButton: false,
+                didOpen: () => Swal.showLoading()
+            });
+
+            try {
+                for (let i = 0; i < maxSaltos; i++) {
+                    candidato += delta;
+                    if (candidato < 1) break;
+
+                    const parts = [...info.parts];
+                    parts[info.index] = String(candidato);
+
+                    const urlCandidata = new URL(base.toString());
+                    urlCandidata.pathname = '/' + parts.join('/');
+
+                    const msgEl = document.getElementById('swal-loading-msg');
+                    if (msgEl) msgEl.textContent = `Probando #${candidato}…`;
+
+                    if (await existePlanilla(urlCandidata.toString())) {
+                        Swal.close(); // 👈 ciérralo ANTES de navegar
+                        window.location.assign(urlCandidata.toString());
+                        return;
+                    }
+                }
+
+                // No se encontró nada
+                Swal.close();
+                Swal.fire({
+                    icon: 'info',
+                    title: 'Sin más planillas',
+                    text: 'No hay más en esa dirección.',
+                    confirmButtonText: 'Entendido'
+                });
+            } catch (err) {
+                Swal.close();
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error al buscar',
+                    text: err?.message || 'Ha ocurrido un error inesperado.'
+                });
+            }
+        }
+
+        // (opcional) endurece la sonda para evitar cuelgues de red
+        async function existePlanilla(urlStr) {
+            const timeoutMs = 5000;
+            const ac = new AbortController();
+            const t = setTimeout(() => ac.abort(), timeoutMs);
+
+            try {
+                let resp = await fetch(urlStr, {
+                    method: 'HEAD',
+                    credentials: 'same-origin',
+                    cache: 'no-store',
+                    signal: ac.signal,
+                });
+
+                if (resp.status === 405) {
+                    resp = await fetch(urlStr, {
+                        method: 'GET',
+                        headers: {
+                            'X-Requested-With': 'fetch'
+                        },
+                        credentials: 'same-origin',
+                        cache: 'no-store',
+                        signal: ac.signal,
+                    });
+                }
+
+                return resp.ok;
+            } catch {
+                return false;
+            } finally {
+                clearTimeout(t);
+            }
+        }
+    </script>
 
 </x-app-layout>
