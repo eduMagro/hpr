@@ -98,7 +98,6 @@ class ImportResult
 
             $lineas = [];
 
-            // Añadir nombre de archivo si está disponible
             if ($this->nombreArchivo) {
                 $lineas[] = "📄 Archivo: {$this->nombreArchivo}";
                 $lineas[] = "";
@@ -111,43 +110,69 @@ class ImportResult
 
         $lineas = [];
 
-        // Identificador de importación
-        $lineas[] = "📋 IMPORTACIÓN DE PLANILLAS";
+        // Detectar si es reimportación (solo 1 planilla procesada + elementos_eliminados en stats)
+        $esReimportacion = count($this->exitosas) === 1 &&
+            isset($this->estadisticas['elementos_eliminados']);
 
-        // Nombre del archivo importado
+        // Título según tipo de operación
+        if ($esReimportacion) {
+            $lineas[] = "🔄 REIMPORTACIÓN DE PLANILLA";
+            $lineas[] = "📋 Planilla: " . ($this->exitosas[0] ?? 'N/A');
+        } else {
+            $lineas[] = "📋 IMPORTACIÓN DE PLANILLAS";
+        }
+
+        // Nombre del archivo
         if ($this->nombreArchivo) {
             $lineas[] = "📄 Archivo: {$this->nombreArchivo}";
         }
 
         $lineas[] = ""; // Línea en blanco
 
-        // Resumen principal
-        $lineas[] = sprintf("✅ Planillas importadas exitosamente: %d", count($this->exitosas));
-
-        // Estadísticas
-        if (!empty($this->estadisticas)) {
+        // Estadísticas según tipo
+        if ($esReimportacion) {
+            // Mensaje específico para reimportación
             $stats = $this->estadisticas;
 
+            if (isset($stats['elementos_eliminados'])) {
+                $lineas[] = sprintf("🗑️ Elementos pendientes eliminados: %d", $stats['elementos_eliminados']);
+            }
+
             if (isset($stats['elementos_creados'])) {
-                $lineas[] = sprintf("📦 Elementos creados: %d", $stats['elementos_creados']);
+                $lineas[] = sprintf("📦 Nuevos elementos creados: %d", $stats['elementos_creados']);
             }
 
             if (isset($stats['etiquetas_creadas'])) {
                 $lineas[] = sprintf("🏷️ Etiquetas creadas: %d", $stats['etiquetas_creadas']);
             }
 
-            if (isset($stats['ordenes_creadas'])) {
-                $lineas[] = sprintf("📋 Órdenes creadas: %d", $stats['ordenes_creadas']);
-            }
+            $lineas[] = "";
+            $lineas[] = "✅ La planilla se actualizó correctamente";
+            $lineas[] = "ℹ️ Los datos originales (fecha de entrega, cliente, obra) se mantuvieron sin cambios";
+        } else {
+            // Mensaje para importación normal
+            $lineas[] = sprintf("✅ Planillas importadas exitosamente: %d", count($this->exitosas));
 
-            if (isset($stats['tiempo_total'])) {
-                $lineas[] = sprintf("⏱️ Tiempo total: %.2f segundos", $stats['tiempo_total']);
+            if (!empty($this->estadisticas)) {
+                $stats = $this->estadisticas;
+
+                if (isset($stats['elementos_creados'])) {
+                    $lineas[] = sprintf("📦 Elementos creados: %d", $stats['elementos_creados']);
+                }
+
+                if (isset($stats['etiquetas_creadas'])) {
+                    $lineas[] = sprintf("🏷️ Etiquetas creadas: %d", $stats['etiquetas_creadas']);
+                }
+
+                if (isset($stats['tiempo_total'])) {
+                    $lineas[] = sprintf("⏱️ Tiempo total: %.2f segundos", $stats['tiempo_total']);
+                }
             }
         }
 
         // Planillas fallidas
         if (!empty($this->fallidas)) {
-            $lineas[] = ""; // Línea en blanco
+            $lineas[] = "";
             $lineas[] = sprintf("❌ Planillas con errores: %d", count($this->fallidas));
 
             foreach ($this->fallidas as $fallida) {
@@ -159,7 +184,7 @@ class ImportResult
 
         // Advertencias
         if (!empty($this->advertencias)) {
-            $lineas[] = ""; // Línea en blanco
+            $lineas[] = "";
             $lineas[] = "⚠️ ADVERTENCIAS:";
 
             foreach ($this->advertencias as $advertencia) {

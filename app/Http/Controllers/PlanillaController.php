@@ -605,14 +605,24 @@ class PlanillaController extends Controller
     //-----------------------------------------------------------------------------------------------------
     //-----------------------------------------------------------------------------------------------------
     //-----------------------------------------------------------------------------------------------------
-    public function reimportar(Request $request, Planilla $planilla)
+    /**
+     * Reimporta una planilla existente eliminando solo elementos pendientes.
+     * 
+     * - Usa el sistema de importación moderno (ExcelReader, PlanillaProcessor)
+     * - Mantiene fecha de entrega y valores originales de la planilla
+     * - Solo elimina elementos en estado 'pendiente'
+     *
+     * @param Request $request
+     * @param Planilla $planilla
+     * @param PlanillaImportService $importService
+     * @return \Illuminate\Http\RedirectResponse
+     */
+    public function reimportar(Request $request, Planilla $planilla, PlanillaImportService $importService)
     {
-        // 1) Seguridad -----------------------------------------------------------------
-        if (auth()->user()->rol !== 'oficina') {
-            return back()->with('abort', 'No tienes los permisos necesarios.');
-        }
+        // 1️⃣ Seguridad
+        abort_unless(auth()->check() && auth()->user()->rol === 'oficina', 403);
 
-        // 2) Validación del archivo -----------------------------------------------------
+        // 2️⃣ Validación del archivo
         $request->validate([
             'archivo' => 'required|file|mimes:xlsx,xls',
         ], [
@@ -620,338 +630,46 @@ class PlanillaController extends Controller
             'archivo.mimes'    => 'El archivo debe ser .xlsx o .xls',
         ]);
 
-        // ⚠️ Contexto para warnings numéricos
-        $__numCtx = ['planilla' => $planilla->codigo ?? 'N/D', 'excel_row' => 0, 'campo' => 'N/D', 'valor' => null];
-        $advertencias = [];
+        $file = $request->file('archivo');
+        $nombreArchivo = $file->getClientOriginalName();
 
-        // NO lanzar excepción en avisos de no-numérico: solo añadir advertencia y continuar
-        set_error_handler(function ($sev, $msg) use (&$advertencias, &$__numCtx) {
-            if ($sev === E_WARNING && str_contains($msg, 'A non-numeric value encountered')) {
-                $advertencias[] = "⚠️ Valor no numérico detectado; se omitió la fila. "
-                    . "Planilla {$__numCtx['planilla']}, Fila {$__numCtx['excel_row']}, Campo '{$__numCtx['campo']}', Valor '" . (string)($__numCtx['valor']) . "'";
-                return true; // warning manejado
-            }
-            return false;
-        });
-
-        DB::beginTransaction();
-
+        // 3️⃣ Delegar todo al servicio de reimportación
         try {
-            /* -------------------------------------------------- */
-            /* 3) Lectura + pre-scan del Excel                    */
-            /* -------------------------------------------------- */
-            $file          = $request->file('archivo');
-            $nombreArchivo = $file->getClientOriginalName();
+            $resultado = $importService->reimportar($file, $planilla);
 
-            // Escaneo XML previo (detectar celdas mal tipadas)
-            $invalids = $this->scanXlsxForInvalidNumeric($file->getRealPath());
-            if (!empty($invalids)) {
-                $detalles = collect($invalids)->map(fn($i) => "{$i['cell']} → '{$i['value']}'")->implode(', ');
-                throw new \Exception("{$nombreArchivo} - El Excel contiene celdas marcadas como numéricas con valor inválido: {$detalles}. Corrige esas celdas (pon número válido o cambia el tipo de celda a Texto) y vuelve a importar.");
-            }
+            if ($resultado->esExitoso()) {
+                $redirect = redirect()
+                    ->route('planillas.index')
+                    ->with('success', $resultado->mensaje())
+                    ->with('import_report', true)
+                    ->with('nombre_archivo', $nombreArchivo);
 
-            // Lectura con fila-controlada (misma utilidad que en import)
-            $firstSheet = $this->leerPrimeraHojaConFila($file);
-
-            // Filtrado: quitar filas vacías, AD='error de peso', AV vacío o inválido
-            $body = array_slice($firstSheet, 1);
-
-            $filasErrorPesoOmitidas = 0;
-            $filasAvInvalidas       = 0;
-
-            $rows = array_values(array_filter($body, function ($row) use (&$filasErrorPesoOmitidas, &$filasAvInvalidas) {
-                if (!array_filter($row)) return false;
-
-                // Columna AD = 29
-                $colAD = $row[29] ?? '';
-                if (stripos($colAD, 'error de peso') !== false) {
-                    $filasErrorPesoOmitidas++;
-                    return false;
+                if ($resultado->tieneAdvertencias()) {
+                    $redirect->with('tiene_advertencias', true);
                 }
 
-                // Columna AV = 47
-                $colAV = trim((string)($row[47] ?? ''));
-                if ($colAV === '' || str_starts_with($colAV, ';')) {
-                    $filasAvInvalidas++;
-                    return false;
-                }
-
-                return true;
-            }));
-
-            // 👉 FILTRO EXTRA: SOLO LA PLANILLA SOLICITADA (columna 10 / índice 10)
-            $rows = array_values(array_filter($rows, function ($row) use ($planilla) {
-                $codigoFila = trim((string)($row[10] ?? '')); // Código de planilla en el Excel
-                return $codigoFila === $planilla->codigo;
-            }));
-
-            if (!$rows) {
-                throw new \Exception("El archivo no contiene filas válidas para la planilla {$planilla->codigo}.");
+                return $redirect;
+            } else {
+                return redirect()
+                    ->back()
+                    ->with('error', $resultado->mensaje())
+                    ->with('nombre_archivo', $nombreArchivo);
             }
-            // anotar nº de fila de Excel (cabecera = 1 ⇒ +2)
-            foreach ($rows as $i => &$r) {
-                $r['_xl_row'] = $i + 2;
-            }
-            unset($r);
-
-            /* -------------------------------------------------- */
-            /* 4) Limpieza: solo elementos 'pendiente' + etiquetas huérfanas  */
-            /* -------------------------------------------------- */
-            $planilla->elementos()->where('estado', 'pendiente')->delete();
-
-            Etiqueta::where('planilla_id', $planilla->id)
-                ->whereDoesntHave('elementos')
-                ->delete();
-
-            /* -------------------------------------------------- */
-            /* 5) Reconstrucción: etiqueta PADRE → elementos      */
-            /*    (igual que import: sin subetiquetas aún)        */
-            /* -------------------------------------------------- */
-
-            // Agrupar por nº de etiqueta (columna 21 del Excel)
-            $etiquetasExcel = [];
-            foreach ($rows as $row) {
-                $numEtiqueta = $row[21] ?? null;
-                if ($numEtiqueta) $etiquetasExcel[$numEtiqueta][] = $row;
-            }
-
-            $DmPermitido = [5, 8, 10, 12, 16, 20, 25, 32];
-            $etiquetasPadreCreadas = []; // [numEtiquetaExcel => ['padre' => Etiqueta, 'codigoPadre' => string]]
-
-            foreach ($etiquetasExcel as $numEtiquetaExcel => $filasEtiqueta) {
-                // Crear etiqueta PADRE (contenedor)
-                $codigoPadre   = Etiqueta::generarCodigoEtiqueta();
-                $etiquetaPadre = $this->safeCreate(Etiqueta::class, [
-                    'codigo'          => $codigoPadre,
-                    'planilla_id'     => $planilla->id,
-                    'nombre'          => $filasEtiqueta[0][22] ?? 'Sin nombre',
-                    'peso'            => 0,
-                    'marca'           => null,
-                    'etiqueta_sub_id' => null,
-                ], [
-                    'planilla'  => $planilla->codigo,
-                    'excel_row' => $filasEtiqueta[0]['_xl_row'] ?? 0,
-                ]);
-
-                $etiquetasPadreCreadas[$numEtiquetaExcel] = [
-                    'padre'       => $etiquetaPadre,
-                    'codigoPadre' => $codigoPadre,
-                ];
-
-                // Agrupar filas “iguales” para sumar barras/peso (como import)
-                $agrupados = [];
-                foreach ($filasEtiqueta as $row) {
-                    if (!array_filter($row)) continue;
-
-                    $excelRow = $row['_xl_row'] ?? 0;
-
-                    // contexto para warnings
-                    $__numCtx['excel_row'] = $excelRow;
-                    $__numCtx['planilla']  = $planilla->codigo;
-
-                    $clave = implode('|', [
-                        $row[26],           // figura
-                        $row[21],           // nº etiqueta Excel
-                        $row[23],           // marca
-                        $row[25],           // diametro
-                        $row[27],           // longitud
-                        $row[33] ?? 0,      // dobles_por_barra
-                        $row[47] ?? ''      // dimensiones
-                    ]);
-
-                    $__numCtx['campo'] = 'peso';
-                    $__numCtx['valor'] = $row[34] ?? null;
-                    $pesoNum = $this->assertNumeric($row[34] ?? null, 'peso', $excelRow, $planilla->codigo, $advertencias);
-
-                    $__numCtx['campo'] = 'barras';
-                    $__numCtx['valor'] = $row[32] ?? null;
-                    $bNum = $this->assertNumeric($row[32] ?? null, 'barras', $excelRow, $planilla->codigo, $advertencias);
-
-                    if ($pesoNum === false || $bNum === false) continue;
-
-                    $agrupados[$clave]['row']    = $row;
-                    $agrupados[$clave]['peso']   = ($agrupados[$clave]['peso']   ?? 0) + $pesoNum;
-                    $agrupados[$clave]['barras'] = ($agrupados[$clave]['barras'] ?? 0) + (int)$bNum;
-                }
-
-                // Crear ELEMENTOS (aún sin subetiqueta ni maquina_id)
-                foreach ($agrupados as $item) {
-                    $row      = $item['row'];
-                    $excelRow = $row['_xl_row'] ?? 0;
-
-                    $diametroNum = $this->assertNumeric($row[25] ?? null, 'diametro', $excelRow, $planilla->codigo, $advertencias);
-                    $longNum     = $this->assertNumeric($row[27] ?? null, 'longitud', $excelRow, $planilla->codigo, $advertencias);
-                    $doblesNum   = $this->assertNumeric($row[33] ?? 0,    'dobles_barra', $excelRow, $planilla->codigo, $advertencias);
-                    $barrasNum   = $this->assertNumeric($item['barras'],  'barras', $excelRow, $planilla->codigo, $advertencias);
-                    $pesoNum     = $this->assertNumeric($item['peso'],    'peso', $excelRow, $planilla->codigo, $advertencias);
-
-                    if ($diametroNum === false || $longNum === false || $doblesNum === false || $barrasNum === false || $pesoNum === false) {
-                        continue;
-                    }
-
-                    if (!in_array((int)$diametroNum, $DmPermitido, true)) {
-                        $advertencias[] = sprintf(
-                            "Diámetro no admitido (planilla %s) → diámetro:%s (fila %d)",
-                            $planilla->codigo,
-                            $row[25] ?? 'N/A',
-                            $excelRow
-                        );
-                        continue;
-                    }
-
-                    $tiempos = $this->calcularTiemposElemento($row);
-
-                    $this->safeCreate(Elemento::class, [
-                        'codigo'             => Elemento::generarCodigo(),
-                        'planilla_id'        => $planilla->id,
-                        'etiqueta_id'        => $etiquetaPadre->id, // al PADRE
-                        'etiqueta_sub_id'    => null,                // se asignará en FASE 2
-                        'maquina_id'         => null,                // lo pondrá el service
-                        'figura'             => $row[26] ?: null,
-                        'fila'               => $row[21] ?: null,
-                        'marca'              => $row[23] ?: null,
-                        'etiqueta'           => $row[30] ?: null,
-                        'diametro'           => $diametroNum,
-                        'longitud'           => $longNum,
-                        'barras'             => (int)$barrasNum,
-                        'dobles_barra'       => (int)$doblesNum,
-                        'peso'               => $pesoNum,
-                        'dimensiones'        => $row[47] ?? null,
-                        'tiempo_fabricacion' => $tiempos['tiempo_fabricacion'],
-                        'estado'             => 'pendiente',
-                    ], [
-                        'planilla'  => $planilla->codigo,
-                        'excel_row' => $excelRow,
-                    ]);
-                }
-            }
-
-            /* -------------------------------------------------- */
-            /* 6) Asignación de máquinas (service)                */
-            /* -------------------------------------------------- */
-            // 👉 Igual que import: delega a tu servicio real
-            $this->asignador->repartirPlanilla($planilla->id);
-
-            /* -------------------------------------------------- */
-            /* 7) Crear subetiquetas por máquina y mover elementos */
-            /* -------------------------------------------------- */
-            foreach ($etiquetasPadreCreadas as $infoPadre) {
-                /** @var Etiqueta $etiquetaPadre */
-                $etiquetaPadre = $infoPadre['padre'];
-                $codigoPadre   = $infoPadre['codigoPadre'];
-
-                $elementosPadre = Elemento::where('planilla_id', $planilla->id)
-                    ->where('etiqueta_id', $etiquetaPadre->id)
-                    ->get();
-
-                if ($elementosPadre->isEmpty()) {
-                    // Si no quedó nada, elimina el padre
-                    $etiquetaPadre->delete();
-                    continue;
-                }
-
-                $gruposPorMaquina = $elementosPadre->groupBy(function ($e) {
-                    return $e->maquina_id ?: 'sin_maquina';
-                });
-
-                foreach ($gruposPorMaquina as $grupoElems) {
-                    $codigoSub = Etiqueta::generarCodigoSubEtiqueta($codigoPadre);
-
-                    $subEtiqueta = $this->safeCreate(Etiqueta::class, [
-                        'codigo'          => $codigoPadre,
-                        'planilla_id'     => $planilla->id,
-                        'nombre'          => $etiquetaPadre->nombre,
-                        'etiqueta_sub_id' => $codigoSub,
-                    ], [
-                        'planilla'  => $planilla->codigo,
-                        'excel_row' => $grupoElems->first()?->_xl_row ?? 0,
-                    ]);
-
-                    // mover elementos al sub
-                    Elemento::whereIn('id', $grupoElems->pluck('id'))
-                        ->update([
-                            'etiqueta_id'     => $subEtiqueta->id,
-                            'etiqueta_sub_id' => $codigoSub,
-                        ]);
-
-                    // actualizar agregados del sub
-                    $subEtiqueta->update([
-                        'peso'  => $subEtiqueta->elementos()->sum('peso'),
-                        'marca' => $subEtiqueta->elementos()
-                            ->whereNotNull('marca')
-                            ->select('marca', DB::raw('COUNT(*) as total'))
-                            ->groupBy('marca')
-                            ->orderByDesc('total')
-                            ->value('marca'),
-                    ]);
-                }
-
-                // dejar el padre como contenedor sin peso/marca
-                $etiquetaPadre->update(['peso' => 0, 'marca' => null]);
-            }
-
-            /* -------------------------------------------------- */
-            /* 8) Crear entradas en orden_planillas como en import */
-            /*    (no toca posiciones existentes)                 */
-            /* -------------------------------------------------- */
-            $maquinasUsadas = Elemento::where('planilla_id', $planilla->id)
-                ->whereNotNull('maquina_id')
-                ->distinct()
-                ->pluck('maquina_id')
-                ->all();
-
-            foreach ($maquinasUsadas as $maquina_id) {
-                OrdenPlanilla::firstOrCreate(
-                    ['planilla_id' => $planilla->id, 'maquina_id' => $maquina_id],
-                    ['posicion'    => (OrdenPlanilla::where('maquina_id', $maquina_id)->max('posicion') ?? 0) + 1]
-                );
-            }
-
-            /* -------------------------------------------------- */
-            /* 9) Recalcular totales de la planilla               */
-            /*    (NO tocamos fecha_estimada_entrega)             */
-            /* -------------------------------------------------- */
-            $elementos   = $planilla->elementos()->get();
-            $pesoTotal   = $elementos->sum('peso');
-            $tiempoTotal = $elementos->sum('tiempo_fabricacion') + $elementos->count() * 1200; // 20 min/elemento
-
-            $planilla->update([
-                'peso_total'         => $pesoTotal,
-                'tiempo_fabricacion' => $tiempoTotal,
-                // 'fecha_estimada_entrega' => (no tocar)
-            ]);
-
-            DB::commit();
-
-            $msg = "🔄 Reimportación completada para {$planilla->codigo}. Peso total: {$pesoTotal} kg.";
-            if ($advertencias) {
-                $msg .= ' ⚠️ ' . implode(' ⚠️ ', $advertencias);
-            }
-            if ($filasErrorPesoOmitidas > 0) {
-                $msg .= " ⚠️ Filas omitidas por 'error de peso': {$filasErrorPesoOmitidas}.";
-            }
-            if ($filasAvInvalidas > 0) {
-                $msg .= " ⚠️ Filas omitidas por columna AV vacía o inválida: {$filasAvInvalidas}.";
-            }
-
-            return back()->with('success', $msg);
         } catch (\Throwable $e) {
-            DB::rollBack();
-            Log::error('❌ Error al reimportar planilla', [
+            Log::error('❌ Error en reimportación de planilla', [
                 'planilla' => $planilla->codigo,
-                'archivo'  => $nombreArchivo ?? null,
-                'msg'      => $e->getMessage(),
-                'line'     => $e->getLine(),
-                'file'     => $e->getFile(),
+                'archivo' => $nombreArchivo,
+                'error' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
             ]);
 
-            return back()->with('error', class_basename($e) . ': ' . $e->getMessage());
-        } finally {
-            // ✅ Siempre se restaura el handler, pase lo que pase
-            restore_error_handler();
+            return redirect()
+                ->back()
+                ->with('error', 'Error durante la reimportación: ' . $e->getMessage())
+                ->with('nombre_archivo', $nombreArchivo);
         }
     }
-
     //------------------------------------------------------------------------------------ CALCULARTIEMPOSELEMENTO()
     private function calcularTiemposElemento(array $row)
     {

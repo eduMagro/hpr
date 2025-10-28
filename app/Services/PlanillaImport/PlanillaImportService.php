@@ -3,6 +3,7 @@
 namespace App\Services\PlanillaImport;
 
 use App\Models\Planilla;
+use App\Models\Etiqueta;
 use App\Services\AsignarMaquinaService;
 use App\Services\OrdenPlanillaService;
 use App\Services\PlanillaImport\ExcelValidator;
@@ -47,14 +48,13 @@ class PlanillaImportService
     {
         $nombreArchivo = $file->getClientOriginalName();
 
-        Log::info("📥 Iniciando importación de archivo: {$nombreArchivo}");
+        Log::info("🔥 Iniciando importación de archivo: {$nombreArchivo}");
 
         // 1. VALIDACIÓN PRE-PROCESAMIENTO
         $validacion = $this->validator->validar($file);
 
         if (!$validacion->esValido()) {
             Log::warning("❌ Validación fallida: {$nombreArchivo}", $validacion->errores());
-            // ✅ Añadir nombre de archivo al error
             return ImportResult::error(
                 $validacion->errores(),
                 $validacion->advertencias(),
@@ -66,7 +66,6 @@ class PlanillaImportService
         $datos = $this->reader->leer($file);
 
         if ($datos->estaVacio()) {
-            // ✅ Añadir nombre de archivo al error
             return ImportResult::error([
                 "{$nombreArchivo} no contiene filas válidas tras filtrado."
             ], [], $nombreArchivo);
@@ -81,35 +80,208 @@ class PlanillaImportService
         // 3. VERIFICAR DUPLICADOS (una sola query)
         $duplicados = $this->verificarDuplicados($datos->codigosPlanillas());
 
+        $advertenciasIniciales = [];
+        $datosFiltrados = $datos;
+
         if (!empty($duplicados)) {
-            // ✅ Añadir nombre de archivo al error
-            return ImportResult::error([
-                "Las siguientes planillas ya existen: " . implode(', ', $duplicados)
-            ], [
-                "Use la función de 'Reimportar' si desea actualizar planillas existentes."
-            ], $nombreArchivo);
+            // ⚠️ ADVERTIR sobre duplicados pero CONTINUAR
+            $advertenciasIniciales[] = "Las siguientes planillas ya existen y fueron omitidas: " . implode(', ', $duplicados);
+            $advertenciasIniciales[] = "Use el botón 'Reimportar' para actualizar planillas existentes.";
+
+            Log::warning("⚠️ Planillas duplicadas detectadas, serán omitidas", [
+                'duplicados' => $duplicados,
+            ]);
+
+            // FILTRAR las planillas duplicadas del procesamiento
+            $datosFiltrados = $datos->filtrarPlanillas($duplicados);
+
+            // Si después de filtrar no queda nada, entonces sí es error
+            if ($datosFiltrados->estaVacio()) {
+                return ImportResult::error([
+                    "Todas las planillas del archivo ya existen en el sistema."
+                ], $advertenciasIniciales, $nombreArchivo);
+            }
+
+            Log::info("📊 Continuando con planillas no duplicadas", [
+                'planillas_a_procesar' => $datosFiltrados->planillasDetectadas(),
+            ]);
         }
 
-        // 4. PRE-CARGAR DATOS EN CACHE
-        $this->precargarCaches($datos);
+        // 4. PRE-CARGAR DATOS EN CACHE (con datos filtrados)
+        $this->precargarCaches($datosFiltrados);
 
-        // 5. PROCESAMIENTO OPTIMIZADO CON BATCH PROCESSING
-        $resultado = $this->procesarPlanillasBatch($datos);
+        // 5. PROCESAMIENTO OPTIMIZADO CON BATCH PROCESSING (con datos filtrados)
+        $resultado = $this->procesarPlanillasBatch($datosFiltrados, $advertenciasIniciales);
 
         Log::info("✅ Importación completada", [
+            'total_en_archivo' => $datos->planillasDetectadas(),
+            'duplicadas_omitidas' => count($duplicados),
             'exitosas' => count($resultado['exitosas']),
             'fallidas' => count($resultado['fallidas']),
         ]);
 
-        // ✅ Añadir nombre de archivo al resultado exitoso
         return ImportResult::success(
             $resultado['exitosas'],
             $resultado['fallidas'],
             $resultado['advertencias'],
             $resultado['estadisticas'],
-            $nombreArchivo // ← NUEVO PARÁMETRO
+            $nombreArchivo
         );
     }
+
+    /**
+     * Reimporta elementos pendientes de una planilla existente.
+     * 
+     * - Elimina solo elementos en estado 'pendiente'
+     * - Mantiene fecha de entrega y datos originales de la planilla
+     * - Procesa solo las filas correspondientes al código de planilla
+     *
+     * @param UploadedFile $file
+     * @param Planilla $planilla
+     * @return ImportResult
+     */
+    public function reimportar(UploadedFile $file, Planilla $planilla): ImportResult
+    {
+        $nombreArchivo = $file->getClientOriginalName();
+
+        Log::info("🔄 Iniciando reimportación", [
+            'archivo' => $nombreArchivo,
+            'planilla' => $planilla->codigo,
+        ]);
+
+        // 1. VALIDACIÓN PRE-PROCESAMIENTO
+        $validacion = $this->validator->validar($file);
+
+        if (!$validacion->esValido()) {
+            Log::warning("❌ Validación fallida: {$nombreArchivo}", $validacion->errores());
+            return ImportResult::error(
+                $validacion->errores(),
+                $validacion->advertencias(),
+                $nombreArchivo
+            );
+        }
+
+        // 2. LECTURA Y PREPARACIÓN DE DATOS
+        $datos = $this->reader->leer($file);
+
+        if ($datos->estaVacio()) {
+            return ImportResult::error([
+                "{$nombreArchivo} no contiene filas válidas tras filtrado."
+            ], [], $nombreArchivo);
+        }
+
+        // 3. FILTRAR SOLO LAS FILAS DE LA PLANILLA A REIMPORTAR
+        $datosFiltrados = $datos->filtrarPlanillas(
+            array_diff($datos->codigosPlanillas(), [$planilla->codigo])
+        );
+
+        if ($datosFiltrados->estaVacio()) {
+            return ImportResult::error([
+                "El archivo no contiene datos para la planilla '{$planilla->codigo}'."
+            ], [], $nombreArchivo);
+        }
+
+        Log::info("📊 Datos filtrados para reimportación", [
+            'planilla' => $planilla->codigo,
+            'filas_validas' => $datosFiltrados->filasValidas(),
+        ]);
+
+        try {
+            DB::beginTransaction();
+
+            // 4. ELIMINAR SOLO ELEMENTOS PENDIENTES
+            $elementosEliminados = $planilla->elementos()
+                ->where('estado', 'pendiente')
+                ->count();
+
+            $planilla->elementos()
+                ->where('estado', 'pendiente')
+                ->delete();
+
+            Log::info("🗑️ Elementos pendientes eliminados", [
+                'cantidad' => $elementosEliminados,
+            ]);
+
+            // 5. ELIMINAR ETIQUETAS HUÉRFANAS (sin elementos)
+            Etiqueta::where('planilla_id', $planilla->id)
+                ->whereDoesntHave('elementos')
+                ->delete();
+
+            // 6. PRE-CARGAR DATOS EN CACHE
+            $this->precargarCaches($datosFiltrados);
+
+            // 7. PROCESAR NUEVOS ELEMENTOS (reutilizando lógica existente)
+            $advertencias = [];
+            $filasPlanilla = $datosFiltrados->agruparPorPlanilla()[$planilla->codigo] ?? [];
+
+            if (empty($filasPlanilla)) {
+                throw new \Exception("No se encontraron filas para procesar.");
+            }
+
+            // Procesar con el processor existente (pasando planilla existente)
+            $resultado = $this->processor->procesar(
+                $planilla->codigo,
+                $filasPlanilla,
+                $advertencias,
+                $planilla  // ✅ Pasar planilla existente para reimportación
+            );
+
+            // 8. ASIGNAR MÁQUINAS
+            $this->asignador->repartirPlanilla($planilla->id);
+
+            // 9. CREAR/ACTUALIZAR ORDEN_PLANILLAS
+            $ordenesCreadas = $this->ordenService->crearOrdenParaPlanilla($planilla->id);
+
+            // 10. RECALCULAR TOTALES (pero mantener fecha de entrega)
+            $elementos = $planilla->fresh()->elementos;
+            $pesoTotal = $elementos->sum('peso');
+            $tiempoTotal = $elementos->sum('tiempo_fabricacion') +
+                ($elementos->count() * config('planillas.importacion.tiempo_setup_elemento', 1200));
+
+            $planilla->update([
+                'peso_total' => $pesoTotal,
+                'tiempo_fabricacion' => $tiempoTotal,
+                // NO actualizar fecha_estimada_entrega
+            ]);
+
+            DB::commit();
+
+            Log::info("✅ Reimportación completada", [
+                'planilla' => $planilla->codigo,
+                'elementos_eliminados' => $elementosEliminados,
+                'elementos_creados' => $resultado->elementosCreados,
+                'etiquetas_creadas' => $resultado->etiquetasCreadas,
+            ]);
+
+            return ImportResult::success(
+                [$planilla->codigo],
+                [],
+                $advertencias,
+                [
+                    'elementos_eliminados' => $elementosEliminados,
+                    'elementos_creados' => $resultado->elementosCreados,
+                    'etiquetas_creadas' => $resultado->etiquetasCreadas,
+                    'ordenes_creadas' => $ordenesCreadas,
+                ],
+                $nombreArchivo
+            );
+        } catch (\Throwable $e) {
+            DB::rollBack();
+
+            Log::error("❌ Error en reimportación", [
+                'planilla' => $planilla->codigo,
+                'archivo' => $nombreArchivo,
+                'error' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+            ]);
+
+            return ImportResult::error([
+                "Error al reimportar: {$e->getMessage()}"
+            ], [], $nombreArchivo);
+        }
+    }
+
     /**
      * Verifica qué códigos de planilla ya existen en la base de datos.
      *
@@ -167,7 +339,7 @@ class PlanillaImportService
             ->keyBy('id')
             ->toArray();
 
-        Log::info("🗄️ Caches precargados", [
+        Log::info("🗄️ Caches precargados", [
             'clientes' => count($this->cacheClientes),
             'obras' => count($this->cacheObras),
             'maquinas' => count($this->cacheMaquinas),
@@ -188,7 +360,7 @@ class PlanillaImportService
     {
         $exitosas = [];
         $fallidas = [];
-        $advertencias = $advertenciasIniciales; // Incluir advertencias iniciales
+        $advertencias = $advertenciasIniciales;
         $estadisticas = [
             'tiempo_total' => 0,
             'elementos_creados' => 0,
@@ -197,7 +369,7 @@ class PlanillaImportService
         ];
 
         $porPlanilla = $datos->agruparPorPlanilla();
-        $batchSize = config('planillas.importacion.batch_size', 5); // 5 planillas por transacción
+        $batchSize = config('planillas.importacion.batch_size', 5);
 
         // Dividir en lotes
         $batches = array_chunk($porPlanilla, $batchSize, true);
@@ -237,7 +409,6 @@ class PlanillaImportService
                             'tiempo' => round(microtime(true) - $inicioPlanilla, 2) . 's',
                         ]);
                     } catch (\Throwable $e) {
-                        // Si una planilla falla, registrar pero continuar con las demás del batch
                         $fallidas[] = [
                             'codigo' => $codigoPlanilla,
                             'error' => $e->getMessage(),
@@ -256,7 +427,6 @@ class PlanillaImportService
             } catch (\Throwable $e) {
                 DB::rollBack();
 
-                // Si el batch completo falla, marcar todas como fallidas
                 foreach ($batch as $codigoPlanilla => $filasPlanilla) {
                     if (!in_array($codigoPlanilla, $exitosas)) {
                         $fallidas[] = [
@@ -274,7 +444,6 @@ class PlanillaImportService
             }
         }
 
-        // Consolidar advertencias
         $advertenciasUnicas = array_values(array_unique($advertencias));
 
         return [

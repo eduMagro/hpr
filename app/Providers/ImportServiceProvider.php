@@ -8,6 +8,7 @@ use App\Services\PlanillaImport\ExcelValidator;
 use App\Services\PlanillaImport\ExcelReader;
 use App\Services\PlanillaImport\PlanillaProcessor;
 use App\Services\AsignarMaquinaService;
+use App\Services\OrdenPlanillaService;
 
 /**
  * Service Provider para los servicios de importación de planillas.
@@ -38,7 +39,8 @@ class ImportServiceProvider extends ServiceProvider
                 $app->make(ExcelValidator::class),
                 $app->make(ExcelReader::class),
                 $app->make(PlanillaProcessor::class),
-                $app->make(AsignarMaquinaService::class)
+                $app->make(AsignarMaquinaService::class),
+                $app->make(OrdenPlanillaService::class)
             );
         });
     }
