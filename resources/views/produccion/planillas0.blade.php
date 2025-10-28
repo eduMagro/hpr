@@ -93,20 +93,16 @@ $numMaquinas = $maquinas->count();
         </div>
 
         <div id="modal_transferir_a_maquina" class="bg-black bg-opacity-60 absolute top-0 left-0 w-screen h-screen flex items-center justify-center hidden backdrop-blur-sm">
-            <div class="bg-white shadow-lg rounded-lg p-3 flex flex-col gap-4 items-center max-w-3xl">
+            <div class="bg-neutral-100 shadow-lg rounded-lg p-3 flex flex-col gap-4 items-center min-w-[calc(100vw-40vw)]">
                 <div class="uppercase font-medium">Seleccione nueva ubicación</div>
 
-                <div class="flex flex-col gap-3 max-h-96 overflow-y-scroll
+                <div class="grid grid-cols-2 md:grid-cols-3 w-full gap-2 p-2 max-h-96 overflow-y-scroll rounded-lg
             [&::-webkit-scrollbar]:w-2
-          [&::-webkit-scrollbar-thumb]:bg-neutral-400
-          [&::-webkit-scrollbar-track]:rounded-r-xl
-          
-          dark:[&::-webkit-scrollbar-track]:bg-neutral-700
-          dark:[&::-webkit-scrollbar-thumb]:bg-neutral-500">
+          [&::-webkit-scrollbar-thumb]:bg-neutral-400">
                     @forelse($maquinas as $maq)
-                    <div data-id="{{ $maq->id }}" class="p-3 flex maquina_transferir justify-between gap-10 items-center cursor-pointer bg-neutral-300 hover:bg-neutral-400  transition-all duration-75 shadow-sm">
-                        <p>{{ $maq->nombre }}</p>
-                        <p class="text-xs font-mono font-semibold p-1 text-white rounded-md bg-neutral-600">{{ $maq->codigo }}</p>
+                    <div data-id="{{ $maq->id }}" data-id="{{ $maq->id }}" class="p-3 flex maquina_transferir justify-between gap-10 items-center cursor-pointer bg-gradient-to-tr from-indigo-100 to-indigo-200 hover:from-indigo-200 hover:to-indigo-300 transition-all duration-75 shadow-sm rounded-lg">
+                        <p class="text-indigo-900 font-mono font-extrabold uppercase">{{ $maq->nombre }}</p>
+                        <p class="text-xs font-mono font-semibold p-1 text-white rounded-md bg-indigo-600">{{ $maq->codigo }}</p>
                     </div>
                     @endforeach
                 </div>
@@ -119,12 +115,12 @@ $numMaquinas = $maquinas->count();
 
 
         <div id="modal_elementos" class="bg-black bg-opacity-60 absolute top-0 left-0 w-screen h-screen flex items-center justify-center hidden backdrop-blur-sm">
-            <div id="div_elementos" class="flex flex-col transition-all duration-100 p-3 bg-white rounded-xl shadow-xl gap-3 items-center">
+            <div id="div_elementos" class="flex flex-col transition-all duration-100 p-3 bg-neutral-100 rounded-xl shadow-xl gap-3 items-center">
                 <div class="uppercase flex gap-3 justify-center items-center">
                     <p>Elementos de <span id="seleccion_planilla_codigo" class="chip">****-******</span></p>
                     <p>en máquina <span id="seleccion_maquina_tag" class="chip">****</span></p1>
                 </div>
-                <div id="seleccion_elementos" class="w-full max-h-[35rem] overflow-auto grid grid-cols-4 gap-2 p-3 rounded-xl bg-neutral-200 border-2 border-neutral-400
+                <div id="seleccion_elementos" class="w-full max-h-[35rem] overflow-auto grid grid-cols-4 gap-2 p-3 rounded-xl
             [&::-webkit-scrollbar]:w-2
           [&::-webkit-scrollbar-thumb]:bg-neutral-400
           [&::-webkit-scrollbar-track]:rounded-r-xl
@@ -177,7 +173,7 @@ $numMaquinas = $maquinas->count();
         </div>
 
 
-        <div id="modal_detalles_etiqueta" class="absolute bg-black bg-opacity-50 backdrop-blur-sm border border-black">
+        <div id="modal_detalles_etiqueta" class="absolute bg-black bg-opacity-50 backdrop-blur-sm border border-black hidden">
             <p>Obra: <span class="obra"></span></p>
             <p>Estado producción: <span class="estado"></span></p>
             <p>Fin programado: <span class="fin_programado"></span></p>
