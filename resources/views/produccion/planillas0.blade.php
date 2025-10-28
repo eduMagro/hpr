@@ -62,8 +62,6 @@ $numMaquinas = $maquinas->count();
                 [&::-webkit-scrollbar]:w-2
                 [&::-webkit-scrollbar-track]:bg-neutral-300
                 [&::-webkit-scrollbar-thumb]:bg-emerald-700
-                dark:[&::-webkit-scrollbar-track]:bg-neutral-700
-                dark:[&::-webkit-scrollbar-thumb]:bg-neutral-500
                 p-1 py-2"></div>
 
             </div>
@@ -83,11 +81,11 @@ $numMaquinas = $maquinas->count();
 
         <div id="modal_guardar"
             data-save-url="{{ route('produccion.planillas.guardar') }}"
-            class="absolute flex -bottom-14 left-1/2 -translate-x-1/2 p-2 bg-white shadow-xl gap-3 rounded-xl transition-all duration-150">
-            <button id="btn_guardar" class="p-2 px-10 bg-emerald-600 rounded-xl hover:bg-emerald-700 hover:text-white font-semibold transition-all duration-150">
+            class="gap-2 absolute flex -bottom-14 left-1/2 -translate-x-1/2 transition-all duration-150">
+            <button id="btn_guardar" class="p-2 px-10 bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 rounded-xl hover:text-white font-semibold transition-all duration-150">
                 Guardar
             </button>
-            <button id="btn_cancelar_guardar" class="p-2 px-10 bg-neutral-400 rounded-xl hover:bg-red-600 hover:text-white font-semibold transition-all duration-150">
+            <button id="btn_cancelar_guardar" class="p-2 px-10 rounded-xl bg-gradient-to-r from-red-400 to-red-500 hover:from-red-500 hover:to-red-600 hover:text-white font-semibold transition-all duration-150">
                 Cancelar
             </button>
         </div>
@@ -100,7 +98,7 @@ $numMaquinas = $maquinas->count();
             [&::-webkit-scrollbar]:w-2
           [&::-webkit-scrollbar-thumb]:bg-neutral-400">
                     @forelse($maquinas as $maq)
-                    <div data-id="{{ $maq->id }}" data-id="{{ $maq->id }}" class="p-3 flex maquina_transferir justify-between gap-10 items-center cursor-pointer bg-gradient-to-tr from-indigo-100 to-indigo-200 hover:from-indigo-200 hover:to-indigo-300 transition-all duration-75 shadow-sm rounded-lg">
+                    <div data-id="{{ $maq->id }}" data-id="{{ $maq->id }}" class="p-3 flex maquina_transferir justify-between gap-10 items-center cursor-pointer maquina_no_seleccionada hover:-translate-y-[1px] transition-all duration-75 shadow-sm rounded-lg">
                         <p class="text-indigo-900 font-mono font-extrabold uppercase">{{ $maq->nombre }}</p>
                         <p class="text-xs font-mono font-semibold p-1 text-white rounded-md bg-indigo-600">{{ $maq->codigo }}</p>
                     </div>
@@ -124,15 +122,13 @@ $numMaquinas = $maquinas->count();
             [&::-webkit-scrollbar]:w-2
           [&::-webkit-scrollbar-thumb]:bg-neutral-400
           [&::-webkit-scrollbar-track]:rounded-r-xl
-          [&::-webkit-scrollbar-thumb]:rounded-xl
-          dark:[&::-webkit-scrollbar-track]:bg-neutral-700
-          dark:[&::-webkit-scrollbar-thumb]:bg-neutral-500">
+          [&::-webkit-scrollbar-thumb]:rounded-xl">
                     *
                 </div>
 
                 <div class="flex justify-end gap-3 w-full">
                     <button onclick="seleccionarMaquinaParaMovimiento()" class="flex p-3 bg-orange-400 hover:bg-orange-500 hover:text-white transition-all duration-150 font-sans font-semibold text-xs uppercase rounded-lg">transferir a otra máquina</button>
-                    <button id="cancelar_modal_elementos" class="flex p-3 bg-red-500 hover:bg-red-600 hover:text-white transition-all duration-150 font-sans font-semibold text-xs uppercase rounded-lg">Cancelar</button>
+                    <button id="cancelar_modal_elementos" class="flex p-3 bg-red-400 hover:bg-red-600 hover:text-white transition-all duration-150 font-sans font-semibold text-xs uppercase rounded-lg">Cancelar</button>
                 </div>
             </div>
         </div>
@@ -270,6 +266,26 @@ $numMaquinas = $maquinas->count();
 
         .planilla {
             will-change: transform;
+        }
+
+        .maquina_no_seleccionada {
+            background-image: linear-gradient(to top right, #e0e7ff, #c7d2fe);
+        }
+
+        .maquina_no_seleccionada:hover {
+            background-image: linear-gradient(to top right, #c7d2fe, #a5b4fc);
+        }
+
+        .maquina_si_seleccionada {
+            background-image: linear-gradient(to top right, #6ee7b7, #a5b4fc);
+        }
+
+        #transferir_elementos:hover .chiptransferirA {
+            background: linear-gradient(to top right, #6ee7b7, #a5b4fc);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            color: transparent;
         }
     </style>
 
