@@ -3,18 +3,20 @@
 namespace App\Services\PlanillaImport;
 
 use Illuminate\Http\UploadedFile;
-use PhpOffice\PhpSpreadsheet\IOFactory;
 use App\Services\PlanillaImport\DTOs\DatosImportacion;
+use ZipArchive;
+use DOMDocument;
+use DOMXPath;
+use Illuminate\Support\Facades\Log;
 
 /**
- * Lee y procesa archivos Excel para importación de planillas.
+ * SOLUCIÓN RADICAL: Lee XML directamente sin PhpSpreadsheet
  * 
- * Responsabilidades:
- * - Leer archivo Excel
- * - Filtrar filas inválidas
- * - Anotar números de fila para trazabilidad
- * - Autocompletar etiquetas
- * - Preparar datos para procesamiento
+ * Esta versión:
+ * - NO usa PhpOffice\PhpSpreadsheet para leer datos
+ * - Lee el XML manualmente con DOMDocument
+ * - NO valida tipos numéricos (todo es string)
+ * - 100% inmune a "Invalid numeric value for datatype Numeric"
  */
 class ExcelReader
 {
@@ -26,108 +28,219 @@ class ExcelReader
         'filas_vacias' => 0,
     ];
 
-    /**
-     * Lee un archivo Excel y retorna los datos preparados.
-     *
-     * @param UploadedFile $file
-     * @return DatosImportacion
-     */
+    protected array $sharedStrings = [];
+
     public function leer(UploadedFile $file): DatosImportacion
     {
-        // 1. Leer primera hoja con control de filas
-        $sheet = $this->leerPrimeraHoja($file);
+        Log::info("📖 [EXCEL-XML] Iniciando lectura manual de Excel", [
+            'archivo' => $file->getClientOriginalName(),
+        ]);
 
-        if (!$sheet || count($sheet) < 2) {
-            return DatosImportacion::vacio([
-                'El archivo no tiene filas de datos.'
+        try {
+            // 1. Abrir Excel como ZIP
+            $zip = new ZipArchive();
+
+            if ($zip->open($file->getRealPath()) !== true) {
+                throw new \Exception("No se pudo abrir el archivo Excel");
+            }
+
+            // 2. Leer shared strings (para textos)
+            $this->cargarSharedStrings($zip);
+
+            // 3. Leer sheet1.xml (los datos)
+            $sheet = $this->leerSheetXML($zip);
+
+            $zip->close();
+
+            if (empty($sheet) || count($sheet) < 2) {
+                return DatosImportacion::vacio(['El archivo no tiene filas de datos.']);
+            }
+
+            $this->estadisticas['total_filas'] = count($sheet) - 1;
+
+            // 4. Filtrar y anotar filas
+            $body = array_slice($sheet, 1);
+            $filasFiltradas = $this->filtrarYAnotarFilas($body);
+
+            $this->estadisticas['filas_validas'] = count($filasFiltradas);
+
+            if (empty($filasFiltradas)) {
+                return DatosImportacion::vacio(
+                    ['No hay filas válidas después del filtrado.'],
+                    $this->estadisticas
+                );
+            }
+
+            // 5. Autocompletar etiquetas
+            $this->autocompletarEtiquetas($filasFiltradas);
+
+            Log::info("✅ [EXCEL-XML] Lectura completada", $this->estadisticas);
+
+            return new DatosImportacion($filasFiltradas, $this->estadisticas);
+        } catch (\Throwable $e) {
+            Log::error("❌ [EXCEL-XML] Error fatal", [
+                'error' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
             ]);
+            throw $e;
         }
-
-        $this->estadisticas['total_filas'] = count($sheet) - 1; // Sin cabecera
-
-        // 2. Filtrar y anotar filas
-        $body = array_slice($sheet, 1); // Quitar cabecera
-        $filasFiltradas = $this->filtrarYAnotarFilas($body);
-
-        $this->estadisticas['filas_validas'] = count($filasFiltradas);
-
-        if (empty($filasFiltradas)) {
-            return DatosImportacion::vacio([
-                'No hay filas válidas después del filtrado.'
-            ], $this->estadisticas);
-        }
-
-        // 3. Autocompletar etiquetas por descripción
-        $this->autocompletarEtiquetas($filasFiltradas);
-
-        // 4. Crear objeto de datos
-        return new DatosImportacion(
-            $filasFiltradas,
-            $this->estadisticas
-        );
     }
 
     /**
-     * Lee la primera hoja del Excel con manejo robusto de errores.
-     *
-     * @param UploadedFile $file
-     * @return array
-     * @throws \Exception Si hay error leyendo una fila específica
+     * Carga el archivo de strings compartidos.
      */
-    protected function leerPrimeraHoja(UploadedFile $file): array
+    protected function cargarSharedStrings(ZipArchive $zip): void
     {
-        $reader = IOFactory::createReaderForFile($file->getRealPath());
+        $xmlStrings = $zip->getFromName('xl/sharedStrings.xml');
 
-        // Configuración para lectura rápida
-        if (method_exists($reader, 'setReadDataOnly')) {
-            $reader->setReadDataOnly(true);
+        if ($xmlStrings === false) {
+            Log::info("ℹ️ [EXCEL-XML] No hay sharedStrings.xml (sin textos compartidos)");
+            return;
         }
 
-        if (method_exists($reader, 'setReadEmptyCells')) {
-            $reader->setReadEmptyCells(false);
+        $dom = new DOMDocument();
+        @$dom->loadXML($xmlStrings);
+
+        $xpath = new DOMXPath($dom);
+        $xpath->registerNamespace('x', 'http://schemas.openxmlformats.org/spreadsheetml/2006/main');
+
+        $siNodes = $xpath->query('//x:si');
+
+        foreach ($siNodes as $index => $siNode) {
+            // Extraer todo el texto del nodo (puede tener varios <t>)
+            $text = '';
+            $tNodes = $xpath->query('.//x:t', $siNode);
+
+            foreach ($tNodes as $tNode) {
+                $text .= $tNode->textContent;
+            }
+
+            $this->sharedStrings[$index] = $text;
         }
 
-        $spreadsheet = $reader->load($file->getRealPath());
-        $sheet = $spreadsheet->getSheet(0);
+        Log::info("📚 [EXCEL-XML] Shared strings cargados", [
+            'total' => count($this->sharedStrings),
+        ]);
+    }
 
-        $rows = [];
+    /**
+     * Lee el XML de la hoja y extrae los datos.
+     * 
+     * CLAVE: Lee TODOS los valores como strings, sin validación de tipos.
+     */
+    protected function leerSheetXML(ZipArchive $zip): array
+    {
+        $xmlSheet = $zip->getFromName('xl/worksheets/sheet1.xml');
 
-        foreach ($sheet->getRowIterator(1) as $row) {
-            $rowIndex = $row->getRowIndex(); // Número de fila real en Excel (1-based)
+        if ($xmlSheet === false) {
+            throw new \Exception("No se pudo leer xl/worksheets/sheet1.xml");
+        }
 
-            try {
-                $cellIt = $row->getCellIterator();
-                $cellIt->setIterateOnlyExistingCells(false); // Incluir vacías
+        Log::info("📄 [EXCEL-XML] Parseando sheet1.xml...");
 
-                $rowData = [];
+        $dom = new DOMDocument();
+        @$dom->loadXML($xmlSheet);
 
-                foreach ($cellIt as $cell) {
-                    // getFormattedValue evita algunos casteos agresivos
-                    $rowData[] = $cell ? $cell->getFormattedValue() : null;
-                }
+        $xpath = new DOMXPath($dom);
+        $xpath->registerNamespace('x', 'http://schemas.openxmlformats.org/spreadsheetml/2006/main');
 
-                $rows[] = $rowData;
-            } catch (\Throwable $e) {
-                // Capturamos exactamente la fila que revienta al leer
-                throw new \Exception("Error leyendo Excel en fila {$rowIndex}: " . $e->getMessage());
+        // Obtener dimensiones de la hoja
+        $dimension = $xpath->query('//x:dimension/@ref')->item(0);
+        $maxCol = 100; // Asumir hasta columna CV (100 columnas)
+
+        if ($dimension) {
+            // Extraer columna máxima de dimensión (ej: "A1:AV1000")
+            if (preg_match('/:([A-Z]+)\d+$/', $dimension->value, $m)) {
+                $maxCol = $this->columnaANumero($m[1]);
             }
         }
+
+        Log::info("📐 [EXCEL-XML] Dimensiones detectadas", [
+            'columnas' => $maxCol,
+        ]);
+
+        // Extraer todas las filas
+        $rows = [];
+        $rowNodes = $xpath->query('//x:sheetData/x:row');
+
+        Log::info("🔢 [EXCEL-XML] Total filas XML", [
+            'filas' => $rowNodes->length,
+        ]);
+
+        foreach ($rowNodes as $rowNode) {
+            $rowIndex = (int)$rowNode->getAttribute('r');
+
+            // Crear array vacío para la fila
+            $rowData = array_fill(0, $maxCol, null);
+
+            // Extraer celdas de esta fila
+            $cellNodes = $xpath->query('.//x:c', $rowNode);
+
+            foreach ($cellNodes as $cellNode) {
+                $cellRef = $cellNode->getAttribute('r'); // Ej: "A1", "B5", "X27"
+                $cellType = $cellNode->getAttribute('t'); // Tipo: s=string, n=numeric, str=formula string
+
+                // Extraer índice de columna (A=0, B=1, ..., Z=25, AA=26, ...)
+                if (preg_match('/^([A-Z]+)\d+$/', $cellRef, $m)) {
+                    $colIndex = $this->columnaANumero($m[1]) - 1; // 0-indexed
+                } else {
+                    continue;
+                }
+
+                // Obtener valor
+                $vNode = $xpath->query('.//x:v', $cellNode)->item(0);
+
+                if (!$vNode) {
+                    continue; // Sin valor
+                }
+
+                $valor = $vNode->textContent;
+
+                // CLAVE: Interpretar según tipo, pero SIEMPRE devolver string
+                if ($cellType === 's') {
+                    // Referencia a shared string
+                    $index = (int)$valor;
+                    $rowData[$colIndex] = $this->sharedStrings[$index] ?? '';
+                } else {
+                    // Cualquier otro tipo: devolver tal cual como string
+                    // NO validamos si es numérico válido - lo dejamos como está
+                    $rowData[$colIndex] = $valor;
+                }
+            }
+
+            $rows[] = $rowData;
+        }
+
+        Log::info("✅ [EXCEL-XML] Filas extraídas", [
+            'total' => count($rows),
+        ]);
 
         return $rows;
     }
 
     /**
-     * Filtra filas inválidas y anota números de fila Excel.
-     *
-     * @param array $body
-     * @return array
+     * Convierte referencia de columna a número.
+     * A=1, B=2, ..., Z=26, AA=27, AB=28, ..., AV=48
      */
+    protected function columnaANumero(string $col): int
+    {
+        $num = 0;
+        $len = strlen($col);
+
+        for ($i = 0; $i < $len; $i++) {
+            $num = $num * 26 + (ord($col[$i]) - ord('A') + 1);
+        }
+
+        return $num;
+    }
+
     protected function filtrarYAnotarFilas(array $body): array
     {
         $filasValidas = [];
 
         foreach ($body as $index => $row) {
-            // Fila completamente vacía
+            // Fila vacía
             if (!array_filter($row)) {
                 $this->estadisticas['filas_vacias']++;
                 continue;
@@ -147,31 +260,20 @@ class ExcelReader
                 continue;
             }
 
-            // Anotar número de fila Excel (cabecera = 1, primera fila de datos = 2)
+            // Anotar número de fila Excel
             $row['_xl_row'] = $index + 2;
-
             $filasValidas[] = $row;
         }
 
         return $filasValidas;
     }
 
-    /**
-     * Autocompleta números de etiqueta vacíos por descripción.
-     * 
-     * Dentro de cada planilla, asigna números secuenciales (1..N) a elementos
-     * con la misma descripción.
-     *
-     * @param array &$rows Referencia al array de filas (se modifica in-place)
-     * @return void
-     */
     protected function autocompletarEtiquetas(array &$rows): void
     {
-        $IDX_PLANILLA = 10; // Código planilla
-        $IDX_DESC     = 22; // Descripción
-        $IDX_ETIQ     = 30; // AE (número etiqueta)
+        $IDX_PLANILLA = 10;
+        $IDX_DESC     = 22;
+        $IDX_ETIQ     = 30;
 
-        // Agrupar índices de filas por planilla
         $porPlanilla = [];
 
         foreach ($rows as $i => $r) {
@@ -179,18 +281,15 @@ class ExcelReader
             $porPlanilla[$codigoPlanilla][] = $i;
         }
 
-        // Función para normalizar descripciones
         $normalizar = fn($t) => ($t = mb_strtoupper(
             preg_replace('/\s+/u', ' ', trim((string)$t)),
             'UTF-8'
         )) ?: '—SIN DESCRIPCION—';
 
-        // Procesar cada planilla
         foreach ($porPlanilla as $codigoPlanilla => $indices) {
             $desc2num = [];
             $siguiente = 1;
 
-            // Recorremos en orden de aparición y ASIGNAMOS SIEMPRE 1..N
             foreach ($indices as $i) {
                 $descripcion = $normalizar($rows[$i][$IDX_DESC] ?? '');
 
@@ -198,7 +297,6 @@ class ExcelReader
                     $desc2num[$descripcion] = $siguiente++;
                 }
 
-                // Siempre sobrescribimos AE con la numeración compacta
                 $rows[$i][$IDX_ETIQ] = $desc2num[$descripcion];
             }
         }

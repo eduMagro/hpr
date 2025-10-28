@@ -40,16 +40,25 @@
 @if (session('error'))
     <script>
         document.addEventListener("DOMContentLoaded", function() {
+            const nombreArchivo = @json(session('nombre_archivo', null));
+            let errorMensaje = {!! json_encode(session('error')) !!};
+
+            // ✅ Si hay nombre de archivo y no está en el mensaje, añadirlo
+            if (nombreArchivo && !errorMensaje.includes(nombreArchivo)) {
+                errorMensaje = `📄 Archivo: ${nombreArchivo}\n\n${errorMensaje}`;
+            }
+
             Swal.fire({
                 icon: 'error',
                 title: 'Error',
-                text: {!! json_encode(session('error')) !!}, // Esto evita errores de comillas
+                html: '<div style="text-align: left; white-space: pre-wrap;">' + errorMensaje.replace(/\n/g,
+                    '<br>') + '</div>',
                 confirmButtonColor: '#d33',
                 showCancelButton: true,
                 cancelButtonText: "Reportar Error"
             }).then((result) => {
                 if (result.dismiss === Swal.DismissReason.cancel) {
-                    notificarProgramador({!! json_encode(session('error')) !!});
+                    notificarProgramador(errorMensaje, 'Error en procesamiento de archivo');
                 }
             });
         });
@@ -59,17 +68,59 @@
 @if (session('success'))
     <script>
         document.addEventListener("DOMContentLoaded", function() {
-            Swal.fire({
-                icon: 'success',
-                text: @json(session('success')),
-                confirmButtonColor: '#28a745'
-            }).then(() => {
-                console.console.log('Operación exitosa:', @json(session('success')));
-                // Recarga la página tras el mensaje
-            });
+            const mensaje = @json(session('success'));
+            const esImportacion = @json(session('import_report', false));
+            const tieneAdvertencias = @json(session('tiene_advertencias', false));
+            const nombreArchivo = @json(session('nombre_archivo', null));
+
+            // ✅ SI ES IMPORTACIÓN → Formato especial con HTML
+            if (esImportacion) {
+                // Convertir saltos de línea a <br> para mostrar en HTML
+                const mensajeHtml = mensaje.replace(/\n/g, '<br>');
+
+                // Configuración especial para importaciones
+                const config = {
+                    icon: 'success',
+                    html: '<div style="text-align: left; font-family: monospace; white-space: pre-wrap;">' +
+                        mensajeHtml + '</div>',
+                    confirmButtonColor: '#28a745',
+                    width: '650px',
+                };
+
+                // Si tiene advertencias, añadir botón de reportar
+                if (tieneAdvertencias) {
+                    config.showCancelButton = true;
+                    config.cancelButtonText = '⚠️ Reportar Advertencias';
+                    config.confirmButtonText = 'Aceptar';
+                    config.cancelButtonColor = '#f59e0b';
+                }
+
+                Swal.fire(config).then((result) => {
+                    // Si clickeó en "Reportar Advertencias"
+                    if (result.dismiss === Swal.DismissReason.cancel && tieneAdvertencias) {
+                        // Incluir nombre de archivo en el asunto
+                        const asunto = nombreArchivo ?
+                            `Advertencias en importación: ${nombreArchivo}` :
+                            'Advertencias en importación de planillas';
+
+                        notificarProgramador(mensaje, asunto);
+                    }
+                });
+            }
+            // ✅ SI NO ES IMPORTACIÓN → Formato simple (como antes)
+            else {
+                Swal.fire({
+                    icon: 'success',
+                    text: mensaje, // ← Texto simple sin formateo
+                    confirmButtonColor: '#28a745'
+                }).then(() => {
+                    console.log('Operación exitosa:', mensaje);
+                });
+            }
         });
     </script>
 @endif
+
 @if (session('info'))
     <script>
         document.addEventListener("DOMContentLoaded", function() {
@@ -113,17 +164,32 @@
 @endif
 
 
-<!-- Función para es a programadores -->
+<!-- Función para notificar a programadores -->
 <script>
-    function notificarProgramador(mensaje) {
+    function notificarProgramador(mensaje, asunto = 'Error reportado por usuario') {
         const urlActual = window.location.href;
-        const mensajeCompleto = `🔗 URL: ${urlActual}\n📜 Mensaje: ${mensaje}`;
+        const usuario = '{{ auth()->user()->name ?? 'Usuario desconocido' }}';
+        const email = '{{ auth()->user()->email ?? 'Email no disponible' }}';
 
-        fetch("{{ route('alertas.store') }}", { // usa el helper de ruta
+        // ✅ Mensaje completo con contexto mejorado
+        const mensajeCompleto = `🔗 URL: ${urlActual}
+
+👤 Usuario: ${usuario} (${email})
+📅 Fecha/Hora: ${new Date().toLocaleString('es-ES')}
+
+📋 ${asunto}
+
+📜 Mensaje:
+${mensaje}
+
+---
+Navegador: ${navigator.userAgent}`;
+
+        fetch("{{ route('alertas.store') }}", {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Accept': 'application/json', // <-- importante
+                    'Accept': 'application/json',
                     'X-CSRF-TOKEN': document
                         .querySelector('meta[name="csrf-token"]')
                         .content
@@ -134,17 +200,28 @@
                 })
             })
             .then(async resp => {
-                if (!resp.ok) { // capturamos 405, 500, etc.
+                if (!resp.ok) {
                     const texto = await resp.text();
                     throw new Error(`HTTP ${resp.status}: ${texto}`);
                 }
-                return resp.json(); // ya estamos seguros de que ES JSON
+                return resp.json();
             })
             .then(data => {
-                Swal.fire('Notificación enviada',
-                    'Los técnicos han sido notificados.',
-                    'success');
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Notificación enviada',
+                    text: 'Los técnicos han sido notificados y revisarán las advertencias.',
+                    confirmButtonColor: '#28a745'
+                });
             })
-            .catch(err => console.error('⚠️ Error:', err));
+            .catch(err => {
+                console.error('⚠️ Error al enviar notificación:', err);
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error al enviar',
+                    text: 'No se pudo enviar la notificación. Por favor contacte directamente con el equipo técnico.',
+                    confirmButtonColor: '#d33'
+                });
+            });
     }
 </script>

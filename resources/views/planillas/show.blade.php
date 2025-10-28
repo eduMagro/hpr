@@ -190,101 +190,85 @@
                 clone.querySelectorAll('.no-print').forEach(el => el.remove());
 
                 if (canvasImg) {
-                    const targetCanvas = clone.querySelector('canvas');
-                    const host = targetCanvas ? targetCanvas.parentNode : clone;
-                    if (host) {
-                        if (targetCanvas) targetCanvas.remove();
-                        const img = new Image();
-                        img.src = canvasImg;
-                        img.style.width = '100%';
-                        img.style.height = 'auto';
-                        host.appendChild(img);
+                    let elCanvas = clone.querySelector('canvas');
+                    if (elCanvas) {
+                        const imgTag = document.createElement('img');
+                        imgTag.src = canvasImg;
+                        imgTag.style.width = '100%';
+                        imgTag.style.height = 'auto';
+                        elCanvas.replaceWith(imgTag);
                     }
                 }
 
-                const tempQR = document.createElement('div');
-                document.body.appendChild(tempQR);
-                await new Promise(res => {
-                    new QRCode(tempQR, {
-                        text: String(rawId),
-                        width: 50,
-                        height: 50
-                    });
-                    setTimeout(() => {
-                        const qrImg = tempQR.querySelector('img');
-                        const qrCanvas = tempQR.querySelector('canvas');
-                        const qrNode = qrImg || (qrCanvas ? (() => {
-                            const img = new Image();
-                            img.src = qrCanvas.toDataURL();
-                            return img;
-                        })() : null);
-
-                        if (qrNode) {
-                            qrNode.classList.add('qr-print');
-                            const qrBox = document.createElement('div');
-                            qrBox.className = 'qr-box';
-                            qrBox.appendChild(qrNode);
-                            clone.insertBefore(qrBox, clone.firstChild);
-                        }
-                        tempQR.remove();
-                        res();
-                    }, 150);
+                const existingImgs = clone.querySelectorAll('img');
+                existingImgs.forEach(img => {
+                    img.style.maxHeight = '200px';
+                    img.style.width = 'auto';
+                    img.style.height = 'auto';
                 });
 
                 etiquetasHtml.push(clone.outerHTML);
             }
 
+            if (!etiquetasHtml.length) {
+                alert('No hay etiquetas para imprimir.');
+                return;
+            }
+
             const css = `
-            <style>
-                @page{size:A4 portrait;margin:10;}
-                body{margin:0;padding:0;background:#fff;}
-                .sheet-grid{
-                  display:grid;
-                  grid-template-columns:105mm 105mm;
-                  grid-template-rows:repeat(5,59.4mm);
-                  width:210mm;height:297mm;
-                }
-                .etiqueta-print{
-                  position:relative;width:105mm;height:59.4mm;
-                  box-sizing:border-box;border:0.2mm solid #000;
-                  overflow:hidden;padding:3mm;background:#fff;
-                  page-break-inside:avoid;
-                }
-                .etiqueta-print h2{font-size:10pt;margin:0;}
-                .etiqueta-print h3{font-size:9pt;margin:0;}
-                .etiqueta-print img:not(.qr-print){width:100%;height:auto;margin-top:2mm;}
-                .qr-box{
-                  position:absolute;top:3mm;right:3mm;
-                  border:0.2mm solid #000;padding:1mm;background:#fff;
-                }
-                .qr-box img{width:16mm;height:16mm;}
-                .no-print{display:none!important;}
-            </style>`;
+        @page { size: A4 portrait; margin: 10mm; }
+        html, body {
+          margin:0; padding:0; width:100%; height:100%; background:#fff;
+          font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        }
+        .sheet-grid {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          grid-template-rows: repeat(5, 1fr);
+          width: 100vw; height: 100vh;
+        }
+        .etiqueta-print {
+          position: relative; width:105mm; height:59.4mm;
+          box-sizing: border-box; border:0.2mm solid #000;
+          overflow:hidden; background:#fff;
+          page-break-inside: avoid;
+          padding:4mm;
+          display:flex; flex-direction:column; justify-content:flex-start;
+        }
+        .qr-box {
+          position:absolute; top:2%; right:2%;
+          border:0.2mm solid #000; padding:2px; background:#fff;
+        }
+        .qr-box img { width:20mm; height:20mm; }
+        @media print {
+          .no-print { display:none !important; }
+        }
+      `;
 
             const w = window.open('', '_blank');
-            w.document.open();
             w.document.write(`
-              <html>
-                <head><title>Impresión</title>${css}</head>
-                <body>
-                  <div class="sheet-grid">${etiquetasHtml.join('')}</div>
-                  <script>
-                    window.onload = () => {
-                      const imgs = document.images;
-                      let loaded = 0, total = imgs.length;
-                      if(total===0){window.print();setTimeout(()=>window.close(),500);return;}
-                      for(const img of imgs){
-                        if(img.complete){
-                          loaded++; if(loaded===total){window.print();setTimeout(()=>window.close(),500);}
-                        }else{
-                          img.onload = img.onerror = () => { loaded++; if(loaded===total){window.print();setTimeout(()=>window.close(),500);} };
-                        }
-                      }
-                    };
-                  <\/script>
-                </body>
-              </html>
-            `);
+        <!DOCTYPE html>
+        <html>
+          <head><title>Impresión</title><style>${css}</style></head>
+          <body>
+            <div class="sheet-grid">${etiquetasHtml.join('')}</div>
+            <script>
+              window.onload = () => {
+                const imgs = document.images;
+                let loaded = 0, total = imgs.length;
+                if(total===0){window.print();setTimeout(()=>window.close(),500);return;}
+                for(const img of imgs){
+                  if(img.complete){
+                    loaded++; if(loaded===total){window.print();setTimeout(()=>window.close(),500);}
+                  }else{
+                    img.onload = img.onerror = () => { loaded++; if(loaded===total){window.print();setTimeout(()=>window.close(),500);} };
+                  }
+                }
+              };
+            <\/script>
+          </body>
+        </html>
+      `);
             w.document.close();
         }
 
@@ -363,16 +347,72 @@
             -webkit-tap-highlight-color: transparent;
         }
     </style>
+
+    {{-- ========================================= --}}
+    {{-- SISTEMA DE NAVEGACIÓN CON FLECHAS --}}
+    {{-- ========================================= --}}
     <script>
+        /**
+         * Extrae el ID numérico de la URL de la planilla.
+         * Asume que la URL tiene formato: /planillas/{id} o similar
+         * Retorna: { value: número, index: posición, parts: array }
+         */
+        function extraerIdNumericoDelPath(pathname) {
+            const parts = pathname.split('/').filter(p => p);
+
+            // Buscar el índice que contiene "planillas" y el siguiente debería ser el ID
+            const planillasIdx = parts.findIndex(p => p.toLowerCase() === 'planillas');
+
+            if (planillasIdx !== -1 && planillasIdx + 1 < parts.length) {
+                const idStr = parts[planillasIdx + 1];
+                const idNum = parseInt(idStr, 10);
+
+                if (!isNaN(idNum)) {
+                    return {
+                        value: idNum,
+                        index: planillasIdx + 1,
+                        parts: parts
+                    };
+                }
+            }
+
+            // Fallback: buscar cualquier número en el path
+            for (let i = 0; i < parts.length; i++) {
+                const num = parseInt(parts[i], 10);
+                if (!isNaN(num) && num > 0) {
+                    return {
+                        value: num,
+                        index: i,
+                        parts: parts
+                    };
+                }
+            }
+
+            return null;
+        }
+
+        /**
+         * Navega a la planilla anterior (-1) o siguiente (+1)
+         */
         async function navegarPlanilla(delta) {
             const base = new URL(window.location.href);
             const info = extraerIdNumericoDelPath(base.pathname);
-            if (!info) return;
+
+            if (!info) {
+                console.error('No se pudo extraer el ID de la planilla de la URL');
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: 'No se pudo determinar el ID de la planilla actual.',
+                    confirmButtonText: 'OK'
+                });
+                return;
+            }
 
             const maxSaltos = 25;
             let candidato = info.value;
 
-            // ❌ No esperes al modal. Muéstralo y continúa.
+            // Mostrar modal de carga
             Swal.fire({
                 title: delta > 0 ? 'Buscando planilla siguiente…' : 'Buscando planilla anterior…',
                 html: '<div id="swal-loading-msg" class="text-sm">Comprobando…</div>',
@@ -394,10 +434,20 @@
                     urlCandidata.pathname = '/' + parts.join('/');
 
                     const msgEl = document.getElementById('swal-loading-msg');
-                    if (msgEl) msgEl.textContent = `Probando #${candidato}…`;
+                    if (msgEl) msgEl.textContent = `Comprobando ID ${candidato}…`;
 
-                    if (await existePlanilla(urlCandidata.toString())) {
-                        Swal.close(); // 👈 ciérralo ANTES de navegar
+                    const resultado = await existePlanilla(urlCandidata.toString());
+
+                    if (resultado.existe) {
+                        // Actualizar mensaje con el código encontrado
+                        if (msgEl && resultado.codigo) {
+                            msgEl.textContent = `Encontrada: ${resultado.codigo}`;
+                        }
+
+                        // Pequeña pausa para que se vea el mensaje
+                        await new Promise(resolve => setTimeout(resolve, 300));
+
+                        Swal.close();
                         window.location.assign(urlCandidata.toString());
                         return;
                     }
@@ -408,7 +458,7 @@
                 Swal.fire({
                     icon: 'info',
                     title: 'Sin más planillas',
-                    text: 'No hay más en esa dirección.',
+                    text: 'No hay más planillas en esa dirección.',
                     confirmButtonText: 'Entendido'
                 });
             } catch (err) {
@@ -421,39 +471,87 @@
             }
         }
 
-        // (opcional) endurece la sonda para evitar cuelgues de red
+        /**
+         * Verifica si existe una planilla en la URL dada y extrae su codigo_limpio
+         * @returns {Object} { existe: boolean, codigo: string }
+         */
         async function existePlanilla(urlStr) {
             const timeoutMs = 5000;
             const ac = new AbortController();
             const t = setTimeout(() => ac.abort(), timeoutMs);
 
             try {
-                let resp = await fetch(urlStr, {
-                    method: 'HEAD',
+                // Siempre usar GET para poder extraer el código
+                const resp = await fetch(urlStr, {
+                    method: 'GET',
+                    headers: {
+                        'X-Requested-With': 'fetch'
+                    },
                     credentials: 'same-origin',
                     cache: 'no-store',
                     signal: ac.signal,
                 });
 
-                if (resp.status === 405) {
-                    resp = await fetch(urlStr, {
-                        method: 'GET',
-                        headers: {
-                            'X-Requested-With': 'fetch'
-                        },
-                        credentials: 'same-origin',
-                        cache: 'no-store',
-                        signal: ac.signal,
-                    });
+                if (!resp.ok) {
+                    return {
+                        existe: false,
+                        codigo: null
+                    };
                 }
 
-                return resp.ok;
+                // Extraer el codigo_limpio del HTML
+                const html = await resp.text();
+
+                // Buscar el patrón: Planilla <strong>CODIGO</strong>
+                const match = html.match(/Planilla\s*<strong>([^<]+)<\/strong>/i);
+                const codigo = match ? match[1].trim() : null;
+
+                return {
+                    existe: true,
+                    codigo
+                };
             } catch {
-                return false;
+                return {
+                    existe: false,
+                    codigo: null
+                };
             } finally {
                 clearTimeout(t);
             }
         }
+
+        /**
+         * Event listener para las teclas de flecha
+         */
+        document.addEventListener('keydown', function(e) {
+            // Ignorar si el usuario está escribiendo en un input/textarea
+            const tagName = e.target.tagName.toLowerCase();
+            const isEditable = e.target.isContentEditable;
+
+            if (tagName === 'input' || tagName === 'textarea' || tagName === 'select' || isEditable) {
+                return;
+            }
+
+            // Ignorar si hay algún modal de SweetAlert abierto
+            if (document.querySelector('.swal2-container')) {
+                return;
+            }
+
+            // Flecha izquierda (←) - Planilla anterior
+            if (e.key === 'ArrowLeft') {
+                e.preventDefault();
+                navegarPlanilla(-1);
+            }
+
+            // Flecha derecha (→) - Planilla siguiente
+            if (e.key === 'ArrowRight') {
+                e.preventDefault();
+                navegarPlanilla(1);
+            }
+        });
+
+        // Mensaje de consola para ayudar con debugging
+        console.log('Sistema de navegación con flechas cargado. Usa ← y → para navegar entre planillas.');
     </script>
 
 </x-app-layout>

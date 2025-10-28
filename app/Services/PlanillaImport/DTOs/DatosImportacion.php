@@ -78,4 +78,32 @@ class DatosImportacion
     {
         return count($this->codigosPlanillas());
     }
+
+    /**
+     * Filtra las filas excluyendo los códigos de planilla especificados.
+     *
+     * @param array $codigosAExcluir Códigos de planilla a filtrar
+     * @return self Nueva instancia con filas filtradas
+     */
+    public function filtrarPlanillas(array $codigosAExcluir): self
+    {
+        if (empty($codigosAExcluir)) {
+            return $this;
+        }
+
+        $filasFiltradas = array_filter($this->filas, function ($fila) use ($codigosAExcluir) {
+            $codigoFila = (string)($fila[10] ?? ''); // Columna 10 = código planilla
+            return !in_array($codigoFila, $codigosAExcluir, true);
+        });
+
+        // Mantener estadísticas originales pero actualizar conteo
+        $estadisticasActualizadas = $this->estadisticas;
+        $estadisticasActualizadas['filas_filtradas'] = count($this->filas) - count($filasFiltradas);
+        $estadisticasActualizadas['planillas_excluidas'] = count($codigosAExcluir);
+
+        return new self(
+            array_values($filasFiltradas), // Reindexar array
+            $estadisticasActualizadas
+        );
+    }
 }

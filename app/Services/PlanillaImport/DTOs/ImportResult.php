@@ -12,30 +12,34 @@ class ImportResult
         protected array $exitosas = [],
         protected array $fallidas = [],
         protected array $advertencias = [],
-        protected array $estadisticas = []
+        protected array $estadisticas = [],
+        protected ?string $nombreArchivo = null
     ) {}
 
     public static function success(
         array $exitosas,
         array $fallidas,
         array $advertencias,
-        array $estadisticas
+        array $estadisticas,
+        ?string $nombreArchivo = null
     ): self {
         return new self(
             success: true,
             exitosas: $exitosas,
             fallidas: $fallidas,
             advertencias: $advertencias,
-            estadisticas: $estadisticas
+            estadisticas: $estadisticas,
+            nombreArchivo: $nombreArchivo
         );
     }
 
-    public static function error(array $errores, array $advertencias = []): self
+    public static function error(array $errores, array $advertencias = [], ?string $nombreArchivo = null): self
     {
         return new self(
             success: false,
             fallidas: $errores,
-            advertencias: $advertencias
+            advertencias: $advertencias,
+            nombreArchivo: $nombreArchivo
         );
     }
 
@@ -65,9 +69,19 @@ class ImportResult
         return $this->estadisticas;
     }
 
+    public function nombreArchivo(): ?string
+    {
+        return $this->nombreArchivo;
+    }
+
     public function totalProcesadas(): int
     {
         return count($this->exitosas) + count($this->fallidas);
+    }
+
+    public function tieneAdvertencias(): bool
+    {
+        return !empty($this->advertencias);
     }
 
     /**
@@ -82,40 +96,78 @@ class ImportResult
                 ? $this->fallidas
                 : array_column($this->fallidas, 'error');
 
-            return implode(' ', $errores);
+            $lineas = [];
+
+            // Añadir nombre de archivo si está disponible
+            if ($this->nombreArchivo) {
+                $lineas[] = "📄 Archivo: {$this->nombreArchivo}";
+                $lineas[] = "";
+            }
+
+            $lineas = array_merge($lineas, $errores);
+
+            return implode("\n", $lineas);
         }
 
-        $partes = [];
+        $lineas = [];
 
-        $partes[] = sprintf("✅ Importadas: %d", count($this->exitosas));
+        // Identificador de importación
+        $lineas[] = "📋 IMPORTACIÓN DE PLANILLAS";
 
-        if (!empty($this->fallidas)) {
-            $partes[] = sprintf("❌ Fallidas: %d", count($this->fallidas));
-
-            $detalles = collect($this->fallidas)
-                ->map(fn($f) => is_array($f) ? "{$f['codigo']}: {$f['error']}" : $f)
-                ->implode('; ');
-
-            $partes[] = "| Errores: {$detalles}";
+        // Nombre del archivo importado
+        if ($this->nombreArchivo) {
+            $lineas[] = "📄 Archivo: {$this->nombreArchivo}";
         }
 
-        if (!empty($this->advertencias)) {
-            $partes[] = "⚠️ " . implode(' ⚠️ ', $this->advertencias);
-        }
+        $lineas[] = ""; // Línea en blanco
 
+        // Resumen principal
+        $lineas[] = sprintf("✅ Planillas importadas exitosamente: %d", count($this->exitosas));
+
+        // Estadísticas
         if (!empty($this->estadisticas)) {
             $stats = $this->estadisticas;
 
             if (isset($stats['elementos_creados'])) {
-                $partes[] = sprintf("| Elementos: %d", $stats['elementos_creados']);
+                $lineas[] = sprintf("📦 Elementos creados: %d", $stats['elementos_creados']);
+            }
+
+            if (isset($stats['etiquetas_creadas'])) {
+                $lineas[] = sprintf("🏷️ Etiquetas creadas: %d", $stats['etiquetas_creadas']);
+            }
+
+            if (isset($stats['ordenes_creadas'])) {
+                $lineas[] = sprintf("📋 Órdenes creadas: %d", $stats['ordenes_creadas']);
             }
 
             if (isset($stats['tiempo_total'])) {
-                $partes[] = sprintf("| Tiempo: %.2fs", $stats['tiempo_total']);
+                $lineas[] = sprintf("⏱️ Tiempo total: %.2f segundos", $stats['tiempo_total']);
             }
         }
 
-        return implode(' ', $partes);
+        // Planillas fallidas
+        if (!empty($this->fallidas)) {
+            $lineas[] = ""; // Línea en blanco
+            $lineas[] = sprintf("❌ Planillas con errores: %d", count($this->fallidas));
+
+            foreach ($this->fallidas as $fallida) {
+                $codigo = is_array($fallida) ? ($fallida['codigo'] ?? 'Desconocido') : 'Desconocido';
+                $error = is_array($fallida) ? ($fallida['error'] ?? $fallida) : $fallida;
+                $lineas[] = sprintf("   • %s: %s", $codigo, $error);
+            }
+        }
+
+        // Advertencias
+        if (!empty($this->advertencias)) {
+            $lineas[] = ""; // Línea en blanco
+            $lineas[] = "⚠️ ADVERTENCIAS:";
+
+            foreach ($this->advertencias as $advertencia) {
+                $lineas[] = sprintf("   • %s", $advertencia);
+            }
+        }
+
+        return implode("\n", $lineas);
     }
 
     /**
@@ -132,6 +184,8 @@ class ImportResult
             'advertencias' => $this->advertencias,
             'estadisticas' => $this->estadisticas,
             'mensaje' => $this->mensaje(),
+            'tiene_advertencias' => $this->tieneAdvertencias(),
+            'nombre_archivo' => $this->nombreArchivo,
         ];
     }
 }

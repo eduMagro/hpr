@@ -542,7 +542,7 @@ class PlanillaController extends Controller
 
     //------------------------------------------------------------------------------------ IMPORT()
 
-    // 2. OPCIÓN A: Reemplazar completamente el método import() existente
+    // Método import() actualizado con nombre de archivo
     public function import(Request $request, PlanillaImportService $importService)
     {
         // 0) Seguridad básica
@@ -557,23 +557,35 @@ class PlanillaController extends Controller
         ]);
 
         $file = $request->file('file');
+        $nombreArchivo = $file->getClientOriginalName(); // ✅ Capturar nombre
 
         // 2) Delegar todo al servicio de importación
         try {
             $resultado = $importService->importar($file);
 
             if ($resultado->esExitoso()) {
-                return redirect()
+                // ✅ Pasar metadata adicional para el alert
+                $redirect = redirect()
                     ->route('planillas.index')
-                    ->with('success', $resultado->mensaje());
+                    ->with('success', $resultado->mensaje())
+                    ->with('import_report', true) // Identificador de reporte de importación
+                    ->with('nombre_archivo', $nombreArchivo); // ✅ Nombre del archivo
+
+                // ✅ Si hay advertencias, indicarlo
+                if ($resultado->tieneAdvertencias()) {
+                    $redirect->with('tiene_advertencias', true);
+                }
+
+                return $redirect;
             } else {
                 return redirect()
                     ->back()
-                    ->with('error', $resultado->mensaje());
+                    ->with('error', $resultado->mensaje())
+                    ->with('nombre_archivo', $nombreArchivo); // ✅ También en errores
             }
         } catch (\Throwable $e) {
             Log::error('❌ Error en importación de planillas', [
-                'archivo' => $file->getClientOriginalName(),
+                'archivo' => $nombreArchivo,
                 'error' => $e->getMessage(),
                 'file' => $e->getFile(),
                 'line' => $e->getLine(),
@@ -581,7 +593,8 @@ class PlanillaController extends Controller
 
             return redirect()
                 ->back()
-                ->with('error', 'Error durante la importación: ' . $e->getMessage());
+                ->with('error', 'Error durante la importación: ' . $e->getMessage())
+                ->with('nombre_archivo', $nombreArchivo); // ✅ También en excepciones
         }
     }
     //-----------------------------------------------------------------------------------------------------

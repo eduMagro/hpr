@@ -54,16 +54,22 @@ class PlanillaImportService
 
         if (!$validacion->esValido()) {
             Log::warning("❌ Validación fallida: {$nombreArchivo}", $validacion->errores());
-            return ImportResult::error($validacion->errores(), $validacion->advertencias());
+            // ✅ Añadir nombre de archivo al error
+            return ImportResult::error(
+                $validacion->errores(),
+                $validacion->advertencias(),
+                $nombreArchivo
+            );
         }
 
         // 2. LECTURA Y PREPARACIÓN DE DATOS
         $datos = $this->reader->leer($file);
 
         if ($datos->estaVacio()) {
+            // ✅ Añadir nombre de archivo al error
             return ImportResult::error([
                 "{$nombreArchivo} no contiene filas válidas tras filtrado."
-            ]);
+            ], [], $nombreArchivo);
         }
 
         Log::info("📊 Datos leídos", [
@@ -76,11 +82,12 @@ class PlanillaImportService
         $duplicados = $this->verificarDuplicados($datos->codigosPlanillas());
 
         if (!empty($duplicados)) {
+            // ✅ Añadir nombre de archivo al error
             return ImportResult::error([
                 "Las siguientes planillas ya existen: " . implode(', ', $duplicados)
             ], [
                 "Use la función de 'Reimportar' si desea actualizar planillas existentes."
-            ]);
+            ], $nombreArchivo);
         }
 
         // 4. PRE-CARGAR DATOS EN CACHE
@@ -94,14 +101,15 @@ class PlanillaImportService
             'fallidas' => count($resultado['fallidas']),
         ]);
 
+        // ✅ Añadir nombre de archivo al resultado exitoso
         return ImportResult::success(
             $resultado['exitosas'],
             $resultado['fallidas'],
             $resultado['advertencias'],
-            $resultado['estadisticas']
+            $resultado['estadisticas'],
+            $nombreArchivo // ← NUEVO PARÁMETRO
         );
     }
-
     /**
      * Verifica qué códigos de planilla ya existen en la base de datos.
      *
@@ -173,13 +181,14 @@ class PlanillaImportService
      * cuando sea posible, reduciendo overhead de commits.
      *
      * @param DatosImportacion $datos
+     * @param array $advertenciasIniciales Advertencias previas (ej: duplicados)
      * @return array
      */
-    protected function procesarPlanillasBatch(DatosImportacion $datos): array
+    protected function procesarPlanillasBatch(DatosImportacion $datos, array $advertenciasIniciales = []): array
     {
         $exitosas = [];
         $fallidas = [];
-        $advertencias = [];
+        $advertencias = $advertenciasIniciales; // Incluir advertencias iniciales
         $estadisticas = [
             'tiempo_total' => 0,
             'elementos_creados' => 0,
