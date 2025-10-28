@@ -25,6 +25,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
         const maquinaId =
             document.getElementById("maquina-info")?.dataset?.maquinaId;
+
         if (!maquinaId) {
             console.error("No se encontró #maquina-info o data-maquina-id.");
             await Swal.fire({

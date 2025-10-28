@@ -13,6 +13,20 @@
     }
 
 @endphp
+@php
+    $elemento = $etiqueta->elementos->first();
+    $productos = [];
+
+    if ($elemento?->producto) {
+        $productos[] = $elemento->producto->n_colada ?? 'Producto 1';
+    }
+    if ($elemento?->producto2) {
+        $productos[] = $elemento->producto2->n_colada ?? 'Producto 2';
+    }
+    if ($elemento?->producto3) {
+        $productos[] = $elemento->producto3->n_colada ?? 'Producto 3';
+    }
+@endphp
 
 <style>
     /* === Contenedor general === */
@@ -146,6 +160,10 @@
             <h3 class="text-lg font-semibold text-gray-900">
                 {{ $etiqueta->nombre ?? 'Sin nombre' }} - Cal:B500SD - {{ $etiqueta->peso_kg ?? 'N/A' }}
             </h3>
+            <p class="text-[8pt] text-gray-800 leading-tight">
+                Coladas: <span class="font-semibold">{{ implode(', ', $productos) }}</span>
+            </p>
+
         </div>
 
         <!-- SVG -->

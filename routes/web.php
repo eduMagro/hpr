@@ -210,6 +210,10 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
         '/etiquetas/{etiquetaSubId}/validar-para-paquete',
         [PaqueteController::class, 'validarParaPaquete']
     )->name('etiquetas.validar-para-paquete');
+
+    // === tratamos PAQUETES en maquinas.show ===
+
+
     Route::resource('paquetes', PaqueteController::class);
     Route::resource('etiquetas', EtiquetaController::class);
     Route::resource('elementos', ElementoController::class);

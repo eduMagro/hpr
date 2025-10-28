@@ -679,4 +679,282 @@ class PaqueteController extends Controller
             'id' => $loc->id,
         ]);
     }
+
+    // Otros métodos del controlador... Creacion de paquetes a traves de maquinas.show
+
+    // ================================================================
+    // MÉTODOS ADICIONALES PARA PaqueteController.php
+    // Añadir estos métodos al controlador existente
+    // ================================================================
+
+    /**
+     * Obtener paquetes de una planilla específica con sus etiquetas
+     * 
+     * GET /api/planillas/{planillaId}/paquetes
+     */
+    public function obtenerPaquetesPorPlanilla($planillaId)
+    {
+        try {
+            $planilla = \App\Models\Planilla::findOrFail($planillaId);
+
+            // Obtener paquetes de esta planilla con sus etiquetas
+            $paquetes = Paquete::with(['etiquetas' => function ($query) {
+                $query->select('id', 'etiqueta_sub_id', 'paquete_id', 'peso', 'estado')
+                    ->withCount('elementos');
+            }, 'ubicacion:id,nombre'])
+                ->where('planilla_id', $planillaId)
+                ->orderBy('created_at', 'desc')
+                ->get();
+
+            $paquetesFormateados = $paquetes->map(function ($paquete) {
+                return [
+                    'id' => $paquete->id,
+                    'codigo' => $paquete->codigo,
+                    'peso' => number_format($paquete->peso, 2, '.', ''),
+                    'cantidad_etiquetas' => $paquete->etiquetas->count(),
+                    'ubicacion' => optional($paquete->ubicacion)->nombre ?? 'Sin ubicación',
+                    'created_at' => $paquete->created_at->format('d/m/Y H:i'),
+                    'etiquetas' => $paquete->etiquetas->map(function ($etiqueta) {
+                        return [
+                            'codigo' => $etiqueta->etiqueta_sub_id,
+                            'peso' => number_format($etiqueta->peso ?? 0, 2, '.', ''),
+                            'estado' => $etiqueta->estado,
+                            'elementos_count' => $etiqueta->elementos_count ?? 0,
+                        ];
+                    })->values()->all()
+                ];
+            });
+
+            return response()->json([
+                'success' => true,
+                'planilla' => [
+                    'id' => $planilla->id,
+                    'codigo' => $planilla->codigo
+                ],
+                'paquetes' => $paquetesFormateados
+            ]);
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Planilla no encontrada'
+            ], 404);
+        } catch (\Exception $e) {
+            Log::error('Error al obtener paquetes de planilla', [
+                'planilla_id' => $planillaId,
+                'error' => $e->getMessage()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al cargar los paquetes'
+            ], 500);
+        }
+    }
+
+    /**
+     * Añadir una etiqueta a un paquete existente
+     * 
+     * POST /api/paquetes/{paqueteId}/añadir-etiqueta
+     * Body: { "etiqueta_codigo": "2025-004512.1.1" }
+     */
+    public function añadirEtiquetaAPaquete(Request $request, $paqueteId)
+    {
+        $request->validate([
+            'etiqueta_codigo' => 'required|string'
+        ]);
+
+        DB::beginTransaction();
+
+        try {
+            $paquete = Paquete::findOrFail($paqueteId);
+            $codigoEtiqueta = trim($request->etiqueta_codigo);
+
+            // Buscar la etiqueta
+            $etiqueta = Etiqueta::where('etiqueta_sub_id', $codigoEtiqueta)->first();
+
+            if (!$etiqueta) {
+                return response()->json([
+                    'success' => false,
+                    'message' => "Etiqueta {$codigoEtiqueta} no encontrada"
+                ], 404);
+            }
+
+            // Validar que la etiqueta pertenezca a la misma planilla
+            if ($etiqueta->planilla_id !== $paquete->planilla_id) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'La etiqueta no pertenece a la misma planilla del paquete'
+                ], 400);
+            }
+
+            // Validar que la etiqueta no esté ya en otro paquete
+            if ($etiqueta->paquete_id && $etiqueta->paquete_id !== $paquete->id) {
+                $paqueteActual = Paquete::find($etiqueta->paquete_id);
+                return response()->json([
+                    'success' => false,
+                    'message' => "La etiqueta ya está en el paquete {$paqueteActual->codigo}"
+                ], 400);
+            }
+
+            // Si ya está en este paquete, informar
+            if ($etiqueta->paquete_id === $paquete->id) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'La etiqueta ya está en este paquete'
+                ], 400);
+            }
+
+            // Validar estado de la etiqueta
+            if (in_array(strtolower($etiqueta->estado), ['pendiente'])) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No se puede añadir una etiqueta completada a un paquete'
+                ], 400);
+            }
+
+            // Asignar etiqueta al paquete
+            $etiqueta->paquete_id = $paquete->id;
+            $etiqueta->estado = 'en paquete';
+            $etiqueta->save();
+
+            // Actualizar peso del paquete
+            $pesoEtiqueta = $etiqueta->peso ?? 0;
+            $paquete->peso += $pesoEtiqueta;
+            $paquete->save();
+
+            // Registrar movimiento
+            \App\Models\Movimiento::create([
+                'tipo' => 'Movimiento paquete',
+                'etiqueta_sub_id' => $etiqueta->etiqueta_sub_id,
+                'paquete_id' => $paquete->id,
+                'descripcion' => "Etiqueta {$codigoEtiqueta} añadida al paquete {$paquete->codigo}",
+                'estado' => 'completado',
+                'fecha_solicitud' => now(),
+                'ejecutado_por' => auth()->id(),
+            ]);
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => "Etiqueta añadida correctamente al paquete {$paquete->codigo}",
+                'paquete' => [
+                    'id' => $paquete->id,
+                    'codigo' => $paquete->codigo,
+                    'peso' => $paquete->peso
+                ]
+            ]);
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            DB::rollBack();
+            return response()->json([
+                'success' => false,
+                'message' => 'Paquete no encontrado'
+            ], 404);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Error al añadir etiqueta a paquete', [
+                'paquete_id' => $paqueteId,
+                'etiqueta_codigo' => $request->etiqueta_codigo ?? null,
+                'error' => $e->getMessage()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al añadir la etiqueta: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Eliminar una etiqueta de un paquete
+     * 
+     * DELETE /api/paquetes/{paqueteId}/eliminar-etiqueta
+     * Body: { "etiqueta_codigo": "2025-004512.1.1" }
+     */
+    public function eliminarEtiquetaDePaquete(Request $request, $paqueteId)
+    {
+        $request->validate([
+            'etiqueta_codigo' => 'required|string'
+        ]);
+
+        DB::beginTransaction();
+
+        try {
+            $paquete = Paquete::findOrFail($paqueteId);
+            $codigoEtiqueta = trim($request->etiqueta_codigo);
+
+            // Buscar la etiqueta
+            $etiqueta = Etiqueta::where('etiqueta_sub_id', $codigoEtiqueta)
+                ->where('paquete_id', $paquete->id)
+                ->first();
+
+            if (!$etiqueta) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'La etiqueta no se encuentra en este paquete'
+                ], 404);
+            }
+
+            // Guardar peso antes de desasociar
+            $pesoEtiqueta = $etiqueta->peso ?? 0;
+
+            // Desasociar etiqueta del paquete
+            $etiqueta->paquete_id = null;
+            $etiqueta->estado = 'pendiente'; // Volver a estado pendiente
+            $etiqueta->save();
+
+            // Actualizar peso del paquete
+            $paquete->peso = max(0, $paquete->peso - $pesoEtiqueta);
+            $paquete->save();
+
+            // Verificar si el paquete quedó vacío
+            $etiquetasRestantes = Etiqueta::where('paquete_id', $paquete->id)->count();
+
+            if ($etiquetasRestantes === 0) {
+                // Opcionalmente eliminar el paquete vacío
+                Log::warning("Paquete {$paquete->codigo} quedó sin etiquetas después de eliminar {$codigoEtiqueta}");
+            }
+
+            // Registrar movimiento
+            \App\Models\Movimiento::create([
+                'tipo' => 'Movimiento paquete',
+                'etiqueta_sub_id' => $etiqueta->etiqueta_sub_id,
+                'descripcion' => "Etiqueta {$codigoEtiqueta} eliminada del paquete {$paquete->codigo}",
+                'estado' => 'completado',
+                'fecha_solicitud' => now(),
+                'ejecutado_por' => auth()->id(),
+            ]);
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => "Etiqueta eliminada correctamente del paquete",
+                'paquete' => [
+                    'id' => $paquete->id,
+                    'codigo' => $paquete->codigo,
+                    'peso' => $paquete->peso,
+                    'etiquetas_restantes' => $etiquetasRestantes
+                ]
+            ]);
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            DB::rollBack();
+            return response()->json([
+                'success' => false,
+                'message' => 'Paquete no encontrado'
+            ], 404);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Error al eliminar etiqueta de paquete', [
+                'paquete_id' => $paqueteId,
+                'etiqueta_codigo' => $request->etiqueta_codigo ?? null,
+                'error' => $e->getMessage()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al eliminar la etiqueta: ' . $e->getMessage()
+            ], 500);
+        }
+    }
 }
