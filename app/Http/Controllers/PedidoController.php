@@ -16,6 +16,7 @@ use App\Models\Entrada;
 use App\Models\EntradaProducto;
 use App\Models\Ubicacion;
 use App\Models\Movimiento;
+use App\Models\Maquina;
 use App\Mail\PedidoCreado;
 use App\Models\User;
 use App\Models\Obra;
@@ -419,6 +420,12 @@ class PedidoController extends Controller
             abort(422, 'Falta el movimiento.');
         }
 
+        // 🚨 NUEVO: Máquina obligatoria desde la vista
+        $maquinaId = $request->query('maquina_id');
+        if (!$maquinaId) {
+            abort(422, 'Falta el ID de la máquina.');
+        }
+
         /** @var \App\Models\Movimiento $movimiento */
         $movimiento = Movimiento::with('pedidoProducto')->findOrFail($movimientoId);
 
@@ -430,8 +437,21 @@ class PedidoController extends Controller
         $linea = $movimiento->pedidoProducto; // 🔒 Línea asociada al movimiento
         $productoBase = $pedido->productos->firstWhere('id', $productoBaseId);
 
-        // === resto de tu lógica de recepcion (naves, ubicaciones, fabricantes, últimos, etc.) ===
-        $nave = $pedido->obra?->obra;
+        // 🚨 CAMBIO: Cargar máquina desde el parámetro
+        $maquina = Maquina::with('obra')->findOrFail($maquinaId);
+
+        if (!$maquina->obra_id) {
+            abort(422, 'La máquina no tiene una obra asignada.');
+        }
+
+        // Obtener el nombre de la nave desde la obra de la máquina
+        $nave = $maquina->obra?->obra ?? null;
+
+        if (!$nave) {
+            abort(422, 'No se encontró la nave asociada a la máquina.');
+        }
+
+        // Filtrar ubicaciones por la obra de la máquina (NO del pedido)
         $codigoAlmacen = Ubicacion::codigoDesdeNombreNave($nave);
         $ubicaciones = Ubicacion::where('almacen', $codigoAlmacen)
             ->orderBy('nombre')
@@ -468,7 +488,8 @@ class PedidoController extends Controller
             'fabricantes',
             'ultimoFabricante',
             'linea',
-            'movimiento'
+            'movimiento',
+            'maquina' // 👈 Agregada la máquina al compact
         ));
     }
 
