@@ -5,6 +5,7 @@ let elementos;
 let maquinas;
 let maquinasDivs;
 let btn_transferir;
+let btnGuardar;
 let datosOrdenPlanillaSeleccionado;
 let ultimoOrdenPlanillaId;
 
@@ -15,8 +16,16 @@ let modalGuardar;
 let modalElegirOrden;
 let modales = [];
 
-// constante elementos original, servira para referenciar los cambios realizados
+// variables datos originales, servira para referenciar los cambios realizados
 let ELEMENTOS_ORIGINAL;
+let ORDEN_PLANILLAS_ORIGINAL;
+
+// DRAG & DROP CROSS-COLUMN
+let DND = {
+    draggingEl: null,
+    sourceContainer: null,
+    placeholder: null,
+};
 
 document.addEventListener("DOMContentLoaded", () => {
     planillas = Array.from(
@@ -26,8 +35,6 @@ document.addEventListener("DOMContentLoaded", () => {
     elementos = Array.from(
         document.querySelectorAll("#todosElementos [data-elementos]")
     ).map((div) => JSON.parse(div.dataset.elementos));
-
-    ELEMENTOS_ORIGINAL = JSON.parse(JSON.stringify(elementos));
 
     ordenPlanillas = Array.from(
         document.querySelectorAll("#ordenPlanillas [data-orden]")
@@ -39,6 +46,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
     maquinasDivs = Array.from(document.getElementsByClassName("maquina"));
 
+    ELEMENTOS_ORIGINAL = JSON.parse(JSON.stringify(elementos));
+    ORDEN_PLANILLAS_ORIGINAL = JSON.parse(JSON.stringify(ordenPlanillas));
+
     // obtener el id de ordenPlanilla mas alto, asi poder trabaja con id de manera local sin llamar a la bd
     ultimoOrdenPlanillaId =
         Math.max(...ordenPlanillas.map((o) => Number(o.id) || 0)) || 0;
@@ -46,6 +56,9 @@ document.addEventListener("DOMContentLoaded", () => {
     //btn
     btn_transferir = document.getElementById("transferir_elementos");
     btn_transferir.addEventListener("click", transferirElementos);
+
+    btnGuardar = document.getElementById("btn_guardar");
+    if (btnGuardar) btnGuardar.addEventListener("click", guardarCambios);
 
     // modales
     modalMostrarElementos = document.getElementById("modal_elementos");
@@ -81,38 +94,43 @@ function renderPlanillas() {
         if (contenedor) contenedor.innerHTML = "";
     });
 
-    ordenPlanillas.forEach((planilla) => {
+    // ORDENAR por maquina_id y posicion antes de pintar
+    const ordenadas = [...ordenPlanillas].sort((a, b) => {
+        if (Number(a.maquina_id) !== Number(b.maquina_id)) {
+            return Number(a.maquina_id) - Number(b.maquina_id);
+        }
+        return Number(a.posicion) - Number(b.posicion);
+    });
+
+    ordenadas.forEach((planilla) => {
         // div que se renderizara
         let div = document.createElement("div");
 
         maquinasDivs.forEach((maq) => {
             let div_maquina_id = JSON.parse(maq.dataset.detalles).id;
             if (div_maquina_id == planilla.maquina_id) {
-                // creo el div de la planilla
                 div.className =
                     "planilla group p-3 flex justify-around items-center border-2 border-emerald-400 hover:border-emerald-600 hover:-translate-y-1 transition-transform duration-75 ease-in-out rounded-xl cursor-grab bg-gradient-to-tr from-neutral-100 to-neutral-200 hover:from-emerald-300 hover:to-emerald-400 active:cursor-grabbing select-none text-center relative";
                 div.dataset.ordenId = planilla.id;
+                div.dataset.planillaId = planilla.planilla_id;
+                div.setAttribute("draggable", "true");
 
-                // creo los divs del contenido (posicion y codigo planilla)
                 let divPosicion = document.createElement("div");
                 divPosicion.className =
                     "posicion text-emerald-600 group-hover:text-black text-xs font-bold absolute top-1 left-1 pos-label";
                 divPosicion.innerText = planilla.posicion;
 
-                // obtenerCodigoPlanilla
                 let divCodigoPlanilla = document.createElement("div");
                 let codigo_planilla;
-
-                planillas.forEach((planilla_i) => {
+                for (const planilla_i of planillas) {
                     if (planilla_i.id == planilla.planilla_id) {
                         codigo_planilla = planilla_i.codigo;
+                        break;
                     }
-                });
-
+                }
                 divCodigoPlanilla.innerText = codigo_planilla;
                 divCodigoPlanilla.className =
                     "codigo text-emerald-800 font-semibold";
-
                 div.dataset.codigo = codigo_planilla;
 
                 div.appendChild(divPosicion);
@@ -120,7 +138,7 @@ function renderPlanillas() {
             }
         });
 
-        // pintar la maquina en el div .maquina con misma maquina_id que planilla
+        // pintar en su columna
         maquinasDivs.forEach((maqDiv) => {
             let maqId = maqDiv.getAttribute("data-maquina-id");
             if (maqId == planilla.maquina_id) {
@@ -128,7 +146,9 @@ function renderPlanillas() {
             }
         });
     });
+
     agregarClickAPlanillas();
+    initDragAndDrop();
 }
 
 // agregar listener click a las planillas, rehacerlo cada vez que se hagan cambios para evitar problemas con nuevos orden_planillas
@@ -299,6 +319,9 @@ let _hlNodes = [];
 function _clearHighlight() {
     if (!_hlNodes.length) return;
     _hlNodes.forEach((opd) => {
+        // si el nodo ya no está en el DOM, sáltalo
+        if (!opd || !opd.isConnected) return;
+
         opd.classList.remove(
             "border-indigo-500",
             "from-indigo-200",
@@ -310,6 +333,15 @@ function _clearHighlight() {
         opd.querySelector(".codigo")?.classList.add("text-emerald-800");
         opd.querySelector(".posicion")?.classList.remove("text-indigo-700");
         opd.querySelector(".posicion")?.classList.add("text-emerald-600");
+
+        // header de la máquina (ajusta el selector si tu header tiene otra clase)
+        const maquinaHeader = opd
+            .closest(".maquina")
+            ?.querySelector(":scope > *:first-child");
+        if (maquinaHeader) {
+            maquinaHeader.classList.add("from-emerald-600", "to-emerald-700");
+            maquinaHeader.classList.remove("from-indigo-400", "to-indigo-500");
+        }
     });
     _hlNodes = [];
     _hlCode = null;
@@ -345,6 +377,22 @@ function resaltarCompis() {
                     "to-indigo-300",
                     "-translate-y-[1px]"
                 );
+
+                // resaltar maquina
+                const maquinaHeader = opd
+                    .closest(".maquina")
+                    ?.querySelector(":scope > *:first-child");
+                if (maquinaHeader) {
+                    maquinaHeader.classList.remove(
+                        "from-emerald-600",
+                        "to-emerald-700"
+                    );
+                    maquinaHeader.classList.add(
+                        "from-indigo-400",
+                        "to-indigo-500"
+                    );
+                }
+
                 opd.querySelector(".codigo")?.classList.add("text-indigo-900");
                 opd.querySelector(".codigo")?.classList.remove(
                     "text-emerald-800"
@@ -530,7 +578,16 @@ function transferirElementos() {
                 }
             });
 
-            cerrarModales(); // cierra todos, incluido el de elegir orden
+            // id de la orden de origen (la que abriste en el modal)
+            const origenOrdenId = Number(datosOrdenPlanillaSeleccionado.id);
+
+            // quedan elementos en la orden de origen?
+            if (countElementosByOrdenId(origenOrdenId) === 0) {
+                removeOrdenPlanilla(origenOrdenId);
+            }
+
+            // refrescos
+            cerrarModales();
             renderPlanillas();
             sePuedeGuardar();
         });
@@ -561,15 +618,25 @@ function transferirElementos() {
             }
         });
 
+        // id de la orden de origen (la que abriste en el modal)
+        const origenOrdenId = Number(datosOrdenPlanillaSeleccionado.id);
+
+        // quedan elementos en la orden de origen?
+        if (countElementosByOrdenId(origenOrdenId) === 0) {
+            removeOrdenPlanilla(origenOrdenId);
+        }
+
         cerrarModales();
         renderPlanillas();
         sePuedeGuardar();
     }
 }
 
-function cerrarModales() {
+function cerrarModales(noCerrar = null) {
     modales.forEach((modal) => {
-        modal.classList.add("hidden");
+        if (modal != noCerrar) {
+            modal.classList.add("hidden");
+        }
     });
 }
 
@@ -642,6 +709,7 @@ function findOrdenesCoincidentes(maquinaId, code) {
 // Pinta las coincidencias en el modal_elegir_orden
 function renderModalElegirOrden({ maquinaId, codigo, coincidencias }) {
     const meo = document.getElementById("modal_elegir_orden");
+    cerrarModales(meo);
     const cont = document.getElementById("meo_lista");
     const nom = document.getElementById("meo_maquina_nombre");
     const cod = document.getElementById("meo_codigo");
@@ -659,12 +727,11 @@ function renderModalElegirOrden({ maquinaId, codigo, coincidencias }) {
         coincidencias.forEach((c) => {
             const div = document.createElement("label");
             div.className =
-                "meo_item flex items-center gap-3 p-2 rounded-lg border cursor-pointer transition-all duration-100";
+                "flex items-center gap-3 p-2 rounded-lg border cursor-pointer transition-all duration-100";
             div.innerHTML = `
         <input type="radio" name="meo_opcion" value="${c.orden_id}">
         <div class="flex flex-col">
-          <div class="text-sm"><span class="font-semibold">Orden #${c.orden_id}</span> — <span class="font-mono">${c.codigo}</span></div>
-          <div class="text-xs text-gray-600">Posición actual: ${c.posicion}</div>
+          <div class="text-sm">Planilla en posición: <span class="font-semibold">${c.posicion}</span></div>
         </div>
       `;
             cont.appendChild(div);
@@ -672,4 +739,336 @@ function renderModalElegirOrden({ maquinaId, codigo, coincidencias }) {
     }
 
     meo.classList.remove("hidden");
+}
+
+/*
+INICIO INICIO INICIO INICIO INICIO INICIO INICIO
+FUNCIONES PARA DRAG DROP
+INICIO INICIO INICIO INICIO INICIO INICIO INICIO
+*/
+
+function getContainerMachineId(containerEl) {
+    // containerEl es .planillas; su padre .maquina lleva data-detalles
+    const maqDiv = containerEl.closest(".maquina");
+    if (!maqDiv) return null;
+    try {
+        return Number(JSON.parse(maqDiv.dataset.detalles).id);
+    } catch {
+        return null;
+    }
+}
+
+function makePlaceholder(heightPx) {
+    const ph = document.createElement("div");
+    ph.className =
+        "planilla placeholder p-3 flex justify-around items-center rounded-xl box-border shrink-0";
+    ph.style.height = `${heightPx || 56}px`;
+    ph.style.minHeight = `${heightPx || 56}px`; // cinturón y tirantes
+    return ph;
+}
+
+function getChildCards(container) {
+    const all = Array.from(
+        container.querySelectorAll(".planilla:not(.placeholder)")
+    );
+    // Excluir SOLO si está realmente en arrastre (tiene la clase .dragging)
+    if (
+        DND.draggingEl &&
+        DND.draggingEl.classList.contains("dragging") &&
+        container.contains(DND.draggingEl)
+    ) {
+        return all.filter((n) => n !== DND.draggingEl);
+    }
+    return all;
+}
+
+function calcDropIndex(container, clientY) {
+    const cards = getChildCards(container);
+    for (let i = 0; i < cards.length; i++) {
+        const rect = cards[i].getBoundingClientRect();
+        const midY = rect.top + rect.height / 2;
+        if (clientY < midY) return i;
+    }
+    return cards.length;
+}
+
+function reindexDOMColumn(container) {
+    const cards = getChildCards(container);
+    cards.forEach((card, i) => {
+        const pos = card.querySelector(".posicion");
+        if (pos) pos.textContent = String(i + 1);
+    });
+}
+
+function syncOrdenPlanillasFromDOM(container) {
+    // Sincroniza el array ordenPlanillas con el orden actual del DOM en esta columna
+    const maquinaId = getContainerMachineId(container);
+    const cards = getChildCards(container);
+    cards.forEach((card, i) => {
+        const oid = Number(card.dataset.ordenId);
+        const op = ordenPlanillas.find((o) => Number(o.id) === oid);
+        if (op) {
+            op.maquina_id = Number(maquinaId);
+            op.posicion = i + 1;
+        }
+    });
+}
+
+function moveElementsWithOrdenToMachine(ordenId, nuevaMaquinaId) {
+    // Todos los elementos con ese orden_planilla_id cambian su maquina_id
+    elementos.forEach((e) => {
+        if (Number(e.orden_planilla_id) === Number(ordenId)) {
+            e.maquina_id = Number(nuevaMaquinaId);
+            // e.orden_planilla_id NO cambia porque seguimos moviendo la misma orden
+        }
+    });
+}
+
+function initDragAndDrop() {
+    // limpiar listeners previos (recreamos de forma segura)
+    document.querySelectorAll(".planilla").forEach((card) => {
+        card.removeEventListener("_dnd_bound", () => {});
+    });
+
+    const cards = document.querySelectorAll(".planilla");
+    const containers = document.querySelectorAll(".maquina .planillas");
+
+    containers.forEach((c) => {
+        // asegurar que soporta drop
+        c.addEventListener(
+            "dragover",
+            (e) => {
+                e.preventDefault();
+                if (!DND.draggingEl) return;
+                c.classList.add("drop-target");
+
+                // altura visual exacta del ítem arrastrado
+                const h = Math.max(
+                    DND.draggingEl.getBoundingClientRect().height || 56,
+                    56
+                );
+
+                // placeholder
+                if (!DND.placeholder) {
+                    const h = Math.max(DND.draggingEl?.offsetHeight || 56, 56);
+                    DND.placeholder = makePlaceholder(h);
+                } else {
+                    // si cambió la altura de la card (responsive), sincroniza
+                    const h = Math.max(DND.draggingEl?.offsetHeight || 56, 56);
+                    DND.placeholder.style.height = `${h}px`;
+                }
+
+                const idx = calcDropIndex(c, e.clientY);
+                const currentChildren = getChildCards(c);
+                const refNode = currentChildren[idx] || null;
+                if (DND.placeholder.parentElement !== c) {
+                    c.insertBefore(DND.placeholder, refNode);
+                } else {
+                    c.insertBefore(DND.placeholder, refNode);
+                }
+
+                reindexPreview(c, DND.placeholder);
+            },
+            { passive: false }
+        );
+
+        c.addEventListener("dragleave", (e) => {
+            // si te vas fuera del contenedor, quitamos highlight
+            const to = e.relatedTarget;
+            if (!c.contains(to)) {
+                c.classList.remove("drop-target");
+            }
+        });
+    });
+
+    cards.forEach((card) => {
+        card.addEventListener("dragstart", (e) => {
+            DND.draggingEl = e.currentTarget;
+            DND.sourceContainer = DND.draggingEl.closest(".planillas");
+            DND.draggingEl.classList.add("dragging");
+            e.dataTransfer.effectAllowed = "move";
+            try {
+                e.dataTransfer.setData(
+                    "text/plain",
+                    DND.draggingEl.dataset.ordenId || ""
+                );
+            } catch {}
+        });
+
+        card.addEventListener("dragend", () => {
+            const finalContainer =
+                DND.placeholder?.parentElement || DND.sourceContainer;
+
+            const targetMachineId = getContainerMachineId(finalContainer);
+            const ordenId = Number(DND.draggingEl.dataset.ordenId);
+
+            // Inserta el card real donde está el placeholder
+            if (DND.placeholder && DND.placeholder.parentElement) {
+                finalContainer.insertBefore(DND.draggingEl, DND.placeholder);
+            }
+
+            // Limpieza visual
+            document
+                .querySelectorAll(".planillas.drop-target")
+                .forEach((el) => el.classList.remove("drop-target"));
+            DND.draggingEl.classList.remove("dragging");
+            if (DND.placeholder && DND.placeholder.parentElement) {
+                DND.placeholder.parentElement.removeChild(DND.placeholder);
+            }
+            DND.placeholder = null;
+
+            // Guarda refs y ANULA dragging antes de reindexar/sincronizar
+            const src = DND.sourceContainer;
+            const dst = finalContainer;
+            const draggingRef = DND.draggingEl;
+            DND.draggingEl = null; // <- clave para que getChildCards ya NO la excluya
+            DND.sourceContainer = null;
+
+            // Reindex DOM
+            if (src && dst !== src) reindexDOMColumn(src);
+            reindexDOMColumn(dst);
+
+            // Actualiza elementos -> nueva máquina (si ha cambiado de columna)
+            if (targetMachineId != null) {
+                moveElementsWithOrdenToMachine(ordenId, targetMachineId);
+            }
+
+            // Sincroniza arrays con el DOM definitivo
+            if (src) syncOrdenPlanillasFromDOM(src);
+            if (dst) syncOrdenPlanillasFromDOM(dst);
+
+            normalizeOrdenPlanillas();
+            _clearHighlight();
+            // Repinta y muestra guardar si procede
+            renderPlanillas();
+            sePuedeGuardar();
+        });
+    });
+}
+
+/**
+ * Mientras arrastras, muestra reindex "what-you-see-is-what-you-get"
+ */
+function reindexPreview(container, placeholder) {
+    const children = Array.from(container.children);
+    let pos = 1;
+    for (const node of children) {
+        if (!node.classList.contains("planilla")) continue;
+        const isPh = node.classList.contains("placeholder");
+        // Ignorar la tarjeta que se está arrastrando si aún aparece en el DOM aquí
+        if (DND.draggingEl && node === DND.draggingEl) continue;
+
+        if (!isPh) {
+            const posEl = node.querySelector(".posicion");
+            if (posEl) posEl.textContent = String(pos);
+        }
+        pos++;
+    }
+}
+
+function normalizeOrdenPlanillas() {
+    ordenPlanillas.sort((a, b) => {
+        if (Number(a.maquina_id) !== Number(b.maquina_id)) {
+            return Number(a.maquina_id) - Number(b.maquina_id);
+        }
+        return Number(a.posicion) - Number(b.posicion);
+    });
+}
+
+/*
+FIN FIN FIN FIN FIN FIN FIN FIN FIN FIN FIN FIN
+FUNCIONES PARA DRAG DROP
+FIN FIN FIN FIN FIN FIN FIN FIN FIN FIN FIN FIN
+*/
+
+// comprobar que no quedan elementos en la planilla donde se ha hecho un movimiento de elementos
+function countElementosByOrdenId(ordenId) {
+    const oid = Number(ordenId);
+    return elementos.reduce(
+        (acc, e) => acc + (Number(e.orden_planilla_id) === oid ? 1 : 0),
+        0
+    );
+}
+
+function reindexMachine(maquinaId) {
+    const mid = Number(maquinaId);
+    const ops = ordenPlanillas
+        .filter((o) => Number(o.maquina_id) === mid)
+        .sort((a, b) => Number(a.posicion) - Number(b.posicion));
+    ops.forEach((o, i) => {
+        o.posicion = i + 1;
+    });
+}
+
+// eliminar elOrdenPlanilla que se ha quedado sin elementos
+function removeOrdenPlanilla(ordenId) {
+    const oid = Number(ordenId);
+    const idx = ordenPlanillas.findIndex((o) => Number(o.id) === oid);
+    if (idx === -1) return;
+    const maquinaId = ordenPlanillas[idx].maquina_id;
+    ordenPlanillas.splice(idx, 1);
+    reindexMachine(maquinaId);
+}
+
+// 
+function diffElementos(actual, original) {
+    const origMap = new Map(original.map((e) => [Number(e.id), e]));
+    const modificados = [];
+    for (const e of actual) {
+        const o = origMap.get(Number(e.id));
+        if (!o) continue;
+        if (
+            Number(e.maquina_id) !== Number(o.maquina_id) ||
+            Number(e.orden_planilla_id) !== Number(o.orden_planilla_id)
+        ) {
+            modificados.push({
+                id: Number(e.id),
+                maquina_id: Number(e.maquina_id),
+                orden_planilla_id: Number(e.orden_planilla_id),
+            });
+        }
+    }
+    return modificados;
+}
+
+function diffOrdenes(actual, original) {
+    const origMap = new Map(original.map((o) => [Number(o.id), o]));
+    const actMap = new Map(actual.map((o) => [Number(o.id), o]));
+
+    const nuevas = [];
+    const actualizadas = [];
+    const eliminadas = [];
+
+    // nuevas o actualizadas
+    for (const oAct of actual) {
+        const enOrig = origMap.get(Number(oAct.id));
+        if (!enOrig) {
+            nuevas.push({
+                id: Number(oAct.id),
+                maquina_id: Number(oAct.maquina_id),
+                planilla_id: Number(oAct.planilla_id),
+                posicion: Number(oAct.posicion),
+            });
+        } else {
+            const changed =
+                Number(oAct.maquina_id) !== Number(enOrig.maquina_id) ||
+                Number(oAct.posicion) !== Number(enOrig.posicion);
+            if (changed) {
+                actualizadas.push({
+                    id: Number(oAct.id),
+                    maquina_id: Number(oAct.maquina_id),
+                    posicion: Number(oAct.posicion),
+                });
+            }
+        }
+    }
+
+    // eliminadas
+    for (const oOrig of original) {
+        if (!actMap.has(Number(oOrig.id))) {
+            eliminadas.push(Number(oOrig.id));
+        }
+    }
+
+    return { nuevas, actualizadas, eliminadas };
 }

@@ -90,7 +90,7 @@ $numMaquinas = $maquinas->count();
             </button>
         </div>
 
-        <div id="modal_transferir_a_maquina" class="bg-black bg-opacity-60 absolute top-0 left-0 w-screen h-screen flex items-center justify-center hidden backdrop-blur-sm">
+        <div id="modal_transferir_a_maquina" class="bg-black bg-opacity-50 absolute top-0 left-0 w-screen h-screen flex items-center justify-center hidden backdrop-blur-sm">
             <div class="bg-neutral-100 shadow-lg rounded-lg p-3 flex flex-col gap-4 items-center min-w-[calc(100vw-40vw)]">
                 <div class="uppercase font-medium">Seleccione nueva ubicación</div>
 
@@ -112,7 +112,7 @@ $numMaquinas = $maquinas->count();
         </div>
 
 
-        <div id="modal_elementos" class="bg-black bg-opacity-60 absolute top-0 left-0 w-screen h-screen flex items-center justify-center hidden backdrop-blur-sm">
+        <div id="modal_elementos" class="bg-black bg-opacity-50 absolute top-0 left-0 w-screen h-screen flex items-center justify-center hidden backdrop-blur-sm">
             <div id="div_elementos" class="flex flex-col transition-all duration-100 p-3 bg-neutral-100 rounded-xl shadow-xl gap-3 items-center">
                 <div class="uppercase flex gap-3 justify-center items-center">
                     <p>Elementos de <span id="seleccion_planilla_codigo" class="chip">****-******</span></p>
@@ -134,7 +134,7 @@ $numMaquinas = $maquinas->count();
         </div>
 
         <!-- Modal elegir orden existente o crear nueva -->
-        <div id="modal_elegir_orden" class="bg-black bg-opacity-60 absolute top-0 left-0 w-screen h-screen flex items-center justify-center hidden backdrop-blur-sm">
+        <div id="modal_elegir_orden" class="bg-black bg-opacity-50 absolute top-0 left-0 w-screen h-screen flex items-center justify-center hidden backdrop-blur-sm">
             <div class="bg-neutral-100 shadow-lg rounded-lg p-4 flex flex-col gap-4 items-center min-w-[calc(100vw-40vw)]">
                 <div class="uppercase font-semibold text-center">
                     Coincidencias en <span id="meo_maquina_nombre" class="font-mono text-indigo-700"></span>
@@ -159,18 +159,18 @@ $numMaquinas = $maquinas->count();
                 </div>
 
                 <div class="flex gap-3">
-                    <button id="meo_cancelar" class="p-2 px-6 bg-neutral-400 hover:bg-neutral-500 hover:text-white transition-all duration-150 rounded-lg uppercase font-semibold">
-                        Cancelar
-                    </button>
-                    <button id="meo_confirmar" class="p-2 px-6 bg-emerald-600 hover:bg-emerald-700 text-white transition-all duration-150 rounded-lg uppercase font-semibold">
+                    <button id="meo_confirmar" class="p-2 px-6 bg-orange-400 hover:bg-orange-500 hover:text-white transition-all duration-150 rounded-lg uppercase font-semibold">
                         Confirmar
+                    </button>
+                    <button id="meo_cancelar" class="p-2 px-6 bg-red-400 hover:bg-red-600 hover:text-white transition-all duration-150 rounded-lg uppercase font-semibold">
+                        Cancelar
                     </button>
                 </div>
             </div>
         </div>
 
 
-        <div id="modal_advertencia_compatibilidad" class="bg-black bg-opacity-60 absolute top-0 left-0 w-screen h-screen flex items-center justify-center hidden backdrop-blur-sm">
+        <div id="modal_advertencia_compatibilidad" class="bg-black bg-opacity-50 absolute top-0 left-0 w-screen h-screen flex items-center justify-center hidden backdrop-blur-sm">
             <div class="bg-white shadow-lg rounded-lg p-4 flex flex-col gap-4 items-center max-w-2xl w-full max-h-[80vh]">
                 <div class="uppercase font-medium text-center text-red-600">
                     ⚠️ Advertencia de Compatibilidad
@@ -318,7 +318,32 @@ $numMaquinas = $maquinas->count();
         #meo_lista .meo_item:hover {
             background: rgba(16, 185, 129, 0.08);
         }
+
+        .planilla.placeholder {
+            border: 2px dashed #2563eb !important;
+            background: repeating-linear-gradient(45deg,
+                    rgba(99, 102, 241, .10),
+                    rgba(99, 102, 241, .10) 8px,
+                    rgba(16, 185, 129, .10) 8px,
+                    rgba(16, 185, 129, .10) 16px) !important;
+            opacity: .6 !important;
+
+            box-sizing: border-box;
+            flex-shrink: 0;
+        }
+
+        .maquina .planillas.drop-target {
+            outline: 3px dashed #10b981;
+            outline-offset: 4px;
+            border-radius: .75rem;
+        }
+
+        .planilla.dragging {
+            opacity: .5 !important;
+            transform: rotate(1deg);
+        }
     </style>
+
 
 
 
