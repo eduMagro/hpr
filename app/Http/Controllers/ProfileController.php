@@ -118,7 +118,6 @@ class ProfileController extends Controller
         return $filtros;
     }
 
-
     private function getOrdenamiento(string $columna, string $titulo): string
     {
         $currentSort = request('sort');
@@ -260,7 +259,6 @@ class ProfileController extends Controller
 
         return $query;
     }
-
 
     public function index(Request $request)
     {
@@ -637,6 +635,7 @@ class ProfileController extends Controller
 
         return sprintf("#%02X%02X%02X", $rgb[0], $rgb[1], $rgb[2]);
     }
+
     /**
      * Display the user's profile form.
      */
@@ -666,6 +665,7 @@ class ProfileController extends Controller
             });
         return view('profile.edit', compact('user', 'sesiones'));
     }
+
     /**
      * Update the user's profile information.
      */
