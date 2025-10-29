@@ -12,6 +12,7 @@ let ultimoOrdenPlanillaId;
 let modalMostrarElementos;
 let modalTransferirAMaquina;
 let modalGuardar;
+let modalElegirOrden;
 let modales = [];
 
 // constante elementos original, servira para referenciar los cambios realizados
@@ -52,8 +53,12 @@ document.addEventListener("DOMContentLoaded", () => {
         "modal_transferir_a_maquina"
     );
     modalGuardar = document.getElementById("modal_guardar");
-
-    modales = [modalMostrarElementos, modalTransferirAMaquina];
+    modalElegirOrden = document.getElementById("modal_elegir_orden");
+    modales = [
+        modalMostrarElementos,
+        modalTransferirAMaquina,
+        modalElegirOrden,
+    ];
 
     // Agregar Listener de cierre a los modales cuando se clicka fuera de los hijos del mismo
     modales.forEach((modal) => {
@@ -108,7 +113,7 @@ function renderPlanillas() {
                 divCodigoPlanilla.className =
                     "codigo text-emerald-800 font-semibold";
 
-                div.dataset.codigo = codigo_planilla; // 👈 importante
+                div.dataset.codigo = codigo_planilla;
 
                 div.appendChild(divPosicion);
                 div.appendChild(divCodigoPlanilla);
@@ -268,8 +273,8 @@ function anadirPropiedadTransferible() {
                 );
                 target.classList.add(
                     "seleccionado",
-                    "from-indigo-400",
-                    "to-emerald-500"
+                    "to-indigo-400",
+                    "from-emerald-500"
                 );
             } else {
                 target.classList.add(
@@ -279,8 +284,8 @@ function anadirPropiedadTransferible() {
                 );
                 target.classList.remove(
                     "seleccionado",
-                    "from-indigo-400",
-                    "to-emerald-500"
+                    "to-indigo-400",
+                    "from-emerald-500"
                 );
             }
         });
@@ -380,7 +385,7 @@ function resaltarCompis() {
 // elegir a que maquina movel los elementos
 function seleccionarMaquinaParaMovimiento() {
     // cambiar de modal
-    modal_elementos.classList.add("hidden");
+    modalMostrarElementos.classList.add("hidden");
     modalTransferirAMaquina.classList.remove("hidden");
 
     // obtener maquinas e inicializar maquina seleccionada a null
@@ -455,16 +460,84 @@ function transferirElementos() {
     // existe la planilla?
     // si existe:
     if (existe) {
-        console.log(
-            "NO IMPLEMENTADO: Ya hay una planilla con el mismo codigo en la maquina seleccionada"
+        // 1) Construir lista de coincidencias con mismo código en máquina seleccionada
+        const codigoCoincide = datosOrdenPlanillaSeleccionado.codigo;
+        const coincidencias = findOrdenesCoincidentes(
+            maquinaId,
+            codigoCoincide
         );
+
+        // 2) Pintar modal y preparar handlers
+        renderModalElegirOrden({
+            maquinaId,
+            codigo: codigoCoincide,
+            coincidencias,
+        });
+
+        // Handlers del modal
+        const meo = document.getElementById("modal_elegir_orden");
+        const btnConfirmar = document.getElementById("meo_confirmar");
+        const btnCancelar = document.getElementById("meo_cancelar");
+
+        // para evitar múltiples binds si se abre varias veces
+        btnConfirmar.replaceWith(btnConfirmar.cloneNode(true));
+        btnCancelar.replaceWith(btnCancelar.cloneNode(true));
+
+        const _btnConfirmar = document.getElementById("meo_confirmar");
+        const _btnCancelar = document.getElementById("meo_cancelar");
+
+        _btnCancelar.addEventListener("click", () => {
+            meo.classList.add("hidden");
+        });
+
+        _btnConfirmar.addEventListener("click", () => {
+            // radio seleccionado
+            const sel = document.querySelector(
+                'input[name="meo_opcion"]:checked'
+            );
+            if (!sel) return; // no se seleccionó nada
+
+            const val = sel.value;
+            let destinoOrdenId = null;
+
+            if (val === "__crear_nueva__") {
+                // Crear nueva al final
+                const te_planillas2 = maquinaDiv.querySelectorAll(".planilla");
+                const posicionNueva = te_planillas2.length + 1;
+
+                const nuevaOrdenPlanilla = {
+                    id: Number(ultimoOrdenPlanillaId) + 1,
+                    maquina_id: Number(maquinaId),
+                    planilla_id: Number(
+                        datosOrdenPlanillaSeleccionado.planilla_id
+                    ),
+                    posicion: posicionNueva,
+                };
+                ultimoOrdenPlanillaId = nuevaOrdenPlanilla.id;
+                destinoOrdenId = nuevaOrdenPlanilla.id;
+                ordenPlanillas.push(nuevaOrdenPlanilla);
+            } else {
+                destinoOrdenId = Number(val);
+            }
+
+            // Actualizar elementos seleccionados -> a maquinaId y orden_planilla_id destinoOrdenId
+            elementosSeleccionados.forEach((card) => {
+                const elId = Number(card.dataset.id);
+                const idx = elementos.findIndex((e) => Number(e.id) === elId);
+                if (idx !== -1) {
+                    elementos[idx].maquina_id = Number(maquinaId);
+                    elementos[idx].orden_planilla_id = Number(destinoOrdenId);
+                }
+            });
+
+            cerrarModales(); // cierra todos, incluido el de elegir orden
+            renderPlanillas();
+            sePuedeGuardar();
+        });
     } else {
-        //no existe
-        // como en la bd la id de ordenPlanilla es "Auto Increment", tomaremos el ultimo valor existente y le agregaremos uno, usamos una variable
-        // global por si el proceso se repite durante la sesion en la pagina
+        // no existe: crear nueva al final
         let posicionNueva = te_planillas.length + 1;
 
-        // creamos localmente la nueva ordenPlanilla
         let nuevaOrdenPlanilla = {
             id: Number(ultimoOrdenPlanillaId) + 1,
             maquina_id: Number(maquinaId),
@@ -478,18 +551,14 @@ function transferirElementos() {
         // la agregamos a la variable global
         ordenPlanillas.push(nuevaOrdenPlanilla);
 
-        // asignar los elementos a la nueva ordenPlanilla y maquina, comprobamos por codigo
+        // asignar los elementos (usando id del dataset del card para máxima fiabilidad)
         elementosSeleccionados.forEach((elementoSeleccionado) => {
-            let codigoSeleccionado = elementoSeleccionado
-                .querySelector("p")
-                .innerText.trim();
-
-            elementos.forEach((elemento2) => {
-                if (elemento2.codigo == codigoSeleccionado) {
-                    elemento2.maquina_id = Number(maquinaId);
-                    elemento2.orden_planilla_id = nuevoOrdenId;
-                }
-            });
+            const elId = Number(elementoSeleccionado.dataset.id);
+            const idx = elementos.findIndex((e) => Number(e.id) === elId);
+            if (idx !== -1) {
+                elementos[idx].maquina_id = Number(maquinaId);
+                elementos[idx].orden_planilla_id = Number(nuevoOrdenId);
+            }
         });
 
         cerrarModales();
@@ -502,6 +571,21 @@ function cerrarModales() {
     modales.forEach((modal) => {
         modal.classList.add("hidden");
     });
+}
+
+function getMaquinaById(id) {
+    const mid = Number(id);
+    return maquinas.find((m) => Number(m.id) === mid) || null;
+}
+
+function getPlanillaById(id) {
+    const pid = Number(id);
+    return planillas.find((p) => Number(p.id) === pid) || null;
+}
+
+function getOrdenesPorMaquina(maquinaId) {
+    const mid = Number(maquinaId);
+    return ordenPlanillas.filter((o) => Number(o.maquina_id) === mid);
 }
 
 function hasCambiosElementos(actual, original) {
@@ -523,13 +607,69 @@ function hasCambiosElementos(actual, original) {
 }
 
 function sePuedeGuardar() {
-    if (hasCambiosElementos) {
-        console.log("mostrando");
+    if (hasCambiosElementos(elementos, ELEMENTOS_ORIGINAL)) {
         modalGuardar.classList.remove("-bottom-14");
         modalGuardar.classList.add("bottom-14");
     } else {
-        console.log("naopao");
         modalGuardar.classList.add("-bottom-14");
         modalGuardar.classList.remove("bottom-14");
     }
+}
+
+/**
+ * Devuelve las ordenes de la maquina cuyo planilla.codigo === code
+ * con datos enriquecidos para mostrar.
+ */
+function findOrdenesCoincidentes(maquinaId, code) {
+    const ops = getOrdenesPorMaquina(maquinaId);
+    const res = [];
+    ops.forEach((op) => {
+        const p = getPlanillaById(op.planilla_id);
+        if (p && String(p.codigo).trim() === String(code).trim()) {
+            res.push({
+                orden_id: Number(op.id),
+                posicion: Number(op.posicion),
+                planilla_id: Number(op.planilla_id),
+                codigo: p.codigo,
+            });
+        }
+    });
+    // ordenar por posicion asc
+    res.sort((a, b) => a.posicion - b.posicion);
+    return res;
+}
+
+// Pinta las coincidencias en el modal_elegir_orden
+function renderModalElegirOrden({ maquinaId, codigo, coincidencias }) {
+    const meo = document.getElementById("modal_elegir_orden");
+    const cont = document.getElementById("meo_lista");
+    const nom = document.getElementById("meo_maquina_nombre");
+    const cod = document.getElementById("meo_codigo");
+
+    const maq = getMaquinaById(maquinaId);
+    nom.textContent = maq
+        ? maq.nombre || maq.codigo || `#${maquinaId}`
+        : `#${maquinaId}`;
+    cod.textContent = codigo;
+    cont.innerHTML = "";
+
+    if (!Array.isArray(coincidencias) || !coincidencias.length) {
+        cont.innerHTML = `<div class="text-sm text-gray-600 p-2">No se encontraron coincidencias (esto no debería mostrarse si vienes por rama "existe").</div>`;
+    } else {
+        coincidencias.forEach((c) => {
+            const div = document.createElement("label");
+            div.className =
+                "meo_item flex items-center gap-3 p-2 rounded-lg border cursor-pointer transition-all duration-100";
+            div.innerHTML = `
+        <input type="radio" name="meo_opcion" value="${c.orden_id}">
+        <div class="flex flex-col">
+          <div class="text-sm"><span class="font-semibold">Orden #${c.orden_id}</span> — <span class="font-mono">${c.codigo}</span></div>
+          <div class="text-xs text-gray-600">Posición actual: ${c.posicion}</div>
+        </div>
+      `;
+            cont.appendChild(div);
+        });
+    }
+
+    meo.classList.remove("hidden");
 }

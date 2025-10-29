@@ -133,6 +133,43 @@ $numMaquinas = $maquinas->count();
             </div>
         </div>
 
+        <!-- Modal elegir orden existente o crear nueva -->
+        <div id="modal_elegir_orden" class="bg-black bg-opacity-60 absolute top-0 left-0 w-screen h-screen flex items-center justify-center hidden backdrop-blur-sm">
+            <div class="bg-neutral-100 shadow-lg rounded-lg p-4 flex flex-col gap-4 items-center min-w-[calc(100vw-40vw)]">
+                <div class="uppercase font-semibold text-center">
+                    Coincidencias en <span id="meo_maquina_nombre" class="font-mono text-indigo-700"></span>
+                </div>
+
+                <div class="text-sm text-gray-700 text-center">
+                    Ya existen planillas con el mismo código <span id="meo_codigo" class="font-mono font-semibold"></span>.
+                    Selecciona una para fusionar (los elementos pasarán a esa orden) o crea una nueva al final.
+                </div>
+
+                <div id="meo_lista" class="w-full max-h-72 overflow-y-auto rounded-lg border border-neutral-200 p-2
+      [&::-webkit-scrollbar]:w-2
+      [&::-webkit-scrollbar-thumb]:bg-neutral-400">
+                    <!-- se rellena dinámicamente -->
+                </div>
+
+                <div class="w-full">
+                    <label class="flex items-center gap-2 p-2 rounded-lg border cursor-pointer hover:bg-neutral-50">
+                        <input type="radio" name="meo_opcion" value="__crear_nueva__">
+                        <span class="text-sm font-semibold">Crear nueva orden al final</span>
+                    </label>
+                </div>
+
+                <div class="flex gap-3">
+                    <button id="meo_cancelar" class="p-2 px-6 bg-neutral-400 hover:bg-neutral-500 hover:text-white transition-all duration-150 rounded-lg uppercase font-semibold">
+                        Cancelar
+                    </button>
+                    <button id="meo_confirmar" class="p-2 px-6 bg-emerald-600 hover:bg-emerald-700 text-white transition-all duration-150 rounded-lg uppercase font-semibold">
+                        Confirmar
+                    </button>
+                </div>
+            </div>
+        </div>
+
+
         <div id="modal_advertencia_compatibilidad" class="bg-black bg-opacity-60 absolute top-0 left-0 w-screen h-screen flex items-center justify-center hidden backdrop-blur-sm">
             <div class="bg-white shadow-lg rounded-lg p-4 flex flex-col gap-4 items-center max-w-2xl w-full max-h-[80vh]">
                 <div class="uppercase font-medium text-center text-red-600">
@@ -221,20 +258,6 @@ $numMaquinas = $maquinas->count();
         @endforeach
     </div>
 
-    <div id="modal_fusionar_planilla" class="bg-black bg-opacity-60 absolute top-0 left-0 w-screen h-screen flex items-center justify-center hidden backdrop-blur-sm">
-        <div class="bg-white shadow-lg rounded-lg p-4 flex flex-col gap-4 items-center max-w-md w-full">
-            <div class="uppercase font-medium text-center">
-                La máquina seleccionda ya tiene la <span class="font-mono px-2 py-1 rounded bg-neutral-200" id="fusionar_planilla_codigo">PLANILLA</span>.<br />
-                ¿Quieres fusionar las planillas?
-            </div>
-
-            <div class="flex gap-3">
-                <button id="fusionar_cancelar" class="p-2 px-6 bg-neutral-400 hover:bg-neutral-500 hover:text-white transition-all duration-150 rounded-lg uppercase font-semibold">Cancelar</button>
-                <button id="fusionar_aceptar" class="p-2 px-6 bg-orange-400 hover:bg-orange-500 hover:text-white transition-all duration-150 rounded-lg uppercase font-semibold">Aceptar</button>
-            </div>
-        </div>
-    </div>
-
     <!-- emerald-300 #6ee7b7 -->
     <!-- emerald-400 #34d399 -->
     <!-- emerald-500 #10b981 -->
@@ -277,7 +300,7 @@ $numMaquinas = $maquinas->count();
         }
 
         .maquina_si_seleccionada {
-            background-image: linear-gradient(to top right, #6ee7b7, #a5b4fc);
+            background-image: linear-gradient(to top right, #10b981, #818cf8);
         }
 
         #transferir_elementos:hover .chiptransferirA {
@@ -287,7 +310,16 @@ $numMaquinas = $maquinas->count();
             background-clip: text;
             color: transparent;
         }
+
+        #meo_lista .meo_item input[type="radio"] {
+            accent-color: #10b981;
+        }
+
+        #meo_lista .meo_item:hover {
+            background: rgba(16, 185, 129, 0.08);
+        }
     </style>
+
 
 
 
