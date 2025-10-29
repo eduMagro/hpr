@@ -8,6 +8,8 @@ let btnGuardar;
 let datosOrdenPlanillaSeleccionado;
 let ultimoOrdenPlanillaId;
 let naves = [];
+let inputFiltrarObra;
+let obras = [];
 
 // btn
 let btn_transferir;
@@ -56,6 +58,12 @@ document.addEventListener("DOMContentLoaded", () => {
         btn.addEventListener("click", () => filtrarPorNave(btn.dataset.nave));
     });
 
+    obras = Array.from(document.querySelectorAll("#obras [data-obras]")).map(
+        (div) => JSON.parse(div.dataset.obras)
+    );
+
+    console.log(obras)
+
     maquinasDivs = Array.from(document.getElementsByClassName("maquina"));
 
     ELEMENTOS_ORIGINAL = JSON.parse(JSON.stringify(elementos));
@@ -101,6 +109,12 @@ document.addEventListener("DOMContentLoaded", () => {
                 modal.classList.add("hidden");
             }
         });
+    });
+
+    // mostrar obras que coincidan con la busqueda del input
+    inputFiltrarObra = document.getElementById("input_filtrar_obra");
+    inputFiltrarObra.addEventListener("input", () => {
+        
     });
 
     renderPlanillas();
@@ -1206,5 +1220,5 @@ function filtrarPorNave(valor) {
 
 // mostrar modal de resaltar planillas por obra
 function mostrarModalResaltarObra() {
-    modalResaltarObra.classList.remove("hidden")
+    modalResaltarObra.classList.remove("hidden");
 }

@@ -124,15 +124,15 @@ $numMaquinas = $maquinas->count();
                 <div class="uppercase font-medium">Seleccione obra para resaltar</div>
 
                 <div>
-                    <input type="text" placeholder="Filtrar por nombre" class="p-2 focus:outline-fuchsia-300 rounded-lg shadow-md">
+                    <input id="input_filtrar_obra" type="text" placeholder="Filtrar por nombre" class="p-2 focus:outline-fuchsia-300 rounded-lg shadow-md">
                 </div>
 
-                <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 w-full gap-2 p-2 max-h-96 overflow-y-scroll rounded-lg
+                <div id="obras_modal" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 w-full gap-2 p-2 max-h-96 overflow-y-scroll rounded-lg
             [&::-webkit-scrollbar]:w-2
           [&::-webkit-scrollbar-thumb]:bg-neutral-400">
                     @forelse($obras as $obra)
                     <div data-id="{{ $obra->id }}" class="p-3 flex obra justify-between gap-10 items-center cursor-pointer obra_no_seleccionada hover:-translate-y-[1px] transition-all duration-75 shadow-sm rounded-lg">
-                        <p class="text-fuchshia-900 font-mono font-extrabold uppercase">{{ $obra->obra }}</p>
+                        <p class="text-fuchsia-900 font-mono font-extrabold uppercase">{{ $obra->obra }}</p>
                     </div>
                     @endforeach
                 </div>
