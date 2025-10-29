@@ -191,9 +191,7 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
     Route::post('/movimientos/crear', [MovimientoController::class, 'crearMovimiento'])->name('movimientos.crear');
 
     // === PAQUETES ETIQUETAS Y ELEMENTOS ===
-    Route::resource('paquetes', PaqueteController::class);
-    Route::resource('etiquetas', EtiquetaController::class);
-    Route::resource('elementos', ElementoController::class);
+
     Route::post('/elementos/dividir', [ElementoController::class, 'dividirElemento'])->name('elementos.dividir');
     Route::post('/elementos/{elementoId}/solicitar-cambio-maquina', [ElementoController::class, 'solicitarCambioMaquina']);
     Route::put('/elementos/{id}/cambio-maquina', [ElementoController::class, 'cambioMaquina'])->name('elementos.cambioMaquina');
@@ -203,12 +201,23 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
     Route::put('/actualizar-etiqueta/{id}/maquina/{maquina_id}', [EtiquetaController::class, 'actualizarEtiqueta'])->where('id', '.*');
     Route::post('/etiquetas/fabricacion-optimizada', [EtiquetaController::class, 'fabricacionSyntaxLine28'])->name('etiquetas.fabricacion-optimizada');
     Route::post('/elementos/{elemento}/actualizar-campo', [ElementoController::class, 'actualizarMaquina'])->name('elementos.editarMaquina');
-
     Route::post('/etiquetas/{etiqueta}/patron-corte-simple', [EtiquetaController::class, 'calcularPatronCorteSimple'])->name('etiquetas.calcularPatronCorteSimple');
     Route::post('/etiquetas/{etiqueta}/patron-corte-optimizado', [EtiquetaController::class, 'calcularPatronCorteOptimizado'])->name('etiquetas.calcularPatronCorteOptimizado');
     // ruta para renderizar una etiqueta en HTML
     Route::post('/etiquetas/render', [App\Http\Controllers\EtiquetaController::class, 'render'])
         ->name('etiquetas.render');
+    Route::get(
+        '/etiquetas/{etiquetaSubId}/validar-para-paquete',
+        [PaqueteController::class, 'validarParaPaquete']
+    )->name('etiquetas.validar-para-paquete');
+
+    // === tratamos PAQUETES en maquinas.show ===
+
+
+    Route::resource('paquetes', PaqueteController::class);
+    Route::resource('etiquetas', EtiquetaController::class);
+    Route::resource('elementos', ElementoController::class);
+
 
     // RUTAS PROVISIONALES
     Route::post('/etiquetas/fabricar-lote', [EtiquetaController::class, 'fabricarLote'])->name('maquinas.fabricarLote');

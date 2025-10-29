@@ -26,6 +26,7 @@ class CortadoraDobladoraBarraEtiquetaServicio extends ServicioEtiquetaBase imple
 
     public function actualizar(ActualizarEtiquetaDatos $datos): ActualizarEtiquetaResultado
     {
+
         return DB::transaction(function () use ($datos) {
             $maquina = Maquina::findOrFail($datos->maquinaId);
             if ($maquina->tipo_material !== 'barra') {
@@ -314,21 +315,25 @@ class CortadoraDobladoraBarraEtiquetaServicio extends ServicioEtiquetaBase imple
                 $longitudTotalBarras = $barrasNecesarias * $longitudBarraSeleccionada;
                 $sobraTotalM = max(0, $longitudTotalBarras - $sumaLongitudesPiezas);
 
+                // === Recuperar patrón de letras si viene en opciones ===
+                $patronLetras = $datos->opciones['patron_letras'] ?? implode(' + ', array_fill(0, $piezasPorBarra, 'A'));
+
                 app(CorteBarraLogger::class)->registrar([
                     'timestamp'         => now()->toDateTimeString(),
-                    'usuario'           => auth()->user()->name ?? 'N/A',
-                    'planilla_id'       => $etiqueta->planilla_id,
-                    'etiqueta_sub_id'   => $etiqueta->etiqueta_sub_id,
-                    'elemento_id'       => $elemento->id,
-                    'maquina_id'        => $maquina->id,
-                    'producto_id'       => $productosAsignados[0] ?? null,
-                    'diametro'          => $diametro,
-                    'longitud_pieza_m'  => $longitudPiezaM,
-                    'longitud_barra_m'  => $longitudBarraSeleccionada,
-                    'piezas_por_barra'  => $piezasPorBarra,
-                    'piezas_fabricadas' => $cantidadPiezas,
-                    'barras_usadas'     => $barrasNecesarias,
-                    'sobra_cm'          => round($sobraTotalM * 100, 2),
+                    'Operario'          => auth()->user()->nombre_completo ?? null,
+                    'Cód. Planilla'     => $etiqueta->planilla->codigo_limpio ?? null,
+                    'Cód. Etiqueta'     => $etiqueta->etiqueta_sub_id,
+                    'Cód. Elemento'     => $elemento->codigo,
+                    'Máquina'           => $maquina->nombre,
+                    'Materia prima' => optional(Producto::find($productosAsignados[0]))->codigo,
+                    'Diametro'          => $diametro,
+                    'Longitud pieza (m)' => $longitudPiezaM,
+                    'Longitud barra (m)' => $longitudBarraSeleccionada,
+                    'Piezas/barra'  => $piezasPorBarra,
+                    'Piezas fabricadas' => $cantidadPiezas,
+                    'Barras usadas'     => $barrasNecesarias,
+                    'Patrón'            => $patronLetras,
+                    'Sobrante'          => round($sobraTotalM * 100, 2),
                     'comentario'        => 'corte simple',
                 ]);
 
