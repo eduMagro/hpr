@@ -1540,113 +1540,121 @@ class ProduccionController extends Controller
         return view('produccion.planillas0', compact('maquinas', 'localizacionMaquinas', 'ordenPlanillas', 'planillas', 'elementos', 'obras'));
     }
 
-    public function guardarPlanificacion(Request $request)
+    public function guardar(Request $request)
     {
         $data = $request->validate([
-            'ordenes' => ['array'],
-            'ordenes.*.orden_id'   => ['nullable', 'integer', 'exists:orden_planillas,id'],
-            'ordenes.*.maquina_id' => ['required', 'integer', 'exists:maquinas,id'],
-            'ordenes.*.planilla_id' => ['required', 'integer', 'exists:planillas,id'],
-            'ordenes.*.posicion'   => ['required', 'integer', 'min:1'],
+            'elementos_updates' => 'array',
+            'elementos_updates.*.id' => 'required|integer',
+            'elementos_updates.*.maquina_id' => 'required|integer',
+            'elementos_updates.*.orden_planilla_id' => 'required|integer',
 
-            'cambios_elementos' => ['array'],
-            'cambios_elementos.*.id'                => ['required', 'integer', 'exists:elementos,id'],
-            'cambios_elementos.*.orden_planilla_id' => ['sometimes', 'integer', 'exists:orden_planillas,id'],
-            'cambios_elementos.*.maquina_id'        => ['sometimes', 'integer', 'exists:maquinas,id'],
+            'orden_planillas' => 'required|array',
+            'orden_planillas.create' => 'array',
+            'orden_planillas.create.*.id' => 'nullable|integer', // si quieres respetar el id del cliente
+            'orden_planillas.create.*.maquina_id' => 'required|integer',
+            'orden_planillas.create.*.planilla_id' => 'required|integer',
+            'orden_planillas.create.*.posicion' => 'required|integer',
+
+            'orden_planillas.update' => 'array',
+            'orden_planillas.update.*.id' => 'required|integer',
+            'orden_planillas.update.*.maquina_id' => 'required|integer',
+            'orden_planillas.update.*.posicion' => 'required|integer',
+
+            'orden_planillas.delete' => 'array',
+            'orden_planillas.delete.*' => 'integer',
         ]);
 
-        $ordenes = $data['ordenes'] ?? [];
-        $cambios  = $data['cambios_elementos'] ?? [];
+        // Si decides permitir IDs del cliente para "create"
+        $respetarIdsCliente = true;
 
-        // Validación extra: posiciones 1..N por máquina en el payload
-        $porMaquina = [];
-        foreach ($ordenes as $o) {
-            $porMaquina[$o['maquina_id']][] = (int)$o['posicion'];
-        }
-        foreach ($porMaquina as $mid => $posList) {
-            sort($posList);
-            foreach ($posList as $i => $p) {
-                if ($p !== $i + 1) {
-                    return response()->json([
-                        'message' => "Posiciones no contiguas en máquina {$mid}"
-                    ], 422);
-                }
-            }
-        }
+        return DB::transaction(function () use ($data, $respetarIdsCliente) {
+            $idMap = []; // temp->real si no respetas id del cliente
 
-        DB::transaction(function () use ($ordenes, $cambios) {
-
-            // 1) Upsert de ordenes (si viene orden_id -> update por id; si no -> create/update por (planilla_id))
-            $maquinasAReindexar = [];
-
-            foreach ($ordenes as $o) {
-                $maquinasAReindexar[(int)$o['maquina_id']] = true;
-
-                if (!empty($o['orden_id'])) {
-                    // actualizar fila existente por ID
-                    OrdenPlanilla::where('id', $o['orden_id'])->update([
-                        'maquina_id'  => $o['maquina_id'],
-                        'planilla_id' => $o['planilla_id'],
-                        'posicion'    => $o['posicion'],
-                        'updated_at'  => now(),
-                    ]);
-                } else {
-                    // crear o actualizar por planilla (si tu modelo tiene unique en planilla_id)
-                    OrdenPlanilla::updateOrCreate(
-                        ['planilla_id' => $o['planilla_id']],      // clave lógica
-                        [
-                            'maquina_id'  => $o['maquina_id'],
-                            'posicion'    => $o['posicion'],
-                            'updated_at'  => now(),
-                            'created_at'  => now(),
-                        ]
-                    );
-                }
-            }
-
-            // 1.5) Normalizar posiciones por máquina (1..N ordenadas por posicion)
-            foreach (array_keys($maquinasAReindexar) as $mid) {
-                $lista = OrdenPlanilla::where('maquina_id', $mid)
-                    ->orderBy('posicion')->orderBy('id')
-                    ->get();
-
-                $pos = 1;
-                foreach ($lista as $fila) {
-                    if ((int)$fila->posicion !== $pos) {
-                        $fila->posicion = $pos;
-                        $fila->save();
-                    }
-                    $pos++;
-                }
-            }
-
-            // 2) Aplicar cambios de elementos
-            //    - Si viene orden_planilla_id: set orden_planilla_id y sincronizar maquina_id con la de ese orden
-            //    - Si viene solo maquina_id: actualizar maquina_id
-            foreach ($cambios as $c) {
-                $query = Elemento::where('id', $c['id']);
-
-                if (array_key_exists('orden_planilla_id', $c)) {
-                    $op = OrdenPlanilla::select('maquina_id')->find($c['orden_planilla_id']);
-                    if ($op) {
-                        $query->update([
-                            'orden_planilla_id' => $c['orden_planilla_id'],
-                            'maquina_id'        => $op->maquina_id, // coherencia con el orden
-                            'updated_at'        => now(),
+            // 1) ELEMENTOS (actualizar maquina_id y orden_planilla_id)
+            if (!empty($data['elementos_updates'])) {
+                foreach ($data['elementos_updates'] as $e) {
+                    DB::table('elementos')
+                        ->where('id', $e['id'])
+                        ->update([
+                            'maquina_id' => $e['maquina_id'],
+                            'orden_planilla_id' => $e['orden_planilla_id'],
+                            'updated_at' => now(),
                         ]);
-                        continue;
-                    }
-                }
-
-                if (array_key_exists('maquina_id', $c)) {
-                    $query->update([
-                        'maquina_id' => $c['maquina_id'],
-                        'updated_at' => now(),
-                    ]);
                 }
             }
-        });
 
-        return response()->json(['ok' => true]);
+            // 2) ORDEN_PLANILLAS: CREATE
+            if (!empty($data['orden_planillas']['create'])) {
+                foreach ($data['orden_planillas']['create'] as $op) {
+                    if ($respetarIdsCliente && !empty($op['id'])) {
+                        // Inserta con id dado (siempre que no exista)
+                        DB::table('orden_planillas')->insert([
+                            'id' => $op['id'],
+                            'maquina_id' => $op['maquina_id'],
+                            'planilla_id' => $op['planilla_id'],
+                            'posicion' => $op['posicion'],
+                            'created_at' => now(),
+                            'updated_at' => now(),
+                        ]);
+                        // no hace falta mapear
+                    } else {
+                        // Deja que la BD asigne id
+                        $newId = DB::table('orden_planillas')->insertGetId([
+                            'maquina_id' => $op['maquina_id'],
+                            'planilla_id' => $op['planilla_id'],
+                            'posicion' => $op['posicion'],
+                            'created_at' => now(),
+                            'updated_at' => now(),
+                        ]);
+                        // si el cliente usó un id temporal, puedes mapearlo aquí
+                        if (!empty($op['id'])) {
+                            $idMap[(string)$op['id']] = $newId;
+                        }
+                    }
+                }
+            }
+
+            // Si has dejado que la BD genere IDs, actualiza elementos que venían apuntando a IDs temporales
+            if (!$respetarIdsCliente && !empty($idMap)) {
+                // Actualiza orden_planilla_id en elementos según mapa
+                foreach ($idMap as $tempId => $realId) {
+                    DB::table('elementos')
+                        ->where('orden_planilla_id', (int)$tempId)
+                        ->update(['orden_planilla_id' => (int)$realId]);
+                }
+            }
+
+            // 3) ORDEN_PLANILLAS: UPDATE
+            if (!empty($data['orden_planillas']['update'])) {
+                foreach ($data['orden_planillas']['update'] as $op) {
+                    DB::table('orden_planillas')
+                        ->where('id', $op['id'])
+                        ->update([
+                            'maquina_id' => $op['maquina_id'],
+                            'posicion' => $op['posicion'],
+                            'updated_at' => now(),
+                        ]);
+                }
+            }
+
+            // 4) ORDEN_PLANILLAS: DELETE
+            if (!empty($data['orden_planillas']['delete'])) {
+                // Asegúrate de que no quedan elementos colgando (según tu flujo ya lo gestionas)
+                // Si quisieras asegurar aquí: rechazar si quedan elementos
+                $idsEliminar = $data['orden_planillas']['delete'];
+
+                // opcional: validar que no hay elementos
+                // $conElementos = DB::table('elementos')->whereIn('orden_planilla_id', $idsEliminar)->count();
+                // if ($conElementos > 0) abort(422, 'Quedan elementos asociados a alguna orden_planilla a eliminar.');
+
+                DB::table('orden_planillas')->whereIn('id', $idsEliminar)->delete();
+            }
+
+            return response()->json([
+                'ok' => true,
+                // Devuelve el mapa solo si no respetas los ids del cliente
+                'orden_planillas_id_map' => $respetarIdsCliente ? (object)[] : $idMap,
+            ]);
+        });
     }
 }

@@ -9,18 +9,25 @@ $numMaquinas = $maquinas->count();
         <div class="flex w-full justify-between">
             <h1 class="text-2xl font-bold mb-4">🧾 Planificación por Orden</h1>
             <div class="flex gap-5">
-                <select name="obra" id="select_obra">
-                    <option value="0">Resaltar por obra</option>
-                    @foreach($obras as $obra)
-                    <option value="{{ $obra->id }}">{{ $obra->obra }}</option>
-                    @endforeach
-                </select>
+
+                <button onclick="mostrarModalResaltarObra()" class="p-2 bg-gradient-to-r text-neutral-600 hover:text-white from-neutral-500/30 to-neutral-600/30 hover:from-neutral-500 hover:to-neutral-600 uppercase font-bold text-sm rounded-lg transition-all duration-75 hover:-translate-y-[1px]">Resaltar por obra</button>
+
                 @php
-                $naves = ["Todas", "Nave 1", "Nave 2"]
+                $naves = [
+                ['label' => 'Todas', 'value' => 'all'],
+                ['label' => 'Nave 1', 'value' => '1'],
+                ['label' => 'Nave 2', 'value' => '2'],
+                ];
                 @endphp
-                @foreach ($naves as $nave)
-                <button id="nave_{{ $loop->iteration }}" class="p-2 border border-emerald-600 @if($loop->first) bg-gradient-to-r text-white @else text-emerald-700 @endif from-emerald-600 to-emerald-700 uppercase font-bold text-sm rounded-lg transition-all duration-100 hover:-translate-y-1">{{ $nave }}</button>
+
+                @foreach ($naves as $i => $n)
+                <button
+                    class="filtro_nave p-2 border-2 border-emerald-600 {{ $i === 0 ? 'bg-gradient-to-r text-white' : 'text-emerald-700' }} from-emerald-600 to-emerald-700 uppercase font-bold text-sm rounded-lg transition-all duration-75 hover:-translate-y-[1px]"
+                    data-nave="{{ $n['value'] }}">
+                    {{ $n['label'] }}
+                </button>
                 @endforeach
+
             </div>
         </div>
 
@@ -51,7 +58,7 @@ $numMaquinas = $maquinas->count();
             ];
             @endphp
 
-            <div class="maquina flex flex-col w-full min-w-24 bg-neutral-200 rounded-t-xl"
+            <div class="maquina flex flex-col w-full min-w-[100px] bg-neutral-200 rounded-t-xl"
                 data-detalles='@json($detalles)'
                 data-maquina-id="{{ $detalles['id'] }}">
                 <div class="bg-gradient-to-r from-emerald-600 to-emerald-700 w-full h-12 p-2 rounded-t-xl flex items-center justify-center text-white shadow-md uppercase font-bold text-xl">
@@ -107,6 +114,27 @@ $numMaquinas = $maquinas->count();
 
                 <div>
                     <button id="transferir_elementos" class="p-2 bg-orange-400 w-full hover:bg-orange-500 hover:text-white transition-all duration-150 rounded-lg uppercase font-semibold font-mono shadow-md">Transferir</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="modal_resaltar_obra" class="bg-black bg-opacity-50 absolute top-0 left-0 w-screen h-screen flex items-center justify-center hidden backdrop-blur-sm">
+
+            <div class="bg-neutral-100 shadow-lg rounded-lg p-3 flex flex-col gap-4 items-center min-w-[calc(100vw-40vw)]">
+                <div class="uppercase font-medium">Seleccione obra para resaltar</div>
+
+                <div>
+                    <input type="text" placeholder="Filtrar por nombre" class="p-2 focus:outline-fuchsia-300 rounded-lg shadow-md">
+                </div>
+
+                <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 w-full gap-2 p-2 max-h-96 overflow-y-scroll rounded-lg
+            [&::-webkit-scrollbar]:w-2
+          [&::-webkit-scrollbar-thumb]:bg-neutral-400">
+                    @forelse($obras as $obra)
+                    <div data-id="{{ $obra->id }}" class="p-3 flex obra justify-between gap-10 items-center cursor-pointer obra_no_seleccionada hover:-translate-y-[1px] transition-all duration-75 shadow-sm rounded-lg">
+                        <p class="text-fuchshia-900 font-mono font-extrabold uppercase">{{ $obra->obra }}</p>
+                    </div>
+                    @endforeach
                 </div>
             </div>
         </div>

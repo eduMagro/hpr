@@ -3,17 +3,23 @@ let planillas;
 let ordenPlanillas;
 let elementos;
 let maquinas;
-let maquinasDivs;
-let btn_transferir;
+let maquinasDivs = [];
 let btnGuardar;
 let datosOrdenPlanillaSeleccionado;
 let ultimoOrdenPlanillaId;
+let naves = [];
+
+// btn
+let btn_transferir;
+let btn_guardar;
+let btn_cancelar;
 
 //modales
 let modalMostrarElementos;
 let modalTransferirAMaquina;
 let modalGuardar;
 let modalElegirOrden;
+let modalResaltarObra;
 let modales = [];
 
 // variables datos originales, servira para referenciar los cambios realizados
@@ -44,6 +50,12 @@ document.addEventListener("DOMContentLoaded", () => {
         document.querySelectorAll("#maquinas [data-detalles]")
     ).map((div) => JSON.parse(div.dataset.detalles));
 
+    naves = Array.from(document.querySelectorAll(".filtro_nave"));
+
+    naves.forEach((btn) => {
+        btn.addEventListener("click", () => filtrarPorNave(btn.dataset.nave));
+    });
+
     maquinasDivs = Array.from(document.getElementsByClassName("maquina"));
 
     ELEMENTOS_ORIGINAL = JSON.parse(JSON.stringify(elementos));
@@ -56,9 +68,16 @@ document.addEventListener("DOMContentLoaded", () => {
     //btn
     btn_transferir = document.getElementById("transferir_elementos");
     btn_transferir.addEventListener("click", transferirElementos);
+    btn_guardar = document.getElementById("btn_guardar");
+    btn_cancelar = document.getElementById("btn_cancelar_guardar");
 
-    btnGuardar = document.getElementById("btn_guardar");
-    if (btnGuardar) btnGuardar.addEventListener("click", guardarCambios);
+    btn_guardar.addEventListener("click", guardarCambios);
+    btn_cancelar.addEventListener("click", () => {
+        elementos = JSON.parse(JSON.stringify(ELEMENTOS_ORIGINAL));
+        ordenPlanillas = JSON.parse(JSON.stringify(ORDEN_PLANILLAS_ORIGINAL));
+        renderPlanillas();
+        sePuedeGuardar();
+    });
 
     // modales
     modalMostrarElementos = document.getElementById("modal_elementos");
@@ -67,10 +86,12 @@ document.addEventListener("DOMContentLoaded", () => {
     );
     modalGuardar = document.getElementById("modal_guardar");
     modalElegirOrden = document.getElementById("modal_elegir_orden");
+    modalResaltarObra = document.getElementById("modal_resaltar_obra");
     modales = [
         modalMostrarElementos,
         modalTransferirAMaquina,
         modalElegirOrden,
+        modalResaltarObra,
     ];
 
     // Agregar Listener de cierre a los modales cuando se clicka fuera de los hijos del mismo
@@ -84,6 +105,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
     renderPlanillas();
     resaltarCompis();
+    filtrarPorNave();
+
+    filtrarPorNave("all");
 });
 
 // mostrar en funcion de ordenPlanillas local las planillas en orden asignadas a cada maquina
@@ -94,7 +118,7 @@ function renderPlanillas() {
         if (contenedor) contenedor.innerHTML = "";
     });
 
-    // ORDENAR por maquina_id y posicion antes de pintar
+    // ⚠️ ORDENAR por maquina_id y posicion antes de pintar
     const ordenadas = [...ordenPlanillas].sort((a, b) => {
         if (Number(a.maquina_id) !== Number(b.maquina_id)) {
             return Number(a.maquina_id) - Number(b.maquina_id);
@@ -1010,65 +1034,177 @@ function removeOrdenPlanilla(ordenId) {
     reindexMachine(maquinaId);
 }
 
-// 
-function diffElementos(actual, original) {
-    const origMap = new Map(original.map((e) => [Number(e.id), e]));
-    const modificados = [];
-    for (const e of actual) {
-        const o = origMap.get(Number(e.id));
-        if (!o) continue;
+function buildDiff() {
+    // 1) ELEMENTOS: actualizaciones (solo si cambió maquina_id u orden_planilla_id)
+    const mapElOrig = new Map(ELEMENTOS_ORIGINAL.map((e) => [Number(e.id), e]));
+    const elementos_updates = [];
+    for (const e of elementos) {
+        const o = mapElOrig.get(Number(e.id));
+        if (!o) continue; // si no estaba en el original, no lo tocamos aquí (no creas elementos nuevos con este flujo)
         if (
             Number(e.maquina_id) !== Number(o.maquina_id) ||
             Number(e.orden_planilla_id) !== Number(o.orden_planilla_id)
         ) {
-            modificados.push({
+            elementos_updates.push({
                 id: Number(e.id),
                 maquina_id: Number(e.maquina_id),
                 orden_planilla_id: Number(e.orden_planilla_id),
             });
         }
     }
-    return modificados;
+
+    // 2) ORDEN_PLANILLAS: crear/actualizar/eliminar
+    const mapOPOrig = new Map(
+        ORDEN_PLANILLAS_ORIGINAL.map((o) => [Number(o.id), o])
+    );
+    const mapOPNow = new Map(ordenPlanillas.map((o) => [Number(o.id), o]));
+
+    // a) eliminados: estaban antes y ya no están
+    const orden_planillas_delete = [];
+    for (const [id, op] of mapOPOrig.entries()) {
+        if (!mapOPNow.has(id)) {
+            orden_planillas_delete.push(id);
+        }
+    }
+
+    // b) creados: están ahora y no estaban antes
+    const orden_planillas_create = [];
+    for (const [id, op] of mapOPNow.entries()) {
+        if (!mapOPOrig.has(id)) {
+            orden_planillas_create.push({
+                id: Number(op.id), // si quieres que el server respete este id
+                maquina_id: Number(op.maquina_id),
+                planilla_id: Number(op.planilla_id),
+                posicion: Number(op.posicion),
+            });
+        }
+    }
+
+    // c) actualizados: están en ambos pero cambió maquina_id o posicion
+    const orden_planillas_update = [];
+    for (const [id, now] of mapOPNow.entries()) {
+        const old = mapOPOrig.get(id);
+        if (!old) continue;
+        if (
+            Number(now.maquina_id) !== Number(old.maquina_id) ||
+            Number(now.posicion) !== Number(old.posicion)
+        ) {
+            orden_planillas_update.push({
+                id: Number(now.id),
+                maquina_id: Number(now.maquina_id),
+                posicion: Number(now.posicion),
+            });
+        }
+    }
+
+    return {
+        elementos_updates,
+        orden_planillas: {
+            create: orden_planillas_create,
+            update: orden_planillas_update,
+            delete: orden_planillas_delete,
+        },
+    };
 }
 
-function diffOrdenes(actual, original) {
-    const origMap = new Map(original.map((o) => [Number(o.id), o]));
-    const actMap = new Map(actual.map((o) => [Number(o.id), o]));
+async function guardarCambios() {
+    const url = document.getElementById("modal_guardar").dataset.saveUrl;
+    const payload = buildDiff();
 
-    const nuevas = [];
-    const actualizadas = [];
-    const eliminadas = [];
+    // si no hay nada que guardar, salimos
+    if (
+        (!payload.elementos_updates ||
+            payload.elementos_updates.length === 0) &&
+        (!payload.orden_planillas.create ||
+            payload.orden_planillas.create.length === 0) &&
+        (!payload.orden_planillas.update ||
+            payload.orden_planillas.update.length === 0) &&
+        (!payload.orden_planillas.delete ||
+            payload.orden_planillas.delete.length === 0)
+    ) {
+        return;
+    }
 
-    // nuevas o actualizadas
-    for (const oAct of actual) {
-        const enOrig = origMap.get(Number(oAct.id));
-        if (!enOrig) {
-            nuevas.push({
-                id: Number(oAct.id),
-                maquina_id: Number(oAct.maquina_id),
-                planilla_id: Number(oAct.planilla_id),
-                posicion: Number(oAct.posicion),
+    // CSRF
+    const token = document
+        .querySelector('meta[name="csrf-token"]')
+        ?.getAttribute("content");
+
+    try {
+        const res = await fetch(url, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "X-CSRF-TOKEN": token ?? "",
+                Accept: "application/json",
+            },
+            body: JSON.stringify(payload),
+        });
+
+        if (!res.ok) {
+            const errTxt = await res.text();
+            console.error("Error guardando:", errTxt);
+            alert("Error al guardar. Revisa la consola.");
+            return;
+        }
+
+        const data = await res.json();
+
+        // Si el backend decide reasignar IDs (ej. no respetas el id del cliente), podrías recibir un id_map con {tempId:nuevoId}
+        if (data?.orden_planillas_id_map) {
+            const idMap = data.orden_planillas_id_map;
+            // Actualiza referencias en memoria
+            // 1) ordenPlanillas
+            ordenPlanillas.forEach((op) => {
+                const n = idMap[String(op.id)];
+                if (n) op.id = Number(n);
             });
-        } else {
-            const changed =
-                Number(oAct.maquina_id) !== Number(enOrig.maquina_id) ||
-                Number(oAct.posicion) !== Number(enOrig.posicion);
-            if (changed) {
-                actualizadas.push({
-                    id: Number(oAct.id),
-                    maquina_id: Number(oAct.maquina_id),
-                    posicion: Number(oAct.posicion),
-                });
-            }
+            // 2) elementos (orden_planilla_id)
+            elementos.forEach((el) => {
+                const n = idMap[String(el.orden_planilla_id)];
+                if (n) el.orden_planilla_id = Number(n);
+            });
         }
-    }
 
-    // eliminadas
-    for (const oOrig of original) {
-        if (!actMap.has(Number(oOrig.id))) {
-            eliminadas.push(Number(oOrig.id));
-        }
-    }
+        // Snapshot nuevos originales
+        ELEMENTOS_ORIGINAL = JSON.parse(JSON.stringify(elementos));
+        ORDEN_PLANILLAS_ORIGINAL = JSON.parse(JSON.stringify(ordenPlanillas));
 
-    return { nuevas, actualizadas, eliminadas };
+        // UI
+        sePuedeGuardar();
+        renderPlanillas();
+
+        // feedback sencillo
+        // (si quieres toasts chulos, tírale a un componente o a Alpine)
+        alert("Cambios guardados ✅");
+    } catch (err) {
+        console.error(err);
+        alert("Error de red guardando cambios.");
+    }
+}
+
+function filtrarPorNave(valor) {
+    // Normaliza
+    const target = (valor ?? "all").toString();
+
+    // 1) Botones activos (estilos)
+    naves.forEach((btn) => {
+        const activo = btn.dataset.nave === target;
+        btn.classList.toggle("bg-gradient-to-r", activo);
+        btn.classList.toggle("text-white", activo);
+        btn.classList.toggle("text-emerald-700", !activo);
+    });
+
+    // 2) Mostrar/Ocultar máquinas por nave
+    maquinasDivs.forEach((maqDiv) => {
+        const detalles = JSON.parse(maqDiv.dataset.detalles || "{}");
+        const naveId = String(detalles.nave_id ?? "");
+        const show = target === "all" || naveId === target;
+        maqDiv.style.display = show ? "" : "none";
+    });
+}
+
+// mostrar modal de resaltar planillas por obra
+function mostrarModalResaltarObra() {
+    modalResaltarObra.classList.remove("hidden")
 }
