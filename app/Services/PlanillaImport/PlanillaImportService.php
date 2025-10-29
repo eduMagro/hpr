@@ -48,13 +48,13 @@ class PlanillaImportService
     {
         $nombreArchivo = $file->getClientOriginalName();
 
-        Log::info("🔥 Iniciando importación de archivo: {$nombreArchivo}");
+        Log::channel('planilla_import')->info("🔥 Iniciando importación de archivo: {$nombreArchivo}");
 
         // 1. VALIDACIÓN PRE-PROCESAMIENTO
         $validacion = $this->validator->validar($file);
 
         if (!$validacion->esValido()) {
-            Log::warning("❌ Validación fallida: {$nombreArchivo}", $validacion->errores());
+            Log::channel('planilla_import')->warning("❌ Validación fallida: {$nombreArchivo}", $validacion->errores());
             return ImportResult::error(
                 $validacion->errores(),
                 $validacion->advertencias(),
@@ -71,7 +71,7 @@ class PlanillaImportService
             ], [], $nombreArchivo);
         }
 
-        Log::info("📊 Datos leídos", [
+        Log::channel('planilla_import')->info("📊 Datos leídos", [
             'total_filas' => $datos->totalFilas(),
             'filas_validas' => $datos->filasValidas(),
             'planillas_detectadas' => $datos->planillasDetectadas(),
@@ -88,7 +88,7 @@ class PlanillaImportService
             $advertenciasIniciales[] = "Las siguientes planillas ya existen y fueron omitidas: " . implode(', ', $duplicados);
             $advertenciasIniciales[] = "Use el botón 'Reimportar' para actualizar planillas existentes.";
 
-            Log::warning("⚠️ Planillas duplicadas detectadas, serán omitidas", [
+            Log::channel('planilla_import')->warning("⚠️ Planillas duplicadas detectadas, serán omitidas", [
                 'duplicados' => $duplicados,
             ]);
 
@@ -102,7 +102,7 @@ class PlanillaImportService
                 ], $advertenciasIniciales, $nombreArchivo);
             }
 
-            Log::info("📊 Continuando con planillas no duplicadas", [
+            Log::channel('planilla_import')->info("📊 Continuando con planillas no duplicadas", [
                 'planillas_a_procesar' => $datosFiltrados->planillasDetectadas(),
             ]);
         }
@@ -113,7 +113,7 @@ class PlanillaImportService
         // 5. PROCESAMIENTO OPTIMIZADO CON BATCH PROCESSING (con datos filtrados)
         $resultado = $this->procesarPlanillasBatch($datosFiltrados, $advertenciasIniciales);
 
-        Log::info("✅ Importación completada", [
+        Log::channel('planilla_import')->info("✅ Importación completada", [
             'total_en_archivo' => $datos->planillasDetectadas(),
             'duplicadas_omitidas' => count($duplicados),
             'exitosas' => count($resultado['exitosas']),
@@ -144,7 +144,7 @@ class PlanillaImportService
     {
         $nombreArchivo = $file->getClientOriginalName();
 
-        Log::info("🔄 Iniciando reimportación", [
+        Log::channel('planilla_import')->info("🔄 Iniciando reimportación", [
             'archivo' => $nombreArchivo,
             'planilla' => $planilla->codigo,
         ]);
@@ -153,7 +153,7 @@ class PlanillaImportService
         $validacion = $this->validator->validar($file);
 
         if (!$validacion->esValido()) {
-            Log::warning("❌ Validación fallida: {$nombreArchivo}", $validacion->errores());
+            Log::channel('planilla_import')->warning("❌ Validación fallida: {$nombreArchivo}", $validacion->errores());
             return ImportResult::error(
                 $validacion->errores(),
                 $validacion->advertencias(),
@@ -181,7 +181,7 @@ class PlanillaImportService
             ], [], $nombreArchivo);
         }
 
-        Log::info("📊 Datos filtrados para reimportación", [
+        Log::channel('planilla_import')->info("📊 Datos filtrados para reimportación", [
             'planilla' => $planilla->codigo,
             'filas_validas' => $datosFiltrados->filasValidas(),
         ]);
@@ -198,7 +198,7 @@ class PlanillaImportService
                 ->where('estado', 'pendiente')
                 ->delete();
 
-            Log::info("🗑️ Elementos pendientes eliminados", [
+            Log::channel('planilla_import')->info("🗑️ Elementos pendientes eliminados", [
                 'cantidad' => $elementosEliminados,
             ]);
 
@@ -246,7 +246,7 @@ class PlanillaImportService
 
             DB::commit();
 
-            Log::info("✅ Reimportación completada", [
+            Log::channel('planilla_import')->info("✅ Reimportación completada", [
                 'planilla' => $planilla->codigo,
                 'elementos_eliminados' => $elementosEliminados,
                 'elementos_creados' => $resultado->elementosCreados,
@@ -268,7 +268,7 @@ class PlanillaImportService
         } catch (\Throwable $e) {
             DB::rollBack();
 
-            Log::error("❌ Error en reimportación", [
+            Log::channel('planilla_import')->error("❌ Error en reimportación", [
                 'planilla' => $planilla->codigo,
                 'archivo' => $nombreArchivo,
                 'error' => $e->getMessage(),
@@ -339,7 +339,7 @@ class PlanillaImportService
             ->keyBy('id')
             ->toArray();
 
-        Log::info("🗄️ Caches precargados", [
+        Log::channel('planilla_import')->info("🗄️ Caches precargados", [
             'clientes' => count($this->cacheClientes),
             'obras' => count($this->cacheObras),
             'maquinas' => count($this->cacheMaquinas),
@@ -404,7 +404,7 @@ class PlanillaImportService
                         $estadisticas['ordenes_creadas'] += $ordenesCreadas;
                         $estadisticas['tiempo_total'] += (microtime(true) - $inicioPlanilla);
 
-                        Log::debug("✅ Planilla {$codigoPlanilla}", [
+                        Log::channel('planilla_import')->debug("✅ Planilla {$codigoPlanilla}", [
                             'elementos' => $resultado->elementosCreados,
                             'tiempo' => round(microtime(true) - $inicioPlanilla, 2) . 's',
                         ]);
@@ -414,13 +414,13 @@ class PlanillaImportService
                             'error' => $e->getMessage(),
                         ];
 
-                        Log::error("❌ Error en planilla {$codigoPlanilla}: {$e->getMessage()}");
+                        Log::channel('planilla_import')->error("❌ Error en planilla {$codigoPlanilla}: {$e->getMessage()}");
                     }
                 }
 
                 DB::commit();
 
-                Log::info("📦 Batch {$batchIndex} completado", [
+                Log::channel('planilla_import')->info("📦 Batch {$batchIndex} completado", [
                     'planillas' => count($batch),
                     'tiempo' => round(microtime(true) - $inicioBatch, 2) . 's',
                 ]);
@@ -436,7 +436,7 @@ class PlanillaImportService
                     }
                 }
 
-                Log::error("❌ Error en batch {$batchIndex}", [
+                Log::channel('planilla_import')->error("❌ Error en batch {$batchIndex}", [
                     'error' => $e->getMessage(),
                     'file' => $e->getFile(),
                     'line' => $e->getLine(),

@@ -32,7 +32,7 @@ class ExcelReader
 
     public function leer(UploadedFile $file): DatosImportacion
     {
-        Log::info("📖 [EXCEL-XML] Iniciando lectura manual de Excel", [
+        Log::channel('planilla_import')->info("📖 [EXCEL-XML] Iniciando lectura manual de Excel", [
             'archivo' => $file->getClientOriginalName(),
         ]);
 
@@ -74,11 +74,11 @@ class ExcelReader
             // 5. Autocompletar etiquetas
             $this->autocompletarEtiquetas($filasFiltradas);
 
-            Log::info("✅ [EXCEL-XML] Lectura completada", $this->estadisticas);
+            Log::channel('planilla_import')->info("✅ [EXCEL-XML] Lectura completada", $this->estadisticas);
 
             return new DatosImportacion($filasFiltradas, $this->estadisticas);
         } catch (\Throwable $e) {
-            Log::error("❌ [EXCEL-XML] Error fatal", [
+            Log::channel('planilla_import')->error("❌ [EXCEL-XML] Error fatal", [
                 'error' => $e->getMessage(),
                 'file' => $e->getFile(),
                 'line' => $e->getLine(),
@@ -95,7 +95,7 @@ class ExcelReader
         $xmlStrings = $zip->getFromName('xl/sharedStrings.xml');
 
         if ($xmlStrings === false) {
-            Log::info("ℹ️ [EXCEL-XML] No hay sharedStrings.xml (sin textos compartidos)");
+            Log::channel('planilla_import')->info("ℹ️ [EXCEL-XML] No hay sharedStrings.xml (sin textos compartidos)");
             return;
         }
 
@@ -119,7 +119,7 @@ class ExcelReader
             $this->sharedStrings[$index] = $text;
         }
 
-        Log::info("📚 [EXCEL-XML] Shared strings cargados", [
+        Log::channel('planilla_import')->info("📚 [EXCEL-XML] Shared strings cargados", [
             'total' => count($this->sharedStrings),
         ]);
     }
@@ -137,7 +137,7 @@ class ExcelReader
             throw new \Exception("No se pudo leer xl/worksheets/sheet1.xml");
         }
 
-        Log::info("📄 [EXCEL-XML] Parseando sheet1.xml...");
+        Log::channel('planilla_import')->info("📄 [EXCEL-XML] Parseando sheet1.xml...");
 
         $dom = new DOMDocument();
         @$dom->loadXML($xmlSheet);
@@ -156,7 +156,7 @@ class ExcelReader
             }
         }
 
-        Log::info("📐 [EXCEL-XML] Dimensiones detectadas", [
+        Log::channel('planilla_import')->info("📐 [EXCEL-XML] Dimensiones detectadas", [
             'columnas' => $maxCol,
         ]);
 
@@ -164,7 +164,7 @@ class ExcelReader
         $rows = [];
         $rowNodes = $xpath->query('//x:sheetData/x:row');
 
-        Log::info("🔢 [EXCEL-XML] Total filas XML", [
+        Log::channel('planilla_import')->info("🔢 [EXCEL-XML] Total filas XML", [
             'filas' => $rowNodes->length,
         ]);
 
@@ -212,7 +212,7 @@ class ExcelReader
             $rows[] = $rowData;
         }
 
-        Log::info("✅ [EXCEL-XML] Filas extraídas", [
+        Log::channel('planilla_import')->info("✅ [EXCEL-XML] Filas extraídas", [
             'total' => count($rows),
         ]);
 
