@@ -1123,8 +1123,8 @@ class EtiquetaController extends Controller
                     <div>🪵 Sobra: <strong>" . number_format($p['sobra_cm'], 2, ',', '.') . " cm</strong></div>
                     <div>📈 Aprovechamiento: <span class='font-bold {$cls}'>" . number_format($p['aprovechamiento'], 2, ',', '.') . "%</span></div>
                   <div class='text-[11px] text-gray-500'>
-  k={$p['k']}, esquema: {$p['esquema']}" . (!empty($p['resumen_letras']) ? " ({$p['resumen_letras']})" : "") . "
-</div>
+                k={$p['k']}, esquema: {$p['esquema']}" . (!empty($p['resumen_letras']) ? " ({$p['resumen_letras']})" : "") . "
+                </div>
                 </li>";
                 }
                 $html .= "</ul>";

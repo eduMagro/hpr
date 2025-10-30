@@ -32,6 +32,7 @@
         </div>
 
     </x-slot>
+
     <div class="w-full sm:px-4 py-6">
         <!-- Grid principal -->
         <div class="w-full">
@@ -53,9 +54,9 @@
                     </div>
                 @else
                     <x-maquinas.tipo.tipo-normal :maquina="$maquina" :maquinas="$maquinas" :elementos-agrupados="$elementosAgrupados"
-                        :productos-base-compatibles="$productosBaseCompatibles" :producto-base-solicitados="$productoBaseSolicitados" :planillas-activas="$planillasActivas" :elementos-por-planilla="$elementosPorPlanilla" :mostrar-dos="$mostrarDos"
-                        :sugerencias-por-elemento="$sugerenciasPorElemento" {{-- NUEVO: todo lo de barras va por props --}} :es-barra="$esBarra" :longitudes-por-diametro="$longitudesPorDiametro"
-                        :diametro-por-etiqueta="$diametroPorEtiqueta" :elementos-agrupados-script="$elementosAgrupadosScript" />
+                        :productos-base-compatibles="$productosBaseCompatibles" :producto-base-solicitados="$productoBaseSolicitados" :planillas-activas="$planillasActivas" :elementos-por-planilla="$elementosPorPlanilla" :es-barra="$esBarra"
+                        :longitudes-por-diametro="$longitudesPorDiametro" :diametro-por-etiqueta="$diametroPorEtiqueta" :elementos-agrupados-script="$elementosAgrupadosScript" :posiciones-disponibles="$posicionesDisponibles" :posicion1="$posicion1"
+                        :posicion2="$posicion2" />
 
                     @include('components.maquinas.modales.normal.modales-normal')
             @endif

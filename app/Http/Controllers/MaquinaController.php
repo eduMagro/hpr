@@ -146,10 +146,11 @@ class MaquinaController extends Controller
             'elementos.maquina_2',
             'elementos.maquina_3',
             'productos',
+            // ✅ COLADAS: Cargar relaciones de productos en elementos (trazabilidad completa)
+            'elementos.producto',
+            'elementos.producto2',
+            'elementos.producto3',
         ])->findOrFail($id);
-
-
-
         // 1) Contexto común (incluye productosBaseCompatibles en $base)
         $base = $this->cargarContextoBase($maquina);
 
@@ -181,10 +182,20 @@ class MaquinaController extends Controller
                 ->get();
         }
 
-        // 4) Cola de planillas (1 o 2)
-        $mostrarDos = request()->boolean('mostrar_dos');
-        $cuantas    = $mostrarDos ? 2 : 1;
-        [$planillasActivas, $elementosFiltrados] = $this->aplicarColaPlanillas($maquina, $elementosMaquina, $cuantas);
+        // 4) Cola de planillas
+        $posicion1 = request()->input('posicion_1', 1); // Por defecto posición 1
+        $posicion2 = request()->input('posicion_2', null); // Por defecto null (no mostrar segunda)
+
+        // Filtrar posiciones válidas (mayores a 0)
+        $posiciones = collect([$posicion1, $posicion2])
+            ->filter(fn($p) => !is_null($p) && (int)$p > 0)
+            ->map(fn($p) => (int)$p)
+            ->unique()
+            ->values();
+
+        // 4) Cola de planillas con posiciones específicas
+        [$planillasActivas, $elementosFiltrados, $ordenManual, $posicionesDisponibles] =
+            $this->aplicarColaPlanillasPorPosicion($maquina, $elementosMaquina, $posiciones);
 
         // 5) Datasets filtrados por planilla
         $elementosPorPlanilla = $elementosFiltrados->groupBy('planilla_id');
@@ -232,6 +243,12 @@ class MaquinaController extends Controller
                 'longitud'    => $e->longitud_cm,
                 'barras'      => $e->barras,
                 'figura'      => $e->figura,
+                // Incluimos las coladas para mostrarlas en la leyenda del SVG
+                'coladas'     => [
+                    'colada1' => $e->producto ? $e->producto->n_colada : null,
+                    'colada2' => $e->producto2 ? $e->producto2->n_colada : null,
+                    'colada3' => $e->producto3 ? $e->producto3->n_colada : null,
+                ],
             ])->values(),
         ])->values();
 
@@ -320,11 +337,12 @@ class MaquinaController extends Controller
             'maquina' => $maquina,
 
             // cola / filtrados
-            'planillasActivas'   => $planillasActivas,
-            'elementosFiltrados' => $elementosFiltrados,
-            'elementosPorPlanilla' => $elementosPorPlanilla,
-            'mostrarDos'         => $mostrarDos,
-
+            'planillasActivas'      => $planillasActivas,
+            'elementosFiltrados'    => $elementosFiltrados,
+            'elementosPorPlanilla'  => $elementosPorPlanilla,
+            'posicionesDisponibles' => $posicionesDisponibles,
+            'posicion1'             => $posicion1,
+            'posicion2'             => $posicion2,
             // datasets UI
             'elementosMaquina'         => $elementosMaquina,
             'pesosElementos'           => $pesosElementos,
@@ -352,6 +370,57 @@ class MaquinaController extends Controller
     /* =========================
    HELPERS PRIVADOS
    ========================= */
+
+    /**
+     * 🔥 NUEVO MÉTODO: Obtiene planillas según posiciones específicas
+     * 
+     * @param Maquina $maquina
+     * @param Collection $elementos
+     * @param Collection $posiciones - Collection de posiciones a mostrar [1, 3, 5...]
+     * @return array [$planillasActivas, $elementosFiltrados, $ordenManual, $posicionesDisponibles]
+     */
+    private function aplicarColaPlanillasPorPosicion(Maquina $maquina, Collection $elementos, Collection $posiciones)
+    {
+        // 1) Agrupar elementos por planilla
+        $porPlanilla = $elementos->groupBy('planilla_id');
+
+        // 2) Traer orden manual completo: [planilla_id => posicion]
+        $ordenManual = OrdenPlanilla::where('maquina_id', $maquina->id)
+            ->orderBy('posicion', 'asc')
+            ->get()
+            ->pluck('posicion', 'planilla_id');
+
+        // 3) Crear un mapa inverso [posicion => planilla_id] para búsqueda rápida
+        $posicionAPlanilla = $ordenManual->flip();
+
+        // 4) Obtener todas las posiciones disponibles en orden
+        $posicionesDisponibles = $ordenManual->values()->sort()->values()->toArray();
+
+        // 5) Seleccionar planillas según las posiciones solicitadas
+        $planillasActivas = [];
+        foreach ($posiciones as $pos) {
+            if ($posicionAPlanilla->has($pos)) {
+                $planillaId = $posicionAPlanilla[$pos];
+
+                // Buscar la planilla en los elementos agrupados
+                if ($porPlanilla->has($planillaId)) {
+                    $planilla = $porPlanilla[$planillaId]->first()->planilla;
+                    if ($planilla) {
+                        $planillasActivas[] = $planilla;
+                    }
+                }
+            }
+        }
+
+        // 6) Filtrar elementos a las planillas activas
+        $idsActivos = collect($planillasActivas)->pluck('id');
+        $elementosFiltrados = $idsActivos->isNotEmpty()
+            ? $elementos->whereIn('planilla_id', $idsActivos)->values()
+            : collect();
+
+        return [$planillasActivas, $elementosFiltrados, $ordenManual, $posicionesDisponibles];
+    }
+
     public static function productosSolicitadosParaMaquina($maquinaId)
     {
         return Movimiento::where('tipo', 'recarga_materia_prima')

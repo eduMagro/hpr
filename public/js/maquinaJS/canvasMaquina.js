@@ -821,9 +821,22 @@ document.addEventListener("DOMContentLoaded", function () {
                     if (isFinite(dn)) diametro = String(Math.round(dn));
                 }
             }
+
+            // âœ… NUEVO: Construir texto de coladas
+            const coladas = [];
+            if (elemento.coladas?.colada1)
+                coladas.push(elemento.coladas.colada1);
+            if (elemento.coladas?.colada2)
+                coladas.push(elemento.coladas.colada2);
+            if (elemento.coladas?.colada3)
+                coladas.push(elemento.coladas.colada3);
+
+            const textColadas =
+                coladas.length > 0 ? ` (${coladas.join(", ")})` : "";
+
             return {
                 letter: indexToLetters(idx),
-                text: `Ø${diametro} x${barras}`,
+                text: `Ø${diametro} x${barras}${textColadas}`, // âœ… AÃ±adimos las coladas aquÃ­
             };
         });
         drawLegendBottomLeft(svg, legendEntries, ancho, alto); // ← primero, para evitar solapes con todo lo demás

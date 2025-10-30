@@ -302,6 +302,37 @@ document.addEventListener("DOMContentLoaded", () => {
                         nombre: data.nombre || "Sin nombre",
                     });
                 }
+                // 🔥 VALIDACIÓN MEJORADA: Actualizar coladas en el SVG
+                if (
+                    data.elementos &&
+                    Array.isArray(data.elementos) &&
+                    data.elementos.length > 0
+                ) {
+                    // Verificar que al menos un elemento tenga coladas
+                    const tieneColadas = data.elementos.some(
+                        (el) =>
+                            el.coladas &&
+                            (el.coladas.colada1 ||
+                                el.coladas.colada2 ||
+                                el.coladas.colada3)
+                    );
+
+                    if (tieneColadas) {
+                        console.log(
+                            `🔄 Actualizando coladas para etiqueta ${id}`,
+                            data.elementos
+                        );
+                        actualizarColadasEnSVG(id, data.elementos);
+                    } else {
+                        console.warn(
+                            `⚠️ No se encontraron coladas en elementos para etiqueta ${id}`
+                        );
+                    }
+                } else {
+                    console.warn(
+                        `⚠️ No se recibieron elementos válidos para actualizar coladas en etiqueta ${id}`
+                    );
+                }
                 break;
 
             case "completada":
@@ -330,6 +361,36 @@ document.addEventListener("DOMContentLoaded", () => {
                         estado: "completada",
                         nombre: data.nombre || "Sin nombre",
                     });
+                }
+                // 🔥 VALIDACIÓN MEJORADA: Actualizar coladas en el SVG
+                if (
+                    data.elementos &&
+                    Array.isArray(data.elementos) &&
+                    data.elementos.length > 0
+                ) {
+                    const tieneColadas = data.elementos.some(
+                        (el) =>
+                            el.coladas &&
+                            (el.coladas.colada1 ||
+                                el.coladas.colada2 ||
+                                el.coladas.colada3)
+                    );
+
+                    if (tieneColadas) {
+                        console.log(
+                            `🔄 Actualizando coladas para etiqueta ${id}`,
+                            data.elementos
+                        );
+                        actualizarColadasEnSVG(id, data.elementos);
+                    } else {
+                        console.warn(
+                            `⚠️ No se encontraron coladas en elementos para etiqueta ${id}`
+                        );
+                    }
+                } else {
+                    console.warn(
+                        `⚠️ No se recibieron elementos válidos para actualizar coladas en etiqueta ${id}`
+                    );
                 }
                 break;
 
@@ -489,7 +550,191 @@ document.addEventListener("DOMContentLoaded", () => {
             });
         }
     }
+    // ============================================================================
+    // ACTUALIZA las coladas en el SVG de la etiqueta - VERSIÓN MEJORADA
+    // ============================================================================
+    function actualizarColadasEnSVG(etiquetaId, elementosActualizados) {
+        console.log(
+            `🔄 Actualizando coladas en SVG para etiqueta ${etiquetaId}`
+        );
 
+        // 🔥 VALIDACIÓN 1: Verificar que elementosActualizados sea válido
+        if (!elementosActualizados || !Array.isArray(elementosActualizados)) {
+            console.error(
+                `❌ elementosActualizados no es un array válido para etiqueta ${etiquetaId}`
+            );
+            return;
+        }
+
+        if (elementosActualizados.length === 0) {
+            console.warn(
+                `⚠️ elementosActualizados está vacío para etiqueta ${etiquetaId}`
+            );
+            return;
+        }
+
+        // 🔥 VALIDACIÓN 2: Verificar que existe window.elementosAgrupadosScript
+        if (
+            !window.elementosAgrupadosScript ||
+            !Array.isArray(window.elementosAgrupadosScript)
+        ) {
+            console.error(
+                `❌ window.elementosAgrupadosScript no está disponible`
+            );
+            return;
+        }
+
+        // Buscar el grupo en window.elementosAgrupadosScript
+        const index = window.elementosAgrupadosScript.findIndex(
+            (grupo) => grupo.etiqueta?.etiqueta_sub_id === etiquetaId
+        );
+
+        if (index === -1) {
+            console.warn(`⚠️ No se encontró grupo para etiqueta ${etiquetaId}`);
+            return;
+        }
+
+        // Actualizar los datos con las nuevas coladas
+        window.elementosAgrupadosScript[index].elementos =
+            elementosActualizados;
+
+        const grupo = window.elementosAgrupadosScript[index];
+        const groupId = grupo.etiqueta?.id;
+
+        // 🔥 VALIDACIÓN 3: Verificar que existe el contenedor SVG
+        if (!groupId) {
+            console.error(
+                `❌ No se pudo obtener groupId para etiqueta ${etiquetaId}`
+            );
+            return;
+        }
+
+        const contenedor = document.getElementById("contenedor-svg-" + groupId);
+
+        if (!contenedor) {
+            console.warn(
+                `⚠️ No se encontró contenedor SVG para etiqueta ${etiquetaId} (id: ${groupId})`
+            );
+            return;
+        }
+
+        try {
+            // Limpiar y regenerar SVG
+            const svgExistente = contenedor.querySelector("svg");
+            if (svgExistente) {
+                svgExistente.remove();
+            }
+
+            // Obtener configuración
+            const ancho = 600,
+                alto = 150;
+            const proceso = contenedor.closest(".proceso");
+            const svgBg = proceso
+                ? getComputedStyle(proceso)
+                      .getPropertyValue("--bg-estado")
+                      .trim() || "#e5e7eb"
+                : "#e5e7eb";
+
+            // Crear nuevo SVG
+            const svg = document.createElementNS(
+                "http://www.w3.org/2000/svg",
+                "svg"
+            );
+            svg.setAttribute("viewBox", `0 0 ${ancho} ${alto}`);
+            svg.setAttribute("preserveAspectRatio", "xMidYMid meet");
+            svg.style.width = "100%";
+            svg.style.height = "100%";
+            svg.style.display = "block";
+            svg.style.background = svgBg;
+
+            // Construir leyenda CON coladas
+            const legendEntries = (grupo.elementos || []).map(
+                (elemento, idx) => {
+                    const barras =
+                        elemento.barras != null ? elemento.barras : 0;
+                    let diametro = "N/A";
+                    if (elemento.diametro != null && elemento.diametro !== "") {
+                        const dstr = String(elemento.diametro).replace(
+                            ",",
+                            "."
+                        );
+                        const mtch = dstr.match(/-?\d+(?:\.\d+)?/);
+                        if (mtch) {
+                            const dn = parseFloat(mtch[0]);
+                            if (isFinite(dn)) diametro = String(Math.round(dn));
+                        }
+                    }
+
+                    // ✅ Construir texto de coladas
+                    const coladas = [];
+                    if (elemento.coladas?.colada1)
+                        coladas.push(elemento.coladas.colada1);
+                    if (elemento.coladas?.colada2)
+                        coladas.push(elemento.coladas.colada2);
+                    if (elemento.coladas?.colada3)
+                        coladas.push(elemento.coladas.colada3);
+
+                    const textColadas =
+                        coladas.length > 0 ? ` (${coladas.join(", ")})` : "";
+
+                    return {
+                        letter: indexToLetters(idx),
+                        text: `Ø${diametro} x${barras}${textColadas}`,
+                    };
+                }
+            );
+
+            // 🔥 VALIDACIÓN 4: Verificar que drawLegendBottomLeft existe
+            if (typeof drawLegendBottomLeft === "function") {
+                drawLegendBottomLeft(svg, legendEntries, ancho, alto);
+            } else {
+                console.error(`❌ drawLegendBottomLeft no está definida`);
+            }
+
+            // Nota temporal de éxito
+            const nota = document.createElementNS(
+                "http://www.w3.org/2000/svg",
+                "text"
+            );
+            nota.setAttribute("x", ancho / 2);
+            nota.setAttribute("y", alto / 2);
+            nota.setAttribute("text-anchor", "middle");
+            nota.setAttribute("fill", "#059669");
+            nota.setAttribute("font-size", "14");
+            nota.setAttribute("font-weight", "600");
+            nota.textContent = "✓ Coladas actualizadas";
+            svg.appendChild(nota);
+
+            contenedor.appendChild(svg);
+
+            console.log(
+                `✅ SVG actualizado con coladas para etiqueta ${etiquetaId}`
+            );
+
+            // Eliminar nota después de 2 segundos
+            setTimeout(() => {
+                if (nota && nota.parentNode) {
+                    nota.remove();
+                }
+            }, 2000);
+        } catch (error) {
+            console.error(
+                `❌ Error al actualizar SVG para etiqueta ${etiquetaId}:`,
+                error
+            );
+
+            // 🔥 OPCIONAL: Mostrar alerta al usuario
+            if (typeof Swal !== "undefined") {
+                Swal.fire({
+                    icon: "warning",
+                    title: "Advertencia",
+                    text: "Las coladas se guardaron pero hubo un problema al actualizar la visualización.",
+                    timer: 3000,
+                    showConfirmButton: false,
+                });
+            }
+        }
+    }
     // ============================================================================
     // UTILIDADES
     // ============================================================================
