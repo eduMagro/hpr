@@ -92,7 +92,7 @@ $numMaquinas = $maquinas->count();
 
         <div id="modal_guardar"
             data-save-url="{{ route('produccion.planillas.guardar') }}"
-            class="gap-2 absolute flex -bottom-14 left-1/2 -translate-x-1/2 transition-all duration-150">
+            class="opacity-0 gap-2 absolute flex -bottom-14 left-1/2 -translate-x-1/2 transition-all duration-150">
             <button id="btn_guardar" class="p-2 px-10 bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 rounded-xl hover:text-white font-semibold transition-all duration-150">
                 Guardar
             </button>
@@ -201,48 +201,24 @@ $numMaquinas = $maquinas->count();
             </div>
         </div>
 
+    </div>
 
-        <div id="modal_advertencia_compatibilidad" class="bg-black bg-opacity-50 absolute top-0 left-0 w-screen h-screen flex items-center justify-center hidden backdrop-blur-sm">
-            <div class="bg-white shadow-lg rounded-lg p-4 flex flex-col gap-4 items-center max-w-2xl w-full max-h-[80vh]">
-                <div class="uppercase font-medium text-center text-red-600">
-                    ⚠️ Advertencia de Compatibilidad
-                </div>
-
-                <div class="text-center">
-                    <p class="font-semibold">No todos los elementos son compatibles con la máquina seleccionada.</p>
-                    <p class="text-sm text-gray-600 mt-2">Elementos incompatibles por diámetro:</p>
-                </div>
-
-                <div id="lista_elementos_incompatibles" class="w-full max-h-60 overflow-y-auto bg-red-50 border-2 border-red-300 rounded-lg p-3
-            [&::-webkit-scrollbar]:w-2
-            [&::-webkit-scrollbar-thumb]:bg-red-400
-            [&::-webkit-scrollbar-track]:rounded-r-xl
-            [&::-webkit-scrollbar-thumb]:rounded-xl">
-                    <!-- Se llenará dinámicamente -->
-                </div>
-
-                <div class="text-sm text-gray-600">
-                    <span id="count_validos" class="font-semibold text-green-600">0</span> elementos compatibles |
-                    <span id="count_invalidos" class="font-semibold text-red-600">0</span> elementos incompatibles
-                </div>
-
-                <div class="flex gap-3">
-                    <button id="advertencia_cancelar" class="p-2 px-6 bg-neutral-400 hover:bg-neutral-500 hover:text-white transition-all duration-150 rounded-lg uppercase font-semibold">
-                        Cancelar Todo
-                    </button>
-                    <button id="advertencia_proseguir" class="p-2 px-6 bg-orange-400 hover:bg-orange-500 hover:text-white transition-all duration-150 rounded-lg uppercase font-semibold">
-                        Proseguir con Aptos
-                    </button>
-                </div>
-            </div>
+    <div id="modal_detalles" class="absolute bg-opacity-50 backdrop-blur-sm bg-gradient-to-tr from-emerald-200/10 to-emerald-300/10 border-2 border-emerald-700 left-4 uppercase top-[45vh] rounded-lg text-emerald-700 font-mono font-semibold text-sm p-2 flex flex-col gap-2">
+        <div>
+            <p>Obra:</p>
+            <p><span></span></p>
         </div>
-
-
-        <div id="modal_detalles_etiqueta" class="absolute bg-black bg-opacity-50 backdrop-blur-sm border border-black hidden">
-            <p>Obra: <span class="obra"></span></p>
-            <p>Estado producción: <span class="estado"></span></p>
-            <p>Fin programado: <span class="fin_programado"></span></p>
-            <p>Fecha estimada entrega: <span class="fecha_estimada_entrega"></span></p>
+        <div>
+            <p>Estado producción:</p>
+            <p><span></span></p>
+        </div>
+        <div>
+            <p>Fin programado:</p>
+            <p><span></span></p>
+        </div>
+        <div>
+            <p>Estimación entrega:</p>
+            <p><span></span></p>
         </div>
     </div>
 
@@ -264,7 +240,7 @@ $numMaquinas = $maquinas->count();
 
     <div id="todasPlanillas" class="hidden">
         @foreach ($planillas as $p)
-        <div data-planilla='@json(["id"=>$p->id,"codigo"=>$p->codigo, "obra_id" => $p->obra_id])'></div>
+        <div data-planilla='{{ json_encode(["id" => $p->id, "codigo" => $p->codigo, "obra_id" => $p->obra_id, "estado" => $p->estado, "estimacion_entrega" => $p->fecha_estimada_entrega]) }}'></div>
         @endforeach
     </div>
 
@@ -295,8 +271,7 @@ $numMaquinas = $maquinas->count();
     <!-- emerald-500 #10b981 -->
 
     <script src="{{ asset('js/elementosJs/figuraElemento.js') }}" defer></script>
-    <!-- <script src="{{ asset('js/planillas/planificacion.js') }}"></script> -->
-    <script src="{{ asset('js/planillas/planificacion1.js') }}"></script>
+    <script src="{{ asset('js/planillas/planificacion.js') }}"></script>
     <style>
         .planilla.compi-resaltado {
             background-color: #6ee7b7 !important;
@@ -413,6 +388,11 @@ $numMaquinas = $maquinas->count();
         .planilla.__hl-compi:hover {
             background-image: linear-gradient(to top right, #c7d2fe, #a5b4fc) !important;
             border-color: #6366f1 !important;
+        }
+
+        #modal_detalles span {
+            color: black;
+            font-size: 1rem;
         }
     </style>
 

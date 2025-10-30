@@ -1511,7 +1511,7 @@ class ProduccionController extends Controller
         }
     }
 
-    public function verPlanillas0(Request $request)
+    public function verOrdenesPlanillas(Request $request)
     {
         $maquinas = Maquina::query()
             ->where('tipo', '!=', 'grua')
@@ -1537,7 +1537,7 @@ class ProduccionController extends Controller
 
         $obras = Obra::query()->get();
 
-        return view('produccion.planillas0', compact('maquinas', 'localizacionMaquinas', 'ordenPlanillas', 'planillas', 'elementos', 'obras'));
+        return view('produccion.ordenesPlanillas', compact('maquinas', 'localizacionMaquinas', 'ordenPlanillas', 'planillas', 'elementos', 'obras'));
     }
 
     public function guardar(Request $request)
@@ -1651,10 +1651,16 @@ class ProduccionController extends Controller
             }
 
             return response()->json([
-                'ok' => true,
-                // Devuelve el mapa solo si no respetas los ids del cliente
+                'success' => true,
                 'orden_planillas_id_map' => $respetarIdsCliente ? (object)[] : $idMap,
+                'message' => 'Movimiento(s) registrado(s) correctamente.'
             ]);
         });
     }
 }
+
+
+// $msg = 'Movimiento(s) registrado(s) correctamente.';
+// if ($request->expectsJson()) {
+//     return response()->json(['success' => true, 'message' => $msg]);
+// }

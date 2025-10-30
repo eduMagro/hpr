@@ -384,9 +384,9 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
 
 
 
-    // === PLANILLAS 0 ===
-    Route::get('/produccion/planillas0', [App\Http\Controllers\ProduccionController::class, 'verPlanillas0'])
-        ->name('produccion.verPlanillas0');
+    // === ORDENES PLANILLAS ===
+    Route::get('/produccion/OrdenesPlanillas', [App\Http\Controllers\ProduccionController::class, 'verOrdenesPlanillas'])
+        ->name('produccion.verOrdenesPlanillas');
 
     // obtener elementos con js
     Route::get('/api/elementos', [ElementoController::class, 'filtrar']);

@@ -1,938 +1,1434 @@
-let datos_elementos;
-let datos_elementos_original;
-let div_elementos;
-let modal_elementos
-let modal_transferir
-let pendingFusion = null; // { planillaId, codigo, origenCol, destinoCol, draggingEl, origenMachineId, destinoMachineId, originIndex }
-let obras
-let select_obra
+//variables
+let planillas;
+let ordenPlanillas;
+let elementos;
+let maquinas;
+let maquinasDivs = [];
+let btnGuardar;
+let datosOrdenPlanillaSeleccionado;
+let ultimoOrdenPlanillaId;
+let naves = [];
+let inputFiltrarObra;
+let obras = [];
+let obrasInput;
+let obrasModal;
+let clickObras; // .obra
+let obraSeleccionada;
 
+// btn
+let btn_transferir;
+let btn_guardar;
+let btn_cancelar;
+
+//modales
+let modalMostrarElementos;
+let modalTransferirAMaquina;
+let modalGuardar;
+let modalElegirOrden;
+let modalResaltarObra;
+let modalDetalles;
+let modales = [];
+
+// variables datos originales, servira para referenciar los cambios realizados
+let ELEMENTOS_ORIGINAL;
+let ORDEN_PLANILLAS_ORIGINAL;
+
+// DRAG & DROP CROSS-COLUMN
+let DND = {
+    draggingEl: null,
+    sourceContainer: null,
+    placeholder: null,
+};
 
 document.addEventListener("DOMContentLoaded", () => {
-    const MAQUINAS = Array.from(document.getElementsByClassName("maquina"));
-    const CONTENEDORES = MAQUINAS.map(m => m.querySelector('.planillas'));
-    const BOTONES = [document.getElementById("nave_1"), document.getElementById("nave_2"), document.getElementById("nave_3")];
-    const PLANILLAS = Array.from(document.getElementsByClassName("planilla"));
+    planillas = Array.from(
+        document.querySelectorAll("#todasPlanillas [data-planilla]")
+    ).map((div) => JSON.parse(div.dataset.planilla));
 
-    const MOVER_MODAL_ELEMENTOS = document.getElementById("mover_modal_elementos")
-    // abrir el modal de selección de máquina desde el modal de elementos
-    MOVER_MODAL_ELEMENTOS?.addEventListener('click', seleccionarMaquinaParaMovimiento);
+    elementos = Array.from(
+        document.querySelectorAll("#todosElementos [data-elementos]")
+    ).map((div) => JSON.parse(div.dataset.elementos));
 
-    div_elementos = document.getElementById("div_elementos")
-    modal_elementos = document.getElementById("modal_elementos")
-    modal_transferir = document.getElementById("modal_transferir_a_maquina");
-    modales = [modal_elementos, modal_transferir]
-    select_obra = document.getElementById("select_obra")
+    ordenPlanillas = Array.from(
+        document.querySelectorAll("#ordenPlanillas [data-orden]")
+    ).map((div) => JSON.parse(div.dataset.orden));
 
-    // datos de todas las obras (id, nombre)
-    obras = Array.from(document.querySelectorAll("#obras [data-obras]")).map(div => JSON.parse(div.dataset.obras));
+    maquinas = Array.from(
+        document.querySelectorAll("#maquinas [data-detalles]")
+    ).map((div) => JSON.parse(div.dataset.detalles));
 
-    console.log(obras);
+    naves = Array.from(document.querySelectorAll(".filtro_nave"));
 
-
-    const TODOS = document.getElementById("todosElementos");
-    let elementos = TODOS.querySelectorAll("[data-elementos]");
-    datos_elementos = Array.from(elementos).map(div => JSON.parse(div.dataset.elementos));
-    datos_elementos_original = JSON.parse(JSON.stringify(datos_elementos));
-
-    renderPlanillasFromDatos(datos_elementos);
-    anadirNombreObraADataPlanilla()
-
-
-    BOTONES.forEach(boton => {
-        boton.addEventListener("click", () => {
-            BOTONES.forEach(b => {
-                b.classList.remove("bg-gradient-to-r", "text-white")
-                b.classList.add("text-emerald-700")
-            });
-            mostrarPorNave(MAQUINAS, boton);
-        });
+    naves.forEach((btn) => {
+        btn.addEventListener("click", () => filtrarPorNave(btn.dataset.nave));
     });
 
-    // llamada de funciones
-    resaltarCompis(PLANILLAS);
-    initDragAndDrop(CONTENEDORES, MAQUINAS);
-    mostrarElementos(PLANILLAS, div_elementos, MOVER_MODAL_ELEMENTOS, datos_elementos)
-    resaltarPorObra()
+    obras = Array.from(document.querySelectorAll("#obras [data-obras]")).map(
+        (div) => JSON.parse(div.dataset.obras)
+    );
+    obrasInput = document.getElementById("input_filtrar_obra");
+    obrasModal = document.getElementById("obras_modal");
+    clickObras = Array.from(document.getElementsByClassName("obra"));
 
+    maquinasDivs = Array.from(document.getElementsByClassName("maquina"));
+
+    ELEMENTOS_ORIGINAL = JSON.parse(JSON.stringify(elementos));
+    ORDEN_PLANILLAS_ORIGINAL = JSON.parse(JSON.stringify(ordenPlanillas));
+
+    // obtener el id de ordenPlanilla mas alto, asi poder trabaja con id de manera local sin llamar a la bd
+    ultimoOrdenPlanillaId =
+        Math.max(...ordenPlanillas.map((o) => Number(o.id) || 0)) || 0;
+
+    //btn
+    btn_transferir = document.getElementById("transferir_elementos");
+    btn_transferir.addEventListener("click", transferirElementos);
+    btn_guardar = document.getElementById("btn_guardar");
+    btn_cancelar = document.getElementById("btn_cancelar_guardar");
+
+    btn_guardar.addEventListener("click", guardarCambios);
+    btn_cancelar.addEventListener("click", () => {
+        elementos = JSON.parse(JSON.stringify(ELEMENTOS_ORIGINAL));
+        ordenPlanillas = JSON.parse(JSON.stringify(ORDEN_PLANILLAS_ORIGINAL));
+        renderPlanillas();
+        sePuedeGuardar();
+    });
+
+    // modales
+    modalMostrarElementos = document.getElementById("modal_elementos");
+    modalTransferirAMaquina = document.getElementById(
+        "modal_transferir_a_maquina"
+    );
+    modalGuardar = document.getElementById("modal_guardar");
+    modalElegirOrden = document.getElementById("modal_elegir_orden");
+    modalResaltarObra = document.getElementById("modal_resaltar_obra");
+    modalDetalles = document.getElementById("modal_detalles"); // este no hay que agregarlo al array
+    modales = [
+        modalMostrarElementos,
+        modalTransferirAMaquina,
+        modalElegirOrden,
+        modalResaltarObra,
+    ];
 
     // Agregar Listener de cierre a los modales cuando se clicka fuera de los hijos del mismo
-    modales.forEach(modal => {
+    modales.forEach((modal) => {
         modal.addEventListener("click", (e) => {
             if (e.target === modal) {
                 modal.classList.add("hidden");
             }
         });
-
     });
 
-    // cerrar modal elementos por boton cancelar
-    document.getElementById("cancelar_modal_elementos").addEventListener("click", () => modal_elementos.classList.add("hidden"))
-
-    const modalFusion = document.getElementById("modal_fusionar_planilla");
-    const btnFusionCancelar = document.getElementById("fusionar_cancelar");
-    const btnFusionAceptar = document.getElementById("fusionar_aceptar");
-
-    if (btnFusionCancelar) {
-        btnFusionCancelar.onclick = () => {
-            if (!pendingFusion) return;
-            // Revertir la tarjeta a su sitio original
-            const { origenCol, draggingEl, originIndex } = pendingFusion;
-            if (origenCol && draggingEl) {
-                const children = Array.from(origenCol.children);
-                const ref = children[originIndex] || null;
-                origenCol.insertBefore(draggingEl, ref); // vuelve a su índice o al final
-                reindexColumn(origenCol);
-            }
-            modalFusion.classList.add("hidden");
-            pendingFusion = null;
-            resetPlanillaTransforms();
-        };
-    }
-
-    // cancelar cambios
-    document.getElementById("btn_cancelar_guardar").addEventListener("click", () => {
-        datos_elementos = JSON.parse(JSON.stringify(datos_elementos_original));
-        renderPlanillasFromDatos(datos_elementos);
-        document.getElementById("modal_guardar")?.classList.replace("bottom-14", "-bottom-14");
+    // mostrar obras que coincidan con la busqueda del input
+    inputFiltrarObra = document.getElementById("input_filtrar_obra");
+    inputFiltrarObra.addEventListener("input", () => {
+        let obras;
     });
 
+    renderPlanillas();
+    resaltarCompis();
+    filtrarPorNave();
 
-    if (btnFusionAceptar) {
-        btnFusionAceptar.onclick = () => {
-            if (!pendingFusion) return;
-            const { planillaId, destinoCol, destinoMachineId } = pendingFusion;
+    filtrarPorNave("all");
+    renderObras();
+    obrasInput.addEventListener("input", renderObras);
 
-            // localizar la tarjeta destino (la que queda)
-            const targetCard = Array.from(destinoCol.querySelectorAll('.planilla'))
-                .find(pl => Number(pl.dataset.planillaId) === Number(planillaId));
-            const targetOrdenId = Number(targetCard?.dataset.ordenId);
+    // btn resaltar por obra
+    resaltarObra(1);
 
-            // mover TODOS los elementos de esa planilla a ese orden + máquina
-            datos_elementos.forEach(e => {
-                if (Number(e.planilla_id) === Number(planillaId)) {
-                    e.orden_planilla_id = targetOrdenId;
-                    e.maquina_id = destinoMachineId; // 👈 también actualizamos máquina
-                }
-            });
+    document.addEventListener("mousemove", (e) => {
+        let mitad = window.innerWidth / 2;
 
-            renderPlanillasFromDatos(datos_elementos);
-            document.getElementById('modal_guardar')?.classList.replace('-bottom-14', 'bottom-14');
-            document.getElementById("modal_fusionar_planilla").classList.add("hidden");
-            pendingFusion = null;
-        };
-    }
-
-
-    const MODAL_GUARDAR = document.getElementById('modal_guardar');
-    const BTN_GUARDAR = document.getElementById('btn_guardar');
-
-    if (BTN_GUARDAR && MODAL_GUARDAR) {
-        BTN_GUARDAR.addEventListener('click', async () => {
-            const GUARDAR_URL = MODAL_GUARDAR.dataset.saveUrl;
-            const ordenes = collectOrdenPayload();
-            const cambios_elementos = collectCambiosElementosPayload();
-
-            if (ordenes.length === 0 && cambios_elementos.length === 0) {
-                MODAL_GUARDAR.classList.replace("bottom-14", "-bottom-14");
-                return;
-            }
-
-            const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
-
-            try {
-                const resp = await fetch(GUARDAR_URL, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        ...(token ? { 'X-CSRF-TOKEN': token } : {})
-                    },
-                    body: JSON.stringify({ ordenes, cambios_elementos })
-                });
-
-                if (!resp.ok) {
-                    const err = await resp.json().catch(() => ({}));
-                    console.error('❌ Error al guardar:', err);
-                    alert('No se han podido guardar los cambios.');
-                    return;
-                }
-
-                datos_elementos_original = JSON.parse(JSON.stringify(datos_elementos));
-                MODAL_GUARDAR.classList.replace("bottom-14", "-bottom-14");
-                // console.log('✅ Cambios guardados');
-            } catch (e) {
-                console.error('❌ Error de red al guardar:', e);
-                alert('Error de red al guardar.');
-            }
-        });
-    }
+        if (e.clientX > mitad) {
+            // ratón en mitad izquierda
+            modalDetalles.classList.remove("right-4");
+            modalDetalles.classList.add("left-4");
+        } else {
+            // ratón en mitad derecha
+            modalDetalles.classList.remove("left-4");
+            modalDetalles.classList.add("right-4");
+        }
+    });
 });
 
-function indexOfChild(parent, child) {
-    return Array.prototype.indexOf.call(parent.children, child);
-}
-
-
-function initDragAndDrop(contenedores, maquinas) {
-    let dragging = null;
-    let origenCol = null;
-    let origenMachineId = null;
-    let originIndex = -1;
-
-    document.querySelectorAll('.planilla').forEach(card => {
-        card.setAttribute('draggable', 'true');
-
-        card.addEventListener('dragstart', (e) => {
-            dragging = e.currentTarget;
-            origenCol = dragging.parentElement;               // .planillas (origen)
-            origenMachineId = getMachineIdFromColumn(origenCol);
-            originIndex = indexOfChild(origenCol, dragging);  // posición original
-            dragging.classList.add('dragging', 'cursor-grabbing');
-            dragging.classList.remove('cursor-grab');
-            e.dataTransfer.effectAllowed = 'move';
-            e.dataTransfer.setData('text/plain', dragging.dataset.planillaId || '');
-        });
-
-        card.addEventListener('dragend', () => {
-            if (!dragging) return;
-
-            const destinoCol = dragging.parentElement;        // .planillas (destino)
-            const destinoMachineId = getMachineIdFromColumn(destinoCol);
-            const planillaId = Number(dragging.dataset.planillaId);
-            const planillaCodigo = dragging.querySelector('p:nth-child(2)')?.textContent?.trim() || `PL-${planillaId}`;
-
-            dragging.classList.remove('dragging', 'cursor-grabbing');
-            dragging.classList.add('cursor-grab');
-
-            // Reindex visual
-            reindexColumn(origenCol);
-            if (destinoCol !== origenCol) reindexColumn(destinoCol);
-
-            // --- ¿Hay duplicado en destino? (misma planilla_id) ---
-            const yaExiste = Array.from(destinoCol.querySelectorAll('.planilla'))
-                .some(pl => pl !== dragging && Number(pl.dataset.planillaId) === planillaId);
-
-            if (yaExiste) {
-                // Preparar modal de fusión
-                pendingFusion = {
-                    planillaId,
-                    codigo: planillaCodigo,
-                    origenCol,
-                    destinoCol,
-                    draggingEl: dragging,
-                    origenMachineId,
-                    destinoMachineId,
-                    originIndex
-                };
-
-                const spanCod = document.getElementById('fusionar_planilla_codigo');
-                if (spanCod) spanCod.textContent = planillaCodigo;
-
-                const modalFusion = document.getElementById("modal_fusionar_planilla");
-                modalFusion.classList.remove("hidden");
-
-                resetPlanillaTransforms();
-
-                // OJO: no actualizamos datos todavía, se hace si aceptan
-                dragging = null;
-                origenCol = null;
-                origenMachineId = null;
-                originIndex = -1;
-                return; // salimos aquí
+// renderizar obras en funcion del valor del input
+function renderObras() {
+    let valorContains = obrasInput.value.trim().toLowerCase();
+    clickObras.forEach((obra) => {
+        let p = obra.querySelector("p");
+        if (p) {
+            let nombre = obra.querySelector("p").innerText.toLowerCase();
+            if (nombre.includes(valorContains) || valorContains === "") {
+                obra.classList.remove("hidden");
+            } else {
+                obra.classList.add("hidden");
             }
-
-            // --- Flujo normal sin duplicado ---
-            const before = JSON.parse(JSON.stringify(datos_elementos));
-
-            const nuevosOrdenes = syncOrdenPlanillasDesdeDOM();
-            // console.log('📦 Orden actualizado desde DOM:', nuevosOrdenes);
-
-            logDiffDatosElementos(before, datos_elementos, planillaId);
-
-            const modalGuardar = document.getElementById('modal_guardar');
-            if (modalGuardar) modalGuardar.classList.replace("-bottom-14", "bottom-14");
-
-            dragging = null;
-            origenCol = null;
-            origenMachineId = null;
-            originIndex = -1;
-        });
-    });
-
-    contenedores.forEach(col => {
-        col.addEventListener('dragover', (e) => {
-            e.preventDefault();
-            e.dataTransfer.dropEffect = 'move';
-            col.classList.add('drop-target');
-
-            const draggingEl = document.querySelector('.planilla.dragging');
-            if (!draggingEl) return;
-
-            // 1) Medimos posiciones ANTES de mover
-            const hermanosAntes = [...col.querySelectorAll('.planilla:not(.dragging)')];
-            const prev = new Map(hermanosAntes.map(el => [el, el.getBoundingClientRect()]));
-
-            // 2) Insertamos en la nueva posición
-            const after = getDragAfterElement(col, e.clientY);
-            if (!after) col.appendChild(draggingEl);
-            else col.insertBefore(draggingEl, after);
-
-            // 3) Medimos DESPUÉS y animamos (FLIP)
-            const hermanosDespues = [...col.querySelectorAll('.planilla:not(.dragging)')];
-
-            hermanosDespues.forEach(el => {
-                const beforeRect = prev.get(el);
-                if (!beforeRect) return; // elementos nuevos no se animan
-
-                const afterRect = el.getBoundingClientRect();
-                const dx = beforeRect.left - afterRect.left;
-                const dy = beforeRect.top - afterRect.top;
-
-                if (dx !== 0 || dy !== 0) {
-                    // Invertimos
-                    el.style.transition = 'none';
-                    el.style.transform = `translate(${dx}px, ${dy}px)`;
-
-                    // Y reproducimos la animación a su sitio
-                    requestAnimationFrame(() => {
-                        el.style.transition = 'transform 140ms ease';
-                        el.style.transform = '';
-                    });
-                }
-            });
-        });
-
-        col.addEventListener('dragleave', () => {
-            col.classList.remove('drop-target');
-        });
-
-        col.addEventListener('drop', () => {
-            col.classList.remove('drop-target');
-            // el resto se maneja en dragend
-        });
-    });
-}
-
-
-function collectOrdenPayload() {
-    return syncOrdenPlanillasDesdeDOM(); // ya la tienes; devuelve [{maquina_id, planilla_id, posicion}, ...]
-}
-
-// 2) Cambios de elementos (solo difs maquina_id)
-function collectCambiosElementosPayload() {
-    const cambios = [];
-    const originalMap = new Map(datos_elementos_original.map(e => [Number(e.id), e]));
-
-    datos_elementos.forEach(now => {
-        const before = originalMap.get(Number(now.id));
-        if (!before) return;
-
-        const diffOrden = Number(before.orden_planilla_id) !== Number(now.orden_planilla_id);
-        const diffMaq = Number(before.maquina_id) !== Number(now.maquina_id);
-
-        if (diffOrden || diffMaq) {
-            cambios.push({
-                id: Number(now.id),
-                ...(diffOrden ? { orden_planilla_id: Number(now.orden_planilla_id) } : {}),
-                ...(diffMaq ? { maquina_id: Number(now.maquina_id) } : {}),
-            });
         }
     });
-
-    return cambios;
+    resaltarObra();
 }
 
+// si se le pasa un valor quita el resalte de las obras
+function resaltarObra(quitar = null) {
+    let btn1 = document.getElementById("btn_mostrar_modal_obras");
+    let btn2 = document.getElementById("btn_quitar_resaltado");
+    if (!quitar) {
+        btn1.classList.add("hidden");
+        btn2.classList.remove("hidden");
+        clickObras.forEach((clickObra) => {
+            clickObra.addEventListener("click", () => {
+                cerrarModales();
+                obraSeleccionada = clickObra.dataset.id;
+                let planillasEnLaMismaObra = [];
 
-function resetPlanillaTransforms(root = document) {
-    root.querySelectorAll('.planilla').forEach(el => {
-        el.style.transition = '';
-        el.style.transform = '';
-    });
-}
+                // recoger codigos de planillas que se encuentran en la obra seleccionada
+                planillas.forEach((planilla) => {
+                    if (planilla.obra_id == obraSeleccionada) {
+                        planillasEnLaMismaObra.push(planilla.codigo);
+                    }
+                });
 
+                let ordenPlanillasRenderizado = Array.from(
+                    document.getElementsByClassName("planilla")
+                );
+                ordenPlanillasRenderizado.forEach((planilla) => {
+                    if (
+                        planillasEnLaMismaObra.includes(
+                            planilla.children[1]?.innerText.trim()
+                        )
+                    ) {
+                        // Quitar clases de hover que pintan en verde + desactivar group-hover
+                        planilla.classList.remove(
+                            "hover:from-emerald-300",
+                            "hover:to-emerald-400",
+                            "hover:border-emerald-600",
+                            /* quita group para que no actúe .group-hover:* en los hijos */
+                            "group"
+                            // si NO quieres el leve levantado al hover, descomenta:
+                            // , "hover:-translate-y-1"
+                        );
 
+                        const posEl = planilla.querySelector(".posicion");
+                        const codEl = planilla.querySelector(".codigo");
+                        posEl?.classList.remove(
+                            "text-emerald-600",
+                            "group-hover:text-black"
+                        );
+                        codEl?.classList.remove("text-emerald-800");
 
-// Devuelve el elemento .planilla inmediatamente posterior a la posición del cursor,
-// para saber dónde insertar la tarjeta arrastrada.
-function getDragAfterElement(container, y) {
-    const els = [...container.querySelectorAll('.planilla:not(.dragging)')];
+                        // Aplica el gradiente y el borde fucsia
+                        planilla.classList.remove(
+                            "from-neutral-100",
+                            "to-neutral-200"
+                        );
+                        planilla.classList.add(
+                            "bg-gradient-to-tr",
+                            "from-fuchsia-200",
+                            "to-fuchsia-300",
+                            "border-2",
+                            "border-fuchsia-400",
+                            "obra_resaltada"
+                        );
 
-    let closest = null;
-    let closestOffset = Number.NEGATIVE_INFINITY;
+                        // Colores de texto en fucsia (no depender de herencia)
+                        posEl?.classList.add("text-fuchsia-700");
+                        codEl?.classList.add("text-fuchsia-700");
+                    }
+                });
+            });
+        });
+    } else {
+        btn2.classList.add("hidden");
+        btn1.classList.remove("hidden");
 
-    els.forEach(el => {
-        const box = el.getBoundingClientRect();
-        const offset = y - (box.top + box.height / 2);
-        if (offset < 0 && offset > closestOffset) {
-            closestOffset = offset;
-            closest = el;
-        }
-    });
+        const cards = Array.from(document.getElementsByClassName("planilla"));
+        cards.forEach((card) => {
+            // restaurar clases base y hover verdes
+            card.classList.remove(
+                "obra_resaltada",
+                "from-fuchsia-200",
+                "to-fuchsia-300",
+                "border-fuchsia-400"
+            );
+            card.classList.add(
+                "bg-gradient-to-tr",
+                "from-neutral-100",
+                "to-neutral-200",
+                "border-2",
+                "border-emerald-400",
+                "hover:from-emerald-300",
+                "hover:to-emerald-400",
+                "hover:border-emerald-600",
+                "group"
+                // si quitaste el lift en highlight, reañádelo aquí:
+                // , "hover:-translate-y-1"
+            );
 
-    return closest;
-}
-
-function reindexColumn(columnEl) {
-    const items = [...columnEl.querySelectorAll('.planilla')];
-    items.forEach((item, idx) => {
-        item.dataset.posicion = String(idx + 1);
-        const label = item.querySelector('.pos-label');
-        if (label) label.textContent = String(idx + 1);
-    });
-}
-
-function mostrarPorNave(maquinas, boton) {
-    const texto = boton.textContent;
-
-    maquinas.forEach(maq => { maq.style.display = "flex"; });
-
-    if (texto == "Nave 1") {
-        maquinas.forEach(maq => { if (getDetalles(maq).nave_id != 1) maq.style.display = "none"; });
-    } else if (texto == "Nave 2") {
-        maquinas.forEach(maq => { if (getDetalles(maq).nave_id != 2) maq.style.display = "none"; });
+            const posEl = card.querySelector(".posicion");
+            const codEl = card.querySelector(".codigo");
+            posEl?.classList.remove("text-fuchsia-700");
+            posEl?.classList.add("text-emerald-600", "group-hover:text-black");
+            codEl?.classList.remove("text-fuchsia-700");
+            codEl?.classList.add("text-emerald-800");
+        });
     }
-
-    boton.classList.add("bg-gradient-to-r", "text-white")
 }
 
-function getDetalles(maquina) { return JSON.parse(maquina.dataset.detalles); }
+// mostrar en funcion de ordenPlanillas local las planillas en orden asignadas a cada maquina
+function renderPlanillas() {
+    // limpiar planillas existentes, si hay
+    maquinasDivs.forEach((maq) => {
+        const contenedor = maq.querySelector(".planillas");
+        if (contenedor) contenedor.innerHTML = "";
+    });
 
+    // ORDENAR por maquina_id y posicion antes de pintar
+    const ordenadas = [...ordenPlanillas].sort((a, b) => {
+        if (Number(a.maquina_id) !== Number(b.maquina_id)) {
+            return Number(a.maquina_id) - Number(b.maquina_id);
+        }
+        return Number(a.posicion) - Number(b.posicion);
+    });
 
+    ordenadas.forEach((planilla) => {
+        // div que se renderizara
+        let div = document.createElement("div");
 
-function resaltarCompis(planillas) {
-    planillas.forEach(planilla => {
-        planilla.addEventListener('mouseenter', () => {
-            const codigo = planilla.children[1].textContent.trim();
-            planillas.forEach(compi => {
-                if (compi !== planilla && compi.children[1].textContent.trim() === codigo) {
-                    compi.classList.add('compi-resaltado');
+        maquinasDivs.forEach((maq) => {
+            let div_maquina_id = JSON.parse(maq.dataset.detalles).id;
+            if (div_maquina_id == planilla.maquina_id) {
+                div.className =
+                    "planilla group p-3 flex justify-around items-center border-2 border-emerald-400 hover:border-emerald-600 hover:-translate-y-1 transition-transform duration-75 ease-in-out rounded-xl cursor-grab bg-gradient-to-tr from-neutral-100 to-neutral-200 hover:from-emerald-300 hover:to-emerald-400 active:cursor-grabbing select-none text-center relative";
+                div.dataset.ordenId = planilla.id;
+                div.dataset.planillaId = planilla.planilla_id;
+                div.setAttribute("draggable", "true");
+
+                let divPosicion = document.createElement("div");
+                divPosicion.className =
+                    "posicion text-emerald-600 group-hover:text-black text-xs font-bold absolute top-1 left-1 pos-label";
+                divPosicion.innerText = planilla.posicion;
+
+                let divCodigoPlanilla = document.createElement("div");
+                let codigo_planilla;
+                for (const planilla_i of planillas) {
+                    if (planilla_i.id == planilla.planilla_id) {
+                        codigo_planilla = planilla_i.codigo;
+                        break;
+                    }
                 }
-            });
+                divCodigoPlanilla.innerText = codigo_planilla;
+                divCodigoPlanilla.className =
+                    "codigo text-emerald-800 font-semibold";
+                div.dataset.codigo = codigo_planilla;
+
+                div.appendChild(divPosicion);
+                div.appendChild(divCodigoPlanilla);
+            }
         });
-        planilla.addEventListener('mouseleave', () => {
-            planillas.forEach(compi => compi.classList.remove('compi-resaltado'));
-        });
-    });
-}
 
-async function mostrarElementos(planillas, div_elementos, btn, datos_elementos) {
-    planillas.forEach(planilla => {
-        planilla.addEventListener("click", async (e) => {
-            const target = e.currentTarget;
-            const codigo = target.children[1]?.textContent?.trim() || "";
-            const maquinaTitulo = target.closest('.maquina')
-                ?.querySelector('.bg-gradient-to-r p')  // o '.rounded-t-xl p'
-                ?.textContent?.trim() || "";
-
-            const orden_id = Number(target.dataset.ordenId || 0);  // 👈 importante
-            const planilla_id = Number(target.dataset.planillaId || target.getAttribute("data-planilla-id"));
-
-            window.__ctx_planilla_id__ = planilla_id;
-            window.__ctx_orden_id__ = orden_id;
-
-            // info de máquina para pintar cabecera
-            const padre_maquina = target.closest('.maquina');
-            if (!padre_maquina) return;
-            const raw = padre_maquina.dataset.detalles || padre_maquina.getAttribute('data-detalles');
-            let maquina_id = null;
-            try { maquina_id = JSON.parse(raw).id; } catch { return; }
-
-            // pintar cabecera
-            const seleccion_planilla_codigo = document.getElementById("seleccion_planilla_codigo");
-            const seleccion_maquina_tag = document.getElementById("seleccion_maquina_tag");
-            if (seleccion_planilla_codigo) seleccion_planilla_codigo.textContent = codigo;
-            if (seleccion_maquina_tag) seleccion_maquina_tag.textContent = maquinaTitulo;
-
-            // 👇 recoger elementos por orden_planilla_id
-            const elementos = datos_elementos.filter(e => Number(e.orden_planilla_id) === orden_id);
-
-            const padre_elementos = document.getElementById("seleccion_elementos");
-            padre_elementos.innerHTML = "";
-            modal_elementos.classList.remove("hidden");
-
-            elementos.forEach((elemento, i) => anadirElemento(padre_elementos, elemento, i));
-            dibujarMiniFiguras(padre_elementos);
-            anadirPropiedadTransferible();
+        // pintar en su columna
+        maquinasDivs.forEach((maqDiv) => {
+            let maqId = maqDiv.getAttribute("data-maquina-id");
+            if (maqId == planilla.maquina_id) {
+                maqDiv.querySelector(".planillas").appendChild(div);
+            }
         });
     });
+
+    agregarClickAPlanillas();
+    initDragAndDrop();
 }
 
-
-function agregarElementosModal(planilla_id, maquina_id, datos_elementos) {
-    return datos_elementos.filter(e =>
-        e.planilla_id == planilla_id && e.maquina_id == maquina_id
+// agregar listener click a las planillas, rehacerlo cada vez que se hagan cambios para evitar problemas con nuevos orden_planillas
+function agregarClickAPlanillas() {
+    let orden_planillas_div = Array.from(
+        document.getElementsByClassName("planilla")
     );
+
+    orden_planillas_div.forEach((orden_planilla_div) => {
+        orden_planilla_div.addEventListener("click", (e) => {
+            target = e.currentTarget;
+
+            let maq_codigo =
+                target.parentElement.parentElement.children[0].innerText;
+            let cod_planilla = target.children[1].innerText;
+
+            let ordenIdSel = Number(target.dataset.ordenId);
+            let opSel = ordenPlanillas.find((o) => Number(o.id) === ordenIdSel);
+
+            // almacenar id de orden_planilla
+            datosOrdenPlanillaSeleccionado = {
+                id: target.dataset.ordenId,
+                planilla_id: opSel ? opSel.planilla_id : null,
+                posicion: target.children[0].innerText.trim(),
+                codigo: target.children[1].innerText.trim(),
+            };
+
+            // render modal de elementos
+            renderModalElementos(
+                target.dataset.ordenId,
+                cod_planilla,
+                maq_codigo
+            );
+        });
+    });
 }
 
+// procesado sobre datos que se muestran en el modal de elementos
+// se le pasan codigoPlanilla y codigoMaquina para acelerar proceso con DOM
+function renderModalElementos(ordenPlanillaId, codigoPlanilla, codigoMaquina) {
+    // cabecera modal
+    let rme_planilla = document.getElementById("seleccion_planilla_codigo");
+    rme_planilla.innerText = codigoPlanilla;
+
+    let rme_maquina = document.getElementById("seleccion_maquina_tag");
+    rme_maquina.innerText = codigoMaquina;
+
+    // contenedor lista
+    let rme_elementos = document.getElementById("seleccion_elementos");
+    rme_elementos.innerHTML = "";
+
+    // filtrar elementos por orden_planilla_id
+    const elementosDeOrden = elementos.filter(
+        (el) => Number(el.orden_planilla_id) === Number(ordenPlanillaId)
+    );
+
+    // pintar
+    elementosDeOrden.forEach((elemento, i) => {
+        anadirElemento(rme_elementos, elemento, i);
+    });
+
+    // dibujar mini-figuras en los canvas
+    dibujarMiniFiguras(rme_elementos);
+
+    // permitir seleccionar/deseleccionar para transferencias (mismo patrón)
+    anadirPropiedadTransferible();
+
+    // mostrar modal
+    modalMostrarElementos.classList.remove("hidden");
+}
 
 function anadirElemento(padre, elemento, n) {
     const idCanvas = `cv-el-${elemento.id}`;
 
     const html = `
-    <div class="p-2 w-full no_seleccionado text-center bg-blue-300 hover:bg-blue-400 cursor-pointer rounded-xl flex flex-col items-center transition-all duration-150"
-         data-peso="${elemento.peso ?? ''}"
-         data-dimensiones="${elemento.dimensiones ?? ''}"
+    <div class="p-2 w-full no_seleccionado text-center bg-gradient-to-tr from-indigo-200 to-indigo-300 hover:from-indigo-300 hover:to-indigo-400 hover:-translate-y-1 cursor-pointer rounded-xl flex flex-col items-center transition-all duration-75"
+         data-peso="${elemento.peso ?? ""}"
+         data-dimensiones="${elemento.dimensiones ?? ""}"
          data-id="${elemento.id}">
         <div class="flex justify-between items-center w-full">
-            <div class="text-neutral-600 text-xs font-mono font-semibold">${n + 1}</div>
-            <p>${elemento.codigo}</p>
-            <p><span class="text-red-500 font-semibold">Ø</span>${elemento.diametro}</p>
+            <div class="text-neutral-600 text-xs font-mono font-semibold">${
+                n + 1
+            }</div>
+            <p>${elemento.codigo ?? ""}</p>
+            <p><span class="text-red-500 font-semibold">Ø</span>${
+                elemento.diametro ?? ""
+            }</p>
         </div>
         <canvas id="${idCanvas}" class="w-full h-24 bg-white border border-gray-200 rounded-md"></canvas>
     </div>`;
 
-    padre.insertAdjacentHTML('beforeend', html);
+    padre.insertAdjacentHTML("beforeend", html);
 
-    // 🔧 Ajusta el tamaño real del canvas a su tamaño mostrado, y dibuja
+    // ajustar tamaño interno y dibujar
     const canvas = document.getElementById(idCanvas);
-    if (canvas && typeof window.dibujarFiguraElemento === 'function') {
-        // igualamos dimensiones internas a las CSS para que no se vea borroso
+    if (canvas && typeof window.dibujarFiguraElemento === "function") {
         const w = Math.max(160, canvas.clientWidth || 160);
         const h = Math.max(100, canvas.clientHeight || 100);
         canvas.width = w;
         canvas.height = h;
 
-        window.dibujarFiguraElemento(idCanvas, elemento.dimensiones || '', elemento.peso ?? 'N/A');
+        window.dibujarFiguraElemento(
+            canvas.id,
+            elemento.dimensiones || "",
+            elemento.peso ?? "N/A"
+        );
     }
 }
 
 function dibujarMiniFiguras(padre) {
-    if (typeof window.dibujarFiguraElemento !== 'function') return;
+    if (typeof window.dibujarFiguraElemento !== "function") return;
 
-    padre.querySelectorAll('[data-dimensiones]').forEach(card => {
-        const canvas = card.querySelector('canvas');
+    padre.querySelectorAll("[data-dimensiones]").forEach((card) => {
+        const canvas = card.querySelector("canvas");
         if (!canvas) return;
-        // ajustar tamaño interno a tamaño CSS
+
         const w = Math.max(160, canvas.clientWidth || 160);
         const h = Math.max(100, canvas.clientHeight || 100);
         canvas.width = w;
         canvas.height = h;
 
-        const dims = card.dataset.dimensiones || '';
-        const peso = card.dataset.peso || 'N/A';
+        const dims = card.dataset.dimensiones || "";
+        const peso = card.dataset.peso || "N/A";
         window.dibujarFiguraElemento(canvas.id, dims, peso);
     });
 }
 
 function anadirPropiedadTransferible() {
-    const elementosEnLista = Array.from(document.getElementsByClassName("no_seleccionado"));
+    const elementosEnLista = Array.from(
+        document.getElementsByClassName("no_seleccionado")
+    );
 
-    elementosEnLista.forEach(element => {
+    elementosEnLista.forEach((element) => {
         element.addEventListener("click", (e) => {
             const target = e.currentTarget;
 
             if (target.classList.contains("no_seleccionado")) {
-                target.classList.remove("no_seleccionado", "bg-blue-300", "hover:bg-blue-400");
-                target.classList.add("seleccionado", "bg-blue-500");
-                target.children[0].classList.remove("text-neutral-500");
-                target.children[0].classList.add("text-white");
+                target.classList.remove(
+                    "no_seleccionado",
+                    "hover:from-indigo-300",
+                    "hover:to-indigo-400"
+                );
+                target.classList.add(
+                    "seleccionado",
+                    "to-indigo-400",
+                    "from-emerald-500"
+                );
             } else {
-                target.classList.add("no_seleccionado", "bg-blue-300", "hover:bg-blue-400");
-                target.classList.remove("seleccionado", "bg-blue-500");
-                target.children[0].classList.add("text-neutral-500");
-                target.children[0].classList.remove("text-white");
+                target.classList.add(
+                    "no_seleccionado",
+                    "hover:from-indigo-300",
+                    "hover:to-indigo-400"
+                );
+                target.classList.remove(
+                    "seleccionado",
+                    "to-indigo-400",
+                    "from-emerald-500"
+                );
             }
         });
     });
 }
 
+// resaltamos el color de la misma planilla repartida por otra maquina u otro turno
+let _hlCode = null;
+let _hlNodes = [];
 
-function actualizarMaquinaDeElementos(ids, nuevo_maquina_id, ordenDestinoId) {
-    const idsNumericos = ids.map(Number);
+function _clearHighlight() {
+    if (!_hlNodes.length) return;
+    _hlNodes.forEach((opd) => {
+        // si el nodo ya no está en el DOM, sáltalo
+        if (!opd || !opd.isConnected) return;
 
-    datos_elementos.forEach(e => {
-        if (idsNumericos.includes(Number(e.id))) {
-            e.maquina_id = Number(nuevo_maquina_id);
-            if (ordenDestinoId != null) {
-                e.orden_planilla_id = Number(ordenDestinoId);
-            }
+        opd.classList.remove(
+            "border-indigo-500",
+            "from-indigo-200",
+            "to-indigo-300",
+            "-translate-y-[1px]"
+        );
+        opd.classList.add("from-neutral-100", "to-neutral-200");
+        opd.querySelector(".codigo")?.classList.remove("text-indigo-900");
+        opd.querySelector(".codigo")?.classList.add("text-emerald-800");
+        opd.querySelector(".posicion")?.classList.remove("text-indigo-700");
+        opd.querySelector(".posicion")?.classList.add("text-emerald-600");
+
+        // header de la máquina (ajusta el selector si tu header tiene otra clase)
+        const maquinaHeader = opd
+            .closest(".maquina")
+            ?.querySelector(":scope > *:first-child");
+        if (maquinaHeader) {
+            maquinaHeader.classList.add("from-emerald-600", "to-emerald-700");
+            maquinaHeader.classList.remove("from-indigo-400", "to-indigo-500");
         }
     });
-
-    renderPlanillasFromDatos(datos_elementos);
-    document.getElementById('modal_guardar')?.classList.replace('-bottom-14', 'bottom-14');
+    _hlNodes = [];
+    _hlCode = null;
 }
 
-// transcurso entre que se seleccionan los elementos hasta que se le da al boton de transferir (a otra maquina)
+function resaltarCompis() {
+    const root = document; // o el contenedor que envuelve todas las .planilla
+
+    root.addEventListener(
+        "mouseover",
+        (e) => {
+            const card = e.target.closest(".planilla");
+            if (!card) {
+                // ocultar modal detalles
+                modalDetalles.classList.add("hidden");
+                return;
+            }
+
+            // ocultar modal detalles
+            modalDetalles.classList.remove("hidden");
+
+            const code = (
+                card.dataset.codigo ||
+                card.querySelector(".codigo")?.textContent ||
+                ""
+            ).trim();
+
+            actualizarModalDetalles(code);
+
+            if (!code || code === _hlCode) return;
+
+            _clearHighlight();
+
+            const matches = document.querySelectorAll(
+                `.planilla[data-codigo="${CSS.escape(code)}"]`
+            );
+            matches.forEach((opd) => {
+                if (opd === card) return;
+                let isResaltado = false;
+                if (opd.classList.contains("from-fuchsia-100"))
+                    opd.classList.remove("from-neutral-100", "to-neutral-200");
+                opd.classList.add(
+                    "border-indigo-500",
+                    "from-indigo-200",
+                    "to-indigo-300",
+                    "-translate-y-[1px]"
+                );
+
+                // resaltar maquina
+                const maquinaHeader = opd
+                    .closest(".maquina")
+                    ?.querySelector(":scope > *:first-child");
+                if (maquinaHeader) {
+                    maquinaHeader.classList.remove(
+                        "from-emerald-600",
+                        "to-emerald-700"
+                    );
+                    maquinaHeader.classList.add(
+                        "from-indigo-400",
+                        "to-indigo-500"
+                    );
+                }
+
+                opd.querySelector(".codigo")?.classList.add("text-indigo-900");
+                opd.querySelector(".codigo")?.classList.remove(
+                    "text-emerald-800"
+                );
+                opd.querySelector(".posicion")?.classList.add(
+                    "text-indigo-700"
+                );
+                opd.querySelector(".posicion")?.classList.remove(
+                    "text-emerald-600"
+                );
+            });
+
+            _hlNodes = Array.from(matches);
+            _hlCode = code;
+        },
+        { passive: true }
+    );
+
+    root.addEventListener(
+        "mouseout",
+        (e) => {
+            // si sigues dentro de otra .planilla con el mismo código, no limpies
+            const to = e.relatedTarget?.closest?.(".planilla");
+            if (to) {
+                const toCode = (
+                    to.dataset.codigo ||
+                    to.querySelector(".codigo")?.textContent ||
+                    ""
+                ).trim();
+                if (toCode && toCode === _hlCode) return;
+            }
+            _clearHighlight();
+        },
+        { passive: true }
+    );
+}
+
+// elegir a que maquina movel los elementos
 function seleccionarMaquinaParaMovimiento() {
-    const modal = document.getElementById("modal_transferir_a_maquina");
-    const btnTransferir = document.getElementById("transferir_elementos");
-    const maquinas = Array.from(document.getElementsByClassName("maquina_transferir"));
+    // cambiar de modal
+    modalMostrarElementos.classList.add("hidden");
+    modalTransferirAMaquina.classList.remove("hidden");
 
-    modal_elementos.classList.add("hidden")
-    modal.classList.remove("hidden");
-
+    // obtener maquinas e inicializar maquina seleccionada a null
+    let smpm_maquinas = Array.from(
+        document.getElementsByClassName("maquina_transferir")
+    );
     let maquinaSeleccionadaId = null;
 
-    maquinas.forEach(m => {
-        m.addEventListener("click", () => {
-            maquinas.forEach(x => {
-                x.classList.add("hover:bg-neutral-400", "bg-neutral-300");
-                x.classList.remove("bg-neutral-400");
+    // estilos y obtencion de id
+    smpm_maquinas.forEach((maquina) => {
+        maquina.addEventListener("click", () => {
+            smpm_maquinas.forEach((maquina_2) => {
+                if (maquina_2 === maquina) {
+                    maquina_2.classList.remove("maquina_no_seleccionada");
+                    maquina_2.classList.add("maquina_si_seleccionada");
+                } else {
+                    maquina_2.classList.remove("maquina_si_seleccionada");
+                    maquina_2.classList.add("maquina_no_seleccionada");
+                }
             });
-            m.classList.remove("hover:bg-neutral-400", "bg-neutral-300");
-            m.classList.add("bg-neutral-400");
 
-            maquinaSeleccionadaId = m.getAttribute("data-id");
+            // obtener id maquina seleccionada
+            maquinaSeleccionadaId = maquina.dataset.id;
+            btn_transferir.innerHTML = `TRANSFERIR A <span class="chiptransferirA transition-all duration-150">${maquina.children[0].innerText}</span>`;
+        });
+    });
+}
+
+// proceso interno de treansferencia de un elemento a otra maquina, aqui se contempla si el elemento va a crear una nueva ordenPlanilla, unificarse con otra...
+function transferirElementos() {
+    let elementosSeleccionados = Array.from(
+        document.getElementsByClassName("seleccionado")
+    );
+
+    let maquinaSeleccionada = document.querySelector(
+        ".maquina_si_seleccionada"
+    );
+    let maquinaId = maquinaSeleccionada.dataset.id;
+
+    /*
+    Casos:
+        1. No hay una planilla con el mismo codigo en la maquina seleccionada => se crea un nuevo ordenPlanilla en la ultima posicion posible del
+        orden de las planillas para esa maquina, se cambian elemento[ordenPlanillaId por la nueva planilla, maquinaId por la maquina seleccionada]
+        2. Ya hay una planilla con el mismo codigo en la maquina seleccionada => 
+            @Fusionar?
+            Si: se cambian elemento[ordenPlanillaId por el id de la planilla existente, maquinaId por la maquina seleccionada]
+            No: se crea un nuevo ordenPlanilla en la ultima posicion posible del
+            orden de las planillas para esa maquina, se cambian elemento[ordenPlanillaId por la nueva planilla, maquinaId por la maquina seleccionada]
+     */
+
+    // revisamos si existe una planilla con el mismo codigo en la maquina seleccionada
+
+    // obtenemos el div de la maquina a transferir en maquinaDiv
+    let maquinaDiv;
+    maquinasDivs.forEach((div) => {
+        let detalles = JSON.parse(div.dataset.detalles);
+        if (detalles.id == maquinaId) maquinaDiv = div;
+    });
+
+    // comprobamos si existe la planilla
+    let existe = false;
+    let te_planillas = maquinaDiv.querySelectorAll(".planilla");
+    te_planillas.forEach((planilla) => {
+        if (
+            planilla.children[1].innerText.trim() ==
+            datosOrdenPlanillaSeleccionado.codigo
+        ) {
+            existe = true;
+        }
+    });
+
+    // existe la planilla?
+    // si existe:
+    if (existe) {
+        // 1) Construir lista de coincidencias con mismo código en máquina seleccionada
+        const codigoCoincide = datosOrdenPlanillaSeleccionado.codigo;
+        const coincidencias = findOrdenesCoincidentes(
+            maquinaId,
+            codigoCoincide
+        );
+
+        // 2) Pintar modal y preparar handlers
+        renderModalElegirOrden({
+            maquinaId,
+            codigo: codigoCoincide,
+            coincidencias,
+        });
+
+        // Handlers del modal
+        const meo = document.getElementById("modal_elegir_orden");
+        const btnConfirmar = document.getElementById("meo_confirmar");
+        const btnCancelar = document.getElementById("meo_cancelar");
+
+        // para evitar múltiples binds si se abre varias veces
+        btnConfirmar.replaceWith(btnConfirmar.cloneNode(true));
+        btnCancelar.replaceWith(btnCancelar.cloneNode(true));
+
+        const _btnConfirmar = document.getElementById("meo_confirmar");
+        const _btnCancelar = document.getElementById("meo_cancelar");
+
+        _btnCancelar.addEventListener("click", () => {
+            meo.classList.add("hidden");
+        });
+
+        _btnConfirmar.addEventListener("click", () => {
+            // radio seleccionado
+            const sel = document.querySelector(
+                'input[name="meo_opcion"]:checked'
+            );
+            if (!sel) return; // no se seleccionó nada
+
+            const val = sel.value;
+            let destinoOrdenId = null;
+
+            if (val === "__crear_nueva__") {
+                // Crear nueva al final
+                const te_planillas2 = maquinaDiv.querySelectorAll(".planilla");
+                const posicionNueva = te_planillas2.length + 1;
+
+                const nuevaOrdenPlanilla = {
+                    id: Number(ultimoOrdenPlanillaId) + 1,
+                    maquina_id: Number(maquinaId),
+                    planilla_id: Number(
+                        datosOrdenPlanillaSeleccionado.planilla_id
+                    ),
+                    posicion: posicionNueva,
+                };
+                ultimoOrdenPlanillaId = nuevaOrdenPlanilla.id;
+                destinoOrdenId = nuevaOrdenPlanilla.id;
+                ordenPlanillas.push(nuevaOrdenPlanilla);
+            } else {
+                destinoOrdenId = Number(val);
+            }
+
+            // Actualizar elementos seleccionados -> a maquinaId y orden_planilla_id destinoOrdenId
+            elementosSeleccionados.forEach((card) => {
+                const elId = Number(card.dataset.id);
+                const idx = elementos.findIndex((e) => Number(e.id) === elId);
+                if (idx !== -1) {
+                    elementos[idx].maquina_id = Number(maquinaId);
+                    elementos[idx].orden_planilla_id = Number(destinoOrdenId);
+                }
+            });
+
+            // id de la orden de origen (la que abriste en el modal)
+            const origenOrdenId = Number(datosOrdenPlanillaSeleccionado.id);
+
+            // quedan elementos en la orden de origen?
+            if (countElementosByOrdenId(origenOrdenId) === 0) {
+                removeOrdenPlanilla(origenOrdenId);
+            }
+
+            // refrescos
+            cerrarModales();
+            renderPlanillas();
+            sePuedeGuardar();
+        });
+    } else {
+        // no existe: crear nueva al final
+        let posicionNueva = te_planillas.length + 1;
+
+        let nuevaOrdenPlanilla = {
+            id: Number(ultimoOrdenPlanillaId) + 1,
+            maquina_id: Number(maquinaId),
+            planilla_id: Number(datosOrdenPlanillaSeleccionado.planilla_id),
+            posicion: posicionNueva,
+        };
+
+        ultimoOrdenPlanillaId = nuevaOrdenPlanilla.id; // sincronizar el global
+        let nuevoOrdenId = nuevaOrdenPlanilla.id;
+
+        // la agregamos a la variable global
+        ordenPlanillas.push(nuevaOrdenPlanilla);
+
+        // asignar los elementos (usando id del dataset del card para máxima fiabilidad)
+        elementosSeleccionados.forEach((elementoSeleccionado) => {
+            const elId = Number(elementoSeleccionado.dataset.id);
+            const idx = elementos.findIndex((e) => Number(e.id) === elId);
+            if (idx !== -1) {
+                elementos[idx].maquina_id = Number(maquinaId);
+                elementos[idx].orden_planilla_id = Number(nuevoOrdenId);
+            }
+        });
+
+        // id de la orden de origen (la que abriste en el modal)
+        const origenOrdenId = Number(datosOrdenPlanillaSeleccionado.id);
+
+        // quedan elementos en la orden de origen?
+        if (countElementosByOrdenId(origenOrdenId) === 0) {
+            removeOrdenPlanilla(origenOrdenId);
+        }
+
+        cerrarModales();
+        renderPlanillas();
+        sePuedeGuardar();
+    }
+}
+
+function cerrarModales(noCerrar = null) {
+    modales.forEach((modal) => {
+        if (modal != noCerrar) {
+            modal.classList.add("hidden");
+        }
+    });
+}
+
+function getMaquinaById(id) {
+    const mid = Number(id);
+    return maquinas.find((m) => Number(m.id) === mid) || null;
+}
+
+function getPlanillaById(id) {
+    const pid = Number(id);
+    return planillas.find((p) => Number(p.id) === pid) || null;
+}
+
+function getOrdenesPorMaquina(maquinaId) {
+    const mid = Number(maquinaId);
+    return ordenPlanillas.filter((o) => Number(o.maquina_id) === mid);
+}
+
+function hasCambiosElementos(actual, original) {
+    if (!Array.isArray(actual) || !Array.isArray(original)) return true;
+    if (actual.length !== original.length) return true;
+
+    // Mapeo por id para comparar rápido
+    const mapOrig = new Map(original.map((e) => [Number(e.id), e]));
+    for (const e of actual) {
+        const o = mapOrig.get(Number(e.id));
+        if (!o) return true;
+
+        // Compara SOLO lo que te importa para “guardar”
+        if (Number(e.maquina_id) !== Number(o.maquina_id)) return true;
+        if (Number(e.orden_planilla_id) !== Number(o.orden_planilla_id))
+            return true;
+    }
+    return false;
+}
+
+function sePuedeGuardar() {
+    if (hasCambiosElementos(elementos, ELEMENTOS_ORIGINAL)) {
+        // Mostrar con transición
+        modalGuardar.classList.remove("hidden");
+        requestAnimationFrame(() => {
+            modalGuardar.classList.remove("-bottom-14", "opacity-0");
+            modalGuardar.classList.add("bottom-14", "opacity-100");
+        });
+    } else {
+        // Ocultar con transición
+        modalGuardar.classList.remove("bottom-14", "opacity-100");
+        modalGuardar.classList.add("-bottom-14", "opacity-0");
+
+        // Espera a que termine la animación (150ms) antes de ocultarlo
+        setTimeout(() => {
+            modalGuardar.classList.add("hidden");
+        }, 150);
+    }
+}
+
+/**
+ * Devuelve las ordenes de la maquina cuyo planilla.codigo === code
+ * con datos enriquecidos para mostrar.
+ */
+function findOrdenesCoincidentes(maquinaId, code) {
+    const ops = getOrdenesPorMaquina(maquinaId);
+    const res = [];
+    ops.forEach((op) => {
+        const p = getPlanillaById(op.planilla_id);
+        if (p && String(p.codigo).trim() === String(code).trim()) {
+            res.push({
+                orden_id: Number(op.id),
+                posicion: Number(op.posicion),
+                planilla_id: Number(op.planilla_id),
+                codigo: p.codigo,
+            });
+        }
+    });
+    // ordenar por posicion asc
+    res.sort((a, b) => a.posicion - b.posicion);
+    return res;
+}
+
+// Pinta las coincidencias en el modal_elegir_orden
+function renderModalElegirOrden({ maquinaId, codigo, coincidencias }) {
+    const meo = document.getElementById("modal_elegir_orden");
+    cerrarModales(meo);
+    const cont = document.getElementById("meo_lista");
+    const nom = document.getElementById("meo_maquina_nombre");
+    const cod = document.getElementById("meo_codigo");
+
+    const maq = getMaquinaById(maquinaId);
+    nom.textContent = maq
+        ? maq.nombre || maq.codigo || `#${maquinaId}`
+        : `#${maquinaId}`;
+    cod.textContent = codigo;
+    cont.innerHTML = "";
+
+    if (!Array.isArray(coincidencias) || !coincidencias.length) {
+        cont.innerHTML = `<div class="text-sm text-gray-600 p-2">No se encontraron coincidencias (esto no debería mostrarse si vienes por rama "existe").</div>`;
+    } else {
+        coincidencias.forEach((c) => {
+            const div = document.createElement("label");
+            div.className =
+                "flex items-center gap-3 p-2 rounded-lg border cursor-pointer transition-all duration-100";
+            div.innerHTML = `
+        <input type="radio" name="meo_opcion" value="${c.orden_id}">
+        <div class="flex flex-col">
+          <div class="text-sm">Planilla en posición: <span class="font-semibold">${c.posicion}</span></div>
+        </div>
+      `;
+            cont.appendChild(div);
+        });
+    }
+
+    meo.classList.remove("hidden");
+}
+
+/*
+INICIO INICIO INICIO INICIO INICIO INICIO INICIO
+FUNCIONES PARA DRAG DROP
+INICIO INICIO INICIO INICIO INICIO INICIO INICIO
+*/
+
+function getContainerMachineId(containerEl) {
+    // containerEl es .planillas; su padre .maquina lleva data-detalles
+    const maqDiv = containerEl.closest(".maquina");
+    if (!maqDiv) return null;
+    try {
+        return Number(JSON.parse(maqDiv.dataset.detalles).id);
+    } catch {
+        return null;
+    }
+}
+
+function makePlaceholder(heightPx) {
+    const ph = document.createElement("div");
+    ph.className =
+        "planilla placeholder p-3 flex justify-around items-center rounded-xl box-border shrink-0";
+    ph.style.height = `${heightPx || 56}px`;
+    ph.style.minHeight = `${heightPx || 56}px`; // cinturón y tirantes
+    return ph;
+}
+
+function getChildCards(container) {
+    const all = Array.from(
+        container.querySelectorAll(".planilla:not(.placeholder)")
+    );
+    // Excluir SOLO si está realmente en arrastre (tiene la clase .dragging)
+    if (
+        DND.draggingEl &&
+        DND.draggingEl.classList.contains("dragging") &&
+        container.contains(DND.draggingEl)
+    ) {
+        return all.filter((n) => n !== DND.draggingEl);
+    }
+    return all;
+}
+
+function calcDropIndex(container, clientY) {
+    const cards = getChildCards(container);
+    for (let i = 0; i < cards.length; i++) {
+        const rect = cards[i].getBoundingClientRect();
+        const midY = rect.top + rect.height / 2;
+        if (clientY < midY) return i;
+    }
+    return cards.length;
+}
+
+function reindexDOMColumn(container) {
+    const cards = getChildCards(container);
+    cards.forEach((card, i) => {
+        const pos = card.querySelector(".posicion");
+        if (pos) pos.textContent = String(i + 1);
+    });
+}
+
+function syncOrdenPlanillasFromDOM(container) {
+    // Sincroniza el array ordenPlanillas con el orden actual del DOM en esta columna
+    const maquinaId = getContainerMachineId(container);
+    const cards = getChildCards(container);
+    cards.forEach((card, i) => {
+        const oid = Number(card.dataset.ordenId);
+        const op = ordenPlanillas.find((o) => Number(o.id) === oid);
+        if (op) {
+            op.maquina_id = Number(maquinaId);
+            op.posicion = i + 1;
+        }
+    });
+}
+
+function moveElementsWithOrdenToMachine(ordenId, nuevaMaquinaId) {
+    // Todos los elementos con ese orden_planilla_id cambian su maquina_id
+    elementos.forEach((e) => {
+        if (Number(e.orden_planilla_id) === Number(ordenId)) {
+            e.maquina_id = Number(nuevaMaquinaId);
+            // e.orden_planilla_id NO cambia porque seguimos moviendo la misma orden
+        }
+    });
+}
+
+function initDragAndDrop() {
+    // limpiar listeners previos (recreamos de forma segura)
+    document.querySelectorAll(".planilla").forEach((card) => {
+        card.removeEventListener("_dnd_bound", () => {});
+    });
+
+    const cards = document.querySelectorAll(".planilla");
+    const containers = document.querySelectorAll(".maquina .planillas");
+
+    containers.forEach((c) => {
+        // asegurar que soporta drop
+        c.addEventListener(
+            "dragover",
+            (e) => {
+                e.preventDefault();
+                if (!DND.draggingEl) return;
+                c.classList.add("drop-target");
+
+                // altura visual exacta del ítem arrastrado
+                const h = Math.max(
+                    DND.draggingEl.getBoundingClientRect().height || 56,
+                    56
+                );
+
+                // placeholder
+                if (!DND.placeholder) {
+                    const h = Math.max(DND.draggingEl?.offsetHeight || 56, 56);
+                    DND.placeholder = makePlaceholder(h);
+                } else {
+                    // si cambió la altura de la card (responsive), sincroniza
+                    const h = Math.max(DND.draggingEl?.offsetHeight || 56, 56);
+                    DND.placeholder.style.height = `${h}px`;
+                }
+
+                const idx = calcDropIndex(c, e.clientY);
+                const currentChildren = getChildCards(c);
+                const refNode = currentChildren[idx] || null;
+                if (DND.placeholder.parentElement !== c) {
+                    c.insertBefore(DND.placeholder, refNode);
+                } else {
+                    c.insertBefore(DND.placeholder, refNode);
+                }
+
+                reindexPreview(c, DND.placeholder);
+            },
+            { passive: false }
+        );
+
+        c.addEventListener("dragleave", (e) => {
+            // si te vas fuera del contenedor, quitamos highlight
+            const to = e.relatedTarget;
+            if (!c.contains(to)) {
+                c.classList.remove("drop-target");
+            }
         });
     });
 
-    btnTransferir.onclick = () => {
-        if (!maquinaSeleccionadaId) {
-            return;
-        }
-
-        const elementos_seleccionados = Array.from(document.getElementsByClassName("seleccionado"))
-            .map(el => el.getAttribute("data-id"));
-
-        if (elementos_seleccionados.length === 0) {
-            alert("No hay elementos seleccionados");
-            return;
-        }
-
-        // Validar compatibilidad
-        const { validos, invalidos } = validarCompatibilidadElementos(elementos_seleccionados, maquinaSeleccionadaId);
-
-        // Si todos son válidos, proceder normalmente
-        if (invalidos.length === 0) {
-            maquinas.forEach(x => {
-                x.classList.add("hover:bg-neutral-400", "bg-neutral-300");
-                x.classList.remove("bg-neutral-400");
-            });
-            modal.classList.add("hidden");
-            const ordenDestinoId = obtenerOrdenDestinoId(maquinaSeleccionadaId);
-            actualizarMaquinaDeElementos(elementos_seleccionados, maquinaSeleccionadaId, ordenDestinoId);
-
-            return;
-        }
-
-        // Si hay elementos inválidos, mostrar modal de advertencia
-        mostrarModalAdvertencia(validos, invalidos, maquinaSeleccionadaId);
-
-        // Cerrar modal de transferir
-        maquinas.forEach(x => {
-            x.classList.add("hover:bg-neutral-400", "bg-neutral-300");
-            x.classList.remove("bg-neutral-400");
+    cards.forEach((card) => {
+        card.addEventListener("dragstart", (e) => {
+            DND.draggingEl = e.currentTarget;
+            DND.sourceContainer = DND.draggingEl.closest(".planillas");
+            DND.draggingEl.classList.add("dragging");
+            e.dataTransfer.effectAllowed = "move";
+            try {
+                e.dataTransfer.setData(
+                    "text/plain",
+                    DND.draggingEl.dataset.ordenId || ""
+                );
+            } catch {}
         });
-        modal.classList.add("hidden");
+
+        card.addEventListener("dragend", () => {
+            const finalContainer =
+                DND.placeholder?.parentElement || DND.sourceContainer;
+
+            const targetMachineId = getContainerMachineId(finalContainer);
+            const ordenId = Number(DND.draggingEl.dataset.ordenId);
+
+            // Inserta el card real donde está el placeholder
+            if (DND.placeholder && DND.placeholder.parentElement) {
+                finalContainer.insertBefore(DND.draggingEl, DND.placeholder);
+            }
+
+            // Limpieza visual
+            document
+                .querySelectorAll(".planillas.drop-target")
+                .forEach((el) => el.classList.remove("drop-target"));
+            DND.draggingEl.classList.remove("dragging");
+            if (DND.placeholder && DND.placeholder.parentElement) {
+                DND.placeholder.parentElement.removeChild(DND.placeholder);
+            }
+            DND.placeholder = null;
+
+            // Guarda refs y ANULA dragging antes de reindexar/sincronizar
+            const src = DND.sourceContainer;
+            const dst = finalContainer;
+            const draggingRef = DND.draggingEl;
+            DND.draggingEl = null; // <- clave para que getChildCards ya NO la excluya
+            DND.sourceContainer = null;
+
+            // Reindex DOM
+            if (src && dst !== src) reindexDOMColumn(src);
+            reindexDOMColumn(dst);
+
+            // Actualiza elementos -> nueva máquina (si ha cambiado de columna)
+            if (targetMachineId != null) {
+                moveElementsWithOrdenToMachine(ordenId, targetMachineId);
+            }
+
+            // Sincroniza arrays con el DOM definitivo
+            if (src) syncOrdenPlanillasFromDOM(src);
+            if (dst) syncOrdenPlanillasFromDOM(dst);
+
+            normalizeOrdenPlanillas();
+            _clearHighlight();
+            // Repinta y muestra guardar si procede
+            renderPlanillas();
+            sePuedeGuardar();
+        });
+    });
+}
+
+/**
+ * Mientras arrastras, muestra reindex "what-you-see-is-what-you-get"
+ */
+function reindexPreview(container, placeholder) {
+    const children = Array.from(container.children);
+    let pos = 1;
+    for (const node of children) {
+        if (!node.classList.contains("planilla")) continue;
+        const isPh = node.classList.contains("placeholder");
+        // Ignorar la tarjeta que se está arrastrando si aún aparece en el DOM aquí
+        if (DND.draggingEl && node === DND.draggingEl) continue;
+
+        if (!isPh) {
+            const posEl = node.querySelector(".posicion");
+            if (posEl) posEl.textContent = String(pos);
+        }
+        pos++;
+    }
+}
+
+function normalizeOrdenPlanillas() {
+    ordenPlanillas.sort((a, b) => {
+        if (Number(a.maquina_id) !== Number(b.maquina_id)) {
+            return Number(a.maquina_id) - Number(b.maquina_id);
+        }
+        return Number(a.posicion) - Number(b.posicion);
+    });
+}
+
+/*
+FIN FIN FIN FIN FIN FIN FIN FIN FIN FIN FIN FIN
+FUNCIONES PARA DRAG DROP
+FIN FIN FIN FIN FIN FIN FIN FIN FIN FIN FIN FIN
+*/
+
+// comprobar que no quedan elementos en la planilla donde se ha hecho un movimiento de elementos
+function countElementosByOrdenId(ordenId) {
+    const oid = Number(ordenId);
+    return elementos.reduce(
+        (acc, e) => acc + (Number(e.orden_planilla_id) === oid ? 1 : 0),
+        0
+    );
+}
+
+function reindexMachine(maquinaId) {
+    const mid = Number(maquinaId);
+    const ops = ordenPlanillas
+        .filter((o) => Number(o.maquina_id) === mid)
+        .sort((a, b) => Number(a.posicion) - Number(b.posicion));
+    ops.forEach((o, i) => {
+        o.posicion = i + 1;
+    });
+}
+
+// eliminar elOrdenPlanilla que se ha quedado sin elementos
+function removeOrdenPlanilla(ordenId) {
+    const oid = Number(ordenId);
+    const idx = ordenPlanillas.findIndex((o) => Number(o.id) === oid);
+    if (idx === -1) return;
+    const maquinaId = ordenPlanillas[idx].maquina_id;
+    ordenPlanillas.splice(idx, 1);
+    reindexMachine(maquinaId);
+}
+
+function buildDiff() {
+    // 1) ELEMENTOS: actualizaciones (solo si cambió maquina_id u orden_planilla_id)
+    const mapElOrig = new Map(ELEMENTOS_ORIGINAL.map((e) => [Number(e.id), e]));
+    const elementos_updates = [];
+    for (const e of elementos) {
+        const o = mapElOrig.get(Number(e.id));
+        if (!o) continue; // si no estaba en el original, no lo tocamos aquí (no creas elementos nuevos con este flujo)
+        if (
+            Number(e.maquina_id) !== Number(o.maquina_id) ||
+            Number(e.orden_planilla_id) !== Number(o.orden_planilla_id)
+        ) {
+            elementos_updates.push({
+                id: Number(e.id),
+                maquina_id: Number(e.maquina_id),
+                orden_planilla_id: Number(e.orden_planilla_id),
+            });
+        }
+    }
+
+    // 2) ORDEN_PLANILLAS: crear/actualizar/eliminar
+    const mapOPOrig = new Map(
+        ORDEN_PLANILLAS_ORIGINAL.map((o) => [Number(o.id), o])
+    );
+    const mapOPNow = new Map(ordenPlanillas.map((o) => [Number(o.id), o]));
+
+    // a) eliminados: estaban antes y ya no están
+    const orden_planillas_delete = [];
+    for (const [id, op] of mapOPOrig.entries()) {
+        if (!mapOPNow.has(id)) {
+            orden_planillas_delete.push(id);
+        }
+    }
+
+    // b) creados: están ahora y no estaban antes
+    const orden_planillas_create = [];
+    for (const [id, op] of mapOPNow.entries()) {
+        if (!mapOPOrig.has(id)) {
+            orden_planillas_create.push({
+                id: Number(op.id), // si quieres que el server respete este id
+                maquina_id: Number(op.maquina_id),
+                planilla_id: Number(op.planilla_id),
+                posicion: Number(op.posicion),
+            });
+        }
+    }
+
+    // c) actualizados: están en ambos pero cambió maquina_id o posicion
+    const orden_planillas_update = [];
+    for (const [id, now] of mapOPNow.entries()) {
+        const old = mapOPOrig.get(id);
+        if (!old) continue;
+        if (
+            Number(now.maquina_id) !== Number(old.maquina_id) ||
+            Number(now.posicion) !== Number(old.posicion)
+        ) {
+            orden_planillas_update.push({
+                id: Number(now.id),
+                maquina_id: Number(now.maquina_id),
+                posicion: Number(now.posicion),
+            });
+        }
+    }
+
+    return {
+        elementos_updates,
+        orden_planillas: {
+            create: orden_planillas_create,
+            update: orden_planillas_update,
+            delete: orden_planillas_delete,
+        },
     };
 }
 
-function obtenerOrdenDestinoId(maquinaSeleccionadaId) {
-    const mid = Number(maquinaSeleccionadaId);
-    const pid = Number(window.__ctx_planilla_id__);
-    if (!mid || !pid) return null;
+async function guardarCambios() {
+    const url = document.getElementById("modal_guardar").dataset.saveUrl;
+    const payload = buildDiff();
 
-    const byMaquina = buildOrdenesMap(); // maquina_id -> Array<{id, planilla_id, posicion}>
-    const ordenesDeMaquina = byMaquina.get(mid) || [];
-
-    // 1) Busca misma planilla en esa máquina
-    const match = ordenesDeMaquina.find(o => Number(o.planilla_id) === pid);
-    if (match) return Number(match.id);
-
-    // 2) (Opcional) fallback: primer orden de esa máquina
-    // return ordenesDeMaquina.length ? Number(ordenesDeMaquina[0].id) : null;
-
-    // Si no quieres fallback, deja:
-    return null;
-}
-
-
-// logica renderizado planillas
-// --- helpers para leer datasets ocultos ---
-function buildPlanillasMap() {
-    const cont = document.getElementById('todasPlanillas');
-    const map = new Map(); // planilla_id -> { codigo, obra_id }
-    if (!cont) return map;
-
-    cont.querySelectorAll('[data-planilla]').forEach(node => {
-        try {
-            const { id, codigo, obra_id } = JSON.parse(node.dataset.planilla);
-            map.set(Number(id), {
-                codigo: String(codigo ?? `PL-${id}`),
-                obra_id: obra_id != null ? Number(obra_id) : null
-            });
-        } catch (_) { /* silencio */ }
-    });
-
-    return map;
-}
-
-
-function buildOrdenesMap() {
-    const cont = document.getElementById('ordenPlanillas');
-    const byMaquina = new Map(); // maquina_id -> Array<{id, planilla_id, posicion}>
-    if (!cont) return byMaquina;
-
-    cont.querySelectorAll('[data-orden]').forEach(node => {
-        try {
-            const { id, maquina_id, planilla_id, posicion } = JSON.parse(node.dataset.orden);
-            const mid = Number(maquina_id);
-            if (!byMaquina.has(mid)) byMaquina.set(mid, []);
-            byMaquina.get(mid).push({
-                id: Number(id),
-                planilla_id: Number(planilla_id),
-                posicion: Number(posicion)
-            });
-        } catch (_) { }
-    });
-
-    // ordenar por posicion
-    for (const arr of byMaquina.values()) arr.sort((a, b) => a.posicion - b.posicion);
-    return byMaquina;
-}
-
-
-// Crea el nodo .planilla
-function createPlanillaCard({ orden_id, planilla_id, codigo, posicion, obra_id = null }) {
-    const div = document.createElement('div');
-    div.className = "planilla p-3 flex justify-around items-center border border-emerald-400 hover:-translate-y-1 transition-all duration-75 ease-in-out rounded-xl bg-white hover:bg-emerald-400 cursor-grab active:cursor-grabbing select-none text-center relative";
-    div.setAttribute('draggable', 'true');
-
-    div.dataset.ordenId = String(orden_id);
-    div.dataset.planillaId = String(planilla_id);
-    if (posicion != null) div.dataset.posicion = String(posicion);
-    if (obra_id != null) div.dataset.obraId = String(obra_id);
-
-    const posP = document.createElement('p');
-    posP.className = "text-neutral-500 text-xs font-bold absolute top-1 left-1 pos-label";
-    posP.textContent = posicion != null ? String(posicion) : "";
-
-    const codeP = document.createElement('p');
-    codeP.textContent = codigo ?? `PL-${planilla_id}`;
-
-    div.appendChild(posP);
-    div.appendChild(codeP);
-    return div;
-}
-
-
-
-/**
- * Rellena cada columna .planillas a partir de datos_elementos
- * - Agrupa por (maquina_id, planilla_id)
- * - Usa ordenPlanillas si existe; si no, ordena por codigo asc
- */
-function renderPlanillasFromDatos(datos_elementos) {
-    const planillasMap = buildPlanillasMap();   // planilla_id -> {codigo, obra_id}
-    const ordenesByMaquina = buildOrdenesMap();     // maquina_id -> [{id, planilla_id, posicion}, ...]
-
-    document.querySelectorAll('.maquina').forEach(maq => {
-        const mid = Number(maq.dataset.maquinaId || JSON.parse(maq.dataset.detalles || '{}').id);
-        const cont = maq.querySelector('.planillas');
-        if (!cont) return;
-        cont.innerHTML = '';
-
-        const ordenes = ordenesByMaquina.get(mid) || [];
-        ordenes.forEach(({ id: orden_id, planilla_id, posicion }) => {
-            const info = planillasMap.get(planilla_id) || {};
-            const codigo = info.codigo ?? `PL-${planilla_id}`;
-            const obraId = info.obra_id ?? null;
-
-            const card = createPlanillaCard({ orden_id, planilla_id, codigo, posicion, obra_id: obraId });
-            cont.appendChild(card);
-        });
-
-        reindexColumn(cont);
-    });
-
-    initDragAndDrop(
-        Array.from(document.querySelectorAll('.planillas')),
-        Array.from(document.querySelectorAll('.maquina'))
-    );
-
-    const PLANILLAS = Array.from(document.getElementsByClassName("planilla"));
-    resaltarCompis(PLANILLAS);
-    mostrarElementos(
-        PLANILLAS,
-        document.getElementById("div_elementos"),
-        document.getElementById("mover_modal_elementos"),
-        datos_elementos
-    );
-
-    resetPlanillaTransforms();
-}
-
-
-
-
-function getMachineIdFromColumn(columnEl) {
-    const maquina = columnEl.closest('.maquina');
-    if (!maquina) return null;
-    const midAttr = maquina.dataset.maquinaId;
-    if (midAttr) return Number(midAttr);
-    try {
-        return Number(JSON.parse(maquina.dataset.detalles || '{}').id);
-    } catch {
-        return null;
-    }
-}
-
-function syncOrdenPlanillasDesdeDOM() {
-    const nuevos = [];
-    document.querySelectorAll('.maquina').forEach(maq => {
-        const mid = Number(maq.dataset.maquinaId);
-        const cont = maq.querySelector('.planillas');
-        if (!cont) return;
-        [...cont.querySelectorAll('.planilla')].forEach((pl, idx) => {
-            nuevos.push({
-                orden_id: pl.dataset.ordenId ? Number(pl.dataset.ordenId) : null,
-                maquina_id: mid,
-                planilla_id: Number(pl.dataset.planillaId),
-                posicion: idx + 1
-            });
-        });
-    });
-    return nuevos;
-}
-
-function logDiffDatosElementos(beforeArr, afterArr, onlyPlanillaId = null) {
-    // console.group('🔎 Diff elementos');
-    afterArr.forEach(nuevo => {
-        if (onlyPlanillaId && Number(nuevo.planilla_id) !== Number(onlyPlanillaId)) return;
-        const anterior = beforeArr.find(e => e.id === nuevo.id);
-        if (!anterior) {
-            // console.log(`🆕 Nuevo elemento ${nuevo.id}`, nuevo);
-            return;
-        }
-        const diffs = {};
-        for (const k in nuevo) {
-            if (JSON.stringify(nuevo[k]) !== JSON.stringify(anterior[k])) {
-                diffs[k] = { antes: anterior[k], ahora: nuevo[k] };
-            }
-        }
-        // if (Object.keys(diffs).length) {
-        //     console.group(`Elemento ${nuevo.id}`);
-        //     console.table(diffs);
-        //     console.groupEnd();
-        // }
-    });
-    console.groupEnd();
-}
-
-// función para obtener los detalles de una máquina por ID
-function getMaquinaDetallesById(maquina_id) {
-    const maquina = document.querySelector(`.maquina[data-maquina-id="${maquina_id}"]`);
-    if (!maquina) return null;
-    try {
-        return JSON.parse(maquina.dataset.detalles);
-    } catch {
-        return null;
-    }
-}
-
-// función para validar compatibilidad entre elementos y maquina
-function validarCompatibilidadElementos(elementos_ids, maquina_id) {
-    const maquinaDetalles = getMaquinaDetallesById(maquina_id);
-    if (!maquinaDetalles) return { validos: elementos_ids, invalidos: [] };
-
-    const diametro_min = Number(maquinaDetalles.diametro_min);
-    const diametro_max = Number(maquinaDetalles.diametro_max);
-
-    const validos = [];
-    const invalidos = [];
-
-    elementos_ids.forEach(id => {
-        const elemento = datos_elementos.find(e => Number(e.id) === Number(id));
-        if (!elemento) return;
-
-        const diametro = Number(elemento.diametro);
-
-        // Validar si el diámetro está dentro del rango
-        if (diametro >= diametro_min && diametro <= diametro_max) {
-            validos.push({ id, codigo: elemento.codigo, diametro });
-        } else {
-            invalidos.push({ id, codigo: elemento.codigo, diametro });
-        }
-    });
-
-    return { validos, invalidos };
-}
-
-// función para mostrar el modal de advertencia
-function mostrarModalAdvertencia(validos, invalidos, maquina_id) {
-    const modalAdvertencia = document.getElementById("modal_advertencia_compatibilidad");
-    const listaIncompatibles = document.getElementById("lista_elementos_incompatibles");
-    const countValidos = document.getElementById("count_validos");
-    const countInvalidos = document.getElementById("count_invalidos");
-    const btnCancelar = document.getElementById("advertencia_cancelar");
-    const btnProseguir = document.getElementById("advertencia_proseguir");
-
-    const maquinaDetalles = getMaquinaDetallesById(maquina_id);
-
-    // Si la máquina no tiene restricciones de diámetro, todos son válidos
-    if (!maquinaDetalles || maquinaDetalles.diametro_min == null || maquinaDetalles.diametro_max == null) {
-        const idsTodos = validos.concat(invalidos).map(v => v.id ?? v);
-        const ordenDestinoId = obtenerOrdenDestinoId(maquina_id);
-        actualizarMaquinaDeElementos(idsTodos, maquina_id, ordenDestinoId);
+    // si no hay nada que guardar, salimos
+    if (
+        (!payload.elementos_updates ||
+            payload.elementos_updates.length === 0) &&
+        (!payload.orden_planillas.create ||
+            payload.orden_planillas.create.length === 0) &&
+        (!payload.orden_planillas.update ||
+            payload.orden_planillas.update.length === 0) &&
+        (!payload.orden_planillas.delete ||
+            payload.orden_planillas.delete.length === 0)
+    ) {
         return;
     }
 
+    // CSRF
+    const token = document
+        .querySelector('meta[name="csrf-token"]')
+        ?.getAttribute("content");
 
-    const rangoText = `Rango permitido: ${maquinaDetalles.diametro_min}mm - ${maquinaDetalles.diametro_max}mm`;
+    try {
+        const res = await fetch(url, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                Accept: "application/json",
+                "X-CSRF-TOKEN": token ?? "",
+                "X-Requested-With": "XMLHttpRequest",
+            },
+            body: JSON.stringify(payload),
+        });
 
-    // Actualizar contadores
-    countValidos.textContent = validos.length;
-    countInvalidos.textContent = invalidos.length;
+        const data = await res.json().catch(() => ({}));
 
-    // Llenar lista de incompatibles
-    listaIncompatibles.innerHTML = `
-        <div class="text-xs text-gray-600 mb-2">${rangoText}</div>
-        ${invalidos.map(el => `
-            <div class="bg-white p-2 rounded mb-2 flex justify-between items-center border border-red-200">
-                <span class="font-mono font-semibold">${el.codigo}</span>
-                <span class="text-sm text-red-600">Ø ${el.diametro}mm</span>
-            </div>
-        `).join('')}
-    `;
-
-    // Mostrar modal
-    modalAdvertencia.classList.remove("hidden");
-
-    // Manejar botón cancelar
-    btnCancelar.onclick = () => {
-        modalAdvertencia.classList.add("hidden");
-    };
-
-    // Manejar botón proseguir
-    btnProseguir.onclick = () => {
-        modalAdvertencia.classList.add("hidden");
-
-        if (validos.length === 0) {
-            alert("No hay elementos compatibles para transferir");
-            return;
+        if (!res.ok || !data?.success) {
+            throw new Error(
+                data?.message || "Error al guardar. Revisa la consola."
+            );
         }
 
-        const idsValidos = validos.map(v => v.id);
-        const ordenDestinoId = obtenerOrdenDestinoId(maquina_id);
-        actualizarMaquinaDeElementos(idsValidos, maquina_id, ordenDestinoId);
-    };
-}
+        // Si el backend reasigna IDs, sincronízalos
+        if (data?.orden_planillas_id_map) {
+            const idMap = data.orden_planillas_id_map;
+            ordenPlanillas.forEach((op) => {
+                const n = idMap[String(op.id)];
+                if (n) op.id = Number(n);
+            });
+            elementos.forEach((el) => {
+                const n = idMap[String(el.orden_planilla_id)];
+                if (n) el.orden_planilla_id = Number(n);
+            });
+        }
 
+        // Congelar como estado “persistido”
+        ELEMENTOS_ORIGINAL = JSON.parse(JSON.stringify(elementos));
+        ORDEN_PLANILLAS_ORIGINAL = JSON.parse(JSON.stringify(ordenPlanillas));
 
-function resaltarPorObra() {
-    select_obra.addEventListener("change", () => {
-        seleccion = select_obra.value
-        let planillas = Array.from(document.getElementsByClassName("planilla"))
+        // Refresca UI y oculta la barra de Guardar
+        renderPlanillas();
+        sePuedeGuardar();
 
-        planillas.forEach(planilla => {
-
-            planilla.classList.remove("border-purple-500", "bg-purple-200")
-            planilla.classList.add("hover:bg-emerald-400", "border-emerald-500")
-
-            if (planilla.dataset.obraId == seleccion) {
-                planilla.classList.remove("hover:bg-emerald-400", "border-emerald-500")
-                planilla.classList.add("border-purple-500", "bg-purple-200")
-            }
+        // ✅ Modal de éxito (mensaje del backend)
+        await Swal.fire({
+            icon: "success",
+            title:
+                data?.message || "Movimiento(s) registrado(s) correctamente.",
+            timer: 1600,
+            showConfirmButton: false,
         });
-    })
+    } catch (err) {
+        console.error("Error guardando:", err);
+        await Swal.fire({
+            icon: "error",
+            title: "Error al guardar",
+            text:
+                err?.message ||
+                "Se produjo un error de red o el servidor devolvió una respuesta no válida.",
+        });
+    }
 }
 
-function modalDetallesPlanilla() {
-    let planillas = Array.from(document.getElementsByClassName("planilla"))
+function filtrarPorNave(valor) {
+    // Normaliza
+    const target = (valor ?? "all").toString();
 
+    // 1) Botones activos (estilos)
+    naves.forEach((btn) => {
+        const activo = btn.dataset.nave === target;
+        btn.classList.toggle("bg-gradient-to-r", activo);
+        btn.classList.toggle("text-white", activo);
+        btn.classList.toggle("text-emerald-700", !activo);
+    });
+
+    // 2) Mostrar/Ocultar máquinas por nave
+    maquinasDivs.forEach((maqDiv) => {
+        const detalles = JSON.parse(maqDiv.dataset.detalles || "{}");
+        const naveId = String(detalles.nave_id ?? "");
+        const show = target === "all" || naveId === target;
+        maqDiv.style.display = show ? "" : "none";
+    });
 }
 
-function anadirNombreObraADataPlanilla() {
+// mostrar modal de resaltar planillas por obra
+function mostrarModalResaltarObra() {
+    modalResaltarObra.classList.remove("hidden");
+}
 
+function actualizarModalDetalles(idPlanilla) {
+    let amd_planilla;
+    for (let i = 0; i < planillas.length; i++) {
+        if (planillas[i].codigo == idPlanilla) {
+            amd_planilla = planillas[i];
+            break;
+        }
+    }
+
+    let amd_response;
+    amd_response = {
+        0: amd_obtenederObra(amd_planilla.obra_id),
+        1: amd_planilla.estado.toUpperCase(),
+        2: "?",
+        3: amd_planilla.estimacion_entrega,
+    };
+
+    for (let i = 0; i < 4; i++) {
+        modalDetalles.children[i].querySelector("span").innerText =
+            amd_response[i];
+    }
+}
+
+function amd_obtenederObra(idObra) {
+    for (let i = 0; i < obras.length; i++) {
+        if (obras[i].obra_id == idObra) {
+            return obras[i].nombre;
+        }
+    }
 }
