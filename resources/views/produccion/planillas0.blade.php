@@ -10,7 +10,11 @@ $numMaquinas = $maquinas->count();
             <h1 class="text-2xl font-bold mb-4">🧾 Planificación por Orden</h1>
             <div class="flex gap-5">
 
-                <button onclick="mostrarModalResaltarObra()" class="p-2 bg-gradient-to-r text-neutral-600 hover:text-white from-neutral-500/30 to-neutral-600/30 hover:from-neutral-500 hover:to-neutral-600 uppercase font-bold text-sm rounded-lg transition-all duration-75 hover:-translate-y-[1px]">Resaltar por obra</button>
+                <button id="btn_mostrar_modal_obras" onclick="mostrarModalResaltarObra()" class="p-2 bg-gradient-to-r text-neutral-600 hover:text-white from-neutral-500/30 to-neutral-600/30 hover:from-neutral-500 hover:to-neutral-600 uppercase font-bold text-sm rounded-lg transition-all duration-75 hover:-translate-y-[1px]">Resaltar por obra</button>
+                <button id="btn_quitar_resaltado" onclick="resaltarObra(1)"
+                    class="hidden p-2 border-2 border-neutral-400 text-neutral-700 hover:bg-neutral-200 uppercase font-bold text-sm rounded-lg transition-all duration-75 hover:-translate-y-[1px]">
+                    Quitar resaltado
+                </button>
 
                 @php
                 $naves = [
@@ -118,7 +122,7 @@ $numMaquinas = $maquinas->count();
             </div>
         </div>
 
-        <div id="modal_resaltar_obra" class="bg-black bg-opacity-50 absolute top-0 left-0 w-screen h-screen flex items-center justify-center hidden backdrop-blur-sm">
+        <div id="modal_resaltar_obra" class="bg-black bg-opacity-50 absolute top-0 left-0 md:px-10 w-screen h-screen flex items-center justify-center hidden backdrop-blur-sm">
 
             <div class="bg-neutral-100 shadow-lg rounded-lg p-3 flex flex-col gap-4 items-center min-w-[calc(100vw-40vw)]">
                 <div class="uppercase font-medium">Seleccione obra para resaltar</div>
@@ -130,9 +134,9 @@ $numMaquinas = $maquinas->count();
                 <div id="obras_modal" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 w-full gap-2 p-2 max-h-96 overflow-y-scroll rounded-lg
             [&::-webkit-scrollbar]:w-2
           [&::-webkit-scrollbar-thumb]:bg-neutral-400">
-                    @forelse($obras as $obra)
-                    <div data-id="{{ $obra->id }}" class="p-3 flex obra justify-between gap-10 items-center cursor-pointer obra_no_seleccionada hover:-translate-y-[1px] transition-all duration-75 shadow-sm rounded-lg">
-                        <p class="text-fuchsia-900 font-mono font-extrabold uppercase">{{ $obra->obra }}</p>
+                    @foreach($obras as $obra)
+                    <div data-id="{{ $obra->id }}" class="p-3 flex obra justify-between gap-10 items-center cursor-pointer obra_no_seleccionada hover:-translate-y-[1px] transition-all duration-75 shadow-sm rounded-lg bg-gradient-to-tr from-neutral-200 to-neutral-300 hover:from-fuchsia-300 hover:to-fuchsia-400 hover:text-fuchsia-900">
+                        <p class="font-mono font-extrabold uppercase">{{ $obra->obra }}</p>
                     </div>
                     @endforeach
                 </div>
@@ -369,6 +373,46 @@ $numMaquinas = $maquinas->count();
         .planilla.dragging {
             opacity: .5 !important;
             transform: rotate(1deg);
+        }
+
+        .planilla.resaltar-obra {
+            background-image: linear-gradient(to top right, #f0abfc, #f472b6) !important;
+        }
+
+        .planilla.obra_resaltada:hover {
+            border-color: #f472b6 !important;
+            background-image: linear-gradient(to top right, #f0abfc, #f472b6) !important;
+        }
+
+        .planilla.obra_resaltada:hover .posicion,
+        .planilla.obra_resaltada:hover .codigo {
+            color: #a21caf !important;
+        }
+
+        /* Prioridad de indigo cuando resalta compis */
+        .planilla.__hl-compi {
+            /* gradiente indigo por defecto */
+            background-image: linear-gradient(to top right, #c7d2fe, #a5b4fc) !important;
+            /* from-indigo-200 to-indigo-300 */
+            border-color: #6366f1 !important;
+            /* border-indigo-500 */
+        }
+
+        .planilla.__hl-compi .codigo {
+            color: #1e1b4b !important;
+        }
+
+        /* text-indigo-900 */
+        .planilla.__hl-compi .posicion {
+            color: #3730a3 !important;
+        }
+
+        /* text-indigo-700 */
+
+        /* Evita que el hover de la card cambie a verde cuando está como compi */
+        .planilla.__hl-compi:hover {
+            background-image: linear-gradient(to top right, #c7d2fe, #a5b4fc) !important;
+            border-color: #6366f1 !important;
         }
     </style>
 
