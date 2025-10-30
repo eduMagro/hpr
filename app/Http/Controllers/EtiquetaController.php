@@ -314,6 +314,7 @@ class EtiquetaController extends Controller
 
         // ⚙️ Convertimos el diámetro siempre a float
         $diametro = floatval($request->input('diametro', $elemento->diametro));
+        $numPiezas = intval($request->input('barras', $elemento->barras));
 
         // 🔹 Longitudes disponibles de barras en el catálogo base
         $longitudesDisponibles = ProductoBase::query()
@@ -364,6 +365,9 @@ class EtiquetaController extends Controller
 
         foreach ($longitudesDisponibles as $longitudM) {
             $porBarra = floor($longitudM / $longitudElementoM);
+            if ($numPiezas > 0) {
+                $porBarra = min($porBarra, $numPiezas); // 👈 no más piezas de las necesarias
+            }
             $sobraCm  = round(($longitudM - ($porBarra * $longitudElementoM)) * 100, 2);
             $aprovechamiento = $porBarra > 0
                 ? round(100 * ($porBarra * $longitudElementoM) / $longitudM, 2)
@@ -388,30 +392,21 @@ class EtiquetaController extends Controller
                 'disponible_en_maquina' => $disponible,
             ];
         }
+        log::info('Patrones corte simple', [
+            'etiqueta_sub_id' => $etiqueta->etiqueta_sub_id,
+            'diametro_mm'    => $diametro,
+            'patrones'       => $patrones,
+        ]);
 
-        // 4️⃣ Generar HTML para el modal o alerta
-        $html = "<ul class='text-left space-y-4'>";
-        foreach ($patrones as $p) {
-            $color = $p['aprovechamiento'] >= 98 ? 'text-green-600'
-                : ($p['aprovechamiento'] >= 90 ? 'text-yellow-500' : 'text-red-600');
+        // 🔠 Esquema tipo A + A + A
+        $letra = 'A';
+        $etiquetasEsquema = implode(' + ', array_fill(0, min($porBarra, $numPiezas), $letra));
 
-            $icono = $p['disponible_en_maquina'] ? '✅' : '❌';
-
-            $html .= "<li class='leading-snug'>";
-            $html .= "<div class='font-bold text-sm text-gray-800'>Elemento {$elemento->longitud} cm</div>";
-            $html .= "<div>📏 <strong>{$p['longitud_m']} m</strong> $icono</div>";
-            $html .= "<div>🧩 <span class='font-semibold text-gray-700'>Patrón:</span> {$p['patron']}</div>";
-            $html .= "<div>🪵 <span class='font-semibold text-gray-700'>Sobra:</span> {$p['sobra_cm']} cm</div>";
-            $html .= "<div>📈 <span class='font-semibold {$color}'>Aprovechamiento:</span> ";
-            $html .= "<span class='{$color} font-bold'>{$p['aprovechamiento']}%</span></div>";
-            $html .= "</li>";
-        }
-        $html .= "</ul>";
 
         return response()->json([
             'success'  => true,
             'patrones' => $patrones,
-            'html'     => $html,
+            'patron_letras' => $etiquetasEsquema,
         ]);
     }
 
@@ -691,7 +686,11 @@ class EtiquetaController extends Controller
         }
 
         $htmlResumen = $this->construirHtmlResumenMultiLongitudes($longitudesBarraCm, $progresoPorLongitud);
-
+        log::info('Patrones corte optimizado', [
+            'etiqueta_sub_id'       => $etiquetaSubId,
+            'top_global_98'         => $topGlobal98,
+            'progreso_por_longitud' => $progresoPorLongitud,
+        ]);
         /* ─────────────────────────────
         |  7) Responder
         ───────────────────────────── */
@@ -1185,6 +1184,7 @@ class EtiquetaController extends Controller
                 'repeticiones' => ['required', 'integer', 'min:1'],
                 'etiquetas' => ['required', 'array', 'min:1'],
                 'etiquetas.*.etiqueta_sub_id' => ['required', 'string'],
+                'etiquetas.*.patron_letras' => ['nullable', 'string', 'max:100'],
             ]);
         } catch (ValidationException $e) {
             return response()->json([
@@ -1210,14 +1210,14 @@ class EtiquetaController extends Controller
                 if (!$maquinaId) throw new \RuntimeException("Sin máquina para {$subId}");
 
                 $maquina = Maquina::findOrFail($maquinaId);
-
+                $patronLetras = $item['patron_letras'] ?? null;
                 $dto = new \App\Servicios\Etiquetas\DTOs\ActualizarEtiquetaDatos(
                     etiquetaSubId: $subId,
                     maquinaId: $maquinaId,
                     longitudSeleccionada: $longitud,
                     operario1Id: $userId,
                     operario2Id: $compaId,
-                    opciones: ['origen' => 'optimizada']
+                    opciones: ['origen' => 'optimizada', 'patron_letras' => $patronLetras,]
                 );
 
                 $resultado = $fabrica->porMaquina($maquina)->actualizar($dto);
@@ -1230,9 +1230,16 @@ class EtiquetaController extends Controller
             }
 
             DB::commit();
+
+            // ✅ Calcular el peso total de la etiqueta
+            $pesoTotalEtiqueta = $resultado->etiqueta->peso
+                ?? $resultado->etiqueta->elementos->sum('peso')
+                ?? 0;
+
             return response()->json([
                 'success' => true,
                 'estado' => $resultado->etiqueta->estado ?? null,
+                'peso_etiqueta' => $pesoTotalEtiqueta,
                 'fecha_inicio' => $resultado->etiqueta->fecha_inicio,
                 'fecha_finalizacion' => $resultado->etiqueta->fecha_finalizacion,
                 'productos_afectados' => $resultado->productosAfectados ?? [],

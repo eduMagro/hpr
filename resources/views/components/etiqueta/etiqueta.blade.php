@@ -13,38 +13,22 @@
     }
 
 @endphp
+@php
+    $elemento = $etiqueta->elementos->first();
+    $productos = [];
+
+    if ($elemento?->producto) {
+        $productos[] = $elemento->producto->n_colada ?? 'Producto 1';
+    }
+    if ($elemento?->producto2) {
+        $productos[] = $elemento->producto2->n_colada ?? 'Producto 2';
+    }
+    if ($elemento?->producto3) {
+        $productos[] = $elemento->producto3->n_colada ?? 'Producto 3';
+    }
+@endphp
 
 <style>
-    /* === Colores de estado === */
-    .proceso {
-        --bg-estado: #e5e7eb;
-    }
-
-    /* blanco */
-    .proceso.estado-pendiente {
-        --bg-estado: #ffffff;
-    }
-
-    /* amarillo */
-    .proceso.estado-fabricando,
-    .proceso.estado-ensamblando,
-    .proceso.estado-soldando {
-        --bg-estado: #facc15;
-    }
-
-    /* verde */
-    .proceso.estado-fabricada,
-    .proceso.estado-completada,
-    .proceso.estado-ensamblada,
-    .proceso.estado-soldada {
-        --bg-estado: #22c55e;
-    }
-
-    /* rojo */
-    .proceso.estado-en-paquete {
-        --bg-estado: #e3e4FA;
-    }
-
     /* === Contenedor general === */
     .etiqueta-wrapper {
         display: block;
@@ -176,6 +160,10 @@
             <h3 class="text-lg font-semibold text-gray-900">
                 {{ $etiqueta->nombre ?? 'Sin nombre' }} - Cal:B500SD - {{ $etiqueta->peso_kg ?? 'N/A' }}
             </h3>
+            <p class="text-[8pt] text-gray-800 leading-tight">
+                Coladas: <span class="font-semibold">{{ implode(', ', $productos) }}</span>
+            </p>
+
         </div>
 
         <!-- SVG -->

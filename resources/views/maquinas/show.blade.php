@@ -57,7 +57,6 @@
                         :sugerencias-por-elemento="$sugerenciasPorElemento" {{-- NUEVO: todo lo de barras va por props --}} :es-barra="$esBarra" :longitudes-por-diametro="$longitudesPorDiametro"
                         :diametro-por-etiqueta="$diametroPorEtiqueta" :elementos-agrupados-script="$elementosAgrupadosScript" />
 
-
                     @include('components.maquinas.modales.normal.modales-normal')
             @endif
 
@@ -65,8 +64,11 @@
 
         <!-- SCRIPT PARA IMPRIMIR QR -->
         <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-        <script src="/js/trabajoEtiquetaSyntaxLine28.js"></script>
+
+        <script src="{{ asset('js/maquinaJS/sl28/cortes.js') }}"></script>
+        <script src="{{ asset('js/maquinaJS/actualizarDom.js') }}"></script>
         <script src="{{ asset('js/maquinaJS/trabajoEtiqueta.js') }}"></script>
+        <script src="{{ asset('js/maquinaJS/trabajoPaquete.js') }}"></script>
         <script src="{{ asset('js/imprimirQrS.js') }}"></script>
         <script>
             window.SUGERENCIAS = @json($sugerenciasPorElemento ?? []);
@@ -81,14 +83,8 @@
         </script>
 
         <script src="{{ asset('js/maquinaJS/canvasMaquina.js') }}"></script>
-        <script src="{{ asset('js/maquinaJS/elementInfoPanel.js') }}"></script>
-
-        {{-- <script src="{{ asset('js/maquinaJS/canvasMaquinaSinBoton.js') }}" defer></script> --}}
-
         <script src="{{ asset('js/maquinaJS/crearPaquetes.js') }}" defer></script>
         {{-- Al final del archivo Blade --}}
-
-
 
         <script>
             // Bloquea el menú contextual solo dentro de .proceso (tu tarjeta de etiqueta)

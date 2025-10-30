@@ -148,8 +148,7 @@ class MaquinaController extends Controller
             'productos',
         ])->findOrFail($id);
 
-        $this->activarMovimientosSalidasHoy();
-        $this->activarMovimientosSalidasAlmacenHoy();
+
 
         // 1) Contexto común (incluye productosBaseCompatibles en $base)
         $base = $this->cargarContextoBase($maquina);
@@ -157,7 +156,8 @@ class MaquinaController extends Controller
         // 2) Rama GRÚA: devolver pronto con variables neutras de máquina
         if ($this->esGrua($maquina)) {
             $grua = $this->cargarContextoGrua($maquina);
-
+            $this->activarMovimientosSalidasHoy();
+            $this->activarMovimientosSalidasAlmacenHoy();
             return view('maquinas.show', array_merge(
                 $base,
                 [
