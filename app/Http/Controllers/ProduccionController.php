@@ -1253,12 +1253,17 @@ class ProduccionController extends Controller
         $trabajadoresServicios = User::with(['asignacionesTurnos.turno', 'categoria', 'maquina'])
             ->where('empresa_id', $hprServicios->id)
             ->where('rol', 'operario')
-            ->get();
+            ->get()
+            ->sortBy('nombre_completo')
+            ->values(); // <- opcional para reindexar
 
         $trabajadoresHpr = User::with(['asignacionesTurnos.turno', 'categoria', 'maquina'])
             ->where('empresa_id', $hpr->id)
             ->where('rol', 'operario')
-            ->get();
+            ->get()
+            ->sortBy('nombre_completo')
+            ->values();
+
 
         $obrasActivas = Obra::where('tipo', 'montaje')->get();
         $todasLasObras = Obra::orderBy('obra')->get();
