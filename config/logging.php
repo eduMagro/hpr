@@ -60,7 +60,7 @@ return [
 
         'planilla_import' => [
             'driver' => 'daily',
-            'path' => storage_path('logs/planilla_import.log'),
+            'path' => storage_path('logs/Importacion Planillas/planilla_import.log'),
             'level' => env('LOG_LEVEL', 'debug'),
             'days' => env('LOG_DAILY_DAYS', 14),
             'replace_placeholders' => true,

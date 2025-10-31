@@ -670,23 +670,6 @@ class PlanillaController extends Controller
                 ->with('nombre_archivo', $nombreArchivo);
         }
     }
-    //------------------------------------------------------------------------------------ CALCULARTIEMPOSELEMENTO()
-    private function calcularTiemposElemento(array $row)
-    {
-        $barras = $row[32] ?? 0;
-        $doblesBarra = $row[33] ?? 0;
-
-        // Calcular el tiempo estimado para el elemento
-        $tiempoFabricacion = ($doblesBarra > 0)
-            ? ($barras * $doblesBarra * 1.5) // Cálculo para barras con dobles
-            : ($barras * 2); // Cálculo para barras rectas
-
-
-
-        return [
-            'tiempo_fabricacion' => $tiempoFabricacion,
-        ];
-    }
 
     //------------------------------------------------------------------------------------ STORE()
     public function store(Request $request)

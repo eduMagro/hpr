@@ -266,8 +266,6 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
     Route::put('/salidas/{salida}/codigo-sage', [SalidaFerrallaController::class, 'actualizarCodigoSage'])->name('salidas.editarCodigoSage');
 
     // === SALIDAS ALMACEN ===
-
-
     Route::get('salidas-almacen/disponibilidad', [SalidaAlmacenController::class, 'disponibilidad'])
         ->name('salidas-almacen.verDisponibilidad');
 
