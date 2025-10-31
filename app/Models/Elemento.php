@@ -27,6 +27,7 @@ class Elemento extends Model
         'id',
         'codigo',
         'planilla_id',
+        'orden_planilla_id',
         'etiqueta_id',
         'etiqueta_sub_id',
         'maquina_id',
