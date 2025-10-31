@@ -43,8 +43,7 @@
 
               <!-- Botones -->
               <div class="flex justify-end gap-3 mt-6">
-                  <button type="button" onclick="cerrarModalMovimientoLibre()"
-                      class="px-4 py-2 bg-gray-300 hover:bg-gray-400 rounded-lg">Cancelar</button>
+                  <button type="button" id="cancelar_btn" onclick="cerrarModalMovimientoLibre()" class="px-4 py-2 bg-gray-300 hover:bg-gray-400 rounded-lg">Cancelar</button>
                   <button type="submit"
                       class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg">Registrar</button>
               </div>

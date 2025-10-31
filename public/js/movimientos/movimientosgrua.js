@@ -4,7 +4,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const LISTAQRS = document.getElementById("mostrar_qrs"); // contenedor visual de códigos
     const INPUT_OCULTO = document.getElementById("lista_qrs"); // input hidden que viaja al backend
     const FORM = document.getElementById("form-movimiento-general"); // formulario
-    const CANCELAR_BTN = document.getElementById("cancelar_btn"); // (opcional) botón cancelar si existe
+    const CANCELAR_BTN = document.getElementById("cancelar_btn"); // (opcional) botón cancelar
     const API_INFO_URL = LISTAQRS.dataset.apiInfoUrl || "/api/codigos/info";
 
     // array con los codigos ya escaneados (estado)
@@ -167,6 +167,7 @@ document.addEventListener("DOMContentLoaded", () => {
     // Si se cancela se borran los códigos escaneados (si el botón existe)
     if (CANCELAR_BTN) {
         CANCELAR_BTN.addEventListener("click", () => {
+            console.log("wenas")
             yaEscaneados = [];
             syncHidden();
             renderLista();
