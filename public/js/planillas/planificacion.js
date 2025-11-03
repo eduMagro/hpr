@@ -14,6 +14,7 @@ let obrasInput;
 let obrasModal;
 let clickObras; // .obra
 let obraSeleccionada;
+let OBRA_HL = { active: false, id: null, codes: new Set() };
 
 // btn
 let btn_transferir;
@@ -204,9 +205,9 @@ function resaltarObra(quitar = null) {
                     ) {
                         // Quitar clases de hover que pintan en verde + desactivar group-hover
                         planilla.classList.remove(
-                            "hover:from-emerald-300",
-                            "hover:to-emerald-400",
-                            "hover:border-emerald-600",
+                            "hover:from-blue-300",
+                            "hover:to-blue-400",
+                            "hover:border-blue-600",
                             /* quita group para que no actúe .group-hover:* en los hijos */
                             "group"
                             // si NO quieres el leve levantado al hover, descomenta:
@@ -216,10 +217,10 @@ function resaltarObra(quitar = null) {
                         const posEl = planilla.querySelector(".posicion");
                         const codEl = planilla.querySelector(".codigo");
                         posEl?.classList.remove(
-                            "text-emerald-600",
+                            "text-blue-600",
                             "group-hover:text-black"
                         );
-                        codEl?.classList.remove("text-emerald-800");
+                        codEl?.classList.remove("text-blue-800");
 
                         // Aplica el gradiente y el borde fucsia
                         planilla.classList.remove(
@@ -260,10 +261,10 @@ function resaltarObra(quitar = null) {
                 "from-neutral-100",
                 "to-neutral-200",
                 "border-2",
-                "border-emerald-400",
-                "hover:from-emerald-300",
-                "hover:to-emerald-400",
-                "hover:border-emerald-600",
+                "border-blue-400",
+                "hover:from-blue-300",
+                "hover:to-blue-400",
+                "hover:border-blue-600",
                 "group"
                 // si quitaste el lift en highlight, reañádelo aquí:
                 // , "hover:-translate-y-1"
@@ -272,9 +273,9 @@ function resaltarObra(quitar = null) {
             const posEl = card.querySelector(".posicion");
             const codEl = card.querySelector(".codigo");
             posEl?.classList.remove("text-fuchsia-700");
-            posEl?.classList.add("text-emerald-600", "group-hover:text-black");
+            posEl?.classList.add("text-blue-600", "group-hover:text-black");
             codEl?.classList.remove("text-fuchsia-700");
-            codEl?.classList.add("text-emerald-800");
+            codEl?.classList.add("text-blue-800");
         });
     }
 }
@@ -303,14 +304,14 @@ function renderPlanillas() {
             let div_maquina_id = JSON.parse(maq.dataset.detalles).id;
             if (div_maquina_id == planilla.maquina_id) {
                 div.className =
-                    "planilla group p-3 flex justify-around items-center border-2 border-emerald-400 hover:border-emerald-600 hover:-translate-y-1 transition-transform duration-75 ease-in-out rounded-xl cursor-grab bg-gradient-to-tr from-neutral-100 to-neutral-200 hover:from-emerald-300 hover:to-emerald-400 active:cursor-grabbing select-none text-center relative";
+                    "planilla group p-3 flex justify-around items-center border-2 border-blue-400 hover:border-blue-600 hover:-translate-y-1 transition-transform duration-75 ease-in-out rounded-xl cursor-grab bg-gradient-to-tr from-neutral-100 to-neutral-200 hover:from-blue-300 hover:to-blue-400 active:cursor-grabbing select-none text-center relative";
                 div.dataset.ordenId = planilla.id;
                 div.dataset.planillaId = planilla.planilla_id;
                 div.setAttribute("draggable", "true");
 
                 let divPosicion = document.createElement("div");
                 divPosicion.className =
-                    "posicion text-emerald-600 group-hover:text-black text-xs font-bold absolute top-1 left-1 pos-label";
+                    "posicion text-blue-600 group-hover:text-black text-xs font-bold absolute top-1 left-1 pos-label";
                 divPosicion.innerText = planilla.posicion;
 
                 let divCodigoPlanilla = document.createElement("div");
@@ -323,7 +324,7 @@ function renderPlanillas() {
                 }
                 divCodigoPlanilla.innerText = codigo_planilla;
                 divCodigoPlanilla.className =
-                    "codigo text-emerald-800 font-semibold";
+                    "codigo text-blue-800 font-semibold";
                 div.dataset.codigo = codigo_planilla;
 
                 div.appendChild(divPosicion);
@@ -342,6 +343,7 @@ function renderPlanillas() {
 
     agregarClickAPlanillas();
     initDragAndDrop();
+    if (OBRA_HL.active) applyObraHighlight();
 }
 
 // agregar listener click a las planillas, rehacerlo cada vez que se hagan cambios para evitar problemas con nuevos orden_planillas
@@ -417,7 +419,7 @@ function anadirElemento(padre, elemento, n) {
     const idCanvas = `cv-el-${elemento.id}`;
 
     const html = `
-    <div class="p-2 w-full no_seleccionado text-center bg-gradient-to-tr from-indigo-200 to-indigo-300 hover:from-indigo-300 hover:to-indigo-400 hover:-translate-y-1 cursor-pointer rounded-xl flex flex-col items-center transition-all duration-75"
+    <div class="p-2 w-full no_seleccionado text-center bg-gradient-to-tr from-orange-200 to-orange-300 hover:from-orange-300 hover:to-orange-400 hover:-translate-y-1 cursor-pointer rounded-xl flex flex-col items-center transition-all duration-75"
          data-peso="${elemento.peso ?? ""}"
          data-dimensiones="${elemento.dimensiones ?? ""}"
          data-id="${elemento.id}">
@@ -481,24 +483,24 @@ function anadirPropiedadTransferible() {
             if (target.classList.contains("no_seleccionado")) {
                 target.classList.remove(
                     "no_seleccionado",
-                    "hover:from-indigo-300",
-                    "hover:to-indigo-400"
+                    "hover:from-orange-300",
+                    "hover:to-orange-400"
                 );
                 target.classList.add(
                     "seleccionado",
-                    "to-indigo-400",
-                    "from-emerald-500"
+                    "to-orange-400",
+                    "from-blue-500"
                 );
             } else {
                 target.classList.add(
                     "no_seleccionado",
-                    "hover:from-indigo-300",
-                    "hover:to-indigo-400"
+                    "hover:from-orange-300",
+                    "hover:to-orange-400"
                 );
                 target.classList.remove(
                     "seleccionado",
-                    "to-indigo-400",
-                    "from-emerald-500"
+                    "to-orange-400",
+                    "from-blue-500"
                 );
             }
         });
@@ -511,31 +513,23 @@ let _hlNodes = [];
 
 function _clearHighlight() {
     if (!_hlNodes.length) return;
+
     _hlNodes.forEach((opd) => {
-        // si el nodo ya no está en el DOM, sáltalo
         if (!opd || !opd.isConnected) return;
 
-        opd.classList.remove(
-            "border-indigo-500",
-            "from-indigo-200",
-            "to-indigo-300",
-            "-translate-y-[1px]"
-        );
-        opd.classList.add("from-neutral-100", "to-neutral-200");
-        opd.querySelector(".codigo")?.classList.remove("text-indigo-900");
-        opd.querySelector(".codigo")?.classList.add("text-emerald-800");
-        opd.querySelector(".posicion")?.classList.remove("text-indigo-700");
-        opd.querySelector(".posicion")?.classList.add("text-emerald-600");
+        // Quita SOLO el estado de compi
+        opd.classList.remove("__hl-compi");
 
-        // header de la máquina (ajusta el selector si tu header tiene otra clase)
+        // Header vuelve a azul
         const maquinaHeader = opd
             .closest(".maquina")
             ?.querySelector(":scope > *:first-child");
         if (maquinaHeader) {
-            maquinaHeader.classList.add("from-emerald-600", "to-emerald-700");
-            maquinaHeader.classList.remove("from-indigo-400", "to-indigo-500");
+            maquinaHeader.classList.add("from-blue-600", "to-blue-700");
+            maquinaHeader.classList.remove("from-orange-400", "to-orange-500");
         }
     });
+
     _hlNodes = [];
     _hlCode = null;
 }
@@ -573,41 +567,24 @@ function resaltarCompis() {
             );
             matches.forEach((opd) => {
                 if (opd === card) return;
-                let isResaltado = false;
-                if (opd.classList.contains("from-fuchsia-100"))
-                    opd.classList.remove("from-neutral-100", "to-neutral-200");
-                opd.classList.add(
-                    "border-indigo-500",
-                    "from-indigo-200",
-                    "to-indigo-300",
-                    "-translate-y-[1px]"
-                );
 
-                // resaltar maquina
+                // SOLO marcamos la clase de estado compi.
+                opd.classList.add("__hl-compi");
+
+                // Header máquina a naranja (esto lo puedes mantener si te gusta el feedback):
                 const maquinaHeader = opd
                     .closest(".maquina")
                     ?.querySelector(":scope > *:first-child");
                 if (maquinaHeader) {
                     maquinaHeader.classList.remove(
-                        "from-emerald-600",
-                        "to-emerald-700"
+                        "from-blue-600",
+                        "to-blue-700"
                     );
                     maquinaHeader.classList.add(
-                        "from-indigo-400",
-                        "to-indigo-500"
+                        "from-orange-400",
+                        "to-orange-500"
                     );
                 }
-
-                opd.querySelector(".codigo")?.classList.add("text-indigo-900");
-                opd.querySelector(".codigo")?.classList.remove(
-                    "text-emerald-800"
-                );
-                opd.querySelector(".posicion")?.classList.add(
-                    "text-indigo-700"
-                );
-                opd.querySelector(".posicion")?.classList.remove(
-                    "text-emerald-600"
-                );
             });
 
             _hlNodes = Array.from(matches);
@@ -663,6 +640,7 @@ function seleccionarMaquinaParaMovimiento() {
             // obtener id maquina seleccionada
             maquinaSeleccionadaId = maquina.dataset.id;
             btn_transferir.innerHTML = `TRANSFERIR A <span class="chiptransferirA transition-all duration-150">${maquina.children[0].innerText}</span>`;
+            btn_transferir.classList.add("text-white"); // texto blanco siempre tras seleccionar
         });
     });
 }
@@ -1492,7 +1470,7 @@ function filtrarPorNave(valor) {
         const activo = btn.dataset.nave === target;
         btn.classList.toggle("bg-gradient-to-r", activo);
         btn.classList.toggle("text-white", activo);
-        btn.classList.toggle("text-emerald-700", !activo);
+        btn.classList.toggle("text-blue-700", !activo);
     });
 
     // 2) Mostrar/Ocultar máquinas por nave
@@ -1538,5 +1516,123 @@ function amd_obtenederObra(idObra) {
         if (obras[i].obra_id == idObra) {
             return obras[i].nombre;
         }
+    }
+}
+
+// helpers para resaltar ordenPlanillas de obra filtrada
+function buildCodesForObra(obraId) {
+    const set = new Set();
+    planillas.forEach((p) => {
+        if (Number(p.obra_id) === Number(obraId)) {
+            set.add(String(p.codigo).trim());
+        }
+    });
+    return set;
+}
+
+function applyObraStylesToCard(card) {
+    // Quitar hover azul y group
+    card.classList.remove(
+        "hover:from-blue-300",
+        "hover:to-blue-400",
+        "hover:border-blue-600",
+        "group",
+        "from-neutral-100",
+        "to-neutral-200"
+    );
+    // Poner gradiente fucsia y borde
+    card.classList.add(
+        "bg-gradient-to-tr",
+        "from-fuchsia-200",
+        "to-fuchsia-300",
+        "border-2",
+        "border-fuchsia-400",
+        "obra_resaltada"
+    );
+    // Textos
+    const posEl = card.querySelector(".posicion");
+    const codEl = card.querySelector(".codigo");
+    posEl?.classList.remove("text-blue-600", "group-hover:text-black");
+    codEl?.classList.remove("text-blue-800");
+    posEl?.classList.add("text-fuchsia-700");
+    codEl?.classList.add("text-fuchsia-700");
+}
+
+function resetObraStylesOnCard(card) {
+    card.classList.remove(
+        "obra_resaltada",
+        "from-fuchsia-200",
+        "to-fuchsia-300",
+        "border-fuchsia-400"
+    );
+    card.classList.add(
+        "bg-gradient-to-tr",
+        "from-neutral-100",
+        "to-neutral-200",
+        "border-2",
+        "border-blue-400",
+        "hover:from-blue-300",
+        "hover:to-blue-400",
+        "hover:border-blue-600",
+        "group"
+    );
+    const posEl = card.querySelector(".posicion");
+    const codEl = card.querySelector(".codigo");
+    posEl?.classList.remove("text-fuchsia-700");
+    posEl?.classList.add("text-blue-600", "group-hover:text-black");
+    codEl?.classList.remove("text-fuchsia-700");
+    codEl?.classList.add("text-blue-800");
+}
+
+function applyObraHighlight() {
+    if (!OBRA_HL.active || !OBRA_HL.id) return;
+    const cards = document.querySelectorAll(".planilla");
+    cards.forEach((card) => {
+        const code = (
+            card.dataset.codigo ||
+            card.querySelector(".codigo")?.textContent ||
+            ""
+        ).trim();
+        if (OBRA_HL.codes.has(code)) applyObraStylesToCard(card);
+    });
+}
+
+function clearObraHighlightUI() {
+    document.querySelectorAll(".planilla").forEach(resetObraStylesOnCard);
+}
+
+function setObraHighlight(obraId) {
+    OBRA_HL.active = true;
+    OBRA_HL.id = Number(obraId);
+    OBRA_HL.codes = buildCodesForObra(obraId);
+    applyObraHighlight();
+}
+
+function clearObraHighlight() {
+    OBRA_HL = { active: false, id: null, codes: new Set() };
+    clearObraHighlightUI();
+}
+
+function resaltarObra(quitar = null) {
+    let btn1 = document.getElementById("btn_mostrar_modal_obras");
+    let btn2 = document.getElementById("btn_quitar_resaltado");
+
+    if (!quitar) {
+        btn1.classList.add("hidden");
+        btn2.classList.remove("hidden");
+
+        // Solo añadimos un listener simple que fija el estado y aplica
+        clickObras.forEach((clickObra) => {
+            clickObra.onclick = () => {
+                cerrarModales();
+                obraSeleccionada = clickObra.dataset.id;
+                setObraHighlight(obraSeleccionada); // ← guarda estado y aplica a las cards actuales
+            };
+        });
+    } else {
+        btn2.classList.add("hidden");
+        btn1.classList.remove("hidden");
+
+        clearObraHighlight(); // ← restaura estilos base en todas las cards y limpia estado
     }
 }
