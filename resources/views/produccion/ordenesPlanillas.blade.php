@@ -179,12 +179,10 @@
                     *
                 </div>
 
-                <div class="flex justify-end gap-3 w-full">
+                <div class="flex justify-center gap-3 w-full">
                     <button onclick="seleccionarMaquinaParaMovimiento()"
                         class="flex p-3 bg-orange-400 hover:bg-orange-500 hover:text-white transition-all duration-150 font-sans font-semibold text-xs uppercase rounded-lg">transferir
                         a otra máquina</button>
-                    <button id="cancelar_modal_elementos"
-                        class="flex p-3 bg-red-400 hover:bg-red-600 hover:text-white transition-all duration-150 font-sans font-semibold text-xs uppercase rounded-lg">Cancelar</button>
                 </div>
             </div>
         </div>
@@ -348,6 +346,10 @@
             background-image: linear-gradient(to top right, #3b82f6, #818cf8);
         }
 
+        .maquina_si_seleccionada p {
+            color: white !important;
+        }
+
         /* Estado normal: todo blanco (el span hereda) */
         #transferir_elementos .chiptransferirA {
             background: none !important;
@@ -436,6 +438,11 @@
             background-image: linear-gradient(to top right, #fed7aa, #fdba74) !important;
             border-color: #f59e0b !important;
         }
+
+        /* #swal2-html-container {
+            max-height: 50vh;
+            overflow: scroll
+        } */
 
 
         /* text-orange-700 */

@@ -664,7 +664,6 @@ function transferirElementos() {
     const max =
         maquina.diametro_max != null ? Number(maquina.diametro_max) : null;
 
-    // Particionar por compatibilidad
     const compatibles = [];
     const noCompatibles = [];
     seleccionados.forEach((card) => {
@@ -679,43 +678,89 @@ function transferirElementos() {
         if (dentroMin && dentroMax) {
             compatibles.push({ card, el });
         } else {
-            // Para el listado: sin id
+            //  Guardamos info completa para pintar tarjetas como anadirElemento
             noCompatibles.push({
+                id: el.id ?? null,
                 codigo: el.codigo ?? "",
                 diametro:
                     el.diametro != null && el.diametro !== ""
                         ? Number(el.diametro).toFixed(2)
                         : "—",
+                dimensiones: el.dimensiones ?? "",
+                peso: el.peso ?? "N/A",
             });
         }
     });
 
     // Si hay no compatibles, avisa (pero seguimos con los compatibles)
     if (noCompatibles.length) {
-        const rango = `<b>${min == null ? "sin límite" : min}</b> — <b>${
+        const rango = `<b>Ø${min == null ? "sin límite" : min}</b> - <b>Ø${
             max == null ? "sin límite" : max
         }</b>`;
-        const lista = noCompatibles
-            .map(
-                (nc) =>
-                    `• ${nc.codigo}${
-                        nc.diametro !== "—" ? ` — Ø${nc.diametro}` : ""
-                    }`
-            )
-            .join("<br>");
+
+        // Tarjetas tipo "anadirElemento" con canvas (idéntico al drag & drop)
+        const cardsHtml = `
+      <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 mt-2 max-h-[50vh] overflow-y-scroll">
+        ${noCompatibles
+            .map((nc, i) => {
+                const idCanvas = `cv-tf-nc-${nc.id ?? `maq${maquinaId}-i${i}`}`;
+                return `
+              <div class="p-2 w-full no_seleccionado text-center bg-gradient-to-tr from-orange-200 to-orange-300 hover:from-orange-300 hover:to-orange-400 hover:-translate-y-1 cursor-pointer rounded-xl flex flex-col items-center transition-all duration-75"
+                   data-peso="${nc.peso ?? ""}"
+                   data-dimensiones="${nc.dimensiones ?? ""}"
+                   data-id="${nc.id ?? ""}">
+                <div class="flex justify-between items-center w-full">
+                  <p>${nc.codigo}</p>
+                  <p><span class="text-red-500 font-semibold">Ø</span>${
+                      nc.diametro
+                  }</p>
+                </div>
+                <canvas id="${idCanvas}" class="w-full h-24 bg-white border border-gray-200 rounded-md"></canvas>
+              </div>`;
+            })
+            .join("")}
+      </div>
+    `;
+
         Swal.fire({
             icon: "warning",
             title: "Elementos no compatibles",
+            width: "auto",
             html: `
-                <div class="text-left">
-                    <p>La máquina <b>${
-                        maquina.nombre || maquina.codigo || "#" + maquinaId
-                    }</b>
-                    admite diámetros: ${rango}.</p>
-                    <p class="mt-2">Se han descartado del movimiento:</p>
-                    <pre style="white-space:pre-wrap;margin:0">${lista}</pre>
-                </div>
-            `,
+          <div class="text-left">
+            <p>La máquina <b>${
+                maquina.nombre || maquina.codigo || "#" + maquinaId
+            }</b>
+            admite diámetros: ${rango}.</p>
+            <p class="mt-2">Se han descartado del movimiento:</p>
+            ${cardsHtml}
+          </div>
+        `,
+            didOpen: () => {
+                // Dibujar cada canvas como en anadirElemento
+                noCompatibles.forEach((nc, i) => {
+                    const idCanvas = `cv-tf-nc-${
+                        nc.id ?? `maq${maquinaId}-i${i}`
+                    }`;
+                    const canvas = document.getElementById(idCanvas);
+                    if (
+                        !canvas ||
+                        typeof window.dibujarFiguraElemento !== "function"
+                    )
+                        return;
+
+                    const w = Math.max(160, canvas.clientWidth || 160);
+                    const h = Math.max(100, canvas.clientHeight || 100);
+                    canvas.width = w;
+                    canvas.height = h;
+
+                    window.dibujarFiguraElemento(
+                        idCanvas,
+                        nc.dimensiones || "",
+                        nc.peso ?? "N/A"
+                    );
+                });
+            },
         });
     }
 
@@ -1167,11 +1212,14 @@ function initDragAndDrop() {
                     const dentroMax = max == null || d == null || d <= max;
                     if (!(dentroMin && dentroMax)) {
                         noCompat.push({
+                            id: el.id ?? null,
                             codigo: el.codigo ?? "",
                             diametro:
                                 el.diametro != null && el.diametro !== ""
                                     ? Number(el.diametro).toFixed(2)
                                     : "—",
+                            dimensiones: el.dimensiones ?? "",
+                            peso: el.peso ?? "N/A",
                         });
                     }
                 });
@@ -1192,34 +1240,81 @@ function initDragAndDrop() {
                     }
                     reindexDOMColumn(dst);
 
-                    const rango = `<b>${
+                    const rango = `<b>Ø${
                         min == null ? "sin límite" : min
-                    }</b> — <b>${max == null ? "sin límite" : max}</b>`;
-                    const lista = noCompat
-                        .map(
-                            (nc) =>
-                                `• ${nc.codigo}${
-                                    nc.diametro !== "—"
-                                        ? ` — Ø${nc.diametro}`
-                                        : ""
-                                }`
-                        )
-                        .join("<br>");
+                    }</b> - <b>Ø${max == null ? "sin límite" : max}</b>`;
+
+                    // tarjetas tipo "anadirElemento" con canvas
+                    const cardsHtml = `
+    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 mt-2 max-h-[50vh] overflow-y-scroll">
+      ${noCompat
+          .map((nc, i) => {
+              const idCanvas = `cv-nc-${nc.id ?? `ord${ordenId}-i${i}`}`;
+              return `
+        <div class="p-2 w-full no_seleccionado text-center bg-gradient-to-tr from-orange-200 to-orange-300 hover:from-orange-300 hover:to-orange-400 hover:-translate-y-1 cursor-pointer rounded-xl flex flex-col items-center transition-all duration-75"
+             data-peso="${nc.peso ?? ""}"
+             data-dimensiones="${nc.dimensiones ?? ""}"
+             data-id="${nc.id ?? ""}">
+          <div class="flex justify-between items-center w-full">
+            <p>${nc.codigo}</p>
+            <p><span class="text-red-500 font-semibold">Ø</span>${
+                nc.diametro
+            }</p>
+          </div>
+          <canvas id="${idCanvas}" class="w-full h-24 bg-white border border-gray-200 rounded-md"></canvas>
+        </div>`;
+          })
+          .join("")}
+    </div>
+  `;
+
                     Swal.fire({
                         icon: "warning",
                         title: "Movimiento cancelado",
+                        width: "auto",
+                        height: "auto",
                         html: `
-                <div class="text-left">
-                    <p>Hay elementos no compatibles con la máquina <b>${
-                        maquina?.nombre ||
-                        maquina?.codigo ||
-                        "#" + targetMachineId
-                    }</b>
-                    (diámetros aceptados: ${rango}).</p>
-                    <p class="mt-2">No se ha realizado el movimiento porque la orden incluye:</p>
-                    <pre style="white-space:pre-wrap;margin:0">${lista}</pre>
-                </div>
-            `,
+      <div class="text-left">
+        <p>Hay elementos no compatibles con la máquina
+           <b>${maquina?.nombre || maquina?.codigo || "#" + targetMachineId}</b>
+           (diámetros aceptados: ${rango}).</p>
+        <p class="mt-2">Revisa los siguientes elementos de la orden:</p>
+        ${cardsHtml}
+      </div>
+    `,
+                        didOpen: () => {
+                            // dibujar cada canvas como en anadirElemento
+                            noCompat.forEach((nc, i) => {
+                                const idCanvas = `cv-nc-${
+                                    nc.id ?? `ord${ordenId}-i${i}`
+                                }`;
+                                const canvas =
+                                    document.getElementById(idCanvas);
+                                if (
+                                    !canvas ||
+                                    typeof window.dibujarFiguraElemento !==
+                                        "function"
+                                )
+                                    return;
+
+                                const w = Math.max(
+                                    160,
+                                    canvas.clientWidth || 160
+                                );
+                                const h = Math.max(
+                                    100,
+                                    canvas.clientHeight || 100
+                                );
+                                canvas.width = w;
+                                canvas.height = h;
+
+                                window.dibujarFiguraElemento(
+                                    idCanvas,
+                                    nc.dimensiones || "",
+                                    nc.peso ?? "N/A"
+                                );
+                            });
+                        },
                     });
                 } else {
                     // todo compatible → mover
