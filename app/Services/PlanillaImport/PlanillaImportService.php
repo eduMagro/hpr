@@ -84,11 +84,11 @@ class PlanillaImportService
         $datosFiltrados = $datos;
 
         if (!empty($duplicados)) {
-            // ⚠️ ADVERTIR sobre duplicados pero CONTINUAR
+            // ⚠️ ADVERTIR sobre duplicados pero CONTINUAR
             $advertenciasIniciales[] = "Las siguientes planillas ya existen y fueron omitidas: " . implode(', ', $duplicados);
             $advertenciasIniciales[] = "Use el botón 'Reimportar' para actualizar planillas existentes.";
 
-            Log::channel('planilla_import')->warning("⚠️ Planillas duplicadas detectadas, serán omitidas", [
+            Log::channel('planilla_import')->warning("⚠️ Planillas duplicadas detectadas, serán omitidas", [
                 'duplicados' => $duplicados,
             ]);
 
@@ -198,7 +198,7 @@ class PlanillaImportService
                 ->where('estado', 'pendiente')
                 ->delete();
 
-            Log::channel('planilla_import')->info("🗑️ Elementos pendientes eliminados", [
+            Log::channel('planilla_import')->info("🗑️ Elementos pendientes eliminados", [
                 'cantidad' => $elementosEliminados,
             ]);
 
@@ -229,10 +229,13 @@ class PlanillaImportService
             // 8. ASIGNAR MÁQUINAS
             $this->asignador->repartirPlanilla($planilla->id);
 
-            // 9. CREAR/ACTUALIZAR ORDEN_PLANILLAS
+            // 9. ✅ APLICAR POLÍTICA DE SUBETIQUETAS (MÉTODO CORRECTO)
+            $this->processor->aplicarPoliticaSubetiquetasPostAsignacion($planilla);
+
+            // 10. CREAR/ACTUALIZAR ORDEN_PLANILLAS
             $ordenesCreadas = $this->ordenService->crearOrdenParaPlanilla($planilla->id);
 
-            // 10. RECALCULAR TOTALES (pero mantener fecha de entrega)
+            // 11. RECALCULAR TOTALES (pero mantener fecha de entrega)
             $elementos = $planilla->fresh()->elementos;
             $pesoTotal = $elementos->sum('peso');
             $tiempoTotal = $elementos->sum('tiempo_fabricacion') +
@@ -339,7 +342,7 @@ class PlanillaImportService
             ->keyBy('id')
             ->toArray();
 
-        Log::channel('planilla_import')->info("🗄️ Caches precargados", [
+        Log::channel('planilla_import')->info("🗄️ Caches precargados", [
             'clientes' => count($this->cacheClientes),
             'obras' => count($this->cacheObras),
             'maquinas' => count($this->cacheMaquinas),
@@ -396,7 +399,7 @@ class PlanillaImportService
                         // 2️⃣ Asignar máquinas
                         $this->asignador->repartirPlanilla($resultado->planilla->id);
 
-                        // 3️⃣ AHORA SÍ aplicar política de subetiquetas
+                        // 3️⃣ ✅ AHORA SÍ aplicar política de subetiquetas (MÉTODO CORRECTO)
                         $this->processor->aplicarPoliticaSubetiquetasPostAsignacion($resultado->planilla);
 
                         // 4️⃣ Crear orden_planillas
