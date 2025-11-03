@@ -384,17 +384,22 @@ class PlanillaImportService
                     $inicioPlanilla = microtime(true);
 
                     try {
-                        // 1️⃣ Procesar planilla
+                        // 1️⃣ Procesar planilla (SIN aplicar política de subetiquetas)
                         $resultado = $this->processor->procesar(
                             $codigoPlanilla,
                             $filasPlanilla,
-                            $advertencias
+                            $advertencias,
+                            null,
+                            false  // ✅ NO aplicar política aquí
                         );
 
                         // 2️⃣ Asignar máquinas
                         $this->asignador->repartirPlanilla($resultado->planilla->id);
 
-                        // 3️⃣ Crear orden_planillas
+                        // 3️⃣ AHORA SÍ aplicar política de subetiquetas
+                        $this->processor->aplicarPoliticaSubetiquetasPostAsignacion($resultado->planilla);
+
+                        // 4️⃣ Crear orden_planillas
                         $ordenesCreadas = $this->ordenService->crearOrdenParaPlanilla($resultado->planilla->id);
 
                         $exitosas[] = $codigoPlanilla;
@@ -417,7 +422,6 @@ class PlanillaImportService
                         Log::channel('planilla_import')->error("❌ Error en planilla {$codigoPlanilla}: {$e->getMessage()}");
                     }
                 }
-
                 DB::commit();
 
                 Log::channel('planilla_import')->info("📦 Batch {$batchIndex} completado", [

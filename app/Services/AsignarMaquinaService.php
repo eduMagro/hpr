@@ -28,7 +28,12 @@ class AsignarMaquinaService
 
         // Clasificar elementos
         $grupos = [
-            'estribos' => $elementos->filter(fn($e) => (int)$e->dobles_barra >= 4),
+            // Solo elementos con dobles >= 4 Y diámetro <= 16 son "estribos"
+            'estribos' => $elementos->filter(
+                fn($e) =>
+                (int)$e->dobles_barra >= 4 && (int)$e->diametro <= 16
+            ),
+            // Resto de elementos
             'resto'    => $elementos->reject(fn($e) => (int)$e->dobles_barra >= 4),
         ];
 
