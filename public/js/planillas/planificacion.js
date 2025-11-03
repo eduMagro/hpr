@@ -128,6 +128,12 @@ document.addEventListener("DOMContentLoaded", () => {
     resaltarCompis();
     filtrarPorNave();
 
+    document.addEventListener("keydown", function (e) {
+        if (e.key === "Escape") {
+            cerrarModales();
+        }
+    });
+
     filtrarPorNave("all");
     renderObras();
     obrasInput.addEventListener("input", renderObras);
@@ -663,70 +669,123 @@ function seleccionarMaquinaParaMovimiento() {
 
 // proceso interno de treansferencia de un elemento a otra maquina, aqui se contempla si el elemento va a crear una nueva ordenPlanilla, unificarse con otra...
 function transferirElementos() {
-    let elementosSeleccionados = Array.from(
+    const seleccionados = Array.from(
         document.getElementsByClassName("seleccionado")
     );
 
-    let maquinaSeleccionada = document.querySelector(
-        ".maquina_si_seleccionada"
-    );
-    let maquinaId = maquinaSeleccionada.dataset.id;
+    const maqSelDiv = document.querySelector(".maquina_si_seleccionada");
+    if (!maqSelDiv) return;
 
-    /*
-    Casos:
-        1. No hay una planilla con el mismo codigo en la maquina seleccionada => se crea un nuevo ordenPlanilla en la ultima posicion posible del
-        orden de las planillas para esa maquina, se cambian elemento[ordenPlanillaId por la nueva planilla, maquinaId por la maquina seleccionada]
-        2. Ya hay una planilla con el mismo codigo en la maquina seleccionada => 
-            @Fusionar?
-            Si: se cambian elemento[ordenPlanillaId por el id de la planilla existente, maquinaId por la maquina seleccionada]
-            No: se crea un nuevo ordenPlanilla en la ultima posicion posible del
-            orden de las planillas para esa maquina, se cambian elemento[ordenPlanillaId por la nueva planilla, maquinaId por la maquina seleccionada]
-     */
+    const maquinaId = Number(maqSelDiv.dataset.id);
+    const maquina = getMaquinaById(maquinaId);
+    if (!maquina) return;
 
-    // revisamos si existe una planilla con el mismo codigo en la maquina seleccionada
+    // Límites (null = sin límite)
+    const min =
+        maquina.diametro_min != null ? Number(maquina.diametro_min) : null;
+    const max =
+        maquina.diametro_max != null ? Number(maquina.diametro_max) : null;
 
-    // obtenemos el div de la maquina a transferir en maquinaDiv
-    let maquinaDiv;
-    maquinasDivs.forEach((div) => {
-        let detalles = JSON.parse(div.dataset.detalles);
-        if (detalles.id == maquinaId) maquinaDiv = div;
+    // Particionar por compatibilidad
+    const compatibles = [];
+    const noCompatibles = [];
+    seleccionados.forEach((card) => {
+        const elId = Number(card.dataset.id);
+        const el = elementos.find((e) => Number(e.id) === elId);
+        if (!el) return;
+
+        const d = el.diametro != null ? Number(el.diametro) : null; // si no hay diámetro, trátalo como sin restricción
+        const dentroMin = min == null || d == null || d >= min;
+        const dentroMax = max == null || d == null || d <= max;
+
+        if (dentroMin && dentroMax) {
+            compatibles.push({ card, el });
+        } else {
+            // Para el listado: sin id
+            noCompatibles.push({
+                codigo: el.codigo ?? "",
+                diametro:
+                    el.diametro != null && el.diametro !== ""
+                        ? Number(el.diametro).toFixed(2)
+                        : "—",
+            });
+        }
     });
 
-    // comprobamos si existe la planilla
+    // Si hay no compatibles, avisa (pero seguimos con los compatibles)
+    if (noCompatibles.length) {
+        const rango = `<b>${min == null ? "sin límite" : min}</b> — <b>${
+            max == null ? "sin límite" : max
+        }</b>`;
+        const lista = noCompatibles
+            .map(
+                (nc) =>
+                    `• ${nc.codigo}${
+                        nc.diametro !== "—" ? ` — Ø${nc.diametro}` : ""
+                    }`
+            )
+            .join("<br>");
+        Swal.fire({
+            icon: "warning",
+            title: "Elementos no compatibles",
+            html: `
+                <div class="text-left">
+                    <p>La máquina <b>${
+                        maquina.nombre || maquina.codigo || "#" + maquinaId
+                    }</b>
+                    admite diámetros: ${rango}.</p>
+                    <p class="mt-2">Se han descartado del movimiento:</p>
+                    <pre style="white-space:pre-wrap;margin:0">${lista}</pre>
+                </div>
+            `,
+        });
+    }
+
+    // Si no queda nada compatible, salir
+    if (!compatibles.length) {
+        cerrarModales();
+        return;
+    }
+
+    // --- A partir de aquí es tu flujo original, pero usando SOLO los compatibles ---
+
+    // obtener el div de la máquina destino
+    let maquinaDiv;
+    maquinasDivs.forEach((div) => {
+        const det = JSON.parse(div.dataset.detalles);
+        if (Number(det.id) === maquinaId) maquinaDiv = div;
+    });
+
+    const te_planillas = maquinaDiv.querySelectorAll(".planilla");
+
+    // ¿existe ya planilla con el mismo código en la máquina destino?
     let existe = false;
-    let te_planillas = maquinaDiv.querySelectorAll(".planilla");
     te_planillas.forEach((planilla) => {
         if (
-            planilla.children[1].innerText.trim() ==
+            planilla.children[1].innerText.trim() ===
             datosOrdenPlanillaSeleccionado.codigo
         ) {
             existe = true;
         }
     });
 
-    // existe la planilla?
-    // si existe:
     if (existe) {
-        // 1) Construir lista de coincidencias con mismo código en máquina seleccionada
         const codigoCoincide = datosOrdenPlanillaSeleccionado.codigo;
         const coincidencias = findOrdenesCoincidentes(
             maquinaId,
             codigoCoincide
         );
 
-        // 2) Pintar modal y preparar handlers
         renderModalElegirOrden({
             maquinaId,
             codigo: codigoCoincide,
             coincidencias,
         });
 
-        // Handlers del modal
         const meo = document.getElementById("modal_elegir_orden");
         const btnConfirmar = document.getElementById("meo_confirmar");
         const btnCancelar = document.getElementById("meo_cancelar");
 
-        // para evitar múltiples binds si se abre varias veces
         btnConfirmar.replaceWith(btnConfirmar.cloneNode(true));
         btnCancelar.replaceWith(btnCancelar.cloneNode(true));
 
@@ -738,20 +797,16 @@ function transferirElementos() {
         });
 
         _btnConfirmar.addEventListener("click", () => {
-            // radio seleccionado
             const sel = document.querySelector(
                 'input[name="meo_opcion"]:checked'
             );
-            if (!sel) return; // no se seleccionó nada
+            if (!sel) return;
 
             const val = sel.value;
             let destinoOrdenId = null;
 
             if (val === "__crear_nueva__") {
-                // Crear nueva al final
-                const te_planillas2 = maquinaDiv.querySelectorAll(".planilla");
-                const posicionNueva = te_planillas2.length + 1;
-
+                const posicionNueva = te_planillas.length + 1;
                 const nuevaOrdenPlanilla = {
                     id: Number(ultimoOrdenPlanillaId) + 1,
                     maquina_id: Number(maquinaId),
@@ -767,60 +822,42 @@ function transferirElementos() {
                 destinoOrdenId = Number(val);
             }
 
-            // Actualizar elementos seleccionados -> a maquinaId y orden_planilla_id destinoOrdenId
-            elementosSeleccionados.forEach((card) => {
-                const elId = Number(card.dataset.id);
-                const idx = elementos.findIndex((e) => Number(e.id) === elId);
-                if (idx !== -1) {
-                    elementos[idx].maquina_id = Number(maquinaId);
-                    elementos[idx].orden_planilla_id = Number(destinoOrdenId);
-                }
+            // aplicar SOLO compatibles
+            compatibles.forEach(({ el }) => {
+                el.maquina_id = Number(maquinaId);
+                el.orden_planilla_id = Number(destinoOrdenId);
             });
 
-            // id de la orden de origen (la que abriste en el modal)
             const origenOrdenId = Number(datosOrdenPlanillaSeleccionado.id);
-
-            // quedan elementos en la orden de origen?
             if (countElementosByOrdenId(origenOrdenId) === 0) {
                 removeOrdenPlanilla(origenOrdenId);
             }
 
-            // refrescos
             cerrarModales();
             renderPlanillas();
             sePuedeGuardar();
         });
     } else {
-        // no existe: crear nueva al final
-        let posicionNueva = te_planillas.length + 1;
-
-        let nuevaOrdenPlanilla = {
+        // crear nueva al final
+        const posicionNueva = te_planillas.length + 1;
+        const nuevaOrdenPlanilla = {
             id: Number(ultimoOrdenPlanillaId) + 1,
             maquina_id: Number(maquinaId),
             planilla_id: Number(datosOrdenPlanillaSeleccionado.planilla_id),
             posicion: posicionNueva,
         };
 
-        ultimoOrdenPlanillaId = nuevaOrdenPlanilla.id; // sincronizar el global
-        let nuevoOrdenId = nuevaOrdenPlanilla.id;
-
-        // la agregamos a la variable global
+        ultimoOrdenPlanillaId = nuevaOrdenPlanilla.id;
+        const nuevoOrdenId = nuevaOrdenPlanilla.id;
         ordenPlanillas.push(nuevaOrdenPlanilla);
 
-        // asignar los elementos (usando id del dataset del card para máxima fiabilidad)
-        elementosSeleccionados.forEach((elementoSeleccionado) => {
-            const elId = Number(elementoSeleccionado.dataset.id);
-            const idx = elementos.findIndex((e) => Number(e.id) === elId);
-            if (idx !== -1) {
-                elementos[idx].maquina_id = Number(maquinaId);
-                elementos[idx].orden_planilla_id = Number(nuevoOrdenId);
-            }
+        // aplicar SOLO compatibles
+        compatibles.forEach(({ el }) => {
+            el.maquina_id = Number(maquinaId);
+            el.orden_planilla_id = Number(nuevoOrdenId);
         });
 
-        // id de la orden de origen (la que abriste en el modal)
         const origenOrdenId = Number(datosOrdenPlanillaSeleccionado.id);
-
-        // quedan elementos en la orden de origen?
         if (countElementosByOrdenId(origenOrdenId) === 0) {
             removeOrdenPlanilla(origenOrdenId);
         }
@@ -854,26 +891,19 @@ function getOrdenesPorMaquina(maquinaId) {
     return ordenPlanillas.filter((o) => Number(o.maquina_id) === mid);
 }
 
-function hasCambiosElementos(actual, original) {
-    if (!Array.isArray(actual) || !Array.isArray(original)) return true;
-    if (actual.length !== original.length) return true;
-
-    // Mapeo por id para comparar rápido
-    const mapOrig = new Map(original.map((e) => [Number(e.id), e]));
-    for (const e of actual) {
-        const o = mapOrig.get(Number(e.id));
-        if (!o) return true;
-
-        // Compara SOLO lo que te importa para “guardar”
-        if (Number(e.maquina_id) !== Number(o.maquina_id)) return true;
-        if (Number(e.orden_planilla_id) !== Number(o.orden_planilla_id))
-            return true;
-    }
-    return false;
-}
-
 function sePuedeGuardar() {
-    if (hasCambiosElementos(elementos, ELEMENTOS_ORIGINAL)) {
+    const diff = buildDiff();
+
+    const hayCambios =
+        (diff.elementos_updates && diff.elementos_updates.length > 0) ||
+        (diff.orden_planillas?.create &&
+            diff.orden_planillas.create.length > 0) ||
+        (diff.orden_planillas?.update &&
+            diff.orden_planillas.update.length > 0) ||
+        (diff.orden_planillas?.delete &&
+            diff.orden_planillas.delete.length > 0);
+
+    if (hayCambios) {
         // Mostrar con transición
         modalGuardar.classList.remove("hidden");
         requestAnimationFrame(() => {
@@ -884,8 +914,6 @@ function sePuedeGuardar() {
         // Ocultar con transición
         modalGuardar.classList.remove("bottom-14", "opacity-100");
         modalGuardar.classList.add("-bottom-14", "opacity-0");
-
-        // Espera a que termine la animación (150ms) antes de ocultarlo
         setTimeout(() => {
             modalGuardar.classList.add("hidden");
         }, 150);
@@ -1139,7 +1167,86 @@ function initDragAndDrop() {
 
             // Actualiza elementos -> nueva máquina (si ha cambiado de columna)
             if (targetMachineId != null) {
-                moveElementsWithOrdenToMachine(ordenId, targetMachineId);
+                const maquina = getMaquinaById(targetMachineId);
+                const min =
+                    maquina?.diametro_min != null
+                        ? Number(maquina.diametro_min)
+                        : null;
+                const max =
+                    maquina?.diametro_max != null
+                        ? Number(maquina.diametro_max)
+                        : null;
+
+                // elementos de la orden que se pretende mover
+                const elemsOrden = elementos.filter(
+                    (e) => Number(e.orden_planilla_id) === Number(ordenId)
+                );
+
+                const noCompat = [];
+                elemsOrden.forEach((el) => {
+                    const d = el.diametro != null ? Number(el.diametro) : null;
+                    const dentroMin = min == null || d == null || d >= min;
+                    const dentroMax = max == null || d == null || d <= max;
+                    if (!(dentroMin && dentroMax)) {
+                        noCompat.push({
+                            codigo: el.codigo ?? "",
+                            diametro:
+                                el.diametro != null && el.diametro !== ""
+                                    ? Number(el.diametro).toFixed(2)
+                                    : "—",
+                        });
+                    }
+                });
+
+                if (noCompat.length) {
+                    // revertir visualmente el arrastre (volver a la columna origen)
+                    if (src && src !== dst) {
+                        src.insertBefore(
+                            draggingRef,
+                            src.children[
+                                calcDropIndex(
+                                    src,
+                                    draggingRef.getBoundingClientRect().top
+                                )
+                            ]
+                        );
+                        reindexDOMColumn(src);
+                    }
+                    reindexDOMColumn(dst);
+
+                    const rango = `<b>${
+                        min == null ? "sin límite" : min
+                    }</b> — <b>${max == null ? "sin límite" : max}</b>`;
+                    const lista = noCompat
+                        .map(
+                            (nc) =>
+                                `• ${nc.codigo}${
+                                    nc.diametro !== "—"
+                                        ? ` — Ø${nc.diametro}`
+                                        : ""
+                                }`
+                        )
+                        .join("<br>");
+                    Swal.fire({
+                        icon: "warning",
+                        title: "Movimiento cancelado",
+                        html: `
+                <div class="text-left">
+                    <p>Hay elementos no compatibles con la máquina <b>${
+                        maquina?.nombre ||
+                        maquina?.codigo ||
+                        "#" + targetMachineId
+                    }</b>
+                    (diámetros aceptados: ${rango}).</p>
+                    <p class="mt-2">No se ha realizado el movimiento porque la orden incluye:</p>
+                    <pre style="white-space:pre-wrap;margin:0">${lista}</pre>
+                </div>
+            `,
+                    });
+                } else {
+                    // todo compatible → mover
+                    moveElementsWithOrdenToMachine(ordenId, targetMachineId);
+                }
             }
 
             // Sincroniza arrays con el DOM definitivo
@@ -1400,6 +1507,7 @@ function filtrarPorNave(valor) {
 // mostrar modal de resaltar planillas por obra
 function mostrarModalResaltarObra() {
     modalResaltarObra.classList.remove("hidden");
+    document.getElementById("input_filtrar_obra").focus();
 }
 
 function actualizarModalDetalles(idPlanilla) {
