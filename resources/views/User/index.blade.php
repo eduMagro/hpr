@@ -429,23 +429,13 @@
                     });
                 },
                 editable: false,
-                function(fetchInfo, successCallback, failureCallback) {
-                    fetch("{{ route('users.verEventos-turnos', $user->id) }}")
-                        .then(r => r.json())
-                        .then(events => {
-                            const merged = mergeDailyEvents(events);
-                            successCallback(merged);
-                        })
-                        .catch(failureCallback);
-                }
+                events: '{{ route('users.verEventos-turnos', $user->id) }}'
             });
+
+            calendar.render();
+            // 🔹 Guardar en window para usarlo fuera
+            window.calendar = calendar;
         });
-
-        calendar.render();
-        // 🔹 Guardar en window para usarlo fuera
-        window.calendar = calendar;
-
-    
         // ---------------------------------------------------- REGISTRAR FICHAJE
         function registrarFichaje(tipo) {
             const boton = event.currentTarget;
