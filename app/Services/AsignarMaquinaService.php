@@ -31,6 +31,7 @@ class AsignarMaquinaService
             fn($e) => (int)$e->dobles_barra >= 4 && (int)$e->diametro <= 16
         );
 
+<<<<<<< Updated upstream
         $grupos = [
             // Solo elementos con dobles >= 4 Y diÃ¡metro <= 16 son "estribos"
             'estribos' => $estribos,
@@ -42,11 +43,40 @@ class AsignarMaquinaService
         Log::channel('planilla_import')->info("📋 [AsignarMaquina] Planilla {$planillaId} - Clasificación: {$grupos['estribos']->count()} estribos, {$grupos['resto']->count()} resto");
 
         // Obtener máquinas disponibles
+=======
+>>>>>>> Stashed changes
         $maquinas = Maquina::naveA()->get()->keyBy('id');
         Log::channel('planilla_import')->debug("🏭 [AsignarMaquina] Máquinas disponibles en Nave A: {$maquinas->count()}");
 
         // Calcular cargas actuales
         $cargas = $this->cargasPendientesPorMaquina();
+
+        // 📦 PASO 1: Elementos sin elaboración → Syntax Line 28
+        $sinElaborar = $elementos->filter(fn($e) => (int)($e->elaborado ?? 1) === 0);
+        $syntaxLine = $maquinas->first(fn($m) => $m->codigo === 'SL28');
+
+        if ($sinElaborar->isNotEmpty()) {
+            if (!$syntaxLine) {
+                Log::warning("⚠️ Syntax Line 28 no disponible para elementos sin elaborar en planilla {$planilla->id}");
+            } else {
+                foreach ($sinElaborar as $e) {
+                    $e->maquina_id = $syntaxLine->id;
+                    $e->save();
+                    $this->sumarCarga($cargas, $syntaxLine->id, (float)$e->peso);
+                }
+                // Log::info("📦 {$sinElaborar->count()} elementos sin elaborar → Syntax Line 28");
+            }
+        }
+
+        // 🔧 PASO 2: Elementos que SÍ requieren elaboración (elaborado = 1)
+        $elementosAElaborar = $elementos->reject(fn($e) => (int)($e->elaborado ?? 1) === 0);
+
+        if ($elementosAElaborar->isEmpty()) return;
+
+        $grupos = [
+            'estribos' => $elementosAElaborar->filter(fn($e) => (int)$e->dobles_barra >= 4),
+            'resto'    => $elementosAElaborar->reject(fn($e) => (int)$e->dobles_barra >= 4),
+        ];
 
         // ⚙️ Cortadoras automáticas (excluye CM si su tipo no es 'cortadora_dobladora')
         $cortadoras = $maquinas->filter(fn($m) => $m->tipo === 'cortadora_dobladora');
