@@ -1274,27 +1274,62 @@ class PedidoController extends Controller
     {
         try {
             DB::transaction(function () use ($id) {
-                $pedido = Pedido::findOrFail($id);
+                $pedido = Pedido::with('pedidoProductos')->findOrFail($id);
 
-                // guardamos el PG antes de borrar
-                $pedidoGlobalId = $pedido->pedido_global_id;
+                // 1️⃣ Recopilar TODOS los pedido_global_id afectados (cabecera + líneas)
+                $pgIds = collect([$pedido->pedido_global_id])
+                    ->merge($pedido->pedidoProductos->pluck('pedido_global_id'))
+                    ->filter()
+                    ->unique()
+                    ->toArray();
 
-                Log::info('Borrando pedido ' . $pedido->codigo . ' con pedido global id ' . $pedidoGlobalId . ' por ' . (auth()->user()->nombre_completo ?? null));
+                Log::info('Eliminando pedido', [
+                    'pedido_id'                  => $pedido->id,
+                    'pedido_codigo'              => $pedido->codigo,
+                    'num_lineas'                 => $pedido->pedidoProductos->count(),
+                    'pedidos_globales_afectados' => $pgIds,
+                    'usuario'                    => auth()->user()->nombre_completo ?? auth()->id(),
+                ]);
 
-                // Elimina el pedido: si tienes cascada en FK se borran las líneas
+                // 2️⃣ Eliminar el pedido (las líneas se borran por cascada)
                 $pedido->delete();
 
-                if ($pedidoGlobalId) {
-                    $pg = PedidoGlobal::lockForUpdate()->find($pedidoGlobalId);
-                    if ($pg) {
-                        $pg->actualizarEstadoSegunProgreso(); // ahora recalcula con líneas
+                // 3️⃣ Recalcular estado de TODOS los Pedidos Globales afectados
+                if (!empty($pgIds)) {
+                    $pedidosGlobales = PedidoGlobal::whereIn('id', $pgIds)
+                        ->lockForUpdate()
+                        ->get();
+
+                    foreach ($pedidosGlobales as $pg) {
+                        if (method_exists($pg, 'actualizarEstadoSegunProgreso')) {
+                            $estadoAnterior = $pg->estado;
+                            $pg->actualizarEstadoSegunProgreso();
+
+                            Log::info('Pedido Global recalculado tras eliminación', [
+                                'pedido_global_id'     => $pg->id,
+                                'pedido_global_codigo' => $pg->codigo,
+                                'estado_anterior'      => $estadoAnterior,
+                                'estado_nuevo'         => $pg->estado,
+                                'cantidad_restante'    => $pg->cantidad_restante,
+                                'progreso'             => $pg->progreso . '%',
+                            ]);
+                        }
                     }
                 }
             });
 
-            return redirect()->route('pedidos.index')->with('success', 'Pedido eliminado correctamente.');
+            return redirect()
+                ->route('pedidos.index')
+                ->with('success', 'Pedido eliminado correctamente y Pedidos Globales actualizados.');
         } catch (\Throwable $e) {
-            Log::error('Error al eliminar pedido', ['pedido_id' => $id, 'mensaje' => $e->getMessage()]);
+            Log::error('Error al eliminar pedido', [
+                'pedido_id' => $id,
+                'mensaje'   => $e->getMessage(),
+                'linea'     => $e->getLine(),
+                'archivo'   => $e->getFile(),
+                'trace'     => $e->getTraceAsString(),
+            ]);
+
             return back()->with('error', 'No se pudo eliminar el pedido. Consulta con administración.');
         }
     }
