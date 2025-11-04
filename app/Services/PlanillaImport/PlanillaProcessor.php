@@ -10,14 +10,17 @@ use App\Models\Elemento;
 use App\Services\PlanillaImport\DTOs\ProcesamientoResult;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Log;
+use App\Services\PlanillaImport\CodigoEtiqueta;
 
 /**
  * Procesa los datos de una planilla individual.
  * 
+ * ✅ VERSIÓN CORREGIDA - CON RETRY LOGIC
+ * 
  * Responsabilidades:
  * - Crear/obtener cliente y obra
  * - Crear planilla
- * - Crear etiquetas padre
+ * - Crear etiquetas padre (con retry logic)
  * - Crear elementos agregados
  * - Aplicar política de subetiquetas (configurable)
  * - Calcular totales
@@ -32,15 +35,18 @@ class PlanillaProcessor
     protected int $tiempoSetupElemento;
     protected array $estrategiasSubetiquetas;
 
-    public function __construct()
+    protected CodigoEtiqueta $codigoService;
+
+    public function __construct(CodigoEtiqueta $codigoService)
     {
+        $this->codigoService = $codigoService;
         $this->diametrosPermitidos = config('planillas.importacion.diametros_permitidos', [5, 8, 10, 12, 16, 20, 25, 32]);
         $this->tiempoSetupElemento = config('planillas.importacion.tiempo_setup_elemento', 1200);
 
-        // ✅ Configuración de estrategias por máquina
+        // Configuración de estrategias por máquina
         $this->estrategiasSubetiquetas = config('planillas.importacion.estrategias_subetiquetas', []);
 
-        // ✅ Log de configuración para debugging
+        // Log de configuración para debugging
         Log::channel('planilla_import')->debug("🔧 [PlanillaProcessor] Configuración cargada", [
             'estrategias_configuradas' => array_keys($this->estrategiasSubetiquetas),
             'default_estrategia' => config('planillas.importacion.estrategia_subetiquetas_default', 'legacy'),
@@ -64,7 +70,7 @@ class PlanillaProcessor
         array $filas,
         array &$advertencias,
         ?Planilla $planillaExistente = null,
-        bool $aplicarPoliticaSubetiquetas = false  // ✅ Por defecto FALSE para nueva lógica
+        bool $aplicarPoliticaSubetiquetas = false
     ): ProcesamientoResult {
         // 1. Si hay planilla existente (reimportación), usarla
         if ($planillaExistente) {
@@ -103,9 +109,6 @@ class PlanillaProcessor
         // 7. Guardar tiempo total
         $this->guardarTiempoTotal($planilla);
 
-        // ℹ️ NOTA: La asignación de máquinas y creación de orden_planillas
-        // se hace DESPUÉS en PlanillaImportService
-
         return new ProcesamientoResult(
             planilla: $planilla,
             elementosCreados: $planilla->elementos()->count(),
@@ -130,7 +133,7 @@ class PlanillaProcessor
         $etiquetasPadre = Etiqueta::where('planilla_id', $planilla->id)
             ->whereNull('etiqueta_sub_id')
             ->get()
-            ->all();  // ✅ Convertir a array para compatibilidad
+            ->all();
 
         Log::channel('planilla_import')->debug("   📋 Total etiquetas padre: " . count($etiquetasPadre));
 
@@ -224,6 +227,9 @@ class PlanillaProcessor
         ]);
     }
 
+    /**
+     * ✅ CORREGIDO: Crea etiquetas y elementos usando retry logic
+     */
     protected function crearEtiquetasYElementos(
         Planilla $planilla,
         string $codigoPlanilla,
@@ -242,15 +248,16 @@ class PlanillaProcessor
 
         $etiquetasPadre = [];
 
-        foreach ($porEtiqueta as $numEtiqueta => $filasEtiqueta) {
-            // Crear etiqueta padre (contenedor)
-            $codigoPadre = Etiqueta::generarCodigoEtiqueta();
+        Log::channel('planilla_import')->info("📦 [PlanillaProcessor] Planilla {$codigoPlanilla}: " . count($porEtiqueta) . " grupos detectados");
 
-            $etiquetaPadre = Etiqueta::create([
-                'codigo' => $codigoPadre,
-                'planilla_id' => $planilla->id,
-                'nombre' => $filasEtiqueta[0][22] ?? 'Sin nombre',
-            ]);
+        foreach ($porEtiqueta as $numEtiqueta => $filasEtiqueta) {
+            // ✅ USAR MÉTODO CON RETRY LOGIC
+            $etiquetaPadre = $this->crearEtiquetaPadreConRetry(
+                $planilla,
+                $filasEtiqueta,
+                $codigoPlanilla,
+                $numEtiqueta
+            );
 
             $etiquetasPadre[] = $etiquetaPadre;
 
@@ -265,9 +272,103 @@ class PlanillaProcessor
                 $codigoPlanilla,
                 $advertencias
             );
+
+            Log::channel('planilla_import')->info("   ✅ Etiqueta padre {$etiquetaPadre->codigo} creada con " . count($elementosAgregados) . " elementos");
         }
 
         return $etiquetasPadre;
+    }
+
+    /**
+     * ✅ CORREGIDO: Crea etiqueta padre con retry logic para manejar duplicados
+     */
+    protected function crearEtiquetaPadreConRetry(
+        Planilla $planilla,
+        array $filasEtiqueta,
+        string $codigoPlanilla,
+        $numEtiqueta,
+        int $maxIntentos = 3
+    ): Etiqueta {
+        $intento = 0;
+
+        while ($intento < $maxIntentos) {
+            try {
+                // Generar código (ya tiene lock en el servicio)
+                $codigoPadre = $this->codigoService->generarCodigoPadre();
+
+                Log::channel('planilla_import')->info("🏷️ [PlanillaProcessor] Grupo lógico #{$numEtiqueta} → Código padre: {$codigoPadre} (intento " . ($intento + 1) . "/{$maxIntentos})");
+
+                // Preparar nombre
+                $nombreColumna = $filasEtiqueta[0][22] ?? null;
+
+                if (is_array($nombreColumna)) {
+                    Log::channel('planilla_import')->warning("⚠️ [PlanillaProcessor] Columna 22 es array", [
+                        'planilla' => $codigoPlanilla,
+                        'grupo' => $numEtiqueta,
+                        'valor' => json_encode($nombreColumna),
+                    ]);
+                    $nombreFinal = 'Sin nombre';
+                } else {
+                    $nombreFinal = $nombreColumna ?: 'Sin nombre';
+                }
+
+                // Intentar crear etiqueta
+                $etiquetaPadre = Etiqueta::create([
+                    'codigo' => $codigoPadre,
+                    'planilla_id' => $planilla->id,
+                    'nombre' => $nombreFinal,
+                ]);
+
+                Log::channel('planilla_import')->debug("✅ Etiqueta padre {$codigoPadre} creada exitosamente");
+
+                return $etiquetaPadre;
+            } catch (\Illuminate\Database\QueryException $e) {
+                $intento++;
+
+                // Si es error de duplicado (código 23000 = integrity constraint violation)
+                if ($e->errorInfo[0] === '23000' && str_contains($e->getMessage(), 'codigo')) {
+                    Log::channel('planilla_import')->warning(
+                        "⚠️ [PlanillaProcessor] Código duplicado detectado, reintentando ({$intento}/{$maxIntentos})...",
+                        [
+                            'codigo_intentado' => $codigoPadre ?? 'N/A',
+                            'error' => $e->getMessage(),
+                        ]
+                    );
+
+                    if ($intento >= $maxIntentos) {
+                        Log::channel('planilla_import')->error(
+                            "❌ [PlanillaProcessor] No se pudo generar código único después de {$maxIntentos} intentos",
+                            [
+                                'planilla' => $codigoPlanilla,
+                                'grupo' => $numEtiqueta,
+                            ]
+                        );
+                        throw new \Exception("No se pudo generar código único después de {$maxIntentos} intentos para planilla {$codigoPlanilla} grupo {$numEtiqueta}");
+                    }
+
+                    // Backoff exponencial: 100ms, 200ms, 400ms
+                    $sleepMs = 100 * pow(2, $intento - 1);
+                    usleep($sleepMs * 1000);
+
+                    Log::channel('planilla_import')->debug("⏳ Esperando {$sleepMs}ms antes de reintentar...");
+
+                    continue;
+                }
+
+                // Si es otro error, lanzarlo inmediatamente
+                Log::channel('planilla_import')->error(
+                    "❌ [PlanillaProcessor] Error inesperado creando etiqueta",
+                    [
+                        'planilla' => $codigoPlanilla,
+                        'error' => $e->getMessage(),
+                        'codigo' => $e->getCode(),
+                    ]
+                );
+                throw $e;
+            }
+        }
+
+        throw new \Exception("Error inesperado: salió del bucle sin crear etiqueta");
     }
 
     protected function agregarElementos(array $filas, string $codigoPlanilla, array &$advertencias): array
@@ -426,7 +527,7 @@ class PlanillaProcessor
                     continue;
                 }
 
-                // ✅ Obtener estrategia configurada para esta máquina
+                // Obtener estrategia configurada para esta máquina
                 $maquina = \App\Models\Maquina::find($maquinaId);
                 $estrategia = $this->obtenerEstrategiaParaMaquina($maquina);
 
@@ -453,7 +554,7 @@ class PlanillaProcessor
     protected function obtenerEstrategiaParaMaquina($maquina): string
     {
         if (!$maquina) {
-            return 'individual'; // Sin máquina → individual por defecto
+            return 'individual';
         }
 
         // Buscar por código de máquina
@@ -487,7 +588,7 @@ class PlanillaProcessor
 
         Log::channel('planilla_import')->debug("📦 [PlanillaProcessor] Estrategia AGRUPADA para etiqueta {$padre->codigo}: {$elementos->count()} elementos → máx. {$limitePorSubetiqueta} por subetiqueta");
 
-        // Dividir en lotes de 5 elementos
+        // Dividir en lotes
         $lotes = $elementos->chunk($limitePorSubetiqueta);
 
         Log::channel('planilla_import')->debug("   📊 Total subetiquetas necesarias: {$lotes->count()}");
@@ -564,7 +665,7 @@ class PlanillaProcessor
 
     protected function crearSubetiquetaSiguiente(Etiqueta $padre): array
     {
-        $subId = Etiqueta::generarCodigoSubEtiqueta($padre->codigo);
+        $subId = $this->codigoService->generarCodigoSubetiqueta($padre->codigo);
 
         $subRow = Etiqueta::firstWhere('etiqueta_sub_id', $subId);
 

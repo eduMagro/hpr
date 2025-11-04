@@ -27,14 +27,16 @@ class AsignarMaquinaService
         }
 
         // Clasificar elementos
+        $estribos = $elementos->filter(
+            fn($e) => (int)$e->dobles_barra >= 4 && (int)$e->diametro <= 16
+        );
+
         $grupos = [
-            // Solo elementos con dobles >= 4 Y diámetro <= 16 son "estribos"
-            'estribos' => $elementos->filter(
-                fn($e) =>
-                (int)$e->dobles_barra >= 4 && (int)$e->diametro <= 16
-            ),
-            // Resto de elementos
-            'resto'    => $elementos->reject(fn($e) => (int)$e->dobles_barra >= 4),
+            // Solo elementos con dobles >= 4 Y diÃ¡metro <= 16 son "estribos"
+            'estribos' => $estribos,
+            // âœ… CORREGIDO: Resto = TODOS los que NO son estribos
+            // (incluye dobles >= 4 con diÃ¡metro > 16)
+            'resto' => $elementos->reject(fn($e) => $estribos->contains($e)),
         ];
 
         Log::channel('planilla_import')->info("📋 [AsignarMaquina] Planilla {$planillaId} - Clasificación: {$grupos['estribos']->count()} estribos, {$grupos['resto']->count()} resto");
