@@ -97,7 +97,7 @@ return [
             'handler_with' => [
                 'host' => env('PAPERTRAIL_URL'),
                 'port' => env('PAPERTRAIL_PORT'),
-                'connectionString' => 'tls://'.env('PAPERTRAIL_URL').':'.env('PAPERTRAIL_PORT'),
+                'connectionString' => 'tls://' . env('PAPERTRAIL_URL') . ':' . env('PAPERTRAIL_PORT'),
             ],
             'processors' => [PsrLogMessageProcessor::class],
         ],
@@ -134,6 +134,17 @@ return [
         'emergency' => [
             'path' => storage_path('logs/laravel.log'),
         ],
+
+        'ordenamiento' => [
+            'driver' => 'daily',
+            // base filename (Laravel añadirá la fecha)
+            'path' => storage_path('logs/ordenamiento_planillas/op.log'),
+            'level' => 'info',
+            'days' => 30,
+            // Personalizamos el formato del nombre de archivo: op_YYYY-MM-DD.log
+            'tap' => [App\Logging\CustomizeOrdenamiento::class],
+        ],
+
 
     ],
 
