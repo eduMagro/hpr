@@ -655,73 +655,6 @@ class PedidoController extends Controller
         return $prefix . $numeroFormateado;
     }
 
-    // public function crearDesdeRecepcion(Request $request)
-    // {
-    //     try {
-    //         $validated = $request->validate([
-    //             'producto_base_id' => 'required|exists:productos_base,id',
-    //             'peso' => 'required|numeric|min:0.01',
-    //             'n_colada' => 'nullable|string|max:50',
-    //             'n_paquete' => 'nullable|string|max:50|unique:productos,n_paquete',
-    //             'ubicacion_id' => 'required|exists:ubicaciones,id',
-    //             'otros' => 'nullable|string|max:255',
-    //             'fabricante_id' => 'required|exists:fabricantes,id',
-    //         ], [
-    //             'producto_base_id.required' => 'El producto base es obligatorio.',
-    //             'producto_base_id.exists' => 'El producto base no es válido.',
-
-    //             'peso.required' => 'El peso es obligatorio.',
-    //             'peso.numeric' => 'El peso debe ser un número.',
-    //             'peso.min' => 'El peso debe ser mayor que 0.',
-
-    //             'n_colada.string' => 'El número de colada debe ser texto.',
-    //             'n_colada.max' => 'El número de colada no puede tener más de 50 caracteres.',
-
-    //             'n_paquete.string' => 'El número de paquete debe ser texto.',
-    //             'n_paquete.max' => 'El número de paquete no puede tener más de 50 caracteres.',
-    //             'n_paquete.unique' => 'El número de paquete ya existe en otro producto.',
-
-    //             'ubicacion_id.required' => 'La ubicación es obligatoria.',
-    //             'ubicacion_id.exists' => 'La ubicación no es válida.',
-
-    //             'otros.string' => 'El campo de observaciones debe ser texto.',
-    //             'otros.max' => 'El campo de observaciones no puede tener más de 255 caracteres.',
-
-    //             'fabricante_id.required' => 'El fabricante es obligatorio.',
-    //             'fabricante_id.exists' => 'El fabricante no es válido.',
-    //         ]);
-
-    //         $producto = Producto::create([
-    //             'producto_base_id' => $validated['producto_base_id'],
-    //             'fabricante_id' => $validated['fabricante_id'],
-    //             'n_colada' => $validated['n_colada'] ?? null,
-    //             'n_paquete' => $validated['n_paquete'],
-    //             'peso_inicial' => $validated['peso'],
-    //             'peso_stock' => $validated['peso'],
-    //             'estado' => 'almacenado',
-    //             'ubicacion_id' => $validated['ubicacion_id'],
-    //             'maquina_id' => null,
-    //             'otros' => $validated['otros'] ?? null,
-    //         ]);
-
-    //         return response()->json([
-    //             'success' => true,
-    //             'producto_id' => $producto->id,
-    //         ]);
-    //     } catch (ValidationException $e) {
-    //         return response()->json([
-    //             'success' => false,
-    //             'message' => 'Error de validación',
-    //             'errors' => $e->errors(),
-    //         ], 422);
-    //     } catch (\Exception $e) {
-    //         return response()->json([
-    //             'success' => false,
-    //             'message' => 'Error inesperado: ' . $e->getMessage(),
-    //         ], 500);
-    //     }
-    // }
-
     public function activar($pedidoId, $lineaId)
     {
         // Cargamos la línea como stdClass (tal como ya haces)
@@ -1114,6 +1047,8 @@ class PedidoController extends Controller
                 return back()->withErrors(['fabricante_id' => 'Solo puedes seleccionar uno: fabricante o distribuidor.'])->withInput();
             }
 
+            DB::beginTransaction();
+
             // Crear pedido principal
             $obraId = $request->obra_id_hpr ?: $request->obra_id_externa;
             $pedido = Pedido::create([
@@ -1127,29 +1062,40 @@ class PedidoController extends Controller
                 'created_by'      => auth()->id(),
             ]);
 
-            // Guardar líneas según lo confirmado en el modal
             $pesoTotal      = 0;
-            $pgIdsAfectados = []; // <-- iremos añadiendo los PG usados
+            $pgIdsAfectados = [];
 
             foreach ($request->seleccionados as $clave) {
-                $tipo           = $request->input("detalles.$clave.tipo");
-                $diametro       = $request->input("detalles.$clave.diametro");
-                $longitud       = $request->input("detalles.$clave.longitud");
-                $pedidoGlobalId = $request->input("detalles.$clave.pedido_global_id");
+                $tipo     = $request->input("detalles.$clave.tipo");
+                $diametro = $request->input("detalles.$clave.diametro");
+                $longitud = $request->input("detalles.$clave.longitud");
 
                 $productoBase = ProductoBase::where('tipo', $tipo)
                     ->where('diametro', $diametro)
                     ->when($longitud, fn($q) => $q->where('longitud', $longitud))
                     ->first();
 
-                if (!$productoBase) continue;
+                if (!$productoBase) {
+                    Log::warning("Producto base no encontrado", compact('tipo', 'diametro', 'longitud'));
+                    continue;
+                }
 
+                // ✅ Obtener sub-productos (cada uno puede tener su propio pedido_global_id)
                 $subproductos = data_get($request->input('productos'), $clave, []);
-                foreach ($subproductos as $camion) {
+
+                foreach ($subproductos as $index => $camion) {
                     $peso  = (float) ($camion['peso'] ?? 0);
                     $fecha = $camion['fecha'] ?? null;
-                    if ($peso <= 0 || !$fecha) continue;
 
+                    // ✅ Leer el pedido_global_id ESPECÍFICO de esta sub-línea
+                    $pedidoGlobalId = $camion['pedido_global_id'] ?? null;
+
+                    if ($peso <= 0 || !$fecha) {
+                        Log::warning("Línea inválida en productos[$clave][$index]", compact('peso', 'fecha'));
+                        continue;
+                    }
+
+                    // Crear la línea de pedido
                     $pedido->productos()->attach($productoBase->id, [
                         'pedido_global_id'       => $pedidoGlobalId ?: null,
                         'cantidad'               => $peso,
@@ -1157,20 +1103,31 @@ class PedidoController extends Controller
                         'observaciones'          => null,
                     ]);
 
-                    if ($pedidoGlobalId) $pgIdsAfectados[(int)$pedidoGlobalId] = true;
+                    if ($pedidoGlobalId) {
+                        $pgIdsAfectados[(int)$pedidoGlobalId] = true;
+                    }
+
                     $pesoTotal += $peso;
+
+                    Log::info("Línea creada", [
+                        'producto_base_id' => $productoBase->id,
+                        'peso'             => $peso,
+                        'fecha'            => $fecha,
+                        'pedido_global_id' => $pedidoGlobalId,
+                        'clave'            => $clave,
+                        'index'            => $index,
+                    ]);
                 }
             }
 
             $pedido->peso_total = $pesoTotal;
             $pedido->save();
 
-            // === Recalcular estado de cada PG afectado ===
+            // Recalcular estado de cada PG afectado
             if (!empty($pgIdsAfectados)) {
                 $ids = array_keys($pgIdsAfectados);
                 $globales = PedidoGlobal::whereIn('id', $ids)->get();
                 foreach ($globales as $pg) {
-                    // usa tu método del modelo
                     $pg->actualizarEstadoSegunProgreso();
                 }
             }
@@ -1182,12 +1139,14 @@ class PedidoController extends Controller
                 ->with('success', 'Pedido creado correctamente. Revisa el correo antes de enviarlo.');
         } catch (\Throwable $e) {
             DB::rollBack();
-            Log::error('Error al crear pedido: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
+            Log::error('Error al crear pedido: ' . $e->getMessage(), [
+                'trace' => $e->getTraceAsString(),
+                'request_data' => $request->all(),
+            ]);
             $msg = app()->environment('local') ? $e->getMessage() : 'Hubo un error inesperado al crear el pedido.';
             return back()->withInput()->with('error', $msg);
         }
     }
-
     public function show($id)
     {
         $pedido = Pedido::with(['productos', 'fabricante', 'obra'])->findOrFail($id);
