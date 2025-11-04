@@ -621,7 +621,7 @@
             const lineas = recolectarLineas();
             if (lineas.length === 0) return;
 
-            fetch('{{ route('pedidos.sugerir-pedido-global') }}', {
+            fetch('{{ route('pedidos.verSugerir-pedido-global') }}', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
