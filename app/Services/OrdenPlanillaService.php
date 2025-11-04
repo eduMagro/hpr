@@ -7,28 +7,28 @@ use App\Models\Elemento;
 use Illuminate\Support\Facades\Log;
 
 /**
- * Servicio para gestionar el orden de planillas por máquina.
+ * Servicio para gestionar el orden de planillas por mÃ¡quina.
  * 
  * Responsabilidades:
  * - Crear registros de orden para planillas nuevas
  * - Recalcular posiciones tras eliminaciones
- * - Mantener secuencias coherentes por máquina
+ * - Mantener secuencias coherentes por mÃ¡quina
  */
 class OrdenPlanillaService
 {
     /**
-     * Crea entradas en orden_planillas para todas las máquinas usadas en una planilla.
+     * Crea entradas en orden_planillas para todas las mÃ¡quinas usadas en una planilla.
      * 
-     * IMPORTANTE: Debe ejecutarse DESPUÉS de AsignarMaquinaService.
+     * IMPORTANTE: Debe ejecutarse DESPUÃ‰S de AsignarMaquinaService.
      *
      * @param int $planillaId
-     * @return int Número de registros creados
+     * @return int NÃºmero de registros creados
      */
     public function crearOrdenParaPlanilla(int $planillaId): int
     {
-        Log::channel('planilla_import')->info("📋 [OrdenPlanilla] Iniciando creación de orden para planilla {$planillaId}");
+        Log::channel('planilla_import')->info("ðŸ“‹ [OrdenPlanilla] Iniciando creaciÃ³n de orden para planilla {$planillaId}");
 
-        // Obtener todas las máquinas únicas asignadas a elementos de esta planilla
+        // Obtener todas las mÃ¡quinas Ãºnicas asignadas a elementos de esta planilla
         $maquinasUsadas = Elemento::where('planilla_id', $planillaId)
             ->whereNotNull('maquina_id')
             ->distinct()
@@ -36,10 +36,10 @@ class OrdenPlanillaService
             ->filter()
             ->toArray();
 
-        Log::channel('planilla_import')->info("🔍 [OrdenPlanilla] Planilla {$planillaId} usa máquinas: " . json_encode($maquinasUsadas));
+        Log::channel('planilla_import')->info("ðŸ” [OrdenPlanilla] Planilla {$planillaId} usa mÃ¡quinas: " . json_encode($maquinasUsadas));
 
         if (empty($maquinasUsadas)) {
-            Log::channel('planilla_import')->warning("⚠️ [OrdenPlanilla] Planilla {$planillaId}: no tiene elementos con máquina asignada");
+            Log::channel('planilla_import')->warning("âš ï¸ [OrdenPlanilla] Planilla {$planillaId}: no tiene elementos con mÃ¡quina asignada");
             return 0;
         }
 
@@ -54,33 +54,40 @@ class OrdenPlanillaService
 
             if ($existe) {
                 $registrosDuplicados++;
-                Log::channel('planilla_import')->debug("⏭️ [OrdenPlanilla] Planilla {$planillaId} + Máquina {$maquinaId}: ya existe, omitiendo");
+                Log::channel('planilla_import')->debug("â­ï¸ [OrdenPlanilla] Planilla {$planillaId} + MÃ¡quina {$maquinaId}: ya existe, omitiendo");
                 continue; // Ya existe, no duplicar
             }
 
-            // Obtener la última posición para esta máquina
+            // Obtener la Ãºltima posiciÃ³n para esta mÃ¡quina
             $ultimaPosicion = OrdenPlanilla::where('maquina_id', $maquinaId)
                 ->max('posicion') ?? 0;
 
             $nuevaPosicion = $ultimaPosicion + 1;
 
-            Log::channel('planilla_import')->debug("➕ [OrdenPlanilla] Máquina {$maquinaId}: última posición={$ultimaPosicion}, asignando posición={$nuevaPosicion} a planilla {$planillaId}");
+            Log::channel('planilla_import')->debug("âž• [OrdenPlanilla] MÃ¡quina {$maquinaId}: Ãºltima posiciÃ³n={$ultimaPosicion}, asignando posiciÃ³n={$nuevaPosicion} a planilla {$planillaId}");
 
             // Crear el registro
-            OrdenPlanilla::create([
+            $ordenPlanilla = OrdenPlanilla::create([
                 'planilla_id' => $planillaId,
                 'maquina_id' => $maquinaId,
                 'posicion' => $nuevaPosicion,
             ]);
 
+            // ✅ Actualizar elementos con este orden_planilla_id
+            $elementosActualizados = Elemento::where('planilla_id', $planillaId)
+                ->where('maquina_id', $maquinaId)
+                ->update(['orden_planilla_id' => $ordenPlanilla->id]);
+
+            Log::channel('planilla_import')->debug("🔗 [OrdenPlanilla] Actualizados {$elementosActualizados} elementos con orden_planilla_id={$ordenPlanilla->id}");
+
             $registrosCreados++;
         }
 
         if ($registrosDuplicados > 0) {
-            Log::channel('planilla_import')->info("🔄 [OrdenPlanilla] Planilla {$planillaId}: {$registrosDuplicados} registros ya existían");
+            Log::channel('planilla_import')->info("ðŸ”„ [OrdenPlanilla] Planilla {$planillaId}: {$registrosDuplicados} registros ya existÃ­an");
         }
 
-        Log::channel('planilla_import')->info("✅ [OrdenPlanilla] Planilla {$planillaId}: creados {$registrosCreados} de " . count($maquinasUsadas) . " registros orden_planillas");
+        Log::channel('planilla_import')->info("âœ… [OrdenPlanilla] Planilla {$planillaId}: creados {$registrosCreados} de " . count($maquinasUsadas) . " registros orden_planillas");
 
         return $registrosCreados;
     }
@@ -89,43 +96,47 @@ class OrdenPlanillaService
      * Elimina registros de orden para una planilla.
      *
      * @param int $planillaId
-     * @return int Número de registros eliminados
+     * @return int NÃºmero de registros eliminados
      */
     public function eliminarOrdenDePlanilla(int $planillaId): int
     {
-        Log::channel('planilla_import')->info("🗑️ [OrdenPlanilla] Iniciando eliminación de orden para planilla {$planillaId}");
+        Log::channel('planilla_import')->info("ðŸ—‘ï¸ [OrdenPlanilla] Iniciando eliminaciÃ³n de orden para planilla {$planillaId}");
 
-        // Obtener información antes de eliminar
+        // Obtener informaciÃ³n antes de eliminar
         $registros = OrdenPlanilla::where('planilla_id', $planillaId)->get();
         $count = $registros->count();
 
         if ($count === 0) {
-            Log::channel('planilla_import')->info("ℹ️ [OrdenPlanilla] Planilla {$planillaId}: no tiene registros de orden para eliminar");
+            Log::channel('planilla_import')->info("â„¹ï¸ [OrdenPlanilla] Planilla {$planillaId}: no tiene registros de orden para eliminar");
             return 0;
         }
 
         $maquinasAfectadas = $registros->pluck('maquina_id')->unique()->toArray();
-        Log::channel('planilla_import')->info("📊 [OrdenPlanilla] Planilla {$planillaId}: eliminando {$count} registros de máquinas: " . json_encode($maquinasAfectadas));
+        Log::channel('planilla_import')->info("ðŸ“Š [OrdenPlanilla] Planilla {$planillaId}: eliminando {$count} registros de mÃ¡quinas: " . json_encode($maquinasAfectadas));
+
+        // ✅ Limpiar orden_planilla_id de todos los elementos de esta planilla
+        Elemento::where('planilla_id', $planillaId)
+            ->update(['orden_planilla_id' => null]);
 
         OrdenPlanilla::where('planilla_id', $planillaId)->delete();
 
-        Log::channel('planilla_import')->info("✅ [OrdenPlanilla] Planilla {$planillaId}: eliminados {$count} registros correctamente");
+        Log::channel('planilla_import')->info("âœ… [OrdenPlanilla] Planilla {$planillaId}: eliminados {$count} registros correctamente");
 
         return $count;
     }
 
     /**
-     * Obtiene las máquinas afectadas por un conjunto de planillas.
+     * Obtiene las mÃ¡quinas afectadas por un conjunto de planillas.
      *
      * @param array $planillaIds
-     * @return array IDs de máquinas
+     * @return array IDs de mÃ¡quinas
      */
     public function obtenerMaquinasAfectadas(array $planillaIds): array
     {
-        Log::channel('planilla_import')->debug("🔎 [OrdenPlanilla] Obteniendo máquinas afectadas por planillas: " . json_encode($planillaIds));
+        Log::channel('planilla_import')->debug("ðŸ”Ž [OrdenPlanilla] Obteniendo mÃ¡quinas afectadas por planillas: " . json_encode($planillaIds));
 
         if (empty($planillaIds)) {
-            Log::channel('planilla_import')->debug("ℹ️ [OrdenPlanilla] No hay planillas para consultar");
+            Log::channel('planilla_import')->debug("â„¹ï¸ [OrdenPlanilla] No hay planillas para consultar");
             return [];
         }
 
@@ -136,20 +147,20 @@ class OrdenPlanillaService
             ->map(fn($v) => (int) $v)
             ->all();
 
-        Log::channel('planilla_import')->debug("📋 [OrdenPlanilla] Máquinas afectadas encontradas: " . json_encode($maquinas));
+        Log::channel('planilla_import')->debug("ðŸ“‹ [OrdenPlanilla] MÃ¡quinas afectadas encontradas: " . json_encode($maquinas));
 
         return $maquinas;
     }
 
     /**
-     * Recalcula posiciones para una máquina específica (compacta a 1..N).
+     * Recalcula posiciones para una mÃ¡quina especÃ­fica (compacta a 1..N).
      *
      * @param int $maquinaId
-     * @return int Número de registros actualizados
+     * @return int NÃºmero de registros actualizados
      */
     public function recalcularOrdenDeMaquina(int $maquinaId): int
     {
-        Log::channel('planilla_import')->info("🔧 [OrdenPlanilla] Iniciando recálculo de orden para máquina {$maquinaId}");
+        Log::channel('planilla_import')->info("ðŸ”§ [OrdenPlanilla] Iniciando recÃ¡lculo de orden para mÃ¡quina {$maquinaId}");
 
         $ordenes = OrdenPlanilla::query()
             ->where('maquina_id', $maquinaId)
@@ -159,11 +170,11 @@ class OrdenPlanillaService
         $totalRegistros = $ordenes->count();
 
         if ($totalRegistros === 0) {
-            Log::channel('planilla_import')->info("ℹ️ [OrdenPlanilla] Máquina {$maquinaId}: no tiene planillas asignadas");
+            Log::channel('planilla_import')->info("â„¹ï¸ [OrdenPlanilla] MÃ¡quina {$maquinaId}: no tiene planillas asignadas");
             return 0;
         }
 
-        Log::channel('planilla_import')->debug("📊 [OrdenPlanilla] Máquina {$maquinaId}: procesando {$totalRegistros} planillas");
+        Log::channel('planilla_import')->debug("ðŸ“Š [OrdenPlanilla] MÃ¡quina {$maquinaId}: procesando {$totalRegistros} planillas");
 
         $actualizados = 0;
         $nuevaPosicion = 1;
@@ -187,17 +198,17 @@ class OrdenPlanillaService
         }
 
         if ($actualizados > 0) {
-            Log::channel('planilla_import')->info("🔧 [OrdenPlanilla] Máquina {$maquinaId}: recalculados {$actualizados} de {$totalRegistros} registros");
-            Log::channel('planilla_import')->debug("📝 [OrdenPlanilla] Cambios realizados: " . json_encode($cambios));
+            Log::channel('planilla_import')->info("ðŸ”§ [OrdenPlanilla] MÃ¡quina {$maquinaId}: recalculados {$actualizados} de {$totalRegistros} registros");
+            Log::channel('planilla_import')->debug("ðŸ“ [OrdenPlanilla] Cambios realizados: " . json_encode($cambios));
         } else {
-            Log::channel('planilla_import')->info("✓ [OrdenPlanilla] Máquina {$maquinaId}: secuencia ya estaba correcta (1..{$totalRegistros})");
+            Log::channel('planilla_import')->info("âœ“ [OrdenPlanilla] MÃ¡quina {$maquinaId}: secuencia ya estaba correcta (1..{$totalRegistros})");
         }
 
         return $actualizados;
     }
 
     /**
-     * Recalcula el orden para múltiples máquinas.
+     * Recalcula el orden para mÃºltiples mÃ¡quinas.
      *
      * @param array $maquinaIds
      * @return array ['maquina_id' => registros_actualizados]
@@ -206,7 +217,7 @@ class OrdenPlanillaService
     {
         $maquinaIds = array_values(array_unique(array_filter($maquinaIds, fn($x) => !is_null($x))));
 
-        Log::channel('planilla_import')->info("🔧 [OrdenPlanilla] Iniciando recálculo múltiple para " . count($maquinaIds) . " máquinas: " . json_encode($maquinaIds));
+        Log::channel('planilla_import')->info("ðŸ”§ [OrdenPlanilla] Iniciando recÃ¡lculo mÃºltiple para " . count($maquinaIds) . " mÃ¡quinas: " . json_encode($maquinaIds));
 
         $resultados = [];
         $totalActualizados = 0;
@@ -217,58 +228,64 @@ class OrdenPlanillaService
             $totalActualizados += $actualizados;
         }
 
-        Log::channel('planilla_import')->info("✅ [OrdenPlanilla] Recálculo múltiple completado: {$totalActualizados} registros actualizados en total");
+        Log::channel('planilla_import')->info("âœ… [OrdenPlanilla] RecÃ¡lculo mÃºltiple completado: {$totalActualizados} registros actualizados en total");
 
         return $resultados;
     }
 
     /**
      * Sincroniza orden_planillas con los elementos actuales de una planilla.
-     * Útil después de reasignaciones masivas de máquinas.
+     * Ãštil despuÃ©s de reasignaciones masivas de mÃ¡quinas.
      *
      * @param int $planillaId
      * @return array ['creados' => int, 'eliminados' => int]
      */
     public function sincronizarOrdenDePlanilla(int $planillaId): array
     {
-        Log::channel('planilla_import')->info("🔄 [OrdenPlanilla] Iniciando sincronización para planilla {$planillaId}");
+        Log::channel('planilla_import')->info("ðŸ”„ [OrdenPlanilla] Iniciando sincronizaciÃ³n para planilla {$planillaId}");
 
-        // 1. Máquinas actualmente en uso por elementos
+        // 1. MÃ¡quinas actualmente en uso por elementos
         $maquinasActuales = Elemento::where('planilla_id', $planillaId)
             ->whereNotNull('maquina_id')
             ->distinct()
             ->pluck('maquina_id')
             ->toArray();
 
-        Log::channel('planilla_import')->debug("📊 [OrdenPlanilla] Planilla {$planillaId} - Máquinas en elementos: " . json_encode($maquinasActuales));
+        Log::channel('planilla_import')->debug("ðŸ“Š [OrdenPlanilla] Planilla {$planillaId} - MÃ¡quinas en elementos: " . json_encode($maquinasActuales));
 
-        // 2. Máquinas registradas en orden_planillas
+        // 2. MÃ¡quinas registradas en orden_planillas
         $maquinasRegistradas = OrdenPlanilla::where('planilla_id', $planillaId)
             ->pluck('maquina_id')
             ->toArray();
 
-        Log::channel('planilla_import')->debug("📊 [OrdenPlanilla] Planilla {$planillaId} - Máquinas en orden_planillas: " . json_encode($maquinasRegistradas));
+        Log::channel('planilla_import')->debug("ðŸ“Š [OrdenPlanilla] Planilla {$planillaId} - MÃ¡quinas en orden_planillas: " . json_encode($maquinasRegistradas));
 
-        // 3. Eliminar máquinas que ya no se usan
+        // 3. Eliminar mÃ¡quinas que ya no se usan
         $maquinasAEliminar = array_diff($maquinasRegistradas, $maquinasActuales);
         $eliminados = 0;
 
         if (!empty($maquinasAEliminar)) {
-            Log::channel('planilla_import')->info("🗑️ [OrdenPlanilla] Planilla {$planillaId} - Eliminando máquinas obsoletas: " . json_encode($maquinasAEliminar));
+            Log::channel('planilla_import')->info("ðŸ—‘ï¸ [OrdenPlanilla] Planilla {$planillaId} - Eliminando mÃ¡quinas obsoletas: " . json_encode($maquinasAEliminar));
 
+            // ✅ Primero limpiar los elementos
+            $elementosLimpiados = Elemento::where('planilla_id', $planillaId)
+                ->whereIn('maquina_id', $maquinasAEliminar)
+                ->update(['orden_planilla_id' => null]);
+
+            // Luego eliminar los registros de orden_planillas
             $eliminados = OrdenPlanilla::where('planilla_id', $planillaId)
                 ->whereIn('maquina_id', $maquinasAEliminar)
                 ->delete();
 
-            Log::channel('planilla_import')->debug("✓ [OrdenPlanilla] Eliminados {$eliminados} registros obsoletos");
+            Log::channel('planilla_import')->debug("âœ“ [OrdenPlanilla] Eliminados {$eliminados} registros obsoletos, limpiados {$elementosLimpiados} elementos");
         }
 
-        // 4. Crear máquinas nuevas
+        // 4. Crear mÃ¡quinas nuevas
         $maquinasACrear = array_diff($maquinasActuales, $maquinasRegistradas);
         $creados = 0;
 
         if (!empty($maquinasACrear)) {
-            Log::channel('planilla_import')->info("➕ [OrdenPlanilla] Planilla {$planillaId} - Creando máquinas nuevas: " . json_encode($maquinasACrear));
+            Log::channel('planilla_import')->info("âž• [OrdenPlanilla] Planilla {$planillaId} - Creando mÃ¡quinas nuevas: " . json_encode($maquinasACrear));
         }
 
         foreach ($maquinasACrear as $maquinaId) {
@@ -277,17 +294,23 @@ class OrdenPlanillaService
 
             $nuevaPosicion = $ultimaPosicion + 1;
 
-            OrdenPlanilla::create([
+            $ordenPlanilla = OrdenPlanilla::create([
                 'planilla_id' => $planillaId,
                 'maquina_id' => $maquinaId,
                 'posicion' => $nuevaPosicion,
             ]);
 
-            Log::channel('planilla_import')->debug("✓ [OrdenPlanilla] Máquina {$maquinaId}: creada en posición {$nuevaPosicion}");
+            // ✅ Actualizar elementos con este orden_planilla_id
+            $elementosActualizados = Elemento::where('planilla_id', $planillaId)
+                ->where('maquina_id', $maquinaId)
+                ->update(['orden_planilla_id' => $ordenPlanilla->id]);
+
+
+            Log::channel('planilla_import')->debug("âœ“ [OrdenPlanilla] MÃ¡quina {$maquinaId}: creada en posición {$nuevaPosicion}, actualizados {$elementosActualizados} elementos");
             $creados++;
         }
 
-        Log::channel('planilla_import')->info("✅ [OrdenPlanilla] Planilla {$planillaId} sincronizada: +{$creados} -{$eliminados} registros (total actual: " . count($maquinasActuales) . " máquinas)");
+        Log::channel('planilla_import')->info("âœ… [OrdenPlanilla] Planilla {$planillaId} sincronizada: +{$creados} -{$eliminados} registros (total actual: " . count($maquinasActuales) . " mÃ¡quinas)");
 
         return [
             'creados' => $creados,
@@ -297,14 +320,14 @@ class OrdenPlanillaService
 
     /**
      * Verifica la integridad de orden_planillas para una planilla.
-     * Útil para debugging.
+     * Ãštil para debugging.
      *
      * @param int $planillaId
      * @return array Reporte de inconsistencias
      */
     public function verificarIntegridad(int $planillaId): array
     {
-        Log::channel('planilla_import')->info("🔍 [OrdenPlanilla] Verificando integridad de planilla {$planillaId}");
+        Log::channel('planilla_import')->info("ðŸ” [OrdenPlanilla] Verificando integridad de planilla {$planillaId}");
 
         $maquinasEnElementos = Elemento::where('planilla_id', $planillaId)
             ->whereNotNull('maquina_id')
@@ -325,21 +348,21 @@ class OrdenPlanillaService
 
         $esConsistente = empty($faltantes) && empty($sobrantes);
 
-        Log::channel('planilla_import')->debug("📊 [OrdenPlanilla] Planilla {$planillaId} - Máquinas en elementos: " . count($maquinasEnElementos));
-        Log::channel('planilla_import')->debug("📊 [OrdenPlanilla] Planilla {$planillaId} - Máquinas en orden: " . count($maquinasEnOrden));
+        Log::channel('planilla_import')->debug("ðŸ“Š [OrdenPlanilla] Planilla {$planillaId} - MÃ¡quinas en elementos: " . count($maquinasEnElementos));
+        Log::channel('planilla_import')->debug("ðŸ“Š [OrdenPlanilla] Planilla {$planillaId} - MÃ¡quinas en orden: " . count($maquinasEnOrden));
 
         if (!$esConsistente) {
-            Log::channel('planilla_import')->warning("⚠️ [OrdenPlanilla] Planilla {$planillaId} - INCONSISTENCIA DETECTADA:");
+            Log::channel('planilla_import')->warning("âš ï¸ [OrdenPlanilla] Planilla {$planillaId} - INCONSISTENCIA DETECTADA:");
 
             if (!empty($faltantes)) {
-                Log::channel('planilla_import')->warning("   ❌ Faltantes en orden_planillas: " . json_encode(array_values($faltantes)));
+                Log::channel('planilla_import')->warning("   âŒ Faltantes en orden_planillas: " . json_encode(array_values($faltantes)));
             }
 
             if (!empty($sobrantes)) {
-                Log::channel('planilla_import')->warning("   ❌ Sobrantes en orden_planillas: " . json_encode(array_values($sobrantes)));
+                Log::channel('planilla_import')->warning("   âŒ Sobrantes en orden_planillas: " . json_encode(array_values($sobrantes)));
             }
         } else {
-            Log::channel('planilla_import')->info("✅ [OrdenPlanilla] Planilla {$planillaId} - Integridad correcta");
+            Log::channel('planilla_import')->info("âœ… [OrdenPlanilla] Planilla {$planillaId} - Integridad correcta");
         }
 
         return [
