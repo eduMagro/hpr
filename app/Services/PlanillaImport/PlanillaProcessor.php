@@ -7,14 +7,10 @@ use App\Models\Cliente;
 use App\Models\Obra;
 use App\Models\Etiqueta;
 use App\Models\Elemento;
-use App\Models\ProductoBase;
 use App\Services\PlanillaImport\DTOs\ProcesamientoResult;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Log;
-<<<<<<< Updated upstream
 use App\Services\PlanillaImport\CodigoEtiqueta;
-=======
->>>>>>> Stashed changes
 
 /**
  * Procesa los datos de una planilla individual.
@@ -26,10 +22,6 @@ use App\Services\PlanillaImport\CodigoEtiqueta;
  * - Crear planilla
  * - Crear etiquetas padre (con retry logic)
  * - Crear elementos agregados
-<<<<<<< Updated upstream
-=======
- * - **DETERMINAR si elementos necesitan elaboración (campo elaborado)**
->>>>>>> Stashed changes
  * - Aplicar política de subetiquetas (configurable)
  * - Calcular totales
  * 
@@ -43,25 +35,14 @@ class PlanillaProcessor
     protected int $tiempoSetupElemento;
     protected array $estrategiasSubetiquetas;
 
-<<<<<<< Updated upstream
     protected CodigoEtiqueta $codigoService;
 
     public function __construct(CodigoEtiqueta $codigoService)
-=======
-    /**
-     * Cache de longitudes estándar por diámetro (en cm)
-     * @var array<int, array<int>>
-     */
-    protected array $longitudesEstandarCm = [];
-
-    public function __construct()
->>>>>>> Stashed changes
     {
         $this->codigoService = $codigoService;
         $this->diametrosPermitidos = config('planillas.importacion.diametros_permitidos', [5, 8, 10, 12, 16, 20, 25, 32]);
         $this->tiempoSetupElemento = config('planillas.importacion.tiempo_setup_elemento', 1200);
 
-<<<<<<< Updated upstream
         // Configuración de estrategias por máquina
         $this->estrategiasSubetiquetas = config('planillas.importacion.estrategias_subetiquetas', []);
 
@@ -71,85 +52,6 @@ class PlanillaProcessor
             'default_estrategia' => config('planillas.importacion.estrategia_subetiquetas_default', 'legacy'),
             'limite_elementos' => config('planillas.importacion.limite_elementos_por_subetiqueta', 5),
         ]);
-=======
-        // ✅ Configuración de estrategias por máquina
-        $this->estrategiasSubetiquetas = config('planillas.importacion.estrategias_subetiquetas', []);
-
-        // 📦 Cargar longitudes estándar permitidas por diámetro
-        $this->cargarLongitudesEstandar();
-    }
-
-    /**
-     * Carga las longitudes estándar disponibles por diámetro desde ProductoBase.
-     * Estas longitudes determinan qué elementos NO necesitan elaboración.
-     *
-     * @return void
-     */
-    protected function cargarLongitudesEstandar(): void
-    {
-        // Consultar directamente ProductoBase para obtener longitudes disponibles
-        // El campo 'longitud' en ProductoBase está en METROS
-        $productosPorDiametro = ProductoBase::where('tipo', 'barra')
-            ->whereIn('diametro', $this->diametrosPermitidos)
-            ->get()
-            ->groupBy('diametro');
-
-        foreach ($this->diametrosPermitidos as $diametro) {
-            if (!isset($productosPorDiametro[$diametro])) {
-                $this->longitudesEstandarCm[$diametro] = [];
-                continue;
-            }
-
-            // Obtener longitudes únicas y convertir de metros a centímetros
-            $this->longitudesEstandarCm[$diametro] = $productosPorDiametro[$diametro]
-                ->pluck('longitud')
-                ->filter(fn($m) => is_numeric($m) && (float)$m > 0)
-                ->map(fn($m) => (int)round((float)$m * 100)) // Metros → Centímetros
-                ->unique()
-                ->sort()
-                ->values()
-                ->toArray();
-        }
-
-        // Log para debug (opcional, comentar en producción)
-        \Illuminate\Support\Facades\Log::info('Longitudes estándar cargadas:', $this->longitudesEstandarCm);
-    }
-
-    /**
-     * Determina si un elemento es una barra estándar sin elaboración.
-     * 
-     * Criterios:
-     * - Longitud coincide con longitud estándar del catálogo para ese diámetro
-     * - Sin dobles (dobles_barra = 0)
-     *
-     * @param int $diametro Diámetro en mm
-     * @param float $longitudCm Longitud en cm
-     * @param int $doblesBarra Número de dobles
-     * @return bool True si NO necesita elaboración (elaborado = 0)
-     */
-    protected function esBarraEstandar(int $diametro, float $longitudCm, int $doblesBarra): bool
-    {
-        // Si tiene dobles, requiere elaboración
-        if ($doblesBarra > 0) {
-            return false;
-        }
-
-        // Si no hay longitudes estándar para este diámetro, requiere elaboración
-        if (!isset($this->longitudesEstandarCm[$diametro]) || empty($this->longitudesEstandarCm[$diametro])) {
-            return false;
-        }
-
-        // Verificar si la longitud coincide con alguna estándar (tolerancia de ±1 cm)
-        $longitudInt = (int)round($longitudCm);
-
-        foreach ($this->longitudesEstandarCm[$diametro] as $estandar) {
-            if (abs($longitudInt - $estandar) <= 1) {
-                return true; // Es barra estándar, NO necesita elaboración
-            }
-        }
-
-        return false; // No coincide con longitud estándar, requiere elaboración
->>>>>>> Stashed changes
     }
 
     /**
@@ -194,7 +96,6 @@ class PlanillaProcessor
         // 5. Crear etiquetas padre y elementos
         $etiquetasPadre = $this->crearEtiquetasYElementos($planilla, $codigoPlanilla, $filas, $advertencias);
 
-<<<<<<< Updated upstream
         // 6. ⚠️ POLÍTICA DE SUBETIQUETAS (OPCIONAL - solo si se especifica)
         // Por defecto NO se aplica aquí para permitir que se haga DESPUÉS de asignar máquinas
         if ($aplicarPoliticaSubetiquetas) {
@@ -204,20 +105,10 @@ class PlanillaProcessor
         } else {
             Log::channel('planilla_import')->info("⏳ [PlanillaProcessor] Política de subetiquetas diferida (se aplicará después de asignar máquinas)");
         }
-=======
-        // 6. Aplicar política de subetiquetas
-        $this->aplicarPoliticaSubetiquetas($planilla, $etiquetasPadre);
->>>>>>> Stashed changes
 
         // 7. Guardar tiempo total
         $this->guardarTiempoTotal($planilla);
 
-<<<<<<< Updated upstream
-=======
-        // ⚠️ NOTA: La asignación de máquinas y creación de orden_planillas
-        // se hace DESPUÉS en PlanillaImportService
-
->>>>>>> Stashed changes
         return new ProcesamientoResult(
             planilla: $planilla,
             elementosCreados: $planilla->elementos()->count(),
@@ -526,20 +417,6 @@ class PlanillaProcessor
         return $agregados;
     }
 
-<<<<<<< Updated upstream
-=======
-    /**
-     * Crea los elementos en la base de datos.
-     * 📦 AQUÍ SE DETERMINA EL CAMPO `elaborado`
-     *
-     * @param Planilla $planilla
-     * @param Etiqueta $etiquetaPadre
-     * @param array $elementosAgregados
-     * @param string $codigoPlanilla
-     * @param array &$advertencias
-     * @return void
-     */
->>>>>>> Stashed changes
     protected function crearElementos(
         Planilla $planilla,
         Etiqueta $etiquetaPadre,
@@ -573,12 +450,6 @@ class PlanillaProcessor
             // Dobles por barra
             $doblesBarra = (int)($this->normalizarNumerico($fila[33] ?? 0, 'dobles_barra', $excelRow, $codigoPlanilla, $advertencias) ?: 0);
 
-<<<<<<< Updated upstream
-=======
-            // 📦 DETERMINAR si necesita elaboración
-            $elaborado = $this->esBarraEstandar((int)$diametro, (float)$longitud, $doblesBarra) ? 0 : 1;
-
->>>>>>> Stashed changes
             // Calcular tiempo de fabricación
             $tiempoFabricacion = $this->calcularTiempoFabricacion($item['barras'], $doblesBarra);
 
@@ -601,7 +472,6 @@ class PlanillaProcessor
                 'dimensiones' => $fila[47] ?? null,
                 'tiempo_fabricacion' => $tiempoFabricacion,
                 'estado' => 'pendiente',
-                'elaborado' => $elaborado, // 🎯 CAMPO CLAVE
             ]);
         }
     }
@@ -645,10 +515,7 @@ class PlanillaProcessor
                 Log::channel('planilla_import')->debug("         ⚙️ Procesando máquina {$maquinaId} con {$lote->count()} elementos");
 
                 if ($maquinaId === 0) {
-<<<<<<< Updated upstream
                     Log::channel('planilla_import')->warning("         ⚠️ Elementos sin máquina asignada → estrategia INDIVIDUAL forzada");
-=======
->>>>>>> Stashed changes
                     // Sin máquina → sub nueva por elemento
                     foreach ($lote as $elemento) {
                         [$subId, $subRowId] = $this->crearSubetiquetaSiguiente($padre);
@@ -660,11 +527,7 @@ class PlanillaProcessor
                     continue;
                 }
 
-<<<<<<< Updated upstream
                 // Obtener estrategia configurada para esta máquina
-=======
-                // ✅ Obtener estrategia configurada para esta máquina
->>>>>>> Stashed changes
                 $maquina = \App\Models\Maquina::find($maquinaId);
                 $estrategia = $this->obtenerEstrategiaParaMaquina($maquina);
 
@@ -688,23 +551,10 @@ class PlanillaProcessor
         Log::channel('planilla_import')->info("✅ [PlanillaProcessor] Política de subetiquetas completada para planilla {$planilla->id}");
     }
 
-<<<<<<< Updated upstream
     protected function obtenerEstrategiaParaMaquina($maquina): string
     {
         if (!$maquina) {
             return 'individual';
-=======
-    /**
-     * Obtiene la estrategia de subetiquetas configurada para una máquina.
-     *
-     * @param \App\Models\Maquina|null $maquina
-     * @return string 'individual', 'agrupada', o 'legacy'
-     */
-    protected function obtenerEstrategiaParaMaquina($maquina): string
-    {
-        if (!$maquina) {
-            return 'individual'; // Sin máquina → individual por defecto
->>>>>>> Stashed changes
         }
 
         // Buscar por código de máquina
@@ -721,18 +571,6 @@ class PlanillaProcessor
         return config('planillas.importacion.estrategia_subetiquetas_default', 'legacy');
     }
 
-<<<<<<< Updated upstream
-=======
-    /**
-     * Estrategia INDIVIDUAL: Una subetiqueta por cada elemento.
-     * 
-     * Útil para máquinas que procesan barras individuales.
-     *
-     * @param \Illuminate\Support\Collection $elementos
-     * @param Etiqueta $padre
-     * @return void
-     */
->>>>>>> Stashed changes
     protected function aplicarEstrategiaIndividual($elementos, Etiqueta $padre): void
     {
         foreach ($elementos as $elemento) {
@@ -744,7 +582,6 @@ class PlanillaProcessor
         }
     }
 
-<<<<<<< Updated upstream
     protected function aplicarEstrategiaAgrupada($elementos, Etiqueta $padre): void
     {
         $limitePorSubetiqueta = config('planillas.importacion.limite_elementos_por_subetiqueta', 5);
@@ -759,37 +596,6 @@ class PlanillaProcessor
         foreach ($lotes as $indexLote => $lote) {
             // Verificar si ya existe una subetiqueta para algún elemento del lote
             $subsExistentes = $lote->pluck('etiqueta_sub_id')->filter()->unique();
-=======
-    /**
-     * Estrategia AGRUPADA: Una subetiqueta compartida por elementos similares.
-     * 
-     * Agrupa elementos que comparten características clave:
-     * - Mismo diámetro
-     * - Misma longitud
-     * - Mismo número de dobles
-     * - Mismas dimensiones
-     *
-     * @param \Illuminate\Support\Collection $elementos
-     * @param Etiqueta $padre
-     * @return void
-     */
-    protected function aplicarEstrategiaAgrupada($elementos, Etiqueta $padre): void
-    {
-        // Agrupar elementos por características similares
-        $grupos = $elementos->groupBy(function ($elemento) {
-            return implode('|', [
-                $elemento->diametro ?? '',
-                $elemento->longitud ?? '',
-                $elemento->dobles_barra ?? 0,
-                $elemento->dimensiones ?? '',
-            ]);
-        });
-
-        // Crear una subetiqueta por grupo
-        foreach ($grupos as $grupo) {
-            // Verificar si ya existe una subetiqueta para algún elemento del grupo
-            $subsExistentes = $grupo->pluck('etiqueta_sub_id')->filter()->unique();
->>>>>>> Stashed changes
 
             if ($subsExistentes->isEmpty()) {
                 // Crear nueva subetiqueta para este lote
@@ -821,21 +627,6 @@ class PlanillaProcessor
         Log::channel('planilla_import')->info("✅ [PlanillaProcessor] Etiqueta {$padre->codigo}: {$elementos->count()} elementos distribuidos en {$lotes->count()} subetiquetas");
     }
 
-<<<<<<< Updated upstream
-=======
-    /**
-     * Estrategia LEGACY: Basada en tipo_material de la máquina.
-     * 
-     * Mantiene compatibilidad con el sistema anterior:
-     * - tipo_material = 'barra' → individual
-     * - tipo_material = 'encarretado' u otro → agrupada
-     *
-     * @param \Illuminate\Support\Collection $elementos
-     * @param Etiqueta $padre
-     * @param \App\Models\Maquina|null $maquina
-     * @return void
-     */
->>>>>>> Stashed changes
     protected function aplicarEstrategiaLegacy($elementos, Etiqueta $padre, $maquina): void
     {
         $tipoMaterial = strtolower((string)optional($maquina)->tipo_material);
@@ -965,15 +756,6 @@ class PlanillaProcessor
         Etiqueta::where('codigo', $codigo)->whereNull('etiqueta_sub_id')->update(['peso' => $pesoPadre]);
     }
 
-<<<<<<< Updated upstream
-=======
-    /**
-     * Guarda el tiempo total de fabricación de la planilla.
-     *
-     * @param Planilla $planilla
-     * @return void
-     */
->>>>>>> Stashed changes
     protected function guardarTiempoTotal(Planilla $planilla): void
     {
         $elementos = $planilla->elementos()->get();
@@ -983,16 +765,6 @@ class PlanillaProcessor
         $planilla->update(['tiempo_fabricacion' => $tiempoTotal]);
     }
 
-<<<<<<< Updated upstream
-=======
-    /**
-     * Calcula el tiempo de fabricación de un elemento.
-     *
-     * @param int $barras
-     * @param int $doblesBarra
-     * @return float
-     */
->>>>>>> Stashed changes
     protected function calcularTiempoFabricacion(int $barras, int $doblesBarra): float
     {
         if ($doblesBarra > 0) {
@@ -1004,19 +776,6 @@ class PlanillaProcessor
         return $barras * 2;
     }
 
-<<<<<<< Updated upstream
-=======
-    /**
-     * Normaliza y valida un valor numérico.
-     *
-     * @param mixed $valor
-     * @param string $campo
-     * @param int $excelRow
-     * @param string $codigoPlanilla
-     * @param array &$advertencias
-     * @return float|false False si el valor es inválido
-     */
->>>>>>> Stashed changes
     protected function normalizarNumerico(
         $valor,
         string $campo,

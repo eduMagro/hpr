@@ -31,7 +31,7 @@ class AsignarMaquinaService
             fn($e) => (int)$e->dobles_barra >= 4 && (int)$e->diametro <= 16
         );
 
-<<<<<<< Updated upstream
+
         $grupos = [
             // Solo elementos con dobles >= 4 Y diÃ¡metro <= 16 son "estribos"
             'estribos' => $estribos,
@@ -43,8 +43,7 @@ class AsignarMaquinaService
         Log::channel('planilla_import')->info("📋 [AsignarMaquina] Planilla {$planillaId} - Clasificación: {$grupos['estribos']->count()} estribos, {$grupos['resto']->count()} resto");
 
         // Obtener máquinas disponibles
-=======
->>>>>>> Stashed changes
+
         $maquinas = Maquina::naveA()->get()->keyBy('id');
         Log::channel('planilla_import')->debug("🏭 [AsignarMaquina] Máquinas disponibles en Nave A: {$maquinas->count()}");
 
