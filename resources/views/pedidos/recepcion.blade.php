@@ -238,6 +238,40 @@
         }
 
         /* ============================================
+           BOTÓN DE CIERRE (X)
+           ============================================ */
+        .swal2-close-custom {
+            font-size: 28px !important;
+            color: #6b7280 !important;
+            transition: all 0.2s !important;
+        }
+
+        .swal2-close-custom:hover {
+            color: #ef4444 !important;
+            transform: scale(1.1);
+        }
+
+        /* Botón deny para "Empezar de nuevo" */
+        .swal2-deny-custom {
+            background-color: #f59e0b !important;
+            color: white !important;
+            border: none !important;
+            padding: 12px 24px !important;
+            font-size: 15px !important;
+            font-weight: 600 !important;
+            border-radius: 8px !important;
+            cursor: pointer !important;
+            transition: all 0.2s !important;
+            min-width: 120px !important;
+        }
+
+        .swal2-deny-custom:hover {
+            background-color: #d97706 !important;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        /* ============================================
            OPTIMIZACIONES MÓVILES
            ============================================ */
         @media (max-width: 768px) {
@@ -273,11 +307,19 @@
 
             /* Botones personalizados en móvil */
             .swal2-confirm-custom,
-            .swal2-cancel-custom {
+            .swal2-cancel-custom,
+            .swal2-deny-custom {
                 flex: 1 !important;
                 min-width: 100px !important;
                 padding: 14px 16px !important;
                 font-size: 16px !important;
+            }
+
+            /* Botón X más grande en móvil */
+            .swal2-close-custom {
+                font-size: 32px !important;
+                width: 44px !important;
+                height: 44px !important;
             }
 
             /* Título más legible */
@@ -404,9 +446,14 @@
         const requiereFabricante = @json($requiereFabricanteManual);
         const fabricantes = @json($fabricantes->pluck('nombre', 'id'));
         const ultimoFabricanteId = @json($ultimoFabricante);
-        const ubicacionesData = @json($ubicaciones->pluck('nombre_sin_prefijo', 'id'));
-        const coladaDefecto = '{{ $coladaPorDefecto }}';
+
+        // ✅ NUEVO: Ubicaciones agrupadas por sector
+        const ubicacionesPorSector = @json($ubicacionesPorSector);
+        const sectores = @json($sectores);
+        const sectorPorDefecto = @json($sectorPorDefecto);
         const ubicacionDefecto = '{{ $ubicacionPorDefecto }}';
+
+        const coladaDefecto = '{{ $coladaPorDefecto }}';
 
         // 🎯 Sistema mejorado de recepción con navegación
         class RecepcionWizard {
@@ -415,12 +462,50 @@
                 this.data = {};
                 this.steps = [];
                 this.isMobile = this.detectMobile();
+                this.storageKey = 'recepcion_wizard_data'; // ✅ NUEVO: Key para localStorage
                 this.setupSteps();
             }
 
             detectMobile() {
                 return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
                     window.innerWidth <= 768;
+            }
+
+            // ✅ NUEVO: Cargar datos guardados
+            loadSavedData() {
+                try {
+                    const saved = localStorage.getItem(this.storageKey);
+                    if (saved) {
+                        const parsed = JSON.parse(saved);
+                        return parsed;
+                    }
+                } catch (e) {
+                    console.error('Error al cargar datos guardados:', e);
+                }
+                return null;
+            }
+
+            // ✅ NUEVO: Guardar datos en localStorage
+            saveData() {
+                try {
+                    const dataToSave = {
+                        currentStep: this.currentStep,
+                        data: this.data,
+                        timestamp: new Date().toISOString()
+                    };
+                    localStorage.setItem(this.storageKey, JSON.stringify(dataToSave));
+                } catch (e) {
+                    console.error('Error al guardar datos:', e);
+                }
+            }
+
+            // ✅ NUEVO: Limpiar datos guardados
+            clearSavedData() {
+                try {
+                    localStorage.removeItem(this.storageKey);
+                } catch (e) {
+                    console.error('Error al limpiar datos:', e);
+                }
             }
 
             setupSteps() {
@@ -440,7 +525,7 @@
                     // Fabricante (condicional)
                     ...(requiereFabricante ? [{
                         name: 'fabricante_id',
-                        title: 'Selecciona Fabricante',
+                        title: 'Selecciona el fabricante',
                         type: 'select',
                         options: fabricantes,
                         defaultValue: ultimoFabricanteId,
@@ -449,7 +534,7 @@
                     }] : []),
                     {
                         name: 'codigo',
-                        title: 'QR paquete',
+                        title: 'Código del paquete',
                         type: 'text',
                         placeholder: 'Escanea el código MP...',
                         required: true,
@@ -464,7 +549,7 @@
                     },
                     {
                         name: 'n_colada',
-                        title: 'Nº colada',
+                        title: 'Número de colada',
                         type: 'text',
                         defaultValue: coladaDefecto,
                         required: true,
@@ -472,7 +557,7 @@
                     },
                     {
                         name: 'n_paquete',
-                        title: 'Nº paquete',
+                        title: 'Número de paquete',
                         type: 'number',
                         required: true,
                         validator: (value) => value ? null : 'Número de paquete requerido'
@@ -480,7 +565,7 @@
                     // Pasos del segundo paquete (condicionales)
                     {
                         name: 'codigo_2',
-                        title: 'QR paquete 2',
+                        title: 'Código del segundo paquete',
                         type: 'text',
                         placeholder: 'Escanea el código MP...',
                         condition: () => this.data.paquetes === '2',
@@ -497,15 +582,15 @@
                     },
                     {
                         name: 'n_colada_2',
-                        title: 'Colada 2',
+                        title: 'Colada del segundo paquete',
                         type: 'text',
-                        defaultValue: coladaDefecto, // ✅ Usar la misma colada guardada
+                        defaultValue: coladaDefecto,
                         condition: () => this.data.paquetes === '2',
                         required: false
                     },
                     {
                         name: 'n_paquete_2',
-                        title: 'Nº paquete 2',
+                        title: 'Nº paquete del segundo',
                         type: 'number',
                         condition: () => this.data.paquetes === '2',
                         required: false
@@ -540,6 +625,49 @@
             }
 
             async start() {
+                // ✅ NUEVO: Verificar si hay datos guardados
+                const savedData = this.loadSavedData();
+
+                if (savedData && savedData.data && Object.keys(savedData.data).length > 0) {
+                    const result = await Swal.fire({
+                        title: '¿Continuar recepción?',
+                        html: '<p style="margin-bottom: 8px;">Hay una recepción sin completar</p>' +
+                            '<p style="font-size: 13px; color: #6b7280;">Guardada: ' +
+                            new Date(savedData.timestamp).toLocaleString('es-ES') + '</p>',
+                        icon: 'question',
+                        showCancelButton: true,
+                        showDenyButton: true,
+                        confirmButtonText: '▶️ Continuar',
+                        denyButtonText: '🔄 Empezar de nuevo',
+                        cancelButtonText: 'Cancelar',
+                        customClass: {
+                            container: this.isMobile ? 'swal2-mobile' : '',
+                            confirmButton: 'swal2-confirm-custom',
+                            cancelButton: 'swal2-cancel-custom',
+                            denyButton: 'swal2-deny-custom'
+                        }
+                    });
+
+                    if (result.isConfirmed) {
+                        // Continuar desde donde se quedó
+                        this.currentStep = savedData.currentStep;
+                        this.data = savedData.data;
+                        await this.showStep();
+                        return;
+                    } else if (result.isDenied) {
+                        // Empezar de nuevo
+                        this.clearSavedData();
+                        this.currentStep = 0;
+                        this.data = {};
+                        await this.showStep();
+                        return;
+                    } else {
+                        // Canceló todo
+                        return;
+                    }
+                }
+
+                // Si no hay datos guardados, empezar normal
                 this.currentStep = 0;
                 this.data = {};
                 await this.showStep();
@@ -561,9 +689,10 @@
                     html: this.buildStepHTML(step, stepNumber, totalSteps),
                     showCancelButton: true,
                     showConfirmButton: true,
+                    showCloseButton: true, // ✅ NUEVO: Botón X
                     confirmButtonText: this.currentStep === activeSteps.length - 1 ? '✅ Finalizar' : 'Siguiente →',
                     cancelButtonText: this.currentStep === 0 ? 'Cancelar' : '← Anterior',
-                    reverseButtons: false, // ✅ IMPORTANTE: Anterior a la izquierda, Siguiente a la derecha
+                    reverseButtons: false,
                     allowOutsideClick: false,
                     allowEscapeKey: true,
                     showClass: {
@@ -572,13 +701,13 @@
                     hideClass: {
                         popup: 'animate__animated animate__fadeOut animate__faster'
                     },
-                    // Ajustes específicos para móvil
                     customClass: {
                         container: this.isMobile ? 'swal2-mobile' : '',
                         popup: this.isMobile ? 'swal2-mobile-popup' : '',
                         actions: 'swal2-actions-custom',
                         confirmButton: 'swal2-confirm-custom',
-                        cancelButton: 'swal2-cancel-custom'
+                        cancelButton: 'swal2-cancel-custom',
+                        closeButton: 'swal2-close-custom' // ✅ NUEVO
                     },
                     didOpen: () => {
                         this.setupKeyboardNavigation();
@@ -616,33 +745,64 @@
                         this.data[step.name] = this.normalizeValue(step, value);
                     }
 
+                    // ✅ NUEVO: Guardar en localStorage
+                    this.saveData();
+
                     // Avanzar
                     this.currentStep++;
                     await this.showStep();
 
                 } else if (result.isDismissed) {
+                    // ✅ NUEVO: Manejar el cierre con X o ESC
+                    if (result.dismiss === Swal.DismissReason.close || result.dismiss === Swal.DismissReason.esc) {
+                        await this.handleCancel();
+                        return;
+                    }
+
                     if (this.currentStep > 0) {
                         // Retroceder
                         this.currentStep--;
+                        // ✅ NUEVO: Guardar estado al retroceder
+                        this.saveData();
                         await this.showStep();
                     } else {
                         // Cancelar todo
-                        const confirmCancel = await Swal.fire({
-                            title: '¿Cancelar recepción?',
-                            text: 'Se perderán todos los datos introducidos',
-                            icon: 'warning',
-                            showCancelButton: true,
-                            confirmButtonText: 'Sí, cancelar',
-                            cancelButtonText: 'Continuar',
-                            customClass: {
-                                container: this.isMobile ? 'swal2-mobile' : ''
-                            }
-                        });
-
-                        if (!confirmCancel.isConfirmed) {
-                            await this.showStep();
-                        }
+                        await this.handleCancel();
                     }
+                }
+            }
+
+            // ✅ NUEVO: Manejar cancelación
+            async handleCancel() {
+                const confirmCancel = await Swal.fire({
+                    title: '¿Cancelar recepción?',
+                    html: '<p>Se perderán todos los datos introducidos</p>' +
+                        '<p style="font-size: 13px; color: #6b7280; margin-top: 8px;">Los datos se guardarán temporalmente si recargas la página</p>',
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonText: 'Sí, cancelar',
+                    cancelButtonText: 'Continuar recepción',
+                    confirmButtonColor: '#ef4444',
+                    customClass: {
+                        container: this.isMobile ? 'swal2-mobile' : ''
+                    }
+                });
+
+                if (confirmCancel.isConfirmed) {
+                    this.clearSavedData(); // ✅ Limpiar datos guardados
+                    await Swal.fire({
+                        icon: 'info',
+                        title: 'Recepción cancelada',
+                        text: 'Los datos se han descartado',
+                        timer: 2000,
+                        showConfirmButton: false,
+                        customClass: {
+                            container: this.isMobile ? 'swal2-mobile' : ''
+                        }
+                    });
+                } else {
+                    // Volver al paso actual
+                    await this.showStep();
                 }
             }
 
@@ -674,7 +834,7 @@
 
                 let html = '<div class="step-indicator">' + dotsHTML + '</div>';
                 html += '<div style="text-align: center; font-size: 13px; color: #6b7280; margin-bottom: 15px;">';
-                html += 'Paso ' + stepNumber + ' de ' + totalSteps;
+
                 html += '</div>';
 
                 // Contenido del paso
@@ -691,7 +851,7 @@
 
             buildInputHTML(step) {
                 const defaultValue = this.data[step.name] || step.defaultValue || '';
-                const labelSize = this.isMobile ? '22px' : '20px'; // ✅ MÁS GRANDES
+                const labelSize = this.isMobile ? '22px' : '20px';
 
                 // Label encima del input
                 let html = '<div style="text-align: left; margin: 0 auto; max-width: 90%;">';
@@ -743,30 +903,59 @@
             }
 
             buildUbicacionHTML() {
-                const labelSize = this.isMobile ? '22px' : '20px'; // ✅ MÁS GRANDES
+                const labelSize = this.isMobile ? '22px' : '20px';
 
                 let html = '<div style="text-align: left; margin: 0 auto; max-width: 90%;">';
 
-                // Label principal
+                // ========================================
+                // 1️⃣ SELECT DE SECTOR
+                // ========================================
+                html +=
+                    '<label style="display: block; font-weight: 600; margin-bottom: 8px; color: #374151; font-size: ' +
+                    labelSize + ';">';
+                html += 'Sector <span style="color: #ef4444;">*</span>';
+                html += '</label>';
+
+                // Construir opciones de sectores
+                let sectoresOptionsHTML = '';
+                for (const sector of sectores) {
+                    const selected = sector === sectorPorDefecto ? ' selected' : '';
+                    sectoresOptionsHTML += '<option value="' + sector + '"' + selected + '>' + sector + '</option>';
+                }
+
+                html +=
+                    '<select id="swal-sector" class="swal2-input" style="width:100%; font-size: 16px; margin: 0 0 16px 0;">' +
+                    sectoresOptionsHTML +
+                    '</select>';
+
+                // ========================================
+                // 2️⃣ SELECT DE UBICACIÓN (dentro del sector)
+                // ========================================
                 html +=
                     '<label style="display: block; font-weight: 600; margin-bottom: 8px; color: #374151; font-size: ' +
                     labelSize + ';">';
                 html += 'Ubicación <span style="color: #ef4444;">*</span>';
                 html += '</label>';
 
-                // Select de ubicaciones
-                let optionsHTML = '';
-                for (const [id, nombre] of Object.entries(ubicacionesData)) {
-                    const selected = id == ubicacionDefecto ? ' selected' : '';
-                    optionsHTML += '<option value="' + id + '"' + selected + '>' + nombre + '</option>';
+                // Construir opciones de ubicaciones del sector seleccionado
+                const sectorSeleccionado = sectorPorDefecto;
+                const ubicacionesDelSector = ubicacionesPorSector[sectorSeleccionado] || [];
+
+                let ubicacionesOptionsHTML = '';
+                for (const ubicacion of ubicacionesDelSector) {
+                    const selected = ubicacion.id == ubicacionDefecto ? ' selected' : '';
+                    ubicacionesOptionsHTML += '<option value="' + ubicacion.id + '"' + selected + '>' +
+                        ubicacion.nombre_sin_prefijo + '</option>';
                 }
 
                 html +=
                     '<select id="swal-ubicacion" class="swal2-input" style="width:100%; font-size: 16px; margin: 0 0 12px 0;">' +
-                    optionsHTML +
+                    ubicacionesOptionsHTML +
                     '</select>';
 
-                // Checkbox para escanear
+                // ========================================
+                // 3️⃣ CHECKBOX PARA ESCANEAR
+                // ========================================
                 html += '<label style="display:flex;align-items:center;gap:8px;font-size:' + (this.isMobile ? '16px' :
                         '15px') +
                     ';margin-top:8px;cursor:pointer;">' +
@@ -785,13 +974,14 @@
             }
 
             buildResumenHTML() {
-                const labelSize = this.isMobile ? '24px' : '22px'; // ✅ Título del resumen MÁS GRANDE
+                const labelSize = this.isMobile ? '24px' : '22px';
 
                 let html = '<div style="text-align: left; max-width: 400px; margin: 0 auto;">';
 
                 // Título del resumen
                 html += '<div style="font-weight: 600; font-size: ' + labelSize +
                     '; color: #374151; margin-bottom: 16px; text-align: center;">';
+                html += '📋 Revisar';
                 html += '</div>';
 
                 html += '<div class="resumen-item">' +
@@ -848,18 +1038,28 @@
                     '<span>' + this.data.peso + ' kg</span>' +
                     '</div>';
 
-                const ubicacionNombre = ubicacionesData[this.data.ubicacion] || this.data.ubicacion;
+                // Mostrar sector y ubicación
+                const sectorSeleccionado = this.data.sector || sectorPorDefecto;
+                const ubicacionId = this.data.ubicacion;
+
+                // Buscar la ubicación en el sector
+                let ubicacionNombre = ubicacionId;
+                if (ubicacionesPorSector[sectorSeleccionado]) {
+                    const ubicacion = ubicacionesPorSector[sectorSeleccionado].find(u => u.id == ubicacionId);
+                    if (ubicacion) {
+                        ubicacionNombre = ubicacion.nombre_sin_prefijo;
+                    }
+                }
+
+                html += '<div class="resumen-item">' +
+                    '<strong>Sector:</strong>' +
+                    '<span>' + sectorSeleccionado + '</span>' +
+                    '</div>';
+
                 html += '<div class="resumen-item">' +
                     '<strong>Ubicación:</strong>' +
                     '<span>' + ubicacionNombre + '</span>' +
                     '</div>';
-
-                if (this.data.otros) {
-                    html += '<div class="resumen-item">' +
-                        '<strong>Observaciones:</strong>' +
-                        '<span>' + this.data.otros + '</span>' +
-                        '</div>';
-                }
 
                 html += '</div>';
                 return html;
@@ -895,18 +1095,40 @@
 
             setupStepSpecificBehavior(step) {
                 if (step.name === 'ubicacion') {
+                    const sectorSelect = document.getElementById('swal-sector');
+                    const ubicacionSelect = document.getElementById('swal-ubicacion');
                     const checkbox = document.getElementById('swal-scan-checkbox');
-                    const selectUbi = document.getElementById('swal-ubicacion');
                     const inputScan = document.getElementById('swal-ubicacion-scan');
 
-                    if (checkbox && selectUbi && inputScan) {
+                    // Actualizar ubicaciones cuando cambia el sector
+                    if (sectorSelect && ubicacionSelect) {
+                        sectorSelect.addEventListener('change', () => {
+                            const sectorSeleccionado = sectorSelect.value;
+                            const ubicacionesDelSector = ubicacionesPorSector[sectorSeleccionado] || [];
+
+                            // Limpiar y reconstruir opciones de ubicaciones
+                            ubicacionSelect.innerHTML = '';
+
+                            for (const ubicacion of ubicacionesDelSector) {
+                                const option = document.createElement('option');
+                                option.value = ubicacion.id;
+                                option.textContent = ubicacion.nombre_sin_prefijo;
+                                ubicacionSelect.appendChild(option);
+                            }
+                        });
+                    }
+
+                    // Checkbox para escanear ubicación
+                    if (checkbox && ubicacionSelect && inputScan && sectorSelect) {
                         checkbox.addEventListener('change', () => {
                             if (checkbox.checked) {
-                                selectUbi.style.display = 'none';
+                                sectorSelect.style.display = 'none';
+                                ubicacionSelect.style.display = 'none';
                                 inputScan.style.display = 'block';
                                 inputScan.focus();
                             } else {
-                                selectUbi.style.display = 'block';
+                                sectorSelect.style.display = 'block';
+                                ubicacionSelect.style.display = 'block';
                                 inputScan.style.display = 'none';
                             }
                         });
@@ -935,8 +1157,17 @@
                 if (step.name === 'ubicacion') {
                     const checkbox = document.getElementById('swal-scan-checkbox');
                     if (checkbox && checkbox.checked) {
+                        // Si está escaneando, devolver el valor escaneado
                         return document.getElementById('swal-ubicacion-scan').value;
                     }
+
+                    // Guardar también el sector seleccionado
+                    const sectorSelect = document.getElementById('swal-sector');
+                    if (sectorSelect) {
+                        this.data.sector = sectorSelect.value;
+                    }
+
+                    // Devolver el ID de la ubicación
                     return document.getElementById('swal-ubicacion').value;
                 }
 
@@ -970,6 +1201,9 @@
                     document.getElementById('n_colada_2_input').value = this.data.n_colada_2 || '';
                     document.getElementById('n_paquete_2_input').value = this.data.n_paquete_2 || '';
                 }
+
+                // ✅ NUEVO: Limpiar datos guardados antes de enviar
+                this.clearSavedData();
 
                 // Mostrar loading
                 Swal.fire({
