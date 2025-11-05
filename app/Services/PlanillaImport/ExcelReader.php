@@ -71,7 +71,7 @@ class ExcelReader
                 );
             }
 
-            // 5. Autocompletar etiquetas
+            // 5. ✅ Autocompletar etiquetas (MEJORADO: por descripción + marca)
             $this->autocompletarEtiquetas($filasFiltradas);
 
             Log::channel('planilla_import')->info("✅ [EXCEL-XML] Lectura completada", $this->estadisticas);
@@ -156,7 +156,7 @@ class ExcelReader
             }
         }
 
-        Log::channel('planilla_import')->info("📐 [EXCEL-XML] Dimensiones detectadas", [
+        Log::channel('planilla_import')->info("📏 [EXCEL-XML] Dimensiones detectadas", [
             'columnas' => $maxCol,
         ]);
 
@@ -268,10 +268,20 @@ class ExcelReader
         return $filasValidas;
     }
 
+    /**
+     * ✅ CORREGIDO: Autocompletar etiquetas agrupando por DESCRIPCIÓN + MARCA
+     * 
+     * Esto asegura que elementos con la misma descripción pero diferente marca
+     * obtengan números de etiqueta diferentes.
+     *
+     * @param array &$rows
+     * @return void
+     */
     protected function autocompletarEtiquetas(array &$rows): void
     {
         $IDX_PLANILLA = 10;
         $IDX_DESC     = 22;
+        $IDX_MARCA    = 23; // ✅ NUEVO: índice de marca
         $IDX_ETIQ     = 30;
 
         $porPlanilla = [];
@@ -284,21 +294,31 @@ class ExcelReader
         $normalizar = fn($t) => ($t = mb_strtoupper(
             preg_replace('/\s+/u', ' ', trim((string)$t)),
             'UTF-8'
-        )) ?: '—SIN DESCRIPCION—';
+        )) ?: '—SIN VALOR—';
+
+        Log::channel('planilla_import')->info("🏷️ [ExcelReader] Autocompletando etiquetas por DESCRIPCIÓN + MARCA");
 
         foreach ($porPlanilla as $codigoPlanilla => $indices) {
-            $desc2num = [];
+            $grupoNum = [];
             $siguiente = 1;
 
             foreach ($indices as $i) {
                 $descripcion = $normalizar($rows[$i][$IDX_DESC] ?? '');
+                $marca = $normalizar($rows[$i][$IDX_MARCA] ?? '');
 
-                if (!isset($desc2num[$descripcion])) {
-                    $desc2num[$descripcion] = $siguiente++;
+                // ✅ Clave compuesta: descripción + marca
+                $claveGrupo = $descripcion . '|' . $marca;
+
+                if (!isset($grupoNum[$claveGrupo])) {
+                    $grupoNum[$claveGrupo] = $siguiente++;
+
+                    Log::channel('planilla_import')->debug("   📌 Planilla {$codigoPlanilla}: grupo {$grupoNum[$claveGrupo]} = '{$descripcion}' + '{$marca}'");
                 }
 
-                $rows[$i][$IDX_ETIQ] = $desc2num[$descripcion];
+                $rows[$i][$IDX_ETIQ] = $grupoNum[$claveGrupo];
             }
+
+            Log::channel('planilla_import')->info("   ✅ Planilla {$codigoPlanilla}: creados {$siguiente} grupos de etiquetas");
         }
     }
 }

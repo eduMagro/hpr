@@ -352,7 +352,7 @@
             </button>
             @if (request('codigo'))
             <a href="{{ route('productos.index') }}"
-                class="text-sm text-gray-600 underline hover:text-gray-800">Limpiar</a>
+                class="text-sm text-gray-600 underline hover:text-gray-800">Limpiar</a> 
             @endif
             </form>
         </div> --}}

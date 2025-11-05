@@ -9,21 +9,25 @@ use App\Models\Etiqueta;
 use App\Models\Elemento;
 use App\Services\PlanillaImport\DTOs\ProcesamientoResult;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Log;
+use App\Services\PlanillaImport\CodigoEtiqueta;
 
 /**
  * Procesa los datos de una planilla individual.
  * 
+ * ✅ VERSIÓN CORREGIDA - CON RETRY LOGIC
+ * 
  * Responsabilidades:
  * - Crear/obtener cliente y obra
  * - Crear planilla
- * - Crear etiquetas padre
+ * - Crear etiquetas padre (con retry logic)
  * - Crear elementos agregados
- * - Aplicar polÃ­tica de subetiquetas (configurable)
+ * - Aplicar política de subetiquetas (configurable)
  * - Calcular totales
  * 
  * NO incluye:
- * - AsignaciÃ³n de mÃ¡quinas (AsignarMaquinaService)
- * - CreaciÃ³n de orden_planillas (OrdenPlanillaService)
+ * - Asignación de máquinas (AsignarMaquinaService)
+ * - Creación de orden_planillas (OrdenPlanillaService)
  */
 class PlanillaProcessor
 {
@@ -31,13 +35,23 @@ class PlanillaProcessor
     protected int $tiempoSetupElemento;
     protected array $estrategiasSubetiquetas;
 
-    public function __construct()
+    protected CodigoEtiqueta $codigoService;
+
+    public function __construct(CodigoEtiqueta $codigoService)
     {
+        $this->codigoService = $codigoService;
         $this->diametrosPermitidos = config('planillas.importacion.diametros_permitidos', [5, 8, 10, 12, 16, 20, 25, 32]);
         $this->tiempoSetupElemento = config('planillas.importacion.tiempo_setup_elemento', 1200);
 
-        // âœ… ConfiguraciÃ³n de estrategias por mÃ¡quina
+        // Configuración de estrategias por máquina
         $this->estrategiasSubetiquetas = config('planillas.importacion.estrategias_subetiquetas', []);
+
+        // Log de configuración para debugging
+        Log::channel('planilla_import')->debug("🔧 [PlanillaProcessor] Configuración cargada", [
+            'estrategias_configuradas' => array_keys($this->estrategiasSubetiquetas),
+            'default_estrategia' => config('planillas.importacion.estrategia_subetiquetas_default', 'legacy'),
+            'limite_elementos' => config('planillas.importacion.limite_elementos_por_subetiqueta', 5),
+        ]);
     }
 
     /**
@@ -46,11 +60,18 @@ class PlanillaProcessor
      * @param string $codigoPlanilla
      * @param array $filas
      * @param array &$advertencias
+     * @param Planilla|null $planillaExistente
+     * @param bool $aplicarPoliticaSubetiquetas Si es false, se debe llamar manualmente a aplicarPoliticaSubetiquetasPostAsignacion()
      * @return ProcesamientoResult
      * @throws \Exception
      */
-    public function procesar(string $codigoPlanilla, array $filas, array &$advertencias, ?Planilla $planillaExistente = null): ProcesamientoResult
-    {
+    public function procesar(
+        string $codigoPlanilla,
+        array $filas,
+        array &$advertencias,
+        ?Planilla $planillaExistente = null,
+        bool $aplicarPoliticaSubetiquetas = false
+    ): ProcesamientoResult {
         // 1. Si hay planilla existente (reimportación), usarla
         if ($planillaExistente) {
             $planilla = $planillaExistente;
@@ -75,14 +96,18 @@ class PlanillaProcessor
         // 5. Crear etiquetas padre y elementos
         $etiquetasPadre = $this->crearEtiquetasYElementos($planilla, $codigoPlanilla, $filas, $advertencias);
 
-        // 5. Aplicar polÃ­tica de subetiquetas
-        $this->aplicarPoliticaSubetiquetas($planilla, $etiquetasPadre);
+        // 6. ⚠️ POLÍTICA DE SUBETIQUETAS (OPCIONAL - solo si se especifica)
+        // Por defecto NO se aplica aquí para permitir que se haga DESPUÉS de asignar máquinas
+        if ($aplicarPoliticaSubetiquetas) {
+            Log::channel('planilla_import')->warning("⚠️ [PlanillaProcessor] Aplicando política ANTES de asignar máquinas (legacy mode)");
+            $this->aplicarPoliticaSubetiquetas($planilla, $etiquetasPadre);
+            $this->limpiarEtiquetasPadreHuerfanas($planilla);
+        } else {
+            Log::channel('planilla_import')->info("⏳ [PlanillaProcessor] Política de subetiquetas diferida (se aplicará después de asignar máquinas)");
+        }
 
         // 7. Guardar tiempo total
         $this->guardarTiempoTotal($planilla);
-
-        // âš ï¸ NOTA: La asignaciÃ³n de mÃ¡quinas y creaciÃ³n de orden_planillas
-        // se hace DESPUÃ‰S en PlanillaImportService
 
         return new ProcesamientoResult(
             planilla: $planilla,
@@ -92,13 +117,45 @@ class PlanillaProcessor
     }
 
     /**
-     * Resuelve (busca o crea) cliente y obra desde los datos de una fila.
+     * ✅ NUEVO: Aplica la política de subetiquetas DESPUÉS de asignar máquinas.
+     * 
+     * Este método debe llamarse después de AsignarMaquinaService::repartirPlanilla()
+     * para que las estrategias por máquina funcionen correctamente.
      *
-     * @param array $fila
-     * @param string $codigoPlanilla
-     * @param array &$advertencias
-     * @return array [Cliente|null, Obra|null]
+     * @param Planilla $planilla
+     * @return void
      */
+    public function aplicarPoliticaSubetiquetasPostAsignacion(Planilla $planilla): void
+    {
+        Log::channel('planilla_import')->info("🎯 [PlanillaProcessor] Aplicando política de subetiquetas POST-asignación para planilla {$planilla->id}");
+
+        // Obtener todas las etiquetas padre de esta planilla
+        $etiquetasPadre = Etiqueta::where('planilla_id', $planilla->id)
+            ->whereNull('etiqueta_sub_id')
+            ->get()
+            ->all();
+
+        Log::channel('planilla_import')->debug("   📋 Total etiquetas padre: " . count($etiquetasPadre));
+
+        if (empty($etiquetasPadre)) {
+            Log::channel('planilla_import')->warning("   ⚠️ No se encontraron etiquetas padre");
+            return;
+        }
+
+        // Aplicar política
+        $this->aplicarPoliticaSubetiquetas($planilla, $etiquetasPadre);
+
+        // Limpiar etiquetas huérfanas
+        $eliminadas = $this->limpiarEtiquetasPadreHuerfanas($planilla);
+
+        Log::channel('planilla_import')->info("✅ [PlanillaProcessor] Política de subetiquetas completada", [
+            'etiquetas_procesadas' => count($etiquetasPadre),
+            'etiquetas_padre_eliminadas' => $eliminadas,
+        ]);
+    }
+
+    // ========== MÉTODOS PRIVADOS ==========
+
     protected function resolverClienteYObra(array $fila, string $codigoPlanilla, array &$advertencias): array
     {
         $codCliente = trim($fila[0] ?? '');
@@ -107,7 +164,7 @@ class PlanillaProcessor
         $nomObra = trim($fila[3] ?? 'Obra sin nombre');
 
         if (!$codCliente || !$codObra) {
-            $advertencias[] = "Planilla {$codigoPlanilla}: falta cÃ³digo de cliente u obra.";
+            $advertencias[] = "Planilla {$codigoPlanilla}: falta código de cliente u obra.";
             return [null, null];
         }
 
@@ -127,14 +184,6 @@ class PlanillaProcessor
         return [$cliente, $obra];
     }
 
-    /**
-     * Calcula el peso total sumando todos los elementos.
-     *
-     * @param array $filas
-     * @param string $codigoPlanilla
-     * @param array &$advertencias
-     * @return float
-     */
     protected function calcularPesoTotal(array $filas, string $codigoPlanilla, array &$advertencias): float
     {
         $pesoTotal = 0.0;
@@ -156,16 +205,6 @@ class PlanillaProcessor
         return $pesoTotal;
     }
 
-    /**
-     * Crea la planilla base.
-     *
-     * @param Cliente $cliente
-     * @param Obra $obra
-     * @param array $primeraFila
-     * @param string $codigoPlanilla
-     * @param float $pesoTotal
-     * @return Planilla
-     */
     protected function crearPlanilla(
         Cliente $cliente,
         Obra $obra,
@@ -189,13 +228,7 @@ class PlanillaProcessor
     }
 
     /**
-     * Crea etiquetas padre y elementos agregados.
-     *
-     * @param Planilla $planilla
-     * @param string $codigoPlanilla
-     * @param array $filas
-     * @param array &$advertencias
-     * @return array Array de etiquetas padre creadas
+     * ✅ CORREGIDO: Crea etiquetas y elementos usando retry logic
      */
     protected function crearEtiquetasYElementos(
         Planilla $planilla,
@@ -203,7 +236,7 @@ class PlanillaProcessor
         array $filas,
         array &$advertencias
     ): array {
-        // Agrupar por nÃºmero de etiqueta (columna 30)
+        // Agrupar por número de etiqueta (columna 30)
         $porEtiqueta = [];
 
         foreach ($filas as $fila) {
@@ -215,15 +248,16 @@ class PlanillaProcessor
 
         $etiquetasPadre = [];
 
-        foreach ($porEtiqueta as $numEtiqueta => $filasEtiqueta) {
-            // Crear etiqueta padre (contenedor)
-            $codigoPadre = Etiqueta::generarCodigoEtiqueta();
+        Log::channel('planilla_import')->info("📦 [PlanillaProcessor] Planilla {$codigoPlanilla}: " . count($porEtiqueta) . " grupos detectados");
 
-            $etiquetaPadre = Etiqueta::create([
-                'codigo' => $codigoPadre,
-                'planilla_id' => $planilla->id,
-                'nombre' => $filasEtiqueta[0][22] ?? 'Sin nombre',
-            ]);
+        foreach ($porEtiqueta as $numEtiqueta => $filasEtiqueta) {
+            // ✅ USAR MÉTODO CON RETRY LOGIC
+            $etiquetaPadre = $this->crearEtiquetaPadreConRetry(
+                $planilla,
+                $filasEtiqueta,
+                $codigoPlanilla,
+                $numEtiqueta
+            );
 
             $etiquetasPadre[] = $etiquetaPadre;
 
@@ -238,19 +272,105 @@ class PlanillaProcessor
                 $codigoPlanilla,
                 $advertencias
             );
+
+            Log::channel('planilla_import')->info("   ✅ Etiqueta padre {$etiquetaPadre->codigo} creada con " . count($elementosAgregados) . " elementos");
         }
 
         return $etiquetasPadre;
     }
 
     /**
-     * Agrupa elementos por clave compuesta para consolidarlos.
-     *
-     * @param array $filas
-     * @param string $codigoPlanilla
-     * @param array &$advertencias
-     * @return array
+     * ✅ CORREGIDO: Crea etiqueta padre con retry logic para manejar duplicados
      */
+    protected function crearEtiquetaPadreConRetry(
+        Planilla $planilla,
+        array $filasEtiqueta,
+        string $codigoPlanilla,
+        $numEtiqueta,
+        int $maxIntentos = 3
+    ): Etiqueta {
+        $intento = 0;
+
+        while ($intento < $maxIntentos) {
+            try {
+                // Generar código (ya tiene lock en el servicio)
+                $codigoPadre = $this->codigoService->generarCodigoPadre();
+
+                Log::channel('planilla_import')->info("🏷️ [PlanillaProcessor] Grupo lógico #{$numEtiqueta} → Código padre: {$codigoPadre} (intento " . ($intento + 1) . "/{$maxIntentos})");
+
+                // Preparar nombre
+                $nombreColumna = $filasEtiqueta[0][22] ?? null;
+
+                if (is_array($nombreColumna)) {
+                    Log::channel('planilla_import')->warning("⚠️ [PlanillaProcessor] Columna 22 es array", [
+                        'planilla' => $codigoPlanilla,
+                        'grupo' => $numEtiqueta,
+                        'valor' => json_encode($nombreColumna),
+                    ]);
+                    $nombreFinal = 'Sin nombre';
+                } else {
+                    $nombreFinal = $nombreColumna ?: 'Sin nombre';
+                }
+
+                // Intentar crear etiqueta
+                $etiquetaPadre = Etiqueta::create([
+                    'codigo' => $codigoPadre,
+                    'planilla_id' => $planilla->id,
+                    'nombre' => $nombreFinal,
+                ]);
+
+                Log::channel('planilla_import')->debug("✅ Etiqueta padre {$codigoPadre} creada exitosamente");
+
+                return $etiquetaPadre;
+            } catch (\Illuminate\Database\QueryException $e) {
+                $intento++;
+
+                // Si es error de duplicado (código 23000 = integrity constraint violation)
+                if ($e->errorInfo[0] === '23000' && str_contains($e->getMessage(), 'codigo')) {
+                    Log::channel('planilla_import')->warning(
+                        "⚠️ [PlanillaProcessor] Código duplicado detectado, reintentando ({$intento}/{$maxIntentos})...",
+                        [
+                            'codigo_intentado' => $codigoPadre ?? 'N/A',
+                            'error' => $e->getMessage(),
+                        ]
+                    );
+
+                    if ($intento >= $maxIntentos) {
+                        Log::channel('planilla_import')->error(
+                            "❌ [PlanillaProcessor] No se pudo generar código único después de {$maxIntentos} intentos",
+                            [
+                                'planilla' => $codigoPlanilla,
+                                'grupo' => $numEtiqueta,
+                            ]
+                        );
+                        throw new \Exception("No se pudo generar código único después de {$maxIntentos} intentos para planilla {$codigoPlanilla} grupo {$numEtiqueta}");
+                    }
+
+                    // Backoff exponencial: 100ms, 200ms, 400ms
+                    $sleepMs = 100 * pow(2, $intento - 1);
+                    usleep($sleepMs * 1000);
+
+                    Log::channel('planilla_import')->debug("⏳ Esperando {$sleepMs}ms antes de reintentar...");
+
+                    continue;
+                }
+
+                // Si es otro error, lanzarlo inmediatamente
+                Log::channel('planilla_import')->error(
+                    "❌ [PlanillaProcessor] Error inesperado creando etiqueta",
+                    [
+                        'planilla' => $codigoPlanilla,
+                        'error' => $e->getMessage(),
+                        'codigo' => $e->getCode(),
+                    ]
+                );
+                throw $e;
+            }
+        }
+
+        throw new \Exception("Error inesperado: salió del bucle sin crear etiqueta");
+    }
+
     protected function agregarElementos(array $filas, string $codigoPlanilla, array &$advertencias): array
     {
         $agregados = [];
@@ -260,7 +380,7 @@ class PlanillaProcessor
                 continue;
             }
 
-            // Clave de agrupaciÃ³n: figura|fila|marca|diametro|longitud|dobles|dimensiones
+            // Clave de agrupación: figura|fila|marca|diametro|longitud|dobles|dimensiones
             $clave = implode('|', [
                 $fila[26], // figura
                 $fila[21], // fila
@@ -297,16 +417,6 @@ class PlanillaProcessor
         return $agregados;
     }
 
-    /**
-     * Crea los elementos en la base de datos.
-     *
-     * @param Planilla $planilla
-     * @param Etiqueta $etiquetaPadre
-     * @param array $elementosAgregados
-     * @param string $codigoPlanilla
-     * @param array &$advertencias
-     * @return void
-     */
     protected function crearElementos(
         Planilla $planilla,
         Etiqueta $etiquetaPadre,
@@ -318,7 +428,7 @@ class PlanillaProcessor
             $fila = $item['fila'];
             $excelRow = $fila['_xl_row'] ?? 0;
 
-            // Validar diÃ¡metro
+            // Validar diámetro
             $diametro = $this->normalizarNumerico($fila[25] ?? null, 'diametro', $excelRow, $codigoPlanilla, $advertencias);
 
             if ($diametro === false) {
@@ -326,7 +436,7 @@ class PlanillaProcessor
             }
 
             if (!in_array((int)$diametro, $this->diametrosPermitidos, true)) {
-                $advertencias[] = "Planilla {$codigoPlanilla}: diÃ¡metro no admitido '{$fila[25]}' (fila {$excelRow}).";
+                $advertencias[] = "Planilla {$codigoPlanilla}: diámetro no admitido '{$fila[25]}' (fila {$excelRow}).";
                 continue;
             }
 
@@ -340,7 +450,7 @@ class PlanillaProcessor
             // Dobles por barra
             $doblesBarra = (int)($this->normalizarNumerico($fila[33] ?? 0, 'dobles_barra', $excelRow, $codigoPlanilla, $advertencias) ?: 0);
 
-            // Calcular tiempo de fabricaciÃ³n
+            // Calcular tiempo de fabricación
             $tiempoFabricacion = $this->calcularTiempoFabricacion($item['barras'], $doblesBarra);
 
             // Crear elemento
@@ -348,8 +458,8 @@ class PlanillaProcessor
                 'codigo' => Elemento::generarCodigo(),
                 'planilla_id' => $planilla->id,
                 'etiqueta_id' => $etiquetaPadre->id,
-                'etiqueta_sub_id' => null, // Se asignarÃ¡ en polÃ­tica de subetiquetas
-                'maquina_id' => null, // Se asignarÃ¡ por el servicio de mÃ¡quinas
+                'etiqueta_sub_id' => null, // Se asignará en política de subetiquetas
+                'maquina_id' => null, // Se asignará por el servicio de máquinas
                 'figura' => $fila[26] ?: null,
                 'fila' => $fila[21] ?: null,
                 'marca' => $fila[23] ?: null,
@@ -367,7 +477,7 @@ class PlanillaProcessor
     }
 
     /**
-     * Aplica la polÃ­tica de subetiquetas segÃºn configuraciÃ³n por mÃ¡quina.
+     * Aplica la política de subetiquetas según configuración por máquina.
      *
      * @param Planilla $planilla
      * @param array $etiquetasPadre
@@ -375,25 +485,38 @@ class PlanillaProcessor
      */
     protected function aplicarPoliticaSubetiquetas(Planilla $planilla, array $etiquetasPadre): void
     {
+        Log::channel('planilla_import')->info("🏷️ [PlanillaProcessor] Iniciando aplicación de política de subetiquetas", [
+            'planilla_id' => $planilla->id,
+            'total_etiquetas_padre' => count($etiquetasPadre),
+        ]);
+
         foreach ($etiquetasPadre as $padre) {
             $elementos = Elemento::where('planilla_id', $planilla->id)
                 ->where('etiqueta_id', $padre->id)
                 ->get();
 
+            Log::channel('planilla_import')->debug("   📦 Etiqueta padre {$padre->codigo}: {$elementos->count()} elementos");
+
             if ($elementos->isEmpty()) {
+                Log::channel('planilla_import')->debug("      ⭕ Sin elementos, saltando");
                 continue;
             }
 
-            // Agrupar por mÃ¡quina
+            // Agrupar por máquina
             $gruposPorMaquina = $elementos->groupBy(
                 fn($e) => $e->maquina_id ?? $e->maquina_id_2 ?? $e->maquina_id_3 ?? 0
             );
 
+            Log::channel('planilla_import')->debug("      🔧 Agrupados en " . $gruposPorMaquina->count() . " máquinas: " . json_encode($gruposPorMaquina->keys()->toArray()));
+
             foreach ($gruposPorMaquina as $maquinaId => $lote) {
                 $maquinaId = (int)$maquinaId;
 
+                Log::channel('planilla_import')->debug("         ⚙️ Procesando máquina {$maquinaId} con {$lote->count()} elementos");
+
                 if ($maquinaId === 0) {
-                    // Sin mÃ¡quina â†’ sub nueva por elemento
+                    Log::channel('planilla_import')->warning("         ⚠️ Elementos sin máquina asignada → estrategia INDIVIDUAL forzada");
+                    // Sin máquina → sub nueva por elemento
                     foreach ($lote as $elemento) {
                         [$subId, $subRowId] = $this->crearSubetiquetaSiguiente($padre);
                         $elemento->update([
@@ -404,9 +527,11 @@ class PlanillaProcessor
                     continue;
                 }
 
-                // âœ… Obtener estrategia configurada para esta mÃ¡quina
+                // Obtener estrategia configurada para esta máquina
                 $maquina = \App\Models\Maquina::find($maquinaId);
                 $estrategia = $this->obtenerEstrategiaParaMaquina($maquina);
+
+                Log::channel('planilla_import')->info("         🎯 Máquina {$maquina->codigo} (ID {$maquinaId}) → estrategia: {$estrategia}");
 
                 // Aplicar estrategia
                 if ($estrategia === 'individual') {
@@ -422,26 +547,22 @@ class PlanillaProcessor
             // Recalcular pesos
             $this->recalcularPesosEtiquetas($padre);
         }
+
+        Log::channel('planilla_import')->info("✅ [PlanillaProcessor] Política de subetiquetas completada para planilla {$planilla->id}");
     }
 
-    /**
-     * Obtiene la estrategia de subetiquetas configurada para una mÃ¡quina.
-     *
-     * @param \App\Models\Maquina|null $maquina
-     * @return string 'individual', 'agrupada', o 'legacy'
-     */
     protected function obtenerEstrategiaParaMaquina($maquina): string
     {
         if (!$maquina) {
-            return 'individual'; // Sin mÃ¡quina â†’ individual por defecto
+            return 'individual';
         }
 
-        // Buscar por cÃ³digo de mÃ¡quina
+        // Buscar por código de máquina
         if (isset($this->estrategiasSubetiquetas[$maquina->codigo])) {
             return $this->estrategiasSubetiquetas[$maquina->codigo];
         }
 
-        // Buscar por tipo de mÃ¡quina
+        // Buscar por tipo de máquina
         if (isset($this->estrategiasSubetiquetas[$maquina->tipo])) {
             return $this->estrategiasSubetiquetas[$maquina->tipo];
         }
@@ -450,15 +571,6 @@ class PlanillaProcessor
         return config('planillas.importacion.estrategia_subetiquetas_default', 'legacy');
     }
 
-    /**
-     * Estrategia INDIVIDUAL: Una subetiqueta por cada elemento.
-     * 
-     * Ãštil para mÃ¡quinas que procesan barras individuales.
-     *
-     * @param \Illuminate\Support\Collection $elementos
-     * @param Etiqueta $padre
-     * @return void
-     */
     protected function aplicarEstrategiaIndividual($elementos, Etiqueta $padre): void
     {
         foreach ($elementos as $elemento) {
@@ -470,39 +582,26 @@ class PlanillaProcessor
         }
     }
 
-    /**
-     * Estrategia AGRUPADA: Una subetiqueta compartida por elementos similares.
-     * 
-     * Agrupa elementos que comparten caracterÃ­sticas clave:
-     * - Mismo diÃ¡metro
-     * - Misma longitud
-     * - Mismo nÃºmero de dobles
-     * - Mismas dimensiones
-     *
-     * @param \Illuminate\Support\Collection $elementos
-     * @param Etiqueta $padre
-     * @return void
-     */
     protected function aplicarEstrategiaAgrupada($elementos, Etiqueta $padre): void
     {
-        // Agrupar elementos por caracterÃ­sticas similares
-        $grupos = $elementos->groupBy(function ($elemento) {
-            return implode('|', [
-                $elemento->diametro ?? '',
-                $elemento->longitud ?? '',
-                $elemento->dobles_barra ?? 0,
-                $elemento->dimensiones ?? '',
-            ]);
-        });
+        $limitePorSubetiqueta = config('planillas.importacion.limite_elementos_por_subetiqueta', 5);
 
-        // Crear una subetiqueta por grupo
-        foreach ($grupos as $grupo) {
-            // Verificar si ya existe una subetiqueta para algÃºn elemento del grupo
-            $subsExistentes = $grupo->pluck('etiqueta_sub_id')->filter()->unique();
+        Log::channel('planilla_import')->debug("📦 [PlanillaProcessor] Estrategia AGRUPADA para etiqueta {$padre->codigo}: {$elementos->count()} elementos → máx. {$limitePorSubetiqueta} por subetiqueta");
+
+        // Dividir en lotes
+        $lotes = $elementos->chunk($limitePorSubetiqueta);
+
+        Log::channel('planilla_import')->debug("   📊 Total subetiquetas necesarias: {$lotes->count()}");
+
+        foreach ($lotes as $indexLote => $lote) {
+            // Verificar si ya existe una subetiqueta para algún elemento del lote
+            $subsExistentes = $lote->pluck('etiqueta_sub_id')->filter()->unique();
 
             if ($subsExistentes->isEmpty()) {
-                // Crear nueva subetiqueta para todo el grupo
+                // Crear nueva subetiqueta para este lote
                 [$subCanonica, $subCanId] = $this->crearSubetiquetaSiguiente($padre);
+
+                Log::channel('planilla_import')->debug("   ➕ Lote " . ($indexLote + 1) . ": creada subetiqueta {$subCanonica} para {$lote->count()} elementos");
             } else {
                 // Usar la primera subetiqueta existente
                 $subCanonica = (string)$subsExistentes->sortBy(
@@ -510,10 +609,12 @@ class PlanillaProcessor
                 )->first();
 
                 $subCanId = $this->asegurarSubetiquetaExiste($subCanonica, $padre);
+
+                Log::channel('planilla_import')->debug("   ♻️ Lote " . ($indexLote + 1) . ": reutilizando subetiqueta {$subCanonica} para {$lote->count()} elementos");
             }
 
-            // Asignar todos los elementos del grupo a esta subetiqueta
-            foreach ($grupo as $elemento) {
+            // Asignar todos los elementos del lote a esta subetiqueta
+            foreach ($lote as $elemento) {
                 if ($elemento->etiqueta_sub_id !== $subCanonica || $elemento->etiqueta_id !== $subCanId) {
                     $elemento->update([
                         'etiqueta_id' => $subCanId,
@@ -522,29 +623,19 @@ class PlanillaProcessor
                 }
             }
         }
+
+        Log::channel('planilla_import')->info("✅ [PlanillaProcessor] Etiqueta {$padre->codigo}: {$elementos->count()} elementos distribuidos en {$lotes->count()} subetiquetas");
     }
 
-    /**
-     * Estrategia LEGACY: Basada en tipo_material de la mÃ¡quina.
-     * 
-     * Mantiene compatibilidad con el sistema anterior:
-     * - tipo_material = 'barra' â†’ individual
-     * - tipo_material = 'encarretado' u otro â†’ agrupada
-     *
-     * @param \Illuminate\Support\Collection $elementos
-     * @param Etiqueta $padre
-     * @param \App\Models\Maquina|null $maquina
-     * @return void
-     */
     protected function aplicarEstrategiaLegacy($elementos, Etiqueta $padre, $maquina): void
     {
         $tipoMaterial = strtolower((string)optional($maquina)->tipo_material);
 
         if ($tipoMaterial === 'barra') {
-            // Barra â†’ sub nueva por elemento
+            // Barra → sub nueva por elemento
             $this->aplicarEstrategiaIndividual($elementos, $padre);
         } else {
-            // Encarretado u otro â†’ sub canÃ³nica por mÃ¡quina
+            // Encarretado u otro → sub canónica por máquina
             $subsExistentes = collect($elementos)
                 ->pluck('etiqueta_sub_id')
                 ->filter()
@@ -572,15 +663,9 @@ class PlanillaProcessor
         }
     }
 
-    /**
-     * Crea la siguiente subetiqueta para un padre.
-     *
-     * @param Etiqueta $padre
-     * @return array [subId string, subRowId int]
-     */
     protected function crearSubetiquetaSiguiente(Etiqueta $padre): array
     {
-        $subId = Etiqueta::generarCodigoSubEtiqueta($padre->codigo);
+        $subId = $this->codigoService->generarCodigoSubetiqueta($padre->codigo);
 
         $subRow = Etiqueta::firstWhere('etiqueta_sub_id', $subId);
 
@@ -628,13 +713,6 @@ class PlanillaProcessor
         return [$subId, (int)$subRow->id];
     }
 
-    /**
-     * Asegura que existe una fila de subetiqueta y retorna su ID.
-     *
-     * @param string $subId
-     * @param Etiqueta $padre
-     * @return int
-     */
     protected function asegurarSubetiquetaExiste(string $subId, Etiqueta $padre): int
     {
         $row = Etiqueta::firstWhere('etiqueta_sub_id', $subId);
@@ -655,12 +733,6 @@ class PlanillaProcessor
         return (int)Etiqueta::create($data)->id;
     }
 
-    /**
-     * Recalcula los pesos de las etiquetas (padre y subs).
-     *
-     * @param Etiqueta $padre
-     * @return void
-     */
     protected function recalcularPesosEtiquetas(Etiqueta $padre): void
     {
         if (!Schema::hasColumn('etiquetas', 'peso')) {
@@ -684,12 +756,6 @@ class PlanillaProcessor
         Etiqueta::where('codigo', $codigo)->whereNull('etiqueta_sub_id')->update(['peso' => $pesoPadre]);
     }
 
-    /**
-     * Guarda el tiempo total de fabricaciÃ³n de la planilla.
-     *
-     * @param Planilla $planilla
-     * @return void
-     */
     protected function guardarTiempoTotal(Planilla $planilla): void
     {
         $elementos = $planilla->elementos()->get();
@@ -699,13 +765,6 @@ class PlanillaProcessor
         $planilla->update(['tiempo_fabricacion' => $tiempoTotal]);
     }
 
-    /**
-     * Calcula el tiempo de fabricaciÃ³n de un elemento.
-     *
-     * @param int $barras
-     * @param int $doblesBarra
-     * @return float
-     */
     protected function calcularTiempoFabricacion(int $barras, int $doblesBarra): float
     {
         if ($doblesBarra > 0) {
@@ -717,16 +776,6 @@ class PlanillaProcessor
         return $barras * 2;
     }
 
-    /**
-     * Normaliza y valida un valor numÃ©rico.
-     *
-     * @param mixed $valor
-     * @param string $campo
-     * @param int $excelRow
-     * @param string $codigoPlanilla
-     * @param array &$advertencias
-     * @return float|false False si el valor es invÃ¡lido
-     */
     protected function normalizarNumerico(
         $valor,
         string $campo,
@@ -740,7 +789,7 @@ class PlanillaProcessor
 
         $raw = trim((string)$valor);
 
-        // Normalizar: "1.234,56" â†’ "1234.56", "1,23" â†’ "1.23"
+        // Normalizar: "1.234,56" → "1234.56", "1,23" → "1.23"
         if (strpos($raw, ',') !== false && strpos($raw, '.') !== false) {
             $norm = str_replace('.', '', $raw);
             $norm = str_replace(',', '.', $norm);
@@ -764,5 +813,40 @@ class PlanillaProcessor
         }
 
         return $num;
+    }
+
+    protected function limpiarEtiquetasPadreHuerfanas(Planilla $planilla): int
+    {
+        // Obtener etiquetas padre (sin etiqueta_sub_id)
+        $etiquetasPadre = Etiqueta::where('planilla_id', $planilla->id)
+            ->whereNull('etiqueta_sub_id')
+            ->get();
+
+        if ($etiquetasPadre->isEmpty()) {
+            return 0;
+        }
+
+        $eliminadas = 0;
+
+        foreach ($etiquetasPadre as $padre) {
+            // Verificar si tiene elementos asignados directamente
+            $tieneElementos = Elemento::where('planilla_id', $planilla->id)
+                ->where('etiqueta_id', $padre->id)
+                ->exists();
+
+            // Si no tiene elementos directos, eliminarla
+            if (!$tieneElementos) {
+                $padre->delete();
+                $eliminadas++;
+            }
+        }
+
+        if ($eliminadas > 0) {
+            Log::channel('planilla_import')->info(
+                "🗑️ [PlanillaProcessor] Planilla {$planilla->codigo}: eliminadas {$eliminadas} etiquetas padre sin elementos"
+            );
+        }
+
+        return $eliminadas;
     }
 }

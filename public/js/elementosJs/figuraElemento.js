@@ -1,12 +1,10 @@
 document.addEventListener("DOMContentLoaded", function () {
     const modal = document.getElementById("modal-dibujo");
     const cerrarModal = document.getElementById("cerrar-modal");
-    const canvas = document.getElementById("canvas-dibujo");
-    const ctx = canvas.getContext("2d");
+    const canvasModal = document.getElementById("canvas-dibujo");
 
     // Márgenes internos para delimitar el área de dibujo
-    const marginX = 50; // margen horizontal
-    const marginY = 25; // margen vertical
+    const marginX = 50, marginY = 25;
 
     /* ******************************************************************
      * Funciones auxiliares
@@ -139,10 +137,7 @@ document.addEventListener("DOMContentLoaded", function () {
      ****************************************************************** */
     function dibujarFigura(canvasId, dimensionesStr, peso) {
         const canvas = document.getElementById(canvasId);
-        if (!canvas) {
-            console.warn(`Canvas no encontrado: ${canvasId}`);
-            return;
-        }
+        if (!canvas) return;
         const ctx = canvas.getContext("2d");
         ctx.clearRect(0, 0, canvas.width, canvas.height);
 
@@ -156,8 +151,7 @@ document.addEventListener("DOMContentLoaded", function () {
         // Espacio disponible en el canvas
         const availableWidth = canvas.width - 2 * marginX;
         const availableHeight = canvas.height - 2 * marginY;
-        const centerX = canvas.width / 2;
-        const centerY = canvas.height / 2;
+        const centerX = canvas.width / 2, centerY = canvas.height / 2;
 
         if (longitudes.length === 1) {
             // Caso: Única dimensión (dibuja una línea horizontal)
@@ -278,7 +272,7 @@ document.addEventListener("DOMContentLoaded", function () {
         // Mostrar la etiqueta (peso) en la esquina inferior derecha
         ctx.font = "14px Arial";
         ctx.fillStyle = "#FF0000";
-        ctx.fillText(peso, canvas.width - 50, canvas.height - 10);
+        ctx.fillText(peso ?? "", canvas.width - 50, canvas.height - 10);
     }
     window.dibujarFiguraElemento = dibujarFigura;
 
@@ -295,13 +289,18 @@ document.addEventListener("DOMContentLoaded", function () {
         });
     });
 
-    cerrarModal.addEventListener("click", function () {
-        modal.classList.add("hidden");
-    });
-
-    modal.addEventListener("click", function (e) {
-        if (e.target === modal) {
+    if (cerrarModal) {
+        cerrarModal.addEventListener("click", function () {
             modal.classList.add("hidden");
-        }
-    });
+        });
+    }
+
+    if (modal) {
+        modal.addEventListener("click", function (e) {
+            if (e.target === modal) {
+                modal.classList.add("hidden");
+            }
+        });
+    }
+
 });

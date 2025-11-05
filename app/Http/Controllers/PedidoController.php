@@ -451,15 +451,6 @@ class PedidoController extends Controller
             abort(422, 'No se encontró la nave asociada a la máquina.');
         }
 
-        // Filtrar ubicaciones por la obra de la máquina (NO del pedido)
-        $codigoAlmacen = Ubicacion::codigoDesdeNombreNave($nave);
-        $ubicaciones = Ubicacion::where('almacen', $codigoAlmacen)
-            ->orderBy('nombre')
-            ->get()
-            ->map(function ($ubicacion) {
-                $ubicacion->nombre_sin_prefijo = Str::after($ubicacion->nombre, 'Almacén ');
-                return $ubicacion;
-            });
 
         $requiereFabricanteManual = $pedido->distribuidor_id !== null && $pedido->fabricante_id === null;
         $ultimoFabricante = Producto::with(['entrada', 'productoBase'])
@@ -479,10 +470,44 @@ class PedidoController extends Controller
             ->unique('producto_base_id')
             ->keyBy('producto_base_id');
 
+        ///=================================
+        ///=================================
+        // ✅ USAR DIRECTAMENTE EL CAMPO 'sector'
+        $codigoAlmacen = Ubicacion::codigoDesdeNombreNave($nave);
+
+        // ✅ Versión correcta usando tu estructura de BD
+        $ubicacionesPorSector = Ubicacion::where('almacen', $codigoAlmacen)
+            ->orderBy('sector', 'asc')
+            ->orderBy('ubicacion', 'asc')
+            ->get()
+            ->map(function ($ubicacion) {
+                $ubicacion->nombre_sin_prefijo = Str::after($ubicacion->nombre, 'Almacén ');
+                return $ubicacion;
+            })
+            ->groupBy('sector');
+
+        $sectores = $ubicacionesPorSector->keys()->toArray();
+
+        $ubicacionPorDefecto = $ultimos[$productoBase->id]?->ubicacion_id ?? null;
+        $sectorPorDefecto = null;
+
+        if ($ubicacionPorDefecto) {
+            $ubicacionDefecto = Ubicacion::find($ubicacionPorDefecto);
+            if ($ubicacionDefecto) {
+                $sectorPorDefecto = $ubicacionDefecto->sector;
+            }
+        }
+
+        if (!$sectorPorDefecto && !empty($sectores)) {
+            $sectorPorDefecto = $sectores[0];
+        }
+
         return view('pedidos.recepcion', compact(
             'pedido',
             'productoBase',
-            'ubicaciones',
+            'ubicacionesPorSector', // ✅ Ubicaciones agrupadas por sector
+            'sectores',              // ✅ Lista de sectores
+            'sectorPorDefecto',      // ✅ Sector por defecto
             'ultimos',
             'requiereFabricanteManual',
             'fabricantes',

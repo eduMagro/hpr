@@ -265,8 +265,6 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
     Route::put('/salidas/{salida}/codigo-sage', [SalidaFerrallaController::class, 'actualizarCodigoSage'])->name('salidas.editarCodigoSage');
 
     // === SALIDAS ALMACEN ===
-
-
     Route::get('salidas-almacen/disponibilidad', [SalidaAlmacenController::class, 'disponibilidad'])
         ->name('salidas-almacen.verDisponibilidad');
 
@@ -392,6 +390,18 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
         return response()->json(['ok' => true]);
     });
     Route::post('/proteger/{seccion}', [ClaveSeccionController::class, 'verificar'])->name('proteger.seccion');
+
+
+
+    // === ORDENES PLANILLAS ===
+    Route::get('/produccion/OrdenesPlanillas', [App\Http\Controllers\ProduccionController::class, 'verOrdenesPlanillas'])
+        ->name('produccion.verOrdenesPlanillas');
+
+    // obtener elementos con js
+    Route::get('/api/elementos', [ElementoController::class, 'filtrar']);
+
+    Route::post('/produccion/planillas/guardar', [\App\Http\Controllers\ProduccionController::class, 'guardar'])
+        ->name('produccion.planillas.guardar');
 });
 
 
