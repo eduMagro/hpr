@@ -4,7 +4,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const LISTAQRS = document.getElementById("mostrar_qrs"); // contenedor visual de códigos
     const INPUT_OCULTO = document.getElementById("lista_qrs"); // input hidden que viaja al backend
     const FORM = document.getElementById("form-movimiento-general"); // formulario
-    const CANCELAR_BTN = document.getElementById("cancelar_btn"); // (opcional) botón cancelar si existe
+    const CANCELAR_BTN = document.getElementById("cancelar_btn"); // botón cancelar
     const API_INFO_URL = LISTAQRS.dataset.apiInfoUrl || "/api/codigos/info";
 
     // array con los codigos ya escaneados (estado)
@@ -36,8 +36,11 @@ document.addEventListener("DOMContentLoaded", () => {
         navigator.vibrate(ms);
 
     // utilidad: sincroniza el hidden con el array actual
-    function syncHidden() {
-        INPUT_OCULTO.value = JSON.stringify(yaEscaneados);
+    function syncHidden(filtrarErrores = false) {
+        const lista = filtrarErrores
+            ? yaEscaneados.filter((c) => !esError(c))
+            : yaEscaneados;
+        INPUT_OCULTO.value = JSON.stringify(lista);
     }
 
     // formatea el contenido final del chip con la info recibida del backend
@@ -134,27 +137,16 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // agregar el código si es válido y no está repetido
     function agregarSiValido(valor) {
-        const escaneado = String(valor).trim().toUpperCase();
+        const escaneado = String(valor).trim();
+        if (!escaneado) return; // vacío, fuera
 
-        // Reglas actuales: debe empezar por "MP" y tener longitud 10
-        // (si quieres aceptar P******** también, añade: || escaneado.startsWith("P"))
-        if (!(escaneado.startsWith("MP") && escaneado.length === 10)) return;
-
-        // comprobar duplicado
+        // duplicado exacto (respetando may/min tal cual)
         if (!yaEscaneados.includes(escaneado)) {
-            // Agregamos el nuevo código al array de códigos
             yaEscaneados.push(escaneado);
-
-            // Sincronizamos el hidden con el array actual
             syncHidden();
-
-            // Pintamos el chip y lanzamos la petición asíncrona
-            renderChipNuevo(escaneado);
-
-            // Hacemos vibrar el dispositivo para dar una señal de OK
+            renderChipNuevo(escaneado); // hace la llamada async y “devuelve el elemento”
             vibrar(100);
         } else {
-            // Si el código ha sido escaneado, resaltamos brevemente la píldora existente
             const pill = LISTAQRS.querySelector(`[data-code="${escaneado}"]`);
             if (pill) {
                 pill.style.outline = "2px solid #991b1b";
@@ -166,32 +158,26 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // Si se cancela se borran los códigos escaneados (si el botón existe)
     if (CANCELAR_BTN) {
-        CANCELAR_BTN.addEventListener("click", () => {
-            yaEscaneados = [];
-            syncHidden();
-            renderLista();
+        CANCELAR_BTN.addEventListener("click", (e) => {
+            cerrarModalMovimientoLibre();
+            e.preventDefault();
+            e.stopPropagation();
+            resetEscaneos();
         });
     }
 
-    // Cuando se modifique el input de qr:
-    QRINPUT.addEventListener("input", () => {
-        // Comprueba el valor actual sin espacios alrededor
-        const escaneado = QRINPUT.value.trim();
+    // devuelve true si ese código está marcado como error en el caché
+    function esError(codigo) {
+        const info = cacheInfo.get(codigo);
+        return info && info.ok === false;
+    }
 
-        // Si la longitud típica es 10 y cumple regla, lo agregamos y limpiamos
-        if (escaneado.length === 10 && escaneado.startsWith("MP")) {
-            agregarSiValido(escaneado);
-            // Limpiamos el input para dejarlo listo a un nuevo escaneo
-            QRINPUT.value = "";
-        } else if (!escaneado.startsWith("MP") && escaneado.length > 10) {
-            // Si el formato introducido no cuadra se borra el input
-            QRINPUT.value = "";
-        }
-    });
+    // Cuando se modifique el input de qr:
+    QRINPUT.addEventListener("input", () => {});
 
     // Aceptar también con Enter (algunos escáneres envían Enter al final)
     QRINPUT.addEventListener("keydown", (e) => {
-        if (e.key === "Enter") {
+        if (e.key === "Enter" || e.keyCode === 13) {
             e.preventDefault();
             agregarSiValido(QRINPUT.value);
             QRINPUT.value = "";
@@ -213,7 +199,38 @@ document.addEventListener("DOMContentLoaded", () => {
     renderLista();
 
     // Seguridad: antes de enviar garantizamos que el hidden esté actualizado
-    FORM.addEventListener("submit", () => {
-        syncHidden();
+    FORM.addEventListener("submit", (e) => {
+        // calcula válidos (excluye los que ya están marcados como error)
+        const validos = yaEscaneados.filter((c) => !esError(c));
+        const removidos = yaEscaneados.length - validos.length;
+
+        // escribe SOLO los válidos al hidden
+        INPUT_OCULTO.value = JSON.stringify(validos);
+
+        // si quieres, deja un aviso en consola (no molesta al usuario)
+        if (removidos > 0) {
+            console.warn(
+                `[QR] ${removidos} código(s) con error no se enviaron`
+            );
+        }
     });
+
+    function resetEscaneos() {
+        // Vacía el array sin perder la referencia (más seguro si alguien lo retiene)
+        yaEscaneados.length = 0;
+
+        // Sincroniza hidden y su defaultValue por si el DOM se rehidrata
+        INPUT_OCULTO.value = "[]";
+        if ("defaultValue" in INPUT_OCULTO) INPUT_OCULTO.defaultValue = "[]";
+        INPUT_OCULTO.dispatchEvent(new Event("change", { bubbles: true }));
+
+        // Limpia chips y caché
+        LISTAQRS.innerHTML = "";
+        cacheInfo.clear();
+
+        // Limpia el input visible
+        if (QRINPUT) QRINPUT.value = "";
+
+        vibrar(60);
+    }
 });
