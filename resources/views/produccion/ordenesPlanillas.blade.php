@@ -2,7 +2,9 @@
     $numMaquinas = $maquinas->count();
 @endphp
 
+
 <x-app-layout>
+    <x-menu.planillas />
 
 
     <div class="p-6 overflow-hidden relative min-h-[calc(100vh-80px)]">
