@@ -57,7 +57,7 @@
                     🔁 Repetir semana anterior
                 </button>
             </div>
-            <div id="calendario-obras" class="h-[80vh] w-full"></div>
+            <div id="calendario-obras" class="w-full"></div>
         </div>
     </div>
     <div class="max-w-xl mx-auto mt-10 bg-white shadow-md rounded-lg p-6">
@@ -252,19 +252,19 @@
                         preConfirm: () => {
                             const userIds = seleccionados.map(e => e.dataset.id);
                             return fetch(
-                            '{{ route('asignaciones-turnos.asignarObraMultiple') }}', {
-                                method: 'POST',
-                                headers: {
-                                    'Content-Type': 'application/json',
-                                    'X-CSRF-TOKEN': '{{ csrf_token() }}',
-                                },
-                                body: JSON.stringify({
-                                    user_ids: userIds,
-                                    obra_id: obraId,
-                                    fecha_inicio: fechaInicio,
-                                    fecha_fin: fechaFin
-                                })
-                            }).then(res => res.json());
+                                '{{ route('asignaciones-turnos.asignarObraMultiple') }}', {
+                                    method: 'POST',
+                                    headers: {
+                                        'Content-Type': 'application/json',
+                                        'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                                    },
+                                    body: JSON.stringify({
+                                        user_ids: userIds,
+                                        obra_id: obraId,
+                                        fecha_inicio: fechaInicio,
+                                        fecha_fin: fechaFin
+                                    })
+                                }).then(res => res.json());
                         }
                     }).then(res => {
                         if (res.isConfirmed && res.value?.success) {

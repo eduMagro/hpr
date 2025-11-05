@@ -239,7 +239,6 @@
           }, 100);
       }
 
-
       function cerrarModalRecargaMateriaPrima() {
           document.getElementById('modalMovimiento').classList.add('hidden');
           document.getElementById('modalMovimiento').classList.remove('flex');
@@ -273,13 +272,11 @@
           }, 100);
       }
 
-
       function cerrarModalMovimientoLibre() {
           const modal = document.getElementById('modalMovimientoLibre');
           modal.classList.add('hidden');
           modal.classList.remove('flex');
       }
-
 
       // Mostrar/ocultar campos según tipo
       document.addEventListener('DOMContentLoaded', function() {
@@ -358,10 +355,12 @@
 
           const contenedor = document.getElementById('contenidoPedido');
           const modal = document.getElementById('modal-ver-pedido');
-
+          // Este maquinaId lo usaremos para mostrar las ubicaciones correctas en la recepcion dependiendo de la grua en la que estemos.
+          //Añadimos maquinaId en la url hrefRecepcion para pasarlo a la vista recepcion
+          const maquinaId = window.maquinaId || '';
           // ⚠️ Importante: pasamos pedido_producto_id por query para que el back lo coja.
           const hrefRecepcion =
-              `/pedidos/${pedido.id}/recepcion/${producto?.id ?? movimiento.producto_base_id}?movimiento_id=${movimiento.id}`;
+              `/pedidos/${pedido.id}/recepcion/${producto?.id ?? movimiento.producto_base_id}?movimiento_id=${movimiento.id}&maquina_id=${maquinaId}`;
 
 
           contenedor.innerHTML = `

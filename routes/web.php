@@ -76,7 +76,7 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
     Route::resource('pedidos_globales', PedidoGlobalController::class);
     Route::resource('pedidos', PedidoController::class);
     Route::get('pedidos/{pedido}/recepcion/{producto_base}', [PedidoController::class, 'recepcion'])->name('pedidos.recepcion');
-    Route::post('/pedidos/sugerir-pedido-global', [PedidoController::class, 'sugerirPedidoGlobal'])->name('pedidos.sugerir-pedido-global');
+    Route::post('/pedidos/sugerir-pedido-global', [PedidoController::class, 'sugerirPedidoGlobal'])->name('pedidos.verSugerir-pedido-global');
 
     // Procesar la recepción del producto base
     Route::post('pedidos/{pedido}/recepcion/{producto_base}', [PedidoController::class, 'procesarRecepcion'])->name('pedidos.recepcion.guardar');
@@ -145,7 +145,6 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
     // Route::post('/vacaciones/reprogramar', [VacacionesController::class, 'reprogramar'])->name('vacaciones.reprogramar');
     // Route::post('/vacaciones/eliminar-evento', [VacacionesController::class, 'eliminarEvento'])->name('vacaciones.eliminarEvento');
 
-
     // === TURNOS ===
     Route::resource('turnos', TurnoController::class);
     Route::resource('asignaciones-turnos', AsignacionTurnoController::class);
@@ -182,15 +181,16 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
     Route::get('/produccion/trabajadores', [ProduccionController::class, 'trabajadores'])->name('produccion.verTrabajadores');
     Route::get('/produccion/trabajadores-obra', [ProduccionController::class, 'trabajadoresObra'])->name('produccion.verTrabajadoresObra');
     Route::get('/produccion/maquinas', [ProduccionController::class, 'maquinas'])->name('produccion.verMaquinas');
+    //MSR20 BVBS
+    Route::get('/maquinas/{maquina}/exportar-bvbs', [MaquinaController::class, 'exportarBVBS'])
+        ->name('maquinas.exportar-bvbs');
 
     // === MOVIMIENTOS ===
     Route::resource('movimientos', MovimientoController::class);
     Route::post('/movimientos/crear', [MovimientoController::class, 'crearMovimiento'])->name('movimientos.crear');
 
     // === PAQUETES ETIQUETAS Y ELEMENTOS ===
-    Route::resource('paquetes', PaqueteController::class);
-    Route::resource('etiquetas', EtiquetaController::class);
-    Route::resource('elementos', ElementoController::class);
+
     Route::post('/elementos/dividir', [ElementoController::class, 'dividirElemento'])->name('elementos.dividir');
     Route::post('/elementos/{elementoId}/solicitar-cambio-maquina', [ElementoController::class, 'solicitarCambioMaquina']);
     Route::put('/elementos/{id}/cambio-maquina', [ElementoController::class, 'cambioMaquina'])->name('elementos.cambioMaquina');
@@ -200,12 +200,23 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
     Route::put('/actualizar-etiqueta/{id}/maquina/{maquina_id}', [EtiquetaController::class, 'actualizarEtiqueta'])->where('id', '.*');
     Route::post('/etiquetas/fabricacion-optimizada', [EtiquetaController::class, 'fabricacionSyntaxLine28'])->name('etiquetas.fabricacion-optimizada');
     Route::post('/elementos/{elemento}/actualizar-campo', [ElementoController::class, 'actualizarMaquina'])->name('elementos.editarMaquina');
-
     Route::post('/etiquetas/{etiqueta}/patron-corte-simple', [EtiquetaController::class, 'calcularPatronCorteSimple'])->name('etiquetas.calcularPatronCorteSimple');
     Route::post('/etiquetas/{etiqueta}/patron-corte-optimizado', [EtiquetaController::class, 'calcularPatronCorteOptimizado'])->name('etiquetas.calcularPatronCorteOptimizado');
     // ruta para renderizar una etiqueta en HTML
     Route::post('/etiquetas/render', [App\Http\Controllers\EtiquetaController::class, 'render'])
         ->name('etiquetas.render');
+    Route::get(
+        '/etiquetas/{etiquetaSubId}/validar-para-paquete',
+        [PaqueteController::class, 'validarParaPaquete']
+    )->name('etiquetas.validar-para-paquete');
+
+    // === tratamos PAQUETES en maquinas.show ===
+
+
+    Route::resource('paquetes', PaqueteController::class);
+    Route::resource('etiquetas', EtiquetaController::class);
+    Route::resource('elementos', ElementoController::class);
+
 
     // RUTAS PROVISIONALES
     Route::post('/etiquetas/fabricar-lote', [EtiquetaController::class, 'fabricarLote'])->name('maquinas.fabricarLote');
@@ -254,8 +265,6 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
     Route::put('/salidas/{salida}/codigo-sage', [SalidaFerrallaController::class, 'actualizarCodigoSage'])->name('salidas.editarCodigoSage');
 
     // === SALIDAS ALMACEN ===
-
-
     Route::get('salidas-almacen/disponibilidad', [SalidaAlmacenController::class, 'disponibilidad'])
         ->name('salidas-almacen.verDisponibilidad');
 

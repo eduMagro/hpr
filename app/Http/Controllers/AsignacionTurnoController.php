@@ -22,58 +22,76 @@ use Carbon\CarbonPeriod;
 
 class AsignacionTurnoController extends Controller
 {
+    private function escapeLike(string $value): string
+    {
+        // Escapa \ % _ para LIKE
+        $value = str_replace(['\\', '%', '_'], ['\\\\', '\%', '\_'], $value);
+        return "%{$value}%";
+    }
+
     public function aplicarFiltros($query, Request $request)
     {
-        // 🔹 Filtro por ID empleado
+        // ID exacto
         if ($request->filled('id')) {
             $query->where('user_id', $request->input('id'));
         }
 
-        // 🔹 Filtro por nombre de empleado
+        // Empleado: name + apellidos (contains)
         if ($request->filled('empleado')) {
-            $valor = $request->empleado;
-            $query->whereHas('user', function ($q) use ($valor) {
-                $q->whereRaw("CONCAT_WS(' ', name, primer_apellido, segundo_apellido) LIKE ?", ["%{$valor}%"]);
+            $like = $this->escapeLike($request->empleado);
+            $query->whereHas('user', function ($q) use ($like) {
+                $q->whereRaw(
+                    "CONCAT_WS(' ', COALESCE(name,''), COALESCE(primer_apellido,''), COALESCE(segundo_apellido,'')) LIKE ? ESCAPE '\\\\'",
+                    [$like]
+                );
             });
         }
 
-        // 🔹 Filtros de fecha
+        // Rango de fechas inclusivo
         if ($request->filled('fecha_inicio') && $request->filled('fecha_fin')) {
-            $query->whereBetween('fecha', [$request->fecha_inicio, $request->fecha_fin]);
+            $ini = Carbon::parse($request->fecha_inicio)->startOfDay();
+            $fin = Carbon::parse($request->fecha_fin)->endOfDay();
+            $query->whereBetween('fecha', [$ini, $fin]);
         } elseif ($request->filled('fecha_inicio')) {
-            $query->where('fecha', '>=', $request->fecha_inicio);
+            $ini = Carbon::parse($request->fecha_inicio)->startOfDay();
+            $query->where('fecha', '>=', $ini);
         } elseif ($request->filled('fecha_fin')) {
-            $query->where('fecha', '<=', $request->fecha_fin);
+            $fin = Carbon::parse($request->fecha_fin)->endOfDay();
+            $query->where('fecha', '<=', $fin);
         }
 
-        // 🔹 Filtro por obra
+        // Obra (contains por nombre/columna 'obra')
         if ($request->filled('obra')) {
-            $query->whereHas('obra', function ($q) use ($request) {
-                $q->where('obra', 'like', '%' . $request->obra . '%');
+            $like = $this->escapeLike($request->obra);
+            $query->whereHas('obra', function ($q) use ($like) {
+                $q->whereRaw("obra LIKE ? ESCAPE '\\\\'", [$like]);
             });
         }
 
-        // 🔹 Filtro por turno
+        // Turno (contains por 'nombre')
         if ($request->filled('turno')) {
-            $query->whereHas('turno', function ($q) use ($request) {
-                $q->where('nombre', 'like', '%' . $request->turno . '%');
+            $like = $this->escapeLike($request->turno);
+            $query->whereHas('turno', function ($q) use ($like) {
+                $q->whereRaw("nombre LIKE ? ESCAPE '\\\\'", [$like]);
             });
         }
 
-        // 🔹 Filtro por máquina
+        // Máquina (contains por 'nombre')
         if ($request->filled('maquina')) {
-            $query->whereHas('maquina', function ($q) use ($request) {
-                $q->where('nombre', 'like', '%' . $request->maquina . '%');
+            $like = $this->escapeLike($request->maquina);
+            $query->whereHas('maquina', function ($q) use ($like) {
+                $q->whereRaw("nombre LIKE ? ESCAPE '\\\\'", [$like]);
             });
         }
 
-        // 🔹 Filtro por entrada y salida
+        // Entrada / Salida (TIME → CAST a CHAR antes del LIKE)
         if ($request->filled('entrada')) {
-            $query->where('entrada', 'like', '%' . $request->entrada . '%');
+            $like = $this->escapeLike($request->entrada);
+            $query->whereRaw("CAST(entrada AS CHAR) LIKE ? ESCAPE '\\\\'", [$like]);
         }
-
         if ($request->filled('salida')) {
-            $query->where('salida', 'like', '%' . $request->salida . '%');
+            $like = $this->escapeLike($request->salida);
+            $query->whereRaw("CAST(salida AS CHAR) LIKE ? ESCAPE '\\\\'", [$like]);
         }
 
         return $query;
@@ -84,41 +102,36 @@ class AsignacionTurnoController extends Controller
         $filtros = [];
 
         if ($request->filled('id')) {
-            $filtros[] = 'ID Empleado: <strong>' . $request->id . '</strong>';
+            $filtros[] = 'ID Empleado: <strong>' . e($request->id) . '</strong>';
         }
-
         if ($request->filled('empleado')) {
             $filtros[] = 'Empleado: <strong>' . e($request->empleado) . '</strong>';
         }
-
         if ($request->filled('fecha_inicio') || $request->filled('fecha_fin')) {
             $rango = ($request->fecha_inicio ?? '—') . ' a ' . ($request->fecha_fin ?? '—');
-            $filtros[] = 'Fecha: <strong>' . $rango . '</strong>';
+            $filtros[] = 'Fecha: <strong>' . e($rango) . '</strong>';
         }
-
         if ($request->filled('obra')) {
             $filtros[] = 'Obra: <strong>' . e($request->obra) . '</strong>';
         }
-
         if ($request->filled('turno')) {
             $filtros[] = 'Turno: <strong>' . e($request->turno) . '</strong>';
         }
-
         if ($request->filled('maquina')) {
             $filtros[] = 'Máquina: <strong>' . e($request->maquina) . '</strong>';
         }
-
         if ($request->filled('entrada')) {
             $filtros[] = 'Entrada: <strong>' . e($request->entrada) . '</strong>';
         }
-
         if ($request->filled('salida')) {
             $filtros[] = 'Salida: <strong>' . e($request->salida) . '</strong>';
         }
 
-        if ($request->filled('sort')) {
-            $orden = $request->direction === 'asc' ? 'ascendente' : 'descendente';
-            $filtros[] = 'Ordenado por <strong>' . e($request->sort) . '</strong> en <strong>' . $orden . '</strong>';
+        // 🧭 Unifica el nombre del parámetro de orden
+        $sort   = $request->input('sort');
+        $order  = strtolower($request->input('order', 'desc')) === 'asc' ? 'asc' : 'desc';
+        if ($sort) {
+            $filtros[] = 'Ordenado por <strong>' . e($sort) . '</strong> en <strong>' . ($order === 'asc' ? 'ascendente' : 'descendente') . '</strong>';
         }
 
         if ($request->filled('per_page')) {
@@ -130,53 +143,68 @@ class AsignacionTurnoController extends Controller
 
     private function getOrdenamiento(string $columna, string $titulo): string
     {
-        $currentSort = request('sort');
-        $currentOrder = request('order');
-        $isSorted = $currentSort === $columna;
-        $nextOrder = ($isSorted && $currentOrder === 'asc') ? 'desc' : 'asc';
+        $currentSort  = request('sort');
+        $currentOrder = request('order'); // ← usamos 'order' para ser coherentes
+        $isSorted     = $currentSort === $columna;
+        $nextOrder    = ($isSorted && $currentOrder === 'asc') ? 'desc' : 'asc';
 
-        $icon = '';
-        if ($isSorted) {
-            $icon = $currentOrder === 'asc'
-                ? '▲' // flecha hacia arriba
-                : '▼'; // flecha hacia abajo
-        } else {
-            $icon = '⇅'; // símbolo de orden genérico
-        }
+        $icon = $isSorted
+            ? ($currentOrder === 'asc' ? '▲' : '▼')
+            : '⇅';
 
         $url = request()->fullUrlWithQuery(['sort' => $columna, 'order' => $nextOrder]);
 
-        return '<a href="' . $url . '" class="inline-flex items-center space-x-1">' .
-            '<span>' . $titulo . '</span><span class="text-xs">' . $icon . '</span></a>';
+        return '<a href="' . e($url) . '" class="inline-flex items-center space-x-1">' .
+            '<span>' . e($titulo) . '</span><span class="text-xs">' . $icon . '</span></a>';
     }
 
     private function aplicarOrdenamiento($query, Request $request)
     {
-        $sortBy = $request->input('sort', 'fecha');
-        $order  = $request->input('direction', 'desc');
+        $sort  = $request->input('sort', 'fecha');
+        $order = strtolower($request->input('order', 'desc')) === 'asc' ? 'asc' : 'desc';
 
-        $columnasPermitidas = ['user_id', 'fecha', 'turno_id', 'maquina_id', 'entrada', 'salida'];
-        if (!in_array($sortBy, $columnasPermitidas, true)) {
-            $sortBy = 'fecha';
+        // Mapea a columnas totalmente calificadas para evitar ambigüedad tras joins
+        $map = [
+            'user_id'    => 'asignaciones_turnos.user_id',
+            'fecha'      => 'asignaciones_turnos.fecha',
+            'obra_id'    => 'asignaciones_turnos.obra_id',
+            'turno_id'   => 'asignaciones_turnos.turno_id',
+            'maquina_id' => 'asignaciones_turnos.maquina_id',
+            'entrada'    => 'asignaciones_turnos.entrada',
+            'salida'     => 'asignaciones_turnos.salida',
+        ];
+
+        if (!array_key_exists($sort, $map)) {
+            $sort = 'fecha';
         }
 
-        $order = strtolower($order) === 'asc' ? 'asc' : 'desc';
+        // 1) Borra órdenes previos
+        $query->reorder($map[$sort], $order);
 
-        return $query->orderBy($sortBy, $order);
+        // 2) (Opcional) añade **orden secundario** estable
+        //    - si ordenas por fecha, mantén el orden por turno (mañana/tarde/noche) como desempate
+        if ($sort === 'fecha') {
+            $query->orderByRaw("FIELD(turnos.nombre, 'mañana', 'tarde', 'noche')");
+        }
+
+        // 3) (Opcional) último desempate siempre por ID para estabilidad
+        $query->orderBy('asignaciones_turnos.id', 'asc');
+
+        return $query;
     }
+
+
 
     public function index(Request $request)
     {
         // 1. QUERY BASE (filtros normales con empleado)
-        $query = AsignacionTurno::with(['user', 'turno', 'maquina'])
+        $query = AsignacionTurno::with(['user', 'turno', 'maquina', 'obra'])
             ->whereDate('fecha', '<=', Carbon::tomorrow())
-            ->where('estado', 'activo') // ✅ Solo registros activos
+            ->where('estado', 'activo')
             ->whereHas('turno', fn($q) => $q->where('nombre', '!=', 'vacaciones'))
             ->join('turnos', 'asignaciones_turnos.turno_id', '=', 'turnos.id')
-            ->orderBy('fecha', 'desc')
-            ->orderByRaw("FIELD(turnos.nombre, 'mañana', 'tarde', 'noche')")
-            ->orderBy('asignaciones_turnos.id') // 🟡 Orden estable
             ->select('asignaciones_turnos.*');
+
 
 
         // aplicar filtros

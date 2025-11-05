@@ -8,6 +8,7 @@ use App\Models\Planilla;
 use App\Models\Paquete;
 use App\Models\OrdenPlanilla;
 use App\Models\Etiqueta;
+use App\Models\Producto;
 use App\Models\ProductoBase;
 use App\Models\Ubicacion;
 use App\Models\Movimiento;
@@ -32,16 +33,39 @@ use Illuminate\Support\Arr;
 use Illuminate\Support\Collection;
 
 
+
 class EtiquetaController extends Controller
 {
     private function aplicarFiltros($query, Request $request)
     {
-        if ($request->filled('id') && is_numeric($request->id)) {
-            $query->where('id', (int) $request->id);
+        // Normaliza alias -> nombres usados en backend
+        $aliasFechas = [
+            'inicio_fabricacion'        => 'fecha_inicio',
+            'final_fabricacion'         => 'fecha_finalizacion',
+            'inicio_ensamblado'         => 'fecha_inicio_ensamblado',
+            'final_ensamblado'          => 'fecha_finalizacion_ensamblado',
+            'inicio_soldadura'          => 'fecha_inicio_soldadura',
+            'final_soldadura'           => 'fecha_finalizacion_soldadura',
+        ];
+
+        $merge = [];
+        foreach ($aliasFechas as $alias => $destino) {
+            if ($request->filled($alias) && !$request->filled($destino)) {
+                $merge[$destino] = $request->input($alias);
+            }
+        }
+        if ($merge) {
+            $request->merge($merge);
         }
 
+        if ($request->filled('id')) {
+            $input = trim($request->id);
+            $query->where('id', 'like', '%' . $input . '%');
+        }
+
+
         if ($request->filled('codigo')) {
-            $query->where('codigo', $request->codigo);
+            $query->where('codigo', 'like', '%' . $request->codigo . '%');
         }
 
         if ($request->has('etiqueta_sub_id') && $request->etiqueta_sub_id !== '') {
@@ -65,11 +89,58 @@ class EtiquetaController extends Controller
             $query->where('estado', $request->estado);
         }
 
+        /* ── Filtro por código de planilla (formato AAAA-nnnnnn) ──────── */
         if ($request->filled('codigo_planilla')) {
-            $query->whereHas('planilla', function ($q) use ($request) {
-                $q->where('codigo', 'like', '%' . $request->codigo_planilla . '%');
+            $input = trim($request->codigo_planilla);
+
+            $query->whereHas('planilla', function ($q) use ($input) {
+
+                // Caso 1: formato AAAA-nnnnnn (con o sin ceros)
+                if (preg_match('/^(\d{4})-(\d{1,6})$/', $input, $m)) {
+                    $anio = $m[1];
+                    $num  = str_pad($m[2], 6, '0', STR_PAD_LEFT);
+                    $codigoFormateado = "{$anio}-{$num}";
+                    $q->where('codigo', 'like', "%{$codigoFormateado}%");
+                    return;
+                }
+
+                // Caso 2: solo números (por ejemplo, "4512")
+                if (preg_match('/^\d{1,6}$/', $input)) {
+                    $q->where('codigo', 'like', "%{$input}%");
+                    return;
+                }
+
+                // Caso 3: texto o formato libre
+                $q->where('codigo', 'like', "%{$input}%");
             });
         }
+
+        /* ── Fechas: Fabricación ──────── */
+        if ($request->filled('fecha_inicio')) {
+            $query->where('fecha_inicio', '>=', Carbon::parse($request->fecha_inicio)->startOfDay());
+        }
+        if ($request->filled('fecha_finalizacion')) {
+            $query->where('fecha_finalizacion', '<=', Carbon::parse($request->fecha_finalizacion)->endOfDay());
+        }
+
+        /* ── Fechas: Ensamblado ──────── */
+        if ($request->filled('fecha_inicio_ensamblado')) {
+            $query->where('fecha_inicio_ensamblado', '>=', Carbon::parse($request->fecha_inicio_ensamblado)->startOfDay());
+        }
+        if ($request->filled('fecha_finalizacion_ensamblado')) {
+            $query->where('fecha_finalizacion_ensamblado', '<=', Carbon::parse($request->fecha_finalizacion_ensamblado)->endOfDay());
+        }
+
+        /* ── Fechas: Soldadura ──────── */
+        if ($request->filled('fecha_inicio_soldadura')) {
+            $query->where('fecha_inicio_soldadura', '>=', Carbon::parse($request->fecha_inicio_soldadura)->startOfDay());
+        }
+        if ($request->filled('fecha_finalizacion_soldadura')) {
+            $query->where('fecha_finalizacion_soldadura', '<=', Carbon::parse($request->fecha_finalizacion_soldadura)->endOfDay());
+        }
+
+
+
 
         if ($request->filled('numero_etiqueta')) {
             $query->where('id', $request->numero_etiqueta);
@@ -96,6 +167,12 @@ class EtiquetaController extends Controller
                 'numero_etiqueta' => 'Número de Etiqueta',
                 'nombre' => 'Nombre',
                 'etiqueta_sub_id' => 'Subetiqueta',
+                'fecha_inicio' => 'Inicio Fabricación desde',
+                'fecha_finalizacion'  => 'Fin Fabricación hasta',
+                'fecha_inicio_ensamblado'  => 'Inicio Ensamblado desde',
+                'fecha_finalizacion_ensamblado'   => 'Fin Ensamblado hasta',
+                'fecha_inicio_soldadura'   => 'Inicio Soldadura desde',
+                'fecha_finalizacion_soldadura'    => 'Fin Soldadura hasta',
             ] as $campo => $etiqueta
         ) {
             if ($request->filled($campo)) {
@@ -134,35 +211,39 @@ class EtiquetaController extends Controller
     }
     private function aplicarOrdenamiento($query, Request $request)
     {
-        $columnasPermitidas = [
-            'id',
-            'codigo',
-            'codigo_planilla',
-            'etiqueta',
-            'etiqueta_sub_id',
-            'paquete_id',
-            'maquina',
-            'maquina_2',
-            'maquina3',
-            'producto1',
-            'producto2',
-            'producto3',
-            'figura',
-            'peso',
-            'diametro',
-            'longitud',
-            'estado',
-            'created_at',
-        ];
-
-        $sort = $request->input('sort', 'created_at');
+        $sort  = $request->input('sort', 'created_at');
         $order = strtolower($request->input('order', 'desc')) === 'asc' ? 'asc' : 'desc';
 
-        if (!in_array($sort, $columnasPermitidas, true)) {
-            $sort = 'created_at';
+        $map = [
+            'id'              => 'etiquetas.id',
+            'codigo'          => 'etiquetas.codigo',
+            'codigo_planilla' => 'planillas.codigo',    //es otra tabla
+            'etiqueta'        => 'etiquetas.etiqueta',
+            'etiqueta_sub_id' => 'etiquetas.etiqueta_sub_id',
+            'paquete_id'      => 'etiquetas.paquete_id',
+            'maquina'         => 'etiquetas.maquina',
+            'maquina_2'       => 'etiquetas.maquina_2',
+            'maquina3'        => 'etiquetas.maquina3',
+            'producto1'       => 'etiquetas.producto1',
+            'producto2'       => 'etiquetas.producto2',
+            'producto3'       => 'etiquetas.producto3',
+            'figura'          => 'etiquetas.figura',
+            'peso'            => 'etiquetas.peso',
+            'diametro'        => 'etiquetas.diametro',
+            'longitud'        => 'etiquetas.longitud',
+            'estado'          => 'etiquetas.estado',
+            'created_at'      => 'etiquetas.created_at',
+        ];
+
+        $column = $map[$sort] ?? 'etiquetas.created_at';
+
+        // Si ordenamos por una columna de planillas, añadimos el JOIN
+        if (str_starts_with($column, 'planillas.')) {
+            $query->leftJoin('planillas', 'planillas.id', '=', 'etiquetas.planilla_id')
+                ->select('etiquetas.*'); // evita colisiones de columnas
         }
 
-        return $query->orderBy($sort, $order);
+        return $query->orderBy($column, $order);
     }
 
     public function index(Request $request)
@@ -231,23 +312,48 @@ class EtiquetaController extends Controller
             ], 400);
         }
 
-        $diametro = $request->input('diametro', $elemento->diametro);
+        // ⚙️ Convertimos el diámetro siempre a float
+        $diametro = floatval($request->input('diametro', $elemento->diametro));
+        $numPiezas = intval($request->input('barras', $elemento->barras));
+
+        // 🔹 Longitudes disponibles de barras en el catálogo base
         $longitudesDisponibles = ProductoBase::query()
-            ->where('diametro', $diametro)
             ->where('tipo', 'barra')
+            ->whereRaw('ABS(diametro - ?) < 0.01', [$diametro]) // tolerancia
             ->distinct()
-            ->pluck('longitud') // ya viene en metros
+            ->pluck('longitud')
             ->unique()
             ->sort()
             ->values();
 
-
-        if (empty($longitudesDisponibles)) {
+        if ($longitudesDisponibles->isEmpty()) {
             return response()->json([
                 'message' => "No hay longitudes disponibles para Ø{$diametro} mm",
             ], 400);
         }
 
+        // 1️⃣ Obtener ID de la máquina SL28
+        $maquinaSL28 = Maquina::where('codigo', 'SL28')->first();
+        $maquinaId = optional($maquinaSL28)->id;
+
+        // 2️⃣ Buscar productos cargados en esa máquina de ese diámetro y tipo
+        $longitudesEnMaquina = collect();
+
+        if ($maquinaId) {
+            $longitudesEnMaquina = Producto::with('productoBase')
+                ->where('maquina_id', $maquinaId)
+                ->get()
+                ->filter(
+                    fn($p) =>
+                    $p->productoBase?->tipo === 'barra' &&
+                        abs(floatval($p->productoBase?->diametro) - $diametro) < 0.01
+                )
+                ->pluck('productoBase.longitud')
+                ->unique()
+                ->values();
+        }
+
+        // 🧮 Cálculo del patrón
         $longitudElementoM = $elemento->longitud / 100;
         if ($longitudElementoM <= 0) {
             return response()->json([
@@ -259,6 +365,9 @@ class EtiquetaController extends Controller
 
         foreach ($longitudesDisponibles as $longitudM) {
             $porBarra = floor($longitudM / $longitudElementoM);
+            if ($numPiezas > 0) {
+                $porBarra = min($porBarra, $numPiezas); // 👈 no más piezas de las necesarias
+            }
             $sobraCm  = round(($longitudM - ($porBarra * $longitudElementoM)) * 100, 2);
             $aprovechamiento = $porBarra > 0
                 ? round(100 * ($porBarra * $longitudElementoM) / $longitudM, 2)
@@ -268,6 +377,11 @@ class EtiquetaController extends Controller
                 ? implode(' + ', array_fill(0, $porBarra, number_format($elemento->longitud, 2))) . " = {$porBarra} piezas"
                 : "No caben piezas";
 
+            // 3️⃣ ¿Está disponible en la máquina SL28?
+            $disponible = $longitudesEnMaquina->contains(function ($l) use ($longitudM) {
+                return abs(floatval($l) - floatval($longitudM)) < 0.01;
+            });
+
             $patrones[] = [
                 'longitud_m'      => $longitudM,
                 'longitud_cm'     => $longitudM * 100,
@@ -275,32 +389,27 @@ class EtiquetaController extends Controller
                 'sobra_cm'        => $sobraCm,
                 'aprovechamiento' => $aprovechamiento,
                 'patron'          => $patron,
+                'disponible_en_maquina' => $disponible,
             ];
         }
+        log::info('Patrones corte simple', [
+            'etiqueta_sub_id' => $etiqueta->etiqueta_sub_id,
+            'diametro_mm'    => $diametro,
+            'patrones'       => $patrones,
+        ]);
 
-        // Generar HTML si lo necesitas para un SweetAlert o modal
-        $html = "<ul class='text-left space-y-4'>";
-        foreach ($patrones as $p) {
-            $color = $p['aprovechamiento'] >= 98 ? 'text-green-600'
-                : ($p['aprovechamiento'] >= 90 ? 'text-yellow-500' : 'text-red-600');
+        // 🔠 Esquema tipo A + A + A
+        $letra = 'A';
+        $etiquetasEsquema = implode(' + ', array_fill(0, min($porBarra, $numPiezas), $letra));
 
-            $html .= "<li class='leading-snug'>";
-            $html .= "<div class='font-bold text-sm text-gray-800'>Elemento {$elemento->longitud} cm</div>";
-            $html .= "<div>📏 <strong>{$p['longitud_m']} m</strong></div>";
-            $html .= "<div>🧩 <span class='font-semibold text-gray-700'>Patrón:</span> {$p['patron']}</div>";
-            $html .= "<div>🪵 <span class='font-semibold text-gray-700'>Sobra:</span> {$p['sobra_cm']} cm</div>";
-            $html .= "<div>📈 <span class='font-semibold {$color}'>Aprovechamiento:</span> ";
-            $html .= "<span class='{$color} font-bold'>{$p['aprovechamiento']}%</span></div>";
-            $html .= "</li>";
-        }
-        $html .= "</ul>";
 
         return response()->json([
             'success'  => true,
             'patrones' => $patrones,
-            'html'     => $html,
+            'patron_letras' => $etiquetasEsquema,
         ]);
     }
+
     /**
      * Devuelve un array de IDs de planilla empezando por la actual
      * y continuando con las siguientes en la cola de la MISMA máquina,
@@ -577,7 +686,11 @@ class EtiquetaController extends Controller
         }
 
         $htmlResumen = $this->construirHtmlResumenMultiLongitudes($longitudesBarraCm, $progresoPorLongitud);
-
+        log::info('Patrones corte optimizado', [
+            'etiqueta_sub_id'       => $etiquetaSubId,
+            'top_global_98'         => $topGlobal98,
+            'progreso_por_longitud' => $progresoPorLongitud,
+        ]);
         /* ─────────────────────────────
         |  7) Responder
         ───────────────────────────── */
@@ -1010,10 +1123,8 @@ class EtiquetaController extends Controller
                     <div>🪵 Sobra: <strong>" . number_format($p['sobra_cm'], 2, ',', '.') . " cm</strong></div>
                     <div>📈 Aprovechamiento: <span class='font-bold {$cls}'>" . number_format($p['aprovechamiento'], 2, ',', '.') . "%</span></div>
                   <div class='text-[11px] text-gray-500'>
-  k={$p['k']}, esquema: {$p['esquema']}" . (!empty($p['resumen_letras']) ? " ({$p['resumen_letras']})" : "") . "
-</div>
-
-
+                k={$p['k']}, esquema: {$p['esquema']}" . (!empty($p['resumen_letras']) ? " ({$p['resumen_letras']})" : "") . "
+                </div>
                 </li>";
                 }
                 $html .= "</ul>";
@@ -1073,6 +1184,7 @@ class EtiquetaController extends Controller
                 'repeticiones' => ['required', 'integer', 'min:1'],
                 'etiquetas' => ['required', 'array', 'min:1'],
                 'etiquetas.*.etiqueta_sub_id' => ['required', 'string'],
+                'etiquetas.*.patron_letras' => ['nullable', 'string', 'max:100'],
             ]);
         } catch (ValidationException $e) {
             return response()->json([
@@ -1098,14 +1210,14 @@ class EtiquetaController extends Controller
                 if (!$maquinaId) throw new \RuntimeException("Sin máquina para {$subId}");
 
                 $maquina = Maquina::findOrFail($maquinaId);
-
+                $patronLetras = $item['patron_letras'] ?? null;
                 $dto = new \App\Servicios\Etiquetas\DTOs\ActualizarEtiquetaDatos(
                     etiquetaSubId: $subId,
                     maquinaId: $maquinaId,
                     longitudSeleccionada: $longitud,
                     operario1Id: $userId,
                     operario2Id: $compaId,
-                    opciones: ['origen' => 'optimizada']
+                    opciones: ['origen' => 'optimizada', 'patron_letras' => $patronLetras,]
                 );
 
                 $resultado = $fabrica->porMaquina($maquina)->actualizar($dto);
@@ -1118,7 +1230,21 @@ class EtiquetaController extends Controller
             }
 
             DB::commit();
-            return response()->json(['success' => true, 'resultados' => $resultados]);
+
+            // ✅ Calcular el peso total de la etiqueta
+            $pesoTotalEtiqueta = $resultado->etiqueta->peso
+                ?? $resultado->etiqueta->elementos->sum('peso')
+                ?? 0;
+
+            return response()->json([
+                'success' => true,
+                'estado' => $resultado->etiqueta->estado ?? null,
+                'peso_etiqueta' => $pesoTotalEtiqueta,
+                'fecha_inicio' => $resultado->etiqueta->fecha_inicio,
+                'fecha_finalizacion' => $resultado->etiqueta->fecha_finalizacion,
+                'productos_afectados' => $resultado->productosAfectados ?? [],
+                'warnings' => $resultado->warnings ?? [],
+            ]);
         } catch (\Illuminate\Http\Exceptions\HttpResponseException $e) {
             DB::rollBack();
             return $e->getResponse(); // devolvemos la response real de Laravel

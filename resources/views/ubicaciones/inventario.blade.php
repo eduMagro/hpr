@@ -20,7 +20,7 @@
     window.productosAsignados = @json(\App\Models\Producto::whereNotNull('ubicacion_id')->pluck('ubicacion_id', 'codigo'));
     window.detallesProductos = @json($detalles);
 
-    window.productosEstados   = @json(\App\Models\Producto::pluck('estado','codigo'));
+    window.productosEstados = @json(\App\Models\Producto::pluck('estado', 'codigo'));
 </script>
 
 <script>
@@ -74,7 +74,9 @@
                     ...(window.productosAsignados || {})
                 };
 
-                this.estados   = { ...(window.productosEstados   || {}) };
+                this.estados = {
+                    ...(window.productosEstados || {})
+                };
 
                 /* Escuchar reasignaciones globales */
                 window.addEventListener('producto-reasignado', (e) => {
@@ -351,7 +353,8 @@ Inesperados: ${inesperados.join(', ') || '—'}
         </h2>
     </x-slot>
 
-    <div id="contenido" class="max-w-7xl gap-2 flex flex-col altura-c h-[calc(100vh-90px)] w-screen mx-auto opacity-0 transform transition-all duration-200">
+    <div id="contenido"
+        class="max-w-7xl gap-2 flex flex-col altura-c h-[calc(100vh-90px)] w-screen mx-auto opacity-0 transform transition-all duration-200">
         @foreach ($ubicacionesPorSector as $sector => $ubicaciones)
             <div x-data="{ abierto: false }" class="h-full w-full">
 
@@ -554,91 +557,93 @@ Inesperados: ${inesperados.join(', ') || '—'}
                                                 <span
                                                     x-text="(window.detallesProductos[codigo]?.peso_inicial ?? 0).toLocaleString('es-ES', {minimumFractionDigits:1, maximumFractionDigits:1})"></span>
                                                 kg
-                                            </p>
+                                                </p>
+                                            </div>
+                                            <div class="text-right ml-2">
+                                                <span
+                                                    class="inline-block px-2 py-0.5 rounded-full bg-green-100 text-green-800 text-[10px] font-semibold">OK</span>
+                                            </div>
                                         </div>
-                                        <div class="text-right ml-2">
-                                            <span
-                                                class="inline-block px-2 py-0.5 rounded-full bg-green-100 text-green-800 text-[10px] font-semibold">OK</span>
-                                        </div>
-                                    </div>
-                                </template>
-                            </div>
+                                    </template>
+                                </div>
 
-                           <!-- Productos inesperados -->
-                            <div x-cloak class="px-4 py-3" x-show="sospechosos.length">
-                            <h3 class="text-sm font-semibold text-red-600 mb-1">Inesperado:</h3>
+                                <!-- Productos inesperados -->
+                                <div x-cloak class="px-4 py-3" x-show="sospechosos.length">
+                                    <h3 class="text-sm font-semibold text-red-600 mb-1">Inesperado:</h3>
 
-                            <ul class="space-y-2">
-                                <template x-for="(codigo, idx) in sospechosos" :key="codigo">
-                                    <li
-  class="grid grid-cols-[1fr_auto] items-center gap-3 rounded-lg border px-3 py-2 shadow-sm"
-  :class="idx % 2 === 0 ? 'bg-white border-gray-200' : 'bg-gray-50 border-gray-200'"
-  x-data="{ ubic: null, hasId: false, misma: false, estado: null, esConsumido: false }"
-  x-init="
-    ubic  = (asignados && Object.prototype.hasOwnProperty.call(asignados, codigo)) ? asignados[codigo] : null;
-    hasId = (ubic !== null && ubic !== '' && ubic !== undefined);
-    misma = (hasId && ubic.toString() === nombreUbicacion.toString());
-    estado = (estados && Object.prototype.hasOwnProperty.call(estados, codigo)) ? (estados[codigo] ?? null) : null;
-    esConsumido = (estado === 'consumido');
-  "
->
-  <!-- IZQUIERDA: código + estado -->
-  <div class="min-w-0 flex gap-1 items-center">
-    <div class="flex items-center gap-2">
-      <!-- Punto de estado -->
-      <span class="inline-block h-2.5 w-2.5 rounded-full"
-        :class="esConsumido ? 'bg-blue-500/80' : (hasId ? 'bg-amber-500/80' : 'bg-red-500/80')"></span>
+                                    <ul class="space-y-2">
+                                        <template x-for="(codigo, idx) in sospechosos" :key="codigo">
+                                            <li class="grid grid-cols-[1fr_auto] items-center gap-3 rounded-lg border px-3 py-2 shadow-sm"
+                                                :class="idx % 2 === 0 ? 'bg-white border-gray-200' :
+                                                    'bg-gray-50 border-gray-200'"
+                                                x-data="{ ubic: null, hasId: false, misma: false, estado: null, esConsumido: false }" x-init="ubic = (asignados && Object.prototype.hasOwnProperty.call(asignados, codigo)) ? asignados[codigo] : null;
+                                                hasId = (ubic !== null && ubic !== '' && ubic !== undefined);
+                                                misma = (hasId && ubic.toString() === nombreUbicacion.toString());
+                                                estado = (estados && Object.prototype.hasOwnProperty.call(estados, codigo)) ? (estados[codigo] ?? null) : null;
+                                                esConsumido = (estado === 'consumido');">
+                                                <!-- IZQUIERDA: código + estado -->
+                                                <div class="min-w-0 flex gap-1 items-center">
+                                                    <div class="flex items-center gap-2">
+                                                        <!-- Punto de estado -->
+                                                        <span class="inline-block h-2.5 w-2.5 rounded-full"
+                                                            :class="esConsumido ? 'bg-blue-500/80' : (hasId ?
+                                                                'bg-amber-500/80' : 'bg-red-500/80')"></span>
 
-      <!-- Código -->
-      <span class="text-xs sm:text-base break-all font-sans"
-        :class="esConsumido ? 'text-blue-600' : (hasId ? 'text-amber-500' : 'text-red-800')"
-        x-text="codigo"></span>
+                                                        <!-- Código -->
+                                                        <span class="text-xs sm:text-base break-all font-sans"
+                                                            :class="esConsumido ? 'text-blue-600' : (hasId ? 'text-amber-500' :
+                                                                'text-red-800')"
+                                                            x-text="codigo"></span>
 
-      <!-- Subtexto/Chip -->
-      <div class="inline-flex items-center px-1.5 py-0.5 text-sm sm:text-base rounded bg-gray-200 italic">
-        <span class="text-gray-900" x-show="esConsumido">Consumido</span>
-        <span class="text-gray-900" x-show="!esConsumido && hasId && !misma">
-          Ubicación: <span x-text="ubic"></span>
-        </span>
-        <span class="text-gray-900" x-show="!esConsumido && !hasId">Sin registrar</span>
-      </div>
-    </div>
-  </div>
+                                                        <!-- Subtexto/Chip -->
+                                                        <div
+                                                            class="inline-flex items-center px-1.5 py-0.5 text-sm sm:text-base rounded bg-gray-200 italic">
+                                                            <span class="text-gray-900"
+                                                                x-show="esConsumido">Consumido</span>
+                                                            <span class="text-gray-900"
+                                                                x-show="!esConsumido && hasId && !misma">
+                                                                Ubicación: <span x-text="ubic"></span>
+                                                            </span>
+                                                            <span class="text-gray-900"
+                                                                x-show="!esConsumido && !hasId">Sin registrar</span>
+                                                        </div>
+                                                    </div>
+                                                </div>
 
-  <!-- DERECHA: acción -->
-  <button
-    class="bg-blue-600 text-white px-3 py-1.5 rounded-md text-xs sm:text-base w-24 sm:w-auto"
-    x-show="!esConsumido && hasId && !misma"
-    @click="reasignarProducto(codigo)"
-  >
-    Asignar aquí
-  </button>
+                                                <!-- DERECHA: acción -->
+                                                <button
+                                                    class="bg-blue-600 text-white px-3 py-1.5 rounded-md text-xs sm:text-base w-24 sm:w-auto"
+                                                    x-show="!esConsumido && hasId && !misma"
+                                                    @click="reasignarProducto(codigo)">
+                                                    Asignar aquí
+                                                </button>
 
-  <!-- Sólo si no es consumido -->
-  <span class="text-gray-800 px-3 py-1.5 rounded-md text-xs sm:text-base w-24 sm:w-auto"
-        x-show="!esConsumido && !hasId">
-    No asignable
-  </span>
-</li>
+                                                <!-- Sólo si no es consumido -->
+                                                <span
+                                                    class="text-gray-800 px-3 py-1.5 rounded-md text-xs sm:text-base w-24 sm:w-auto"
+                                                    x-show="!esConsumido && !hasId">
+                                                    No asignable
+                                                </span>
+                                            </li>
 
-                                </template>
-                            </ul>
+                                        </template>
+                                    </ul>
 
 
-                            </div>
+                                </div>
 
 
-                            <!-- Botones -->
-                            <div class="flex justify-end gap-3 px-4 py-4">
-                                <button @click="resetear()"
-                                    class="bg-gray-500 hover:bg-gray-600 text-white font-semibold px-3 py-1.5 rounded-md text-xs shadow">
-                                    Limpiar escaneos
-                                </button>
-                                <button @click="reportarErrores()"
-                                    class="bg-red-600 hover:bg-red-700 text-white font-semibold px-3 py-1.5 rounded-md text-xs shadow">
-                                    Reportar errores
-                                </button>
-                            </div>
+                                <!-- Botones -->
+                                <div class="flex justify-end gap-3 px-4 py-4">
+                                    <button @click="resetear()"
+                                        class="bg-gray-500 hover:bg-gray-600 text-white font-semibold px-3 py-1.5 rounded-md text-xs shadow">
+                                        Limpiar escaneos
+                                    </button>
+                                    <button @click="reportarErrores()"
+                                        class="bg-red-600 hover:bg-red-700 text-white font-semibold px-3 py-1.5 rounded-md text-xs shadow">
+                                        Reportar errores
+                                    </button>
+                                </div>
                             </div>
 
                         </div>
@@ -647,14 +652,28 @@ Inesperados: ${inesperados.join(', ') || '—'}
             </div>
         @endforeach
 
-        <div
-            class="mt-10 flex flex-col sm:flex-row items-stretch sm:items-center justify-start sm:justify-between gap-4 hidden">
-            <button onclick="limpiarTodos()"
-                class="bg-red-600 hover:bg-red-700 text-white font-semibold px-4 py-2 rounded shadow text-center">
-                Limpiar TODOS los escaneos
-            </button>
-        </div>
+
     </div>
+
+    <div class="flex" id="btn_limpiar_todos_escaneos">
+        <button onclick="limpiarTodos()"
+            class="bg-red-600 hover:bg-red-700 text-white font-semibold px-4 py-1 rounded shadow text-center">
+            Limpiar TODOS los escaneos
+        </button>
+    </div>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", () => {
+            let btn = document.getElementById("btn_limpiar_todos_escaneos")
+            console.log(btn)
+            btn.remove()
+            let header = document.getElementsByClassName("max-w-7xl mx-auto py-4 px-4 sm:px-6 lg:px-8")
+            header = header[0]
+            header.classList.add("flex", "justify-between")
+            console.log(header)
+            header.append(btn)
+        })
+    </script>
 
     <audio id="sonido-ok" src="{{ asset('sonidos/ok.mp3') }}" preload="auto"></audio>
     <audio id="sonido-error" src="{{ asset('sonidos/error.mp3') }}" preload="auto"></audio>
@@ -700,7 +719,7 @@ Inesperados: ${inesperados.join(', ') || '—'}
             height: calc(100vh - 90px);
         }
     </style>
-    
+
     <script src="{{ asset('js/inventario/inventario.js') }}"></script>
 
 </x-app-layout>

@@ -15,6 +15,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
 use Illuminate\Support\Facades\DB;
 use App\Services\PlanillaColaService;
+use Illuminate\Http\JsonResponse;
 
 class PaqueteController extends Controller
 {
@@ -26,13 +27,34 @@ class PaqueteController extends Controller
             $query->where('id', (int) $request->id);
         }
 
-        /* ── Filtro por código limpio de planilla ──────── */
+        /* ── Filtro por código de planilla ──────── */
         if ($request->filled('planilla')) {
-            $input = $request->planilla;
+            $input = trim($request->planilla);
+
             $query->whereHas('planilla', function ($q) use ($input) {
-                $q->where('codigo', 'like', "%{$input}%");
+
+                // Caso 1: formato completo tipo 2025-4512  → se normaliza a 2025-004512
+                if (preg_match('/^(\d{4})-(\d{1,6})$/', $input, $m)) {
+                    $anio = $m[1];
+                    $num  = str_pad($m[2], 6, '0', STR_PAD_LEFT);
+                    $codigoFormateado = "{$anio}-{$num}";
+                    $q->where('planillas.codigo', 'like', "%{$codigoFormateado}%");
+                    return;
+                }
+
+                // Caso 2: solo número final (ej. "4512") → busca cualquier código que lo contenga
+                if (preg_match('/^\d{1,6}$/', $input)) {
+                    $q->where('planillas.codigo', 'like', "%{$input}%");
+                    return;
+                }
+
+                // Caso general: texto libre
+                $q->where('planillas.codigo', 'like', "%{$input}%");
             });
         }
+
+
+
         /* ── Nave (obra) ───────────────────────────── */
         if ($request->filled('nave')) {
             $texto = $request->nave;
@@ -251,15 +273,6 @@ class PaqueteController extends Controller
             'maquina_id' => 'required|integer|exists:maquinas,id'
         ]);
 
-        // 2) Verificación previa
-        $warnings = $this->verificarItems($request->items, $request->input('maquina_id'));
-        if ($warnings !== null && !$request->boolean('confirmar')) {
-            return response()->json([
-                'success' => false,
-                'warning' => $warnings
-            ], 200);
-        }
-
         try {
             DB::beginTransaction();
 
@@ -386,8 +399,8 @@ class PaqueteController extends Controller
             }
 
             // 12) Retirar de la cola de ESTA máquina si ya no quedan etiquetas en ESTA máquina
-            (new PlanillaColaService)
-                ->retirarPlanillaDeColaSiNoQuedanEtiquetasEnMaquina($planilla, $maquina);
+            app(PlanillaColaService::class)
+                ->retirarSiPlanillaCompletamentePaquetizadaYCompletada($planilla, $maquina);
 
             // // 13) Movimiento solo si tiene carro
             // if ($maquina->tiene_carro) {
@@ -428,61 +441,61 @@ class PaqueteController extends Controller
     }
 
 
-    private function verificarItems($items, $maquinaId)
+    public function validarParaPaquete(Request $request, string $etiquetaSubId): JsonResponse
     {
-        $warnings = [];
+        $etiqueta = Etiqueta::with('elementos')
+            ->where('etiqueta_sub_id', $etiquetaSubId)
+            ->first();
 
-        // Separar IDs según tipo
-        $etiquetasSubIds = collect($items)->where('type', 'etiqueta')->pluck('id')->toArray();
-        $elementosIds = collect($items)->where('type', 'elemento')->pluck('id')->toArray();
-
-        $etiquetas = Etiqueta::whereIn('etiqueta_sub_id', $etiquetasSubIds)
-            ->with(['planilla', 'elementos'])
-            ->get();
-
-
-        if (count($etiquetas) < count($etiquetasSubIds)) {
-            $idsEncontrados = $etiquetas->pluck('etiqueta_sub_id')->toArray(); // ✅ pluck del mismo campo
-            $faltantes = array_diff($etiquetasSubIds, $idsEncontrados);
-            $warnings['etiquetas_no_encontradas'] = array_values($faltantes);
+        if (!$etiqueta) {
+            return response()->json([
+                'success' => false,
+                'valida' => false,
+                'message' => "Etiqueta {$etiquetaSubId} no encontrada.",
+                'motivo'  => "No se ha encontrado la etiqueta.",
+            ], 404);
         }
 
-        // Verificar existencia de los elementos
-        $elementos = Elemento::whereIn('id', $elementosIds)->get();
-        if (count($elementos) < count($elementosIds)) {
-            $idsEncontrados = $elementos->pluck('id')->toArray();
-            $faltantes = array_diff($elementosIds, $idsEncontrados);
-            $warnings['elementos_no_encontrados'] = array_values($faltantes);
+        $estado     = strtolower($etiqueta->estado ?? 'pendiente');
+        $enPaquete  = !is_null($etiqueta->paquete_id);
+        $estadosOK  = ['fabricada', 'completada', 'ensamblada', 'soldada'];
+        $total      = $etiqueta->elementos->count();
+        $fabricados = $etiqueta->elementos
+            ->whereIn('estado', ['fabricado', 'completado', 'ensamblado', 'soldado'])
+            ->count();
+
+        $motivos = [];
+        $valida = true;
+
+        if ($enPaquete) {
+            $valida = false;
+            $motivos[] = 'La etiqueta ya está en un paquete.';
         }
 
-        // Validar que las etiquetas estén completas
-        foreach ($etiquetas as $etiqueta) {
-            if (!$etiqueta->planilla) {
-                $warnings['etiquetas_incompletas'][] = $etiqueta->id;
-            }
-            if ($etiqueta->elementos->isEmpty() && !$etiqueta->pesoTotal) {
-                $warnings['etiquetas_incompletas'][] = $etiqueta->id;
-            }
+        if (!in_array($estado, $estadosOK, true)) {
+            $valida = false;
+            $motivos[] = "El estado '{$estado}' no es válido para empaquetar.";
         }
 
-        // Validar que los elementos estén completos
-        foreach ($elementos as $elemento) {
-            if (is_null($elemento->peso)) {
-                $warnings['elementos_incompletos'][] = $elemento->id;
-            }
+        if ($fabricados < $total) {
+            $valida = false;
+            $motivos[] = "Hay elementos pendientes ({$fabricados}/{$total}).";
         }
 
-        // Verificar si las etiquetas ya tienen paquete asignado
-        $etiquetasConPaquete = $etiquetas->filter(function ($etiqueta) {
-            return !is_null($etiqueta->paquete_id);
-        })->pluck('id')->toArray();
-
-        if (!empty($etiquetasConPaquete)) {
-            $warnings['etiquetas_ocupadas'] = $etiquetasConPaquete;
-        }
-
-        return !empty($warnings) ? $warnings : null;
+        return response()->json([
+            'success'       => $valida,
+            'valida'        => $valida,
+            'message'       => $valida ? 'Etiqueta válida para empaquetar.' : implode(' ', $motivos),
+            'motivo'        => $valida ? null : implode(' ', $motivos),
+            'estado_actual' => $etiqueta->estado,
+            'paquete_actual' => $etiqueta->paquete_id,
+            'id'            => $etiqueta->etiqueta_sub_id,
+            'nombre'        => $etiqueta->nombre,
+            'peso_etiqueta' => $etiqueta->peso ?? 0,
+            'estado'        => $etiqueta->estado,
+        ]);
     }
+
 
     private function crearPaquete($planillaId, $ubicacionId, $pesoTotal, $codigo, $obraId)
     {
@@ -665,5 +678,283 @@ class PaqueteController extends Controller
             'ok' => true,
             'id' => $loc->id,
         ]);
+    }
+
+    // Otros métodos del controlador... Creacion de paquetes a traves de maquinas.show
+
+    // ================================================================
+    // MÉTODOS ADICIONALES PARA PaqueteController.php
+    // Añadir estos métodos al controlador existente
+    // ================================================================
+
+    /**
+     * Obtener paquetes de una planilla específica con sus etiquetas
+     * 
+     * GET /api/planillas/{planillaId}/paquetes
+     */
+    public function obtenerPaquetesPorPlanilla($planillaId)
+    {
+        try {
+            $planilla = \App\Models\Planilla::findOrFail($planillaId);
+
+            // Obtener paquetes de esta planilla con sus etiquetas
+            $paquetes = Paquete::with(['etiquetas' => function ($query) {
+                $query->select('id', 'etiqueta_sub_id', 'paquete_id', 'peso', 'estado')
+                    ->withCount('elementos');
+            }, 'ubicacion:id,nombre'])
+                ->where('planilla_id', $planillaId)
+                ->orderBy('created_at', 'desc')
+                ->get();
+
+            $paquetesFormateados = $paquetes->map(function ($paquete) {
+                return [
+                    'id' => $paquete->id,
+                    'codigo' => $paquete->codigo,
+                    'peso' => number_format($paquete->peso, 2, '.', ''),
+                    'cantidad_etiquetas' => $paquete->etiquetas->count(),
+                    'ubicacion' => optional($paquete->ubicacion)->nombre ?? 'Sin ubicación',
+                    'created_at' => $paquete->created_at->format('d/m/Y H:i'),
+                    'etiquetas' => $paquete->etiquetas->map(function ($etiqueta) {
+                        return [
+                            'codigo' => $etiqueta->etiqueta_sub_id,
+                            'peso' => number_format($etiqueta->peso ?? 0, 2, '.', ''),
+                            'estado' => $etiqueta->estado,
+                            'elementos_count' => $etiqueta->elementos_count ?? 0,
+                        ];
+                    })->values()->all()
+                ];
+            });
+
+            return response()->json([
+                'success' => true,
+                'planilla' => [
+                    'id' => $planilla->id,
+                    'codigo' => $planilla->codigo
+                ],
+                'paquetes' => $paquetesFormateados
+            ]);
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Planilla no encontrada'
+            ], 404);
+        } catch (\Exception $e) {
+            Log::error('Error al obtener paquetes de planilla', [
+                'planilla_id' => $planillaId,
+                'error' => $e->getMessage()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al cargar los paquetes'
+            ], 500);
+        }
+    }
+
+    /**
+     * Añadir una etiqueta a un paquete existente
+     * 
+     * POST /api/paquetes/{paqueteId}/añadir-etiqueta
+     * Body: { "etiqueta_codigo": "2025-004512.1.1" }
+     */
+    public function añadirEtiquetaAPaquete(Request $request, $paqueteId)
+    {
+        $request->validate([
+            'etiqueta_codigo' => 'required|string'
+        ]);
+
+        DB::beginTransaction();
+
+        try {
+            $paquete = Paquete::findOrFail($paqueteId);
+            $codigoEtiqueta = trim($request->etiqueta_codigo);
+
+            // Buscar la etiqueta
+            $etiqueta = Etiqueta::where('etiqueta_sub_id', $codigoEtiqueta)->first();
+
+            if (!$etiqueta) {
+                return response()->json([
+                    'success' => false,
+                    'message' => "Etiqueta {$codigoEtiqueta} no encontrada"
+                ], 404);
+            }
+
+            // Validar que la etiqueta pertenezca a la misma planilla
+            if ($etiqueta->planilla_id !== $paquete->planilla_id) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'La etiqueta no pertenece a la misma planilla del paquete'
+                ], 400);
+            }
+
+            // Validar que la etiqueta no esté ya en otro paquete
+            if ($etiqueta->paquete_id && $etiqueta->paquete_id !== $paquete->id) {
+                $paqueteActual = Paquete::find($etiqueta->paquete_id);
+                return response()->json([
+                    'success' => false,
+                    'message' => "La etiqueta ya está en el paquete {$paqueteActual->codigo}"
+                ], 400);
+            }
+
+            // Si ya está en este paquete, informar
+            if ($etiqueta->paquete_id === $paquete->id) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'La etiqueta ya está en este paquete'
+                ], 400);
+            }
+
+            // Validar estado de la etiqueta
+            if (in_array(strtolower($etiqueta->estado), ['pendiente'])) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No se puede añadir una etiqueta completada a un paquete'
+                ], 400);
+            }
+
+            // Asignar etiqueta al paquete
+            $etiqueta->paquete_id = $paquete->id;
+            $etiqueta->estado = 'en paquete';
+            $etiqueta->save();
+
+            // Actualizar peso del paquete
+            $pesoEtiqueta = $etiqueta->peso ?? 0;
+            $paquete->peso += $pesoEtiqueta;
+            $paquete->save();
+
+            // Registrar movimiento
+            \App\Models\Movimiento::create([
+                'tipo' => 'Movimiento paquete',
+                'etiqueta_sub_id' => $etiqueta->etiqueta_sub_id,
+                'paquete_id' => $paquete->id,
+                'descripcion' => "Etiqueta {$codigoEtiqueta} añadida al paquete {$paquete->codigo}",
+                'estado' => 'completado',
+                'fecha_solicitud' => now(),
+                'ejecutado_por' => auth()->id(),
+            ]);
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => "Etiqueta añadida correctamente al paquete {$paquete->codigo}",
+                'paquete' => [
+                    'id' => $paquete->id,
+                    'codigo' => $paquete->codigo,
+                    'peso' => $paquete->peso
+                ]
+            ]);
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            DB::rollBack();
+            return response()->json([
+                'success' => false,
+                'message' => 'Paquete no encontrado'
+            ], 404);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Error al añadir etiqueta a paquete', [
+                'paquete_id' => $paqueteId,
+                'etiqueta_codigo' => $request->etiqueta_codigo ?? null,
+                'error' => $e->getMessage()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al añadir la etiqueta: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Eliminar una etiqueta de un paquete
+     * 
+     * DELETE /api/paquetes/{paqueteId}/eliminar-etiqueta
+     * Body: { "etiqueta_codigo": "2025-004512.1.1" }
+     */
+    public function eliminarEtiquetaDePaquete(Request $request, $paqueteId)
+    {
+        $request->validate([
+            'etiqueta_codigo' => 'required|string'
+        ]);
+
+        DB::beginTransaction();
+
+        try {
+            $paquete = Paquete::findOrFail($paqueteId);
+            $codigoEtiqueta = trim($request->etiqueta_codigo);
+
+            // Buscar la etiqueta
+            $etiqueta = Etiqueta::where('etiqueta_sub_id', $codigoEtiqueta)
+                ->where('paquete_id', $paquete->id)
+                ->first();
+
+            if (!$etiqueta) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'La etiqueta no se encuentra en este paquete'
+                ], 404);
+            }
+
+            // Guardar peso antes de desasociar
+            $pesoEtiqueta = $etiqueta->peso ?? 0;
+
+            // Desasociar etiqueta del paquete
+            $etiqueta->paquete_id = null;
+            $etiqueta->estado = 'pendiente'; // Volver a estado pendiente
+            $etiqueta->save();
+
+            // Actualizar peso del paquete
+            $paquete->peso = max(0, $paquete->peso - $pesoEtiqueta);
+            $paquete->save();
+
+            // Verificar si el paquete quedó vacío
+            $etiquetasRestantes = Etiqueta::where('paquete_id', $paquete->id)->count();
+
+            if ($etiquetasRestantes === 0) {
+                // Opcionalmente eliminar el paquete vacío
+                Log::warning("Paquete {$paquete->codigo} quedó sin etiquetas después de eliminar {$codigoEtiqueta}");
+            }
+
+            // Registrar movimiento
+            \App\Models\Movimiento::create([
+                'tipo' => 'Movimiento paquete',
+                'etiqueta_sub_id' => $etiqueta->etiqueta_sub_id,
+                'descripcion' => "Etiqueta {$codigoEtiqueta} eliminada del paquete {$paquete->codigo}",
+                'estado' => 'completado',
+                'fecha_solicitud' => now(),
+                'ejecutado_por' => auth()->id(),
+            ]);
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => "Etiqueta eliminada correctamente del paquete",
+                'paquete' => [
+                    'id' => $paquete->id,
+                    'codigo' => $paquete->codigo,
+                    'peso' => $paquete->peso,
+                    'etiquetas_restantes' => $etiquetasRestantes
+                ]
+            ]);
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            DB::rollBack();
+            return response()->json([
+                'success' => false,
+                'message' => 'Paquete no encontrado'
+            ], 404);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Error al eliminar etiqueta de paquete', [
+                'paquete_id' => $paqueteId,
+                'etiqueta_codigo' => $request->etiqueta_codigo ?? null,
+                'error' => $e->getMessage()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al eliminar la etiqueta: ' . $e->getMessage()
+            ], 500);
+        }
     }
 }

@@ -594,22 +594,32 @@
 
         // 🔹 Devuelve [{index, cantidad}, ...] con todas las líneas del modal
         function recolectarLineas() {
-            const filas = document.querySelectorAll('#tablaConfirmacionBody tr');
             const lineas = [];
-            filas.forEach((tr) => {
+            let globalIndex = 0;
+
+            document.querySelectorAll('#tablaConfirmacionBody tr').forEach((tr) => {
                 const td = tr.querySelector('.pg-sugerido');
                 if (!td) return;
-                const peso = parseFloat(tr.querySelector('.peso-total').value || 0);
-                if (!(peso > 0)) return;
 
-                const idx = parseInt(td.dataset.index, 10); // índice DOM estable
-                const clave = td.dataset.clave; // clave real para backend
-                lineas.push({
-                    index: idx,
-                    clave: clave,
-                    cantidad: peso
+                const clave = td.dataset.clave;
+                const contenedorFechas = document.getElementById(`fechas-camion-${clave}`);
+                if (!contenedorFechas) return;
+
+                const inputsPeso = contenedorFechas.querySelectorAll('input[type="hidden"][name*="[peso]"]');
+
+                inputsPeso.forEach((pesoInput, subIndex) => {
+                    const peso = parseFloat(pesoInput.value || 0);
+                    if (peso <= 0) return;
+
+                    lineas.push({
+                        index: globalIndex++,
+                        clave: clave,
+                        cantidad: peso,
+                        sublinea: subIndex + 1
+                    });
                 });
             });
+
             return lineas;
         }
 
@@ -621,7 +631,7 @@
             const lineas = recolectarLineas();
             if (lineas.length === 0) return;
 
-            fetch('{{ route('pedidos.sugerir-pedido-global') }}', {
+            fetch('{{ route('pedidos.verSugerir-pedido-global') }}', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -638,12 +648,8 @@
                     const mensajesGlobales = document.getElementById('mensajesGlobales');
                     mensajesGlobales.innerHTML = '';
 
-                    // Limpia TODAS las celdas antes de volver a pintar (evita “perdidas”)
-                    document.querySelectorAll('#tablaConfirmacionBody .pg-sugerido').forEach(td => {
-                        td.innerHTML = '—';
-                        const h = td.querySelector('input[name$="[pedido_global_id]"]');
-                        if (h) h.remove();
-                    });
+                    // Limpiar asignaciones previas
+                    document.querySelectorAll('.pg-asignacion').forEach(div => div.remove());
 
                     if (data.mensaje) {
                         const div = document.createElement('div');
@@ -654,26 +660,64 @@
 
                     (data.asignaciones || []).forEach(asig => {
                         if (asig.linea_index !== null && asig.linea_index !== undefined) {
-                            const td = document.querySelector(
-                                `.pg-sugerido[data-index="${asig.linea_index}"]`
-                            );
-                            if (!td) return;
+                            let encontrado = false;
+                            let globalIdx = 0;
 
-                            const clave = td.dataset.clave;
+                            document.querySelectorAll('#tablaConfirmacionBody tr').forEach((tr) => {
+                                if (encontrado) return;
 
-                            if (asig.codigo) {
-                                td.innerHTML = `
-              <div class="font-bold text-green-700">${asig.codigo}</div>
-              <div class="text-xs text-gray-600">${asig.mensaje}</div>
-              <div class="text-xs text-blue-600">Quedan ${asig.cantidad_restante} kg</div>
-              <input type="hidden" name="detalles[${clave}][pedido_global_id]" value="${asig.pedido_global_id}">
-            `;
-                            } else {
-                                td.innerHTML = `
-              <div class="text-red-600">${asig.mensaje}</div>
-              <input type="hidden" name="detalles[${clave}][pedido_global_id]" value="">
-            `;
-                            }
+                                const td = tr.querySelector('.pg-sugerido');
+                                if (!td) return;
+
+                                const clave = td.dataset.clave;
+                                const contenedorFechas = document.getElementById(
+                                    `fechas-camion-${clave}`);
+                                if (!contenedorFechas) return;
+
+                                const inputsPeso = contenedorFechas.querySelectorAll(
+                                    'input[type="hidden"][name*="[peso]"]');
+
+                                inputsPeso.forEach((pesoInput, subIdx) => {
+                                    if (encontrado) return;
+
+                                    if (globalIdx === asig.linea_index) {
+                                        encontrado = true;
+
+                                        // Crear div de asignación
+                                        let divAsignacion = document.createElement('div');
+                                        divAsignacion.className =
+                                            'pg-asignacion text-xs mt-1 p-2 bg-gray-50 rounded border';
+                                        pesoInput.parentNode.insertBefore(divAsignacion,
+                                            pesoInput.nextSibling);
+
+                                        if (asig.codigo) {
+                                            divAsignacion.innerHTML = `
+                                            <div class="font-bold text-green-700">${asig.codigo}</div>
+                                            <div class="text-xs text-gray-600">${asig.mensaje}</div>
+                                            <div class="text-xs text-blue-600">Quedan ${asig.cantidad_restante} kg</div>
+                                        `;
+
+                                            // Input hidden para pedido global
+                                            let inputPG = contenedorFechas.querySelector(
+                                                `input[name="productos[${clave}][${subIdx + 1}][pedido_global_id]"]`
+                                            );
+                                            if (!inputPG) {
+                                                inputPG = document.createElement('input');
+                                                inputPG.type = 'hidden';
+                                                inputPG.name =
+                                                    `productos[${clave}][${subIdx + 1}][pedido_global_id]`;
+                                                contenedorFechas.appendChild(inputPG);
+                                            }
+                                            inputPG.value = asig.pedido_global_id;
+                                        } else {
+                                            divAsignacion.innerHTML =
+                                                `<div class="text-red-600">${asig.mensaje}</div>`;
+                                        }
+                                    }
+
+                                    globalIdx++;
+                                });
+                            });
                         } else if (asig.mensaje) {
                             const div = document.createElement('div');
                             div.className = 'text-yellow-700 font-medium';
@@ -681,34 +725,50 @@
                             mensajesGlobales.appendChild(div);
                         }
                     });
+                })
+                .catch(error => {
+                    console.error('Error al sugerir pedido global:', error);
                 });
         }
 
-        // recalcular cuando el usuario cambie peso en cualquier fila
-        document.addEventListener('input', debounce((ev) => {
-            if (!ev.target.closest('.peso-total')) return;
-            dispararSugerirMultiple();
-        }, 300));
+        // ✅ Event listeners FUERA de la función, se registran UNA SOLA VEZ
+        document.addEventListener('DOMContentLoaded', function() {
+            // Listener para cambios en peso
+            document.addEventListener('input', debounce((ev) => {
+                const inputPeso = ev.target.closest('.peso-total');
+                if (!inputPeso) return;
 
-        // recalcular cuando cambie fabricante/distribuidor
-        document.getElementById('fabricante').addEventListener('change', dispararSugerirMultiple);
-        document.getElementById('distribuidor').addEventListener('change', dispararSugerirMultiple);
+                const clave = inputPeso.closest('tr').querySelector('.pg-sugerido')?.dataset.clave;
+                if (clave) {
+                    generarFechasPorPeso(inputPeso, clave);
+                    dispararSugerirMultiple();
+                }
+            }, 300));
 
-        // dentro de mostrarConfirmacion(), tras crear todas las filas:
-        dispararSugerirMultiple();
+            // Listeners para fabricante/distribuidor
+            const fabricanteSelect = document.getElementById('fabricante');
+            const distribuidorSelect = document.getElementById('distribuidor');
+
+            if (fabricanteSelect) {
+                fabricanteSelect.addEventListener('change', dispararSugerirMultiple);
+            }
+            if (distribuidorSelect) {
+                distribuidorSelect.addEventListener('change', dispararSugerirMultiple);
+            }
+        });
     </script>
+
     <script>
         document.getElementById('formularioPedido').addEventListener('submit', function(ev) {
-            ev.preventDefault(); // siempre bloquear de primeras
+            ev.preventDefault();
             const errores = [];
 
-            // 1) Hay productos seleccionados
+            // Validaciones...
             const seleccionados = document.querySelectorAll('#tablaConfirmacionBody input[name="seleccionados[]"]');
             if (seleccionados.length === 0) {
                 errores.push('Selecciona al menos un producto para generar el pedido.');
             }
 
-            // 2) Validar proveedor (uno y solo uno)
             const fabricante = document.getElementById('fabricante').value;
             const distribuidor = document.getElementById('distribuidor').value;
             if (!fabricante && !distribuidor) {
@@ -718,7 +778,6 @@
                 errores.push('Solo puedes seleccionar uno: fabricante o distribuidor.');
             }
 
-            // 3) Validar lugar de entrega (exactamente uno)
             const obraHpr = document.getElementById('obra_id_hpr_modal').value;
             const obraExterna = document.getElementById('obra_id_externa_modal').value;
             const obraManual = document.getElementById('obra_manual_modal').value.trim();
@@ -730,31 +789,34 @@
                 errores.push('Solo puedes seleccionar una opción: nave, obra externa o introducirla manualmente.');
             }
 
-            // 4) Validar pesos y fechas de cada línea
             const resumenLineas = [];
             document.querySelectorAll('#tablaConfirmacionBody tr').forEach(tr => {
-                const tipo = tr.querySelector('td:nth-child(1)').textContent.trim();
-                const diametro = tr.querySelector('td:nth-child(2)').textContent.trim();
-                const peso = parseFloat(tr.querySelector('.peso-total').value || 0);
-                if (peso <= 0) {
-                    errores.push(`El peso de la línea ${tipo} ${diametro} debe ser mayor a 0.`);
-                }
-                // comprobar fechas requeridas
-                const fechas = [];
-                tr.querySelectorAll('.fechas-camion input[type="date"]').forEach(input => {
-                    if (!input.value) {
-                        errores.push(
-                            `Completa todas las fechas de entrega para ${tipo} ${diametro}.`);
-                    }
-                    fechas.push(input.value || '—');
-                });
+                const tipo = tr.querySelector('td:nth-child(1)')?.textContent.trim();
+                const diametro = tr.querySelector('td:nth-child(2)')?.textContent.trim();
+                const peso = parseFloat(tr.querySelector('.peso-total')?.value || 0);
 
-                resumenLineas.push({
-                    tipo: tipo,
-                    diametro: diametro,
-                    peso: peso,
-                    fechas: fechas
-                });
+                if (tipo && diametro) {
+                    if (peso <= 0) {
+                        errores.push(`El peso de la línea ${tipo} ${diametro} debe ser mayor a 0.`);
+                    }
+
+                    const fechas = [];
+                    tr.querySelectorAll('.fechas-camion input[type="date"]').forEach(input => {
+                        if (!input.value) {
+                            errores.push(
+                                `Completa todas las fechas de entrega para ${tipo} ${diametro}.`
+                            );
+                        }
+                        fechas.push(input.value || '—');
+                    });
+
+                    resumenLineas.push({
+                        tipo,
+                        diametro,
+                        peso,
+                        fechas
+                    });
+                }
             });
 
             if (errores.length > 0) {
@@ -767,7 +829,6 @@
                 return false;
             }
 
-            // ✅ Si no hay errores → mostrar confirmación con resumen
             let proveedorTexto = fabricante ?
                 `Fabricante: ${document.querySelector('#fabricante option:checked').textContent}` :
                 `Distribuidor: ${document.querySelector('#distribuidor option:checked').textContent}`;
@@ -778,15 +839,11 @@
                 `Obra externa: ${document.querySelector('#obra_id_externa_modal option:checked').textContent}` :
                 `Lugar manual: ${obraManual}`;
 
-            let htmlResumen = `
-        <p><b>${proveedorTexto}</b></p>
-        <p><b>${obraTexto}</b></p>
-        <hr>
-        <ul style="text-align:left;">
-    `;
+            let htmlResumen =
+                `<p><b>${proveedorTexto}</b></p><p><b>${obraTexto}</b></p><hr><ul style="text-align:left;">`;
             resumenLineas.forEach(l => {
-                htmlResumen += `<li>• ${l.tipo} ${l.diametro} → ${l.peso} kg<br>
-        Fechas: ${l.fechas.join(', ')}</li>`;
+                htmlResumen +=
+                    `<li>• ${l.tipo} ${l.diametro} → ${l.peso} kg<br>Fechas: ${l.fechas.join(', ')}</li>`;
             });
             htmlResumen += '</ul>';
 
@@ -803,16 +860,11 @@
                 allowOutsideClick: false
             }).then((result) => {
                 if (result.isConfirmed) {
-                    const fd = new FormData(document.getElementById('formularioPedido'));
-                    console.log('PG de cada clave:', [...fd.entries()].filter(([k]) => k.includes(
-                        'pedido_global_id')));
-
                     ev.target.submit();
                 }
             });
         });
     </script>
-
 
     <script>
         function mostrarConfirmacion() {
@@ -832,26 +884,23 @@
                 const fila = document.createElement('tr');
                 fila.className = "bg-gray-100";
 
-                // índice DOM estable para esta fila
-                const rowIndex = tbody.querySelectorAll('tr').length;
-
                 fila.innerHTML = `
-      <td class="border px-2 py-1">${tipo.charAt(0).toUpperCase() + tipo.slice(1)}</td>
-      <td class="border px-2 py-1">${diametro} mm${longitud ? ` / ${longitud} m` : ''}</td>
-      <td class="border px-2 py-1">
-        <div class="flex flex-col gap-2">
-          <input type="number" class="peso-total w-full px-2 py-1 border rounded"
-                 name="detalles[${clave}][cantidad]" value="${cantidad}" step="2500" min="2500">
-          <div class="fechas-camion flex flex-col gap-1" id="fechas-camion-${clave}"></div>
-        </div>
-      </td>
-      <td class="border px-2 py-1 font-semibold text-green-700 pg-sugerido"
-          data-clave="${clave}" data-index="${rowIndex}">—</td>
-      <input type="hidden" name="seleccionados[]" value="${clave}">
-      <input type="hidden" name="detalles[${clave}][tipo]" value="${tipo}">
-      <input type="hidden" name="detalles[${clave}][diametro]" value="${diametro}">
-      ${longitud ? `<input type="hidden" name="detalles[${clave}][longitud]" value="${longitud}">` : ''}
-    `;
+                <td class="border px-2 py-1">${tipo.charAt(0).toUpperCase() + tipo.slice(1)}</td>
+                <td class="border px-2 py-1">${diametro} mm${longitud ? ` / ${longitud} m` : ''}</td>
+                <td class="border px-2 py-1">
+                    <div class="flex flex-col gap-2">
+                        <input type="number" class="peso-total w-full px-2 py-1 border rounded"
+                               name="detalles[${clave}][cantidad]" value="${cantidad}" step="2500" min="2500">
+                        <div class="fechas-camion flex flex-col gap-1" id="fechas-camion-${clave}"></div>
+                    </div>
+                </td>
+                <td class="border px-2 py-1 font-semibold text-green-700 pg-sugerido"
+                    data-clave="${clave}">—</td>
+                <input type="hidden" name="seleccionados[]" value="${clave}">
+                <input type="hidden" name="detalles[${clave}][tipo]" value="${tipo}">
+                <input type="hidden" name="detalles[${clave}][diametro]" value="${diametro}">
+                ${longitud ? `<input type="hidden" name="detalles[${clave}][longitud]" value="${longitud}">` : ''}
+            `;
                 tbody.appendChild(fila);
 
                 const inputPeso = fila.querySelector('.peso-total');
@@ -863,8 +912,6 @@
             document.getElementById('modalConfirmacion').classList.add('flex');
         }
 
-
-
         function generarFechasPorPeso(input, clave) {
             const peso = parseFloat(input.value || 0);
             const contenedorFechas = document.getElementById(`fechas-camion-${clave}`);
@@ -874,6 +921,8 @@
 
             const bloques = Math.ceil(peso / 25000);
             for (let i = 0; i < bloques; i++) {
+                const pesoBloque = Math.min(25000, peso - i * 25000);
+
                 const fecha = document.createElement('input');
                 fecha.type = 'date';
                 fecha.name = `productos[${clave}][${i + 1}][fecha]`;
@@ -884,75 +933,14 @@
                 const pesoInput = document.createElement('input');
                 pesoInput.type = 'hidden';
                 pesoInput.name = `productos[${clave}][${i + 1}][peso]`;
-                pesoInput.value = Math.min(25000, peso - i * 25000);
+                pesoInput.value = pesoBloque;
                 contenedorFechas.appendChild(pesoInput);
             }
         }
 
-        // cada vez que el usuario cambia el peso en una fila:
-        document.addEventListener('input', debounce((ev) => {
-            const inputPeso = ev.target.closest('.peso-total');
-            if (!inputPeso) return;
-
-            // 🔹 regenerar fechas para esa fila
-            const clave = inputPeso
-                .closest('tr')
-                .querySelector('.pg-sugerido')
-                .dataset.clave;
-            generarFechasPorPeso(inputPeso, clave);
-
-            // 🔹 recalcular pedido global sugerido
-            dispararSugerirMultiple();
-        }, 300));
-
-
         function cerrarModalConfirmacion() {
             document.getElementById('modalConfirmacion').classList.remove('flex');
             document.getElementById('modalConfirmacion').classList.add('hidden');
-        }
-
-        //-----------------------------------------------------------------------------------------------------------
-        // function confirmarActivacion(pedidoId, productoId) {
-        //     if (!confirm('¿Estás seguro de activar esta línea?')) return;
-
-        //     enviarFormularioDinamico('pedidos.lineas.editarActivar', 'PUT', pedidoId,
-        //         productoId);
-        // }
-
-        // function confirmarDesactivacion(pedidoId, productoId) {
-        //     if (!confirm('¿Estás seguro de desactivar esta línea?')) return;
-
-        //     enviarFormularioDinamico('pedidos.lineas.editarDesactivar', 'DELETE', pedidoId,
-        //         productoId);
-        // }
-
-        function enviarFormularioDinamico(nombreRuta, metodo, pedidoId, lineaId) {
-            const form = document.createElement('form');
-            form.method = 'POST';
-            form.action = route(nombreRuta, [pedidoId, lineaId]);
-
-            const csrf = document.querySelector('meta[name="csrf-token"]').content;
-            const csrfInput = document.createElement('input');
-            csrfInput.type = 'hidden';
-            csrfInput.name = '_token';
-            csrfInput.value = csrf;
-            form.appendChild(csrfInput);
-
-            const methodInput = document.createElement('input');
-            methodInput.type = 'hidden';
-            methodInput.name = '_method';
-            methodInput.value = metodo;
-            form.appendChild(methodInput);
-
-            document.body.appendChild(form);
-            form.submit();
-        }
-
-        //-----------------------------------------------------------------------------------------------------------
-
-
-        function capitalize(str) {
-            return str.charAt(0).toUpperCase() + str.slice(1);
         }
 
         function confirmarActivacion(pedidoId, lineaId) {
@@ -969,8 +957,7 @@
                     fetch(`/pedidos/${pedidoId}/lineas/${lineaId}/activar`, {
                         method: 'POST',
                         headers: {
-                            'X-CSRF-TOKEN': document.querySelector(
-                                'meta[name="csrf-token"]').content,
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
                             'Content-Type': 'application/json'
                         },
                         body: JSON.stringify({
@@ -980,7 +967,6 @@
                 }
             });
         }
-
 
         function confirmarDesactivacion(pedidoId, lineaId) {
             Swal.fire({
@@ -996,8 +982,7 @@
                     fetch(`/pedidos/${pedidoId}/lineas/${lineaId}/desactivar`, {
                         method: 'POST',
                         headers: {
-                            'X-CSRF-TOKEN': document.querySelector(
-                                'meta[name="csrf-token"]').content,
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
                             'Content-Type': 'application/json'
                         },
                         body: JSON.stringify({
@@ -1008,6 +993,7 @@
             });
         }
     </script>
+
     <script>
         function confirmarCancelacionLinea(pedidoId, lineaId) {
             Swal.fire({

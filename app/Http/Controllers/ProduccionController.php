@@ -90,7 +90,8 @@ class ProduccionController extends Controller
         $coloresEventos  = $colores['eventos'];
 
         // ✅ Pintar las máquinas
-        $maquinas = Maquina::orderBy('id')
+        $maquinas = Maquina::orderBy('obra_id')
+            ->orderBy('codigo')
             ->get(['id', 'nombre', 'codigo', 'obra_id'])
             ->map(function ($maquina) use ($coloresMaquinas) {
                 $color = $coloresMaquinas[$maquina->obra_id] ?? '#6c757d';
@@ -112,7 +113,7 @@ class ProduccionController extends Controller
                 'obra_id' => null,
             ]
         ]);
-
+        log::info('maquinas', $maquinas->toArray());
         $trabajadores = User::with([
             'asignacionesTurnos.turno:id,hora_entrada,hora_salida',
             'asignacionesTurnos.obra.cliente',
@@ -346,7 +347,7 @@ class ProduccionController extends Controller
         $maquinas = Maquina::whereNotNull('tipo')
             ->where('tipo', '<>', 'grua')
             ->orderBy('obra_id')   // primero ordena por obra
-            ->orderBy('id')        // luego por id dentro de cada obra
+            // luego por id dentro de cada obra
             ->get();
 
         $coloresPorObra = [
@@ -506,6 +507,7 @@ class ProduccionController extends Controller
             'initialDate'                     => $initialDate,
         ]);
     }
+
     private function calcularInitialDate(): string
     {
         $planillasPrimeraPos = OrdenPlanilla::with(['planilla:id,estado,fecha_inicio'])
@@ -1181,7 +1183,6 @@ class ProduccionController extends Controller
         return [$compatibles, $incompatibles, $diametrosIncompatibles->unique()];
     }
 
-
     public function eventosPlanillas()
     {
         try {
@@ -1245,8 +1246,6 @@ class ProduccionController extends Controller
         }
     }
 
-
-
     //---------------------------------------------------------- PLANIFICACION TRABAJADORES OBRA
     public function trabajadoresObra()
     {
@@ -1256,12 +1255,17 @@ class ProduccionController extends Controller
         $trabajadoresServicios = User::with(['asignacionesTurnos.turno', 'categoria', 'maquina'])
             ->where('empresa_id', $hprServicios->id)
             ->where('rol', 'operario')
-            ->get();
+            ->get()
+            ->sortBy('nombre_completo')
+            ->values(); // <- opcional para reindexar
 
         $trabajadoresHpr = User::with(['asignacionesTurnos.turno', 'categoria', 'maquina'])
             ->where('empresa_id', $hpr->id)
             ->where('rol', 'operario')
-            ->get();
+            ->get()
+            ->sortBy('nombre_completo')
+            ->values();
+
 
         $obrasActivas = Obra::where('tipo', 'montaje')->get();
         $todasLasObras = Obra::orderBy('obra')->get();
@@ -1421,7 +1425,6 @@ class ProduccionController extends Controller
 
         return response()->json($eventos);
     }
-
 
     /**
      * Show the form for creating a new resource.

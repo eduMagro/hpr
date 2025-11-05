@@ -169,7 +169,6 @@ export function initCalendar(domEl) {
                 info.revert();
             }
         },
-
         eventDidMount(info) {
             const e = info.event;
             const props = e.extendedProps || {};
