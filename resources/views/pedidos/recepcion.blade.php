@@ -534,7 +534,7 @@
                     }] : []),
                     {
                         name: 'codigo',
-                        title: 'Código del paquete',
+                        title: 'QR Paquete 1',
                         type: 'text',
                         placeholder: 'Escanea el código MP...',
                         required: true,
@@ -549,7 +549,7 @@
                     },
                     {
                         name: 'n_colada',
-                        title: 'Número de colada',
+                        title: 'Colada 1',
                         type: 'text',
                         defaultValue: coladaDefecto,
                         required: true,
@@ -557,7 +557,7 @@
                     },
                     {
                         name: 'n_paquete',
-                        title: 'Número de paquete',
+                        title: 'Nº paquete 1',
                         type: 'number',
                         required: true,
                         validator: (value) => value ? null : 'Número de paquete requerido'
@@ -565,7 +565,7 @@
                     // Pasos del segundo paquete (condicionales)
                     {
                         name: 'codigo_2',
-                        title: 'Código del segundo paquete',
+                        title: 'QR Paquete 2',
                         type: 'text',
                         placeholder: 'Escanea el código MP...',
                         condition: () => this.data.paquetes === '2',
@@ -582,7 +582,7 @@
                     },
                     {
                         name: 'n_colada_2',
-                        title: 'Colada del segundo paquete',
+                        title: 'Colada Paquete 2',
                         type: 'text',
                         defaultValue: coladaDefecto,
                         condition: () => this.data.paquetes === '2',
@@ -590,7 +590,7 @@
                     },
                     {
                         name: 'n_paquete_2',
-                        title: 'Nº paquete del segundo',
+                        title: 'Nº Paquete 2',
                         type: 'number',
                         condition: () => this.data.paquetes === '2',
                         required: false
@@ -1050,11 +1050,6 @@
                         ubicacionNombre = ubicacion.nombre_sin_prefijo;
                     }
                 }
-
-                html += '<div class="resumen-item">' +
-                    '<strong>Sector:</strong>' +
-                    '<span>' + sectorSeleccionado + '</span>' +
-                    '</div>';
 
                 html += '<div class="resumen-item">' +
                     '<strong>Ubicación:</strong>' +
