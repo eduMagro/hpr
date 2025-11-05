@@ -66,6 +66,7 @@ class PedidoController extends Controller
             }
         }
 
+        // ✅ CORREGIDO: Ahora obra_id está en las líneas
         if ($request->filled('obra_id')) {
             $obra = \App\Models\Obra::find($request->obra_id);
             $filtros[] = 'Obra: <strong>' . e($obra?->obra ?? ('ID ' . $request->obra_id)) . '</strong>';
@@ -105,7 +106,6 @@ class PedidoController extends Controller
 
         return $filtros;
     }
-
 
     private function getOrdenamientoPedidos(string $columna, string $titulo): string
     {
@@ -159,7 +159,9 @@ class PedidoController extends Controller
 
         // Pedido global (id exacto)
         if ($request->filled('pedido_global_id')) {
-            $query->where('pedido_global_id', $request->pedido_global_id);
+            $query->whereHas('pedidoProductos', function ($q) use ($request) {
+                $q->where('pedido_global_id', $request->pedido_global_id);
+            });
         }
 
         // Filtros por producto base de sus líneas
@@ -189,9 +191,12 @@ class PedidoController extends Controller
             $query->where('distribuidor_id', $request->distribuidor_id);
         }
 
-        // Obra (id exacto)
+        // ✅ CORREGIDO: Obra ahora está en pedido_producto
         if ($request->filled('obra_id')) {
-            $query->where('obra_id', $request->integer('obra_id'));
+            $query->whereHas('pedidoProductos', function ($q) use ($request) {
+                $q->where('pedido_productos.obra_id', $request->integer('obra_id'))
+                    ->orWhere('pedido_productos.obra_manual', 'like', '%' . $request->obra_id . '%');
+            });
         }
 
         // Fechas
@@ -215,9 +220,6 @@ class PedidoController extends Controller
             });
         }
 
-
-
-
         // ===== Orden =====
         $sortBy = $request->input('sort', 'created_at');
         $order  = strtolower($request->input('order', 'desc')) === 'asc' ? 'asc' : 'desc';
@@ -227,21 +229,27 @@ class PedidoController extends Controller
         switch ($sortBy) {
             case 'fabricante':
                 $query->orderBy(
-                    \App\Models\Fabricante::select('nombre')->whereColumn('fabricantes.id', 'pedidos.fabricante_id'),
+                    Fabricante::select('nombre')->whereColumn('fabricantes.id', 'pedidos.fabricante_id'),
                     $order
                 );
                 break;
 
             case 'distribuidor':
                 $query->orderBy(
-                    \App\Models\Distribuidor::select('nombre')->whereColumn('distribuidores.id', 'pedidos.distribuidor_id'),
+                    Distribuidor::select('nombre')->whereColumn('distribuidores.id', 'pedidos.distribuidor_id'),
                     $order
                 );
                 break;
 
-            case 'obra': // ordenar por nombre de la obra (lugar de entrega)
+            // ✅ CORREGIDO: Ordenar por obra que ahora está en pedido_producto
+            case 'obra':
+                // Como un pedido puede tener múltiples líneas con diferentes obras,
+                // ordenamos por la primera obra encontrada en sus líneas
                 $query->orderBy(
-                    \App\Models\Obra::select('obra')->whereColumn('obras.id', 'pedidos.obra_id'),
+                    Obra::select('obra')
+                        ->join('pedido_productos', 'obras.id', '=', 'pedido_productos.obra_id')
+                        ->whereColumn('pedido_productos.pedido_id', 'pedidos.id')
+                        ->limit(1),
                     $order
                 );
                 break;
@@ -265,25 +273,30 @@ class PedidoController extends Controller
         return $query;
     }
 
-
     public function index(Request $request, StockService $stockService)
     {
         // Cargamos todos los modelos y relaciones necesarios
         $query = Pedido::with([
             'fabricante',
-            'obra',
             'distribuidor',
             'productos',
             'pedidoGlobal',
-            'pedidoProductos.productoBase',
-            'pedidoProductos.pedidoGlobal', // ⚠️ importante cargar esta relación
+            'pedidoProductos' => function ($query) {
+                $query->with(['productoBase', 'pedidoGlobal', 'obra']); // ✅ Cargar obra aquí
+            },
         ]);
 
         if (auth()->user()->rol === 'operario') {
             $query->whereIn('estado', ['pendiente', 'parcial']);
         }
 
-        $obras = Obra::whereIn('id', Pedido::select('obra_id')->distinct())
+        // ✅ CORREGIDO: Ahora las obras están en pedido_producto
+        $obras = Obra::whereIn('id', function ($query) {
+            $query->select('obra_id')
+                ->from('pedido_productos')
+                ->whereNotNull('obra_id')
+                ->distinct();
+        })
             ->orderBy('obra')
             ->pluck('obra', 'id');
 
@@ -304,7 +317,8 @@ class PedidoController extends Controller
                         !$request->filled('producto_diametro') &&
                         !$request->filled('producto_longitud') &&
                         !$request->filled('fecha_entrega') &&
-                        !$request->filled('estado')
+                        !$request->filled('estado') &&
+                        !$request->filled('obra_id') // ✅ NUEVO
                     ) {
                         return true;
                     }
@@ -337,6 +351,13 @@ class PedidoController extends Controller
                         }
                     }
 
+                    // ✅ NUEVO: Filtro por obra en las líneas
+                    if ($request->filled('obra_id')) {
+                        $obraId = $request->integer('obra_id');
+                        if ($linea->pivot->obra_id != $obraId) {
+                            return false;
+                        }
+                    }
 
                     return true;
                 })
@@ -492,7 +513,6 @@ class PedidoController extends Controller
             'maquina' // 👈 Agregada la máquina al compact
         ));
     }
-
 
     public function procesarRecepcion(Request $request, $pedidoId)
     {
@@ -1010,6 +1030,48 @@ class PedidoController extends Controller
         );
     }
 
+    public function update(Request $request, Pedido $pedido)
+    {
+        $request->validate([
+            'linea_id'    => 'required|exists:pedido_productos,id',
+            'obra_id'     => 'nullable|exists:obras,id',
+            'obra_manual' => 'nullable|string|max:255',
+        ]);
+
+        // Validar que solo haya uno seleccionado
+        $conteo = collect([
+            $request->obra_id,
+            $request->obra_manual
+        ])->filter()->count();
+
+        if ($conteo === 0) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Debes seleccionar un lugar de entrega'
+            ], 422);
+        }
+
+        if ($conteo > 1) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Solo puedes seleccionar una opción'
+            ], 422);
+        }
+
+        // ✅ Actualizar la línea específica en la tabla pivote
+        DB::table('pedido_productos')
+            ->where('id', $request->linea_id)
+            ->update([
+                'obra_id'     => $request->obra_id,
+                'obra_manual' => $request->obra_manual,
+                'updated_at'  => now(),
+            ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Lugar de entrega actualizado correctamente'
+        ]);
+    }
     public function store(Request $request)
     {
         try {
@@ -1049,15 +1111,16 @@ class PedidoController extends Controller
 
             DB::beginTransaction();
 
-            // Crear pedido principal
+            // ✅ Determinar obra_id y obra_manual PARA LAS LÍNEAS
             $obraId = $request->obra_id_hpr ?: $request->obra_id_externa;
+            $obraManual = $request->obra_manual;
+
+            // Crear pedido principal (SIN obra_id ni obra_manual)
             $pedido = Pedido::create([
                 'codigo'          => Pedido::generarCodigo(),
                 'estado'          => 'pendiente',
                 'fabricante_id'   => $request->fabricante_id,
                 'distribuidor_id' => $request->distribuidor_id,
-                'obra_id'         => $obraId,
-                'obra_manual'     => $request->obra_manual,
                 'fecha_pedido'    => now(),
                 'created_by'      => auth()->id(),
             ]);
@@ -1095,11 +1158,13 @@ class PedidoController extends Controller
                         continue;
                     }
 
-                    // Crear la línea de pedido
+                    // ✅ Crear la línea de pedido CON obra_id y obra_manual
                     $pedido->productos()->attach($productoBase->id, [
                         'pedido_global_id'       => $pedidoGlobalId ?: null,
                         'cantidad'               => $peso,
                         'fecha_estimada_entrega' => $fecha,
+                        'obra_id'                => $obraId,           // ✅ NUEVO
+                        'obra_manual'            => $obraManual,       // ✅ NUEVO
                         'observaciones'          => null,
                     ]);
 
@@ -1114,6 +1179,8 @@ class PedidoController extends Controller
                         'peso'             => $peso,
                         'fecha'            => $fecha,
                         'pedido_global_id' => $pedidoGlobalId,
+                        'obra_id'          => $obraId,
+                        'obra_manual'      => $obraManual,
                         'clave'            => $clave,
                         'index'            => $index,
                     ]);
@@ -1147,6 +1214,7 @@ class PedidoController extends Controller
             return back()->withInput()->with('error', $msg);
         }
     }
+
     public function show($id)
     {
         $pedido = Pedido::with(['productos', 'fabricante', 'obra'])->findOrFail($id);
