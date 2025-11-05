@@ -5,17 +5,17 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class Etiqueta extends Model
 {
     use HasFactory;
 
-
     protected $table = 'etiquetas';
     protected $appends = ['peso_kg'];
     protected $fillable = [
         'codigo',
-        'etiqueta_sub_id', // Para el caso en que todos los elementos tienen la misma máquina
+        'etiqueta_sub_id',
         'planilla_id',
         'producto_id',
         'producto_id_2',
@@ -40,52 +40,6 @@ class Etiqueta extends Model
         'estado',
     ];
 
-    public function getIdEtAttribute()
-    {
-        return 'ET' . $this->id;
-    }
-
-    public static function generarCodigoEtiqueta(): string
-    {
-        return DB::transaction(function () {
-            $prefijo = 'ETQ' . now()->format('ym');   // p.ej. ETQ2506
-
-            // 1️⃣  Solo filas PADRE (etiqueta_sub_id IS NULL)
-            $ultimo = self::where('codigo', 'like', "$prefijo%")
-                ->whereNull('etiqueta_sub_id')        // ← clave del arreglo
-                ->lockForUpdate()
-                ->orderByDesc(DB::raw(
-                    "CAST(SUBSTRING(codigo, LENGTH('$prefijo') + 1) AS UNSIGNED)"
-                ))
-                ->value('codigo');
-
-            $numero = $ultimo
-                ? (int) substr($ultimo, strlen($prefijo)) + 1
-                : 1;
-
-            return sprintf('%s%03d', $prefijo, $numero); // ETQ2506005, ETQ2506006…
-        });
-    }
-
-    public static function generarCodigoSubEtiqueta(string $codigoPadre): string
-    {
-        return DB::transaction(function () use ($codigoPadre) {
-            // Prefijo de subetiquetas del padre, p.ej. "ETQ2508007."
-            $prefijo = $codigoPadre . '.';
-
-            // Bloqueamos fila/índice para evitar carreras y obtenemos el mayor sufijo existente
-            $maxIndice = self::where('etiqueta_sub_id', 'like', $prefijo . '%')
-                ->lockForUpdate()
-                ->select(DB::raw("MAX(CAST(SUBSTRING_INDEX(etiqueta_sub_id, '.', -1) AS UNSIGNED)) as maxnum"))
-                ->value('maxnum');
-
-            $siguiente = ($maxIndice ? ((int)$maxIndice) : 0) + 1;
-
-            return $codigoPadre . '.' . str_pad($siguiente, 2, '0', STR_PAD_LEFT);
-        });
-    }
-
-
     // Relaciones
     public function planilla()
     {
@@ -96,16 +50,17 @@ class Etiqueta extends Model
     {
         return $this->hasMany(Elemento::class, 'etiqueta_id', 'id');
     }
-    // Relación con el modelo Producto (si existe)
+
     public function producto()
     {
         return $this->belongsTo(Producto::class, 'producto_id');
     }
-    // Relación con el modelo Producto (si existe)
+
     public function producto2()
     {
         return $this->belongsTo(Producto::class, 'producto_id_2');
     }
+
     public function paquete()
     {
         return $this->belongsTo(Paquete::class, 'paquete_id');
@@ -145,16 +100,17 @@ class Etiqueta extends Model
     {
         return optional($this->soldador2)->name ?? 'N/A';
     }
+
     public function operario1()
     {
-        return $this->belongsTo(User::class);  // Relación con User
+        return $this->belongsTo(User::class);
     }
-    // Relación con el segundo usuario
+
     public function operario2()
     {
         return $this->belongsTo(User::class);
     }
-    // Relación con el modelo User
+
     public function soldador1()
     {
         return $this->belongsTo(User::class);

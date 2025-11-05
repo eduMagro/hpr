@@ -12,6 +12,7 @@ use App\Models\Obra;
 use App\Models\Cliente;
 use App\Models\ProductoBase;
 use App\Models\Pedido;
+use App\Models\Planilla;
 use App\Models\OrdenPlanilla;
 use App\Models\AsignacionTurno;
 use App\Models\User;
@@ -26,6 +27,8 @@ use Illuminate\Support\Str;
 use Illuminate\Support\Collection;
 use App\Services\SugeridorProductoBaseService;
 use Illuminate\Support\Facades\Log;
+use App\Services\ProgressBVBSService;
+use App\Services\PlanillaColaService;
 
 class MaquinaController extends Controller
 {
@@ -130,7 +133,6 @@ class MaquinaController extends Controller
         return response()->json($maquina);
     }
 
-
     //------------------------------------------------------------------------------------ SHOW
 
     public function show($id)
@@ -144,18 +146,19 @@ class MaquinaController extends Controller
             'elementos.maquina_2',
             'elementos.maquina_3',
             'productos',
+            // ✅ COLADAS: Cargar relaciones de productos en elementos (trazabilidad completa)
+            'elementos.producto',
+            'elementos.producto2',
+            'elementos.producto3',
         ])->findOrFail($id);
-
-        $this->activarMovimientosSalidasHoy();
-        $this->activarMovimientosSalidasAlmacenHoy();
-
         // 1) Contexto común (incluye productosBaseCompatibles en $base)
         $base = $this->cargarContextoBase($maquina);
 
         // 2) Rama GRÚA: devolver pronto con variables neutras de máquina
         if ($this->esGrua($maquina)) {
             $grua = $this->cargarContextoGrua($maquina);
-
+            $this->activarMovimientosSalidasHoy();
+            $this->activarMovimientosSalidasAlmacenHoy();
             return view('maquinas.show', array_merge(
                 $base,
                 [
@@ -179,10 +182,20 @@ class MaquinaController extends Controller
                 ->get();
         }
 
-        // 4) Cola de planillas (1 o 2)
-        $mostrarDos = request()->boolean('mostrar_dos');
-        $cuantas    = $mostrarDos ? 2 : 1;
-        [$planillasActivas, $elementosFiltrados] = $this->aplicarColaPlanillas($maquina, $elementosMaquina, $cuantas);
+        // 4) Cola de planillas
+        $posicion1 = request()->input('posicion_1', 1); // Por defecto posición 1
+        $posicion2 = request()->input('posicion_2', null); // Por defecto null (no mostrar segunda)
+
+        // Filtrar posiciones válidas (mayores a 0)
+        $posiciones = collect([$posicion1, $posicion2])
+            ->filter(fn($p) => !is_null($p) && (int)$p > 0)
+            ->map(fn($p) => (int)$p)
+            ->unique()
+            ->values();
+
+        // 4) Cola de planillas con posiciones específicas
+        [$planillasActivas, $elementosFiltrados, $ordenManual, $posicionesDisponibles] =
+            $this->aplicarColaPlanillasPorPosicion($maquina, $elementosMaquina, $posiciones);
 
         // 5) Datasets filtrados por planilla
         $elementosPorPlanilla = $elementosFiltrados->groupBy('planilla_id');
@@ -230,6 +243,12 @@ class MaquinaController extends Controller
                 'longitud'    => $e->longitud_cm,
                 'barras'      => $e->barras,
                 'figura'      => $e->figura,
+                // Incluimos las coladas para mostrarlas en la leyenda del SVG
+                'coladas'     => [
+                    'colada1' => $e->producto ? $e->producto->n_colada : null,
+                    'colada2' => $e->producto2 ? $e->producto2->n_colada : null,
+                    'colada3' => $e->producto3 ? $e->producto3->n_colada : null,
+                ],
             ])->values(),
         ])->values();
 
@@ -308,6 +327,9 @@ class MaquinaController extends Controller
                 return (int) $c->countBy()->sortDesc()->keys()->first();
             })
             ->toArray();
+        Log::info('[MaquinaController@show] 🧩 Planillas activas en cola:', collect($planillasActivas)->pluck('id')->toArray());
+
+        Log::info('[MaquinaController@show] 🧩 Planillas presentes en elementosFiltrados:', $elementosFiltrados->pluck('planilla_id')->unique()->toArray());
 
         // 11) Devolver vista
         return view('maquinas.show', array_merge($base, [
@@ -315,11 +337,12 @@ class MaquinaController extends Controller
             'maquina' => $maquina,
 
             // cola / filtrados
-            'planillasActivas'   => $planillasActivas,
-            'elementosFiltrados' => $elementosFiltrados,
-            'elementosPorPlanilla' => $elementosPorPlanilla,
-            'mostrarDos'         => $mostrarDos,
-
+            'planillasActivas'      => $planillasActivas,
+            'elementosFiltrados'    => $elementosFiltrados,
+            'elementosPorPlanilla'  => $elementosPorPlanilla,
+            'posicionesDisponibles' => $posicionesDisponibles,
+            'posicion1'             => $posicion1,
+            'posicion2'             => $posicion2,
             // datasets UI
             'elementosMaquina'         => $elementosMaquina,
             'pesosElementos'           => $pesosElementos,
@@ -347,6 +370,57 @@ class MaquinaController extends Controller
     /* =========================
    HELPERS PRIVADOS
    ========================= */
+
+    /**
+     * 🔥 NUEVO MÉTODO: Obtiene planillas según posiciones específicas
+     * 
+     * @param Maquina $maquina
+     * @param Collection $elementos
+     * @param Collection $posiciones - Collection de posiciones a mostrar [1, 3, 5...]
+     * @return array [$planillasActivas, $elementosFiltrados, $ordenManual, $posicionesDisponibles]
+     */
+    private function aplicarColaPlanillasPorPosicion(Maquina $maquina, Collection $elementos, Collection $posiciones)
+    {
+        // 1) Agrupar elementos por planilla
+        $porPlanilla = $elementos->groupBy('planilla_id');
+
+        // 2) Traer orden manual completo: [planilla_id => posicion]
+        $ordenManual = OrdenPlanilla::where('maquina_id', $maquina->id)
+            ->orderBy('posicion', 'asc')
+            ->get()
+            ->pluck('posicion', 'planilla_id');
+
+        // 3) Crear un mapa inverso [posicion => planilla_id] para búsqueda rápida
+        $posicionAPlanilla = $ordenManual->flip();
+
+        // 4) Obtener todas las posiciones disponibles en orden
+        $posicionesDisponibles = $ordenManual->values()->sort()->values()->toArray();
+
+        // 5) Seleccionar planillas según las posiciones solicitadas
+        $planillasActivas = [];
+        foreach ($posiciones as $pos) {
+            if ($posicionAPlanilla->has($pos)) {
+                $planillaId = $posicionAPlanilla[$pos];
+
+                // Buscar la planilla en los elementos agrupados
+                if ($porPlanilla->has($planillaId)) {
+                    $planilla = $porPlanilla[$planillaId]->first()->planilla;
+                    if ($planilla) {
+                        $planillasActivas[] = $planilla;
+                    }
+                }
+            }
+        }
+
+        // 6) Filtrar elementos a las planillas activas
+        $idsActivos = collect($planillasActivas)->pluck('id');
+        $elementosFiltrados = $idsActivos->isNotEmpty()
+            ? $elementos->whereIn('planilla_id', $idsActivos)->values()
+            : collect();
+
+        return [$planillasActivas, $elementosFiltrados, $ordenManual, $posicionesDisponibles];
+    }
+
     public static function productosSolicitadosParaMaquina($maquinaId)
     {
         return Movimiento::where('tipo', 'recarga_materia_prima')
@@ -980,5 +1054,73 @@ class MaquinaController extends Controller
             DB::rollBack();  // Si ocurre un error, revertimos la transacción
             return redirect()->back()->with('error', 'Ocurrió un error al eliminar la entrada: ' . $e->getMessage());
         }
+    }
+
+
+    public function exportarBVBS(Maquina $maquina, ProgressBVBSService $bvbs)
+    {
+        // 1️⃣ Obtener las planillas activas (posición = 1) para esta máquina
+        $planillaIdsActivas = OrdenPlanilla::where('maquina_id', $maquina->id)
+            ->where('posicion', 1)
+            ->pluck('planilla_id');
+        $codigoProyecto = null;
+
+        if ($planillaIdsActivas) {
+            $planilla = Planilla::find($planillaIdsActivas[0]);
+            if ($planilla && preg_match('/-(\d{6})$/', $planilla->codigo, $m)) {
+                $codigoProyecto = ltrim(substr($m[1], -4), '0'); // '006651' → '6651'
+            }
+        }
+
+        // 2️⃣ Obtener los elementos de esas planillas y de esa máquina
+        $elementos = Elemento::with(['planilla.obra', 'etiquetaRelacion'])
+            ->whereIn('planilla_id', $planillaIdsActivas)
+            ->where(function ($q) use ($maquina) {
+                $q->where('maquina_id', $maquina->id)
+                    ->orWhere('maquina_id_2', $maquina->id);
+            })
+            ->get();
+
+        // 3️⃣ Mapear cada elemento a los campos que necesita el servicio BVBS
+        $datos = $elementos->map(fn($el) => [
+            'proyecto' => $codigoProyecto,
+            'plano'       => optional($el->etiquetaRelacion)->nombre,
+            'indice'      => $el->indice,
+            'marca'       => $el->etiqueta,
+            'barras'      => (int)$el->barras,
+            'diametro'    => (int)$el->diametro,
+            'dimensiones' => (string)$el->dimensiones,
+            'longitud'    => $el->longitud_total_cm,
+            'peso'        => $el->peso,
+            'mandril_mm'  => $el->mandril_mm, // opcional
+            'calidad'     => 'B500SD',
+            'capa'        => $el->capa,
+            'box'         => $el->box,
+        ])->all();
+
+        // 4) Generar BVBS
+        $contenido = $bvbs->exportarLote($datos);
+
+        // 5) Nombre de archivo decente
+        $timestamp   = now()->format('Ymd_His');
+        $maquinaTag  = Str::upper(trim($maquina->codigo ?? $maquina->nombre ?? 'MAQUINA'));
+        $maquinaTag  = Str::of($maquinaTag)->replaceMatches('/[^A-Z0-9]+/', '_')->trim('_');
+        $proyectoTag = $codigoProyecto ? 'PRJ' . $codigoProyecto : 'SINPRJ';
+        $filename    = "BVBS_{$maquinaTag}_{$proyectoTag}_{$timestamp}.bvbs";
+        $path        = "exports/bvbs/{$filename}";
+
+        // 6) Guardar en disco y devolver descarga
+        Storage::disk('local')->put($path, $contenido);
+
+        Log::info("Export BVBS guardado en {$path} para máquina {$maquina->id} con " . count($datos) . " líneas.");
+
+        return response()->download(
+            Storage::disk('local')->path($path),
+            $filename,
+            [
+                'Content-Type'  => 'text/plain; charset=UTF-8',
+                'Cache-Control' => 'no-store, no-cache, must-revalidate',
+            ]
+        );
     }
 }

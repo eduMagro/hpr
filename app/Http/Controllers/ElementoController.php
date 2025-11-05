@@ -37,14 +37,16 @@ class ElementoController extends Controller
             'id' => 'id',
             'figura' => 'figura',
             'etiqueta_sub_id' => 'etiqueta_sub_id',
+            'dimensiones' => 'dimensiones'
 
         ];
 
         foreach ($filters as $requestKey => $column) {
             if ($request->has($requestKey) && $request->$requestKey !== null && $request->$requestKey !== '') {
-                $query->where($column, 'like', "%{$request->$requestKey}%");
+                $query->where($column, 'like', '%' . trim($request->$requestKey) . '%');
             }
         }
+
         if ($request->filled('codigo')) {
             $codigos = explode(',', $request->codigo);
             if (count($codigos) > 1) {
@@ -65,18 +67,34 @@ class ElementoController extends Controller
         }
 
         if ($request->filled('codigo_planilla')) {
-            $input = $request->codigo_planilla;
+            $input = trim($request->codigo_planilla);
 
             $query->whereHas('planilla', function ($q) use ($input) {
-                $q->where('codigo', 'like', "%{$input}%");
+
+                if (preg_match('/^(\d{4})-(\d{1,6})$/', $input, $m)) {
+                    $anio = $m[1];
+                    $num  = str_pad($m[2], 6, '0', STR_PAD_LEFT);
+                    $codigoFormateado = "{$anio}-{$num}";
+                    $q->where('planillas.codigo', 'like', "%{$codigoFormateado}%");
+                    return;
+                }
+
+                if (preg_match('/^\d{1,6}$/', $input)) {
+                    $q->where('planillas.codigo', 'like', "%{$input}%");
+                    return;
+                }
+
+                // 📝 Caso 3: texto o formato libre
+                $q->where('planillas.codigo', 'like', "%{$input}%");
             });
         }
+
 
 
         // Etiqueta
         if ($request->has('etiqueta') && $request->etiqueta) {
             $query->whereHas('etiquetaRelacion', function ($q) use ($request) {
-                $q->where('id', $request->etiqueta);
+                $q->where('id', 'like', '%' . $request->etiqueta . '%');
             });
         }
         if ($request->filled('subetiqueta')) {

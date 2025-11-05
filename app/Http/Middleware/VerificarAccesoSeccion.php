@@ -118,15 +118,26 @@ class VerificarAccesoSeccion
             $autorizado = false;
             foreach ($permisos as $permiso) {
                 if (
-                    (in_array($accionRuta, ['index', 'show']) || Str::startsWith($accionRuta, 'ver')) && $permiso->puede_ver
-                    || (in_array($accionRuta, ['create', 'store']) || Str::startsWith($accionRuta, 'crear')) && $permiso->puede_crear
-                    || (in_array($accionRuta, ['edit', 'update', 'destroy']) || Str::startsWith($accionRuta, 'editar')) && $permiso->puede_editar
+                    // Permiso de VER
+                    (in_array($accionRuta, ['index', 'show']) || Str::startsWith($accionRuta, 'ver') || Str::startsWith($accionRuta, 'show')) && $permiso->puede_ver
+
+                    // Permiso de CREAR
+                    || (in_array($accionRuta, ['create', 'store']) || Str::startsWith($accionRuta, 'crear') || Str::startsWith($accionRuta, 'store')) && $permiso->puede_crear
+
+                    // Permiso de EDITAR (aquí está el fix)
+                    || (in_array($accionRuta, ['edit', 'update', 'destroy'])
+                        || Str::startsWith($accionRuta, 'editar')
+                        || Str::startsWith($accionRuta, 'actualizar')
+                        || Str::startsWith($accionRuta, 'update')  // ← AGREGAR ESTA LÍNEA
+                        || Str::startsWith($accionRuta, 'destroy')
+                        || Str::startsWith($accionRuta, 'delete')
+                        || Str::startsWith($accionRuta, 'eliminar')
+                    ) && $permiso->puede_editar
                 ) {
                     $autorizado = true;
                     break;
                 }
             }
-
             if (!$autorizado) {
                 Log::warning('❌ Acción no autorizada', [
                     'usuario' => $usuarioAutenticado->email,

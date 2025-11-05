@@ -20,7 +20,7 @@ class FabricaEtiquetaServicio
         }
         log::info("Fábrica de servicio para máquina ID {$maquina->id} de tipo {$tipo}");
         // Rama especial para cortadora_dobladora
-        if ($tipo === 'cortadora_dobladora') {
+        if ($tipo === 'cortadora_dobladora' || $tipo === 'estribadora') {
             $material = strtolower(trim((string)$maquina->tipo_material)); // 'barra' | 'encarretado'
             $mapaMaterial = config('maquinas.cortadora_dobladora_por_material', []);
             $clase = $mapaMaterial[$material] ?? null;

@@ -16,6 +16,7 @@ use App\Models\Entrada;
 use App\Models\EntradaProducto;
 use App\Models\Ubicacion;
 use App\Models\Movimiento;
+use App\Models\Maquina;
 use App\Mail\PedidoCreado;
 use App\Models\User;
 use App\Models\Obra;
@@ -37,44 +38,49 @@ class PedidoController extends Controller
         $filtros = [];
 
         if ($request->filled('codigo')) {
-            $filtros[] = 'Código pedido: <strong>' . $request->codigo . '</strong>';
+            $filtros[] = 'Código pedido: <strong>' . e($request->codigo) . '</strong>';
         }
+
         if ($request->filled('pedido_producto_id')) {
-            $filtros[] = 'ID línea: <strong>' . $request->pedido_producto_id . '</strong>';
+            $filtros[] = 'ID línea: <strong>' . e($request->pedido_producto_id) . '</strong>';
         }
 
         if ($request->filled('pedido_global_id')) {
-            $pg = PedidoGlobal::find($request->pedido_global_id);
+            $pg = \App\Models\PedidoGlobal::find($request->pedido_global_id);
             if ($pg) {
-                $filtros[] = 'Código pedido global: <strong>' . $pg->codigo . '</strong>';
+                $filtros[] = 'Código pedido global: <strong>' . e($pg->codigo) . '</strong>';
             }
         }
 
         if ($request->filled('fabricante_id')) {
-            $fabricante = Fabricante::find($request->fabricante_id);
+            $fabricante = \App\Models\Fabricante::find($request->fabricante_id);
             if ($fabricante) {
-                $filtros[] = 'Fabricante: <strong>' . $fabricante->nombre . '</strong>';
+                $filtros[] = 'Fabricante: <strong>' . e($fabricante->nombre) . '</strong>';
             }
         }
+
         if ($request->filled('distribuidor_id')) {
-            $distribuidor = Fabricante::find($request->distribuidor_id);
+            $distribuidor = \App\Models\Distribuidor::find($request->distribuidor_id);
             if ($distribuidor) {
-                $filtros[] = 'Distribuidor: <strong>' . $distribuidor->nombre . '</strong>';
+                $filtros[] = 'Distribuidor: <strong>' . e($distribuidor->nombre) . '</strong>';
             }
         }
+
         if ($request->filled('obra_id')) {
-            $filtrosActivos['Obra'] = optional(Obra::find($request->obra_id))->obra ?? '—';
+            $obra = \App\Models\Obra::find($request->obra_id);
+            $filtros[] = 'Obra: <strong>' . e($obra?->obra ?? ('ID ' . $request->obra_id)) . '</strong>';
         }
+
         if ($request->filled('fecha_pedido')) {
-            $filtros[] = 'Fecha pedido: <strong>' . $request->fecha_pedido . '</strong>';
+            $filtros[] = 'Fecha pedido: <strong>' . e($request->fecha_pedido) . '</strong>';
         }
 
         if ($request->filled('fecha_entrega')) {
-            $filtros[] = 'Entrega estimada: <strong>' . $request->fecha_entrega . '</strong>';
+            $filtros[] = 'Entrega estimada: <strong>' . e($request->fecha_entrega) . '</strong>';
         }
 
         if ($request->filled('estado')) {
-            $filtros[] = 'Estado: <strong>' . ucfirst($request->estado) . '</strong>';
+            $filtros[] = 'Estado: <strong>' . e(ucfirst($request->estado)) . '</strong>';
         }
 
         if ($request->filled('sort')) {
@@ -87,18 +93,19 @@ class PedidoController extends Controller
                 'fabricante'    => 'Fabricante',
                 'distribuidor'  => 'Distribuidor',
                 'created_by'    => 'Creado por',
+                'obra'          => 'Lugar de entrega',
             ];
-            $orden = $request->order == 'desc' ? 'descendente' : 'ascendente';
-            $filtros[] = 'Ordenado por <strong>' . ($sorts[$request->sort] ?? $request->sort) . "</strong> en orden <strong>$orden</strong>";
+            $orden = strtolower($request->order ?? 'desc') === 'desc' ? 'descendente' : 'ascendente';
+            $filtros[] = 'Ordenado por <strong>' . e($sorts[$request->sort] ?? $request->sort) . "</strong> en orden <strong>$orden</strong>";
         }
 
-
         if ($request->filled('per_page')) {
-            $filtros[] = 'Mostrando <strong>' . $request->per_page . '</strong> registros por página';
+            $filtros[] = 'Mostrando <strong>' . (int) $request->per_page . '</strong> registros por página';
         }
 
         return $filtros;
     }
+
 
     private function getOrdenamientoPedidos(string $columna, string $titulo): string
     {
@@ -119,80 +126,122 @@ class PedidoController extends Controller
 
     public function aplicarFiltrosPedidos($query, Request $request)
     {
-        if ($request->filled('pedido_producto_id')) {
-            $lineaId = (int) $request->pedido_producto_id;
+        // ===== Filtros =====
 
-            $query->whereHas('pedidoProductos', function ($q) use ($lineaId) {
-                $q->where('pedido_productos.id', $lineaId);
+        // ID de línea (pedido_productos.id): contains + exacto con "=123"
+        if ($request->filled('pedido_producto_id')) {
+            $raw = trim((string) $request->pedido_producto_id);
+
+            $query->whereHas('pedidoProductos', function ($q) use ($raw) {
+                if (preg_match('/^=\s*(\d+)$/', $raw, $m)) {
+                    $q->where('pedido_productos.id', (int) $m[1]);
+                } else {
+                    $q->whereRaw('CAST(pedido_productos.id AS CHAR) LIKE ?', ['%' . $raw . '%']);
+                }
             });
         }
 
-        // Filtra por id
+        // ID del pedido (pedidos.id): contains + exacto con "=123"
         if ($request->filled('pedido_id')) {
-            $query->where('id', $request->pedido_id);
+            $raw = trim((string) $request->pedido_id);
+            if (preg_match('/^=\s*(\d+)$/', $raw, $m)) {
+                $query->where('pedidos.id', (int) $m[1]);
+            } else {
+                $query->whereRaw('CAST(pedidos.id AS CHAR) LIKE ?', ['%' . $raw . '%']);
+            }
         }
 
+        // Código de pedido: contains, case-insensitive
         if ($request->filled('codigo')) {
-            $query->where('codigo', 'like', '%' . $request->codigo . '%');
+            $codigo = trim($request->codigo);
+            $query->whereRaw('LOWER(pedidos.codigo) LIKE ?', ['%' . mb_strtolower($codigo, 'UTF-8') . '%']);
         }
-        // Filtro por pedido_global_id
+
+        // Pedido global (id exacto)
         if ($request->filled('pedido_global_id')) {
             $query->where('pedido_global_id', $request->pedido_global_id);
         }
+
+        // Filtros por producto base de sus líneas
         if ($request->filled('producto_tipo') || $request->filled('producto_diametro') || $request->filled('producto_longitud')) {
-            $query->whereHas('pedidoProductos.productoBase', function ($q) use ($request) {
-                if ($request->filled('producto_tipo')) {
-                    $q->where('tipo', 'like', '%' . $request->producto_tipo . '%');
+            $tipo      = $request->filled('producto_tipo')      ? mb_strtolower(trim($request->producto_tipo), 'UTF-8') : null;
+            $diametro  = $request->filled('producto_diametro')  ? mb_strtolower(trim($request->producto_diametro), 'UTF-8') : null;
+            $longitud  = $request->filled('producto_longitud')  ? mb_strtolower(trim($request->producto_longitud), 'UTF-8') : null;
+
+            $query->whereHas('pedidoProductos.productoBase', function ($q) use ($tipo, $diametro, $longitud) {
+                if ($tipo !== null) {
+                    $q->whereRaw('LOWER(tipo) LIKE ?', ['%' . $tipo . '%']);
                 }
-                if ($request->filled('producto_diametro')) {
-                    $q->where('diametro', 'like', '%' . $request->producto_diametro . '%');
+                if ($diametro !== null) {
+                    $q->whereRaw('LOWER(diametro) LIKE ?', ['%' . $diametro . '%']);
                 }
-                if ($request->filled('producto_longitud')) {
-                    $q->where('longitud', 'like', '%' . $request->producto_longitud . '%');
+                if ($longitud !== null) {
+                    $q->whereRaw('LOWER(longitud) LIKE ?', ['%' . $longitud . '%']);
                 }
             });
         }
 
+        // Fabricante / Distribuidor (por id exacto desde selects)
         if ($request->filled('fabricante_id')) {
             $query->where('fabricante_id', $request->fabricante_id);
         }
         if ($request->filled('distribuidor_id')) {
             $query->where('distribuidor_id', $request->distribuidor_id);
         }
-        // 🔎 Filtro por obra_id (del pedido)
+
+        // Obra (id exacto)
         if ($request->filled('obra_id')) {
             $query->where('obra_id', $request->integer('obra_id'));
         }
+
+        // Fechas
         if ($request->filled('fecha_pedido')) {
             $query->whereDate('fecha_pedido', $request->fecha_pedido);
         }
-
         if ($request->filled('fecha_entrega')) {
-            $query->whereHas('pedidoProductos', function ($q) use ($request) {
-                $q->whereDate('fecha_estimada_entrega', $request->fecha_entrega);
+            $fecha = $request->fecha_entrega;
+            $query->whereHas('pedidoProductos', function ($q) use ($fecha) {
+                $q->whereDate('fecha_estimada_entrega', $fecha);
             });
         }
 
-        // ✅ Ordenación segura por columnas locales o por nombre de relación
-        $sortBy = $request->input('sort', 'created_at'); // o 'fecha_pedido'
-        $order  = $request->input('order', 'desc');
+        // Estado (por LÍNEAS: pedido_productos.estado)
+        if ($request->filled('estado')) {
+            $estado = mb_strtolower(trim($request->estado), 'UTF-8');
 
-        // Limpia órdenes previas (importantísimo)
+            // Pedidos que tienen AL MENOS UNA línea en ese estado
+            $query->whereHas('pedidoProductos', function ($q) use ($estado) {
+                $q->whereRaw('LOWER(TRIM(pedido_productos.estado)) = ?', [$estado]);
+            });
+        }
+
+
+
+
+        // ===== Orden =====
+        $sortBy = $request->input('sort', 'created_at');
+        $order  = strtolower($request->input('order', 'desc')) === 'asc' ? 'asc' : 'desc';
+
         $query->reorder();
 
         switch ($sortBy) {
             case 'fabricante':
                 $query->orderBy(
-                    \App\Models\Fabricante::select('nombre')
-                        ->whereColumn('fabricantes.id', 'pedidos.fabricante_id'),
+                    \App\Models\Fabricante::select('nombre')->whereColumn('fabricantes.id', 'pedidos.fabricante_id'),
                     $order
                 );
                 break;
 
             case 'distribuidor':
                 $query->orderBy(
-                    \App\Models\Distribuidor::select('nombre')
-                        ->whereColumn('distribuidores.id', 'pedidos.distribuidor_id'),
+                    \App\Models\Distribuidor::select('nombre')->whereColumn('distribuidores.id', 'pedidos.distribuidor_id'),
+                    $order
+                );
+                break;
+
+            case 'obra': // ordenar por nombre de la obra (lugar de entrega)
+                $query->orderBy(
+                    \App\Models\Obra::select('obra')->whereColumn('obras.id', 'pedidos.obra_id'),
                     $order
                 );
                 break;
@@ -215,6 +264,7 @@ class PedidoController extends Controller
 
         return $query;
     }
+
 
     public function index(Request $request, StockService $stockService)
     {
@@ -280,9 +330,13 @@ class PedidoController extends Controller
                         }
                     }
 
-                    if ($request->filled('estado') && $linea->estado !== $request->estado) {
-                        return false;
+                    if ($request->filled('estado')) {
+                        $estadoReq = mb_strtolower(trim($request->estado), 'UTF-8');
+                        if (mb_strtolower(trim((string)$linea->estado), 'UTF-8') !== $estadoReq) {
+                            return false;
+                        }
                     }
+
 
                     return true;
                 })
@@ -366,6 +420,12 @@ class PedidoController extends Controller
             abort(422, 'Falta el movimiento.');
         }
 
+        // 🚨 NUEVO: Máquina obligatoria desde la vista
+        $maquinaId = $request->query('maquina_id');
+        if (!$maquinaId) {
+            abort(422, 'Falta el ID de la máquina.');
+        }
+
         /** @var \App\Models\Movimiento $movimiento */
         $movimiento = Movimiento::with('pedidoProducto')->findOrFail($movimientoId);
 
@@ -377,16 +437,20 @@ class PedidoController extends Controller
         $linea = $movimiento->pedidoProducto; // 🔒 Línea asociada al movimiento
         $productoBase = $pedido->productos->firstWhere('id', $productoBaseId);
 
-        // === resto de tu lógica de recepcion (naves, ubicaciones, fabricantes, últimos, etc.) ===
-        $nave = $pedido->obra?->obra;
-        $codigoAlmacen = Ubicacion::codigoDesdeNombreNave($nave);
-        $ubicaciones = Ubicacion::where('almacen', $codigoAlmacen)
-            ->orderBy('nombre')
-            ->get()
-            ->map(function ($ubicacion) {
-                $ubicacion->nombre_sin_prefijo = Str::after($ubicacion->nombre, 'Almacén ');
-                return $ubicacion;
-            });
+        // 🚨 CAMBIO: Cargar máquina desde el parámetro
+        $maquina = Maquina::with('obra')->findOrFail($maquinaId);
+
+        if (!$maquina->obra_id) {
+            abort(422, 'La máquina no tiene una obra asignada.');
+        }
+
+        // Obtener el nombre de la nave desde la obra de la máquina
+        $nave = $maquina->obra?->obra ?? null;
+
+        if (!$nave) {
+            abort(422, 'No se encontró la nave asociada a la máquina.');
+        }
+
 
         $requiereFabricanteManual = $pedido->distribuidor_id !== null && $pedido->fabricante_id === null;
         $ultimoFabricante = Producto::with(['entrada', 'productoBase'])
@@ -406,16 +470,51 @@ class PedidoController extends Controller
             ->unique('producto_base_id')
             ->keyBy('producto_base_id');
 
+        ///=================================
+        ///=================================
+        // ✅ USAR DIRECTAMENTE EL CAMPO 'sector'
+        $codigoAlmacen = Ubicacion::codigoDesdeNombreNave($nave);
+
+        // ✅ Versión correcta usando tu estructura de BD
+        $ubicacionesPorSector = Ubicacion::where('almacen', $codigoAlmacen)
+            ->orderBy('sector', 'asc')
+            ->orderBy('ubicacion', 'asc')
+            ->get()
+            ->map(function ($ubicacion) {
+                $ubicacion->nombre_sin_prefijo = Str::after($ubicacion->nombre, 'Almacén ');
+                return $ubicacion;
+            })
+            ->groupBy('sector');
+
+        $sectores = $ubicacionesPorSector->keys()->toArray();
+
+        $ubicacionPorDefecto = $ultimos[$productoBase->id]?->ubicacion_id ?? null;
+        $sectorPorDefecto = null;
+
+        if ($ubicacionPorDefecto) {
+            $ubicacionDefecto = Ubicacion::find($ubicacionPorDefecto);
+            if ($ubicacionDefecto) {
+                $sectorPorDefecto = $ubicacionDefecto->sector;
+            }
+        }
+
+        if (!$sectorPorDefecto && !empty($sectores)) {
+            $sectorPorDefecto = $sectores[0];
+        }
+
         return view('pedidos.recepcion', compact(
             'pedido',
             'productoBase',
-            'ubicaciones',
+            'ubicacionesPorSector', // ✅ Ubicaciones agrupadas por sector
+            'sectores',              // ✅ Lista de sectores
+            'sectorPorDefecto',      // ✅ Sector por defecto
             'ultimos',
             'requiereFabricanteManual',
             'fabricantes',
             'ultimoFabricante',
             'linea',
-            'movimiento'
+            'movimiento',
+            'maquina' // 👈 Agregada la máquina al compact
         ));
     }
 
@@ -580,73 +679,6 @@ class PedidoController extends Controller
 
         return $prefix . $numeroFormateado;
     }
-
-    // public function crearDesdeRecepcion(Request $request)
-    // {
-    //     try {
-    //         $validated = $request->validate([
-    //             'producto_base_id' => 'required|exists:productos_base,id',
-    //             'peso' => 'required|numeric|min:0.01',
-    //             'n_colada' => 'nullable|string|max:50',
-    //             'n_paquete' => 'nullable|string|max:50|unique:productos,n_paquete',
-    //             'ubicacion_id' => 'required|exists:ubicaciones,id',
-    //             'otros' => 'nullable|string|max:255',
-    //             'fabricante_id' => 'required|exists:fabricantes,id',
-    //         ], [
-    //             'producto_base_id.required' => 'El producto base es obligatorio.',
-    //             'producto_base_id.exists' => 'El producto base no es válido.',
-
-    //             'peso.required' => 'El peso es obligatorio.',
-    //             'peso.numeric' => 'El peso debe ser un número.',
-    //             'peso.min' => 'El peso debe ser mayor que 0.',
-
-    //             'n_colada.string' => 'El número de colada debe ser texto.',
-    //             'n_colada.max' => 'El número de colada no puede tener más de 50 caracteres.',
-
-    //             'n_paquete.string' => 'El número de paquete debe ser texto.',
-    //             'n_paquete.max' => 'El número de paquete no puede tener más de 50 caracteres.',
-    //             'n_paquete.unique' => 'El número de paquete ya existe en otro producto.',
-
-    //             'ubicacion_id.required' => 'La ubicación es obligatoria.',
-    //             'ubicacion_id.exists' => 'La ubicación no es válida.',
-
-    //             'otros.string' => 'El campo de observaciones debe ser texto.',
-    //             'otros.max' => 'El campo de observaciones no puede tener más de 255 caracteres.',
-
-    //             'fabricante_id.required' => 'El fabricante es obligatorio.',
-    //             'fabricante_id.exists' => 'El fabricante no es válido.',
-    //         ]);
-
-    //         $producto = Producto::create([
-    //             'producto_base_id' => $validated['producto_base_id'],
-    //             'fabricante_id' => $validated['fabricante_id'],
-    //             'n_colada' => $validated['n_colada'] ?? null,
-    //             'n_paquete' => $validated['n_paquete'],
-    //             'peso_inicial' => $validated['peso'],
-    //             'peso_stock' => $validated['peso'],
-    //             'estado' => 'almacenado',
-    //             'ubicacion_id' => $validated['ubicacion_id'],
-    //             'maquina_id' => null,
-    //             'otros' => $validated['otros'] ?? null,
-    //         ]);
-
-    //         return response()->json([
-    //             'success' => true,
-    //             'producto_id' => $producto->id,
-    //         ]);
-    //     } catch (ValidationException $e) {
-    //         return response()->json([
-    //             'success' => false,
-    //             'message' => 'Error de validación',
-    //             'errors' => $e->errors(),
-    //         ], 422);
-    //     } catch (\Exception $e) {
-    //         return response()->json([
-    //             'success' => false,
-    //             'message' => 'Error inesperado: ' . $e->getMessage(),
-    //         ], 500);
-    //     }
-    // }
 
     public function activar($pedidoId, $lineaId)
     {
@@ -1040,6 +1072,8 @@ class PedidoController extends Controller
                 return back()->withErrors(['fabricante_id' => 'Solo puedes seleccionar uno: fabricante o distribuidor.'])->withInput();
             }
 
+            DB::beginTransaction();
+
             // Crear pedido principal
             $obraId = $request->obra_id_hpr ?: $request->obra_id_externa;
             $pedido = Pedido::create([
@@ -1053,29 +1087,40 @@ class PedidoController extends Controller
                 'created_by'      => auth()->id(),
             ]);
 
-            // Guardar líneas según lo confirmado en el modal
             $pesoTotal      = 0;
-            $pgIdsAfectados = []; // <-- iremos añadiendo los PG usados
+            $pgIdsAfectados = [];
 
             foreach ($request->seleccionados as $clave) {
-                $tipo           = $request->input("detalles.$clave.tipo");
-                $diametro       = $request->input("detalles.$clave.diametro");
-                $longitud       = $request->input("detalles.$clave.longitud");
-                $pedidoGlobalId = $request->input("detalles.$clave.pedido_global_id");
+                $tipo     = $request->input("detalles.$clave.tipo");
+                $diametro = $request->input("detalles.$clave.diametro");
+                $longitud = $request->input("detalles.$clave.longitud");
 
                 $productoBase = ProductoBase::where('tipo', $tipo)
                     ->where('diametro', $diametro)
                     ->when($longitud, fn($q) => $q->where('longitud', $longitud))
                     ->first();
 
-                if (!$productoBase) continue;
+                if (!$productoBase) {
+                    Log::warning("Producto base no encontrado", compact('tipo', 'diametro', 'longitud'));
+                    continue;
+                }
 
+                // ✅ Obtener sub-productos (cada uno puede tener su propio pedido_global_id)
                 $subproductos = data_get($request->input('productos'), $clave, []);
-                foreach ($subproductos as $camion) {
+
+                foreach ($subproductos as $index => $camion) {
                     $peso  = (float) ($camion['peso'] ?? 0);
                     $fecha = $camion['fecha'] ?? null;
-                    if ($peso <= 0 || !$fecha) continue;
 
+                    // ✅ Leer el pedido_global_id ESPECÍFICO de esta sub-línea
+                    $pedidoGlobalId = $camion['pedido_global_id'] ?? null;
+
+                    if ($peso <= 0 || !$fecha) {
+                        Log::warning("Línea inválida en productos[$clave][$index]", compact('peso', 'fecha'));
+                        continue;
+                    }
+
+                    // Crear la línea de pedido
                     $pedido->productos()->attach($productoBase->id, [
                         'pedido_global_id'       => $pedidoGlobalId ?: null,
                         'cantidad'               => $peso,
@@ -1083,20 +1128,31 @@ class PedidoController extends Controller
                         'observaciones'          => null,
                     ]);
 
-                    if ($pedidoGlobalId) $pgIdsAfectados[(int)$pedidoGlobalId] = true;
+                    if ($pedidoGlobalId) {
+                        $pgIdsAfectados[(int)$pedidoGlobalId] = true;
+                    }
+
                     $pesoTotal += $peso;
+
+                    Log::info("Línea creada", [
+                        'producto_base_id' => $productoBase->id,
+                        'peso'             => $peso,
+                        'fecha'            => $fecha,
+                        'pedido_global_id' => $pedidoGlobalId,
+                        'clave'            => $clave,
+                        'index'            => $index,
+                    ]);
                 }
             }
 
             $pedido->peso_total = $pesoTotal;
             $pedido->save();
 
-            // === Recalcular estado de cada PG afectado ===
+            // Recalcular estado de cada PG afectado
             if (!empty($pgIdsAfectados)) {
                 $ids = array_keys($pgIdsAfectados);
                 $globales = PedidoGlobal::whereIn('id', $ids)->get();
                 foreach ($globales as $pg) {
-                    // usa tu método del modelo
                     $pg->actualizarEstadoSegunProgreso();
                 }
             }
@@ -1108,12 +1164,14 @@ class PedidoController extends Controller
                 ->with('success', 'Pedido creado correctamente. Revisa el correo antes de enviarlo.');
         } catch (\Throwable $e) {
             DB::rollBack();
-            Log::error('Error al crear pedido: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
+            Log::error('Error al crear pedido: ' . $e->getMessage(), [
+                'trace' => $e->getTraceAsString(),
+                'request_data' => $request->all(),
+            ]);
             $msg = app()->environment('local') ? $e->getMessage() : 'Hubo un error inesperado al crear el pedido.';
             return back()->withInput()->with('error', $msg);
         }
     }
-
     public function show($id)
     {
         $pedido = Pedido::with(['productos', 'fabricante', 'obra'])->findOrFail($id);
@@ -1241,27 +1299,62 @@ class PedidoController extends Controller
     {
         try {
             DB::transaction(function () use ($id) {
-                $pedido = Pedido::findOrFail($id);
+                $pedido = Pedido::with('pedidoProductos')->findOrFail($id);
 
-                // guardamos el PG antes de borrar
-                $pedidoGlobalId = $pedido->pedido_global_id;
+                // 1️⃣ Recopilar TODOS los pedido_global_id afectados (cabecera + líneas)
+                $pgIds = collect([$pedido->pedido_global_id])
+                    ->merge($pedido->pedidoProductos->pluck('pedido_global_id'))
+                    ->filter()
+                    ->unique()
+                    ->toArray();
 
-                Log::info('Borrando pedido ' . $pedido->codigo . ' con pedido global id ' . $pedidoGlobalId . ' por ' . (auth()->user()->nombre_completo ?? null));
+                Log::info('Eliminando pedido', [
+                    'pedido_id'                  => $pedido->id,
+                    'pedido_codigo'              => $pedido->codigo,
+                    'num_lineas'                 => $pedido->pedidoProductos->count(),
+                    'pedidos_globales_afectados' => $pgIds,
+                    'usuario'                    => auth()->user()->nombre_completo ?? auth()->id(),
+                ]);
 
-                // Elimina el pedido: si tienes cascada en FK se borran las líneas
+                // 2️⃣ Eliminar el pedido (las líneas se borran por cascada)
                 $pedido->delete();
 
-                if ($pedidoGlobalId) {
-                    $pg = PedidoGlobal::lockForUpdate()->find($pedidoGlobalId);
-                    if ($pg) {
-                        $pg->actualizarEstadoSegunProgreso(); // ahora recalcula con líneas
+                // 3️⃣ Recalcular estado de TODOS los Pedidos Globales afectados
+                if (!empty($pgIds)) {
+                    $pedidosGlobales = PedidoGlobal::whereIn('id', $pgIds)
+                        ->lockForUpdate()
+                        ->get();
+
+                    foreach ($pedidosGlobales as $pg) {
+                        if (method_exists($pg, 'actualizarEstadoSegunProgreso')) {
+                            $estadoAnterior = $pg->estado;
+                            $pg->actualizarEstadoSegunProgreso();
+
+                            Log::info('Pedido Global recalculado tras eliminación', [
+                                'pedido_global_id'     => $pg->id,
+                                'pedido_global_codigo' => $pg->codigo,
+                                'estado_anterior'      => $estadoAnterior,
+                                'estado_nuevo'         => $pg->estado,
+                                'cantidad_restante'    => $pg->cantidad_restante,
+                                'progreso'             => $pg->progreso . '%',
+                            ]);
+                        }
                     }
                 }
             });
 
-            return redirect()->route('pedidos.index')->with('success', 'Pedido eliminado correctamente.');
+            return redirect()
+                ->route('pedidos.index')
+                ->with('success', 'Pedido eliminado correctamente y Pedidos Globales actualizados.');
         } catch (\Throwable $e) {
-            Log::error('Error al eliminar pedido', ['pedido_id' => $id, 'mensaje' => $e->getMessage()]);
+            Log::error('Error al eliminar pedido', [
+                'pedido_id' => $id,
+                'mensaje'   => $e->getMessage(),
+                'linea'     => $e->getLine(),
+                'archivo'   => $e->getFile(),
+                'trace'     => $e->getTraceAsString(),
+            ]);
+
             return back()->with('error', 'No se pudo eliminar el pedido. Consulta con administración.');
         }
     }

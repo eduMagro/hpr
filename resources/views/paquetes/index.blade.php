@@ -30,10 +30,10 @@
                                 <x-tabla.input name="codigo" value="{{ request('codigo') }}" />
                             </th>
                             <th class="p-1 border">
-                                <x-tabla.input name="nave" value="{{ request('nave') }}" />
+                                <x-tabla.input name="planilla" value="{{ request('planilla') }}" />
                             </th>
                             <th class="p-1 border">
-                                <x-tabla.input name="planilla" value="{{ request('planilla') }}" />
+                                <x-tabla.input name="nave" value="{{ request('nave') }}" />
                             </th>
                             <th class="p-1 border">
                                 <x-tabla.input name="ubicacion" value="{{ request('ubicacion') }}" />
