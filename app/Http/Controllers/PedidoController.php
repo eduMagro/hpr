@@ -194,12 +194,8 @@ class PedidoController extends Controller
         // ✅ CORREGIDO: Obra ahora está en pedido_producto
         if ($request->filled('obra_id')) {
             $query->whereHas('pedidoProductos', function ($q) use ($request) {
-<<<<<<< HEAD
-                $q->where('obra_id', $request->obra_id);
-=======
                 $q->where('pedido_productos.obra_id', $request->integer('obra_id'))
                     ->orWhere('pedido_productos.obra_manual', 'like', '%' . $request->obra_id . '%');
->>>>>>> 3424253aeff410a4ccc753f8c64311a8bbaa0cca
             });
         }
 
@@ -285,24 +281,20 @@ class PedidoController extends Controller
             'distribuidor',
             'productos',
             'pedidoGlobal',
-<<<<<<< HEAD
+
             'pedidoProductos.productoBase',
             'pedidoProductos.obra',  // 👈 Cargar la obra desde la línea
             'pedidoProductos.pedidoGlobal',
-=======
             'pedidoProductos' => function ($query) {
                 $query->with(['productoBase', 'pedidoGlobal', 'obra']); // ✅ Cargar obra aquí
             },
->>>>>>> 3424253aeff410a4ccc753f8c64311a8bbaa0cca
+
         ]);
 
         if (auth()->user()->rol === 'operario') {
             $query->whereIn('estado', ['pendiente', 'parcial']);
         }
 
-<<<<<<< HEAD
-        $obras = Obra::whereIn('id', PedidoProducto::select('obra_id')->distinct())
-=======
         // ✅ CORREGIDO: Ahora las obras están en pedido_producto
         $obras = Obra::whereIn('id', function ($query) {
             $query->select('obra_id')
@@ -310,7 +302,7 @@ class PedidoController extends Controller
                 ->whereNotNull('obra_id')
                 ->distinct();
         })
->>>>>>> 3424253aeff410a4ccc753f8c64311a8bbaa0cca
+
             ->orderBy('obra')
             ->pluck('obra', 'id');
 
