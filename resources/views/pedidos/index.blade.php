@@ -13,7 +13,6 @@
 
                             <th class="p-2 border">ID LINEA</th>
                             <th class="p-2 border">{!! $ordenables['codigo'] ?? 'Código' !!}</th>
-
                             <th class="p-2 border">{!! $ordenables['pedido_global'] ?? 'Pedido Global Linea' !!}</th>
                             <th class="p-2 border">{!! $ordenables['fabricante'] ?? 'Fabricante' !!}</th>
                             <th class="p-2 border">{!! $ordenables['distribuidor'] ?? 'Distribuidor' !!}</th>
@@ -169,8 +168,68 @@
 
                                     <td class="border px-2 py-1">{{ $pedido->fabricante?->nombre ?? '—' }}</td>
                                     <td class="border px-2 py-1">{{ $pedido->distribuidor?->nombre ?? '—' }}</td>
-                                    <td class="border px-2 py-1">
-                                        {{ $pedido->obra->obra ?? ($pedido->obra_manual ?? '—') }}
+                                    {{-- ✅ CELDA DE LUGAR DE ENTREGA EDITABLE POR LÍNEA --}}
+                                    {{-- ✅ CELDA DE LUGAR DE ENTREGA - CORREGIDA --}}
+                                    <td class="border px-2 py-1 lugar-entrega-cell cursor-pointer"
+                                        data-linea-id="{{ $linea->id }}"
+                                        ondblclick="abrirEdicionLugarEntrega({{ $linea->id }})">
+
+                                        {{-- Vista normal --}}
+                                        <div class="lugar-entrega-view-{{ $linea->id }}">
+                                            @if ($linea->obra_id)
+                                                {{ $linea->obra?->obra ?? '—' }}
+                                            @elseif($linea->obra_manual)
+                                                {{ $linea->obra_manual }}
+                                            @else
+                                                —
+                                            @endif
+                                        </div>
+
+                                        {{-- Vista edición (oculta por defecto) --}}
+                                        <div class="lugar-entrega-edit-{{ $linea->id }} hidden">
+                                            <div class="flex flex-col gap-1">
+                                                <select class="obra-hpr-select text-xs border rounded px-1 py-1"
+                                                    data-linea-id="{{ $linea->id }}">
+                                                    <option value="">Nave HPR</option>
+                                                    @foreach ($navesHpr as $nave)
+                                                        <option value="{{ $nave->id }}"
+                                                            {{ $linea->obra_id == $nave->id ? 'selected' : '' }}>
+                                                            {{ $nave->obra }}
+                                                        </option>
+                                                    @endforeach
+                                                </select>
+
+                                                <select class="obra-externa-select text-xs border rounded px-1 py-1"
+                                                    data-linea-id="{{ $linea->id }}">
+                                                    <option value="">Obra Externa</option>
+                                                    @foreach ($obrasExternas as $obra)
+                                                        <option value="{{ $obra->id }}"
+                                                            {{ $linea->obra_id == $obra->id ? 'selected' : '' }}>
+                                                            {{ $obra->obra }}
+                                                        </option>
+                                                    @endforeach
+                                                </select>
+
+                                                <input type="text"
+                                                    class="obra-manual-input text-xs border rounded px-1 py-1"
+                                                    placeholder="Otra ubicación"
+                                                    value="{{ $linea->obra_manual ?? '' }}"
+                                                    data-linea-id="{{ $linea->id }}">
+
+                                                <div class="flex gap-1 mt-1">
+                                                    <button
+                                                        onclick="guardarLugarEntrega({{ $linea->id }}, {{ $pedido->id }})"
+                                                        class="bg-green-600 hover:bg-green-700 text-white text-xs px-2 py-1 rounded flex-1">
+                                                        Guardar
+                                                    </button>
+                                                    <button onclick="cancelarEdicionLugarEntrega({{ $linea->id }})"
+                                                        class="bg-gray-500 hover:bg-gray-600 text-white text-xs px-2 py-1 rounded flex-1">
+                                                        Cancelar
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </td>
                                     </td>
 
                                     <td class="border px-2 py-1 text-center">
@@ -278,6 +337,20 @@
                                                         Cancelar
                                                     </button>
                                                 @endif
+
+                                                {{-- ✅ BOTÓN EDITAR LUGAR DE ENTREGA POR LÍNEA --}}
+                                                <button type="button"
+                                                    onclick="toggleEdicionLugarEntrega({{ $linea->id }})"
+                                                    class="btn-editar-lugar-{{ $linea->id }} bg-blue-600 hover:bg-blue-700 text-white text-xs px-2 py-1 rounded shadow transition"
+                                                    title="Editar lugar de entrega">
+                                                    ✏️ Editar
+                                                </button>
+                                                <button type="button"
+                                                    onclick="cancelarEdicionLugarEntrega({{ $linea->id }})"
+                                                    class="btn-cancelar-lugar-{{ $linea->id }} hidden bg-red-600 hover:bg-red-700 text-white text-xs px-2 py-1 rounded shadow transition"
+                                                    title="Cancelar edición">
+                                                    ✖️ Cancelar
+                                                </button>
                                             </div>
                                         </div>
                                     </td>
@@ -404,20 +477,22 @@
                                 </div>
                             </div>
 
-                            <table
-                                class="w-full border-collapse text-sm text-center shadow-xl overflow-hidden rounded-lg border border-gray-300">
-                                <thead class="bg-blue-800 text-white">
-                                    <tr class="bg-gray-700 text-white">
-                                        <th class="border px-2 py-1">Tipo</th>
-                                        <th class="border px-2 py-1">Diámetro</th>
-                                        <th class="border px-2 py-1">Peso a pedir (kg)</th>
-                                        <th class="border px-2 py-1">Pedido Global sugerido</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="tablaConfirmacionBody">
-                                    {{-- JavaScript agregará filas con inputs aquí --}}
-                                </tbody>
-                            </table>
+                            <div class="max-h-[60vh] overflow-auto rounded-lg shadow-xl border border-gray-300">
+                                <table class="w-full border-collapse text-sm text-center">
+                                    <thead class="bg-blue-800 text-white sticky top-0 z-10">
+                                        <tr class="bg-gray-700 text-white">
+                                            <th class="border px-2 py-1">Tipo</th>
+                                            <th class="border px-2 py-1">Diámetro</th>
+                                            <th class="border px-2 py-1">Peso Total (kg)</th>
+                                            <th class="border px-2 py-1">Desglose Camiones</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="tablaConfirmacionBody">
+                                        {{-- JavaScript agregará filas con inputs aquí --}}
+                                    </tbody>
+                                </table>
+                            </div>
+
                             <div id="mensajesGlobales" class="mt-2 text-sm space-y-1"></div>
 
 
@@ -763,12 +838,7 @@
             ev.preventDefault();
             const errores = [];
 
-            // Validaciones...
-            const seleccionados = document.querySelectorAll('#tablaConfirmacionBody input[name="seleccionados[]"]');
-            if (seleccionados.length === 0) {
-                errores.push('Selecciona al menos un producto para generar el pedido.');
-            }
-
+            // Validaciones básicas
             const fabricante = document.getElementById('fabricante').value;
             const distribuidor = document.getElementById('distribuidor').value;
             if (!fabricante && !distribuidor) {
@@ -792,7 +862,8 @@
             const resumenLineas = [];
             document.querySelectorAll('#tablaConfirmacionBody tr').forEach(tr => {
                 const tipo = tr.querySelector('td:nth-child(1)')?.textContent.trim();
-                const diametro = tr.querySelector('td:nth-child(2)')?.textContent.trim();
+                const diametro = tr.querySelector('td:nth-child(2)')?.textContent.trim().replace(' mm', '')
+                    .split('/')[0].trim();
                 const peso = parseFloat(tr.querySelector('.peso-total')?.value || 0);
 
                 if (tipo && diametro) {
@@ -800,15 +871,20 @@
                         errores.push(`El peso de la línea ${tipo} ${diametro} debe ser mayor a 0.`);
                     }
 
+                    const contenedorFechas = tr.querySelector('[id^="fechas-camion-"]');
                     const fechas = [];
-                    tr.querySelectorAll('.fechas-camion input[type="date"]').forEach(input => {
-                        if (!input.value) {
-                            errores.push(
-                                `Completa todas las fechas de entrega para ${tipo} ${diametro}.`
-                            );
-                        }
-                        fechas.push(input.value || '—');
-                    });
+
+                    if (contenedorFechas) {
+                        const inputsFecha = contenedorFechas.querySelectorAll('input[type="date"]');
+                        inputsFecha.forEach((input, idx) => {
+                            if (!input.value) {
+                                errores.push(
+                                    `Completa la fecha del camión ${idx + 1} para ${tipo} Ø${diametro}.`
+                                );
+                            }
+                            fechas.push(input.value || '—');
+                        });
+                    }
 
                     resumenLineas.push({
                         tipo,
@@ -818,6 +894,10 @@
                     });
                 }
             });
+
+            if (resumenLineas.length === 0) {
+                errores.push('Debes seleccionar al menos un producto para generar el pedido.');
+            }
 
             if (errores.length > 0) {
                 Swal.fire({
@@ -843,7 +923,8 @@
                 `<p><b>${proveedorTexto}</b></p><p><b>${obraTexto}</b></p><hr><ul style="text-align:left;">`;
             resumenLineas.forEach(l => {
                 htmlResumen +=
-                    `<li>• ${l.tipo} ${l.diametro} → ${l.peso} kg<br>Fechas: ${l.fechas.join(', ')}</li>`;
+                    `<li>• ${l.tipo} Ø${l.diametro} → ${l.peso.toLocaleString('es-ES')} kg<br>` +
+                    `📅 Fechas de entrega: ${l.fechas.join(', ')}</li>`;
             });
             htmlResumen += '</ul>';
 
@@ -882,20 +963,22 @@
                 const longitud = longitudInput ? longitudInput.value : null;
 
                 const fila = document.createElement('tr');
-                fila.className = "bg-gray-100";
+                fila.className = "bg-gray-100 border-b-2 border-gray-400";
 
                 fila.innerHTML = `
-                <td class="border px-2 py-1">${tipo.charAt(0).toUpperCase() + tipo.slice(1)}</td>
-                <td class="border px-2 py-1">${diametro} mm${longitud ? ` / ${longitud} m` : ''}</td>
-                <td class="border px-2 py-1">
-                    <div class="flex flex-col gap-2">
-                        <input type="number" class="peso-total w-full px-2 py-1 border rounded"
-                               name="detalles[${clave}][cantidad]" value="${cantidad}" step="2500" min="2500">
-                        <div class="fechas-camion flex flex-col gap-1" id="fechas-camion-${clave}"></div>
-                    </div>
+                <td class="border px-2 py-2 align-top font-semibold">
+                    ${tipo.charAt(0).toUpperCase() + tipo.slice(1)}
                 </td>
-                <td class="border px-2 py-1 font-semibold text-green-700 pg-sugerido"
-                    data-clave="${clave}">—</td>
+                <td class="border px-2 py-2 align-top font-semibold">
+                    ${diametro} mm${longitud ? ` / ${longitud} m` : ''}
+                </td>
+                <td class="border px-2 py-2 align-top">
+                    <input type="number" class="peso-total w-full px-2 py-1 border rounded font-semibold"
+                           name="detalles[${clave}][cantidad]" value="${cantidad}" step="2500" min="2500">
+                </td>
+                <td class="border px-2 py-2 align-top">
+                    <div class="fechas-camion flex flex-col gap-2 w-full" id="fechas-camion-${clave}"></div>
+                </td>
                 <input type="hidden" name="seleccionados[]" value="${clave}">
                 <input type="hidden" name="detalles[${clave}][tipo]" value="${tipo}">
                 <input type="hidden" name="detalles[${clave}][diametro]" value="${diametro}">
@@ -923,75 +1006,218 @@
             for (let i = 0; i < bloques; i++) {
                 const pesoBloque = Math.min(25000, peso - i * 25000);
 
-                const fecha = document.createElement('input');
-                fecha.type = 'date';
-                fecha.name = `productos[${clave}][${i + 1}][fecha]`;
-                fecha.required = true;
-                fecha.className = 'border px-2 py-1 rounded';
-                contenedorFechas.appendChild(fecha);
+                // Contenedor para cada línea de camión
+                const lineaCamion = document.createElement('div');
+                lineaCamion.className = 'flex items-center gap-2 p-2 bg-white rounded border border-gray-200';
+                lineaCamion.id = `linea-camion-${clave}-${i}`;
 
-                const pesoInput = document.createElement('input');
-                pesoInput.type = 'hidden';
-                pesoInput.name = `productos[${clave}][${i + 1}][peso]`;
-                pesoInput.value = pesoBloque;
-                contenedorFechas.appendChild(pesoInput);
+                lineaCamion.innerHTML = `
+                <div class="flex flex-col gap-1 flex-1">
+                    <label class="text-xs text-gray-600 font-medium">Camión ${i + 1} - ${pesoBloque.toLocaleString('es-ES')} kg</label>
+                    <input type="date" 
+                           name="productos[${clave}][${i + 1}][fecha]" 
+                           required 
+                           class="border px-2 py-1 rounded text-sm w-full">
+                    <input type="hidden" 
+                           name="productos[${clave}][${i + 1}][peso]" 
+                           value="${pesoBloque}">
+                </div>
+                <div class="flex-1">
+                    <div class="pg-asignacion-${clave}-${i} text-xs p-2 bg-gray-50 rounded border min-h-[60px] flex items-center justify-center">
+                        <span class="text-gray-400">Selecciona fabricante/distribuidor</span>
+                    </div>
+                </div>
+            `;
+
+                contenedorFechas.appendChild(lineaCamion);
             }
         }
 
-        function cerrarModalConfirmacion() {
-            document.getElementById('modalConfirmacion').classList.remove('flex');
-            document.getElementById('modalConfirmacion').classList.add('hidden');
+        function dispararSugerirMultiple() {
+            const fabricante = document.getElementById('fabricante').value;
+            const distribuidor = document.getElementById('distribuidor').value;
+            if (!fabricante && !distribuidor) return;
+
+            const lineas = recolectarLineas();
+            if (lineas.length === 0) return;
+
+            fetch('{{ route('pedidos.verSugerir-pedido-global') }}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                    },
+                    body: JSON.stringify({
+                        fabricante_id: fabricante,
+                        distribuidor_id: distribuidor,
+                        lineas: lineas
+                    })
+                })
+                .then(r => r.json())
+                .then(data => {
+                    const mensajesGlobales = document.getElementById('mensajesGlobales');
+                    mensajesGlobales.innerHTML = '';
+
+                    // Limpiar todas las asignaciones previas
+                    document.querySelectorAll('[class*="pg-asignacion-"]').forEach(div => {
+                        div.innerHTML = '<span class="text-gray-400">Sin asignar</span>';
+                    });
+
+                    if (data.mensaje) {
+                        const div = document.createElement('div');
+                        div.className = 'text-yellow-700 font-medium';
+                        div.textContent = data.mensaje;
+                        mensajesGlobales.appendChild(div);
+                    }
+
+                    (data.asignaciones || []).forEach(asig => {
+                        if (asig.linea_index !== null && asig.linea_index !== undefined) {
+                            let encontrado = false;
+                            let globalIdx = 0;
+
+                            document.querySelectorAll('#tablaConfirmacionBody tr').forEach((tr) => {
+                                if (encontrado) return;
+
+                                const contenedorFechas = tr.querySelector('[id^="fechas-camion-"]');
+                                if (!contenedorFechas) return;
+
+                                const clave = contenedorFechas.id.replace('fechas-camion-', '');
+                                const inputsPeso = contenedorFechas.querySelectorAll(
+                                    'input[type="hidden"][name*="[peso]"]');
+
+                                inputsPeso.forEach((pesoInput, subIdx) => {
+                                    if (encontrado) return;
+
+                                    if (globalIdx === asig.linea_index) {
+                                        encontrado = true;
+
+                                        // Buscar el div de asignación específico
+                                        const divAsignacion = document.querySelector(
+                                            `.pg-asignacion-${clave}-${subIdx}`);
+
+                                        if (divAsignacion) {
+                                            if (asig.codigo) {
+                                                divAsignacion.innerHTML = `
+                                                <div class="text-left">
+                                                    <div class="font-bold text-green-700 text-sm">${asig.codigo}</div>
+                                                    <div class="text-xs text-gray-600 mt-1">${asig.mensaje}</div>
+                                                    <div class="text-xs text-blue-600 mt-1 font-medium">
+                                                        📦 Quedan ${asig.cantidad_restante.toLocaleString('es-ES')} kg
+                                                    </div>
+                                                </div>
+                                            `;
+                                                divAsignacion.className = 'pg-asignacion-' +
+                                                    clave + '-' + subIdx +
+                                                    ' text-xs p-2 bg-green-50 rounded border border-green-200 min-h-[60px]';
+
+                                                // Agregar input hidden para pedido_global_id
+                                                const lineaCamion = document.getElementById(
+                                                    `linea-camion-${clave}-${subIdx}`);
+                                                if (lineaCamion) {
+                                                    let inputPG = lineaCamion.querySelector(
+                                                        `input[name="productos[${clave}][${subIdx + 1}][pedido_global_id]"]`
+                                                    );
+                                                    if (!inputPG) {
+                                                        inputPG = document.createElement(
+                                                            'input');
+                                                        inputPG.type = 'hidden';
+                                                        inputPG.name =
+                                                            `productos[${clave}][${subIdx + 1}][pedido_global_id]`;
+                                                        lineaCamion.appendChild(inputPG);
+                                                    }
+                                                    inputPG.value = asig.pedido_global_id;
+                                                }
+                                            } else {
+                                                divAsignacion.innerHTML =
+                                                    `<div class="text-red-600 text-left">${asig.mensaje}</div>`;
+                                                divAsignacion.className = 'pg-asignacion-' +
+                                                    clave + '-' + subIdx +
+                                                    ' text-xs p-2 bg-red-50 rounded border border-red-200 min-h-[60px]';
+                                            }
+                                        }
+                                    }
+
+                                    globalIdx++;
+                                });
+                            });
+                        } else if (asig.mensaje) {
+                            const div = document.createElement('div');
+                            div.className = 'text-yellow-700 font-medium';
+                            div.textContent = asig.mensaje;
+                            mensajesGlobales.appendChild(div);
+                        }
+                    });
+                })
+                .catch(error => {
+                    console.error('Error al sugerir pedido global:', error);
+                });
         }
 
-        function confirmarActivacion(pedidoId, lineaId) {
-            Swal.fire({
-                title: '¿Activar producto?',
-                html: 'Este producto del pedido se activará y estará disponible para su recepción.',
-                icon: 'warning',
-                showCancelButton: true,
-                confirmButtonText: 'Sí, activar',
-                cancelButtonText: 'Cancelar',
-                confirmButtonColor: '#d97706',
-            }).then((result) => {
-                if (result.isConfirmed) {
-                    fetch(`/pedidos/${pedidoId}/lineas/${lineaId}/activar`, {
-                        method: 'POST',
-                        headers: {
-                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify({
-                            _method: 'PUT'
-                        })
-                    }).then(() => location.reload());
-                }
+        // 🔹 Devuelve [{index, cantidad}, ...] con todas las líneas del modal
+        function recolectarLineas() {
+            const lineas = [];
+            let globalIndex = 0;
+
+            document.querySelectorAll('#tablaConfirmacionBody tr').forEach((tr) => {
+                const contenedorFechas = tr.querySelector('[id^="fechas-camion-"]');
+                if (!contenedorFechas) return;
+
+                const clave = contenedorFechas.id.replace('fechas-camion-', '');
+                const inputsPeso = contenedorFechas.querySelectorAll('input[type="hidden"][name*="[peso]"]');
+
+                inputsPeso.forEach((pesoInput, subIndex) => {
+                    const peso = parseFloat(pesoInput.value || 0);
+                    if (peso <= 0) return;
+
+                    lineas.push({
+                        index: globalIndex++,
+                        clave: clave,
+                        cantidad: peso,
+                        sublinea: subIndex + 1
+                    });
+                });
             });
+
+            return lineas;
         }
 
-        function confirmarDesactivacion(pedidoId, lineaId) {
-            Swal.fire({
-                title: '¿Desactivar producto?',
-                html: 'Se eliminará el movimiento pendiente si lo hay y se marcará como <b>pendiente</b> en el pedido.',
-                icon: 'question',
-                showCancelButton: true,
-                confirmButtonText: 'Sí, desactivar',
-                cancelButtonText: 'Cancelar',
-                confirmButtonColor: '#b91c1c',
-            }).then((result) => {
-                if (result.isConfirmed) {
-                    fetch(`/pedidos/${pedidoId}/lineas/${lineaId}/desactivar`, {
-                        method: 'POST',
-                        headers: {
-                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify({
-                            _method: 'DELETE'
-                        })
-                    }).then(() => location.reload());
-                }
-            });
+        function debounce(fn, delay) {
+            let timer;
+            return function() {
+                clearTimeout(timer);
+                const args = arguments;
+                const context = this;
+                timer = setTimeout(() => fn.apply(context, args), delay);
+            }
         }
+
+        // ✅ Event listeners
+        document.addEventListener('DOMContentLoaded', function() {
+            // Listener para cambios en peso
+            document.addEventListener('input', debounce((ev) => {
+                const inputPeso = ev.target.closest('.peso-total');
+                if (!inputPeso) return;
+
+                const tr = inputPeso.closest('tr');
+                const contenedorFechas = tr.querySelector('[id^="fechas-camion-"]');
+                if (!contenedorFechas) return;
+
+                const clave = contenedorFechas.id.replace('fechas-camion-', '');
+                generarFechasPorPeso(inputPeso, clave);
+                dispararSugerirMultiple();
+            }, 300));
+
+            // Listeners para fabricante/distribuidor
+            const fabricanteSelect = document.getElementById('fabricante');
+            const distribuidorSelect = document.getElementById('distribuidor');
+
+            if (fabricanteSelect) {
+                fabricanteSelect.addEventListener('change', dispararSugerirMultiple);
+            }
+            if (distribuidorSelect) {
+                distribuidorSelect.addEventListener('change', dispararSugerirMultiple);
+            }
+        });
     </script>
 
     <script>
@@ -1018,5 +1244,160 @@
                 }
             });
         }
+    </script>
+    {{-- NUEVO SCRIPT PARA EDICIÓN DE LUGAR DE ENTREGA --}}
+    <script>
+        // Toggle entre vista y edición
+        function toggleEdicionLugarEntrega(lineaId) {
+            const vistaDiv = document.querySelector(`.lugar-entrega-view-${lineaId}`);
+            const editDiv = document.querySelector(`.lugar-entrega-edit-${lineaId}`);
+
+            if (vistaDiv.classList.contains('hidden')) {
+                cancelarEdicionLugarEntrega(lineaId);
+            } else {
+                abrirEdicionLugarEntrega(lineaId);
+            }
+        }
+
+        // Abrir modo edición
+        function abrirEdicionLugarEntrega(lineaId) {
+            const vistaDiv = document.querySelector(`.lugar-entrega-view-${lineaId}`);
+            const editDiv = document.querySelector(`.lugar-entrega-edit-${lineaId}`);
+            const btnEditar = document.querySelector(`.btn-editar-lugar-${lineaId}`);
+            const btnCancelar = document.querySelector(`.btn-cancelar-lugar-${lineaId}`);
+
+            vistaDiv.classList.add('hidden');
+            editDiv.classList.remove('hidden');
+            btnEditar.classList.add('hidden');
+            btnCancelar.classList.remove('hidden');
+
+            // Limpiar selects contrarios al cambiar
+            const selectHpr = editDiv.querySelector('.obra-hpr-select');
+            const selectExterna = editDiv.querySelector('.obra-externa-select');
+            const inputManual = editDiv.querySelector('.obra-manual-input');
+
+            selectHpr.addEventListener('change', function() {
+                if (this.value) {
+                    selectExterna.value = '';
+                    inputManual.value = '';
+                }
+            });
+
+            selectExterna.addEventListener('change', function() {
+                if (this.value) {
+                    selectHpr.value = '';
+                    inputManual.value = '';
+                }
+            });
+
+            inputManual.addEventListener('input', function() {
+                if (this.value.trim()) {
+                    selectHpr.value = '';
+                    selectExterna.value = '';
+                }
+            });
+        }
+
+        // Cancelar edición
+        function cancelarEdicionLugarEntrega(lineaId) {
+            const vistaDiv = document.querySelector(`.lugar-entrega-view-${lineaId}`);
+            const editDiv = document.querySelector(`.lugar-entrega-edit-${lineaId}`);
+            const btnEditar = document.querySelector(`.btn-editar-lugar-${lineaId}`);
+            const btnCancelar = document.querySelector(`.btn-cancelar-lugar-${lineaId}`);
+
+            vistaDiv.classList.remove('hidden');
+            editDiv.classList.add('hidden');
+            btnEditar.classList.remove('hidden');
+            btnCancelar.classList.add('hidden');
+        }
+
+        // Guardar cambios
+        function guardarLugarEntrega(lineaId, pedidoId) {
+            const editDiv = document.querySelector(`.lugar-entrega-edit-${lineaId}`);
+            const selectHpr = editDiv.querySelector('.obra-hpr-select');
+            const selectExterna = editDiv.querySelector('.obra-externa-select');
+            const inputManual = editDiv.querySelector('.obra-manual-input');
+
+            const obraHpr = selectHpr.value;
+            const obraExterna = selectExterna.value;
+            const obraManual = inputManual.value.trim();
+
+            // Validación
+            const totalSeleccionado = [obraHpr, obraExterna, obraManual].filter(v => v).length;
+
+            if (totalSeleccionado === 0) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: 'Debes seleccionar un lugar de entrega'
+                });
+                return;
+            }
+
+            if (totalSeleccionado > 1) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: 'Solo puedes seleccionar una opción de lugar de entrega'
+                });
+                return;
+            }
+
+            // Preparar datos
+            const datos = {
+                _method: 'PUT',
+                linea_id: lineaId,
+                obra_id: obraHpr || obraExterna || null,
+                obra_manual: obraManual || null
+            };
+
+            // Enviar actualización
+            fetch(`/pedidos/${pedidoId}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                    },
+                    body: JSON.stringify(datos)
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Actualizado',
+                            text: 'Lugar de entrega actualizado correctamente',
+                            timer: 1500,
+                            showConfirmButton: false
+                        }).then(() => {
+                            location.reload();
+                        });
+                    } else {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Error',
+                            text: data.message || 'Error al actualizar'
+                        });
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: 'Error al actualizar el lugar de entrega'
+                    });
+                });
+        }
+
+        // Permitir doble clic en la celda para editar
+        document.addEventListener('DOMContentLoaded', function() {
+            document.querySelectorAll('.lugar-entrega-cell').forEach(cell => {
+                cell.addEventListener('dblclick', function() {
+                    const lineaId = this.dataset.lineaId;
+                    abrirEdicionLugarEntrega(lineaId);
+                });
+            });
+        });
     </script>
 </x-app-layout>
