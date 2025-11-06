@@ -32,10 +32,7 @@ class PedidoProducto extends Model
     {
         return $this->belongsTo(ProductoBase::class);
     }
-    public function obra()
-    {
-        return $this->belongsTo(Obra::class);
-    }
+
     public function pedidoGlobal()
     {
         return $this->belongsTo(PedidoGlobal::class, 'pedido_global_id');
