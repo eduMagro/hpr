@@ -358,12 +358,12 @@ class PedidoController extends Controller
                     }
 
                     // ✅ NUEVO: Filtro por obra en las líneas
-                    if ($request->filled('obra_id')) {
-                        $obraId = $request->integer('obra_id');
-                        if ($linea->pivot->obra_id != $obraId) {
-                            return false;
-                        }
-                    }
+                    // if ($request->filled('obra_id')) {
+                    //     $obraId = $request->integer('obra_id');
+                    //     if ($linea->pivot->obra_id != $obraId) {
+                    //         return false;
+                    //     }
+                    // }
 
                     return true;
                 })

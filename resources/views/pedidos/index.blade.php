@@ -168,12 +168,11 @@
 
                                     <td class="border px-2 py-1">{{ $pedido->fabricante?->nombre ?? '—' }}</td>
                                     <td class="border px-2 py-1">{{ $pedido->distribuidor?->nombre ?? '—' }}</td>
-<<<<<<< HEAD
                                     <td class="border px-2 py-1">
                                         {{ $linea->obra->obra ?? '—' }}
-=======
-                                    {{-- ✅ CELDA DE LUGAR DE ENTREGA EDITABLE POR LÍNEA --}}
-                                    {{-- ✅ CELDA DE LUGAR DE ENTREGA - CORREGIDA --}}
+
+                                        {{-- ✅ CELDA DE LUGAR DE ENTREGA EDITABLE POR LÍNEA --}}
+                                        {{-- ✅ CELDA DE LUGAR DE ENTREGA - CORREGIDA --}}
                                     <td class="border px-2 py-1 lugar-entrega-cell cursor-pointer"
                                         data-linea-id="{{ $linea->id }}"
                                         ondblclick="abrirEdicionLugarEntrega({{ $linea->id }})">
@@ -234,8 +233,8 @@
                                             </div>
                                         </div>
                                     </td>
->>>>>>> 3424253aeff410a4ccc753f8c64311a8bbaa0cca
-                                    </td>
+
+
 
                                     <td class="border px-2 py-1 text-center">
                                         {{ ucfirst($linea->tipo) }}
@@ -250,11 +249,13 @@
                                     <td class="border px-2 py-1">
                                         {{ number_format($linea->cantidad_recepcionada ?? 0, 2, ',', '.') }} kg
                                     </td>
-                                    <td class="border px-2 py-1">{{ $pedido->fecha_pedido_formateada ?? '—' }}</td>
+                                    <td class="border px-2 py-1">{{ $pedido->fecha_pedido_formateada ?? '—' }}
+                                    </td>
                                     <td class="border px-2 py-1">
                                         {{ $linea->fecha_estimada_entrega_formateada ?? '—' }}</td>
                                     <td class="border px-2 py-1 capitalize">{{ $linea->estado }}</td>
-                                    <td class="border px-2 py-1 capitalize">{{ $pedido->creador->name ?? '—' }}</td>
+                                    <td class="border px-2 py-1 capitalize">{{ $pedido->creador->name ?? '—' }}
+                                    </td>
 
                                     <td class="border px-2 py-1 text-center">
                                         <div class="flex flex-col items-center gap-1">
