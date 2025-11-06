@@ -330,6 +330,8 @@ function renderPlanillas() {
         maquinasDivs.forEach((maq) => {
             let div_maquina_id = JSON.parse(maq.dataset.detalles).id;
             if (div_maquina_id == planilla.maquina_id) {
+                let tiempo = calcularTiempoFabricacion(maq, planilla);
+
                 div.className =
                     "planilla group p-3 flex justify-around items-center border-2 border-blue-400 hover:border-blue-600 hover:-translate-y-1 transition-transform duration-75 ease-in-out rounded-xl cursor-grab bg-gradient-to-tr from-neutral-100 to-neutral-200 hover:from-blue-300 hover:to-blue-400 active:cursor-grabbing select-none text-center relative";
                 div.dataset.ordenId = planilla.id;
@@ -356,6 +358,7 @@ function renderPlanillas() {
 
                 div.appendChild(divPosicion);
                 div.appendChild(divCodigoPlanilla);
+                div.appendChild(tiempo);
             }
         });
 
@@ -1749,10 +1752,15 @@ function actualizarModalDetalles(idPlanilla) {
     }
 
     let amd_response;
+
+    console.log(amd_planilla);
+    // obtener tiempoAcumulado de la planilla
+    let tiempoAcumuladoPlanilla = 0;
+
     amd_response = {
         0: amd_obtenederObra(amd_planilla.obra_id),
         1: amd_planilla.estado.toUpperCase(),
-        2: "?",
+        2: tiempoAcumuladoPlanilla,
         3: amd_planilla.estimacion_entrega,
     };
 
@@ -2024,7 +2032,9 @@ function ensureSelectAllToolbar() {
         btnSel.className =
             "px-3 py-1 rounded-lg text-xs font-mono font-bold " +
             "bg-gradient-to-tr from-blue-600 to-blue-700 text-white hover:opacity-90 transition";
-        document.getElementById("header_seleecionar_elementos").appendChild(btnSel);
+        document
+            .getElementById("header_seleecionar_elementos")
+            .appendChild(btnSel);
     }
 
     // Helpers
@@ -2108,4 +2118,24 @@ function ensureSelectAllToolbar() {
 
     // Estado inicial correcto cada vez que se abre el modal
     updateLabel();
+}
+
+function calcularTiempoFabricacion(maq, planilla) {
+    // planilla => ordenPlanilla => {id: 9586, maquina_id: 8, planilla_id: 3294, posicion: 2}
+    // elemento => elemento
+
+    let tiempoFabricacionOrdenPlanilla = [];
+    elementos.forEach((elemento) => {
+        if (planilla.id == elemento.orden_planilla_id) {
+            tiempoFabricacionOrdenPlanilla += Number(
+                elemento.tiempo_fabricacion
+            );
+        }
+    });
+
+    let div = document.createElement("div");
+    div.innerText = tiempoFabricacionOrdenPlanilla + "s";
+    planilla.tiempoTotalOrdenPlanilla = tiempoFabricacionOrdenPlanilla;
+    console.log(planilla)
+    return div;
 }

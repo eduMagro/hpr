@@ -177,7 +177,7 @@
 
                 <div>
                     <input id="input_filtrar_obra" type="text" placeholder="Filtrar por nombre"
-                        class="p-2 focus:outline-none shadow-sm border-b-2 bg-transparent border-fuchsia-300 placeholder-neutral-500 font-mono font-semibold">
+                        class="p-2 focus:outline-none border-b-2 bg-transparent border-fuchsia-300 placeholder-neutral-500 font-mono font-semibold">
                 </div>
 
                 <div id="obras_modal"
@@ -279,7 +279,7 @@
         </div>
         <div>
             <p>Fin programado:</p>
-            <p><span></span></p>
+            <p><span id="fin_programado"></span></p>
         </div>
         <div>
             <p>Estimación entrega:</p>
@@ -300,6 +300,7 @@
                     'dimensiones' => $elemento->dimensiones,
                     'diametro' => $elemento->diametro,
                     'diametro' => $elemento->diametro,
+                    'tiempo_fabricacion' => $elemento->tiempo_fabricacion,
                 ]) }}">
             </div>
         @endforeach
