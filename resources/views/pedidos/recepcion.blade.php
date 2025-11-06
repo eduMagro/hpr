@@ -272,158 +272,174 @@
         }
 
         /* ============================================
-   OPTIMIZACIONES MÓVILES
+   OPTIMIZACIONES MÓVILES - EVITAR TECLADO
    ============================================ */
         @media (max-width: 768px) {
 
-            /* Forzar posición superior en móvil */
+            /* Contenedor pegado arriba */
             .swal2-container {
                 align-items: flex-start !important;
-                padding-top: 20px !important;
+                padding: 0 !important;
+                padding-top: 10px !important;
             }
 
-            /* Modal en la parte superior */
+            /* Modal fijo en la parte superior */
             .swal2-popup {
-                width: 95vw !important;
-                max-width: 500px !important;
-                padding: 20px !important;
-                margin: 10px !important;
-                margin-top: 0 !important;
-                position: relative !important;
-                top: 0 !important;
-                transform: none !important;
-            }
-
-            /* Cuando el teclado está visible (input enfocado) */
-            .swal2-popup.swal2-shown {
                 position: fixed !important;
-                top: 20px !important;
+                top: 10px !important;
                 left: 50% !important;
                 transform: translateX(-50%) !important;
-                max-height: calc(100vh - 40px) !important;
+                width: calc(100vw - 20px) !important;
+                max-width: 500px !important;
+                margin: 0 !important;
+                padding: 15px !important;
+                max-height: 50vh !important;
+                /* ⚠️ CLAVE: Limitar altura a mitad de pantalla */
                 overflow-y: auto !important;
             }
 
-            /* Contenido scrolleable con más espacio */
+            /* Contenido compacto y scrolleable */
             .swal2-html-container {
-                margin: 15px 0 !important;
+                margin: 10px 0 !important;
+                padding: 0 !important;
                 font-size: 15px !important;
-                max-height: calc(100vh - 250px) !important;
+                max-height: calc(50vh - 180px) !important;
+                /* Ajustar según altura modal */
                 overflow-y: auto !important;
                 -webkit-overflow-scrolling: touch !important;
             }
 
-            /* Mantener los botones visibles */
-            .swal2-actions {
-                position: sticky !important;
-                bottom: 0 !important;
-                background: white !important;
-                padding: 15px 0 !important;
-                margin: 0 !important;
-                border-top: 1px solid #e5e7eb !important;
-                z-index: 1 !important;
+            /* Título más compacto */
+            .swal2-title {
+                font-size: 18px !important;
+                padding: 5px 0 !important;
+                margin: 0 0 10px 0 !important;
             }
 
-            /* Inputs más grandes para móvil */
+            /* Botones compactos pero visibles */
+            .swal2-actions {
+                margin: 10px 0 0 0 !important;
+                padding: 0 !important;
+                gap: 8px !important;
+            }
+
+            /* Inputs más compactos */
             .swal2-input,
             .swal2-select {
                 font-size: 16px !important;
-                /* Evita zoom en iOS */
-                padding: 12px !important;
+                padding: 10px !important;
                 height: auto !important;
                 min-height: 44px !important;
-                /* Touch target */
+                margin: 8px 0 !important;
             }
 
-            /* Botones más grandes para táctil */
+            /* Botones táctiles */
             .swal2-confirm,
             .swal2-cancel,
             .swal2-deny {
-                font-size: 16px !important;
-                padding: 14px 20px !important;
-                min-height: 48px !important;
-                min-width: 48px !important;
+                font-size: 15px !important;
+                padding: 12px 16px !important;
+                min-height: 44px !important;
+                min-width: 44px !important;
             }
 
-            /* Botones personalizados en móvil */
+            /* Botones personalizados */
             .swal2-confirm-custom,
             .swal2-cancel-custom,
             .swal2-deny-custom {
                 flex: 1 !important;
-                min-width: 100px !important;
-                padding: 14px 16px !important;
-                font-size: 16px !important;
+                min-width: 90px !important;
+                padding: 12px 14px !important;
+                font-size: 15px !important;
             }
 
-            /* Botón X más grande en móvil */
+            /* Botón X */
             .swal2-close-custom {
-                font-size: 32px !important;
-                width: 44px !important;
-                height: 44px !important;
+                font-size: 28px !important;
+                width: 40px !important;
+                height: 40px !important;
+                top: 5px !important;
+                right: 5px !important;
             }
 
-            /* Título más legible */
-            .swal2-title {
-                font-size: 20px !important;
-                padding: 10px 0 !important;
+            /* Indicador de pasos compacto */
+            .step-indicator {
+                padding: 8px;
+                gap: 8px;
+                margin-bottom: 12px;
             }
 
-            /* Indicador de pasos más grande */
             .step-dot {
-                width: 12px;
-                height: 12px;
+                width: 10px;
+                height: 10px;
             }
 
             .step-dot.active {
-                transform: scale(1.3);
+                transform: scale(1.2);
             }
 
-            .step-indicator {
-                padding: 12px;
-                gap: 10px;
-            }
-
-            /* Keyboard hint más visible en móvil */
-            .keyboard-hint {
-                font-size: 12px;
-                margin-top: 15px;
-                padding: 8px;
-                background: #f3f4f6;
-                border-radius: 4px;
-            }
-
-            /* Resumen items más espaciados */
+            /* Resumen items */
             .resumen-item {
-                padding: 14px;
-                margin-bottom: 10px;
-                font-size: 15px;
+                padding: 12px;
+                margin-bottom: 8px;
+                font-size: 14px;
                 flex-wrap: wrap;
             }
 
-            /* Checkbox más grande para touch */
+            /* Checkbox */
             input[type="checkbox"] {
-                transform: scale(1.5) !important;
-                margin-right: 8px !important;
+                transform: scale(1.3) !important;
+                margin-right: 6px !important;
             }
 
-            /* Labels más grandes */
+            /* Labels */
             label {
-                font-size: 15px !important;
+                font-size: 14px !important;
+                margin-bottom: 6px !important;
+            }
+
+            /* Keyboard hint oculto en móvil */
+            .keyboard-hint {
+                display: none !important;
             }
         }
 
-        /* Para dispositivos muy pequeños */
+        /* Dispositivos muy pequeños */
         @media (max-width: 375px) {
             .swal2-container {
-                padding-top: 10px !important;
+                padding-top: 5px !important;
             }
 
-            .swal2-popup.swal2-shown {
-                top: 10px !important;
-                width: calc(100vw - 20px) !important;
-                max-height: calc(100vh - 20px) !important;
+            .swal2-popup {
+                top: 5px !important;
+                width: calc(100vw - 16px) !important;
+                padding: 12px !important;
             }
         }
+
+        /* Orientación horizontal */
+        @media (max-height: 500px) and (orientation: landscape) {
+            .swal2-popup {
+                max-height: 80vh !important;
+                padding: 10px !important;
+            }
+
+            .swal2-html-container {
+                max-height: calc(80vh - 150px) !important;
+            }
+
+            .step-indicator {
+                padding: 6px;
+                margin-bottom: 8px;
+            }
+
+            .swal2-title {
+                font-size: 16px !important;
+                margin-bottom: 8px !important;
+            }
+        }
+
+
 
         /* Tablets en landscape */
         @media (min-width: 768px) and (max-width: 1024px) {
@@ -718,6 +734,16 @@
                 this.currentStep = 0;
                 this.data = {};
                 await this.showStep();
+
+                // Al final, limpiar estilos cuando se cierre
+                const cleanup = () => {
+                    document.body.style.overflow = '';
+                    document.body.style.position = '';
+                    document.body.style.width = '';
+                };
+
+                // Agregar cleanup al finish
+                window.addEventListener('beforeunload', cleanup);
             }
 
             async showStep() {
@@ -856,31 +882,35 @@
             adjustForMobile() {
                 if (!this.isMobile) return;
 
-                // Scroll al top del modal en móvil
                 const popup = Swal.getPopup();
                 if (popup) {
                     popup.scrollTop = 0;
 
-                    // ✅ Detectar cuando el teclado aparece
-                    const inputs = popup.querySelectorAll('input, select, textarea');
-                    inputs.forEach(input => {
-                        input.addEventListener('focus', () => {
-                            // Forzar scroll al input enfocado
-                            setTimeout(() => {
-                                input.scrollIntoView({
-                                    behavior: 'smooth',
-                                    block: 'center',
-                                    inline: 'nearest'
-                                });
-                            }, 300); // Esperar a que el teclado aparezca
-                        });
-                    });
+                    // ✅ Fijar el popup para que no se mueva
+                    popup.style.position = 'fixed';
+                    popup.style.top = '10px';
+
+                    // ✅ Prevenir scroll del body cuando el modal está abierto
+                    document.body.style.overflow = 'hidden';
+                    document.body.style.position = 'fixed';
+                    document.body.style.width = '100%';
                 }
 
-                // Prevenir zoom en iOS cuando hay inputs
+                // Prevenir zoom en iOS
                 const inputs = document.querySelectorAll('.swal2-input, .swal2-select');
                 inputs.forEach(input => {
                     input.style.fontSize = '16px';
+
+                    // ✅ Cuando el input recibe foco, asegurar que esté visible
+                    input.addEventListener('focus', (e) => {
+                        setTimeout(() => {
+                            // Scroll suave al input dentro del modal
+                            e.target.scrollIntoView({
+                                behavior: 'smooth',
+                                block: 'nearest'
+                            });
+                        }, 100);
+                    });
                 });
             }
 
