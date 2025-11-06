@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Models\Maquina;
 use App\Models\Planilla;
+use App\Models\Localizacion;
 use App\Models\OrdenPlanilla;
 use App\Models\Elemento;
 use App\Models\Empresa;
@@ -21,7 +22,8 @@ use Illuminate\Support\Collection;
 use Illuminate\Support\Arr;
 use App\Models\Festivo;
 use Throwable;
-
+use Illuminate\Validation\Rule;
+use Illuminate\Support\Facades\File;
 
 function toCarbon($valor, $format = 'd/m/Y H:i')
 {
@@ -1510,6 +1512,271 @@ class ProduccionController extends Controller
         } catch (\Throwable $e) {
             Log::warning('parseFechaEntregaFlexible falló', ['valor' => $valor, 'err' => $e->getMessage()]);
             return null;
+        }
+    }
+
+    public function verOrdenesPlanillas(Request $request)
+    {
+        $maquinas = Maquina::query()
+            ->where('tipo', '!=', 'grua')
+            ->orderBy('nombre')
+            ->get();
+
+        $localizacionMaquinas = Localizacion::query()
+            ->get(['maquina_id', 'nave_id']);
+
+        $ordenPlanillas = OrdenPlanilla::query()
+            ->orderBy('posicion')
+            ->get();
+
+        $planillaIds = $ordenPlanillas->pluck('planilla_id')->unique();
+
+        $planillas = Planilla::query()
+            ->whereIn('id', $planillaIds)
+            ->get();
+
+
+        $elementos = Elemento::query()
+            ->get();
+
+        $obras = Obra::query()->get();
+
+        return view('produccion.ordenesPlanillas', compact('maquinas', 'localizacionMaquinas', 'ordenPlanillas', 'planillas', 'elementos', 'obras'));
+    }
+
+    public function guardar(Request $request)
+    {
+        $data = $request->validate([
+            'elementos_updates' => 'array',
+            'elementos_updates.*.id' => 'required|integer',
+            'elementos_updates.*.maquina_id' => 'required|integer',
+            'elementos_updates.*.orden_planilla_id' => 'required|integer',
+
+            'orden_planillas' => 'required|array',
+            'orden_planillas.create' => 'array',
+            'orden_planillas.create.*.id' => 'nullable|integer',
+            'orden_planillas.create.*.maquina_id' => 'required|integer',
+            'orden_planillas.create.*.planilla_id' => 'required|integer',
+            'orden_planillas.create.*.posicion' => 'required|integer',
+
+            'orden_planillas.update' => 'array',
+            'orden_planillas.update.*.id' => 'required|integer',
+            'orden_planillas.update.*.maquina_id' => 'required|integer',
+            'orden_planillas.update.*.posicion' => 'required|integer',
+
+            'orden_planillas.delete' => 'array',
+            'orden_planillas.delete.*' => 'integer',
+        ]);
+
+        $respetarIdsCliente = true;
+
+        // Datos comunes de auditoría
+        $tx    = (string) Str::uuid();
+        $actor = optional(auth()->user())->only(['id', 'name', 'email']) ?? ['id' => null, 'name' => 'guest', 'email' => null];
+        $ip    = $request->ip();
+
+        $audit = []; // aquí acumulamos y luego se escriben tras el commit
+
+        DB::beginTransaction();
+
+        try {
+            $audit[] = [
+                'event' => 'BEGIN',
+                'tx'    => $tx,
+                'actor' => $actor,
+                'ip'    => $ip,
+                'at'    => now()->toDateTimeString(),
+                'payload_sizes' => [
+                    'elementos_updates' => isset($data['elementos_updates']) ? count($data['elementos_updates']) : 0,
+                    'op_create' => isset($data['orden_planillas']['create']) ? count($data['orden_planillas']['create']) : 0,
+                    'op_update' => isset($data['orden_planillas']['update']) ? count($data['orden_planillas']['update']) : 0,
+                    'op_delete' => isset($data['orden_planillas']['delete']) ? count($data['orden_planillas']['delete']) : 0,
+                ],
+            ];
+
+            // 1) ELEMENTOS: UPDATE
+            if (!empty($data['elementos_updates'])) {
+                foreach ($data['elementos_updates'] as $e) {
+                    // estado anterior
+                    $before = DB::table('elementos')->where('id', $e['id'])->first();
+
+                    DB::table('elementos')
+                        ->where('id', $e['id'])
+                        ->update([
+                            'maquina_id' => $e['maquina_id'],
+                            'orden_planilla_id' => $e['orden_planilla_id'],
+                            'updated_at' => now(),
+                        ]);
+
+                    $audit[] = [
+                        'event'  => 'elemento.update',
+                        'tx'     => $tx,
+                        'actor'  => $actor,
+                        'ip'     => $ip,
+                        'at'     => now()->toDateTimeString(),
+                        'id'     => $e['id'],
+                        'before' => $before ? (array) $before : null,
+                        'after'  => [
+                            'id' => $e['id'],
+                            'maquina_id' => $e['maquina_id'],
+                            'orden_planilla_id' => $e['orden_planilla_id'],
+                        ],
+                    ];
+                }
+            }
+
+            $idMap = [];
+
+            // 2) ORDEN_PLANILLAS: CREATE
+            if (!empty($data['orden_planillas']['create'])) {
+                foreach ($data['orden_planillas']['create'] as $op) {
+                    if ($respetarIdsCliente && !empty($op['id'])) {
+                        DB::table('orden_planillas')->insert([
+                            'id' => $op['id'],
+                            'maquina_id' => $op['maquina_id'],
+                            'planilla_id' => $op['planilla_id'],
+                            'posicion' => $op['posicion'],
+                            'created_at' => now(),
+                            'updated_at' => now(),
+                        ]);
+
+                        $audit[] = [
+                            'event' => 'op.create',
+                            'tx'    => $tx,
+                            'actor' => $actor,
+                            'ip'    => $ip,
+                            'at'    => now()->toDateTimeString(),
+                            'id'    => (int) $op['id'],
+                            'data'  => $op,
+                            'respetar_id_cliente' => true,
+                        ];
+                    } else {
+                        $newId = DB::table('orden_planillas')->insertGetId([
+                            'maquina_id' => $op['maquina_id'],
+                            'planilla_id' => $op['planilla_id'],
+                            'posicion' => $op['posicion'],
+                            'created_at' => now(),
+                            'updated_at' => now(),
+                        ]);
+
+                        if (!empty($op['id'])) {
+                            $idMap[(string)$op['id']] = $newId;
+                        }
+
+                        $audit[] = [
+                            'event' => 'op.create',
+                            'tx'    => $tx,
+                            'actor' => $actor,
+                            'ip'    => $ip,
+                            'at'    => now()->toDateTimeString(),
+                            'id'    => (int) $newId,
+                            'data'  => $op,
+                            'respetar_id_cliente' => false,
+                            'temp_to_real' => !empty($op['id']) ? [(string)$op['id'] => $newId] : null,
+                        ];
+                    }
+                }
+            }
+
+            // 2b) Reasignar elementos con IDs temporales si aplica
+            if (!$respetarIdsCliente && !empty($idMap)) {
+                foreach ($idMap as $tempId => $realId) {
+                    $affected = DB::table('elementos')
+                        ->where('orden_planilla_id', (int)$tempId)
+                        ->update(['orden_planilla_id' => (int)$realId]);
+
+                    $audit[] = [
+                        'event' => 'elemento.rewire_op_id',
+                        'tx'    => $tx,
+                        'actor' => $actor,
+                        'ip'    => $ip,
+                        'at'    => now()->toDateTimeString(),
+                        'temp_to_real' => [(int)$tempId => (int)$realId],
+                        'affected' => $affected,
+                    ];
+                }
+            }
+
+            // 3) ORDEN_PLANILLAS: UPDATE
+            if (!empty($data['orden_planillas']['update'])) {
+                foreach ($data['orden_planillas']['update'] as $op) {
+                    $before = DB::table('orden_planillas')->where('id', $op['id'])->first();
+
+                    DB::table('orden_planillas')
+                        ->where('id', $op['id'])
+                        ->update([
+                            'maquina_id' => $op['maquina_id'],
+                            'posicion' => $op['posicion'],
+                            'updated_at' => now(),
+                        ]);
+
+                    $audit[] = [
+                        'event'  => 'op.update',
+                        'tx'     => $tx,
+                        'actor'  => $actor,
+                        'ip'     => $ip,
+                        'at'     => now()->toDateTimeString(),
+                        'id'     => $op['id'],
+                        'before' => $before ? (array) $before : null,
+                        'after'  => [
+                            'id' => $op['id'],
+                            'maquina_id' => $op['maquina_id'],
+                            'posicion' => $op['posicion'],
+                        ],
+                    ];
+                }
+            }
+
+            // 4) ORDEN_PLANILLAS: DELETE
+            if (!empty($data['orden_planillas']['delete'])) {
+                $idsEliminar = $data['orden_planillas']['delete'];
+
+                // Capturamos los registros antes de eliminar
+                $beforeRows = DB::table('orden_planillas')
+                    ->whereIn('id', $idsEliminar)
+                    ->get()
+                    ->map(fn($r) => (array) $r)
+                    ->all();
+
+                DB::table('orden_planillas')->whereIn('id', $idsEliminar)->delete();
+
+                $audit[] = [
+                    'event'  => 'op.delete',
+                    'tx'     => $tx,
+                    'actor'  => $actor,
+                    'ip'     => $ip,
+                    'at'     => now()->toDateTimeString(),
+                    'ids'    => $idsEliminar,
+                    'before' => $beforeRows, // para auditoría
+                ];
+            }
+
+            DB::commit();
+
+            // Solo si hay commit, escribimos en el canal "ordenamiento"
+            DB::afterCommit(function () use ($audit, $tx) {
+                Log::channel('ordenamiento')->info('TX COMMIT ' . $tx, ['size' => count($audit)]);
+                foreach ($audit as $entry) {
+                    Log::channel('ordenamiento')->info($entry['event'], $entry);
+                }
+            });
+
+            return response()->json([
+                'success' => true,
+                'orden_planillas_id_map' => $respetarIdsCliente ? (object)[] : $idMap,
+                'message' => 'Movimiento(s) registrado(s) correctamente.'
+            ]);
+        } catch (\Throwable $e) {
+            DB::rollBack();
+
+            // Registramos el fallo (en el canal también) con el mismo tx
+            Log::channel('ordenamiento')->error('TX ROLLBACK ' . $tx, [
+                'actor' => $actor,
+                'ip'    => $ip,
+                'error' => $e->getMessage(),
+            ]);
+
+            throw $e;
         }
     }
 }

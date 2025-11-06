@@ -11,6 +11,8 @@ class PedidoProducto extends Model
     protected $fillable = [
         'pedido_id',
         'pedido_global_id',
+        'obra_id',           // ✅ IMPORTANTE
+        'obra_manual',       // ✅ IMPORTANTE
         'producto_base_id',
         'cantidad',
         'fecha_estimada_entrega',
@@ -68,5 +70,9 @@ class PedidoProducto extends Model
         return $this->fecha_estimada_entrega
             ? $this->fecha_estimada_entrega->format('d-m-Y')
             : null;
+    }
+    public function obra()
+    {
+        return $this->belongsTo(Obra::class, 'obra_id');
     }
 }

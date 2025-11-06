@@ -11,8 +11,8 @@
               <input type="hidden" name="tipo" value="movimiento libre">
 
               <!-- Producto -->
-              <x-tabla.input-movil id="codigo_general_general" label="Escanear Producto o Paquete"
-                  placeholder="Escanea QR Ferralla" autocomplete="off" inputmode="none" />
+              <x-tabla.input-movil type="text" id="codigo_general_general" label="Escanear Producto o Paquete"
+                  placeholder="Escanea QR Ferralla" autocomplete="off" inputmode="text" />
 
               <div id="mostrar_qrs" data-api-info-url="{{ route('api.codigos.info') }}"></div>
               <input type="hidden" name="lista_qrs" id="lista_qrs">
@@ -43,7 +43,8 @@
 
               <!-- Botones -->
               <div class="flex justify-end gap-3 mt-6">
-                  <button type="button" id="cancelar_btn" onclick="cerrarModalMovimientoLibre()" class="px-4 py-2 bg-gray-300 hover:bg-gray-400 rounded-lg">Cancelar</button>
+                  <button id="cancelar_btn" type="button" onclick="cerrarModalMovimientoLibre()"
+                      class="px-4 py-2 bg-gray-300 hover:bg-gray-400 rounded-lg">Cancelar</button>
                   <button type="submit"
                       class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg">Registrar</button>
               </div>
@@ -248,6 +249,14 @@
           modal.classList.remove('hidden');
           modal.classList.add('flex');
 
+          const eventoEnter = new KeyboardEvent("keydown", {
+              key: "Enter",
+              code: "Enter",
+              keyCode: 13,
+              which: 13,
+              bubbles: true,
+          });
+
           const inputQR = document.getElementById("codigo_general_general");
 
           setTimeout(() => {
@@ -256,11 +265,7 @@
               if (codigo) {
                   const code = String(codigo).trim().toUpperCase();
                   inputQR.value = code;
-
-                  //   fuerzo accion input para que se registre el codigo
-                  inputQR.dispatchEvent(new Event('input', {
-                      bubbles: true
-                  }));
+                  inputQR.dispatchEvent(eventoEnter);
               }
 
               inputQR.focus();
