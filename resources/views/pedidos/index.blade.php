@@ -170,7 +170,7 @@
                                     <td class="border px-2 py-1">{{ $pedido->fabricante?->nombre ?? '—' }}</td>
                                     <td class="border px-2 py-1">{{ $pedido->distribuidor?->nombre ?? '—' }}</td>
                                     <td class="border px-2 py-1">
-                                        {{ $pedido->obra->obra ?? ($pedido->obra_manual ?? '—') }}
+                                        {{ $linea->obra->obra ?? '—' }}
                                     </td>
 
                                     <td class="border px-2 py-1 text-center">
@@ -195,22 +195,29 @@
                                     <td class="border px-2 py-1 text-center">
                                         <div class="flex flex-col items-center gap-1">
                                             @php
-                                                $estado = strtolower(trim($linea['estado']));
+                                                $estado = strtolower(trim($linea->estado));
                                                 $esCancelado = $estado === 'cancelado';
                                                 $esCompletado = $estado === 'completado';
                                                 $esFacturado = $estado === 'facturado';
-                                                $esEntregaDirecta = !$pedido->obra?->es_nave_paco_reyes;
-                                                $esAlmacen = $pedido->obra?->es_almacen;
+
+                                                // Detectar características de la obra de ESTA LÍNEA específica
+                                                $obraLinea = $linea->obra;
+                                                $esEntregaDirecta = $obraLinea
+                                                    ? !$obraLinea->es_nave_paco_reyes
+                                                    : false;
+                                                $esAlmacen = $obraLinea
+                                                    ? stripos($obraLinea->obra, 'Almacén') !== false
+                                                    : false;
+                                                $esNaveA = $obraLinea
+                                                    ? stripos($obraLinea->obra, 'Nave A') !== false
+                                                    : false;
+                                                $esNaveB = $obraLinea
+                                                    ? stripos($obraLinea->obra, 'Nave B') !== false
+                                                    : false;
+                                                $esNaveValida = $esNaveA || $esNaveB;
 
                                                 $pedidoCompletado = strtolower($pedido->estado) === 'completado';
-
-                                                $obra = $pedido->obra;
-                                                $esNaveA = $obra?->es_nave_a;
-                                                $esNaveB = $obra?->es_nave_b;
-                                                $esNaveValida = $esNaveA || $esNaveB;
                                             @endphp
-
-
                                             <div class="flex items-center justify-center gap-1"
                                                 @if ($esCancelado) style="pointer-events:none;opacity:.5" @endif>
 

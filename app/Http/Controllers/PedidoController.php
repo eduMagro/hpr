@@ -191,7 +191,9 @@ class PedidoController extends Controller
 
         // Obra (id exacto)
         if ($request->filled('obra_id')) {
-            $query->where('obra_id', $request->integer('obra_id'));
+            $query->whereHas('pedidoProductos', function ($q) use ($request) {
+                $q->where('obra_id', $request->obra_id);
+            });
         }
 
         // Fechas
@@ -271,19 +273,19 @@ class PedidoController extends Controller
         // Cargamos todos los modelos y relaciones necesarios
         $query = Pedido::with([
             'fabricante',
-            'obra',
             'distribuidor',
             'productos',
             'pedidoGlobal',
             'pedidoProductos.productoBase',
-            'pedidoProductos.pedidoGlobal', // ⚠️ importante cargar esta relación
+            'pedidoProductos.obra',  // 👈 Cargar la obra desde la línea
+            'pedidoProductos.pedidoGlobal',
         ]);
 
         if (auth()->user()->rol === 'operario') {
             $query->whereIn('estado', ['pendiente', 'parcial']);
         }
 
-        $obras = Obra::whereIn('id', Pedido::select('obra_id')->distinct())
+        $obras = Obra::whereIn('id', PedidoProducto::select('obra_id')->distinct())
             ->orderBy('obra')
             ->pluck('obra', 'id');
 
@@ -411,8 +413,8 @@ class PedidoController extends Controller
 
     public function recepcion($pedidoId, $productoBaseId, Request $request)
     {
-        // Cargar pedido con relaciones
-        $pedido = Pedido::with(['productos', 'entradas.productos', 'obra'])->findOrFail($pedidoId);
+        // ✅ Cargar pedido con relaciones (SIN 'obra')
+        $pedido = Pedido::with(['productos', 'entradas.productos'])->findOrFail($pedidoId);
 
         // Movimiento obligatorio
         $movimientoId = $request->query('movimiento_id');
@@ -427,7 +429,7 @@ class PedidoController extends Controller
         }
 
         /** @var \App\Models\Movimiento $movimiento */
-        $movimiento = Movimiento::with('pedidoProducto')->findOrFail($movimientoId);
+        $movimiento = Movimiento::with('pedidoProducto.obra')->findOrFail($movimientoId); // ✅ Agregado .obra a pedidoProducto
 
         // Validar que pertenece al pedido
         if ((int) $movimiento->pedido_id !== (int) $pedido->id) {
@@ -667,10 +669,9 @@ class PedidoController extends Controller
             return redirect()->back()->with('error', 'Esta línea ya ha sido activada por otro usuario.');
         }
 
-        // Cargamos el pedido con fabricante y distribuidor
+        // ✅ Cargamos el pedido con fabricante y distribuidor (SIN 'obra')
         /** @var \App\Models\Pedido $pedido */
-        $pedido = Pedido::with(['fabricante', 'distribuidor', 'obra'])->findOrFail($linea->pedido_id);
-
+        $pedido = Pedido::with(['fabricante', 'distribuidor'])->findOrFail($linea->pedido_id);
 
         if (!in_array($pedido->estado, ['pendiente', 'parcial', 'activo'])) {
             return redirect()->back()->with('error', 'Solo se pueden activar productos de pedidos pendientes, parciales o activos.');
@@ -679,12 +680,12 @@ class PedidoController extends Controller
         // Producto base de la línea
         $productoBase = ProductoBase::findOrFail($linea->producto_base_id);
 
-        // Proveedor: prioriza fabricante; si no hay, usa distribuidor; si tampoco, “No especificado”
+        // Proveedor: prioriza fabricante; si no hay, usa distribuidor; si tampoco, "No especificado"
         $proveedor = $pedido->fabricante->nombre
             ?? $pedido->distribuidor->nombre
             ?? 'No especificado';
 
-        // Fecha estimada entrega (por si viene null, mostramos “—”)
+        // Fecha estimada entrega (por si viene null, mostramos "—")
         $fechaEntregaFmt = $linea->fecha_estimada_entrega
             ? Carbon::parse($linea->fecha_estimada_entrega)->format('d/m/Y')
             : '—';
@@ -720,7 +721,7 @@ class PedidoController extends Controller
                 'updated_at' => now(),
             ]);
 
-            // Creamos el movimiento con la descripción ampliada
+            // ✅ Creamos el movimiento usando obra_id de la LÍNEA
             Movimiento::create([
                 'tipo'               => 'entrada',
                 'estado'             => 'pendiente',
@@ -731,19 +732,19 @@ class PedidoController extends Controller
                 'producto_base_id'   => $productoBase->id,
                 'pedido_producto_id' => $lineaId,
                 'prioridad'          => 2,
-                'nave_id'          => $pedido->obra_id,
+                'nave_id'            => $linea->obra_id,  // 👈 CAMBIO: ahora viene de la línea
             ]);
+
             Log::info('Movimiento creado para activar línea de pedido', [
                 'linea_id'          => $lineaId,
                 'pedido_id'         => $pedidoId,
                 'producto_base_id'  => $productoBase->id,
-                'nave_id'           => $pedido->obra_id,
+                'nave_id'           => $linea->obra_id,  // 👈 CAMBIO: ahora viene de la línea
                 'usuario'           => auth()->id(),
             ]);
 
-
             DB::commit();
-            return redirect()->back()->with('success');
+            return redirect()->back()->with('success', 'Línea activada correctamente.');
         } catch (\Throwable $e) {
             DB::rollBack();
             Log::error('Error al activar línea del pedido: ' . $e->getMessage());

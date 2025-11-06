@@ -81,10 +81,7 @@ class Pedido extends Model
     {
         return $this->belongsTo(Distribuidor::class);
     }
-    public function obra()
-    {
-        return $this->belongsTo(Obra::class);
-    }
+
 
     public function productos()
     {

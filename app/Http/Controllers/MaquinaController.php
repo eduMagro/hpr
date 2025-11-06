@@ -497,10 +497,10 @@ class MaquinaController extends Controller
             'solicitadoPor:id,name',
             'producto.ubicacion:id,nombre',
             'productoBase:id,tipo,diametro,longitud',
-            'pedido:id,codigo,peso_total,fabricante_id,distribuidor_id,obra_id',
+            'pedido:id,codigo,peso_total,fabricante_id,distribuidor_id',
             'pedido.fabricante:id,nombre',
             'pedido.distribuidor:id,nombre',
-            'pedidoProducto:id,pedido_id,producto_base_id,cantidad,cantidad_recepcionada,estado,fecha_estimada_entrega',
+            'pedidoProducto:id,pedido_id,producto_base_id,cantidad,cantidad_recepcionada,obra_id,estado,fecha_estimada_entrega',
         ])
             ->where('estado', 'pendiente')
             ->where('nave_id', $obraId)              // ⬅️ solo movimientos de la misma nave
@@ -634,7 +634,12 @@ class MaquinaController extends Controller
 
         // Pedidos activos (de la misma nave)
         $pedidosActivos = Pedido::where('estado', 'activo')
-            ->where('obra_id', $obraId)              // ⬅️ pedidos de la misma nave
+            ->whereHas('pedidoProductos', function ($query) use ($obraId) {
+                $query->where('obra_id', $obraId);
+            })
+            ->with(['pedidoProductos' => function ($query) use ($obraId) {
+                $query->where('obra_id', $obraId);
+            }])
             ->orderBy('updated_at', 'desc')
             ->get();
 
