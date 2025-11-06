@@ -15,6 +15,7 @@ let obrasModal;
 let clickObras; // .obra
 let obraSeleccionada;
 let OBRA_HL = { active: false, id: null, codes: new Set() };
+let MODAL_MAQ_CHIPS = new Map();
 
 // btn
 let btn_transferir;
@@ -28,6 +29,7 @@ let modalGuardar;
 let modalElegirOrden;
 let modalResaltarObra;
 let modalDetalles;
+let modalMapa;
 let modales = [];
 
 // variables datos originales, servira para referenciar los cambios realizados
@@ -63,6 +65,14 @@ document.addEventListener("DOMContentLoaded", () => {
     naves.forEach((btn) => {
         btn.addEventListener("click", () => filtrarPorNave(btn.dataset.nave));
     });
+
+    // Mapear chips del modal mini-mapa: maquina_id -> nodo chip
+    document
+        .querySelectorAll("#modal_maquinas_con_elementos .chip-maq")
+        .forEach((chip) => {
+            const mid = Number(chip.dataset.maquinaId);
+            if (!Number.isNaN(mid)) MODAL_MAQ_CHIPS.set(mid, chip);
+        });
 
     obras = Array.from(document.querySelectorAll("#obras [data-obras]")).map(
         (div) => JSON.parse(div.dataset.obras)
@@ -103,6 +113,7 @@ document.addEventListener("DOMContentLoaded", () => {
     modalElegirOrden = document.getElementById("modal_elegir_orden");
     modalResaltarObra = document.getElementById("modal_resaltar_obra");
     modalDetalles = document.getElementById("modal_detalles"); // este no hay que agregarlo al array
+    modalMapa = document.getElementById("modal_maquinas_con_elementos"); // este no hay que agregarlo al array
     modales = [
         modalMostrarElementos,
         modalTransferirAMaquina,
@@ -143,16 +154,32 @@ document.addEventListener("DOMContentLoaded", () => {
     resaltarObra(1);
 
     document.addEventListener("mousemove", (e) => {
-        let mitad = window.innerWidth / 2;
+        const ancho = window.innerWidth;
+        const tercio = ancho / 3;
+        const modalDetalles = document.getElementById("modal_detalles");
+        const modalMapa = document.getElementById(
+            "modal_maquinas_con_elementos"
+        );
 
-        if (e.clientX > mitad) {
-            // ratón en mitad izquierda
-            modalDetalles.classList.remove("right-4");
-            modalDetalles.classList.add("left-4");
-        } else {
-            // ratón en mitad derecha
+        if (!modalDetalles || !modalMapa) return;
+
+        // Primer tercio (zona izquierda)
+        if (e.clientX < tercio) {
+            // Mover ambos a la derecha
             modalDetalles.classList.remove("left-4");
             modalDetalles.classList.add("right-4");
+
+            modalMapa.classList.remove("left-3");
+            modalMapa.classList.add("right-3");
+        }
+        // Último tercio (zona derecha)
+        else if (e.clientX > tercio * 2) {
+            // Mover ambos a la izquierda
+            modalDetalles.classList.remove("right-4");
+            modalDetalles.classList.add("left-4");
+
+            modalMapa.classList.remove("right-3");
+            modalMapa.classList.add("left-3");
         }
     });
 });
@@ -412,6 +439,8 @@ function renderModalElementos(ordenPlanillaId, codigoPlanilla, codigoMaquina) {
     anadirPropiedadTransferible();
 
     // mostrar modal
+    modalDetalles.classList.add("hidden");
+    modalMapa.classList.add("hidden");
     modalMostrarElementos.classList.remove("hidden");
 }
 
@@ -512,43 +541,69 @@ let _hlCode = null;
 let _hlNodes = [];
 
 function _clearHighlight() {
-    if (!_hlNodes.length) return;
+    if (_hlNodes.length) {
+        _hlNodes.forEach((opd) => {
+            if (!opd || !opd.isConnected) return;
+            opd.classList.remove("__hl-compi");
+            const maquinaHeader = opd
+                .closest(".maquina")
+                ?.querySelector(":scope > *:first-child");
+            if (maquinaHeader) {
+                // vuelve al azul... y luego si hay obra activa, la reponemos abajo
+                maquinaHeader.classList.remove(
+                    "from-orange-400",
+                    "to-orange-500"
+                );
+                maquinaHeader.classList.add("from-blue-600", "to-blue-700");
+            }
+        });
+    }
 
-    _hlNodes.forEach((opd) => {
-        if (!opd || !opd.isConnected) return;
-
-        // Quita SOLO el estado de compi
-        opd.classList.remove("__hl-compi");
-
-        // Header vuelve a azul
-        const maquinaHeader = opd
-            .closest(".maquina")
-            ?.querySelector(":scope > *:first-child");
-        if (maquinaHeader) {
-            maquinaHeader.classList.add("from-blue-600", "to-blue-700");
-            maquinaHeader.classList.remove("from-orange-400", "to-orange-500");
-        }
+    // mini-mapa
+    MODAL_MAQ_CHIPS.forEach((chip) => {
+        chip.classList.remove("from-orange-400", "to-orange-500");
+        chip.classList.add("from-blue-600", "to-blue-700");
     });
 
     _hlNodes = [];
     _hlCode = null;
+
+    if (OBRA_HL.active) applyObraMachineHighlights();
 }
 
 function resaltarCompis() {
     const root = document; // o el contenedor que envuelve todas las .planilla
 
+    let ocultarModalesTimeout = null;
+
     root.addEventListener(
         "mouseover",
         (e) => {
             const card = e.target.closest(".planilla");
+
+            // Si NO estás sobre una card → programa ocultado con delay
             if (!card) {
-                // ocultar modal detalles
-                modalDetalles.classList.add("hidden");
+                // opcional: si pasas por encima de los propios modales, no programes ocultado
+                if (
+                    e.target.closest("#modal_detalles") ||
+                    e.target.closest("#modal_maquinas_con_elementos")
+                ) {
+                    return;
+                }
+
+                clearTimeout(ocultarModalesTimeout);
+                ocultarModalesTimeout = setTimeout(() => {
+                    _clearHighlight(); // limpia resaltados
+                    modalDetalles.classList.add("hidden");
+                    modalMapa.classList.add("hidden");
+                }, 1000); // 1 s
                 return;
             }
 
-            // ocultar modal detalles
+            // Si SÍ estás sobre una card → cancela el ocultado y muestra + resalta
+            clearTimeout(ocultarModalesTimeout);
             modalDetalles.classList.remove("hidden");
+            modalMapa.classList.remove("hidden");
 
             const code = (
                 card.dataset.codigo ||
@@ -557,7 +612,6 @@ function resaltarCompis() {
             ).trim();
 
             actualizarModalDetalles(code);
-
             if (!code || code === _hlCode) return;
 
             _clearHighlight();
@@ -567,25 +621,18 @@ function resaltarCompis() {
             );
             matches.forEach((opd) => {
                 if (opd === card) return;
-
-                // SOLO marcamos la clase de estado compi.
                 opd.classList.add("__hl-compi");
-
-                // Header máquina a naranja (esto lo puedes mantener si te gusta el feedback):
-                const maquinaHeader = opd
+                const header = opd
                     .closest(".maquina")
                     ?.querySelector(":scope > *:first-child");
-                if (maquinaHeader) {
-                    maquinaHeader.classList.remove(
-                        "from-blue-600",
-                        "to-blue-700"
-                    );
-                    maquinaHeader.classList.add(
-                        "from-orange-400",
-                        "to-orange-500"
-                    );
+                if (header) {
+                    header.classList.remove("from-blue-600", "to-blue-700");
+                    header.classList.add("from-orange-400", "to-orange-500");
                 }
             });
+
+            const machineIds = getMachineIdsForCode(code);
+            highlightModalMachines(machineIds);
 
             _hlNodes = Array.from(matches);
             _hlCode = code;
@@ -618,30 +665,134 @@ function seleccionarMaquinaParaMovimiento() {
     modalMostrarElementos.classList.add("hidden");
     modalTransferirAMaquina.classList.remove("hidden");
 
-    // obtener maquinas e inicializar maquina seleccionada a null
-    let smpm_maquinas = Array.from(
+    // elementos seleccionados
+    const seleccionados = Array.from(
+        document.getElementsByClassName("seleccionado")
+    )
+        .map((card) => Number(card.dataset.id))
+        .map((id) => elementos.find((e) => Number(e.id) === id))
+        .filter(Boolean);
+
+    // título con cantidad
+    const smpmTitulo = document.getElementById("smpm_titulo");
+    if (smpmTitulo) {
+        smpmTitulo.textContent = `Seleccione nueva ubicación para los ${seleccionados.length} elementos`;
+    }
+
+    const smpm_maquinas = Array.from(
         document.getElementsByClassName("maquina_transferir")
     );
     let maquinaSeleccionadaId = null;
 
-    // estilos y obtencion de id
+    const esCompatibleConMaq = (el, maq) => {
+        const min = maq.diametro_min != null ? Number(maq.diametro_min) : null;
+        const max = maq.diametro_max != null ? Number(maq.diametro_max) : null;
+        const d =
+            el.diametro != null && el.diametro !== ""
+                ? Number(el.diametro)
+                : null;
+        const dentroMin = min == null || d == null || d >= min;
+        const dentroMax = max == null || d == null || d <= max;
+        return dentroMin && dentroMax;
+    };
+
+    // reset visual
+    smpm_maquinas.forEach((maqDiv) => {
+        maqDiv.classList.remove(
+            "grayscale",
+            "opacity-60",
+            "cursor-not-allowed"
+        );
+        maqDiv.classList.add("hover:-translate-y-[1px]");
+        maqDiv.dataset.allIncompatibles = "0";
+
+        const badge = maqDiv.querySelector(".badge-incompatibles");
+        if (badge) {
+            badge.className = "badge-incompatibles hidden";
+            badge.textContent = "";
+        }
+    });
+
+    // calcular compatibilidad y pintar
+    smpm_maquinas.forEach((maqDiv) => {
+        const maqId = Number(maqDiv.dataset.id);
+        const maq = getMaquinaById(maqId);
+        if (!maq) return;
+
+        let incompatibles = 0;
+        for (const el of seleccionados) {
+            if (!esCompatibleConMaq(el, maq)) incompatibles++;
+        }
+
+        const meta = maqDiv.querySelector(".maq-meta");
+        const badge = maqDiv.querySelector(".badge-incompatibles");
+        const codeChip = maqDiv.querySelector(".maq-codigo-chip");
+
+        // 100% incompatibles → gris y sin hover
+        if (
+            incompatibles === seleccionados.length &&
+            seleccionados.length > 0
+        ) {
+            maqDiv.classList.add(
+                "grayscale",
+                "opacity-60",
+                "cursor-not-allowed"
+            );
+            maqDiv.classList.remove("hover:-translate-y-[1px]");
+            maqDiv.dataset.allIncompatibles = "1";
+            // oculta badge por si acaso
+            if (badge) {
+                badge.classList.add("hidden");
+                badge.textContent = "";
+            }
+        }
+        // mezcla → badge a la IZQUIERDA del código
+        else if (incompatibles > 0 && meta && badge && codeChip) {
+            // estilos del badge: ámbar, mono, extrabold, tamaño mayor
+            badge.className =
+                "badge-incompatibles inline-flex items-center justify-center rounded-md px-2 py-0.5 " +
+                "bg-amber-300 text-amber-900 text-sm font-mono font-extrabold";
+            badge.textContent = String(incompatibles);
+            // asegúrate de que el badge esté antes del código
+            if (codeChip.previousElementSibling !== badge) {
+                meta.insertBefore(badge, codeChip);
+            }
+        } else {
+            // todo compatible → sin badge
+            if (badge) {
+                badge.classList.add("hidden");
+                badge.textContent = "";
+            }
+        }
+    });
+
+    // selección de máquina (bloquea 100% incompatibles)
     smpm_maquinas.forEach((maquina) => {
-        maquina.addEventListener("click", () => {
-            smpm_maquinas.forEach((maquina_2) => {
-                if (maquina_2 === maquina) {
-                    maquina_2.classList.remove("maquina_no_seleccionada");
-                    maquina_2.classList.add("maquina_si_seleccionada");
+        maquina.onclick = () => {
+            if (maquina.dataset.allIncompatibles === "1") {
+                maquina.classList.add("animate-pulse");
+                setTimeout(
+                    () => maquina.classList.remove("animate-pulse"),
+                    300
+                );
+                return;
+            }
+            smpm_maquinas.forEach((m2) => {
+                if (m2 === maquina) {
+                    m2.classList.remove("maquina_no_seleccionada");
+                    m2.classList.add("maquina_si_seleccionada");
                 } else {
-                    maquina_2.classList.remove("maquina_si_seleccionada");
-                    maquina_2.classList.add("maquina_no_seleccionada");
+                    m2.classList.remove("maquina_si_seleccionada");
+                    m2.classList.add("maquina_no_seleccionada");
                 }
             });
 
-            // obtener id maquina seleccionada
             maquinaSeleccionadaId = maquina.dataset.id;
-            btn_transferir.innerHTML = `TRANSFERIR A <span class="chiptransferirA transition-all duration-150">${maquina.children[0].innerText}</span>`;
-            btn_transferir.classList.add("text-white"); // texto blanco siempre tras seleccionar
-        });
+            btn_transferir.innerHTML = `TRANSFERIR A <span class="chiptransferirA transition-all duration-150">${
+                maquina.querySelector("p").innerText
+            }</span>`;
+            btn_transferir.classList.add("text-white");
+        };
     });
 }
 
@@ -1580,6 +1731,8 @@ function filtrarPorNave(valor) {
 // mostrar modal de resaltar planillas por obra
 function mostrarModalResaltarObra() {
     modalResaltarObra.classList.remove("hidden");
+    modalDetalles.classList.add("hidden");
+    modalMapa.classList.add("hidden");
     document.getElementById("input_filtrar_obra").focus();
 }
 
@@ -1690,10 +1843,14 @@ function applyObraHighlight() {
         ).trim();
         if (OBRA_HL.codes.has(code)) applyObraStylesToCard(card);
     });
+
+    applyObraMachineHighlights();
 }
 
 function clearObraHighlightUI() {
     document.querySelectorAll(".planilla").forEach(resetObraStylesOnCard);
+    clearObraColumnHeaderHighlights();
+    clearObraModalMachineHighlights();
 }
 
 function setObraHighlight(obraId) {
@@ -1730,4 +1887,121 @@ function resaltarObra(quitar = null) {
 
         clearObraHighlight(); // ← restaura estilos base en todas las cards y limpia estado
     }
+}
+
+// Helpers para saber qué máquinas contienen ese código
+function getMachineIdsForCode(code) {
+    const mids = new Set();
+    ordenPlanillas.forEach((op) => {
+        const p = getPlanillaById(op.planilla_id);
+        if (!p) return;
+        if (String(p.codigo).trim() === String(code).trim()) {
+            mids.add(Number(op.maquina_id));
+        }
+    });
+    return Array.from(mids);
+}
+
+function highlightModalMachines(machineIds) {
+    // reset compi (a azul) para todos antes de pintar naranja
+    MODAL_MAQ_CHIPS.forEach((chip) => {
+        chip.classList.remove("from-orange-400", "to-orange-500");
+    });
+
+    machineIds.forEach((id) => {
+        const chip = MODAL_MAQ_CHIPS.get(Number(id));
+        if (!chip) return;
+        chip.classList.remove(
+            "from-blue-600",
+            "to-blue-700",
+            "from-fuchsia-400",
+            "to-fuchsia-600"
+        );
+        chip.classList.add("from-orange-400", "to-orange-500");
+    });
+}
+
+function clearModalMachineHighlights() {
+    MODAL_MAQ_CHIPS.forEach((chip) => {
+        chip.classList.remove("from-orange-400", "to-orange-500");
+        chip.classList.add("from-blue-600", "to-blue-700");
+    });
+}
+
+// Helpers: conseguir máquinas de la obra + resaltar/limpiar
+function getMachineIdsForObraCodes(codesSet) {
+    const mids = new Set();
+    ordenPlanillas.forEach((op) => {
+        const p = getPlanillaById(op.planilla_id);
+        if (!p) return;
+        const code = String(p.codigo).trim();
+        if (codesSet.has(code)) mids.add(Number(op.maquina_id));
+    });
+    return Array.from(mids);
+}
+
+/* ----- COLUMNAS (headers arriba de .maquina) ----- */
+function clearObraColumnHeaderHighlights() {
+    document.querySelectorAll(".maquina > :first-child").forEach((h) => {
+        h.classList.remove("from-fuchsia-400", "to-fuchsia-600");
+        // vuelve al azul base si no está forzado en naranja por “compis”
+        if (!h.classList.contains("from-orange-400")) {
+            h.classList.add("from-blue-600", "to-blue-700");
+        }
+    });
+}
+
+function highlightObraColumnHeaders(machineIds) {
+    clearObraColumnHeaderHighlights();
+    machineIds.forEach((id) => {
+        const col = document.querySelector(
+            `.maquina[data-maquina-id="${id}"] > :first-child`
+        );
+        if (!col) return;
+        col.classList.remove(
+            "from-blue-600",
+            "to-blue-700",
+            "from-orange-400",
+            "to-orange-500"
+        );
+        col.classList.add("from-fuchsia-400", "to-fuchsia-600");
+    });
+}
+
+/* ----- MINI-MAPA (chips de #modal_maquinas_con_elementos) ----- */
+function clearObraModalMachineHighlights() {
+    MODAL_MAQ_CHIPS?.forEach((chip) => {
+        chip.classList.remove("from-fuchsia-400", "to-fuchsia-600");
+        // si no está en naranja por compis, vuelve al azul
+        if (!chip.classList.contains("from-orange-400")) {
+            chip.classList.add("from-blue-600", "to-blue-700");
+        }
+    });
+}
+
+function highlightObraModalMachines(machineIds) {
+    clearObraModalMachineHighlights();
+    machineIds.forEach((id) => {
+        const chip = MODAL_MAQ_CHIPS?.get(Number(id));
+        if (!chip) return;
+        chip.classList.remove(
+            "from-blue-600",
+            "to-blue-700",
+            "from-orange-400",
+            "to-orange-500"
+        );
+        chip.classList.add("from-fuchsia-400", "to-fuchsia-600");
+    });
+}
+
+/* Util centralizado para (re)aplicar highlight de obra a máquinas */
+function applyObraMachineHighlights() {
+    if (!OBRA_HL.active || !OBRA_HL.codes?.size) {
+        clearObraColumnHeaderHighlights();
+        clearObraModalMachineHighlights();
+        return;
+    }
+    const mids = getMachineIdsForObraCodes(OBRA_HL.codes);
+    highlightObraColumnHeaders(mids);
+    highlightObraModalMachines(mids);
 }
