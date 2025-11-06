@@ -87,7 +87,10 @@ class Pedido extends Model
         return $this->belongsToMany(ProductoBase::class, 'pedido_productos')
             ->withPivot([
                 'id',
+                'codigo',
                 'pedido_global_id',
+                'obra_id',
+                'obra_manual',
                 'cantidad',
                 'cantidad_recepcionada',
                 'estado',
@@ -96,8 +99,6 @@ class Pedido extends Model
             ])
             ->withTimestamps();
     }
-
-
     public function entradas()
     {
         return $this->hasMany(Entrada::class);

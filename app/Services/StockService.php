@@ -241,7 +241,7 @@ class StockService
         $lineasPedidos = DB::table('pedido_productos as pp')
             ->join('pedidos as p', 'p.id', '=', 'pp.pedido_id')
             ->join('productos_base as pb', 'pb.id', '=', 'pp.producto_base_id')
-            ->when($idsObrasFiltradas, fn($q) => $q->whereIn('p.obra_id', $idsObrasFiltradas))
+            ->when($idsObrasFiltradas, fn($q) => $q->whereIn('pp.obra_id', $idsObrasFiltradas)) // ← CAMBIO AQUÍ: p.obra_id → pp.obra_id
             ->whereIn('pp.estado', ['pendiente', 'activo'])
             ->groupBy('pb.tipo', 'pb.diametro', 'pb.longitud')
             ->select('pb.tipo', 'pb.diametro', 'pb.longitud', DB::raw('SUM(pp.cantidad) as total'))
@@ -287,8 +287,6 @@ class StockService
 
         return collect($resultadoPedidos);
     }
-
-
     private function getComparativa($stockData, $pedidosPendientes, $necesarioPorDiametro)
     {
         $comparativa = [];

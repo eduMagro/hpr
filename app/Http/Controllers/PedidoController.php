@@ -37,14 +37,12 @@ class PedidoController extends Controller
     {
         $filtros = [];
 
-        if ($request->filled('codigo')) {
-            $filtros[] = 'Código pedido: <strong>' . e($request->codigo) . '</strong>';
-        }
-
         if ($request->filled('pedido_producto_id')) {
             $filtros[] = 'ID línea: <strong>' . e($request->pedido_producto_id) . '</strong>';
         }
-
+        if ($request->filled('codigo_linea')) {
+            $filtros[] = 'Código línea: <strong>' . e($request->codigo_linea) . '</strong>';
+        }
         if ($request->filled('pedido_global_id')) {
             $pg = \App\Models\PedidoGlobal::find($request->pedido_global_id);
             if ($pg) {
@@ -141,14 +139,19 @@ class PedidoController extends Controller
             });
         }
 
-        // ID del pedido (pedidos.id): contains + exacto con "=123"
-        if ($request->filled('pedido_id')) {
-            $raw = trim((string) $request->pedido_id);
-            if (preg_match('/^=\s*(\d+)$/', $raw, $m)) {
-                $query->where('pedidos.id', (int) $m[1]);
-            } else {
-                $query->whereRaw('CAST(pedidos.id AS CHAR) LIKE ?', ['%' . $raw . '%']);
-            }
+        if ($request->filled('codigo_linea')) {
+            $codigoLinea = trim($request->codigo_linea);
+
+            $query->whereHas('pedidoProductos', function ($q) use ($codigoLinea) {
+                // Búsqueda exacta si empieza con "="
+                if (str_starts_with($codigoLinea, '=')) {
+                    $valorExacto = trim(substr($codigoLinea, 1));
+                    $q->where('pedido_productos.codigo', $valorExacto);
+                } else {
+                    // Búsqueda parcial (LIKE)
+                    $q->where('pedido_productos.codigo', 'LIKE', '%' . $codigoLinea . '%');
+                }
+            });
         }
 
         // Código de pedido: contains, case-insensitive
@@ -440,7 +443,45 @@ class PedidoController extends Controller
             'productosBase' => $productosBase,
         ], $datosStock));
     }
+    public function obtenerStockHtml(Request $request)
+    {
+        try {
+            $obraId = $request->input('obra_id_hpr');
+            $obraIds = $obraId ? [(int)$obraId] : null;
 
+            $stockService = new StockService();
+            $datos = $stockService->obtenerDatosStock($obraIds);
+
+            // Renderizar el componente
+            $html = view('components.estadisticas.stock', [
+                'nombreMeses' => $datos['nombreMeses'],
+                'stockData' => $datos['stockData'],
+                'pedidosPorDiametro' => $datos['pedidosPorDiametro'],
+                'necesarioPorDiametro' => $datos['necesarioPorDiametro'],
+                'totalGeneral' => $datos['totalGeneral'],
+                'consumoOrigen' => $datos['consumoOrigen'],
+                'consumosPorMes' => $datos['consumosPorMes'],
+                'productoBaseInfo' => $datos['productoBaseInfo'],
+                'stockPorProductoBase' => $datos['stockPorProductoBase'],
+                'kgPedidosPorProductoBase' => $datos['kgPedidosPorProductoBase'],
+                'resumenReposicion' => $datos['resumenReposicion'],
+                'recomendacionReposicion' => $datos['recomendacionReposicion'],
+                'configuracion_vista_stock' => $datos['configuracion_vista_stock']
+            ])->render();
+
+            return response()->json([
+                'success' => true,
+                'html' => $html
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Error al generar stock HTML: ' . $e->getMessage());
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al cargar los datos: ' . $e->getMessage()
+            ], 500);
+        }
+    }
     public function recepcion($pedidoId, $productoBaseId, Request $request)
     {
         // ✅ Cargar pedido con relaciones (SIN 'obra')
@@ -1197,15 +1238,17 @@ class PedidoController extends Controller
                     }
 
                     // ✅ Crear la línea de pedido CON obra_id y obra_manual
-                    $pedido->productos()->attach($productoBase->id, [
+                    // En lugar de attach(), crear la línea directamente
+                    $linea = PedidoProducto::create([
+                        'pedido_id'              => $pedido->id,
+                        'producto_base_id'       => $productoBase->id,
                         'pedido_global_id'       => $pedidoGlobalId ?: null,
                         'cantidad'               => $peso,
                         'fecha_estimada_entrega' => $fecha,
-                        'obra_id'                => $obraId,           // ✅ NUEVO
-                        'obra_manual'            => $obraManual,       // ✅ NUEVO
+                        'obra_id'                => $obraId,
+                        'obra_manual'            => $obraManual,
                         'observaciones'          => null,
                     ]);
-
                     if ($pedidoGlobalId) {
                         $pgIdsAfectados[(int)$pedidoGlobalId] = true;
                     }
@@ -1252,7 +1295,33 @@ class PedidoController extends Controller
             return back()->withInput()->with('error', $msg);
         }
     }
+    /**
+     * Actualizar observaciones del pedido desde la previsualización
+     */
+    public function actualizarObservaciones(Request $request, $id)
+    {
+        $request->validate([
+            'observaciones' => 'nullable|string|max:1000',
+        ], [
+            'observaciones.max' => 'Las observaciones no pueden superar los 1000 caracteres.',
+        ]);
 
+        try {
+            $pedido = Pedido::findOrFail($id);
+
+            // Actualizar observaciones
+            $pedido->observaciones = $request->observaciones;
+            $pedido->save();
+
+            return redirect()
+                ->route('pedidos.show', $id)
+                ->with('success', 'Observaciones guardadas correctamente');
+        } catch (\Exception $e) {
+            return redirect()
+                ->back()
+                ->with('error', 'Error al guardar las observaciones: ' . $e->getMessage());
+        }
+    }
     public function show($id)
     {
         $pedido = Pedido::with(['productos', 'fabricante', 'pedidoProductos.obra'])->findOrFail($id);
@@ -1280,6 +1349,7 @@ class PedidoController extends Controller
             'sebastian.duran@pacoreyes.com',
             'manuel.reyes@pacoreyes.com',
             'anagracia.aroca@pacoreyes.com',
+            'rocio.cumbrera@pacoreyes.com',
             'indiana.tirado@pacoreyes.com',
             'josemanuel.amuedo@pacoreyes.com',
         ];
