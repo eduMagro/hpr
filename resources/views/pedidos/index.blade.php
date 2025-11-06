@@ -10,7 +10,7 @@
                 <table class="w-full border-collapse text-sm text-center">
                     <thead class="bg-blue-500 text-white text-10">
                         <tr class="text-center text-xs uppercase">
-                            <th class="p-2 border">ID LINEA</th>
+                            <th class="p-2 border">Cód. Linea</th>
                             <th class="p-2 border">{!! $ordenables['codigo'] ?? 'Código' !!}</th>
                             <th class="p-2 border">{!! $ordenables['pedido_global'] ?? 'Pedido Global Linea' !!}</th>
                             <th class="p-2 border">{!! $ordenables['fabricante'] ?? 'Fabricante' !!}</th>
@@ -29,8 +29,12 @@
                         <tr class="text-center text-xs uppercase">
                             <form method="GET" action="{{ route('pedidos.index') }}">
                                 <th class="p-1 border">
-                                    <x-tabla.input name="pedido_producto_id" type="text" :value="request('pedido_producto_id')"
-                                        class="w-full text-xs" />
+                                    <div class="relative">
+                                        <x-tabla.input name="codigo_linea" type="text" :value="request('codigo_linea')"
+                                            placeholder="PC25/0001–001" class="w-full text-xs pr-6" />
+                                        <i class="fas fa-question-circle absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400 cursor-help"
+                                            title="Búsqueda flexible: 'PC25' / '0001–' / '=PC25/0001–001' (exacto)"></i>
+                                    </div>
                                 </th>
                                 <th class="p-1 border">
                                     <x-tabla.input name="codigo" type="text" :value="request('codigo')"
@@ -126,9 +130,22 @@
 
                                 <tr class="text-xs {{ $claseFondo }}">
                                     <td class="border px-2 py-1 text-center">
-                                        <span class="font-semibold">{{ $linea->id }}</span>
-                                    </td>
+                                        <div class="flex flex-col">
+                                            @if ($linea->codigo)
+                                                @php
+                                                    $partes = explode('–', $linea->codigo);
+                                                @endphp
+                                                <div class="flex items-baseline justify-center gap-0.5">
+                                                    <span class="text-sm text-gray-600">{{ $partes[0] ?? '' }}</span>
+                                                    <span
+                                                        class="text-lg font-bold text-blue-600">–{{ $partes[1] ?? '' }}</span>
+                                                </div>
+                                            @else
+                                                <span class="text-gray-400">—</span>
+                                            @endif
 
+                                        </div>
+                                    </td>
                                     <td class="border px-2 py-1 text-center align-middle">
                                         <div class="inline-flex flex-col items-center gap-1">
                                             <span class="font-semibold">{{ $pedido->codigo }}</span>
@@ -388,19 +405,13 @@
             <div class="mb-6">
                 <h2 class="text-2xl font-bold text-gray-800 mt-4">📦 Estado actual de stock, pedidos y necesidades</h2>
 
-                <form method="GET" action="{{ route('pedidos.index') }}"
-                    class="flex flex-wrap items-center gap-4 p-4">
-                    @foreach (request()->except('page', 'obra_id_hpr') as $key => $value)
-                        <input type="hidden" name="{{ $key }}" value="{{ $value }}">
-                    @endforeach
-
+                <div class="flex flex-wrap items-center gap-4 p-4">
                     <div>
                         <label for="obra_id_hpr" class="block text-sm font-medium text-gray-700 mb-1">
                             Seleccionar obra (Hierros Paco Reyes)
                         </label>
-                        <select name="obra_id_hpr" id="obra_id_hpr"
-                            class="rounded border-gray-300 text-sm shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
-                            onchange="this.form.submit()">
+                        <select name="obra_id_hpr" id="obra_id_hpr_stock"
+                            class="rounded border-gray-300 text-sm shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50">
                             <option value="">-- Todas las naves --</option>
                             @foreach ($obrasHpr as $obra)
                                 <option value="{{ $obra->id }}"
@@ -410,201 +421,214 @@
                             @endforeach
                         </select>
                     </div>
-                </form>
-
-                <x-estadisticas.stock :nombre-meses="$nombreMeses" :stock-data="$stockData" :pedidos-por-diametro="$pedidosPorDiametro" :necesario-por-diametro="$necesarioPorDiametro"
-                    :total-general="$totalGeneral" :consumo-origen="$consumoOrigen" :consumos-por-mes="$consumosPorMes" :producto-base-info="$productoBaseInfo" :stock-por-producto-base="$stockPorProductoBase"
-                    :kg-pedidos-por-producto-base="$kgPedidosPorProductoBase" :resumen-reposicion="$resumenReposicion" :recomendacion-reposicion="$recomendacionReposicion" :configuracion_vista_stock="$configuracion_vista_stock" />
-
-                {{-- MODAL CONFIRMACIÓN PEDIDO --}}
-                <div id="modalConfirmacion"
-                    class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
-                    <div class="bg-white p-6 rounded-lg w-full max-w-5xl shadow-xl">
-                        <h3 class="text-lg font-semibold mb-4 text-gray-800 text-left">Confirmar pedido</h3>
-
-                        <form id="formularioPedido" action="{{ route('pedidos.store') }}" method="POST"
-                            class="space-y-4">
-                            @csrf
-
-                            <div class="text-left">
-                                <label for="fabricante" class="block text-sm font-medium text-gray-700 mb-1">
-                                    Seleccionar fabricante:
-                                </label>
-                                <select name="fabricante_id" id="fabricante"
-                                    class="w-full border border-gray-300 rounded px-3 py-2">
-                                    <option value="">-- Elige un fabricante --</option>
-                                    @foreach ($fabricantes as $fabricante)
-                                        <option value="{{ $fabricante->id }}">{{ $fabricante->nombre }}</option>
-                                    @endforeach
-                                </select>
-                            </div>
-
-                            <div class="text-left mt-4">
-                                <label for="distribuidor" class="block text-sm font-medium text-gray-700 mb-1">
-                                    Seleccionar distribuidor:
-                                </label>
-                                <select name="distribuidor_id" id="distribuidor"
-                                    class="w-full border border-gray-300 rounded px-3 py-2">
-                                    <option value="">-- Elige un distribuidor --</option>
-                                    @foreach ($distribuidores as $distribuidor)
-                                        <option value="{{ $distribuidor->id }}">{{ $distribuidor->nombre }}</option>
-                                    @endforeach
-                                </select>
-                            </div>
-
-                            <div class="text-left">
-                                <label class="block text-sm font-medium text-gray-700 mb-1">Lugar de Entrega:</label>
-                                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                    <div>
-                                        <label class="block text-xs text-gray-500 mb-1">Naves de Hierros Paco
-                                            Reyes</label>
-                                        <select name="obra_id_hpr" id="obra_id_hpr_modal"
-                                            class="w-full border border-gray-300 rounded px-3 py-2"
-                                            onchange="limpiarObraManual()">
-                                            <option value="">Seleccionar nave</option>
-                                            @foreach ($navesHpr as $nave)
-                                                <option value="{{ $nave->id }}">{{ $nave->obra }}</option>
-                                            @endforeach
-                                        </select>
-                                    </div>
-
-                                    <div>
-                                        <label class="block text-xs text-gray-500 mb-1">Obras Externas
-                                            (activas)</label>
-                                        <select name="obra_id_externa" id="obra_id_externa_modal"
-                                            class="w-full border border-gray-300 rounded px-3 py-2"
-                                            onchange="limpiarObraManual()">
-                                            <option value="">Seleccionar obra externa</option>
-                                            @foreach ($obrasExternas as $obra)
-                                                <option value="{{ $obra->id }}">{{ $obra->obra }}</option>
-                                            @endforeach
-                                        </select>
-                                    </div>
-
-                                    <div>
-                                        <label class="block text-xs text-gray-500 mb-1">Otra ubicación (texto
-                                            libre)</label>
-                                        <input type="text" name="obra_manual" id="obra_manual_modal"
-                                            class="w-full border border-gray-300 rounded px-3 py-2"
-                                            placeholder="Escribir dirección manualmente"
-                                            oninput="limpiarSelectsObra()" value="{{ old('obra_manual') }}">
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div class="max-h-[60vh] overflow-auto rounded-lg shadow-xl border border-gray-300">
-                                <table class="w-full border-collapse text-sm text-center">
-                                    <thead class="bg-blue-800 text-white sticky top-0 z-10">
-                                        <tr class="bg-gray-700 text-white">
-                                            <th class="border px-2 py-1">Tipo</th>
-                                            <th class="border px-2 py-1">Diámetro</th>
-                                            <th class="border px-2 py-1">Peso Total (kg)</th>
-                                            <th class="border px-2 py-1">Desglose Camiones</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="tablaConfirmacionBody"></tbody>
-                                </table>
-                            </div>
-
-                            <div id="mensajesGlobales" class="mt-2 text-sm space-y-1"></div>
-
-                            <div class="text-right pt-4">
-                                <button type="button" onclick="cerrarModalConfirmacion()"
-                                    class="mr-2 px-4 py-2 rounded border border-gray-300 hover:bg-gray-100">
-                                    Cancelar
-                                </button>
-                                <button type="submit"
-                                    class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">
-                                    Crear Pedido de Compra
-                                </button>
-                            </div>
-                        </form>
+                    <div id="loading-stock" class="hidden">
+                        <svg class="animate-spin h-5 w-5 text-blue-600" xmlns="http://www.w3.org/2000/svg"
+                            fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor"
+                                stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor"
+                                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
+                            </path>
+                        </svg>
                     </div>
                 </div>
-            </div>
-        @endif
 
-        {{-- ROL OPERARIO --}}
-        @if (Auth::user()->rol === 'operario')
-            <div class="p-4 w-full max-w-4xl mx-auto">
-                <div class="px-4 flex justify-center">
-                    <form method="GET" action="{{ route('pedidos.index') }}"
-                        class="w-full sm:w-2/3 md:w-1/2 lg:w-1/3 flex flex-col sm:flex-row gap-2 mb-6">
-                        <x-tabla.input name="codigo" value="{{ request('codigo') }}" class="flex-grow"
-                            placeholder="Introduce el código del pedido (ej: PC25/0003)" />
-                        <button type="submit"
-                            class="bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold py-2 px-4 rounded-xl shadow transition">
-                            🔍 Buscar
-                        </button>
-                    </form>
+                <div id="contenedor-stock">
+                    <x-estadisticas.stock :nombre-meses="$nombreMeses" :stock-data="$stockData" :pedidos-por-diametro="$pedidosPorDiametro" :necesario-por-diametro="$necesarioPorDiametro"
+                        :total-general="$totalGeneral" :consumo-origen="$consumoOrigen" :consumos-por-mes="$consumosPorMes" :producto-base-info="$productoBaseInfo" :stock-por-producto-base="$stockPorProductoBase"
+                        :kg-pedidos-por-producto-base="$kgPedidosPorProductoBase" :resumen-reposicion="$resumenReposicion" :recomendacion-reposicion="$recomendacionReposicion" :configuracion_vista_stock="$configuracion_vista_stock" />
                 </div>
+            </div>
 
-                @php
-                    $codigo = request('codigo');
-                    $pedidosFiltrados = $codigo
-                        ? \App\Models\Pedido::with('productos')
-                            ->where('codigo', 'like', '%' . $codigo . '%')
-                            ->orderBy('created_at', 'desc')
-                            ->get()
-                        : collect();
-                @endphp
+            {{-- MODAL CONFIRMACIÓN PEDIDO --}}
+            <div id="modalConfirmacion"
+                class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+                <div class="bg-white p-6 rounded-lg w-full max-w-5xl shadow-xl">
+                    <h3 class="text-lg font-semibold mb-4 text-gray-800 text-left">Confirmar pedido</h3>
 
-                @if ($codigo)
-                    @if ($pedidosFiltrados->isEmpty())
-                        <div class="text-red-500 text-sm text-center">
-                            No se encontraron pedidos con el código <strong>{{ $codigo }}</strong>.
+                    <form id="formularioPedido" action="{{ route('pedidos.store') }}" method="POST"
+                        class="space-y-4">
+                        @csrf
+
+                        <div class="text-left">
+                            <label for="fabricante" class="block text-sm font-medium text-gray-700 mb-1">
+                                Seleccionar fabricante:
+                            </label>
+                            <select name="fabricante_id" id="fabricante"
+                                class="w-full border border-gray-300 rounded px-3 py-2">
+                                <option value="">-- Elige un fabricante --</option>
+                                @foreach ($fabricantes as $fabricante)
+                                    <option value="{{ $fabricante->id }}">{{ $fabricante->nombre }}</option>
+                                @endforeach
+                            </select>
                         </div>
-                    @else
-                        {{-- Vista móvil --}}
-                        <div class="grid gap-4 sm:hidden">
-                            @foreach ($pedidosFiltrados as $pedido)
-                                <div class="bg-white shadow rounded-lg p-4 text-sm border">
-                                    <div><span class="font-semibold">Código:</span> {{ $pedido->codigo }}</div>
-                                    <div><span class="font-semibold">Fabricante:</span>
-                                        {{ $pedido->fabricante->nombre ?? '—' }}</div>
-                                    <div><span class="font-semibold">Estado:</span> {{ $pedido->estado ?? '—' }}</div>
-                                    <div class="mt-2">
-                                        <a href="{{ route('pedidos.crearRecepcion', $pedido->id) }}"
-                                            class="bg-green-600 hover:bg-green-700 text-white py-1 px-3 rounded text-xs">
-                                            Recepcionar
-                                        </a>
-                                    </div>
+
+                        <div class="text-left mt-4">
+                            <label for="distribuidor" class="block text-sm font-medium text-gray-700 mb-1">
+                                Seleccionar distribuidor:
+                            </label>
+                            <select name="distribuidor_id" id="distribuidor"
+                                class="w-full border border-gray-300 rounded px-3 py-2">
+                                <option value="">-- Elige un distribuidor --</option>
+                                @foreach ($distribuidores as $distribuidor)
+                                    <option value="{{ $distribuidor->id }}">{{ $distribuidor->nombre }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+
+                        <div class="text-left">
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Lugar de Entrega:</label>
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                <div>
+                                    <label class="block text-xs text-gray-500 mb-1">Naves de Hierros Paco
+                                        Reyes</label>
+                                    <select name="obra_id_hpr" id="obra_id_hpr_modal"
+                                        class="w-full border border-gray-300 rounded px-3 py-2"
+                                        onchange="limpiarObraManual()">
+                                        <option value="">Seleccionar nave</option>
+                                        @foreach ($navesHpr as $nave)
+                                            <option value="{{ $nave->id }}">{{ $nave->obra }}</option>
+                                        @endforeach
+                                    </select>
                                 </div>
-                            @endforeach
+
+                                <div>
+                                    <label class="block text-xs text-gray-500 mb-1">Obras Externas
+                                        (activas)</label>
+                                    <select name="obra_id_externa" id="obra_id_externa_modal"
+                                        class="w-full border border-gray-300 rounded px-3 py-2"
+                                        onchange="limpiarObraManual()">
+                                        <option value="">Seleccionar obra externa</option>
+                                        @foreach ($obrasExternas as $obra)
+                                            <option value="{{ $obra->id }}">{{ $obra->obra }}</option>
+                                        @endforeach
+                                    </select>
+                                </div>
+
+                                <div>
+                                    <label class="block text-xs text-gray-500 mb-1">Otra ubicación (texto
+                                        libre)</label>
+                                    <input type="text" name="obra_manual" id="obra_manual_modal"
+                                        class="w-full border border-gray-300 rounded px-3 py-2"
+                                        placeholder="Escribir dirección manualmente" oninput="limpiarSelectsObra()"
+                                        value="{{ old('obra_manual') }}">
+                                </div>
+                            </div>
                         </div>
 
-                        {{-- Vista escritorio --}}
-                        <div class="hidden sm:block bg-white shadow rounded-lg overflow-x-auto mt-4">
-                            <table class="w-full border text-sm text-center">
-                                <thead class="bg-blue-600 text-white uppercase text-xs">
-                                    <tr>
-                                        <th class="px-3 py-2 border">Código</th>
-                                        <th class="px-3 py-2 border">Fabricante</th>
-                                        <th class="px-3 py-2 border">Estado</th>
-                                        <th class="px-3 py-2 border">Acciones</th>
+                        <div class="max-h-[60vh] overflow-auto rounded-lg shadow-xl border border-gray-300">
+                            <table class="w-full border-collapse text-sm text-center">
+                                <thead class="bg-blue-800 text-white sticky top-0 z-10">
+                                    <tr class="bg-gray-700 text-white">
+                                        <th class="border px-2 py-1">Tipo</th>
+                                        <th class="border px-2 py-1">Diámetro</th>
+                                        <th class="border px-2 py-1">Peso Total (kg)</th>
+                                        <th class="border px-2 py-1">Desglose Camiones</th>
                                     </tr>
                                 </thead>
-                                <tbody>
-                                    @foreach ($pedidosFiltrados as $pedido)
-                                        <tr class="border-b hover:bg-blue-50">
-                                            <td class="px-3 py-2">{{ $pedido->codigo }}</td>
-                                            <td class="px-3 py-2">{{ $pedido->fabricante->nombre ?? '—' }}</td>
-                                            <td class="px-3 py-2">{{ $pedido->estado ?? '—' }}</td>
-                                            <td class="px-3 py-2">
-                                                <a href="{{ route('pedidos.recepcion', $pedido->id) }}"
-                                                    class="bg-green-600 hover:bg-green-700 text-white py-1 px-3 rounded text-xs">
-                                                    Recepcionar
-                                                </a>
-                                            </td>
-                                        </tr>
-                                    @endforeach
-                                </tbody>
+                                <tbody id="tablaConfirmacionBody"></tbody>
                             </table>
                         </div>
-                    @endif
-                @endif
+
+                        <div id="mensajesGlobales" class="mt-2 text-sm space-y-1"></div>
+
+                        <div class="text-right pt-4">
+                            <button type="button" onclick="cerrarModalConfirmacion()"
+                                class="mr-2 px-4 py-2 rounded border border-gray-300 hover:bg-gray-100">
+                                Cancelar
+                            </button>
+                            <button type="submit"
+                                class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">
+                                Crear Pedido de Compra
+                            </button>
+                        </div>
+                    </form>
+                </div>
             </div>
-        @endif
+    </div>
+    @endif
+
+    {{-- ROL OPERARIO --}}
+    @if (Auth::user()->rol === 'operario')
+        <div class="p-4 w-full max-w-4xl mx-auto">
+            <div class="px-4 flex justify-center">
+                <form method="GET" action="{{ route('pedidos.index') }}"
+                    class="w-full sm:w-2/3 md:w-1/2 lg:w-1/3 flex flex-col sm:flex-row gap-2 mb-6">
+                    <x-tabla.input name="codigo" value="{{ request('codigo') }}" class="flex-grow"
+                        placeholder="Introduce el código del pedido (ej: PC25/0003)" />
+                    <button type="submit"
+                        class="bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold py-2 px-4 rounded-xl shadow transition">
+                        🔍 Buscar
+                    </button>
+                </form>
+            </div>
+
+            @php
+                $codigo = request('codigo');
+                $pedidosFiltrados = $codigo
+                    ? \App\Models\Pedido::with('productos')
+                        ->where('codigo', 'like', '%' . $codigo . '%')
+                        ->orderBy('created_at', 'desc')
+                        ->get()
+                    : collect();
+            @endphp
+
+            @if ($codigo)
+                @if ($pedidosFiltrados->isEmpty())
+                    <div class="text-red-500 text-sm text-center">
+                        No se encontraron pedidos con el código <strong>{{ $codigo }}</strong>.
+                    </div>
+                @else
+                    {{-- Vista móvil --}}
+                    <div class="grid gap-4 sm:hidden">
+                        @foreach ($pedidosFiltrados as $pedido)
+                            <div class="bg-white shadow rounded-lg p-4 text-sm border">
+                                <div><span class="font-semibold">Código:</span> {{ $pedido->codigo }}</div>
+                                <div><span class="font-semibold">Fabricante:</span>
+                                    {{ $pedido->fabricante->nombre ?? '—' }}</div>
+                                <div><span class="font-semibold">Estado:</span> {{ $pedido->estado ?? '—' }}</div>
+                                <div class="mt-2">
+                                    <a href="{{ route('pedidos.crearRecepcion', $pedido->id) }}"
+                                        class="bg-green-600 hover:bg-green-700 text-white py-1 px-3 rounded text-xs">
+                                        Recepcionar
+                                    </a>
+                                </div>
+                            </div>
+                        @endforeach
+                    </div>
+
+                    {{-- Vista escritorio --}}
+                    <div class="hidden sm:block bg-white shadow rounded-lg overflow-x-auto mt-4">
+                        <table class="w-full border text-sm text-center">
+                            <thead class="bg-blue-600 text-white uppercase text-xs">
+                                <tr>
+                                    <th class="px-3 py-2 border">Código</th>
+                                    <th class="px-3 py-2 border">Fabricante</th>
+                                    <th class="px-3 py-2 border">Estado</th>
+                                    <th class="px-3 py-2 border">Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach ($pedidosFiltrados as $pedido)
+                                    <tr class="border-b hover:bg-blue-50">
+                                        <td class="px-3 py-2">{{ $pedido->codigo }}</td>
+                                        <td class="px-3 py-2">{{ $pedido->fabricante->nombre ?? '—' }}</td>
+                                        <td class="px-3 py-2">{{ $pedido->estado ?? '—' }}</td>
+                                        <td class="px-3 py-2">
+                                            <a href="{{ route('pedidos.recepcion', $pedido->id) }}"
+                                                class="bg-green-600 hover:bg-green-700 text-white py-1 px-3 rounded text-xs">
+                                                Recepcionar
+                                            </a>
+                                        </td>
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                @endif
+            @endif
+        </div>
+    @endif
     </div>
 
     {{-- ==================== SCRIPTS ==================== --}}
@@ -1234,6 +1258,64 @@
                 if (result.isConfirmed) {
                     ev.target.submit();
                 }
+            });
+        });
+    </script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const selectObra = document.getElementById('obra_id_hpr_stock');
+            const contenedorStock = document.getElementById('contenedor-stock');
+            const loadingIndicator = document.getElementById('loading-stock');
+
+            if (!selectObra || !contenedorStock) {
+                return;
+            }
+
+            selectObra.addEventListener('change', function() {
+                const obraId = this.value;
+
+                // Mostrar loading
+                if (loadingIndicator) loadingIndicator.classList.remove('hidden');
+                contenedorStock.style.opacity = '0.5';
+                contenedorStock.style.pointerEvents = 'none';
+
+                // URL de la petición
+                const url = '{{ route('pedidos.verStockHtml') }}' + (obraId ? '?obra_id_hpr=' + obraId :
+                    '');
+
+                fetch(url, {
+                        method: 'GET',
+                        headers: {
+                            'X-Requested-With': 'XMLHttpRequest',
+                            'Accept': 'application/json'
+                        }
+                    })
+                    .then(response => {
+                        if (!response.ok) throw new Error('Error en la petición');
+                        return response.json();
+                    })
+                    .then(data => {
+                        if (data.success && data.html) {
+                            contenedorStock.innerHTML = data.html;
+                            contenedorStock.style.opacity = '1';
+                        } else {
+                            throw new Error(data.message || 'Error desconocido');
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Error',
+                            text: 'No se pudo actualizar la tabla de stock',
+                            confirmButtonColor: '#3b82f6'
+                        });
+                        contenedorStock.style.opacity = '1';
+                    })
+                    .finally(() => {
+                        if (loadingIndicator) loadingIndicator.classList.add('hidden');
+                        contenedorStock.style.pointerEvents = 'auto';
+                    });
             });
         });
     </script>

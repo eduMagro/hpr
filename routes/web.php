@@ -72,7 +72,7 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
     Route::post('/entradas/importar-albaran', [EntradaController::class, 'subirPdf'])
         ->name('entradas.crearImportarAlbaranPdf');
     Route::get('/entradas/pdf/{id}', [EntradaController::class, 'descargarPdf'])->name('entradas.crearDescargarPdf');
-
+    Route::get('/pedidos/stock-html', [PedidoController::class, 'obtenerStockHtml'])->name('pedidos.verStockHtml');
     Route::resource('pedidos_globales', PedidoGlobalController::class);
     Route::resource('pedidos', PedidoController::class);
     Route::get('pedidos/{pedido}/recepcion/{producto_base}', [PedidoController::class, 'recepcion'])->name('pedidos.recepcion');
@@ -80,6 +80,8 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
 
     Route::post('/pedidos/{pedido}/actualizar-linea', [PedidoController::class, 'actualizarLinea'])
         ->name('pedidos.actualizarLinea');
+    Route::patch('/pedidos/{id}/observaciones', [PedidoController::class, 'actualizarObservaciones'])
+        ->name('pedidos.actualizarObservaciones');
     // Procesar la recepción del producto base
     Route::post('pedidos/{pedido}/recepcion/{producto_base}', [PedidoController::class, 'procesarRecepcion'])->name('pedidos.recepcion.guardar');
 
