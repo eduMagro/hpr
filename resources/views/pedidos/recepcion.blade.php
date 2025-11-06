@@ -272,16 +272,56 @@
         }
 
         /* ============================================
-           OPTIMIZACIONES MÓVILES
-           ============================================ */
+   OPTIMIZACIONES MÓVILES
+   ============================================ */
         @media (max-width: 768px) {
 
-            /* Modales más adaptados a móvil */
+            /* Forzar posición superior en móvil */
+            .swal2-container {
+                align-items: flex-start !important;
+                padding-top: 20px !important;
+            }
+
+            /* Modal en la parte superior */
             .swal2-popup {
                 width: 95vw !important;
                 max-width: 500px !important;
                 padding: 20px !important;
                 margin: 10px !important;
+                margin-top: 0 !important;
+                position: relative !important;
+                top: 0 !important;
+                transform: none !important;
+            }
+
+            /* Cuando el teclado está visible (input enfocado) */
+            .swal2-popup.swal2-shown {
+                position: fixed !important;
+                top: 20px !important;
+                left: 50% !important;
+                transform: translateX(-50%) !important;
+                max-height: calc(100vh - 40px) !important;
+                overflow-y: auto !important;
+            }
+
+            /* Contenido scrolleable con más espacio */
+            .swal2-html-container {
+                margin: 15px 0 !important;
+                font-size: 15px !important;
+                max-height: calc(100vh - 250px) !important;
+                overflow-y: auto !important;
+                -webkit-overflow-scrolling: touch !important;
+            }
+
+            /* Mantener los botones visibles */
+            .swal2-actions {
+                position: sticky !important;
+                bottom: 0 !important;
+                background: white !important;
+                padding: 15px 0 !important;
+                margin: 0 !important;
+                border-top: 1px solid #e5e7eb !important;
+                z-index: 1 !important;
             }
 
             /* Inputs más grandes para móvil */
@@ -328,12 +368,6 @@
                 padding: 10px 0 !important;
             }
 
-            /* Contenido con más espacio */
-            .swal2-html-container {
-                margin: 15px 0 !important;
-                font-size: 15px !important;
-            }
-
             /* Indicador de pasos más grande */
             .step-dot {
                 width: 12px;
@@ -375,6 +409,19 @@
             /* Labels más grandes */
             label {
                 font-size: 15px !important;
+            }
+        }
+
+        /* Para dispositivos muy pequeños */
+        @media (max-width: 375px) {
+            .swal2-container {
+                padding-top: 10px !important;
+            }
+
+            .swal2-popup.swal2-shown {
+                top: 10px !important;
+                width: calc(100vw - 20px) !important;
+                max-height: calc(100vh - 20px) !important;
             }
         }
 
@@ -813,6 +860,21 @@
                 const popup = Swal.getPopup();
                 if (popup) {
                     popup.scrollTop = 0;
+
+                    // ✅ Detectar cuando el teclado aparece
+                    const inputs = popup.querySelectorAll('input, select, textarea');
+                    inputs.forEach(input => {
+                        input.addEventListener('focus', () => {
+                            // Forzar scroll al input enfocado
+                            setTimeout(() => {
+                                input.scrollIntoView({
+                                    behavior: 'smooth',
+                                    block: 'center',
+                                    inline: 'nearest'
+                                });
+                            }, 300); // Esperar a que el teclado aparezca
+                        });
+                    });
                 }
 
                 // Prevenir zoom en iOS cuando hay inputs
