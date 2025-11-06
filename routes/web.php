@@ -78,6 +78,8 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
     Route::get('pedidos/{pedido}/recepcion/{producto_base}', [PedidoController::class, 'recepcion'])->name('pedidos.recepcion');
     Route::post('/pedidos/sugerir-pedido-global', [PedidoController::class, 'sugerirPedidoGlobal'])->name('pedidos.verSugerir-pedido-global');
 
+    Route::post('/pedidos/{pedido}/actualizar-linea', [PedidoController::class, 'actualizarLinea'])
+        ->name('pedidos.actualizarLinea');
     // Procesar la recepción del producto base
     Route::post('pedidos/{pedido}/recepcion/{producto_base}', [PedidoController::class, 'procesarRecepcion'])->name('pedidos.recepcion.guardar');
 
@@ -203,7 +205,7 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
     Route::post('/etiquetas/{etiqueta}/patron-corte-simple', [EtiquetaController::class, 'calcularPatronCorteSimple'])->name('etiquetas.calcularPatronCorteSimple');
     Route::post('/etiquetas/{etiqueta}/patron-corte-optimizado', [EtiquetaController::class, 'calcularPatronCorteOptimizado'])->name('etiquetas.calcularPatronCorteOptimizado');
     // ruta para renderizar una etiqueta en HTML
-    Route::post('/etiquetas/render', [App\Http\Controllers\EtiquetaController::class, 'render'])
+    Route::post('/etiquetas/render', [EtiquetaController::class, 'render'])
         ->name('etiquetas.render');
     Route::get(
         '/etiquetas/{etiquetaSubId}/validar-para-paquete',
@@ -211,7 +213,6 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
     )->name('etiquetas.validar-para-paquete');
 
     // === tratamos PAQUETES en maquinas.show ===
-
 
     Route::resource('paquetes', PaqueteController::class);
     Route::resource('etiquetas', EtiquetaController::class);

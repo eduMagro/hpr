@@ -12,7 +12,8 @@
                         <th class="px-3 py-2 border">{!! $ordenables['albaran'] ?? 'Albarán' !!}</th>
                         <th class="px-3 py-2 border">{!! $ordenables['codigo_sage'] ?? 'Código SAGE' !!}</th>
                         <th class="px-3 py-2 border">{!! $ordenables['nave_id'] ?? 'Nave' !!}</th>
-
+                        {{-- ✅ NUEVA COLUMNA --}}
+                        <th class="px-3 py-2 border">Producto Base</th>
                         <th class="px-3 py-2 border">{!! $ordenables['pedido_codigo'] ?? 'Pedido Compra' !!}</th>
                         <th class="px-3 py-2 border">{!! $ordenables['created_at'] ?? 'Fecha' !!}</th>
                         <th class="px-3 py-2 border">Nº Productos</th>
@@ -37,11 +38,26 @@
                             <th class="border p-1">
                                 <x-tabla.input name="codigo_sage" :value="request('codigo_sage')" class="text-xs w-full" />
                             </th>
+
                             <th class="border p-1">
                                 <x-tabla.input name="obra" :value="request('obra')" class="text-xs w-full"
                                     placeholder="Nave" />
                             </th>
 
+                            {{-- ✅ FILTRO PARA PRODUCTO BASE CON 3 MINI INPUTS --}}
+                            <th class="py-1 px-0 border">
+                                <div class="flex gap-2 justify-center">
+                                    <input type="text" name="producto_tipo" value="{{ request('producto_tipo') }}"
+                                        placeholder="T"
+                                        class="bg-white text-gray-800 border border-gray-300 rounded text-[10px] text-center w-14 h-6" />
+                                    <input type="text" name="producto_diametro"
+                                        value="{{ request('producto_diametro') }}" placeholder="Ø"
+                                        class="bg-white text-gray-800 border border-gray-300 rounded text-[10px] text-center w-14 h-6" />
+                                    <input type="text" name="producto_longitud"
+                                        value="{{ request('producto_longitud') }}" placeholder="L"
+                                        class="bg-white text-gray-800 border border-gray-300 rounded text-[10px] text-center w-14 h-6" />
+                                </div>
+                            </th>
 
                             <th class="border p-1">
                                 <x-tabla.input name="pedido_codigo" :value="request('pedido_codigo')" class="text-xs w-full" />
@@ -92,9 +108,7 @@
 
                             <!-- Albarán -->
                             <td class="px-3 py-2">
-
                                 <span x-text="fila.albaran"></span>
-
                             </td>
 
                             <!-- Código SAGE -->
@@ -105,9 +119,26 @@
                                 <input x-show="editando" type="text" x-model="fila.codigo_sage"
                                     class="w-full border rounded px-2 py-1 text-xs" maxlength="50">
                             </td>
+
                             <!-- Nave -->
                             <td class="px-3 py-2">
                                 {{ $entrada->nave->obra ?? 'N/A' }}
+                            </td>
+
+                            {{-- ✅ NUEVA COLUMNA: PRODUCTO BASE --}}
+                            <td class="px-3 py-2">
+                                @php
+                                    $productoBase = $entrada->pedidoProducto?->productoBase;
+                                @endphp
+                                @if ($productoBase)
+                                    <span class="font-semibold">{{ $productoBase->tipo }}</span>
+                                    <span class="text-gray-600">Ø{{ $productoBase->diametro }}</span>
+                                    @if ($productoBase->tipo === 'barra' && $productoBase->longitud)
+                                        <span class="text-gray-500">{{ $productoBase->longitud }}m</span>
+                                    @endif
+                                @else
+                                    <span class="text-gray-400">N/A</span>
+                                @endif
                             </td>
 
                             <!-- Pedido Compra (no editable) -->
@@ -140,21 +171,18 @@
 
                             <!-- Peso Total -->
                             <td class="px-3 py-2">
-
                                 <span
                                     x-text="new Intl.NumberFormat('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(parseFloat(fila.peso_total) || 0) + ' kg'"></span>
-
                             </td>
 
                             <!-- Estado -->
                             <td class="px-3 py-2">
-
                                 <span class="uppercase" x-text="fila.estado ?? 'N/A'"></span>
-
                             </td>
 
                             <!-- Usuario -->
                             <td class="px-3 py-2">{{ $entrada->user->nombre_completo ?? 'N/A' }}</td>
+
                             {{-- PDF adjunto --}}
                             <td class="px-3 py-2">
                                 @if ($entrada->pdf_albaran)
@@ -183,8 +211,9 @@
                                             <button @click="$dispatch('abrir-modal-adjuntar', { entradaId: fila.id })"
                                                 class="w-6 h-6 bg-gray-100 text-gray-700 rounded hover:bg-gray-200 flex items-center justify-center"
                                                 title="Adjuntar albarán PDF">
-                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none"
-                                                    viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4"
+                                                    fill="none" viewBox="0 0 24 24" stroke="currentColor"
+                                                    stroke-width="2">
                                                     <path stroke-linecap="round" stroke-linejoin="round"
                                                         d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l7.07-7.07a4 4 0 00-5.657-5.657L6.343 11.343a6 6 0 008.485 8.485l.707-.707" />
                                                 </svg>
@@ -209,7 +238,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="10" class="py-4 text-gray-500">No hay entradas de material registradas.
+                            <td colspan="13" class="py-4 text-gray-500">No hay entradas de material registradas.
                             </td>
                         </tr>
                     @endforelse

@@ -409,7 +409,11 @@ class PedidoController extends Controller
             ->where('cliente_id', '!=', $idClienteHpr)
             ->orderBy('obra')
             ->get();
-
+        // Obtener productos base ordenados
+        $productosBase = ProductoBase::orderBy('tipo')
+            ->orderBy('diametro')
+            ->orderBy('longitud')
+            ->get();
         // ===== Filtro para el cálculo del StockService =====
         $obraIdSeleccionada = $request->input('obra_id_hpr');
         $soloHpr            = $request->boolean('solo_hpr');
@@ -433,6 +437,7 @@ class PedidoController extends Controller
             'solo_hpr'       => $soloHpr,
             'obra_id_hpr'    => $obraIdSeleccionada,
             'obras'          => $obras,
+            'productosBase' => $productosBase,
         ], $datosStock));
     }
 
@@ -604,6 +609,7 @@ class PedidoController extends Controller
                 $entrada = new Entrada();
                 $entrada->pedido_id          = $pedido->id;
                 $entrada->pedido_producto_id = $pedidoProducto->id;
+                $entrada->nave_id            = $pedidoProducto->obra_id;
                 $entrada->albaran            = $this->generarCodigoAlbaran();
                 $entrada->usuario_id         = auth()->id();
                 $entrada->peso_total         = 0;
@@ -1060,47 +1066,49 @@ class PedidoController extends Controller
         );
     }
 
-    public function update(Request $request, Pedido $pedido)
+    public function actualizarLinea(Request $request, Pedido $pedido)
     {
-        $request->validate([
-            'linea_id'    => 'required|exists:pedido_productos,id',
-            'obra_id'     => 'nullable|exists:obras,id',
-            'obra_manual' => 'nullable|string|max:255',
-        ]);
-
-        // Validar que solo haya uno seleccionado
-        $conteo = collect([
-            $request->obra_id,
-            $request->obra_manual
-        ])->filter()->count();
-
-        if ($conteo === 0) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Debes seleccionar un lugar de entrega'
-            ], 422);
-        }
-
-        if ($conteo > 1) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Solo puedes seleccionar una opción'
-            ], 422);
-        }
-
-        // ✅ Actualizar la línea específica en la tabla pivote
-        DB::table('pedido_productos')
-            ->where('id', $request->linea_id)
-            ->update([
-                'obra_id'     => $request->obra_id,
-                'obra_manual' => $request->obra_manual,
-                'updated_at'  => now(),
+        try {
+            $validated = $request->validate([
+                'linea_id' => 'required|exists:pedido_productos,id',
+                // Validación de lugar
+                'obra_id' => 'nullable|exists:obras,id',
+                'obra_manual' => 'nullable|string|max:255',
+                // Validación de producto
+                'producto_base_id' => 'required|exists:productos_base,id',
             ]);
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Lugar de entrega actualizado correctamente'
-        ]);
+            $linea = PedidoProducto::findOrFail($validated['linea_id']);
+
+            // Verificar que la línea pertenece al pedido
+            if ($linea->pedido_id !== $pedido->id) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'La línea no pertenece a este pedido'
+                ], 403);
+            }
+
+            // Actualizar AMBOS: lugar de entrega Y producto
+            $linea->update([
+                // Lugar de entrega
+                'obra_id' => $validated['obra_id'],
+                'obra_manual' => $validated['obra_manual'],
+                // Producto
+                'producto_base_id' => $validated['producto_base_id'],
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Línea actualizada correctamente'
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Error al actualizar línea: ' . $e->getMessage());
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al actualizar la línea: ' . $e->getMessage()
+            ], 500);
+        }
     }
     public function store(Request $request)
     {
@@ -1247,7 +1255,7 @@ class PedidoController extends Controller
 
     public function show($id)
     {
-        $pedido = Pedido::with(['productos', 'fabricante', 'obra'])->findOrFail($id);
+        $pedido = Pedido::with(['productos', 'fabricante', 'pedidoProductos.obra'])->findOrFail($id);
 
         return view('emails.pedidos.pedido_creado', [
             'pedido' => $pedido,

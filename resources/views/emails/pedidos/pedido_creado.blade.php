@@ -88,6 +88,12 @@
             padding: 16px 24px;
             font-size: 12px;
         }
+
+        .obra-info {
+            font-size: 12px;
+            color: #6b7280;
+            margin-top: 2px;
+        }
     </style>
 </head>
 
@@ -98,10 +104,8 @@
                 <table cellpadding="0" cellspacing="0" border="0" width="100%">
                     <tr>
                         <td style="vertical-align:middle; padding-right:12px; width:48px;">
-
                             <img src="{{ public_path('imagenes/ico/android-chrome-192x192.png') }}" alt="Logo"
                                 width="40" height="40" style="border-radius:6px;">
-
                         </td>
                         <td style="vertical-align:middle;">
                             <h1>Hierros Paco Reyes</h1>
@@ -127,34 +131,6 @@
                     <tr>
                         <td style="border:0; padding:4px 0;"><strong>Código:</strong> {{ $pedido->codigo }}</td>
                     </tr>
-                    <tr>
-                        <td style="border:0; padding:4px 0;">
-                            @if ($pedido->obra)
-                                <strong>Lugar de entrega:</strong> {{ $pedido->obra->obra }}<br>
-                                <strong>Dirección:</strong> {{ $pedido->obra->direccion ?? 'No disponible' }}<br>
-
-                                @if ($pedido->obra && $pedido->obra->latitud && $pedido->obra->longitud)
-                                    @php
-                                        // Asegura separador decimal con punto, no coma
-                                        $lat = number_format((float) $pedido->obra->latitud, 6, '.', '');
-                                        $lng = number_format((float) $pedido->obra->longitud, 6, '.', '');
-                                        $mapsUrl = "https://www.google.com/maps/search/?api=1&query={$lat},{$lng}";
-                                    @endphp
-
-                                    <strong>Ubicación:</strong>
-                                    <a href="{{ $mapsUrl }}" style="color:#2563eb; text-decoration: underline;">
-                                        Ver en Google Maps
-                                    </a>
-                                @else
-                                    <strong>Ubicación:</strong> Coordenadas no disponibles
-                                @endif
-                            @elseif ($pedido->obra_manual)
-                                <strong>Lugar de entrega:</strong> {{ $pedido->obra_manual }}
-                            @else
-                                <strong>Lugar de entrega:</strong> No especificado
-                            @endif
-                        </td>
-                    </tr>
                 </table>
 
                 <h3>Productos solicitados</h3>
@@ -162,17 +138,49 @@
                     <thead>
                         <tr>
                             <th>Producto</th>
+                            <th>Lugar de entrega</th>
                             <th style="text-align:right;">Cantidad (kg)</th>
                             <th style="text-align:right;">Fecha entrega</th>
                         </tr>
                     </thead>
                     <tbody>
                         @foreach ($pedido->productos as $producto)
+                            @php
+                                // Obtener la obra desde la tabla pivot
+                                $obraId = $producto->pivot->obra_id;
+                                $obraManual = $producto->pivot->obra_manual;
+                                $obra = $obraId ? \App\Models\Obra::find($obraId) : null;
+                            @endphp
                             <tr>
                                 <td>
                                     {{ ucfirst($producto->tipo) }} - {{ $producto->diametro }} mm
                                     @if (!empty($producto->longitud))
                                         / {{ $producto->longitud }} m
+                                    @endif
+                                </td>
+                                <td>
+                                    @if ($obra)
+                                        <strong>{{ $obra->obra }}</strong>
+                                        <div class="obra-info">
+                                            {{ $obra->direccion ?? 'Sin dirección' }}
+                                        </div>
+                                        @if ($obra->latitud && $obra->longitud)
+                                            @php
+                                                $lat = number_format((float) $obra->latitud, 6, '.', '');
+                                                $lng = number_format((float) $obra->longitud, 6, '.', '');
+                                                $mapsUrl = "https://www.google.com/maps/search/?api=1&query={$lat},{$lng}";
+                                            @endphp
+                                            <div class="obra-info">
+                                                <a href="{{ $mapsUrl }}"
+                                                    style="color:#2563eb; text-decoration: underline;">
+                                                    Ver en Maps
+                                                </a>
+                                            </div>
+                                        @endif
+                                    @elseif ($obraManual)
+                                        {{ $obraManual }}
+                                    @else
+                                        <span style="color:#9ca3af;">No especificado</span>
                                     @endif
                                 </td>
                                 <td style="text-align:right;">
@@ -198,6 +206,7 @@
             </div>
         </div>
     </div>
+
     {{-- Botones solo en PREVISUALIZACIÓN --}}
     @if (isset($esVistaPrevia) && $esVistaPrevia === true)
         <div style="position: fixed; top: 20px; right: 20px; z-index: 999; display: flex; gap: 10px;">

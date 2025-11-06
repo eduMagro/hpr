@@ -10,7 +10,6 @@
                 <table class="w-full border-collapse text-sm text-center">
                     <thead class="bg-blue-500 text-white text-10">
                         <tr class="text-center text-xs uppercase">
-
                             <th class="p-2 border">ID LINEA</th>
                             <th class="p-2 border">{!! $ordenables['codigo'] ?? 'Código' !!}</th>
                             <th class="p-2 border">{!! $ordenables['pedido_global'] ?? 'Pedido Global Linea' !!}</th>
@@ -29,7 +28,6 @@
 
                         <tr class="text-center text-xs uppercase">
                             <form method="GET" action="{{ route('pedidos.index') }}">
-
                                 <th class="p-1 border">
                                     <x-tabla.input name="pedido_producto_id" type="text" :value="request('pedido_producto_id')"
                                         class="w-full text-xs" />
@@ -38,17 +36,14 @@
                                     <x-tabla.input name="codigo" type="text" :value="request('codigo')"
                                         class="w-full text-xs" />
                                 </th>
-
                                 <th class="p-1 border">
                                     <x-tabla.select name="pedido_global_id" :options="$pedidosGlobales->pluck('codigo', 'id')" :selected="request('pedido_global_id')"
                                         empty="Todos" class="w-full text-xs" />
                                 </th>
-
                                 <th class="p-1 border">
                                     <x-tabla.select name="fabricante_id" :options="$fabricantes->pluck('nombre', 'id')" :selected="request('fabricante_id')"
                                         empty="Todos" class="w-full text-xs" />
                                 </th>
-
                                 <th class="p-1 border">
                                     <x-tabla.select name="distribuidor_id" :options="$distribuidores->pluck('nombre', 'id')" :selected="request('distribuidor_id')"
                                         empty="Todos" class="w-full text-xs" />
@@ -57,41 +52,32 @@
                                     <x-tabla.select name="obra_id" :options="$obras" :selected="request('obra_id')" empty="Todas"
                                         class="w-full text-xs" />
                                 </th>
-
                                 <th class="py-1 px-0 border">
                                     <div class="flex gap-2 justify-center">
                                         <input type="text" name="producto_tipo"
                                             value="{{ request('producto_tipo') }}" placeholder="T"
                                             class="bg-white text-gray-800 border border-gray-300 rounded text-[10px] text-center w-14 h-6" />
-
                                         <input type="text" name="producto_diametro"
                                             value="{{ request('producto_diametro') }}" placeholder="Ø"
                                             class="bg-white text-gray-800 border border-gray-300 rounded text-[10px] text-center w-14 h-6" />
-
                                         <input type="text" name="producto_longitud"
                                             value="{{ request('producto_longitud') }}" placeholder="L"
                                             class="bg-white text-gray-800 border border-gray-300 rounded text-[10px] text-center w-14 h-6" />
                                     </div>
                                 </th>
-                                <th class="p-1 border">
-
-                                </th>
-                                <th class="p-1 border">
-
-                                </th>
+                                <th class="p-1 border"></th>
+                                <th class="p-1 border"></th>
                                 <th class="p-1 border">
                                     <x-tabla.input name="fecha_pedido" type="date" :value="request('fecha_pedido')"
                                         class="w-full text-xs" />
                                 </th>
-
-
                                 <th class="p-1 border">
                                     <x-tabla.input name="fecha_entrega" type="date" :value="request('fecha_entrega')"
                                         class="w-full text-xs" />
                                 </th>
-
                                 <th class="p-1 border">
                                     <x-tabla.select name="estado" :options="[
+                                        'activo' => 'Activo',
                                         'pendiente' => 'Pendiente',
                                         'parcial' => 'Parcial',
                                         'completado' => 'Completado',
@@ -99,13 +85,10 @@
                                     ]" :selected="request('estado')" empty="Todos"
                                         class="w-full text-xs" />
                                 </th>
-                                <th class="p-1 border">
-
-                                </th>
+                                <th class="p-1 border"></th>
                                 <x-tabla.botones-filtro ruta="pedidos.index" />
                             </form>
                         </tr>
-
                     </thead>
 
                     <tbody>
@@ -121,7 +104,6 @@
                                     {{ $pedido->pedidoGlobal?->precio_referencia_euro ?? 'N/A' }}
                                     |
                                     <span class="text-blue-600">Estado: </span>{{ $pedido->estado }}
-
 
                                     <span class="float-right">
                                         <x-tabla.boton-eliminar :action="route('pedidos.destroy', $pedido->id)" />
@@ -140,9 +122,6 @@
                                         'cancelado' => 'bg-gray-300 text-gray-500 opacity-70 cursor-not-allowed',
                                         default => 'even:bg-gray-50 odd:bg-white',
                                     };
-                                    $esCancelado = $estadoLinea === 'cancelado';
-                                    $esCompletado = $estadoLinea === 'completado';
-                                    $esFacturado = $estadoLinea === 'facturado';
                                 @endphp
 
                                 <tr class="text-xs {{ $claseFondo }}">
@@ -153,7 +132,6 @@
                                     <td class="border px-2 py-1 text-center align-middle">
                                         <div class="inline-flex flex-col items-center gap-1">
                                             <span class="font-semibold">{{ $pedido->codigo }}</span>
-
                                             @if (!empty($linea->id))
                                                 <a href="{{ route('entradas.index', ['pedido_producto_id' => $linea->id]) }}"
                                                     class="text-blue-600 hover:underline text-[11px]">
@@ -163,20 +141,12 @@
                                         </div>
                                     </td>
 
-                                    {{-- pedido global de la línea --}}
                                     <td class="border px-2 py-1">{{ $linea->pedidoGlobal?->codigo ?? '—' }}</td>
-
                                     <td class="border px-2 py-1">{{ $pedido->fabricante?->nombre ?? '—' }}</td>
                                     <td class="border px-2 py-1">{{ $pedido->distribuidor?->nombre ?? '—' }}</td>
+
+                                    {{-- CELDA DE LUGAR DE ENTREGA --}}
                                     <td class="border px-2 py-1">
-                                        {{ $linea->obra->obra ?? '—' }}
-
-                                        {{-- ✅ CELDA DE LUGAR DE ENTREGA EDITABLE POR LÍNEA --}}
-                                        {{-- ✅ CELDA DE LUGAR DE ENTREGA - CORREGIDA --}}
-                                    <td class="border px-2 py-1 lugar-entrega-cell cursor-pointer"
-                                        data-linea-id="{{ $linea->id }}"
-                                        ondblclick="abrirEdicionLugarEntrega({{ $linea->id }})">
-
                                         {{-- Vista normal --}}
                                         <div class="lugar-entrega-view-{{ $linea->id }}">
                                             @if ($linea->obra_id)
@@ -218,45 +188,63 @@
                                                     placeholder="Otra ubicación"
                                                     value="{{ $linea->obra_manual ?? '' }}"
                                                     data-linea-id="{{ $linea->id }}">
-
-                                                <div class="flex gap-1 mt-1">
-                                                    <button
-                                                        onclick="guardarLugarEntrega({{ $linea->id }}, {{ $pedido->id }})"
-                                                        class="bg-green-600 hover:bg-green-700 text-white text-xs px-2 py-1 rounded flex-1">
-                                                        Guardar
-                                                    </button>
-                                                    <button onclick="cancelarEdicionLugarEntrega({{ $linea->id }})"
-                                                        class="bg-gray-500 hover:bg-gray-600 text-white text-xs px-2 py-1 rounded flex-1">
-                                                        Cancelar
-                                                    </button>
-                                                </div>
                                             </div>
                                         </div>
                                     </td>
 
-
-
+                                    {{-- CELDA DE PRODUCTO --}}
                                     <td class="border px-2 py-1 text-center">
-                                        {{ ucfirst($linea->tipo) }}
-                                        Ø{{ $linea->diametro }}
-                                        @if ($linea->tipo === 'barra' && $linea->longitud !== '—')
-                                            x {{ $linea->longitud }} m
-                                        @endif
+                                        {{-- Vista normal --}}
+                                        <div class="producto-view-{{ $linea->id }}">
+                                            {{ ucfirst($linea->tipo) }}
+                                            Ø{{ $linea->diametro }}
+                                            @if ($linea->tipo === 'barra' && $linea->longitud && $linea->longitud !== '—')
+                                                x {{ $linea->longitud }} m
+                                            @endif
+                                        </div>
+
+                                        {{-- Vista edición (oculta por defecto) --}}
+                                        <div class="producto-edit-{{ $linea->id }} hidden">
+                                            <select
+                                                class="producto-base-select text-xs border rounded px-1 py-1 w-full"
+                                                data-linea-id="{{ $linea->id }}">
+                                                <option value="">Seleccionar producto</option>
+                                                @php
+                                                    $productosAgrupados = $productosBase->groupBy('tipo')->sortKeys();
+                                                @endphp
+                                                @foreach ($productosAgrupados as $tipo => $productos)
+                                                    <optgroup label="{{ strtoupper($tipo) }}">
+                                                        @foreach ($productos->sortBy('diametro') as $producto)
+                                                            <option value="{{ $producto->id }}"
+                                                                data-tipo="{{ $producto->tipo }}"
+                                                                data-diametro="{{ $producto->diametro }}"
+                                                                data-longitud="{{ $producto->longitud ?? '' }}"
+                                                                {{ $linea->producto_base_id == $producto->id ? 'selected' : '' }}>
+                                                                Ø{{ $producto->diametro }}
+                                                                @if ($producto->longitud)
+                                                                    x {{ $producto->longitud }}m
+                                                                @endif
+                                                            </option>
+                                                        @endforeach
+                                                    </optgroup>
+                                                @endforeach
+                                            </select>
+                                        </div>
                                     </td>
+
                                     <td class="border px-2 py-1">
                                         {{ number_format($linea->cantidad ?? 0, 2, ',', '.') }} kg
                                     </td>
                                     <td class="border px-2 py-1">
                                         {{ number_format($linea->cantidad_recepcionada ?? 0, 2, ',', '.') }} kg
                                     </td>
-                                    <td class="border px-2 py-1">{{ $pedido->fecha_pedido_formateada ?? '—' }}
-                                    </td>
+                                    <td class="border px-2 py-1">{{ $pedido->fecha_pedido_formateada ?? '—' }}</td>
                                     <td class="border px-2 py-1">
                                         {{ $linea->fecha_estimada_entrega_formateada ?? '—' }}</td>
                                     <td class="border px-2 py-1 capitalize">{{ $linea->estado }}</td>
-                                    <td class="border px-2 py-1 capitalize">{{ $pedido->creador->name ?? '—' }}
-                                    </td>
+                                    <td class="border px-2 py-1 capitalize">{{ $pedido->creador->name ?? '—' }}</td>
 
+                                    {{-- COLUMNA DE ACCIONES --}}
                                     <td class="border px-2 py-1 text-center">
                                         <div class="flex flex-col items-center gap-1">
                                             @php
@@ -265,7 +253,6 @@
                                                 $esCompletado = $estado === 'completado';
                                                 $esFacturado = $estado === 'facturado';
 
-                                                // Detectar características de la obra de ESTA LÍNEA específica
                                                 $obraLinea = $linea->obra;
                                                 $esEntregaDirecta = $obraLinea
                                                     ? !$obraLinea->es_nave_paco_reyes
@@ -280,94 +267,108 @@
                                                     ? stripos($obraLinea->obra, 'Nave B') !== false
                                                     : false;
                                                 $esNaveValida = $esNaveA || $esNaveB;
-
                                                 $pedidoCompletado = strtolower($pedido->estado) === 'completado';
                                             @endphp
-                                            <div class="flex items-center justify-center gap-1"
+
+                                            <div class="flex items-center justify-center gap-1 flex-wrap"
                                                 @if ($esCancelado) style="pointer-events:none;opacity:.5" @endif>
 
                                                 @if ($esCompletado || $esFacturado)
-                                                    {{-- Cerrada: sin acciones --}}
+                                                    {{-- Sin acciones para líneas cerradas --}}
                                                 @elseif ($esCancelado)
                                                     <button disabled
                                                         class="bg-gray-400 text-white text-xs px-2 py-1 rounded shadow opacity-50 cursor-not-allowed">
                                                         Cancelado
                                                     </button>
                                                 @else
-                                                    {{-- === LÍNEA ABIERTA: mostramos acciones según caso === --}}
+                                                    {{-- ========== BOTONES DE ESTADO DE LÍNEA (se ocultan en modo edición) ========== --}}
+                                                    <div
+                                                        class="botones-estado-{{ $linea->id }} flex items-center gap-1 flex-wrap">
+                                                        {{-- BOTÓN COMPLETAR (Entrega directa) --}}
+                                                        @if (($esEntregaDirecta || $esAlmacen) && !$pedidoCompletado)
+                                                            <form method="POST"
+                                                                action="{{ route('pedidos.editarCompletarLineaManual', ['pedido' => $pedido->id, 'linea' => $linea['id']]) }}"
+                                                                onsubmit="return confirmarCompletarLinea(this);">
+                                                                @csrf
+                                                                <button type="submit"
+                                                                    class="bg-green-600 hover:bg-green-700 text-white text-xs px-2 py-1 rounded shadow transition">
+                                                                    Completar
+                                                                </button>
+                                                            </form>
+                                                        @endif
 
-                                                    {{-- Entrega directa: botón Completar línea --}}
-                                                    @if (($esEntregaDirecta || $esAlmacen) && !$pedidoCompletado)
-                                                        <form method="POST"
-                                                            action="{{ route('pedidos.editarCompletarLineaManual', ['pedido' => $pedido->id, 'linea' => $linea['id']]) }}"
-                                                            onsubmit="return confirmarCompletarLinea(this);">
-                                                            @csrf
-                                                            <button type="submit"
-                                                                class="bg-green-600 hover:bg-green-700 text-white text-xs px-2 py-1 rounded shadow transition">
-                                                                Completar
-                                                            </button>
-                                                        </form>
-                                                    @endif
+                                                        {{-- BOTÓN DESACTIVAR --}}
+                                                        @if ($estado === 'activo')
+                                                            <form method="POST"
+                                                                action="{{ route('pedidos.lineas.editarDesactivar', [$pedido->id, $linea['id']]) }}">
+                                                                @csrf
+                                                                @method('DELETE')
+                                                                <button type="submit" title="Desactivar línea"
+                                                                    class="bg-red-600 hover:bg-red-700 text-white text-xs px-2 py-1 rounded shadow transition">
+                                                                    Desactivar
+                                                                </button>
+                                                            </form>
+                                                        @endif
 
+                                                        {{-- BOTÓN ACTIVAR --}}
+                                                        @if (($estado === 'pendiente' || $estado === 'parcial') && $esNaveValida)
+                                                            <form method="POST"
+                                                                action="{{ route('pedidos.lineas.editarActivar', [$pedido->id, $linea['id']]) }}">
+                                                                @csrf
+                                                                @method('PUT')
+                                                                <button type="submit" title="Activar línea"
+                                                                    class="bg-yellow-500 hover:bg-yellow-600 text-white text-xs px-2 py-1 rounded shadow transition">
+                                                                    Activar
+                                                                </button>
+                                                            </form>
+                                                        @endif
 
-                                                    {{-- Flujo normal HPR --}}
-                                                    @if ($estado === 'activo')
+                                                        {{-- BOTÓN CANCELAR LÍNEA (oculto, se activa con confirmación) --}}
                                                         <form method="POST"
-                                                            action="{{ route('pedidos.lineas.editarDesactivar', [$pedido->id, $linea['id']]) }}">
-                                                            @csrf
-                                                            @method('DELETE')
-                                                            <button type="submit" title="Desactivar línea"
-                                                                class="bg-red-600 hover:bg-red-700 text-white text-xs px-2 py-1 rounded shadow transition">
-                                                                Desactivar
-                                                            </button>
-                                                        </form>
-                                                    @elseif (($estado === 'pendiente' || $estado === 'parcial') && $esNaveValida)
-                                                        {{-- activar SOLO si es nave Paco Reyes --}}
-                                                        <form method="POST"
-                                                            action="{{ route('pedidos.lineas.editarActivar', [$pedido->id, $linea['id']]) }}">
+                                                            action="{{ route('pedidos.lineas.editarCancelar', [$pedido->id, $linea['id']]) }}"
+                                                            class="form-cancelar-linea hidden"
+                                                            data-pedido-id="{{ $pedido->id }}"
+                                                            data-linea-id="{{ $linea['id'] }}">
                                                             @csrf
                                                             @method('PUT')
-                                                            <button type="submit" title="Activar línea"
-                                                                class="bg-yellow-500 hover:bg-yellow-600 text-white text-xs px-2 py-1 rounded shadow transition">
-                                                                Activar
-                                                            </button>
                                                         </form>
-                                                    @endif
 
-                                                    {{-- Botón CANCELAR (siempre que esté abierto) --}}
-                                                    <form method="POST"
-                                                        action="{{ route('pedidos.lineas.editarCancelar', [$pedido->id, $linea['id']]) }}"
-                                                        class="form-cancelar-linea hidden"
-                                                        data-pedido-id="{{ $pedido->id }}"
-                                                        data-linea-id="{{ $linea['id'] }}">
-                                                        @csrf
-                                                        @method('PUT')
-                                                    </form>
+                                                        <button type="button"
+                                                            onclick="confirmarCancelacionLinea({{ $pedido->id }}, {{ $linea['id'] }})"
+                                                            class="bg-gray-500 hover:bg-gray-600 text-white text-xs px-2 py-1 rounded shadow transition">
+                                                            Cancelar
+                                                        </button>
+                                                    </div>
 
+                                                    {{-- ========== BOTONES DE EDICIÓN UNIFICADA ========== --}}
+
+                                                    {{-- Botón EDITAR (abre ambos campos) --}}
                                                     <button type="button"
-                                                        onclick="confirmarCancelacionLinea({{ $pedido->id }}, {{ $linea['id'] }})"
-                                                        class="bg-gray-500 hover:bg-gray-600 text-white text-xs px-2 py-1 rounded shadow transition">
-                                                        Cancelar
+                                                        onclick="abrirEdicionLinea({{ $linea->id }})"
+                                                        class="btn-editar-linea-{{ $linea->id }} bg-blue-600 hover:bg-blue-700 text-white text-xs px-2 py-1 rounded shadow transition"
+                                                        title="Editar línea">
+                                                        ✏️
+                                                    </button>
+
+                                                    {{-- Botón GUARDAR (guarda ambos campos) - OCULTO --}}
+                                                    <button type="button"
+                                                        onclick="guardarLinea({{ $linea->id }}, {{ $pedido->id }})"
+                                                        class="btn-guardar-linea-{{ $linea->id }} hidden bg-green-600 hover:bg-green-700 text-white text-xs px-2 py-1 rounded shadow transition"
+                                                        title="Guardar cambios">
+                                                        💾
+                                                    </button>
+
+                                                    {{-- Botón CANCELAR EDICIÓN - OCULTO --}}
+                                                    <button type="button"
+                                                        onclick="cancelarEdicionLinea({{ $linea->id }})"
+                                                        class="btn-cancelar-edicion-{{ $linea->id }} hidden bg-red-600 hover:bg-red-700 text-white text-xs px-2 py-1 rounded shadow transition"
+                                                        title="Cancelar edición">
+                                                        ✖️
                                                     </button>
                                                 @endif
-
-                                                {{-- ✅ BOTÓN EDITAR LUGAR DE ENTREGA POR LÍNEA --}}
-                                                <button type="button"
-                                                    onclick="toggleEdicionLugarEntrega({{ $linea->id }})"
-                                                    class="btn-editar-lugar-{{ $linea->id }} bg-blue-600 hover:bg-blue-700 text-white text-xs px-2 py-1 rounded shadow transition"
-                                                    title="Editar lugar de entrega">
-                                                    ✏️ Editar
-                                                </button>
-                                                <button type="button"
-                                                    onclick="cancelarEdicionLugarEntrega({{ $linea->id }})"
-                                                    class="btn-cancelar-lugar-{{ $linea->id }} hidden bg-red-600 hover:bg-red-700 text-white text-xs px-2 py-1 rounded shadow transition"
-                                                    title="Cancelar edición">
-                                                    ✖️ Cancelar
-                                                </button>
                                             </div>
                                         </div>
                                     </td>
-
                                 </tr>
                             @endforeach
 
@@ -380,13 +381,15 @@
                 </table>
             </div>
             <x-tabla.paginacion :paginador="$pedidos" />
-            <hr>
+
+            <hr class="my-6">
+
+            {{-- SECCIÓN DE STOCK --}}
             <div class="mb-6">
                 <h2 class="text-2xl font-bold text-gray-800 mt-4">📦 Estado actual de stock, pedidos y necesidades</h2>
-                <!-- Tabla stock -->
+
                 <form method="GET" action="{{ route('pedidos.index') }}"
                     class="flex flex-wrap items-center gap-4 p-4">
-                    {{-- Mantener otros filtros activos --}}
                     @foreach (request()->except('page', 'obra_id_hpr') as $key => $value)
                         <input type="hidden" name="{{ $key }}" value="{{ $value }}">
                     @endforeach
@@ -409,10 +412,11 @@
                     </div>
                 </form>
 
-
                 <x-estadisticas.stock :nombre-meses="$nombreMeses" :stock-data="$stockData" :pedidos-por-diametro="$pedidosPorDiametro" :necesario-por-diametro="$necesarioPorDiametro"
                     :total-general="$totalGeneral" :consumo-origen="$consumoOrigen" :consumos-por-mes="$consumosPorMes" :producto-base-info="$productoBaseInfo" :stock-por-producto-base="$stockPorProductoBase"
                     :kg-pedidos-por-producto-base="$kgPedidosPorProductoBase" :resumen-reposicion="$resumenReposicion" :recomendacion-reposicion="$recomendacionReposicion" :configuracion_vista_stock="$configuracion_vista_stock" />
+
+                {{-- MODAL CONFIRMACIÓN PEDIDO --}}
                 <div id="modalConfirmacion"
                     class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
                     <div class="bg-white p-6 rounded-lg w-full max-w-5xl shadow-xl">
@@ -448,10 +452,8 @@
                                 </select>
                             </div>
 
-                            {{-- Lugar de entrega --}}
                             <div class="text-left">
                                 <label class="block text-sm font-medium text-gray-700 mb-1">Lugar de Entrega:</label>
-
                                 <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                                     <div>
                                         <label class="block text-xs text-gray-500 mb-1">Naves de Hierros Paco
@@ -500,14 +502,11 @@
                                             <th class="border px-2 py-1">Desglose Camiones</th>
                                         </tr>
                                     </thead>
-                                    <tbody id="tablaConfirmacionBody">
-                                        {{-- JavaScript agregará filas con inputs aquí --}}
-                                    </tbody>
+                                    <tbody id="tablaConfirmacionBody"></tbody>
                                 </table>
                             </div>
 
                             <div id="mensajesGlobales" class="mt-2 text-sm space-y-1"></div>
-
 
                             <div class="text-right pt-4">
                                 <button type="button" onclick="cerrarModalConfirmacion()"
@@ -522,123 +521,95 @@
                         </form>
                     </div>
                 </div>
-
             </div>
-    </div>
+        @endif
 
-    @endif
-    {{-- ---------------------------------------------------- ROL OPERARIO ---------------------------------------------------- --}}
-    @if (Auth::user()->rol === 'operario')
-        <div class="p-4 w-full max-w-4xl mx-auto">
-            <div class="px-4 flex justify-center">
-                <form method="GET" action="{{ route('pedidos.index') }}"
-                    class="w-full sm:w-2/3 md:w-1/2 lg:w-1/3 flex flex-col sm:flex-row gap-2 mb-6">
-                    <x-tabla.input name="codigo" value="{{ request('codigo') }}" class="flex-grow"
-                        placeholder="Introduce el código del pedido (ej: PC25/0003)" />
+        {{-- ROL OPERARIO --}}
+        @if (Auth::user()->rol === 'operario')
+            <div class="p-4 w-full max-w-4xl mx-auto">
+                <div class="px-4 flex justify-center">
+                    <form method="GET" action="{{ route('pedidos.index') }}"
+                        class="w-full sm:w-2/3 md:w-1/2 lg:w-1/3 flex flex-col sm:flex-row gap-2 mb-6">
+                        <x-tabla.input name="codigo" value="{{ request('codigo') }}" class="flex-grow"
+                            placeholder="Introduce el código del pedido (ej: PC25/0003)" />
+                        <button type="submit"
+                            class="bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold py-2 px-4 rounded-xl shadow transition">
+                            🔍 Buscar
+                        </button>
+                    </form>
+                </div>
 
-                    <button type="submit"
-                        class="bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold py-2 px-4 rounded-xl shadow transition">
-                        🔍 Buscar
-                    </button>
-                </form>
-            </div>
+                @php
+                    $codigo = request('codigo');
+                    $pedidosFiltrados = $codigo
+                        ? \App\Models\Pedido::with('productos')
+                            ->where('codigo', 'like', '%' . $codigo . '%')
+                            ->orderBy('created_at', 'desc')
+                            ->get()
+                        : collect();
+                @endphp
 
-            @php
-                $codigo = request('codigo');
-                $pedidosFiltrados = $codigo
-                    ? \App\Models\Pedido::with('productos')
-                        ->where('codigo', 'like', '%' . $codigo . '%')
-                        ->orderBy('created_at', 'desc')
-                        ->get()
-                    : collect();
-            @endphp
-
-            @if ($codigo)
-                @if ($pedidosFiltrados->isEmpty())
-                    <div class="text-red-500 text-sm text-center">
-                        No se encontraron pedidos con el código <strong>{{ $codigo }}</strong>.
-                    </div>
-                @else
-                    {{-- Vista tipo tarjeta en móvil --}}
-                    <div class="grid gap-4 sm:hidden">
-                        @foreach ($pedidosFiltrados as $pedido)
-                            <div class="bg-white shadow rounded-lg p-4 text-sm border">
-                                <div><span class="font-semibold">Código:</span> {{ $pedido->codigo }}</div>
-                                <div><span class="font-semibold">Fabricante:</span>
-                                    {{ $pedido->fabricante->nombre ?? '—' }}</div>
-                                <div><span class="font-semibold">Distribuidor:</span>
-                                    {{ $pedido->fabricante->distribuidor ?? '—' }}</div>
-                                <div><span class="font-semibold">Fecha Pedido:</span>
-                                    {{ optional($pedido->fecha_pedido)->format('d/m/Y') }}
+                @if ($codigo)
+                    @if ($pedidosFiltrados->isEmpty())
+                        <div class="text-red-500 text-sm text-center">
+                            No se encontraron pedidos con el código <strong>{{ $codigo }}</strong>.
+                        </div>
+                    @else
+                        {{-- Vista móvil --}}
+                        <div class="grid gap-4 sm:hidden">
+                            @foreach ($pedidosFiltrados as $pedido)
+                                <div class="bg-white shadow rounded-lg p-4 text-sm border">
+                                    <div><span class="font-semibold">Código:</span> {{ $pedido->codigo }}</div>
+                                    <div><span class="font-semibold">Fabricante:</span>
+                                        {{ $pedido->fabricante->nombre ?? '—' }}</div>
+                                    <div><span class="font-semibold">Estado:</span> {{ $pedido->estado ?? '—' }}</div>
+                                    <div class="mt-2">
+                                        <a href="{{ route('pedidos.crearRecepcion', $pedido->id) }}"
+                                            class="bg-green-600 hover:bg-green-700 text-white py-1 px-3 rounded text-xs">
+                                            Recepcionar
+                                        </a>
+                                    </div>
                                 </div>
-                                <div><span class="font-semibold">Fecha Entrega:</span>
-                                    {{ optional($pedido->fecha_entrega)->format('d/m/Y') }}
-                                </div>
-                                <div>
-                                    <span class="font-semibold">Peso Total:</span>
-                                    {{ $pedido->peso_total !== null ? round($pedido->peso_total, 0) . ' kg' : '—' }}
-                                </div>
-                                <div><span class="font-semibold">Estado:</span> {{ $pedido->estado ?? '—' }}</div>
-                                <div class="mt-2">
-                                    <a href="{{ route('pedidos.crearRecepcion', $pedido->id) }}"
-                                        class="bg-green-600 hover:bg-green-700 text-white py-1 px-3 rounded text-xs">
-                                        Recepcionar
-                                    </a>
-                                </div>
-                            </div>
-                        @endforeach
-                    </div>
+                            @endforeach
+                        </div>
 
-                    {{-- Vista tabla en escritorio --}}
-                    <div class="hidden sm:block bg-white shadow rounded-lg overflow-x-auto mt-4">
-                        <table class="w-full border text-sm text-center">
-                            <thead class="bg-blue-600 text-white uppercase text-xs">
-                                <tr>
-                                    <th class="px-3 py-2 border">Código</th>
-                                    <th class="px-3 py-2 border">Fabricante</th>
-                                    <th class="px-3 py-2 border">Distribuidor</th>
-                                    <th class="px-3 py-2 border">Fecha Pedido</th>
-                                    <th class="px-3 py-2 border">Fecha Entrega</th>
-                                    <th class="px-3 py-2 border">Peso Total</th>
-                                    <th class="px-3 py-2 border">Estado</th>
-                                    <th class="px-3 py-2 border">Acciones</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @foreach ($pedidosFiltrados as $pedido)
-                                    <tr class="border-b hover:bg-blue-50">
-                                        <td class="px-3 py-2">{{ $pedido->codigo }}</td>
-                                        <td class="px-3 py-2">{{ $pedido->fabricante->nombre ?? '—' }}</td>
-                                        <td class="px-3 py-2">{{ $pedido->fabricante->distribuidor ?? '—' }}</td>
-                                        <td class="px-3 py-2">
-                                            {{ optional($pedido->fecha_pedido)->format('d/m/Y') }}
-                                        </td>
-                                        <td class="px-3 py-2">
-                                            {{ optional($pedido->fecha_entrega)->format('d/m/Y') }}
-                                        </td>
-                                        <td class="px-3 py-2">
-                                            {{ $pedido->peso_total !== null ? round($pedido->peso_total, 0) . ' kg' : '—' }}
-                                        </td>
-                                        <td class="px-3 py-2">{{ $pedido->estado ?? '—' }}</td>
-                                        <td class="px-3 py-2">
-                                            <a href="{{ route('pedidos.recepcion', $pedido->id) }}"
-                                                class="bg-green-600 hover:bg-green-700 text-white py-1 px-3 rounded text-xs">
-                                                Recepcionar
-                                            </a>
-                                        </td>
+                        {{-- Vista escritorio --}}
+                        <div class="hidden sm:block bg-white shadow rounded-lg overflow-x-auto mt-4">
+                            <table class="w-full border text-sm text-center">
+                                <thead class="bg-blue-600 text-white uppercase text-xs">
+                                    <tr>
+                                        <th class="px-3 py-2 border">Código</th>
+                                        <th class="px-3 py-2 border">Fabricante</th>
+                                        <th class="px-3 py-2 border">Estado</th>
+                                        <th class="px-3 py-2 border">Acciones</th>
                                     </tr>
-                                @endforeach
-                            </tbody>
-                        </table>
-                    </div>
+                                </thead>
+                                <tbody>
+                                    @foreach ($pedidosFiltrados as $pedido)
+                                        <tr class="border-b hover:bg-blue-50">
+                                            <td class="px-3 py-2">{{ $pedido->codigo }}</td>
+                                            <td class="px-3 py-2">{{ $pedido->fabricante->nombre ?? '—' }}</td>
+                                            <td class="px-3 py-2">{{ $pedido->estado ?? '—' }}</td>
+                                            <td class="px-3 py-2">
+                                                <a href="{{ route('pedidos.recepcion', $pedido->id) }}"
+                                                    class="bg-green-600 hover:bg-green-700 text-white py-1 px-3 rounded text-xs">
+                                                    Recepcionar
+                                                </a>
+                                            </td>
+                                        </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                        </div>
+                    @endif
                 @endif
-            @endif
-
-        </div>
-    @endif
-
+            </div>
+        @endif
     </div>
 
+    {{-- ==================== SCRIPTS ==================== --}}
+
+    {{-- Script: Confirmar completar línea --}}
     <script>
         function confirmarCompletarLinea(form) {
             Swal.fire({
@@ -648,17 +619,43 @@
                 showCancelButton: true,
                 confirmButtonText: 'Sí, completar',
                 cancelButtonText: 'Cancelar',
-                confirmButtonColor: '#16a34a', // verde (tailwind: green-600)
+                confirmButtonColor: '#16a34a',
                 focusCancel: true
             }).then((result) => {
                 if (result.isConfirmed) {
                     form.submit();
                 }
             });
-            return false; // bloquear envío hasta confirmar
+            return false;
         }
     </script>
 
+    {{-- Script: Confirmar cancelación de línea --}}
+    <script>
+        function confirmarCancelacionLinea(pedidoId, lineaId) {
+            Swal.fire({
+                title: '¿Cancelar línea?',
+                text: "Esta acción no se puede deshacer.",
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#6b7280',
+                cancelButtonColor: '#d33',
+                confirmButtonText: 'Sí, cancelar',
+                cancelButtonText: 'Volver',
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    const formulario = document.querySelector(
+                        `.form-cancelar-linea[data-pedido-id="${pedidoId}"][data-linea-id="${lineaId}"]`
+                    );
+                    if (formulario) {
+                        formulario.submit();
+                    }
+                }
+            });
+        }
+    </script>
+
+    {{-- Script: Limpiar campos del modal --}}
     <script>
         function limpiarObraManual() {
             document.getElementById('obra_manual_modal').value = '';
@@ -669,6 +666,186 @@
             document.getElementById('obra_id_externa_modal').selectedIndex = 0;
         }
     </script>
+
+    {{-- Script: Edición unificada de línea --}}
+    <script>
+        // ========== EDICIÓN UNIFICADA DE LÍNEA (LUGAR + PRODUCTO) ==========
+
+        function abrirEdicionLinea(lineaId) {
+            const lugarView = document.querySelector(`.lugar-entrega-view-${lineaId}`);
+            const productoView = document.querySelector(`.producto-view-${lineaId}`);
+            const lugarEdit = document.querySelector(`.lugar-entrega-edit-${lineaId}`);
+            const productoEdit = document.querySelector(`.producto-edit-${lineaId}`);
+
+            const btnEditar = document.querySelector(`.btn-editar-linea-${lineaId}`);
+            const btnGuardar = document.querySelector(`.btn-guardar-linea-${lineaId}`);
+            const btnCancelar = document.querySelector(`.btn-cancelar-edicion-${lineaId}`);
+            const botonesEstado = document.querySelector(`.botones-estado-${lineaId}`);
+
+            if (lugarView) lugarView.classList.add('hidden');
+            if (productoView) productoView.classList.add('hidden');
+            if (lugarEdit) lugarEdit.classList.remove('hidden');
+            if (productoEdit) productoEdit.classList.remove('hidden');
+
+            if (btnEditar) btnEditar.classList.add('hidden');
+            if (btnGuardar) btnGuardar.classList.remove('hidden');
+            if (btnCancelar) btnCancelar.classList.remove('hidden');
+            if (botonesEstado) botonesEstado.classList.add('hidden');
+
+            if (lugarEdit) {
+                configurarSelectsLugar(lugarEdit);
+            }
+        }
+
+        function cancelarEdicionLinea(lineaId) {
+            const lugarView = document.querySelector(`.lugar-entrega-view-${lineaId}`);
+            const productoView = document.querySelector(`.producto-view-${lineaId}`);
+            const lugarEdit = document.querySelector(`.lugar-entrega-edit-${lineaId}`);
+            const productoEdit = document.querySelector(`.producto-edit-${lineaId}`);
+
+            const btnEditar = document.querySelector(`.btn-editar-linea-${lineaId}`);
+            const btnGuardar = document.querySelector(`.btn-guardar-linea-${lineaId}`);
+            const btnCancelar = document.querySelector(`.btn-cancelar-edicion-${lineaId}`);
+            const botonesEstado = document.querySelector(`.botones-estado-${lineaId}`);
+
+            if (lugarView) lugarView.classList.remove('hidden');
+            if (productoView) productoView.classList.remove('hidden');
+            if (lugarEdit) lugarEdit.classList.add('hidden');
+            if (productoEdit) productoEdit.classList.add('hidden');
+
+            if (btnEditar) btnEditar.classList.remove('hidden');
+            if (btnGuardar) btnGuardar.classList.add('hidden');
+            if (btnCancelar) btnCancelar.classList.add('hidden');
+            if (botonesEstado) botonesEstado.classList.remove('hidden');
+        }
+
+        function guardarLinea(lineaId, pedidoId) {
+            const lugarEdit = document.querySelector(`.lugar-entrega-edit-${lineaId}`);
+            const selectHpr = lugarEdit.querySelector('.obra-hpr-select');
+            const selectExterna = lugarEdit.querySelector('.obra-externa-select');
+            const inputManual = lugarEdit.querySelector('.obra-manual-input');
+
+            const obraHpr = selectHpr.value;
+            const obraExterna = selectExterna.value;
+            const obraManual = inputManual.value.trim();
+            const totalSeleccionado = [obraHpr, obraExterna, obraManual].filter(v => v).length;
+
+            if (totalSeleccionado === 0) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: 'Debes seleccionar un lugar de entrega'
+                });
+                return;
+            }
+
+            if (totalSeleccionado > 1) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: 'Solo puedes seleccionar una opción de lugar de entrega'
+                });
+                return;
+            }
+
+            const productoEdit = document.querySelector(`.producto-edit-${lineaId}`);
+            const selectProducto = productoEdit.querySelector('.producto-base-select');
+            const productoBaseId = selectProducto.value;
+
+            if (!productoBaseId) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: 'Debes seleccionar un producto'
+                });
+                return;
+            }
+
+            const datos = {
+                _method: 'PUT',
+                linea_id: lineaId,
+                obra_id: obraHpr || obraExterna || null,
+                obra_manual: obraManual || null,
+                producto_base_id: productoBaseId
+            };
+
+            fetch(`/pedidos/${pedidoId}/actualizar-linea`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                    },
+                    body: JSON.stringify(datos)
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        Swal.fire({
+                            icon: 'success',
+                            title: '¡Actualizado!',
+                            text: 'Línea actualizada correctamente',
+                            timer: 1500,
+                            showConfirmButton: false
+                        }).then(() => {
+                            location.reload();
+                        });
+                    } else {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Error',
+                            text: data.message || 'Error al actualizar la línea'
+                        });
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: 'Error al actualizar la línea'
+                    });
+                });
+        }
+
+        function configurarSelectsLugar(editDiv) {
+            const selectHpr = editDiv.querySelector('.obra-hpr-select');
+            const selectExterna = editDiv.querySelector('.obra-externa-select');
+            const inputManual = editDiv.querySelector('.obra-manual-input');
+
+            if (!selectHpr || !selectExterna || !inputManual) return;
+
+            const newSelectHpr = selectHpr.cloneNode(true);
+            const newSelectExterna = selectExterna.cloneNode(true);
+            const newInputManual = inputManual.cloneNode(true);
+
+            selectHpr.parentNode.replaceChild(newSelectHpr, selectHpr);
+            selectExterna.parentNode.replaceChild(newSelectExterna, selectExterna);
+            inputManual.parentNode.replaceChild(newInputManual, inputManual);
+
+            newSelectHpr.addEventListener('change', function() {
+                if (this.value) {
+                    newSelectExterna.value = '';
+                    newInputManual.value = '';
+                }
+            });
+
+            newSelectExterna.addEventListener('change', function() {
+                if (this.value) {
+                    newSelectHpr.value = '';
+                    newInputManual.value = '';
+                }
+            });
+
+            newInputManual.addEventListener('input', function() {
+                if (this.value.trim()) {
+                    newSelectHpr.value = '';
+                    newSelectExterna.value = '';
+                }
+            });
+        }
+    </script>
+
+    {{-- Script: Modal de creación de pedidos y sugerencia de pedido global --}}
     <script>
         function debounce(fn, delay) {
             let timer;
@@ -680,19 +857,16 @@
             }
         }
 
-        // 🔹 Devuelve [{index, cantidad}, ...] con todas las líneas del modal
+        // Recolectar todas las líneas del modal
         function recolectarLineas() {
             const lineas = [];
             let globalIndex = 0;
 
             document.querySelectorAll('#tablaConfirmacionBody tr').forEach((tr) => {
-                const td = tr.querySelector('.pg-sugerido');
-                if (!td) return;
-
-                const clave = td.dataset.clave;
-                const contenedorFechas = document.getElementById(`fechas-camion-${clave}`);
+                const contenedorFechas = tr.querySelector('[id^="fechas-camion-"]');
                 if (!contenedorFechas) return;
 
+                const clave = contenedorFechas.id.replace('fechas-camion-', '');
                 const inputsPeso = contenedorFechas.querySelectorAll('input[type="hidden"][name*="[peso]"]');
 
                 inputsPeso.forEach((pesoInput, subIndex) => {
@@ -711,6 +885,7 @@
             return lineas;
         }
 
+        // Sugerir pedidos globales disponibles
         function dispararSugerirMultiple() {
             const fabricante = document.getElementById('fabricante').value;
             const distribuidor = document.getElementById('distribuidor').value;
@@ -737,7 +912,9 @@
                     mensajesGlobales.innerHTML = '';
 
                     // Limpiar asignaciones previas
-                    document.querySelectorAll('.pg-asignacion').forEach(div => div.remove());
+                    document.querySelectorAll('[class*="pg-asignacion-"]').forEach(div => {
+                        div.innerHTML = '<span class="text-gray-400">Sin asignar</span>';
+                    });
 
                     if (data.mensaje) {
                         const div = document.createElement('div');
@@ -746,6 +923,7 @@
                         mensajesGlobales.appendChild(div);
                     }
 
+                    // Procesar asignaciones
                     (data.asignaciones || []).forEach(asig => {
                         if (asig.linea_index !== null && asig.linea_index !== undefined) {
                             let encontrado = false;
@@ -754,14 +932,10 @@
                             document.querySelectorAll('#tablaConfirmacionBody tr').forEach((tr) => {
                                 if (encontrado) return;
 
-                                const td = tr.querySelector('.pg-sugerido');
-                                if (!td) return;
-
-                                const clave = td.dataset.clave;
-                                const contenedorFechas = document.getElementById(
-                                    `fechas-camion-${clave}`);
+                                const contenedorFechas = tr.querySelector('[id^="fechas-camion-"]');
                                 if (!contenedorFechas) return;
 
+                                const clave = contenedorFechas.id.replace('fechas-camion-', '');
                                 const inputsPeso = contenedorFechas.querySelectorAll(
                                     'input[type="hidden"][name*="[peso]"]');
 
@@ -771,35 +945,46 @@
                                     if (globalIdx === asig.linea_index) {
                                         encontrado = true;
 
-                                        // Crear div de asignación
-                                        let divAsignacion = document.createElement('div');
-                                        divAsignacion.className =
-                                            'pg-asignacion text-xs mt-1 p-2 bg-gray-50 rounded border';
-                                        pesoInput.parentNode.insertBefore(divAsignacion,
-                                            pesoInput.nextSibling);
+                                        const divAsignacion = document.querySelector(
+                                            `.pg-asignacion-${clave}-${subIdx}`);
 
-                                        if (asig.codigo) {
-                                            divAsignacion.innerHTML = `
-                                            <div class="font-bold text-green-700">${asig.codigo}</div>
-                                            <div class="text-xs text-gray-600">${asig.mensaje}</div>
-                                            <div class="text-xs text-blue-600">Quedan ${asig.cantidad_restante} kg</div>
+                                        if (divAsignacion) {
+                                            if (asig.codigo) {
+                                                divAsignacion.innerHTML = `
+                                            <div class="text-left">
+                                                <div class="font-bold text-green-700 text-sm">${asig.codigo}</div>
+                                                <div class="text-xs text-gray-600 mt-1">${asig.mensaje}</div>
+                                                <div class="text-xs text-blue-600 mt-1 font-medium">
+                                                    📦 Quedan ${asig.cantidad_restante.toLocaleString('es-ES')} kg
+                                                </div>
+                                            </div>
                                         `;
+                                                divAsignacion.className =
+                                                    `pg-asignacion-${clave}-${subIdx} text-xs p-2 bg-green-50 rounded border border-green-200 min-h-[60px]`;
 
-                                            // Input hidden para pedido global
-                                            let inputPG = contenedorFechas.querySelector(
-                                                `input[name="productos[${clave}][${subIdx + 1}][pedido_global_id]"]`
-                                            );
-                                            if (!inputPG) {
-                                                inputPG = document.createElement('input');
-                                                inputPG.type = 'hidden';
-                                                inputPG.name =
-                                                    `productos[${clave}][${subIdx + 1}][pedido_global_id]`;
-                                                contenedorFechas.appendChild(inputPG);
+                                                // Agregar input hidden para pedido_global_id
+                                                const lineaCamion = document.getElementById(
+                                                    `linea-camion-${clave}-${subIdx}`);
+                                                if (lineaCamion) {
+                                                    let inputPG = lineaCamion.querySelector(
+                                                        `input[name="productos[${clave}][${subIdx + 1}][pedido_global_id]"]`
+                                                    );
+                                                    if (!inputPG) {
+                                                        inputPG = document.createElement(
+                                                            'input');
+                                                        inputPG.type = 'hidden';
+                                                        inputPG.name =
+                                                            `productos[${clave}][${subIdx + 1}][pedido_global_id]`;
+                                                        lineaCamion.appendChild(inputPG);
+                                                    }
+                                                    inputPG.value = asig.pedido_global_id;
+                                                }
+                                            } else {
+                                                divAsignacion.innerHTML =
+                                                    `<div class="text-red-600 text-left">${asig.mensaje}</div>`;
+                                                divAsignacion.className =
+                                                    `pg-asignacion-${clave}-${subIdx} text-xs p-2 bg-red-50 rounded border border-red-200 min-h-[60px]`;
                                             }
-                                            inputPG.value = asig.pedido_global_id;
-                                        } else {
-                                            divAsignacion.innerHTML =
-                                                `<div class="text-red-600">${asig.mensaje}</div>`;
                                         }
                                     }
 
@@ -819,18 +1004,112 @@
                 });
         }
 
-        // ✅ Event listeners FUERA de la función, se registran UNA SOLA VEZ
+        // Mostrar modal de confirmación
+        function mostrarConfirmacion() {
+            const checkboxes = document.querySelectorAll('input[type="checkbox"]:checked');
+            const tbody = document.getElementById('tablaConfirmacionBody');
+            tbody.innerHTML = '';
+
+            checkboxes.forEach((cb) => {
+                const clave = cb.value;
+                const tipo = document.querySelector(`input[name="detalles[${clave}][tipo]"]`).value;
+                const diametro = document.querySelector(`input[name="detalles[${clave}][diametro]"]`).value;
+                const cantidad = parseFloat(document.querySelector(`input[name="detalles[${clave}][cantidad]"]`)
+                    .value);
+                const longitudInput = document.querySelector(`input[name="detalles[${clave}][longitud]"]`);
+                const longitud = longitudInput ? longitudInput.value : null;
+
+                const fila = document.createElement('tr');
+                fila.className = "bg-gray-100 border-b-2 border-gray-400";
+
+                fila.innerHTML = `
+                <td class="border px-2 py-2 align-top font-semibold">
+                    ${tipo.charAt(0).toUpperCase() + tipo.slice(1)}
+                </td>
+                <td class="border px-2 py-2 align-top font-semibold">
+                    ${diametro} mm${longitud ? ` / ${longitud} m` : ''}
+                </td>
+                <td class="border px-2 py-2 align-top">
+                    <input type="number" class="peso-total w-full px-2 py-1 border rounded font-semibold"
+                           name="detalles[${clave}][cantidad]" value="${cantidad}" step="2500" min="2500">
+                </td>
+                <td class="border px-2 py-2 align-top">
+                    <div class="fechas-camion flex flex-col gap-2 w-full" id="fechas-camion-${clave}"></div>
+                </td>
+                <input type="hidden" name="seleccionados[]" value="${clave}">
+                <input type="hidden" name="detalles[${clave}][tipo]" value="${tipo}">
+                <input type="hidden" name="detalles[${clave}][diametro]" value="${diametro}">
+                ${longitud ? `<input type="hidden" name="detalles[${clave}][longitud]" value="${longitud}">` : ''}
+            `;
+                tbody.appendChild(fila);
+
+                const inputPeso = fila.querySelector('.peso-total');
+                generarFechasPorPeso(inputPeso, clave);
+            });
+
+            dispararSugerirMultiple();
+            document.getElementById('modalConfirmacion').classList.remove('hidden');
+            document.getElementById('modalConfirmacion').classList.add('flex');
+        }
+
+        // Generar inputs de fecha según el peso
+        function generarFechasPorPeso(input, clave) {
+            const peso = parseFloat(input.value || 0);
+            const contenedorFechas = document.getElementById(`fechas-camion-${clave}`);
+            if (!contenedorFechas) return;
+
+            contenedorFechas.innerHTML = '';
+
+            const bloques = Math.ceil(peso / 25000);
+            for (let i = 0; i < bloques; i++) {
+                const pesoBloque = Math.min(25000, peso - i * 25000);
+
+                const lineaCamion = document.createElement('div');
+                lineaCamion.className = 'flex items-center gap-2 p-2 bg-white rounded border border-gray-200';
+                lineaCamion.id = `linea-camion-${clave}-${i}`;
+
+                lineaCamion.innerHTML = `
+                <div class="flex flex-col gap-1 flex-1">
+                    <label class="text-xs text-gray-600 font-medium">Camión ${i + 1} - ${pesoBloque.toLocaleString('es-ES')} kg</label>
+                    <input type="date" 
+                           name="productos[${clave}][${i + 1}][fecha]" 
+                           required 
+                           class="border px-2 py-1 rounded text-sm w-full">
+                    <input type="hidden" 
+                           name="productos[${clave}][${i + 1}][peso]" 
+                           value="${pesoBloque}">
+                </div>
+                <div class="flex-1">
+                    <div class="pg-asignacion-${clave}-${i} text-xs p-2 bg-gray-50 rounded border min-h-[60px] flex items-center justify-center">
+                        <span class="text-gray-400">Selecciona fabricante/distribuidor</span>
+                    </div>
+                </div>
+            `;
+
+                contenedorFechas.appendChild(lineaCamion);
+            }
+        }
+
+        // Cerrar modal
+        function cerrarModalConfirmacion() {
+            document.getElementById('modalConfirmacion').classList.add('hidden');
+            document.getElementById('modalConfirmacion').classList.remove('flex');
+        }
+
+        // Event listeners
         document.addEventListener('DOMContentLoaded', function() {
             // Listener para cambios en peso
             document.addEventListener('input', debounce((ev) => {
                 const inputPeso = ev.target.closest('.peso-total');
                 if (!inputPeso) return;
 
-                const clave = inputPeso.closest('tr').querySelector('.pg-sugerido')?.dataset.clave;
-                if (clave) {
-                    generarFechasPorPeso(inputPeso, clave);
-                    dispararSugerirMultiple();
-                }
+                const tr = inputPeso.closest('tr');
+                const contenedorFechas = tr.querySelector('[id^="fechas-camion-"]');
+                if (!contenedorFechas) return;
+
+                const clave = contenedorFechas.id.replace('fechas-camion-', '');
+                generarFechasPorPeso(inputPeso, clave);
+                dispararSugerirMultiple();
             }, 300));
 
             // Listeners para fabricante/distribuidor
@@ -846,12 +1125,12 @@
         });
     </script>
 
+    {{-- Script: Validación formulario pedido --}}
     <script>
         document.getElementById('formularioPedido').addEventListener('submit', function(ev) {
             ev.preventDefault();
             const errores = [];
 
-            // Validaciones básicas
             const fabricante = document.getElementById('fabricante').value;
             const distribuidor = document.getElementById('distribuidor').value;
             if (!fabricante && !distribuidor) {
@@ -935,8 +1214,7 @@
             let htmlResumen =
                 `<p><b>${proveedorTexto}</b></p><p><b>${obraTexto}</b></p><hr><ul style="text-align:left;">`;
             resumenLineas.forEach(l => {
-                htmlResumen +=
-                    `<li>• ${l.tipo} Ø${l.diametro} → ${l.peso.toLocaleString('es-ES')} kg<br>` +
+                htmlResumen += `<li>• ${l.tipo} Ø${l.diametro} → ${l.peso.toLocaleString('es-ES')} kg<br>` +
                     `📅 Fechas de entrega: ${l.fechas.join(', ')}</li>`;
             });
             htmlResumen += '</ul>';
@@ -956,460 +1234,6 @@
                 if (result.isConfirmed) {
                     ev.target.submit();
                 }
-            });
-        });
-    </script>
-
-    <script>
-        function mostrarConfirmacion() {
-            const checkboxes = document.querySelectorAll('input[type="checkbox"]:checked');
-            const tbody = document.getElementById('tablaConfirmacionBody');
-            tbody.innerHTML = '';
-
-            checkboxes.forEach((cb) => {
-                const clave = cb.value;
-                const tipo = document.querySelector(`input[name="detalles[${clave}][tipo]"]`).value;
-                const diametro = document.querySelector(`input[name="detalles[${clave}][diametro]"]`).value;
-                const cantidad = parseFloat(document.querySelector(`input[name="detalles[${clave}][cantidad]"]`)
-                    .value);
-                const longitudInput = document.querySelector(`input[name="detalles[${clave}][longitud]"]`);
-                const longitud = longitudInput ? longitudInput.value : null;
-
-                const fila = document.createElement('tr');
-                fila.className = "bg-gray-100 border-b-2 border-gray-400";
-
-                fila.innerHTML = `
-                <td class="border px-2 py-2 align-top font-semibold">
-                    ${tipo.charAt(0).toUpperCase() + tipo.slice(1)}
-                </td>
-                <td class="border px-2 py-2 align-top font-semibold">
-                    ${diametro} mm${longitud ? ` / ${longitud} m` : ''}
-                </td>
-                <td class="border px-2 py-2 align-top">
-                    <input type="number" class="peso-total w-full px-2 py-1 border rounded font-semibold"
-                           name="detalles[${clave}][cantidad]" value="${cantidad}" step="2500" min="2500">
-                </td>
-                <td class="border px-2 py-2 align-top">
-                    <div class="fechas-camion flex flex-col gap-2 w-full" id="fechas-camion-${clave}"></div>
-                </td>
-                <input type="hidden" name="seleccionados[]" value="${clave}">
-                <input type="hidden" name="detalles[${clave}][tipo]" value="${tipo}">
-                <input type="hidden" name="detalles[${clave}][diametro]" value="${diametro}">
-                ${longitud ? `<input type="hidden" name="detalles[${clave}][longitud]" value="${longitud}">` : ''}
-            `;
-                tbody.appendChild(fila);
-
-                const inputPeso = fila.querySelector('.peso-total');
-                generarFechasPorPeso(inputPeso, clave);
-            });
-
-            dispararSugerirMultiple();
-            document.getElementById('modalConfirmacion').classList.remove('hidden');
-            document.getElementById('modalConfirmacion').classList.add('flex');
-        }
-
-        function generarFechasPorPeso(input, clave) {
-            const peso = parseFloat(input.value || 0);
-            const contenedorFechas = document.getElementById(`fechas-camion-${clave}`);
-            if (!contenedorFechas) return;
-
-            contenedorFechas.innerHTML = '';
-
-            const bloques = Math.ceil(peso / 25000);
-            for (let i = 0; i < bloques; i++) {
-                const pesoBloque = Math.min(25000, peso - i * 25000);
-
-                // Contenedor para cada línea de camión
-                const lineaCamion = document.createElement('div');
-                lineaCamion.className = 'flex items-center gap-2 p-2 bg-white rounded border border-gray-200';
-                lineaCamion.id = `linea-camion-${clave}-${i}`;
-
-                lineaCamion.innerHTML = `
-                <div class="flex flex-col gap-1 flex-1">
-                    <label class="text-xs text-gray-600 font-medium">Camión ${i + 1} - ${pesoBloque.toLocaleString('es-ES')} kg</label>
-                    <input type="date" 
-                           name="productos[${clave}][${i + 1}][fecha]" 
-                           required 
-                           class="border px-2 py-1 rounded text-sm w-full">
-                    <input type="hidden" 
-                           name="productos[${clave}][${i + 1}][peso]" 
-                           value="${pesoBloque}">
-                </div>
-                <div class="flex-1">
-                    <div class="pg-asignacion-${clave}-${i} text-xs p-2 bg-gray-50 rounded border min-h-[60px] flex items-center justify-center">
-                        <span class="text-gray-400">Selecciona fabricante/distribuidor</span>
-                    </div>
-                </div>
-            `;
-
-                contenedorFechas.appendChild(lineaCamion);
-            }
-        }
-
-        function dispararSugerirMultiple() {
-            const fabricante = document.getElementById('fabricante').value;
-            const distribuidor = document.getElementById('distribuidor').value;
-            if (!fabricante && !distribuidor) return;
-
-            const lineas = recolectarLineas();
-            if (lineas.length === 0) return;
-
-            fetch('{{ route('pedidos.verSugerir-pedido-global') }}', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
-                    },
-                    body: JSON.stringify({
-                        fabricante_id: fabricante,
-                        distribuidor_id: distribuidor,
-                        lineas: lineas
-                    })
-                })
-                .then(r => r.json())
-                .then(data => {
-                    const mensajesGlobales = document.getElementById('mensajesGlobales');
-                    mensajesGlobales.innerHTML = '';
-
-                    // Limpiar todas las asignaciones previas
-                    document.querySelectorAll('[class*="pg-asignacion-"]').forEach(div => {
-                        div.innerHTML = '<span class="text-gray-400">Sin asignar</span>';
-                    });
-
-                    if (data.mensaje) {
-                        const div = document.createElement('div');
-                        div.className = 'text-yellow-700 font-medium';
-                        div.textContent = data.mensaje;
-                        mensajesGlobales.appendChild(div);
-                    }
-
-                    (data.asignaciones || []).forEach(asig => {
-                        if (asig.linea_index !== null && asig.linea_index !== undefined) {
-                            let encontrado = false;
-                            let globalIdx = 0;
-
-                            document.querySelectorAll('#tablaConfirmacionBody tr').forEach((tr) => {
-                                if (encontrado) return;
-
-                                const contenedorFechas = tr.querySelector('[id^="fechas-camion-"]');
-                                if (!contenedorFechas) return;
-
-                                const clave = contenedorFechas.id.replace('fechas-camion-', '');
-                                const inputsPeso = contenedorFechas.querySelectorAll(
-                                    'input[type="hidden"][name*="[peso]"]');
-
-                                inputsPeso.forEach((pesoInput, subIdx) => {
-                                    if (encontrado) return;
-
-                                    if (globalIdx === asig.linea_index) {
-                                        encontrado = true;
-
-                                        // Buscar el div de asignación específico
-                                        const divAsignacion = document.querySelector(
-                                            `.pg-asignacion-${clave}-${subIdx}`);
-
-                                        if (divAsignacion) {
-                                            if (asig.codigo) {
-                                                divAsignacion.innerHTML = `
-                                                <div class="text-left">
-                                                    <div class="font-bold text-green-700 text-sm">${asig.codigo}</div>
-                                                    <div class="text-xs text-gray-600 mt-1">${asig.mensaje}</div>
-                                                    <div class="text-xs text-blue-600 mt-1 font-medium">
-                                                        📦 Quedan ${asig.cantidad_restante.toLocaleString('es-ES')} kg
-                                                    </div>
-                                                </div>
-                                            `;
-                                                divAsignacion.className = 'pg-asignacion-' +
-                                                    clave + '-' + subIdx +
-                                                    ' text-xs p-2 bg-green-50 rounded border border-green-200 min-h-[60px]';
-
-                                                // Agregar input hidden para pedido_global_id
-                                                const lineaCamion = document.getElementById(
-                                                    `linea-camion-${clave}-${subIdx}`);
-                                                if (lineaCamion) {
-                                                    let inputPG = lineaCamion.querySelector(
-                                                        `input[name="productos[${clave}][${subIdx + 1}][pedido_global_id]"]`
-                                                    );
-                                                    if (!inputPG) {
-                                                        inputPG = document.createElement(
-                                                            'input');
-                                                        inputPG.type = 'hidden';
-                                                        inputPG.name =
-                                                            `productos[${clave}][${subIdx + 1}][pedido_global_id]`;
-                                                        lineaCamion.appendChild(inputPG);
-                                                    }
-                                                    inputPG.value = asig.pedido_global_id;
-                                                }
-                                            } else {
-                                                divAsignacion.innerHTML =
-                                                    `<div class="text-red-600 text-left">${asig.mensaje}</div>`;
-                                                divAsignacion.className = 'pg-asignacion-' +
-                                                    clave + '-' + subIdx +
-                                                    ' text-xs p-2 bg-red-50 rounded border border-red-200 min-h-[60px]';
-                                            }
-                                        }
-                                    }
-
-                                    globalIdx++;
-                                });
-                            });
-                        } else if (asig.mensaje) {
-                            const div = document.createElement('div');
-                            div.className = 'text-yellow-700 font-medium';
-                            div.textContent = asig.mensaje;
-                            mensajesGlobales.appendChild(div);
-                        }
-                    });
-                })
-                .catch(error => {
-                    console.error('Error al sugerir pedido global:', error);
-                });
-        }
-
-        // 🔹 Devuelve [{index, cantidad}, ...] con todas las líneas del modal
-        function recolectarLineas() {
-            const lineas = [];
-            let globalIndex = 0;
-
-            document.querySelectorAll('#tablaConfirmacionBody tr').forEach((tr) => {
-                const contenedorFechas = tr.querySelector('[id^="fechas-camion-"]');
-                if (!contenedorFechas) return;
-
-                const clave = contenedorFechas.id.replace('fechas-camion-', '');
-                const inputsPeso = contenedorFechas.querySelectorAll('input[type="hidden"][name*="[peso]"]');
-
-                inputsPeso.forEach((pesoInput, subIndex) => {
-                    const peso = parseFloat(pesoInput.value || 0);
-                    if (peso <= 0) return;
-
-                    lineas.push({
-                        index: globalIndex++,
-                        clave: clave,
-                        cantidad: peso,
-                        sublinea: subIndex + 1
-                    });
-                });
-            });
-
-            return lineas;
-        }
-
-        function debounce(fn, delay) {
-            let timer;
-            return function() {
-                clearTimeout(timer);
-                const args = arguments;
-                const context = this;
-                timer = setTimeout(() => fn.apply(context, args), delay);
-            }
-        }
-
-        // ✅ Event listeners
-        document.addEventListener('DOMContentLoaded', function() {
-            // Listener para cambios en peso
-            document.addEventListener('input', debounce((ev) => {
-                const inputPeso = ev.target.closest('.peso-total');
-                if (!inputPeso) return;
-
-                const tr = inputPeso.closest('tr');
-                const contenedorFechas = tr.querySelector('[id^="fechas-camion-"]');
-                if (!contenedorFechas) return;
-
-                const clave = contenedorFechas.id.replace('fechas-camion-', '');
-                generarFechasPorPeso(inputPeso, clave);
-                dispararSugerirMultiple();
-            }, 300));
-
-            // Listeners para fabricante/distribuidor
-            const fabricanteSelect = document.getElementById('fabricante');
-            const distribuidorSelect = document.getElementById('distribuidor');
-
-            if (fabricanteSelect) {
-                fabricanteSelect.addEventListener('change', dispararSugerirMultiple);
-            }
-            if (distribuidorSelect) {
-                distribuidorSelect.addEventListener('change', dispararSugerirMultiple);
-            }
-        });
-    </script>
-
-    <script>
-        function confirmarCancelacionLinea(pedidoId, lineaId) {
-            Swal.fire({
-                title: '¿Cancelar línea?',
-                text: "Esta acción no se puede deshacer.",
-                icon: 'warning',
-                showCancelButton: true,
-                confirmButtonColor: '#6b7280',
-                cancelButtonColor: '#d33',
-                confirmButtonText: 'Sí, cancelar',
-                cancelButtonText: 'Volver',
-            }).then((result) => {
-                if (result.isConfirmed) {
-                    const formulario = document.querySelector(
-                        `.form-cancelar-linea[data-pedido-id="${pedidoId}"][data-linea-id="${lineaId}"]`
-                    );
-                    if (formulario) {
-                        formulario.submit();
-                    } else {
-                        console.error("No se encontró el formulario para cancelar la línea.");
-                    }
-                }
-            });
-        }
-    </script>
-    {{-- NUEVO SCRIPT PARA EDICIÓN DE LUGAR DE ENTREGA --}}
-    <script>
-        // Toggle entre vista y edición
-        function toggleEdicionLugarEntrega(lineaId) {
-            const vistaDiv = document.querySelector(`.lugar-entrega-view-${lineaId}`);
-            const editDiv = document.querySelector(`.lugar-entrega-edit-${lineaId}`);
-
-            if (vistaDiv.classList.contains('hidden')) {
-                cancelarEdicionLugarEntrega(lineaId);
-            } else {
-                abrirEdicionLugarEntrega(lineaId);
-            }
-        }
-
-        // Abrir modo edición
-        function abrirEdicionLugarEntrega(lineaId) {
-            const vistaDiv = document.querySelector(`.lugar-entrega-view-${lineaId}`);
-            const editDiv = document.querySelector(`.lugar-entrega-edit-${lineaId}`);
-            const btnEditar = document.querySelector(`.btn-editar-lugar-${lineaId}`);
-            const btnCancelar = document.querySelector(`.btn-cancelar-lugar-${lineaId}`);
-
-            vistaDiv.classList.add('hidden');
-            editDiv.classList.remove('hidden');
-            btnEditar.classList.add('hidden');
-            btnCancelar.classList.remove('hidden');
-
-            // Limpiar selects contrarios al cambiar
-            const selectHpr = editDiv.querySelector('.obra-hpr-select');
-            const selectExterna = editDiv.querySelector('.obra-externa-select');
-            const inputManual = editDiv.querySelector('.obra-manual-input');
-
-            selectHpr.addEventListener('change', function() {
-                if (this.value) {
-                    selectExterna.value = '';
-                    inputManual.value = '';
-                }
-            });
-
-            selectExterna.addEventListener('change', function() {
-                if (this.value) {
-                    selectHpr.value = '';
-                    inputManual.value = '';
-                }
-            });
-
-            inputManual.addEventListener('input', function() {
-                if (this.value.trim()) {
-                    selectHpr.value = '';
-                    selectExterna.value = '';
-                }
-            });
-        }
-
-        // Cancelar edición
-        function cancelarEdicionLugarEntrega(lineaId) {
-            const vistaDiv = document.querySelector(`.lugar-entrega-view-${lineaId}`);
-            const editDiv = document.querySelector(`.lugar-entrega-edit-${lineaId}`);
-            const btnEditar = document.querySelector(`.btn-editar-lugar-${lineaId}`);
-            const btnCancelar = document.querySelector(`.btn-cancelar-lugar-${lineaId}`);
-
-            vistaDiv.classList.remove('hidden');
-            editDiv.classList.add('hidden');
-            btnEditar.classList.remove('hidden');
-            btnCancelar.classList.add('hidden');
-        }
-
-        // Guardar cambios
-        function guardarLugarEntrega(lineaId, pedidoId) {
-            const editDiv = document.querySelector(`.lugar-entrega-edit-${lineaId}`);
-            const selectHpr = editDiv.querySelector('.obra-hpr-select');
-            const selectExterna = editDiv.querySelector('.obra-externa-select');
-            const inputManual = editDiv.querySelector('.obra-manual-input');
-
-            const obraHpr = selectHpr.value;
-            const obraExterna = selectExterna.value;
-            const obraManual = inputManual.value.trim();
-
-            // Validación
-            const totalSeleccionado = [obraHpr, obraExterna, obraManual].filter(v => v).length;
-
-            if (totalSeleccionado === 0) {
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Error',
-                    text: 'Debes seleccionar un lugar de entrega'
-                });
-                return;
-            }
-
-            if (totalSeleccionado > 1) {
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Error',
-                    text: 'Solo puedes seleccionar una opción de lugar de entrega'
-                });
-                return;
-            }
-
-            // Preparar datos
-            const datos = {
-                _method: 'PUT',
-                linea_id: lineaId,
-                obra_id: obraHpr || obraExterna || null,
-                obra_manual: obraManual || null
-            };
-
-            // Enviar actualización
-            fetch(`/pedidos/${pedidoId}`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
-                    },
-                    body: JSON.stringify(datos)
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        Swal.fire({
-                            icon: 'success',
-                            title: 'Actualizado',
-                            text: 'Lugar de entrega actualizado correctamente',
-                            timer: 1500,
-                            showConfirmButton: false
-                        }).then(() => {
-                            location.reload();
-                        });
-                    } else {
-                        Swal.fire({
-                            icon: 'error',
-                            title: 'Error',
-                            text: data.message || 'Error al actualizar'
-                        });
-                    }
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                    Swal.fire({
-                        icon: 'error',
-                        title: 'Error',
-                        text: 'Error al actualizar el lugar de entrega'
-                    });
-                });
-        }
-
-        // Permitir doble clic en la celda para editar
-        document.addEventListener('DOMContentLoaded', function() {
-            document.querySelectorAll('.lugar-entrega-cell').forEach(cell => {
-                cell.addEventListener('dblclick', function() {
-                    const lineaId = this.dataset.lineaId;
-                    abrirEdicionLugarEntrega(lineaId);
-                });
             });
         });
     </script>
