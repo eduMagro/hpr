@@ -199,9 +199,12 @@
             class="bg-black bg-opacity-50 absolute top-0 left-0 w-screen h-screen flex items-center justify-center hidden backdrop-blur-sm">
             <div id="div_elementos"
                 class="flex flex-col transition-all duration-100 p-3 bg-neutral-100 rounded-xl shadow-xl gap-3 items-center">
-                <div class="uppercase flex gap-3 justify-center items-center">
-                    <p>Elementos de <span id="seleccion_planilla_codigo" class="chip">****-******</span></p>
-                    <p>en máquina <span id="seleccion_maquina_tag" class="chip">****</span></p1>
+                <div class="uppercase flex justify-between items-center pt-2 w-full px-5">
+                    <div class="flex">
+                        <p>Elementos de <span id="seleccion_planilla_codigo" class="chip">****-******</span></p>
+                        <p>en máquina <span id="seleccion_maquina_tag" class="chip">****</span></p1>
+                    </div>
+                    <div id="header_seleecionar_elementos"></div>
                 </div>
                 <div id="seleccion_elementos"
                     class="w-full max-h-[35rem] overflow-auto grid grid-cols-4 gap-2 p-3 rounded-xl

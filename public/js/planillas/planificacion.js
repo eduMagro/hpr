@@ -438,6 +438,9 @@ function renderModalElementos(ordenPlanillaId, codigoPlanilla, codigoMaquina) {
     // permitir seleccionar/deseleccionar para transferencias (mismo patrón)
     anadirPropiedadTransferible();
 
+    // toolbar Seleccionar todos
+    ensureSelectAllToolbar();
+
     // mostrar modal
     modalDetalles.classList.add("hidden");
     modalMapa.classList.add("hidden");
@@ -2004,4 +2007,105 @@ function applyObraMachineHighlights() {
     const mids = getMachineIdsForObraCodes(OBRA_HL.codes);
     highlightObraColumnHeaders(mids);
     highlightObraModalMachines(mids);
+}
+
+// seleccionar todos los elementos
+function ensureSelectAllToolbar() {
+    const cont = document.getElementById("seleccion_elementos");
+    const modal = document.getElementById("modal_elementos");
+    if (!cont || !modal) return;
+
+    // Botón
+    let btnSel = document.getElementById("btn_sel_todos");
+    if (!btnSel) {
+        btnSel = document.createElement("button");
+        btnSel.id = "btn_sel_todos";
+        btnSel.type = "button";
+        btnSel.className =
+            "px-3 py-1 rounded-lg text-xs font-mono font-bold " +
+            "bg-gradient-to-tr from-blue-600 to-blue-700 text-white hover:opacity-90 transition";
+        document.getElementById("header_seleecionar_elementos").appendChild(btnSel);
+    }
+
+    // Helpers
+    const counts = () => {
+        const total = cont.querySelectorAll(
+            ".no_seleccionado, .seleccionado"
+        ).length;
+        const sel = cont.querySelectorAll(".seleccionado").length;
+        return { total, sel };
+    };
+
+    const updateLabel = () => {
+        const { total, sel } = counts();
+        // ✅ sin cantidades en el texto
+        btnSel.textContent =
+            sel === total && total > 0
+                ? "Quitar selección"
+                : "Seleccionar todos";
+    };
+
+    const setAllSeleccionados = (on) => {
+        cont.querySelectorAll(".no_seleccionado, .seleccionado").forEach(
+            (card) => {
+                if (on) {
+                    card.classList.remove(
+                        "no_seleccionado",
+                        "hover:from-orange-300",
+                        "hover:to-orange-400"
+                    );
+                    card.classList.add(
+                        "seleccionado",
+                        "to-orange-400",
+                        "from-blue-500"
+                    );
+                } else {
+                    card.classList.add(
+                        "no_seleccionado",
+                        "hover:from-orange-300",
+                        "hover:to-orange-400"
+                    );
+                    card.classList.remove(
+                        "seleccionado",
+                        "to-orange-400",
+                        "from-blue-500"
+                    );
+                }
+            }
+        );
+    };
+
+    // Click toggle (recalcula siempre total/sel)
+    btnSel.onclick = () => {
+        const { total, sel } = counts();
+        const seleccionar = sel < total; // si no están todos, selecciona; si ya están todos, des-selecciona
+        setAllSeleccionados(seleccionar);
+        updateLabel();
+    };
+
+    // Actualiza la etiqueta cuando el usuario selecciona/deselecciona individualmente
+    if (!cont.dataset.selAllBound) {
+        cont.addEventListener("click", (ev) => {
+            if (ev.target.closest(".no_seleccionado, .seleccionado")) {
+                // Deja que el toggle de clases de tu handler se aplique primero
+                setTimeout(updateLabel, 0);
+            }
+        });
+        cont.dataset.selAllBound = "1";
+    }
+
+    // Atajo Ctrl+A (solo dentro del modal)
+    if (!modal.dataset.ctrlABound) {
+        modal.addEventListener("keydown", (ev) => {
+            if ((ev.ctrlKey || ev.metaKey) && ev.key.toLowerCase() === "a") {
+                ev.preventDefault();
+                setAllSeleccionados(true);
+                updateLabel();
+            }
+        });
+        modal.dataset.ctrlABound = "1";
+    }
+
+    // Estado inicial correcto cada vez que se abre el modal
+    updateLabel();
 }
