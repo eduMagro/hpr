@@ -14,8 +14,14 @@ let obrasInput;
 let obrasModal;
 let clickObras; // .obra
 let obraSeleccionada;
-let OBRA_HL = { active: false, id: null, codes: new Set() };
+let OBRA_HL = {
+    active: false,
+    id: null,
+    codes: new Set()
+};
 let MODAL_MAQ_CHIPS = new Map();
+let diccionarioTiempos = new Map();
+let HOVER_LOCK = { active: false, code: null };
 
 // btn
 let btn_transferir;
@@ -44,35 +50,23 @@ let DND = {
 };
 
 document.addEventListener("DOMContentLoaded", () => {
-    planillas = Array.from(
-        document.querySelectorAll("#todasPlanillas [data-planilla]")
-    ).map((div) => JSON.parse(div.dataset.planilla));
+    planillas = Array.from(document.querySelectorAll("#todasPlanillas [data-planilla]")).map((div) => JSON.parse(div.dataset.planilla));
 
-    elementos = Array.from(
-        document.querySelectorAll("#todosElementos [data-elementos]")
-    ).map((div) => JSON.parse(div.dataset.elementos));
+    elementos = Array.from(document.querySelectorAll("#todosElementos [data-elementos]")).map((div) => JSON.parse(div.dataset.elementos));
 
-    ordenPlanillas = Array.from(
-        document.querySelectorAll("#ordenPlanillas [data-orden]")
-    ).map((div) => JSON.parse(div.dataset.orden));
+    ordenPlanillas = Array.from(document.querySelectorAll("#ordenPlanillas [data-orden]")).map((div) => JSON.parse(div.dataset.orden));
 
-    maquinas = Array.from(
-        document.querySelectorAll("#maquinas [data-detalles]")
-    ).map((div) => JSON.parse(div.dataset.detalles));
+    maquinas = Array.from(document.querySelectorAll("#maquinas [data-detalles]")).map((div) => JSON.parse(div.dataset.detalles));
 
     naves = Array.from(document.querySelectorAll(".filtro_nave"));
 
-    naves.forEach((btn) => {
-        btn.addEventListener("click", () => filtrarPorNave(btn.dataset.nave));
-    });
+    naves.forEach((btn) => { btn.addEventListener("click", () => filtrarPorNave(btn.dataset.nave)); });
 
     // Mapear chips del modal mini-mapa: maquina_id -> nodo chip
-    document
-        .querySelectorAll("#modal_maquinas_con_elementos .chip-maq")
-        .forEach((chip) => {
-            const mid = Number(chip.dataset.maquinaId);
-            if (!Number.isNaN(mid)) MODAL_MAQ_CHIPS.set(mid, chip);
-        });
+    document.querySelectorAll("#modal_maquinas_con_elementos .chip-maq").forEach((chip) => {
+        const mid = Number(chip.dataset.maquinaId);
+        if (!Number.isNaN(mid)) MODAL_MAQ_CHIPS.set(mid, chip);
+    });
 
     obras = Array.from(document.querySelectorAll("#obras [data-obras]")).map(
         (div) => JSON.parse(div.dataset.obras)
@@ -355,10 +349,14 @@ function renderPlanillas() {
                 divCodigoPlanilla.className =
                     "codigo text-blue-800 font-semibold";
                 div.dataset.codigo = codigo_planilla;
+                div.dataset.tiempoFabricacionOrdenPlanilla = tiempo;
+                let div2 = document.createElement("div");
+                div2.innerText = formatearTiempo(tiempo);
+                div2.className = "planilla-time absolute top-1 right-1 font-mono text-xs font-semibold text-blue-600 drop-shadow-sm";
 
                 div.appendChild(divPosicion);
                 div.appendChild(divCodigoPlanilla);
-                div.appendChild(tiempo);
+                div.appendChild(div2);
             }
         });
 
@@ -374,6 +372,8 @@ function renderPlanillas() {
     agregarClickAPlanillas();
     initDragAndDrop();
     if (OBRA_HL.active) applyObraHighlight();
+    diccionarioTiempos = obtenerSegundosTotalesPlanillas()
+    aplicarDatasetTiempoPlanilla()
 }
 
 // agregar listener click a las planillas, rehacerlo cada vez que se hagan cambios para evitar problemas con nuevos orden_planillas
@@ -459,13 +459,11 @@ function anadirElemento(padre, elemento, n) {
          data-dimensiones="${elemento.dimensiones ?? ""}"
          data-id="${elemento.id}">
         <div class="flex justify-between items-center w-full">
-            <div class="text-neutral-600 text-xs font-mono font-semibold">${
-                n + 1
-            }</div>
+            <div class="text-neutral-600 text-xs font-mono font-semibold">${n + 1
+        }</div>
             <p>${elemento.codigo ?? ""}</p>
-            <p><span class="text-red-500 font-semibold">Ø</span>${
-                elemento.diametro ?? ""
-            }</p>
+            <p><span class="text-red-500 font-semibold">Ø</span>${elemento.diametro ?? ""
+        }</p>
         </div>
         <canvas id="${idCanvas}" class="w-full h-24 bg-white border border-gray-200 rounded-md"></canvas>
     </div>`;
@@ -546,28 +544,26 @@ function anadirPropiedadTransferible() {
 let _hlCode = null;
 let _hlNodes = [];
 
-function _clearHighlight() {
+function _clearHighlight(force = false) {
+    if (HOVER_LOCK.active && !force) return;
+
     if (_hlNodes.length) {
         _hlNodes.forEach((opd) => {
             if (!opd || !opd.isConnected) return;
             opd.classList.remove("__hl-compi");
-            const maquinaHeader = opd
-                .closest(".maquina")
-                ?.querySelector(":scope > *:first-child");
+            if (opd.classList.contains("obra_resaltada")) setTimeColor(opd, "obra");
+            else setTimeColor(opd, "base");
+
+            const maquinaHeader = opd.closest(".maquina")?.querySelector(":scope > *:first-child");
             if (maquinaHeader) {
-                // vuelve al azul... y luego si hay obra activa, la reponemos abajo
-                maquinaHeader.classList.remove(
-                    "from-orange-400",
-                    "to-orange-500"
-                );
+                maquinaHeader.classList.remove("hl-compi", "from-orange-400", "to-orange-500");
                 maquinaHeader.classList.add("from-blue-600", "to-blue-700");
             }
         });
     }
 
-    // mini-mapa
     MODAL_MAQ_CHIPS.forEach((chip) => {
-        chip.classList.remove("from-orange-400", "to-orange-500");
+        chip.classList.remove("hl-compi", "from-orange-400", "to-orange-500");
         chip.classList.add("from-blue-600", "to-blue-700");
     });
 
@@ -577,92 +573,98 @@ function _clearHighlight() {
     if (OBRA_HL.active) applyObraMachineHighlights();
 }
 
-function resaltarCompis() {
-    const root = document; // o el contenedor que envuelve todas las .planilla
 
+
+function resaltarCompis() {
+    const root = document;
     let ocultarModalesTimeout = null;
 
-    root.addEventListener(
-        "mouseover",
-        (e) => {
-            const card = e.target.closest(".planilla");
+    root.addEventListener("mouseover", (e) => {
+        const card = e.target.closest(".planilla");
 
-            // Si NO estás sobre una card → programa ocultado con delay
-            if (!card) {
-                // opcional: si pasas por encima de los propios modales, no programes ocultado
-                if (
-                    e.target.closest("#modal_detalles") ||
-                    e.target.closest("#modal_maquinas_con_elementos")
-                ) {
-                    return;
-                }
-
-                clearTimeout(ocultarModalesTimeout);
-                ocultarModalesTimeout = setTimeout(() => {
-                    _clearHighlight(); // limpia resaltados
-                    modalDetalles.classList.add("hidden");
-                    modalMapa.classList.add("hidden");
-                }, 1000); // 1 s
-                return;
+        // —— BLOQUEO ACTIVO: mantener resaltados, pero seguir actualizando modales con lo que pases por encima
+        if (HOVER_LOCK.active) {
+            if (card) {
+                const code = (card.dataset.codigo || card.querySelector(".codigo")?.textContent || "").trim();
+                modalDetalles.classList.remove("hidden");
+                modalMapa.classList.remove("hidden");
+                actualizarModalDetalles(code);              // ✅ se actualiza con el hover actual
+                highlightModalMachines(getMachineIdsForCode(code)); // opcional: mini-mapa sigue al hover
             }
+            return; // no tocar los resaltados existentes
+        }
 
-            // Si SÍ estás sobre una card → cancela el ocultado y muestra + resalta
+        // —— SIN BLOQUEO: comportamiento normal
+        if (!card) {
+            if (e.target.closest("#modal_detalles") || e.target.closest("#modal_maquinas_con_elementos")) return;
             clearTimeout(ocultarModalesTimeout);
+            ocultarModalesTimeout = setTimeout(() => {
+                _clearHighlight();
+                modalDetalles.classList.add("hidden");
+                modalMapa.classList.add("hidden");
+            }, 1000);
+            return;
+        }
+
+        clearTimeout(ocultarModalesTimeout);
+        modalDetalles.classList.remove("hidden");
+        modalMapa.classList.remove("hidden");
+
+        const code = (card.dataset.codigo || card.querySelector(".codigo")?.textContent || "").trim();
+        actualizarModalDetalles(code);
+        if (!code || code === _hlCode) return;
+
+        _clearHighlight(true);
+        const matches = document.querySelectorAll(`.planilla[data-codigo="${CSS.escape(code)}"]`);
+        matches.forEach((opd) => {
+            if (opd === card) return;
+            opd.classList.add("__hl-compi");
+            setTimeColor(opd, "compi");
+            const header = opd.closest(".maquina")?.querySelector(":scope > *:first-child");
+            if (header) {
+                header.classList.add("hl-compi");
+                header.classList.remove("from-blue-600", "to-blue-700", "from-fuchsia-400", "to-fuchsia-600");
+                header.classList.add("from-orange-400", "to-orange-500");
+            }
+        });
+
+        highlightModalMachines(getMachineIdsForCode(code));
+        _hlNodes = Array.from(matches);
+        _hlCode = code;
+    }, { passive: true });
+
+    root.addEventListener("mouseout", (e) => {
+        if (HOVER_LOCK.active) return;
+        const to = e.relatedTarget?.closest?.(".planilla");
+        if (to) {
+            const toCode = (to.dataset.codigo || to.querySelector(".codigo")?.textContent || "").trim();
+            if (toCode && toCode === _hlCode) return;
+        }
+        _clearHighlight();
+    }, { passive: true });
+
+    // —— TOGGLE BLOQUEO CON CLICK DERECHO GLOBAL
+    root.addEventListener("contextmenu", (e) => {
+        const card = e.target.closest(".planilla");
+        // Si NO estaba bloqueado: solo activamos si el right-click fue sobre una planilla
+        if (!HOVER_LOCK.active) {
+            if (!card) return; // no activamos si haces right-click en vacío
+            e.preventDefault();
+            HOVER_LOCK.active = true;
+            HOVER_LOCK.code = _hlCode || (card.dataset.codigo || card.querySelector(".codigo")?.textContent || "").trim();
             modalDetalles.classList.remove("hidden");
             modalMapa.classList.remove("hidden");
+            return;
+        }
 
-            const code = (
-                card.dataset.codigo ||
-                card.querySelector(".codigo")?.textContent ||
-                ""
-            ).trim();
-
-            actualizarModalDetalles(code);
-            if (!code || code === _hlCode) return;
-
-            _clearHighlight();
-
-            const matches = document.querySelectorAll(
-                `.planilla[data-codigo="${CSS.escape(code)}"]`
-            );
-            matches.forEach((opd) => {
-                if (opd === card) return;
-                opd.classList.add("__hl-compi");
-                const header = opd
-                    .closest(".maquina")
-                    ?.querySelector(":scope > *:first-child");
-                if (header) {
-                    header.classList.remove("from-blue-600", "to-blue-700");
-                    header.classList.add("from-orange-400", "to-orange-500");
-                }
-            });
-
-            const machineIds = getMachineIdsForCode(code);
-            highlightModalMachines(machineIds);
-
-            _hlNodes = Array.from(matches);
-            _hlCode = code;
-        },
-        { passive: true }
-    );
-
-    root.addEventListener(
-        "mouseout",
-        (e) => {
-            // si sigues dentro de otra .planilla con el mismo código, no limpies
-            const to = e.relatedTarget?.closest?.(".planilla");
-            if (to) {
-                const toCode = (
-                    to.dataset.codigo ||
-                    to.querySelector(".codigo")?.textContent ||
-                    ""
-                ).trim();
-                if (toCode && toCode === _hlCode) return;
-            }
-            _clearHighlight();
-        },
-        { passive: true }
-    );
+        // Si YA estaba bloqueado: cualquier right-click en la página lo desactiva
+        e.preventDefault();
+        HOVER_LOCK.active = false;
+        HOVER_LOCK.code = null;
+        _clearHighlight(true);           // limpieza forzada
+        modalDetalles.classList.add("hidden");
+        modalMapa.classList.add("hidden");
+    });
 }
 
 // elegir a que maquina movel los elementos
@@ -694,9 +696,9 @@ function seleccionarMaquinaParaMovimiento() {
         const min = maq.diametro_min != null ? Number(maq.diametro_min) : null;
         const max = maq.diametro_max != null ? Number(maq.diametro_max) : null;
         const d =
-            el.diametro != null && el.diametro !== ""
-                ? Number(el.diametro)
-                : null;
+            el.diametro != null && el.diametro !== "" ?
+                Number(el.diametro) :
+                null;
         const dentroMin = min == null || d == null || d >= min;
         const dentroMax = max == null || d == null || d <= max;
         return dentroMin && dentroMax;
@@ -794,9 +796,8 @@ function seleccionarMaquinaParaMovimiento() {
             });
 
             maquinaSeleccionadaId = maquina.dataset.id;
-            btn_transferir.innerHTML = `TRANSFERIR A <span class="chiptransferirA transition-all duration-150">${
-                maquina.querySelector("p").innerText
-            }</span>`;
+            btn_transferir.innerHTML = `TRANSFERIR A <span class="chiptransferirA transition-all duration-150">${maquina.querySelector("p").innerText
+                }</span>`;
             btn_transferir.classList.add("text-white");
         };
     });
@@ -833,16 +834,17 @@ function transferirElementos() {
         const dentroMax = max == null || d == null || d <= max;
 
         if (dentroMin && dentroMax) {
-            compatibles.push({ card, el });
+            compatibles.push({
+                card,
+                el
+            });
         } else {
             //  Guardamos info completa para pintar tarjetas como anadirElemento
             noCompatibles.push({
                 id: el.id ?? null,
                 codigo: el.codigo ?? "",
-                diametro:
-                    el.diametro != null && el.diametro !== ""
-                        ? Number(el.diametro).toFixed(2)
-                        : "—",
+                diametro: el.diametro != null && el.diametro !== "" ?
+                    Number(el.diametro).toFixed(2) : "—",
                 dimensiones: el.dimensiones ?? "",
                 peso: el.peso ?? "N/A",
             });
@@ -851,31 +853,29 @@ function transferirElementos() {
 
     // Si hay no compatibles, avisa (pero seguimos con los compatibles)
     if (noCompatibles.length) {
-        const rango = `<b>Ø${min == null ? "sin límite" : min}</b> - <b>Ø${
-            max == null ? "sin límite" : max
-        }</b>`;
+        const rango = `<b>Ø${min == null ? "sin límite" : min}</b> - <b>Ø${max == null ? "sin límite" : max
+            }</b>`;
 
         // Tarjetas tipo "anadirElemento" con canvas (idéntico al drag & drop)
         const cardsHtml = `
       <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 mt-2 max-h-[50vh] overflow-y-scroll">
         ${noCompatibles
-            .map((nc, i) => {
-                const idCanvas = `cv-tf-nc-${nc.id ?? `maq${maquinaId}-i${i}`}`;
-                return `
+                .map((nc, i) => {
+                    const idCanvas = `cv-tf-nc-${nc.id ?? `maq${maquinaId}-i${i}`}`;
+                    return `
               <div class="p-2 w-full no_seleccionado text-center bg-gradient-to-tr from-orange-200 to-orange-300 hover:from-orange-300 hover:to-orange-400 hover:-translate-y-1 cursor-pointer rounded-xl flex flex-col items-center transition-all duration-75"
                    data-peso="${nc.peso ?? ""}"
                    data-dimensiones="${nc.dimensiones ?? ""}"
                    data-id="${nc.id ?? ""}">
                 <div class="flex justify-between items-center w-full">
                   <p>${nc.codigo}</p>
-                  <p><span class="text-red-500 font-semibold">Ø</span>${
-                      nc.diametro
-                  }</p>
+                  <p><span class="text-red-500 font-semibold">Ø</span>${nc.diametro
+                        }</p>
                 </div>
                 <canvas id="${idCanvas}" class="w-full h-24 bg-white border border-gray-200 rounded-md"></canvas>
               </div>`;
-            })
-            .join("")}
+                })
+                .join("")}
       </div>
     `;
 
@@ -885,9 +885,8 @@ function transferirElementos() {
             width: "auto",
             html: `
           <div class="text-left">
-            <p>La máquina <b>${
-                maquina.nombre || maquina.codigo || "#" + maquinaId
-            }</b>
+            <p>La máquina <b>${maquina.nombre || maquina.codigo || "#" + maquinaId
+                }</b>
             admite diámetros: ${rango}.</p>
             <p class="mt-2">Se han descartado del movimiento:</p>
             ${cardsHtml}
@@ -896,9 +895,8 @@ function transferirElementos() {
             didOpen: () => {
                 // Dibujar cada canvas como en anadirElemento
                 noCompatibles.forEach((nc, i) => {
-                    const idCanvas = `cv-tf-nc-${
-                        nc.id ?? `maq${maquinaId}-i${i}`
-                    }`;
+                    const idCanvas = `cv-tf-nc-${nc.id ?? `maq${maquinaId}-i${i}`
+                        }`;
                     const canvas = document.getElementById(idCanvas);
                     if (
                         !canvas ||
@@ -1003,7 +1001,9 @@ function transferirElementos() {
             }
 
             // aplicar SOLO compatibles
-            compatibles.forEach(({ el }) => {
+            compatibles.forEach(({
+                el
+            }) => {
                 el.maquina_id = Number(maquinaId);
                 el.orden_planilla_id = Number(destinoOrdenId);
             });
@@ -1032,7 +1032,9 @@ function transferirElementos() {
         ordenPlanillas.push(nuevaOrdenPlanilla);
 
         // aplicar SOLO compatibles
-        compatibles.forEach(({ el }) => {
+        compatibles.forEach(({
+            el
+        }) => {
             el.maquina_id = Number(maquinaId);
             el.orden_planilla_id = Number(nuevoOrdenId);
         });
@@ -1124,7 +1126,11 @@ function findOrdenesCoincidentes(maquinaId, code) {
 }
 
 // Pinta las coincidencias en el modal_elegir_orden
-function renderModalElegirOrden({ maquinaId, codigo, coincidencias }) {
+function renderModalElegirOrden({
+    maquinaId,
+    codigo,
+    coincidencias
+}) {
     const meo = document.getElementById("modal_elegir_orden");
     cerrarModales(meo);
     const cont = document.getElementById("meo_lista");
@@ -1132,9 +1138,9 @@ function renderModalElegirOrden({ maquinaId, codigo, coincidencias }) {
     const cod = document.getElementById("meo_codigo");
 
     const maq = getMaquinaById(maquinaId);
-    nom.textContent = maq
-        ? maq.nombre || maq.codigo || `#${maquinaId}`
-        : `#${maquinaId}`;
+    nom.textContent = maq ?
+        maq.nombre || maq.codigo || `#${maquinaId}` :
+        `#${maquinaId}`;
     cod.textContent = codigo;
     cont.innerHTML = "";
 
@@ -1244,7 +1250,7 @@ function moveElementsWithOrdenToMachine(ordenId, nuevaMaquinaId) {
 function initDragAndDrop() {
     // limpiar listeners previos (recreamos de forma segura)
     document.querySelectorAll(".planilla").forEach((card) => {
-        card.removeEventListener("_dnd_bound", () => {});
+        card.removeEventListener("_dnd_bound", () => { });
     });
 
     const cards = document.querySelectorAll(".planilla");
@@ -1285,8 +1291,9 @@ function initDragAndDrop() {
                 }
 
                 reindexPreview(c, DND.placeholder);
-            },
-            { passive: false }
+            }, {
+            passive: false
+        }
         );
 
         c.addEventListener("dragleave", (e) => {
@@ -1309,7 +1316,7 @@ function initDragAndDrop() {
                     "text/plain",
                     DND.draggingEl.dataset.ordenId || ""
                 );
-            } catch {}
+            } catch { }
         });
 
         card.addEventListener("dragend", () => {
@@ -1349,13 +1356,13 @@ function initDragAndDrop() {
             if (targetMachineId != null) {
                 const maquina = getMaquinaById(targetMachineId);
                 const min =
-                    maquina?.diametro_min != null
-                        ? Number(maquina.diametro_min)
-                        : null;
+                    maquina?.diametro_min != null ?
+                        Number(maquina.diametro_min) :
+                        null;
                 const max =
-                    maquina?.diametro_max != null
-                        ? Number(maquina.diametro_max)
-                        : null;
+                    maquina?.diametro_max != null ?
+                        Number(maquina.diametro_max) :
+                        null;
 
                 // elementos de la orden que se pretende mover
                 const elemsOrden = elementos.filter(
@@ -1371,10 +1378,8 @@ function initDragAndDrop() {
                         noCompat.push({
                             id: el.id ?? null,
                             codigo: el.codigo ?? "",
-                            diametro:
-                                el.diametro != null && el.diametro !== ""
-                                    ? Number(el.diametro).toFixed(2)
-                                    : "—",
+                            diametro: el.diametro != null && el.diametro !== "" ?
+                                Number(el.diametro).toFixed(2) : "—",
                             dimensiones: el.dimensiones ?? "",
                             peso: el.peso ?? "N/A",
                         });
@@ -1387,41 +1392,39 @@ function initDragAndDrop() {
                         src.insertBefore(
                             draggingRef,
                             src.children[
-                                calcDropIndex(
-                                    src,
-                                    draggingRef.getBoundingClientRect().top
-                                )
+                            calcDropIndex(
+                                src,
+                                draggingRef.getBoundingClientRect().top
+                            )
                             ]
                         );
                         reindexDOMColumn(src);
                     }
                     reindexDOMColumn(dst);
 
-                    const rango = `<b>Ø${
-                        min == null ? "sin límite" : min
-                    }</b> - <b>Ø${max == null ? "sin límite" : max}</b>`;
+                    const rango = `<b>Ø${min == null ? "sin límite" : min
+                        }</b> - <b>Ø${max == null ? "sin límite" : max}</b>`;
 
                     // tarjetas tipo "anadirElemento" con canvas
                     const cardsHtml = `
     <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 mt-2 max-h-[50vh] overflow-y-scroll">
       ${noCompat
-          .map((nc, i) => {
-              const idCanvas = `cv-nc-${nc.id ?? `ord${ordenId}-i${i}`}`;
-              return `
+                            .map((nc, i) => {
+                                const idCanvas = `cv-nc-${nc.id ?? `ord${ordenId}-i${i}`}`;
+                                return `
         <div class="p-2 w-full no_seleccionado text-center bg-gradient-to-tr from-orange-200 to-orange-300 hover:from-orange-300 hover:to-orange-400 hover:-translate-y-1 cursor-pointer rounded-xl flex flex-col items-center transition-all duration-75"
              data-peso="${nc.peso ?? ""}"
              data-dimensiones="${nc.dimensiones ?? ""}"
              data-id="${nc.id ?? ""}">
           <div class="flex justify-between items-center w-full">
             <p>${nc.codigo}</p>
-            <p><span class="text-red-500 font-semibold">Ø</span>${
-                nc.diametro
-            }</p>
+            <p><span class="text-red-500 font-semibold">Ø</span>${nc.diametro
+                                    }</p>
           </div>
           <canvas id="${idCanvas}" class="w-full h-24 bg-white border border-gray-200 rounded-md"></canvas>
         </div>`;
-          })
-          .join("")}
+                            })
+                            .join("")}
     </div>
   `;
 
@@ -1442,15 +1445,14 @@ function initDragAndDrop() {
                         didOpen: () => {
                             // dibujar cada canvas como en anadirElemento
                             noCompat.forEach((nc, i) => {
-                                const idCanvas = `cv-nc-${
-                                    nc.id ?? `ord${ordenId}-i${i}`
-                                }`;
+                                const idCanvas = `cv-nc-${nc.id ?? `ord${ordenId}-i${i}`
+                                    }`;
                                 const canvas =
                                     document.getElementById(idCanvas);
                                 if (
                                     !canvas ||
                                     typeof window.dibujarFiguraElemento !==
-                                        "function"
+                                    "function"
                                 )
                                     return;
 
@@ -1696,8 +1698,7 @@ async function guardarCambios() {
         // ✅ Modal de éxito (mensaje del backend)
         await Swal.fire({
             icon: "success",
-            title:
-                data?.message || "Movimiento(s) registrado(s) correctamente.",
+            title: data?.message || "Movimiento(s) registrado(s) correctamente.",
             timer: 1600,
             showConfirmButton: false,
         });
@@ -1706,8 +1707,7 @@ async function guardarCambios() {
         await Swal.fire({
             icon: "error",
             title: "Error al guardar",
-            text:
-                err?.message ||
+            text: err?.message ||
                 "Se produjo un error de red o el servidor devolvió una respuesta no válida.",
         });
     }
@@ -1743,32 +1743,27 @@ function mostrarModalResaltarObra() {
 }
 
 function actualizarModalDetalles(idPlanilla) {
-    let amd_planilla;
-    for (let i = 0; i < planillas.length; i++) {
-        if (planillas[i].codigo == idPlanilla) {
-            amd_planilla = planillas[i];
-            break;
-        }
-    }
+    const codigo = String(idPlanilla).trim();
+    const amd_planilla = planillas.find(p => String(p.codigo).trim() === codigo);
+    if (!amd_planilla) return;
 
-    let amd_response;
+    // lee del dataset (si existe) o del Map como respaldo
+    const card = document.querySelector(`.planilla[data-codigo="${CSS.escape(codigo)}"]`);
+    const segMax = Number(card?.dataset.tiempoTotalPlanilla) || Number(diccionarioTiempos.get(codigo)) || 0;
 
-    console.log(amd_planilla);
-    // obtener tiempoAcumulado de la planilla
-    let tiempoAcumuladoPlanilla = 0;
-
-    amd_response = {
+    const amd_response = {
         0: amd_obtenederObra(amd_planilla.obra_id),
-        1: amd_planilla.estado.toUpperCase(),
-        2: tiempoAcumuladoPlanilla,
+        1: String(amd_planilla.estado || "").toUpperCase(),
+        2: fechaMasSegundosTexto(segMax),
         3: amd_planilla.estimacion_entrega,
     };
 
     for (let i = 0; i < 4; i++) {
-        modalDetalles.children[i].querySelector("span").innerText =
-            amd_response[i];
+        modalDetalles.children[i].querySelector("span").innerText = amd_response[i] ?? "";
     }
 }
+
+
 
 function amd_obtenederObra(idObra) {
     for (let i = 0; i < obras.length; i++) {
@@ -1815,6 +1810,7 @@ function applyObraStylesToCard(card) {
     codEl?.classList.remove("text-blue-800");
     posEl?.classList.add("text-fuchsia-700");
     codEl?.classList.add("text-fuchsia-700");
+    setTimeColor(card, "obra");
 }
 
 function resetObraStylesOnCard(card) {
@@ -1841,6 +1837,7 @@ function resetObraStylesOnCard(card) {
     posEl?.classList.add("text-blue-600", "group-hover:text-black");
     codEl?.classList.remove("text-fuchsia-700");
     codEl?.classList.add("text-blue-800");
+    setTimeColor(card, "base");
 }
 
 function applyObraHighlight() {
@@ -1872,7 +1869,11 @@ function setObraHighlight(obraId) {
 }
 
 function clearObraHighlight() {
-    OBRA_HL = { active: false, id: null, codes: new Set() };
+    OBRA_HL = {
+        active: false,
+        id: null,
+        codes: new Set()
+    };
     clearObraHighlightUI();
 }
 
@@ -1914,23 +1915,24 @@ function getMachineIdsForCode(code) {
 }
 
 function highlightModalMachines(machineIds) {
-    // reset compi (a azul) para todos antes de pintar naranja
+    // 1) Reset total a estado base (azul) y sin prioridad compi
     MODAL_MAQ_CHIPS.forEach((chip) => {
-        chip.classList.remove("from-orange-400", "to-orange-500");
+        chip.classList.remove("hl-compi",
+            "from-orange-400", "to-orange-500",
+            "from-fuchsia-400", "to-fuchsia-600");
+        chip.classList.add("from-blue-600", "to-blue-700");
     });
 
+    // 2) Pintar solo las máquinas implicadas en naranja (prioridad compi)
     machineIds.forEach((id) => {
         const chip = MODAL_MAQ_CHIPS.get(Number(id));
         if (!chip) return;
-        chip.classList.remove(
-            "from-blue-600",
-            "to-blue-700",
-            "from-fuchsia-400",
-            "to-fuchsia-600"
-        );
+        chip.classList.add("hl-compi");
+        chip.classList.remove("from-blue-600", "to-blue-700", "from-fuchsia-400", "to-fuchsia-600");
         chip.classList.add("from-orange-400", "to-orange-500");
     });
 }
+
 
 function clearModalMachineHighlights() {
     MODAL_MAQ_CHIPS.forEach((chip) => {
@@ -1954,39 +1956,29 @@ function getMachineIdsForObraCodes(codesSet) {
 /* ----- COLUMNAS (headers arriba de .maquina) ----- */
 function clearObraColumnHeaderHighlights() {
     document.querySelectorAll(".maquina > :first-child").forEach((h) => {
+        if (h.classList.contains("hl-compi")) return; // prioridad compis
         h.classList.remove("from-fuchsia-400", "to-fuchsia-600");
-        // vuelve al azul base si no está forzado en naranja por “compis”
-        if (!h.classList.contains("from-orange-400")) {
-            h.classList.add("from-blue-600", "to-blue-700");
-        }
+        h.classList.add("from-blue-600", "to-blue-700");
     });
 }
 
 function highlightObraColumnHeaders(machineIds) {
     clearObraColumnHeaderHighlights();
     machineIds.forEach((id) => {
-        const col = document.querySelector(
-            `.maquina[data-maquina-id="${id}"] > :first-child`
-        );
-        if (!col) return;
-        col.classList.remove(
-            "from-blue-600",
-            "to-blue-700",
-            "from-orange-400",
-            "to-orange-500"
-        );
+        const col = document.querySelector(`.maquina[data-maquina-id="${id}"] > :first-child`);
+        if (!col || col.classList.contains("hl-compi")) return; // prioridad compis
+        col.classList.remove("from-blue-600", "to-blue-700", "from-orange-400", "to-orange-500");
         col.classList.add("from-fuchsia-400", "to-fuchsia-600");
     });
 }
 
+
 /* ----- MINI-MAPA (chips de #modal_maquinas_con_elementos) ----- */
 function clearObraModalMachineHighlights() {
     MODAL_MAQ_CHIPS?.forEach((chip) => {
+        if (chip.classList.contains("hl-compi")) return; // prioridad compis
         chip.classList.remove("from-fuchsia-400", "to-fuchsia-600");
-        // si no está en naranja por compis, vuelve al azul
-        if (!chip.classList.contains("from-orange-400")) {
-            chip.classList.add("from-blue-600", "to-blue-700");
-        }
+        chip.classList.add("from-blue-600", "to-blue-700");
     });
 }
 
@@ -1994,16 +1986,12 @@ function highlightObraModalMachines(machineIds) {
     clearObraModalMachineHighlights();
     machineIds.forEach((id) => {
         const chip = MODAL_MAQ_CHIPS?.get(Number(id));
-        if (!chip) return;
-        chip.classList.remove(
-            "from-blue-600",
-            "to-blue-700",
-            "from-orange-400",
-            "to-orange-500"
-        );
+        if (!chip || chip.classList.contains("hl-compi")) return; // prioridad compis
+        chip.classList.remove("from-blue-600", "to-blue-700", "from-orange-400", "to-orange-500");
         chip.classList.add("from-fuchsia-400", "to-fuchsia-600");
     });
 }
+
 
 /* Util centralizado para (re)aplicar highlight de obra a máquinas */
 function applyObraMachineHighlights() {
@@ -2043,16 +2031,22 @@ function ensureSelectAllToolbar() {
             ".no_seleccionado, .seleccionado"
         ).length;
         const sel = cont.querySelectorAll(".seleccionado").length;
-        return { total, sel };
+        return {
+            total,
+            sel
+        };
     };
 
     const updateLabel = () => {
-        const { total, sel } = counts();
+        const {
+            total,
+            sel
+        } = counts();
         // ✅ sin cantidades en el texto
         btnSel.textContent =
-            sel === total && total > 0
-                ? "Quitar selección"
-                : "Seleccionar todos";
+            sel === total && total > 0 ?
+                "Quitar selección" :
+                "Seleccionar todos";
     };
 
     const setAllSeleccionados = (on) => {
@@ -2087,7 +2081,10 @@ function ensureSelectAllToolbar() {
 
     // Click toggle (recalcula siempre total/sel)
     btnSel.onclick = () => {
-        const { total, sel } = counts();
+        const {
+            total,
+            sel
+        } = counts();
         const seleccionar = sel < total; // si no están todos, selecciona; si ya están todos, des-selecciona
         setAllSeleccionados(seleccionar);
         updateLabel();
@@ -2124,7 +2121,8 @@ function calcularTiempoFabricacion(maq, planilla) {
     // planilla => ordenPlanilla => {id: 9586, maquina_id: 8, planilla_id: 3294, posicion: 2}
     // elemento => elemento
 
-    let tiempoFabricacionOrdenPlanilla = [];
+    let tiempoFabricacionOrdenPlanilla = 0;
+
     elementos.forEach((elemento) => {
         if (planilla.id == elemento.orden_planilla_id) {
             tiempoFabricacionOrdenPlanilla += Number(
@@ -2133,9 +2131,89 @@ function calcularTiempoFabricacion(maq, planilla) {
         }
     });
 
-    let div = document.createElement("div");
-    div.innerText = tiempoFabricacionOrdenPlanilla + "s";
-    planilla.tiempoTotalOrdenPlanilla = tiempoFabricacionOrdenPlanilla;
-    console.log(planilla)
-    return div;
+    return tiempoFabricacionOrdenPlanilla;
+}
+
+// 1) Recalcular segundos totales por planilla (máximo entre máquinas)
+function obtenerSegundosTotalesPlanillas() {
+    const mapMax = new Map(); // code -> max segundos (entre todas las máquinas)
+
+    maquinasDivs.forEach((maqDiv) => {
+        const cont = maqDiv.querySelector(".planillas");
+        if (!cont) return;
+
+        const cards = Array.from(cont.querySelectorAll(".planilla"));
+        let cum = 0; // acumulado en ESTA máquina
+
+        cards.forEach((card, idx) => {
+            const gap = idx > 0 ? 1200 : 0; // 20 minutos entre OP
+            cum += gap;
+
+            const own = Number(card.dataset.tiempoFabricacionOrdenPlanilla) || 0;
+            const code = (card.dataset.codigo || "").trim();
+
+            const finishHere = cum + own; // fin si esta OP es la "objetivo"
+            cum += own; // suma su propio tiempo para la siguiente
+
+            if (code) {
+                const prev = mapMax.get(code) || 0;
+                // nos quedamos con el mayor finish de ese código (entre todas las máquinas)
+                if (finishHere > prev) mapMax.set(code, finishHere);
+            }
+        });
+    });
+
+    return mapMax;
+}
+
+
+// 2) Escribir ese máximo en data-tiempo-total-planilla de cada card
+function aplicarDatasetTiempoPlanilla() {
+    const cards = Array.from(document.getElementsByClassName("planilla"));
+    cards.forEach(card => {
+        const code = (card.dataset.codigo || "").trim();
+        const total = Number(diccionarioTiempos.get(code)) || 0;
+        card.dataset.tiempoTotalPlanilla = String(total);
+    });
+}
+
+
+// helper: devuelve un texto con la fecha/hora actual + N segundos
+function fechaMasSegundosTexto(segundos) {
+    const d = new Date(Date.now() + (Number(segundos) || 0) * 1000);
+    const fecha = d.toLocaleDateString("es-ES", {
+        year: "numeric", month: "2-digit", day: "2-digit",
+    });
+    const hora = d.toLocaleTimeString("es-ES", {
+        hour: "2-digit", minute: "2-digit",
+    });
+    return `${fecha} ${hora}`;
+}
+
+
+function formatearTiempo(segundos) {
+    segundos = Math.floor(Number(segundos) || 0);
+    const h = Math.floor(segundos / 3600);
+    const m = Math.floor((segundos % 3600) / 60);
+    const s = segundos % 60;
+
+    // formatea con ceros
+    const hh = h > 0 ? String(h).padStart(2, "0") + ":" : "";
+    const mm = (h > 0 || m > 0) ? String(m).padStart(2, "0") + ":" : "";
+    const ss = String(s).padStart(2, "0");
+
+    return hh + mm + ss;
+}
+
+function setTimeColor(card, mode) {
+    const t = card.querySelector(".planilla-time");
+    if (!t) return;
+    t.classList.remove("text-blue-600", "text-orange-600", "text-fuchsia-700");
+    if (mode === "compi") {
+        t.classList.add("text-orange-600");
+    } else if (mode === "obra") {
+        t.classList.add("text-fuchsia-700");
+    } else {
+        t.classList.add("text-blue-600");
+    }
 }
