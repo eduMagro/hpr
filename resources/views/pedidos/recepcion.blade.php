@@ -5,7 +5,7 @@
                 {{ __('Movimientos') }}
             </a>
             <span class="mx-2">/</span>
-            {{ $pedido->codigo }}
+            {{ $linea->codigo ?? $pedido->codigo }}
         </h2>
     </x-slot>
 
@@ -272,40 +272,40 @@
         }
 
         /* ============================================
-   OPTIMIZACIONES MÓVILES - EVITAR TECLADO
+   OPTIMIZACIONES MÓVILES - MEJORADAS
    ============================================ */
         @media (max-width: 768px) {
 
-            /* Contenedor pegado arriba */
+            /* Contenedor alineado más arriba - CASI SIN PADDING */
             .swal2-container {
                 align-items: flex-start !important;
-                padding: 0 !important;
-                padding-top: 10px !important;
+                padding: 0px 10px 20px 10px !important;
+                display: flex !important;
+                justify-content: center !important;
             }
 
-            /* Modal fijo en la parte superior */
+            /* Modal sin altura fija - se ajusta al contenido */
             .swal2-popup {
-                position: fixed !important;
-                top: 10px !important;
-                left: 50% !important;
-                transform: translateX(-50%) !important;
+                position: relative !important;
+                top: auto !important;
+                left: auto !important;
+                transform: none !important;
                 width: calc(100vw - 20px) !important;
                 max-width: 500px !important;
-                margin: 0 !important;
-                padding: 15px !important;
-                max-height: 50vh !important;
-                /* ⚠️ CLAVE: Limitar altura a mitad de pantalla */
-                overflow-y: auto !important;
+                margin: -80px auto 0 auto !important;
+                /* ✅ Aumentado a -80px para subir mucho más */
+                padding: 20px 15px !important;
+                max-height: none !important;
+                overflow-y: visible !important;
             }
 
-            /* Contenido compacto y scrolleable */
+            /* Contenido sin scroll - altura automática */
             .swal2-html-container {
                 margin: 10px 0 !important;
                 padding: 0 !important;
                 font-size: 15px !important;
-                max-height: calc(50vh - 180px) !important;
-                /* Ajustar según altura modal */
-                overflow-y: auto !important;
+                max-height: none !important;
+                overflow-y: visible !important;
                 -webkit-overflow-scrolling: touch !important;
             }
 
@@ -318,7 +318,7 @@
 
             /* Botones compactos pero visibles */
             .swal2-actions {
-                margin: 10px 0 0 0 !important;
+                margin: 15px 0 0 0 !important;
                 padding: 0 !important;
                 gap: 8px !important;
             }
@@ -402,30 +402,39 @@
             .keyboard-hint {
                 display: none !important;
             }
+
+            /* PERMITIR SCROLL DEL BODY cuando sea necesario */
+            body {
+                overflow: auto !important;
+                position: relative !important;
+                width: auto !important;
+            }
         }
 
         /* Dispositivos muy pequeños */
         @media (max-width: 375px) {
             .swal2-container {
-                padding-top: 5px !important;
+                padding: 0px 8px 20px 8px !important;
             }
 
             .swal2-popup {
-                top: 5px !important;
                 width: calc(100vw - 16px) !important;
-                padding: 12px !important;
+                padding: 15px 12px !important;
+                margin: -80px auto 0 auto !important;
+                /* ✅ Aumentado a -80px */
             }
         }
 
         /* Orientación horizontal */
         @media (max-height: 500px) and (orientation: landscape) {
-            .swal2-popup {
-                max-height: 80vh !important;
-                padding: 10px !important;
+            .swal2-container {
+                padding: 0px 10px 10px 10px !important;
             }
 
-            .swal2-html-container {
-                max-height: calc(80vh - 150px) !important;
+            .swal2-popup {
+                padding: 15px 10px !important;
+                margin: -60px auto 0 auto !important;
+                /* ✅ Aumentado a -60px */
             }
 
             .step-indicator {
@@ -436,51 +445,6 @@
             .swal2-title {
                 font-size: 16px !important;
                 margin-bottom: 8px !important;
-            }
-        }
-
-
-
-        /* Tablets en landscape */
-        @media (min-width: 768px) and (max-width: 1024px) {
-            .swal2-popup {
-                width: 85vw !important;
-                max-width: 600px !important;
-            }
-
-            .swal2-input,
-            .swal2-select {
-                font-size: 15px !important;
-            }
-        }
-
-        /* Desktop */
-        @media (min-width: 1024px) {
-            .swal2-popup {
-                width: auto !important;
-                max-width: 600px !important;
-            }
-        }
-
-        /* Orientación horizontal en móvil */
-        @media (max-height: 500px) and (orientation: landscape) {
-            .swal2-popup {
-                margin: 5px auto !important;
-                padding: 15px !important;
-            }
-
-            .step-indicator {
-                padding: 8px;
-                margin-bottom: 10px;
-            }
-
-            .keyboard-hint {
-                font-size: 10px;
-                margin-top: 8px;
-            }
-
-            .swal2-title {
-                font-size: 18px !important;
             }
         }
 
@@ -734,16 +698,6 @@
                 this.currentStep = 0;
                 this.data = {};
                 await this.showStep();
-
-                // Al final, limpiar estilos cuando se cierre
-                const cleanup = () => {
-                    document.body.style.overflow = '';
-                    document.body.style.position = '';
-                    document.body.style.width = '';
-                };
-
-                // Agregar cleanup al finish
-                window.addEventListener('beforeunload', cleanup);
             }
 
             async showStep() {
@@ -785,7 +739,7 @@
                     didOpen: () => {
                         this.setupKeyboardNavigation();
                         this.setupStepSpecificBehavior(step);
-                        this.adjustForMobile();
+
                     },
                     preConfirm: () => {
                         return this.getStepValue(step);
@@ -879,40 +833,7 @@
                 }
             }
 
-            adjustForMobile() {
-                if (!this.isMobile) return;
 
-                const popup = Swal.getPopup();
-                if (popup) {
-                    popup.scrollTop = 0;
-
-                    // ✅ Fijar el popup para que no se mueva
-                    popup.style.position = 'fixed';
-                    popup.style.top = '10px';
-
-                    // ✅ Prevenir scroll del body cuando el modal está abierto
-                    document.body.style.overflow = 'hidden';
-                    document.body.style.position = 'fixed';
-                    document.body.style.width = '100%';
-                }
-
-                // Prevenir zoom en iOS
-                const inputs = document.querySelectorAll('.swal2-input, .swal2-select');
-                inputs.forEach(input => {
-                    input.style.fontSize = '16px';
-
-                    // ✅ Cuando el input recibe foco, asegurar que esté visible
-                    input.addEventListener('focus', (e) => {
-                        setTimeout(() => {
-                            // Scroll suave al input dentro del modal
-                            e.target.scrollIntoView({
-                                behavior: 'smooth',
-                                block: 'nearest'
-                            });
-                        }, 100);
-                    });
-                });
-            }
 
             buildStepHTML(step, stepNumber, totalSteps) {
                 // Construir indicador de pasos
