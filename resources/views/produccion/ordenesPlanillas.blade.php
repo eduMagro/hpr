@@ -12,7 +12,8 @@
             <h1 class="text-2xl font-bold mb-4">🧾 Planificación por Orden</h1>
             <div class="flex gap-5">
 
-                <button id="btn_mostrar_modal_obras" onclick="mostrarModalResaltarObra()"
+                <button id="btn_mostrar_modal_obras"
+                    onclick="mostrarModalResaltarObra()"
                     class="p-2 bg-gradient-to-r text-neutral-600 hover:text-white from-neutral-500/30 to-neutral-600/30 hover:from-neutral-500 hover:to-neutral-600 uppercase font-bold text-sm rounded-lg transition-all duration-75 hover:-translate-y-[1px]">Resaltar
                     por obra</button>
                 <button id="btn_quitar_resaltado" onclick="resaltarObra(1)"
@@ -39,7 +40,8 @@
             </div>
         </div>
 
-        <div id="maquinas" class="rounded-xl gap-2 flex overflow-x-scroll  h-[calc(100vh-125px)] mt-3">
+        <div id="maquinas"
+            class="rounded-xl gap-2 flex overflow-x-scroll  h-[calc(100vh-125px)] mt-3">
             @forelse($maquinas as $maq)
                 @php
                     foreach ($localizacionMaquinas as $loc) {
@@ -65,10 +67,12 @@
                 @endphp
 
                 <div class="maquina flex flex-col w-full min-w-[100px] bg-neutral-200 rounded-t-xl"
-                    data-detalles='@json($detalles)' data-maquina-id="{{ $detalles['id'] }}">
+                    data-detalles='@json($detalles)'
+                    data-maquina-id="{{ $detalles['id'] }}">
                     <div
                         class="bg-gradient-to-r from-blue-600 to-blue-700 w-full h-12 p-2 rounded-t-xl flex items-center justify-center text-white shadow-md uppercase font-bold text-xl">
-                        <p class="uppercase text-2xl font-mono">{{ $detalles['codigo'] }}</p>
+                        <p class="uppercase text-2xl font-mono">
+                            {{ $detalles['codigo'] }}</p>
                     </div>
 
                     <div
@@ -92,7 +96,8 @@
         </div>
 
 
-        <div id="modal_guardar" data-save-url="{{ route('produccion.planillas.guardar') }}"
+        <div id="modal_guardar"
+            data-save-url="{{ route('produccion.planillas.guardar') }}"
             class="opacity-0 gap-2 absolute flex -bottom-14 left-1/2 -translate-x-1/2 transition-all duration-150">
             <button id="btn_guardar"
                 class="p-2 px-10 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 rounded-xl hover:text-white font-semibold transition-all duration-150">
@@ -137,7 +142,8 @@
                         <div data-id="{{ $maq->id }}"
                             class="p-3 flex maquina_transferir justify-between gap-10 items-center cursor-pointer maquina_no_seleccionada hover:-translate-y-[1px] transition-all duration-75 shadow-sm rounded-lg">
                             {{-- Nombre máquina (izquierda) --}}
-                            <p class="text-indigo-900 font-mono font-extrabold uppercase">
+                            <p
+                                class="text-indigo-900 font-mono font-extrabold uppercase">
                                 {{ $maq->nombre }}
                             </p>
 
@@ -173,10 +179,12 @@
 
             <div
                 class="bg-neutral-100 shadow-lg rounded-lg p-3 flex flex-col gap-4 items-center min-w-[calc(100vw-40vw)]">
-                <div class="uppercase font-medium">Seleccione obra para resaltar</div>
+                <div class="uppercase font-medium">Seleccione obra para resaltar
+                </div>
 
                 <div>
-                    <input id="input_filtrar_obra" type="text" placeholder="Filtrar por nombre"
+                    <input id="input_filtrar_obra" type="text"
+                        autocomplete="off" placeholder="Filtrar por nombre"
                         class="p-2 focus:outline-none border-b-2 bg-transparent border-fuchsia-300 placeholder-neutral-500 font-mono font-semibold">
                 </div>
 
@@ -187,7 +195,8 @@
                     @foreach ($obras as $obra)
                         <div data-id="{{ $obra->id }}"
                             class="p-3 flex obra justify-between gap-10 items-center cursor-pointer obra_no_seleccionada hover:-translate-y-[1px] transition-all duration-75 shadow-sm rounded-lg bg-gradient-to-tr from-neutral-200 to-neutral-300 hover:from-fuchsia-300 hover:to-fuchsia-400 hover:text-fuchsia-900">
-                            <p class="uppercase font-mono font-semibold">{{ $obra->obra }}</p>
+                            <p class="uppercase font-mono font-semibold">
+                                {{ $obra->obra }}</p>
                         </div>
                     @endforeach
                 </div>
@@ -199,10 +208,13 @@
             class="bg-black bg-opacity-50 absolute top-0 left-0 w-screen h-screen flex items-center justify-center hidden backdrop-blur-sm">
             <div id="div_elementos"
                 class="flex flex-col transition-all duration-100 p-3 bg-neutral-100 rounded-xl shadow-xl gap-3 items-center">
-                <div class="uppercase flex justify-between items-center pt-2 w-full px-5">
+                <div
+                    class="uppercase flex justify-between items-center pt-2 w-full px-5">
                     <div class="flex">
-                        <p>Elementos de <span id="seleccion_planilla_codigo" class="chip">****-******</span></p>
-                        <p>en máquina <span id="seleccion_maquina_tag" class="chip">****</span></p1>
+                        <p>Elementos de <span id="seleccion_planilla_codigo"
+                                class="chip">****-******</span></p>
+                        <p>en máquina <span id="seleccion_maquina_tag"
+                                class="chip">****</span></p1>
                     </div>
                     <div id="header_seleecionar_elementos"></div>
                 </div>
@@ -229,13 +241,15 @@
             <div
                 class="bg-neutral-100 shadow-lg rounded-lg p-4 flex flex-col gap-4 items-center min-w-[calc(100vw-40vw)]">
                 <div class="uppercase font-semibold text-center">
-                    Coincidencias en <span id="meo_maquina_nombre" class="font-mono text-orange-700"></span>
+                    Coincidencias en <span id="meo_maquina_nombre"
+                        class="font-mono text-orange-700"></span>
                 </div>
 
                 <div class="text-sm text-gray-700 text-center">
-                    Ya existen planillas con el mismo código <span id="meo_codigo"
-                        class="font-mono font-semibold"></span>.
-                    Selecciona una para fusionar (los elementos pasarán a esa orden) o crea una nueva al final.
+                    Ya existen planillas con el mismo código <span
+                        id="meo_codigo" class="font-mono font-semibold"></span>.
+                    Selecciona una para fusionar (los elementos pasarán a esa
+                    orden) o crea una nueva al final.
                 </div>
 
                 <div id="meo_lista"
@@ -246,9 +260,12 @@
                 </div>
 
                 <div class="w-full">
-                    <label class="flex items-center gap-2 p-2 rounded-lg border cursor-pointer hover:bg-neutral-50">
-                        <input type="radio" name="meo_opcion" value="__crear_nueva__">
-                        <span class="text-sm font-semibold">Crear nueva orden al final</span>
+                    <label
+                        class="flex items-center gap-2 p-2 rounded-lg border cursor-pointer hover:bg-neutral-50">
+                        <input type="radio" name="meo_opcion"
+                            value="__crear_nueva__">
+                        <span class="text-sm font-semibold">Crear nueva orden al
+                            final</span>
                     </label>
                 </div>
 
@@ -492,6 +509,13 @@
         #modal_detalles span {
             color: black;
             font-size: 1rem;
+        }
+
+        .planilla.late-code,
+        .planilla.late-culprit {
+            border-color: #ef4444 !important;
+            /* red-500/600 */
+            box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.4) !important;
         }
     </style>
 
