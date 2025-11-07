@@ -37,7 +37,8 @@ class Producto extends Model
         'updated_at' => 'datetime',
     ];
 
-    // En app/Models/Producto.php
+
+
     public function setCodigoAttribute($value)
     {
         $this->attributes['codigo'] = strtoupper($value);
@@ -72,6 +73,10 @@ class Producto extends Model
     public function buscaConsumiendo($query)
     {
         return $query->where('estado', 'consumiendo')->whereNotNull('maquina_id');
+    }
+    public function consumidoPor()
+    {
+        return $this->belongsTo(User::class, 'consumido_by');
     }
     // Relación con los elementos que están asociados a este producto
     public function elementos()

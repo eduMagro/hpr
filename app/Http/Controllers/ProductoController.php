@@ -254,22 +254,8 @@ class ProductoController extends Controller
             'entrada:id,albaran',
             'ubicacion:id,nombre',
             'maquina:id,nombre',
-            'obra:id,obra'
-        ])->select([
-            'id',
-            'codigo',
-            'obra_id',
-            'fabricante_id',
-            'entrada_id',
-            'producto_base_id',
-            'n_colada',
-            'n_paquete',
-            'peso_inicial',
-            'peso_stock',
-            'estado',
-            'ubicacion_id',
-            'maquina_id',
-            'created_at'
+            'obra:id,obra',
+            'consumidoPor'
         ]);
 
         // Aplicar filtros y ordenamiento de forma segura
@@ -281,7 +267,7 @@ class ProductoController extends Controller
             'id'             => $this->getOrdenamiento('id', 'ID Materia Prima'),
             'entrada_id'     => $this->getOrdenamiento('entrada_id', 'Albarán'),
             'codigo'         => $this->getOrdenamiento('codigo', 'Código'),
-            'nave' => $this->getOrdenamiento('nave', 'Nave'),
+            'nave'           => $this->getOrdenamiento('nave', 'Nave'),
             'fabricante'     => $this->getOrdenamiento('fabricante', 'Fabricante'),
             'tipo'           => $this->getOrdenamiento('tipo', 'Tipo'),
             'diametro'       => $this->getOrdenamiento('diametro', 'Diámetro'),
@@ -292,7 +278,7 @@ class ProductoController extends Controller
             'peso_stock'     => $this->getOrdenamiento('peso_stock', 'Peso Stock'),
             'estado'         => $this->getOrdenamiento('estado', 'Estado'),
             'ubicacion'      => $this->getOrdenamiento('ubicacion', 'Ubicación'),
-            'created_at'      => $this->getOrdenamiento('created_at', 'Fecha de Creación'),
+            'created_at'     => $this->getOrdenamiento('created_at', 'Fecha de Creación'),
         ];
 
         // Si no se está filtrando por estado ni código, excluir consumido/fabricando
@@ -599,7 +585,7 @@ class ProductoController extends Controller
         if (auth()->user()->rol !== 'oficina') {
             return redirect()->route('productos.index')->with('abort', 'No tienes los permisos necesarios.');
         }
-        \Log::info('Borrando producto ' . ($producto->codigo ?? ('ID ' . $producto->id)) . ' por el usuario ' . (auth()->user()->nombre_completo ?? 'desconocido'));
+        Log::info('Borrando producto ' . ($producto->codigo ?? ('ID ' . $producto->id)) . ' por el usuario ' . (auth()->user()->nombre_completo ?? 'desconocido'));
         $producto->delete();
 
         return redirect()->route('productos.index')->with('success', 'Producto eliminado exitosamente.');

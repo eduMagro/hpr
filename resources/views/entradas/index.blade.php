@@ -8,13 +8,11 @@
             <table class="w-full border text-sm text-center">
                 <thead class="bg-blue-600 text-white uppercase text-xs">
                     <tr>
-                        <th class="px-3 py-2 border">{!! $ordenables['pedido_producto_id'] ?? 'Línea de pedido' !!}</th>
+                        <th class="px-3 py-2 border">{!! $ordenables['codigo_linea'] ?? 'Código Línea' !!}</th>
                         <th class="px-3 py-2 border">{!! $ordenables['albaran'] ?? 'Albarán' !!}</th>
                         <th class="px-3 py-2 border">{!! $ordenables['codigo_sage'] ?? 'Código SAGE' !!}</th>
                         <th class="px-3 py-2 border">{!! $ordenables['nave_id'] ?? 'Nave' !!}</th>
-                        {{-- ✅ NUEVA COLUMNA --}}
                         <th class="px-3 py-2 border">Producto Base</th>
-                        <th class="px-3 py-2 border">{!! $ordenables['pedido_codigo'] ?? 'Pedido Compra' !!}</th>
                         <th class="px-3 py-2 border">{!! $ordenables['created_at'] ?? 'Fecha' !!}</th>
                         <th class="px-3 py-2 border">Nº Productos</th>
                         <th class="px-3 py-2 border">Peso Total</th>
@@ -26,9 +24,10 @@
 
                     <tr>
                         <form method="GET" action="{{ route('entradas.index') }}">
-                            {{-- ID Línea Pedido --}}
+                            {{-- Código Línea --}}
                             <th class="border p-1">
-                                <x-tabla.input name="pedido_producto_id" :value="request('pedido_producto_id')" class="text-xs w-full" />
+                                <x-tabla.input name="codigo_linea" :value="request('codigo_linea')" class="text-xs w-full"
+                                    placeholder="PC25/0001-001" />
                             </th>
 
                             <th class="border p-1">
@@ -44,7 +43,7 @@
                                     placeholder="Nave" />
                             </th>
 
-                            {{-- ✅ FILTRO PARA PRODUCTO BASE CON 3 MINI INPUTS --}}
+                            {{-- FILTRO PARA PRODUCTO BASE CON 3 MINI INPUTS --}}
                             <th class="py-1 px-0 border">
                                 <div class="flex gap-2 justify-center">
                                     <input type="text" name="producto_tipo" value="{{ request('producto_tipo') }}"
@@ -57,10 +56,6 @@
                                         value="{{ request('producto_longitud') }}" placeholder="L"
                                         class="bg-white text-gray-800 border border-gray-300 rounded text-[10px] text-center w-14 h-6" />
                                 </div>
-                            </th>
-
-                            <th class="border p-1">
-                                <x-tabla.input name="pedido_codigo" :value="request('pedido_codigo')" class="text-xs w-full" />
                             </th>
 
                             <th class="border p-1"></th>
@@ -98,11 +93,11 @@
                             :class="{ 'bg-yellow-100': editando }"
                             class="border-b hover:bg-blue-50 text-sm text-center">
 
-                            <!-- ID -->
+                            <!-- Código Línea -->
                             <td class="px-3 py-2 text-center">
                                 <a href="{{ route('pedidos.index', ['pedido_producto_id' => $entrada->pedido_producto_id]) }}"
-                                    class="text-blue-600 hover:underline">
-                                    {{ $entrada->pedido_producto_id }}
+                                    class="text-blue-600 hover:underline font-medium">
+                                    {{ $entrada->pedidoProducto->codigo ?? 'N/A' }}
                                 </a>
                             </td>
 
@@ -125,7 +120,7 @@
                                 {{ $entrada->nave->obra ?? 'N/A' }}
                             </td>
 
-                            {{-- ✅ NUEVA COLUMNA: PRODUCTO BASE --}}
+                            {{-- PRODUCTO BASE --}}
                             <td class="px-3 py-2">
                                 @php
                                     $productoBase = $entrada->pedidoProducto?->productoBase;
@@ -138,19 +133,6 @@
                                     @endif
                                 @else
                                     <span class="text-gray-400">N/A</span>
-                                @endif
-                            </td>
-
-                            <!-- Pedido Compra (no editable) -->
-                            @php $pedido = $entrada->pedido; @endphp
-                            <td class="px-3 py-2">
-                                @if ($pedido)
-                                    <a href="{{ route('pedidos.index', ['pedido_id' => $pedido->id]) }}"
-                                        class="text-blue-600 hover:underline">
-                                        {{ $pedido->codigo }}
-                                    </a>
-                                @else
-                                    N/A
                                 @endif
                             </td>
 
@@ -238,7 +220,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="13" class="py-4 text-gray-500">No hay entradas de material registradas.
+                            <td colspan="12" class="py-4 text-gray-500">No hay entradas de material registradas.
                             </td>
                         </tr>
                     @endforelse
