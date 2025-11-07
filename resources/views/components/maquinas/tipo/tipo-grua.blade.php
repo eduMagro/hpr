@@ -1,12 +1,12 @@
 <div class="w-full sm:col-span-8">
-    {{-- 🟡 PENDIENTES --}}
+
     <div class="mb-4 flex justify-center">
         <button onclick="abrirModalMovimientoLibre()"
             class="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-4 py-2 rounded-lg shadow">
             ➕ Crear Movimiento Libre
         </button>
     </div>
-
+    {{-- 🟢 PENDIENTES --}}
     <div class="bg-red-200 border border-red-400 rounded-lg p-4 mt-4">
         <h3 class="text-base sm:text-lg font-bold text-red-800 mb-3">📦 Movimientos Pendientes</h3>
         @if ($movimientosPendientes->isEmpty())
@@ -143,7 +143,7 @@
                     <li class="p-3 border border-green-200 rounded shadow-sm bg-white text-sm movimiento-completado">
                         <div class="flex flex-col gap-2">
                             <p><strong>Tipo:</strong> {{ ucfirst($mov->tipo) }}</p>
-                            <p><strong>Descripción:</strong> {!! $mov->descripcion_html !!}</p>
+                            <p>{!! $mov->descripcion_html !!}</p>
                             <p><strong>Solicitado por:</strong>
                                 {{ optional($mov->solicitadoPor)->nombre_completo ?? 'N/A' }}</p>
                             <p><strong>Ejecutado por:</strong>
