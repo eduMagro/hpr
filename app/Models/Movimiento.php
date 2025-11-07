@@ -213,53 +213,27 @@ class Movimiento extends Model
         if (preg_match($reEntrada, $d, $m)) {
             [, $tipo, $diam, $longM, $tail] = $m;
 
-            // Helpers visuales
-            $chip = function (string $txt, string $bg = '#eef', string $radius = '6px') {
-                return '<span style="background:' . $bg . ';border-radius:' . $radius . ';padding:2px 8px;display:inline-block;margin-right:6px;">'
-                    . e($txt) . '</span>';
-            };
-            $badge = function (string $label, string $value = '') {
-                $out = '<span style="display:inline-flex;align-items:center;gap:6px;margin-right:10px;">'
-                    . '<span style="color:#374151;font-weight:600;">' . e(rtrim($label, ':')) . ':</span>';
-                if ($value !== '') {
-                    $out .= '<span style="background:#e5e7eb;border-radius:9999px;padding:2px 10px;display:inline-block;">'
-                        . e($value) . '</span>';
-                }
-                $out .= '</span>';
-                return $out;
-            };
-            $muted = function (string $label, string $value) {
-                return '<span style="background:#f3f4f6;border-radius:8px;padding:2px 8px;display:inline-flex;align-items:center;margin-right:6px;gap:6px;">'
-                    . '<span style="color:#6b7280;font-weight:600;">' . e(rtrim($label, ':')) . ':</span>'
-                    . '<span style="color:#111827;">' . e($value) . '</span>'
-                    . '</span>';
-            };
-
-            // TIPO: mayúsculas + strong
+            // TIPO: mayúsculas
             $tipoUpper = mb_strtoupper(trim($tipo), 'UTF-8');
-            $tipoHtml  = '<strong>' . e($tipoUpper) . '</strong>';
 
             // ¿Es barra?
             $esBarra = (mb_stripos($tipoUpper, 'BARRA') !== false);
 
-            // Chips técnicos (Ø y L solo si es barra)
-            $chips = [];
-            $chips[] = $chip('Ø' . (string)$diam . ' mm');
+            // Descripción del producto
+            $descripcionProducto = ucfirst($tipoUpper) . ' Ø' . $diam . ' mm';
             if ($esBarra && !empty($longM)) {
-                $chips[] = $chip('L:' . (string)$longM . ' m');
+                $descripcionProducto .= ' x ' . $longM . ' m';
             }
 
-
             // Parse campos tras "|"
-            $pedido = $proveedor = $linea = $cantidad = $fecha = '';
-            $otros = [];
+            $pedido = $proveedor = $linea = $cantidad = '';
 
             if (!empty($tail)) {
                 $partes = array_map('trim', explode('|', $tail));
                 foreach ($partes as $p) {
                     if ($p === '') continue;
 
-                    // Normaliza "Label: Valor" (acepta "Pedido PC25/..." también)
+                    // Normaliza "Label: Valor"
                     if (strpos($p, ':') !== false) {
                         [$label, $valor] = array_map('trim', explode(':', $p, 2));
                     } else {
@@ -271,7 +245,7 @@ class Movimiento extends Model
                     $k = mb_strtolower($label, 'UTF-8');
 
                     if ($k === 'pedido') {
-                        $pedido    = $valor;
+                        $pedido = $valor;
                         continue;
                     }
                     if ($k === 'proveedor') {
@@ -282,36 +256,33 @@ class Movimiento extends Model
                         $linea = $valor;
                         continue;
                     }
-
-                    // Sinónimos para cantidad/fecha
                     if (in_array($k, ['cantidad solicitada', 'cantidad', 'cant. solicitada', 'cant'], true)) {
                         $cantidad = $valor;
                         continue;
                     }
-                    if (in_array($k, ['fecha prevista', 'fecha estimada', 'fecha entrega', 'fecha'], true)) {
-                        $fecha = $valor;
-                        continue;
-                    }
-
-                    // Cualquier otro campo → badge discreto
-                    if ($valor !== '') $otros[] = $muted($label, $valor);
                 }
             }
 
-            // Prefijo neutral
-            $prefijo = '<span style="color:#374151;">Se solicita descarga para producto</span>';
+            // Construir HTML simplificado
+            $html = '<div style="padding:8px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:6px;display:inline-block;">';
 
-            // Badges principales (título + chip con el valor)
-            $principal = [];
-            if ($pedido    !== '') $principal[] = $badge('Pedido',    $pedido);
-            if ($proveedor !== '') $principal[] = $badge('Proveedor', $proveedor);
-            if ($linea     !== '') $principal[] = $badge('Línea',     $linea);
-            if ($cantidad  !== '') $principal[] = $badge('Cantidad solicitada', $cantidad);
-            if ($fecha     !== '') $principal[] = $badge('Fecha prevista',      $fecha);
+            if ($linea !== '') {
+                $html .= '<p style="font-weight:600;color:#1e40af;margin:0 0 4px 0;font-size:14px;">' . e($linea) . '</p>';
+            }
 
-            return $prefijo . ' ' . $tipoHtml . ' ' . implode(' ', $chips) . ' '
-                . implode(' ', $principal) . ' '
-                . implode(' ', $otros);
+            if ($proveedor !== '') {
+                $html .= '<p style="font-size:13px;margin:0 0 2px 0;color:#374151;"><strong>Proveedor:</strong> ' . e($proveedor) . '</p>';
+            }
+
+            $html .= '<p style="font-size:13px;margin:0 0 2px 0;color:#374151;"><strong>Producto:</strong> ' . e($descripcionProducto) . '</p>';
+
+            if ($cantidad !== '') {
+                $html .= '<p style="font-size:13px;margin:0;color:#374151;"><strong>Peso:</strong> ' . e($cantidad) . ' kg</p>';
+            }
+
+            $html .= '</div>';
+
+            return $html;
         }
 
         // Fallback

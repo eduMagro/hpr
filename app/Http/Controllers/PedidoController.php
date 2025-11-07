@@ -798,7 +798,7 @@ class PedidoController extends Controller
         // Identificación del pedido, proveedor y línea
         $partes[] = sprintf('Pedido %s', $pedido->codigo ?? $pedido->id);
         $partes[] = sprintf('Proveedor: %s', $proveedor);
-        $partes[] = sprintf('Línea: #%d', $lineaId);
+        $partes[] = sprintf('Línea: %s', $linea->codigo);
 
         // Información adicional útil (opcional): cantidad prevista y fecha estimada
         if (!is_null($linea->cantidad)) {
