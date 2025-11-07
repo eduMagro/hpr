@@ -5,7 +5,7 @@
                 {{ __('Movimientos') }}
             </a>
             <span class="mx-2">/</span>
-            {{ __('Recepción del ') }}{{ $pedido->codigo }}
+            {{ $pedido->codigo }}
         </h2>
     </x-slot>
 

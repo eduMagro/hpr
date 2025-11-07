@@ -500,7 +500,7 @@ class MaquinaController extends Controller
             'pedido:id,codigo,peso_total,fabricante_id,distribuidor_id',
             'pedido.fabricante:id,nombre',
             'pedido.distribuidor:id,nombre',
-            'pedidoProducto:id,pedido_id,producto_base_id,cantidad,cantidad_recepcionada,obra_id,estado,fecha_estimada_entrega',
+            'pedidoProducto:id,pedido_id,codigo,producto_base_id,cantidad,cantidad_recepcionada,obra_id,estado,fecha_estimada_entrega',
         ])
             ->where('estado', 'pendiente')
             ->where('nave_id', $obraId)              // ⬅️ solo movimientos de la misma nave

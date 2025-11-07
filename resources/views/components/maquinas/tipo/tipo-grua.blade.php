@@ -33,6 +33,10 @@
                                         : '',
                                 )
                                 : 'Producto no especificado';
+
+                            // Obtener cantidad del pedido
+                            $cantidadPedido = $mov->pedidoProducto?->cantidad ?? 'N/A';
+                            $codigoLinea = $mov->pedidoProducto?->codigo ?? 'N/A';
                         @endphp
 
                         <li class="p-3 border border-red-200 rounded shadow-sm bg-white text-sm">
@@ -40,25 +44,28 @@
                                 <p><strong>Tipo:</strong> {{ ucfirst($mov->tipo) }}</p>
 
                                 <div class="bg-blue-50 p-2 rounded border border-blue-200">
-                                    <p class="font-semibold text-blue-900 mb-1">📦 Pedido {{ $mov->pedido->codigo }}</p>
+                                    <p class="font-semibold text-blue-900 mb-1">{{ $codigoLinea }}</p>
                                     <p class="text-sm"><strong>Proveedor:</strong> {{ $proveedor }}</p>
-                                    <p class="text-sm"><strong>Línea:</strong> #{{ $mov->pedido_producto_id }}</p>
                                     <p class="text-sm"><strong>Producto:</strong> {{ $descripcionProducto }}</p>
+                                    <p class="text-sm"><strong>Peso:</strong> {{ $cantidadPedido }} kg</p>
                                 </div>
 
                                 <p><strong>Solicitado por:</strong>
                                     {{ optional($mov->solicitadoPor)->nombre_completo ?? 'N/A' }}</p>
                                 <p><strong>Fecha:</strong> {{ $mov->created_at->format('d/m/Y H:i') }}</p>
 
-                                <button onclick='abrirModalPedidoDesdeMovimiento(@json($mov))'
-                                    style="background-color: orange; color: white;"
-                                    class="text-sm px-3 py-2 rounded mt-2 w-full sm:w-auto border border-black">
+                                @php
+                                    $productoBaseId = $mov->producto_base_id ?? ($mov->productoBase?->id ?? '');
+                                    $urlRecepcion = "/pedidos/{$mov->pedido->id}/recepcion/{$productoBaseId}?movimiento_id={$mov->id}&maquina_id={$maquina->id}";
+                                @endphp
+
+                                <a href="{{ $urlRecepcion }}" style="background-color: orange; color: white;"
+                                    class="text-sm px-3 py-2 rounded mt-2 w-full sm:w-auto border border-black inline-block text-center">
                                     Entrada
-                                </button>
+                                </a>
                             </div>
                         </li>
                     @else
-                        {{-- Movimientos de otros tipos mantienen el formato original --}}
                         <li class="p-3 border border-red-200 rounded shadow-sm bg-white text-sm">
                             <div class="flex flex-col gap-2">
                                 <p><strong>Tipo:</strong> {{ ucfirst($mov->tipo) }}</p>
@@ -67,7 +74,7 @@
                                     {{ optional($mov->solicitadoPor)->nombre_completo ?? 'N/A' }}</p>
                                 <p><strong>Fecha:</strong> {{ $mov->created_at->format('d/m/Y H:i') }}</p>
 
-                                {{-- Botones específicos según tipo --}}
+                                {{-- BAJADA DE PAQUETE --}}
                                 @if (strtolower($mov->tipo) === 'bajada de paquete')
                                     @php
                                         $datosMovimiento = [
@@ -83,7 +90,7 @@
                                         📦 Ejecutar bajada
                                     </button>
                                 @endif
-
+                                {{-- RECARGA MATERIA PRIMA --}}
                                 @if (strtolower($mov->tipo) === 'recarga materia prima')
                                     <button
                                         onclick='abrirModalRecargaMateriaPrima(
@@ -102,14 +109,14 @@
                                         ✅ Ejecutar recarga
                                     </button>
                                 @endif
-
+                                {{-- SALIDA --}}
                                 @if (strtolower($mov->tipo) === 'salida')
                                     <button onclick='ejecutarSalida(@json($mov->id))'
                                         class="bg-purple-600 hover:bg-purple-700 text-white text-sm px-3 py-2 rounded mt-2 w-full sm:w-auto">
                                         🚛 Ejecutar salida
                                     </button>
                                 @endif
-
+                                {{-- SALIDA ALMACEN --}}
                                 @if (strtolower($mov->tipo) === 'salida almacén')
                                     <button onclick='ejecutarSalidaAlmacen(@json($mov->id))'
                                         class="bg-purple-600 hover:bg-purple-700 text-white text-sm px-3 py-2 rounded mt-2 w-full sm:w-auto">
