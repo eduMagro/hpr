@@ -66,6 +66,13 @@ return [
             'replace_placeholders' => true,
         ],
 
+        'asistente' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/asistente.log'),
+            'level' => 'debug',
+            'days' => 14,
+        ],
+
         'single' => [
             'driver' => 'single',
             'path' => storage_path('logs/laravel.log'),

@@ -50,6 +50,7 @@ use App\Http\Controllers\PedidoAlmacenVentaController;
 use App\Http\Controllers\ClienteAlmacenController;
 use App\Services\PlanillaService;
 use Illuminate\Support\Facades\Log;
+use App\Http\Controllers\AsistenteVirtualController;
 
 Route::get('/', [PageController::class, 'index'])->middleware(['auth', 'verified'])->name('dashboard');
 
@@ -405,6 +406,9 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
 
     Route::post('/produccion/planillas/guardar', [\App\Http\Controllers\ProduccionController::class, 'guardar'])
         ->name('produccion.planillas.guardar');
+
+    // === ASISTENTE VIRTUAL ===
+    Route::resource('asistente-virtual', AsistenteVirtualController::class)->names('asistente-virtual');
 });
 
 
