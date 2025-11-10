@@ -2212,25 +2212,30 @@ function formatearTiempo(segundos) {
     return hh + mm + ss;
 }
 
+// === COLOR DEL TIEMPO (respeta prioridad de tarde) ===
 function setTimeColor(card, mode) {
     const t = card.querySelector(".planilla-time");
     if (!t) return;
 
-    // Prioridad máxima: si está tarde, el tiempo va rojo siempre
+    // limpiar
+    t.classList.remove("text-blue-600", "text-orange-600", "text-fuchsia-700", "text-red-700", "text-white");
+
+    // Prioridad máxima: tarde
     if (cardIsLate(card)) {
-        t.classList.remove("text-blue-600", "text-orange-600", "text-fuchsia-700");
-        t.classList.add("text-red-700");
+        if (card.classList.contains(LATE_CULPRIT_CLASS)) {
+            // culpable: fondo rojo → tiempo en blanco
+            t.classList.add("text-white");
+        } else {
+            // no culpable: sin fondo rojo → tiempo en rojo
+            t.classList.add("text-red-700");
+        }
         return;
     }
 
-    t.classList.remove("text-blue-600", "text-orange-600", "text-fuchsia-700", "text-red-700");
-    if (mode === "compi") {
-        t.classList.add("text-orange-600");
-    } else if (mode === "obra") {
-        t.classList.add("text-fuchsia-700");
-    } else {
-        t.classList.add("text-blue-600");
-    }
+    // No tarde → colores normales según modo
+    if (mode === "compi") t.classList.add("text-orange-600");
+    else if (mode === "obra") t.classList.add("text-fuchsia-700");
+    else t.classList.add("text-blue-600");
 }
 
 
@@ -2305,64 +2310,99 @@ function parseDateLoose(str) {
 const isAfter = (a, b) => a && b ? (+a > +b) : false;
 
 // Clases para avisos
-const LATE_CODE_CLASS = "late-code";     // todas las OPs de ese código llegan tarde (en conjunto)
-const LATE_CULPRIT_CLASS = "late-culprit";  // esta OP, por sí sola, ya llega tarde
+const LATE_CODE_CLASS = "late-code";        // todas las OPs del código llegan tarde
+const LATE_CULPRIT_CLASS = "late-culprit";    // esta OP, por sí sola, ya llega tarde
 
 function clearDeadlineWarnings() {
     document.querySelectorAll(".planilla").forEach(card => {
         card.classList.remove(
             LATE_CODE_CLASS, LATE_CULPRIT_CLASS,
-            "border-red-500", "border-red-600",
+            "border-red-500", "border-red-600", "border-red-700",
             "ring-2", "ring-4", "ring-red-500", "ring-red-600", "ring-offset-2",
-            "animate-pulse"
+            "animate-pulse", "bg-red-600", "bg-red-700", "bg-red-500",
+            // colores de texto que forzamos en late
+            "text-white", "text-red-700"
         );
-        // si no está resaltada por obra, devuelve el borde azul por defecto
+
+        // restaurar base solo si no hay resaltado por obra
         if (!card.classList.contains("obra_resaltada")) {
             card.classList.add("border-2", "border-blue-400");
             card.classList.add("from-neutral-100", "to-neutral-200");
             card.classList.add("hover:from-blue-300", "hover:to-blue-400", "hover:border-blue-600", "group");
         }
+
+        // restaurar colores de textos base
+        const posEl = card.querySelector(".posicion");
+        const codEl = card.querySelector(".codigo");
+        const timeEl = card.querySelector(".planilla-time");
+        posEl?.classList.remove("text-white", "text-red-700");
+        codEl?.classList.remove("text-white", "text-red-700");
+        timeEl?.classList.remove("text-white", "text-red-700");
+
         setTimeColor(card, "base");
     });
-    // si hay obra activa, vuelve a aplicarla (no pisa rojo)
+
+    // si hay obra activa, vuelve a aplicarla (no pisa rojo al recalcular luego)
     if (OBRA_HL.active) applyObraHighlight();
 }
-
 
 // No pisar estos estilos desde otras funciones (prioridad máxima)
 function cardIsLate(card) {
     return card.classList.contains(LATE_CODE_CLASS) || card.classList.contains(LATE_CULPRIT_CLASS);
 }
 
+// NO CULPABLE (late-code): borde rojo + texto rojo
 function markLateCode(card) {
+    // limpiar posibles estilos previos
     card.classList.remove(
         "border-blue-400", "hover:border-blue-600",
         "border-fuchsia-400",
         "hover:from-blue-300", "hover:to-blue-400",
         "from-fuchsia-200", "to-fuchsia-300",
-        "from-neutral-100", "to-neutral-200"
+        "from-neutral-100", "to-neutral-200",
+        "ring-2", "ring-4", "ring-red-500", "ring-red-600", "ring-offset-2",
+        "animate-pulse", "bg-red-600", "bg-red-700", "bg-red-500"
     );
-    card.classList.add(
-        LATE_CODE_CLASS,
-        "border-2", "border-red-500", "ring-2", "ring-red-500"
-    );
+
+    // quitar efectos de hover que pintan colores, pero mantener la elevación
+    card.classList.remove("group");
+    card.classList.add("hover:-translate-y-[1px]");
+
+    // aplicar estilo simple
+    card.classList.add(LATE_CODE_CLASS, "border-2", "border-red-600");
+
+    // texto rojo en contenido (posición, código y tiempo)
+    setLateText(card, "red");
+
+    // el número de tiempo (helper) también se ajusta pero lo forzamos rojo aquí
     setTimeColor(card, "late");
 }
 
+// CULPABLE (late-culprit): SIN glow, con fondo rojo y texto blanco legible
 function markLateCulprit(card) {
     card.classList.remove(
         "border-blue-400", "hover:border-blue-600",
         "border-fuchsia-400",
         "hover:from-blue-300", "hover:to-blue-400",
         "from-fuchsia-200", "to-fuchsia-300",
-        "from-neutral-100", "to-neutral-200"
+        "from-neutral-100", "to-neutral-200",
+        "ring-2", "ring-4", "ring-red-500", "ring-red-600", "ring-offset-2",
+        "animate-pulse"
     );
-    card.classList.add(
-        LATE_CULPRIT_CLASS,
-        "border-2", "border-red-600", "ring-4", "ring-red-600", "ring-offset-2", "animate-pulse"
-    );
+
+    card.classList.remove("group");
+    card.classList.add("hover:-translate-y-[1px]");
+
+    // fondo y borde rojo, sin halos
+    card.classList.add(LATE_CULPRIT_CLASS, "border-2", "border-red-700", "bg-red-600");
+
+    // todo el contenido en blanco para contraste
+    setLateText(card, "white");
+
+    // el tiempo en blanco (no rojo) para legibilidad sobre fondo rojo
     setTimeColor(card, "late");
 }
+
 
 function applyDeadlineWarnings() {
     clearDeadlineWarnings();
@@ -2394,7 +2434,7 @@ function applyDeadlineWarnings() {
         if (!b.est && est) b.est = est;
 
         // útil pa revisar con el inspector
-        card.title = `COD:${code} | FIN_IND:${finIndStr} | FIN_PROG:${finProgStr} | EST:${estStr || "(vacío)"}`;
+        // card.title = `COD:${code} | FIN_IND:${finIndStr} | FIN_PROG:${finProgStr} | EST:${estStr || "(vacío)"}`;
     });
 
     let totalLateCode = 0;
@@ -2412,7 +2452,7 @@ function applyDeadlineWarnings() {
         if (finProg && est && +finProg > +est) {
             b.cards.forEach(({ card }) => {
                 markLateCode(card);
-                card.title += " | LATE-CODE(finProg>est)";
+                // card.title += " | LATE-CODE(finProg>est)";
             });
             totalLateCode += b.cards.length;
 
@@ -2420,7 +2460,7 @@ function applyDeadlineWarnings() {
             b.cards.forEach(({ card, finInd, finIndStr }) => {
                 if (finInd && +finInd > +est) {
                     markLateCulprit(card);
-                    card.title += ` | LATE-CULPRIT(finInd>est:${finIndStr})`;
+                    // card.title += ` | LATE-CULPRIT(finInd>est:${finIndStr})`;
                     totalCulprits++;
                 }
             });
@@ -2430,4 +2470,24 @@ function applyDeadlineWarnings() {
 
     // Log resumen para depurar
     console.log(`[DL] == FIN applyDeadlineWarnings | LateCode cards: ${totalLateCode} | Culprits: ${totalCulprits}`);
+}
+
+// Forzamos color de los tres textos clave de la card
+function setLateText(card, color) {
+    const posEl = card.querySelector(".posicion");
+    const codEl = card.querySelector(".codigo");
+    const timeEl = card.querySelector(".planilla-time");
+    const remove = (el) => el?.classList.remove("text-white", "text-red-700", "text-blue-600", "text-orange-600", "text-fuchsia-700");
+
+    remove(posEl); remove(codEl); remove(timeEl);
+
+    if (color === "white") {
+        posEl?.classList.add("text-white");
+        codEl?.classList.add("text-white");
+        timeEl?.classList.add("text-white");
+    } else if (color === "red") {
+        posEl?.classList.add("text-red-700");
+        codEl?.classList.add("text-red-700");
+        timeEl?.classList.add("text-red-700");
+    }
 }
