@@ -455,6 +455,7 @@
 
                     let contenido = '';
 
+
                     if (horaReal === 7) {
                         // 🌅 Turno Mañana (06:00)
                         contenido = `
