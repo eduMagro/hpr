@@ -285,7 +285,7 @@
     </div>
 
     <div id="modal_detalles"
-        class="absolute bg-opacity-50 backdrop-blur-sm border-2 border-blue-700 left-4 uppercase top-[45vh] rounded-lg text-blue-700 font-mono font-semibold text-sm p-2 flex flex-col gap-2">
+        class="absolute bg-opacity-50 backdrop-blur-sm border-2 border-blue-700 left-4 uppercase top-[45vh] rounded-lg text-blue-700 font-mono font-semibold text-sm p-2 flex flex-col gap-2 hidden">
         <div>
             <p>Obra:</p>
             <p><span></span></p>
