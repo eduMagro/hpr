@@ -99,7 +99,7 @@ class PlanillaService
         $fail = 0;
         $errores = [];
 
-        $fechaCorte = Carbon::today()->subDays(7); // 👈 fecha de corte hace 7 días
+        $fechaCorte = Carbon::today()->subDays(3); // 👈 fecha de corte hace 7 días
 
         // Base: planillas en estado pendiente o fabricando
         $base = Planilla::query()->whereIn('estado', ['pendiente', 'fabricando']);
