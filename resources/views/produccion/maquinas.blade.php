@@ -17,7 +17,55 @@
             <div id="calendario" class="h-[80vh] w-full"></div>
         </div>
     </div>
+    <!-- Modal para mostrar elementos con dibujos -->
+    <div id="modal_elementos_calendario"
+        class="bg-black bg-opacity-50 fixed inset-0 z-50 flex items-center justify-center hidden backdrop-blur-sm">
+        <div class="bg-white rounded-xl shadow-2xl max-w-6xl w-full mx-4 max-h-[90vh] overflow-hidden flex flex-col">
 
+            <!-- Header del Modal -->
+            <div class="bg-gradient-to-r from-blue-600 to-blue-700 text-white p-4 flex justify-between items-center">
+                <div>
+                    <h3 class="text-xl font-bold">Elementos de la Planilla</h3>
+                    <p class="text-sm opacity-90">
+                        <span id="mec_codigo" class="font-mono"></span> -
+                        <span id="mec_obra"></span>
+                    </p>
+                </div>
+                <button id="cerrar_modal_elementos"
+                    class="text-white hover:bg-white hover:text-blue-700 rounded-full p-2 transition-all">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+
+            <!-- Body del Modal - Grid de Elementos -->
+            <div id="mec_elementos_grid"
+                class="flex-1 overflow-y-auto p-4 bg-gray-50
+                    [&::-webkit-scrollbar]:w-2
+                    [&::-webkit-scrollbar-track]:bg-gray-200
+                    [&::-webkit-scrollbar-thumb]:bg-blue-600
+                    [&::-webkit-scrollbar-thumb]:rounded-full">
+
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <!-- Se llenará dinámicamente -->
+                </div>
+            </div>
+
+            <!-- Footer del Modal -->
+            <div class="bg-gray-100 p-4 flex justify-between items-center border-t">
+                <div class="text-sm text-gray-600">
+                    Total: <span id="mec_total_elementos" class="font-semibold">0</span> elementos
+                    | Peso total: <span id="mec_peso_total" class="font-semibold">0</span> kg
+                </div>
+                <a id="mec_ver_listado" href="#" target="_blank"
+                    class="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-all font-semibold">
+                    Ver Listado Completo
+                </a>
+            </div>
+        </div>
+    </div>
     <div class="mt-6 mb-4 flex flex-col sm:flex-row items-center gap-4 px-4">
         <label class="text-sm">
             Desde:
@@ -80,7 +128,30 @@
     <script src="https://cdn.jsdelivr.net/npm/fullcalendar-scheduler@6.1.8/index.global.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/locales-all.global.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="{{ asset('js/elementosJs/figuraElemento.js') }}"></script>
+    <style>
+        #modal_elementos_calendario canvas {
+            max-width: 100%;
+            height: auto;
+        }
 
+        #mec_elementos_grid::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        #mec_elementos_grid::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+
+        #mec_elementos_grid::-webkit-scrollbar-thumb {
+            background: #3b82f6;
+            border-radius: 4px;
+        }
+
+        #mec_elementos_grid::-webkit-scrollbar-thumb:hover {
+            background: #2563eb;
+        }
+    </style>
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             const maquinas = @json($resources);
@@ -93,6 +164,7 @@
             const calendar = new FullCalendar.Calendar(document.getElementById('calendario'), {
                 schedulerLicenseKey: 'CC-Attribution-NonCommercial-NoDerivatives',
                 initialView: 'resourceTimeGridDay',
+                nextDayThreshold: '06:00:00',
                 views: {
                     resourceTimeGridDay: {
                         type: 'resourceTimeGrid',
@@ -100,7 +172,7 @@
                             days: 1
                         },
                         slotMinTime: '00:00:00',
-                        slotMaxTime: '24:00:00',
+                        slotMaxTime: '30:00:00',
                         slotDuration: '01:00:00',
                         slotLabelFormat: {
                             hour: '2-digit',
@@ -147,7 +219,7 @@
                             day: 'numeric',
                             month: 'short'
                         },
-                        buttonText: '5 días'
+                        buttonText: '30 días'
                     }
                 },
                 locale: 'es',
@@ -219,35 +291,30 @@
                         return;
                     }
 
-                    // Obtener datos de elementos via AJAX
+                    // Mostrar loading
+                    Swal.fire({
+                        title: 'Cargando elementos...',
+                        allowOutsideClick: false,
+                        didOpen: () => {
+                            Swal.showLoading();
+                        }
+                    });
+
                     try {
-                        const response = await fetch(
-                            `/elementos/por-codigos?codigos=${codigos.join(',')}`);
+                        // Obtener datos de elementos via AJAX
+                        const response = await fetch(`/elementos/por-ids?ids=${elementosId.join(',')}`);
                         const elementos = await response.json();
 
-                        // Construir HTML para el modal
-                        const elementosHTML = elementos.map(el => `
-            <div class="border-b py-2">
-                <strong>${el.codigo}</strong> - ${el.descripcion}
-                <br><small>Diámetro: ${el.diametro} | Peso: ${el.peso}kg</small>
-            </div>
-        `).join('');
+                        // Cerrar loading
+                        Swal.close();
 
-                        // Mostrar modal con SweetAlert
-                        Swal.fire({
-                            title: `Elementos de ${info.event.title}`,
-                            html: `<div class="text-left max-h-96 overflow-y-auto">${elementosHTML}</div>`,
-                            width: '600px',
-                            showCloseButton: true,
-                            confirmButtonText: 'Ver en tabla',
-                            showCancelButton: true,
-                            cancelButtonText: 'Cerrar'
-                        }).then((result) => {
-                            if (result.isConfirmed) {
-                                // Si confirma, redirigir al listado completo
-                                window.location.href = `/elementos?codigo=${codigos.join(',')}`;
-                            }
-                        });
+                        // Llenar modal con datos
+                        mostrarModalElementosConDibujos(
+                            elementos,
+                            info.event.title,
+                            info.event.extendedProps.obra,
+                            codigos
+                        );
 
                     } catch (error) {
                         Swal.fire({
@@ -757,4 +824,87 @@
                 min-width: 50px !important;
             }
     </style>
+    <script>
+        function mostrarModalElementosConDibujos(elementos, codigoPlanilla, obra, codigos) {
+            const modal = document.getElementById('modal_elementos_calendario');
+            const grid = document.getElementById('mec_elementos_grid').querySelector('.grid');
+
+            // Actualizar header
+            document.getElementById('mec_codigo').textContent = codigoPlanilla;
+            document.getElementById('mec_obra').textContent = obra || 'Sin obra';
+
+            // Calcular totales
+            const pesoTotal = elementos.reduce((sum, el) => sum + (parseFloat(el.peso) || 0), 0);
+            document.getElementById('mec_total_elementos').textContent = elementos.length;
+            document.getElementById('mec_peso_total').textContent = pesoTotal.toFixed(2);
+
+            // Enlace al listado completo
+            document.getElementById('mec_ver_listado').href = `/elementos?codigo=${codigos.join(',')}`;
+
+            // Limpiar grid
+            grid.innerHTML = '';
+
+            // Crear tarjetas para cada elemento
+            elementos.forEach((elemento, index) => {
+                const card = document.createElement('div');
+                card.className = 'bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-all';
+
+                const canvasId = `canvas-elemento-${elemento.id}`;
+
+                card.innerHTML = `
+            <div class="bg-gradient-to-r from-blue-500 to-blue-600 text-white p-2">
+                <div class="flex justify-between items-center">
+                    <span class="font-mono font-bold">${elemento.codigo}</span>
+                    <span class="text-xs bg-white bg-opacity-20 px-2 py-1 rounded">
+                        ${elemento.peso} kg
+                    </span>
+                </div>
+            </div>
+            
+            <div class="p-3">
+                <!-- Canvas para el dibujo -->
+                <canvas id="${canvasId}" 
+                        width="300" 
+                        height="200" 
+                        class="w-full border border-gray-200 rounded bg-gray-50">
+                </canvas>
+                
+                <!-- Información adicional -->
+                <div class="mt-2 text-sm space-y-1">
+                    <div class="flex justify-between">
+                        <span class="text-gray-600">Diámetro:</span>
+                        <span class="font-semibold">${elemento.diametro || 'N/A'}</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-gray-600">Dimensiones:</span>
+                        <span class="font-mono text-xs">${elemento.dimensiones || 'N/A'}</span>
+                    </div>
+                </div>
+            </div>
+        `;
+
+                grid.appendChild(card);
+
+                // Dibujar la figura después de agregar al DOM
+                setTimeout(() => {
+                    window.dibujarFiguraElemento(canvasId, elemento.dimensiones, elemento.peso);
+                }, 10);
+            });
+
+            // Mostrar modal
+            modal.classList.remove('hidden');
+        }
+
+        // Cerrar modal
+        document.getElementById('cerrar_modal_elementos').addEventListener('click', function() {
+            document.getElementById('modal_elementos_calendario').classList.add('hidden');
+        });
+
+        // Cerrar al hacer clic fuera del contenido
+        document.getElementById('modal_elementos_calendario').addEventListener('click', function(e) {
+            if (e.target === this) {
+                this.classList.add('hidden');
+            }
+        });
+    </script>
 </x-app-layout>

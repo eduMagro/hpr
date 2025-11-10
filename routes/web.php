@@ -210,7 +210,7 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
     Route::post('/etiquetas/render', [EtiquetaController::class, 'render'])
         ->name('etiquetas.render');
 
-    Route::get('/elementos/por-codigos', [ProduccionController::class, 'porCodigos']);
+    Route::get('/elementos/por-ids', [ProduccionController::class, 'porIds'])->name('elementos.verPorIds');
     Route::get(
         '/etiquetas/{etiquetaSubId}/validar-para-paquete',
         [PaqueteController::class, 'validarParaPaquete']
