@@ -405,6 +405,9 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
 
     Route::post('/produccion/planillas/guardar', [\App\Http\Controllers\ProduccionController::class, 'guardar'])
         ->name('produccion.planillas.guardar');
+
+    Route::post('/planillas/import', [PlanillaController::class, 'import'])
+        ->name('planillas.crearImport');
 });
 
 
