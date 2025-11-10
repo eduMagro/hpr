@@ -14,7 +14,14 @@ let obrasInput;
 let obrasModal;
 let clickObras; // .obra
 let obraSeleccionada;
-let OBRA_HL = { active: false, id: null, codes: new Set() };
+let OBRA_HL = {
+    active: false,
+    id: null,
+    codes: new Set()
+};
+let MODAL_MAQ_CHIPS = new Map();
+let diccionarioTiempos = new Map();
+let HOVER_LOCK = { active: false, code: null };
 
 // btn
 let btn_transferir;
@@ -28,6 +35,7 @@ let modalGuardar;
 let modalElegirOrden;
 let modalResaltarObra;
 let modalDetalles;
+let modalMapa;
 let modales = [];
 
 // variables datos originales, servira para referenciar los cambios realizados
@@ -41,27 +49,28 @@ let DND = {
     placeholder: null,
 };
 
+// ——— DEBUG DEADLINES ———
+window.DEBUG_DEADLINES = true; // ponlo en false para callar logs
+const dbg = (...a) => { if (window.DEBUG_DEADLINES) console.log("[DL]", ...a); };
+
+
 document.addEventListener("DOMContentLoaded", () => {
-    planillas = Array.from(
-        document.querySelectorAll("#todasPlanillas [data-planilla]")
-    ).map((div) => JSON.parse(div.dataset.planilla));
+    planillas = Array.from(document.querySelectorAll("#todasPlanillas [data-planilla]")).map((div) => JSON.parse(div.dataset.planilla));
 
-    elementos = Array.from(
-        document.querySelectorAll("#todosElementos [data-elementos]")
-    ).map((div) => JSON.parse(div.dataset.elementos));
+    elementos = Array.from(document.querySelectorAll("#todosElementos [data-elementos]")).map((div) => JSON.parse(div.dataset.elementos));
 
-    ordenPlanillas = Array.from(
-        document.querySelectorAll("#ordenPlanillas [data-orden]")
-    ).map((div) => JSON.parse(div.dataset.orden));
+    ordenPlanillas = Array.from(document.querySelectorAll("#ordenPlanillas [data-orden]")).map((div) => JSON.parse(div.dataset.orden));
 
-    maquinas = Array.from(
-        document.querySelectorAll("#maquinas [data-detalles]")
-    ).map((div) => JSON.parse(div.dataset.detalles));
+    maquinas = Array.from(document.querySelectorAll("#maquinas [data-detalles]")).map((div) => JSON.parse(div.dataset.detalles));
 
     naves = Array.from(document.querySelectorAll(".filtro_nave"));
 
-    naves.forEach((btn) => {
-        btn.addEventListener("click", () => filtrarPorNave(btn.dataset.nave));
+    naves.forEach((btn) => { btn.addEventListener("click", () => filtrarPorNave(btn.dataset.nave)); });
+
+    // Mapear chips del modal mini-mapa: maquina_id -> nodo chip
+    document.querySelectorAll("#modal_maquinas_con_elementos .chip-maq").forEach((chip) => {
+        const mid = Number(chip.dataset.maquinaId);
+        if (!Number.isNaN(mid)) MODAL_MAQ_CHIPS.set(mid, chip);
     });
 
     obras = Array.from(document.querySelectorAll("#obras [data-obras]")).map(
@@ -103,6 +112,7 @@ document.addEventListener("DOMContentLoaded", () => {
     modalElegirOrden = document.getElementById("modal_elegir_orden");
     modalResaltarObra = document.getElementById("modal_resaltar_obra");
     modalDetalles = document.getElementById("modal_detalles"); // este no hay que agregarlo al array
+    modalMapa = document.getElementById("modal_maquinas_con_elementos"); // este no hay que agregarlo al array
     modales = [
         modalMostrarElementos,
         modalTransferirAMaquina,
@@ -143,16 +153,32 @@ document.addEventListener("DOMContentLoaded", () => {
     resaltarObra(1);
 
     document.addEventListener("mousemove", (e) => {
-        let mitad = window.innerWidth / 2;
+        const ancho = window.innerWidth;
+        const tercio = ancho / 3;
+        const modalDetalles = document.getElementById("modal_detalles");
+        const modalMapa = document.getElementById(
+            "modal_maquinas_con_elementos"
+        );
 
-        if (e.clientX > mitad) {
-            // ratón en mitad izquierda
-            modalDetalles.classList.remove("right-4");
-            modalDetalles.classList.add("left-4");
-        } else {
-            // ratón en mitad derecha
+        if (!modalDetalles || !modalMapa) return;
+
+        // Primer tercio (zona izquierda)
+        if (e.clientX < tercio) {
+            // Mover ambos a la derecha
             modalDetalles.classList.remove("left-4");
             modalDetalles.classList.add("right-4");
+
+            modalMapa.classList.remove("left-3");
+            modalMapa.classList.add("right-3");
+        }
+        // Último tercio (zona derecha)
+        else if (e.clientX > tercio * 2) {
+            // Mover ambos a la izquierda
+            modalDetalles.classList.remove("right-4");
+            modalDetalles.classList.add("left-4");
+
+            modalMapa.classList.remove("right-3");
+            modalMapa.classList.add("left-3");
         }
     });
 });
@@ -282,13 +308,14 @@ function resaltarObra(quitar = null) {
 
 // mostrar en funcion de ordenPlanillas local las planillas en orden asignadas a cada maquina
 function renderPlanillas() {
-    // limpiar planillas existentes, si hay
+    // limpiar planillas existentes
     maquinasDivs.forEach((maq) => {
         const contenedor = maq.querySelector(".planillas");
         if (contenedor) contenedor.innerHTML = "";
     });
 
-    // ORDENAR por maquina_id y posicion antes de pintar
+    // Precalcular tiempos propios por orden y ordenar OPs
+    const tiemposPorOrden = buildTiemposPorOrden();
     const ordenadas = [...ordenPlanillas].sort((a, b) => {
         if (Number(a.maquina_id) !== Number(b.maquina_id)) {
             return Number(a.maquina_id) - Number(b.maquina_id);
@@ -296,53 +323,94 @@ function renderPlanillas() {
         return Number(a.posicion) - Number(b.posicion);
     });
 
-    ordenadas.forEach((planilla) => {
-        // div que se renderizara
-        let div = document.createElement("div");
+    // Primer pase: por máquina, calcular finish independiente y max por código
+    const GAP = 1200; // 20 min entre OPs
+    const cumPorMaquina = new Map();     // maquinaId -> segundos acumulados
+    const records = [];                  // lo que luego pintamos
+    const codeMax = new Map();           // codigo -> max finish (entre máquinas)
 
-        maquinasDivs.forEach((maq) => {
-            let div_maquina_id = JSON.parse(maq.dataset.detalles).id;
-            if (div_maquina_id == planilla.maquina_id) {
-                div.className =
-                    "planilla group p-3 flex justify-around items-center border-2 border-blue-400 hover:border-blue-600 hover:-translate-y-1 transition-transform duration-75 ease-in-out rounded-xl cursor-grab bg-gradient-to-tr from-neutral-100 to-neutral-200 hover:from-blue-300 hover:to-blue-400 active:cursor-grabbing select-none text-center relative";
-                div.dataset.ordenId = planilla.id;
-                div.dataset.planillaId = planilla.planilla_id;
-                div.setAttribute("draggable", "true");
+    for (const op of ordenadas) {
+        const maquinaId = Number(op.maquina_id);
+        const planillaObj = getPlanillaById(op.planilla_id);
+        if (!planillaObj) continue;
 
-                let divPosicion = document.createElement("div");
-                divPosicion.className =
-                    "posicion text-blue-600 group-hover:text-black text-xs font-bold absolute top-1 left-1 pos-label";
-                divPosicion.innerText = planilla.posicion;
+        const code = String(planillaObj.codigo || "").trim();
+        const own = Number(tiemposPorOrden.get(Number(op.id)) || 0);
 
-                let divCodigoPlanilla = document.createElement("div");
-                let codigo_planilla;
-                for (const planilla_i of planillas) {
-                    if (planilla_i.id == planilla.planilla_id) {
-                        codigo_planilla = planilla_i.codigo;
-                        break;
-                    }
-                }
-                divCodigoPlanilla.innerText = codigo_planilla;
-                divCodigoPlanilla.className =
-                    "codigo text-blue-800 font-semibold";
-                div.dataset.codigo = codigo_planilla;
+        let cum = cumPorMaquina.get(maquinaId) || 0;
+        const isFirst = (Number(op.posicion) === 1);
+        if (!isFirst) cum += GAP;
 
-                div.appendChild(divPosicion);
-                div.appendChild(divCodigoPlanilla);
-            }
+        const finishInd = cum + own;           // fin independiente en ESTA máquina
+        cum = finishInd;                       // listo pa la siguiente en la misma máquina
+        cumPorMaquina.set(maquinaId, cum);
+
+        // actualizar máximo por código (fin programado global)
+        const prev = codeMax.get(code) || 0;
+        if (finishInd > prev) codeMax.set(code, finishInd);
+
+        records.push({
+            opId: Number(op.id),
+            maquinaId,
+            planillaId: Number(op.planilla_id),
+            posicion: Number(op.posicion),
+            code,
+            own,
+            finishInd,
+            estimacionEntrega: planillaObj.estimacion_entrega || ""
         });
+    }
+
+    // Segundo pase: pintar DOM con todos los data-* ya resueltos
+    for (const rec of records) {
+        // crear card
+        const div = document.createElement("div");
+        div.className =
+            "planilla group p-3 flex justify-around items-center border-2 border-blue-400 hover:border-blue-600 hover:-translate-y-1 transition-transform duration-75 ease-in-out rounded-xl cursor-grab bg-gradient-to-tr from-neutral-100 to-neutral-200 hover:from-blue-300 hover:to-blue-400 active:cursor-grabbing select-none text-center relative";
+        div.dataset.ordenId = rec.opId;
+        div.dataset.planillaId = rec.planillaId;
+        div.dataset.codigo = rec.code;
+        div.dataset.tiempoFabricacionOrdenPlanilla = String(rec.own);
+
+        // NUEVOS data-*
+        div.dataset.horaFinalizacionIndependiente = fechaMasSegundosTexto(rec.finishInd);
+        div.dataset.estimacionEntrega = rec.estimacionEntrega || "";
+        div.dataset.finProgramado = fechaMasSegundosTexto(codeMax.get(rec.code) || rec.finishInd);
+
+        div.setAttribute("draggable", "true");
+
+        // posicion
+        const divPosicion = document.createElement("div");
+        divPosicion.className = "posicion text-blue-600 group-hover:text-black text-xs font-bold absolute top-1 left-1 pos-label";
+        divPosicion.innerText = String(rec.posicion);
+
+        // código planilla
+        const divCodigoPlanilla = document.createElement("div");
+        divCodigoPlanilla.className = "codigo text-blue-800 font-semibold";
+        divCodigoPlanilla.innerText = rec.code;
+
+        // tiempo propio (formateado)
+        const divTime = document.createElement("div");
+        divTime.className = "planilla-time absolute top-1 right-1 font-mono text-xs font-semibold text-blue-600 drop-shadow-sm";
+        divTime.innerText = formatearTiempo(rec.own);
+
+        div.appendChild(divPosicion);
+        div.appendChild(divCodigoPlanilla);
+        div.appendChild(divTime);
 
         // pintar en su columna
-        maquinasDivs.forEach((maqDiv) => {
-            let maqId = maqDiv.getAttribute("data-maquina-id");
-            if (maqId == planilla.maquina_id) {
-                maqDiv.querySelector(".planillas").appendChild(div);
-            }
-        });
-    });
+        const maqDiv = document.querySelector(`.maquina[data-maquina-id="${rec.maquinaId}"]`);
+        maqDiv?.querySelector(".planillas")?.appendChild(div);
+    }
 
+    // Reenganchar interacciones
     agregarClickAPlanillas();
     initDragAndDrop();
+
+    // Recalcular avisos de fechas con prioridad máxima
+    applyDeadlineWarnings();
+
+    // Resaltado de obra si procede
     if (OBRA_HL.active) applyObraHighlight();
 }
 
@@ -411,7 +479,12 @@ function renderModalElementos(ordenPlanillaId, codigoPlanilla, codigoMaquina) {
     // permitir seleccionar/deseleccionar para transferencias (mismo patrón)
     anadirPropiedadTransferible();
 
+    // toolbar Seleccionar todos
+    ensureSelectAllToolbar();
+
     // mostrar modal
+    modalDetalles.classList.add("hidden");
+    modalMapa.classList.add("hidden");
     modalMostrarElementos.classList.remove("hidden");
 }
 
@@ -424,13 +497,11 @@ function anadirElemento(padre, elemento, n) {
          data-dimensiones="${elemento.dimensiones ?? ""}"
          data-id="${elemento.id}">
         <div class="flex justify-between items-center w-full">
-            <div class="text-neutral-600 text-xs font-mono font-semibold">${
-                n + 1
-            }</div>
+            <div class="text-neutral-600 text-xs font-mono font-semibold">${n + 1
+        }</div>
             <p>${elemento.codigo ?? ""}</p>
-            <p><span class="text-red-500 font-semibold">Ø</span>${
-                elemento.diametro ?? ""
-            }</p>
+            <p><span class="text-red-500 font-semibold">Ø</span>${elemento.diametro ?? ""
+        }</p>
         </div>
         <canvas id="${idCanvas}" class="w-full h-24 bg-white border border-gray-200 rounded-md"></canvas>
     </div>`;
@@ -511,105 +582,142 @@ function anadirPropiedadTransferible() {
 let _hlCode = null;
 let _hlNodes = [];
 
-function _clearHighlight() {
-    if (!_hlNodes.length) return;
+function _clearHighlight(force = false) {
+    if (HOVER_LOCK.active && !force) return;
 
-    _hlNodes.forEach((opd) => {
-        if (!opd || !opd.isConnected) return;
+    if (_hlNodes.length) {
+        _hlNodes.forEach((opd) => {
+            if (!opd || !opd.isConnected) return;
+            opd.classList.remove("__hl-compi");
+            if (!cardIsLate(opd)) { // <-- no cambiar color del tiempo si es late
+                if (opd.classList.contains("obra_resaltada")) setTimeColor(opd, "obra");
+                else setTimeColor(opd, "base");
+            }
 
-        // Quita SOLO el estado de compi
-        opd.classList.remove("__hl-compi");
 
-        // Header vuelve a azul
-        const maquinaHeader = opd
-            .closest(".maquina")
-            ?.querySelector(":scope > *:first-child");
-        if (maquinaHeader) {
-            maquinaHeader.classList.add("from-blue-600", "to-blue-700");
-            maquinaHeader.classList.remove("from-orange-400", "to-orange-500");
+            const maquinaHeader = opd.closest(".maquina")?.querySelector(":scope > *:first-child");
+            if (maquinaHeader) {
+                maquinaHeader.classList.remove("hl-compi", "from-orange-400", "to-orange-500");
+                maquinaHeader.classList.add("from-blue-600", "to-blue-700");
+            }
+        });
+    }
+
+    MODAL_MAQ_CHIPS.forEach((chip) => {
+        chip.classList.remove("hl-compi", "from-orange-400", "to-orange-500");
+        if (chip.classList.contains("obra-hl")) {
+            chip.classList.remove("from-blue-600", "to-blue-700");
+            chip.classList.add("from-fuchsia-400", "to-fuchsia-600");
+        } else {
+            chip.classList.remove("from-fuchsia-400", "to-fuchsia-600");
+            chip.classList.add("from-blue-600", "to-blue-700");
         }
     });
 
+
     _hlNodes = [];
     _hlCode = null;
+
+    if (OBRA_HL.active) applyObraMachineHighlights();
 }
 
+
+
 function resaltarCompis() {
-    const root = document; // o el contenedor que envuelve todas las .planilla
+    const root = document;
+    let ocultarModalesTimeout = null;
 
-    root.addEventListener(
-        "mouseover",
-        (e) => {
-            const card = e.target.closest(".planilla");
-            if (!card) {
-                // ocultar modal detalles
+    root.addEventListener("mouseover", (e) => {
+        const card = e.target.closest(".planilla");
+
+        // —— BLOQUEO ACTIVO: mantener resaltados, pero seguir actualizando modales con lo que pases por encima
+        if (HOVER_LOCK.active) {
+            if (card) {
+                const code = (card.dataset.codigo || card.querySelector(".codigo")?.textContent || "").trim();
+                modalDetalles.classList.remove("hidden");
+                modalMapa.classList.remove("hidden");
+                actualizarModalDetalles(code);
+            }
+            return;  // no tocar los resaltados existentes
+        }
+
+        // —— SIN BLOQUEO: comportamiento normal
+        if (!card) {
+            if (e.target.closest("#modal_detalles") || e.target.closest("#modal_maquinas_con_elementos")) return;
+            clearTimeout(ocultarModalesTimeout);
+            ocultarModalesTimeout = setTimeout(() => {
+                _clearHighlight();
                 modalDetalles.classList.add("hidden");
-                return;
-            }
+                modalMapa.classList.add("hidden");
+            }, 1000);
+            return;
+        }
 
-            // ocultar modal detalles
-            modalDetalles.classList.remove("hidden");
+        clearTimeout(ocultarModalesTimeout);
+        modalDetalles.classList.remove("hidden");
+        modalMapa.classList.remove("hidden");
 
-            const code = (
-                card.dataset.codigo ||
-                card.querySelector(".codigo")?.textContent ||
-                ""
-            ).trim();
+        const code = (card.dataset.codigo || card.querySelector(".codigo")?.textContent || "").trim();
+        actualizarModalDetalles(code);
+        if (!code || code === _hlCode) return;
 
-            actualizarModalDetalles(code);
-
-            if (!code || code === _hlCode) return;
-
-            _clearHighlight();
-
-            const matches = document.querySelectorAll(
-                `.planilla[data-codigo="${CSS.escape(code)}"]`
-            );
-            matches.forEach((opd) => {
-                if (opd === card) return;
-
-                // SOLO marcamos la clase de estado compi.
+        _clearHighlight(true);
+        const matches = document.querySelectorAll(`.planilla[data-codigo="${CSS.escape(code)}"]`);
+        matches.forEach((opd) => {
+            if (opd === card) return;
+            if (!cardIsLate(opd)) {          // no tocar si es late
                 opd.classList.add("__hl-compi");
-
-                // Header máquina a naranja (esto lo puedes mantener si te gusta el feedback):
-                const maquinaHeader = opd
-                    .closest(".maquina")
-                    ?.querySelector(":scope > *:first-child");
-                if (maquinaHeader) {
-                    maquinaHeader.classList.remove(
-                        "from-blue-600",
-                        "to-blue-700"
-                    );
-                    maquinaHeader.classList.add(
-                        "from-orange-400",
-                        "to-orange-500"
-                    );
+                setTimeColor(opd, "compi");
+                const header = opd.closest(".maquina")?.querySelector(":scope > *:first-child");
+                if (header) {
+                    header.classList.add("hl-compi");
+                    header.classList.remove("from-blue-600", "to-blue-700", "from-fuchsia-400", "to-fuchsia-600");
+                    header.classList.add("from-orange-400", "to-orange-500");
                 }
-            });
-
-            _hlNodes = Array.from(matches);
-            _hlCode = code;
-        },
-        { passive: true }
-    );
-
-    root.addEventListener(
-        "mouseout",
-        (e) => {
-            // si sigues dentro de otra .planilla con el mismo código, no limpies
-            const to = e.relatedTarget?.closest?.(".planilla");
-            if (to) {
-                const toCode = (
-                    to.dataset.codigo ||
-                    to.querySelector(".codigo")?.textContent ||
-                    ""
-                ).trim();
-                if (toCode && toCode === _hlCode) return;
             }
-            _clearHighlight();
-        },
-        { passive: true }
-    );
+        });
+
+
+        highlightModalMachines(getMachineIdsForCode(code));
+        _hlNodes = Array.from(matches);
+        _hlCode = code;
+    }, { passive: true });
+
+    root.addEventListener("mouseout", (e) => {
+        if (HOVER_LOCK.active) return;
+        const to = e.relatedTarget?.closest?.(".planilla");
+        if (to) {
+            const toCode = (to.dataset.codigo || to.querySelector(".codigo")?.textContent || "").trim();
+            if (toCode && toCode === _hlCode) return;
+        }
+        _clearHighlight();
+    }, { passive: true });
+
+    // —— TOGGLE BLOQUEO CON CLICK DERECHO GLOBAL
+    root.addEventListener("contextmenu", (e) => {
+        const card = e.target.closest(".planilla");
+        if (!HOVER_LOCK.active) {
+            if (!card) return;
+            e.preventDefault();
+            HOVER_LOCK.active = true;
+            HOVER_LOCK.code = _hlCode || (card.dataset.codigo || card.querySelector(".codigo")?.textContent || "").trim();
+            modalDetalles.classList.remove("hidden");
+            modalMapa.classList.remove("hidden");
+
+            // Pintamos el mini-mapa UNA vez y se queda congelado
+            highlightModalMachines(getMachineIdsForCode(HOVER_LOCK.code));
+            return;
+        }
+
+        // Si YA estaba bloqueado: desbloquea y restaura
+        e.preventDefault();
+        HOVER_LOCK.active = false;
+        HOVER_LOCK.code = null;
+        _clearHighlight(true);
+        clearModalMachineHighlights();
+        modalDetalles.classList.add("hidden");
+        modalMapa.classList.add("hidden");
+    });
 }
 
 // elegir a que maquina movel los elementos
@@ -618,30 +726,133 @@ function seleccionarMaquinaParaMovimiento() {
     modalMostrarElementos.classList.add("hidden");
     modalTransferirAMaquina.classList.remove("hidden");
 
-    // obtener maquinas e inicializar maquina seleccionada a null
-    let smpm_maquinas = Array.from(
+    // elementos seleccionados
+    const seleccionados = Array.from(
+        document.getElementsByClassName("seleccionado")
+    )
+        .map((card) => Number(card.dataset.id))
+        .map((id) => elementos.find((e) => Number(e.id) === id))
+        .filter(Boolean);
+
+    // título con cantidad
+    const smpmTitulo = document.getElementById("smpm_titulo");
+    if (smpmTitulo) {
+        smpmTitulo.textContent = `Seleccione nueva ubicación para los ${seleccionados.length} elementos`;
+    }
+
+    const smpm_maquinas = Array.from(
         document.getElementsByClassName("maquina_transferir")
     );
     let maquinaSeleccionadaId = null;
 
-    // estilos y obtencion de id
+    const esCompatibleConMaq = (el, maq) => {
+        const min = maq.diametro_min != null ? Number(maq.diametro_min) : null;
+        const max = maq.diametro_max != null ? Number(maq.diametro_max) : null;
+        const d =
+            el.diametro != null && el.diametro !== "" ?
+                Number(el.diametro) :
+                null;
+        const dentroMin = min == null || d == null || d >= min;
+        const dentroMax = max == null || d == null || d <= max;
+        return dentroMin && dentroMax;
+    };
+
+    // reset visual
+    smpm_maquinas.forEach((maqDiv) => {
+        maqDiv.classList.remove(
+            "grayscale",
+            "opacity-60",
+            "cursor-not-allowed"
+        );
+        maqDiv.classList.add("hover:-translate-y-[1px]");
+        maqDiv.dataset.allIncompatibles = "0";
+
+        const badge = maqDiv.querySelector(".badge-incompatibles");
+        if (badge) {
+            badge.className = "badge-incompatibles hidden";
+            badge.textContent = "";
+        }
+    });
+
+    // calcular compatibilidad y pintar
+    smpm_maquinas.forEach((maqDiv) => {
+        const maqId = Number(maqDiv.dataset.id);
+        const maq = getMaquinaById(maqId);
+        if (!maq) return;
+
+        let incompatibles = 0;
+        for (const el of seleccionados) {
+            if (!esCompatibleConMaq(el, maq)) incompatibles++;
+        }
+
+        const meta = maqDiv.querySelector(".maq-meta");
+        const badge = maqDiv.querySelector(".badge-incompatibles");
+        const codeChip = maqDiv.querySelector(".maq-codigo-chip");
+
+        // 100% incompatibles → gris y sin hover
+        if (
+            incompatibles === seleccionados.length &&
+            seleccionados.length > 0
+        ) {
+            maqDiv.classList.add(
+                "grayscale",
+                "opacity-60",
+                "cursor-not-allowed"
+            );
+            maqDiv.classList.remove("hover:-translate-y-[1px]");
+            maqDiv.dataset.allIncompatibles = "1";
+            // oculta badge por si acaso
+            if (badge) {
+                badge.classList.add("hidden");
+                badge.textContent = "";
+            }
+        }
+        // mezcla → badge a la IZQUIERDA del código
+        else if (incompatibles > 0 && meta && badge && codeChip) {
+            // estilos del badge: ámbar, mono, extrabold, tamaño mayor
+            badge.className =
+                "badge-incompatibles inline-flex items-center justify-center rounded-md px-2 py-0.5 " +
+                "bg-amber-300 text-amber-900 text-sm font-mono font-extrabold";
+            badge.textContent = String(incompatibles);
+            // asegúrate de que el badge esté antes del código
+            if (codeChip.previousElementSibling !== badge) {
+                meta.insertBefore(badge, codeChip);
+            }
+        } else {
+            // todo compatible → sin badge
+            if (badge) {
+                badge.classList.add("hidden");
+                badge.textContent = "";
+            }
+        }
+    });
+
+    // selección de máquina (bloquea 100% incompatibles)
     smpm_maquinas.forEach((maquina) => {
-        maquina.addEventListener("click", () => {
-            smpm_maquinas.forEach((maquina_2) => {
-                if (maquina_2 === maquina) {
-                    maquina_2.classList.remove("maquina_no_seleccionada");
-                    maquina_2.classList.add("maquina_si_seleccionada");
+        maquina.onclick = () => {
+            if (maquina.dataset.allIncompatibles === "1") {
+                maquina.classList.add("animate-pulse");
+                setTimeout(
+                    () => maquina.classList.remove("animate-pulse"),
+                    300
+                );
+                return;
+            }
+            smpm_maquinas.forEach((m2) => {
+                if (m2 === maquina) {
+                    m2.classList.remove("maquina_no_seleccionada");
+                    m2.classList.add("maquina_si_seleccionada");
                 } else {
-                    maquina_2.classList.remove("maquina_si_seleccionada");
-                    maquina_2.classList.add("maquina_no_seleccionada");
+                    m2.classList.remove("maquina_si_seleccionada");
+                    m2.classList.add("maquina_no_seleccionada");
                 }
             });
 
-            // obtener id maquina seleccionada
             maquinaSeleccionadaId = maquina.dataset.id;
-            btn_transferir.innerHTML = `TRANSFERIR A <span class="chiptransferirA transition-all duration-150">${maquina.children[0].innerText}</span>`;
-            btn_transferir.classList.add("text-white"); // texto blanco siempre tras seleccionar
-        });
+            btn_transferir.innerHTML = `TRANSFERIR A <span class="chiptransferirA transition-all duration-150">${maquina.querySelector("p").innerText
+                }</span>`;
+            btn_transferir.classList.add("text-white");
+        };
     });
 }
 
@@ -676,16 +887,17 @@ function transferirElementos() {
         const dentroMax = max == null || d == null || d <= max;
 
         if (dentroMin && dentroMax) {
-            compatibles.push({ card, el });
+            compatibles.push({
+                card,
+                el
+            });
         } else {
             //  Guardamos info completa para pintar tarjetas como anadirElemento
             noCompatibles.push({
                 id: el.id ?? null,
                 codigo: el.codigo ?? "",
-                diametro:
-                    el.diametro != null && el.diametro !== ""
-                        ? Number(el.diametro).toFixed(2)
-                        : "—",
+                diametro: el.diametro != null && el.diametro !== "" ?
+                    Number(el.diametro).toFixed(2) : "—",
                 dimensiones: el.dimensiones ?? "",
                 peso: el.peso ?? "N/A",
             });
@@ -694,31 +906,29 @@ function transferirElementos() {
 
     // Si hay no compatibles, avisa (pero seguimos con los compatibles)
     if (noCompatibles.length) {
-        const rango = `<b>Ø${min == null ? "sin límite" : min}</b> - <b>Ø${
-            max == null ? "sin límite" : max
-        }</b>`;
+        const rango = `<b>Ø${min == null ? "sin límite" : min}</b> - <b>Ø${max == null ? "sin límite" : max
+            }</b>`;
 
         // Tarjetas tipo "anadirElemento" con canvas (idéntico al drag & drop)
         const cardsHtml = `
       <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 mt-2 max-h-[50vh] overflow-y-scroll">
         ${noCompatibles
-            .map((nc, i) => {
-                const idCanvas = `cv-tf-nc-${nc.id ?? `maq${maquinaId}-i${i}`}`;
-                return `
+                .map((nc, i) => {
+                    const idCanvas = `cv-tf-nc-${nc.id ?? `maq${maquinaId}-i${i}`}`;
+                    return `
               <div class="p-2 w-full no_seleccionado text-center bg-gradient-to-tr from-orange-200 to-orange-300 hover:from-orange-300 hover:to-orange-400 hover:-translate-y-1 cursor-pointer rounded-xl flex flex-col items-center transition-all duration-75"
                    data-peso="${nc.peso ?? ""}"
                    data-dimensiones="${nc.dimensiones ?? ""}"
                    data-id="${nc.id ?? ""}">
                 <div class="flex justify-between items-center w-full">
                   <p>${nc.codigo}</p>
-                  <p><span class="text-red-500 font-semibold">Ø</span>${
-                      nc.diametro
-                  }</p>
+                  <p><span class="text-red-500 font-semibold">Ø</span>${nc.diametro
+                        }</p>
                 </div>
                 <canvas id="${idCanvas}" class="w-full h-24 bg-white border border-gray-200 rounded-md"></canvas>
               </div>`;
-            })
-            .join("")}
+                })
+                .join("")}
       </div>
     `;
 
@@ -728,9 +938,8 @@ function transferirElementos() {
             width: "auto",
             html: `
           <div class="text-left">
-            <p>La máquina <b>${
-                maquina.nombre || maquina.codigo || "#" + maquinaId
-            }</b>
+            <p>La máquina <b>${maquina.nombre || maquina.codigo || "#" + maquinaId
+                }</b>
             admite diámetros: ${rango}.</p>
             <p class="mt-2">Se han descartado del movimiento:</p>
             ${cardsHtml}
@@ -739,9 +948,8 @@ function transferirElementos() {
             didOpen: () => {
                 // Dibujar cada canvas como en anadirElemento
                 noCompatibles.forEach((nc, i) => {
-                    const idCanvas = `cv-tf-nc-${
-                        nc.id ?? `maq${maquinaId}-i${i}`
-                    }`;
+                    const idCanvas = `cv-tf-nc-${nc.id ?? `maq${maquinaId}-i${i}`
+                        }`;
                     const canvas = document.getElementById(idCanvas);
                     if (
                         !canvas ||
@@ -846,7 +1054,9 @@ function transferirElementos() {
             }
 
             // aplicar SOLO compatibles
-            compatibles.forEach(({ el }) => {
+            compatibles.forEach(({
+                el
+            }) => {
                 el.maquina_id = Number(maquinaId);
                 el.orden_planilla_id = Number(destinoOrdenId);
             });
@@ -875,7 +1085,9 @@ function transferirElementos() {
         ordenPlanillas.push(nuevaOrdenPlanilla);
 
         // aplicar SOLO compatibles
-        compatibles.forEach(({ el }) => {
+        compatibles.forEach(({
+            el
+        }) => {
             el.maquina_id = Number(maquinaId);
             el.orden_planilla_id = Number(nuevoOrdenId);
         });
@@ -967,7 +1179,11 @@ function findOrdenesCoincidentes(maquinaId, code) {
 }
 
 // Pinta las coincidencias en el modal_elegir_orden
-function renderModalElegirOrden({ maquinaId, codigo, coincidencias }) {
+function renderModalElegirOrden({
+    maquinaId,
+    codigo,
+    coincidencias
+}) {
     const meo = document.getElementById("modal_elegir_orden");
     cerrarModales(meo);
     const cont = document.getElementById("meo_lista");
@@ -975,9 +1191,9 @@ function renderModalElegirOrden({ maquinaId, codigo, coincidencias }) {
     const cod = document.getElementById("meo_codigo");
 
     const maq = getMaquinaById(maquinaId);
-    nom.textContent = maq
-        ? maq.nombre || maq.codigo || `#${maquinaId}`
-        : `#${maquinaId}`;
+    nom.textContent = maq ?
+        maq.nombre || maq.codigo || `#${maquinaId}` :
+        `#${maquinaId}`;
     cod.textContent = codigo;
     cont.innerHTML = "";
 
@@ -1087,7 +1303,7 @@ function moveElementsWithOrdenToMachine(ordenId, nuevaMaquinaId) {
 function initDragAndDrop() {
     // limpiar listeners previos (recreamos de forma segura)
     document.querySelectorAll(".planilla").forEach((card) => {
-        card.removeEventListener("_dnd_bound", () => {});
+        card.removeEventListener("_dnd_bound", () => { });
     });
 
     const cards = document.querySelectorAll(".planilla");
@@ -1128,8 +1344,9 @@ function initDragAndDrop() {
                 }
 
                 reindexPreview(c, DND.placeholder);
-            },
-            { passive: false }
+            }, {
+            passive: false
+        }
         );
 
         c.addEventListener("dragleave", (e) => {
@@ -1152,7 +1369,7 @@ function initDragAndDrop() {
                     "text/plain",
                     DND.draggingEl.dataset.ordenId || ""
                 );
-            } catch {}
+            } catch { }
         });
 
         card.addEventListener("dragend", () => {
@@ -1192,13 +1409,13 @@ function initDragAndDrop() {
             if (targetMachineId != null) {
                 const maquina = getMaquinaById(targetMachineId);
                 const min =
-                    maquina?.diametro_min != null
-                        ? Number(maquina.diametro_min)
-                        : null;
+                    maquina?.diametro_min != null ?
+                        Number(maquina.diametro_min) :
+                        null;
                 const max =
-                    maquina?.diametro_max != null
-                        ? Number(maquina.diametro_max)
-                        : null;
+                    maquina?.diametro_max != null ?
+                        Number(maquina.diametro_max) :
+                        null;
 
                 // elementos de la orden que se pretende mover
                 const elemsOrden = elementos.filter(
@@ -1214,10 +1431,8 @@ function initDragAndDrop() {
                         noCompat.push({
                             id: el.id ?? null,
                             codigo: el.codigo ?? "",
-                            diametro:
-                                el.diametro != null && el.diametro !== ""
-                                    ? Number(el.diametro).toFixed(2)
-                                    : "—",
+                            diametro: el.diametro != null && el.diametro !== "" ?
+                                Number(el.diametro).toFixed(2) : "—",
                             dimensiones: el.dimensiones ?? "",
                             peso: el.peso ?? "N/A",
                         });
@@ -1230,41 +1445,39 @@ function initDragAndDrop() {
                         src.insertBefore(
                             draggingRef,
                             src.children[
-                                calcDropIndex(
-                                    src,
-                                    draggingRef.getBoundingClientRect().top
-                                )
+                            calcDropIndex(
+                                src,
+                                draggingRef.getBoundingClientRect().top
+                            )
                             ]
                         );
                         reindexDOMColumn(src);
                     }
                     reindexDOMColumn(dst);
 
-                    const rango = `<b>Ø${
-                        min == null ? "sin límite" : min
-                    }</b> - <b>Ø${max == null ? "sin límite" : max}</b>`;
+                    const rango = `<b>Ø${min == null ? "sin límite" : min
+                        }</b> - <b>Ø${max == null ? "sin límite" : max}</b>`;
 
                     // tarjetas tipo "anadirElemento" con canvas
                     const cardsHtml = `
     <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 mt-2 max-h-[50vh] overflow-y-scroll">
       ${noCompat
-          .map((nc, i) => {
-              const idCanvas = `cv-nc-${nc.id ?? `ord${ordenId}-i${i}`}`;
-              return `
+                            .map((nc, i) => {
+                                const idCanvas = `cv-nc-${nc.id ?? `ord${ordenId}-i${i}`}`;
+                                return `
         <div class="p-2 w-full no_seleccionado text-center bg-gradient-to-tr from-orange-200 to-orange-300 hover:from-orange-300 hover:to-orange-400 hover:-translate-y-1 cursor-pointer rounded-xl flex flex-col items-center transition-all duration-75"
              data-peso="${nc.peso ?? ""}"
              data-dimensiones="${nc.dimensiones ?? ""}"
              data-id="${nc.id ?? ""}">
           <div class="flex justify-between items-center w-full">
             <p>${nc.codigo}</p>
-            <p><span class="text-red-500 font-semibold">Ø</span>${
-                nc.diametro
-            }</p>
+            <p><span class="text-red-500 font-semibold">Ø</span>${nc.diametro
+                                    }</p>
           </div>
           <canvas id="${idCanvas}" class="w-full h-24 bg-white border border-gray-200 rounded-md"></canvas>
         </div>`;
-          })
-          .join("")}
+                            })
+                            .join("")}
     </div>
   `;
 
@@ -1285,15 +1498,14 @@ function initDragAndDrop() {
                         didOpen: () => {
                             // dibujar cada canvas como en anadirElemento
                             noCompat.forEach((nc, i) => {
-                                const idCanvas = `cv-nc-${
-                                    nc.id ?? `ord${ordenId}-i${i}`
-                                }`;
+                                const idCanvas = `cv-nc-${nc.id ?? `ord${ordenId}-i${i}`
+                                    }`;
                                 const canvas =
                                     document.getElementById(idCanvas);
                                 if (
                                     !canvas ||
                                     typeof window.dibujarFiguraElemento !==
-                                        "function"
+                                    "function"
                                 )
                                     return;
 
@@ -1539,8 +1751,7 @@ async function guardarCambios() {
         // ✅ Modal de éxito (mensaje del backend)
         await Swal.fire({
             icon: "success",
-            title:
-                data?.message || "Movimiento(s) registrado(s) correctamente.",
+            title: data?.message || "Movimiento(s) registrado(s) correctamente.",
             timer: 1600,
             showConfirmButton: false,
         });
@@ -1549,8 +1760,7 @@ async function guardarCambios() {
         await Swal.fire({
             icon: "error",
             title: "Error al guardar",
-            text:
-                err?.message ||
+            text: err?.message ||
                 "Se produjo un error de red o el servidor devolvió una respuesta no válida.",
         });
     }
@@ -1580,31 +1790,38 @@ function filtrarPorNave(valor) {
 // mostrar modal de resaltar planillas por obra
 function mostrarModalResaltarObra() {
     modalResaltarObra.classList.remove("hidden");
+    modalDetalles.classList.add("hidden");
+    modalMapa.classList.add("hidden");
     document.getElementById("input_filtrar_obra").focus();
 }
 
-function actualizarModalDetalles(idPlanilla) {
-    let amd_planilla;
-    for (let i = 0; i < planillas.length; i++) {
-        if (planillas[i].codigo == idPlanilla) {
-            amd_planilla = planillas[i];
-            break;
-        }
-    }
+function actualizarModalDetalles(codigoPlanilla) {
+    const codigo = String(codigoPlanilla).trim();
+    const card = document.querySelector(`.planilla[data-codigo="${CSS.escape(codigo)}"]`);
+    const amd_planilla = planillas.find(p => String(p.codigo).trim() === codigo);
+    if (!card || !amd_planilla) return;
 
-    let amd_response;
-    amd_response = {
-        0: amd_obtenederObra(amd_planilla.obra_id),
-        1: amd_planilla.estado.toUpperCase(),
-        2: "?",
-        3: amd_planilla.estimacion_entrega,
+    const obraNombre = amd_obtenederObra(amd_planilla.obra_id);
+    const estado = String(amd_planilla.estado || "").toUpperCase();
+    const finProgramadoTxt = card.dataset.finProgramado || "";
+    const estimacionEntrega = card.dataset.estimacionEntrega || "";
+
+    const amd_response = {
+        0: obraNombre,
+        1: estado,
+        2: finProgramadoTxt,
+        3: estimacionEntrega,
     };
 
     for (let i = 0; i < 4; i++) {
-        modalDetalles.children[i].querySelector("span").innerText =
-            amd_response[i];
+        const span = modalDetalles.children[i]?.querySelector("span");
+        if (span) span.innerText = amd_response[i] ?? "";
     }
 }
+
+
+
+
 
 function amd_obtenederObra(idObra) {
     for (let i = 0; i < obras.length; i++) {
@@ -1626,6 +1843,7 @@ function buildCodesForObra(obraId) {
 }
 
 function applyObraStylesToCard(card) {
+    if (cardIsLate(card)) return;
     // Quitar hover azul y group
     card.classList.remove(
         "hover:from-blue-300",
@@ -1651,9 +1869,11 @@ function applyObraStylesToCard(card) {
     codEl?.classList.remove("text-blue-800");
     posEl?.classList.add("text-fuchsia-700");
     codEl?.classList.add("text-fuchsia-700");
+    setTimeColor(card, "obra");
 }
 
 function resetObraStylesOnCard(card) {
+    if (cardIsLate(card)) return;
     card.classList.remove(
         "obra_resaltada",
         "from-fuchsia-200",
@@ -1677,6 +1897,7 @@ function resetObraStylesOnCard(card) {
     posEl?.classList.add("text-blue-600", "group-hover:text-black");
     codEl?.classList.remove("text-fuchsia-700");
     codEl?.classList.add("text-blue-800");
+    setTimeColor(card, "base");
 }
 
 function applyObraHighlight() {
@@ -1690,10 +1911,14 @@ function applyObraHighlight() {
         ).trim();
         if (OBRA_HL.codes.has(code)) applyObraStylesToCard(card);
     });
+
+    applyObraMachineHighlights();
 }
 
 function clearObraHighlightUI() {
     document.querySelectorAll(".planilla").forEach(resetObraStylesOnCard);
+    clearObraColumnHeaderHighlights();
+    clearObraModalMachineHighlights();
 }
 
 function setObraHighlight(obraId) {
@@ -1704,7 +1929,11 @@ function setObraHighlight(obraId) {
 }
 
 function clearObraHighlight() {
-    OBRA_HL = { active: false, id: null, codes: new Set() };
+    OBRA_HL = {
+        active: false,
+        id: null,
+        codes: new Set()
+    };
     clearObraHighlightUI();
 }
 
@@ -1729,5 +1958,536 @@ function resaltarObra(quitar = null) {
         btn1.classList.remove("hidden");
 
         clearObraHighlight(); // ← restaura estilos base en todas las cards y limpia estado
+    }
+}
+
+// Helpers para saber qué máquinas contienen ese código
+function getMachineIdsForCode(code) {
+    const mids = new Set();
+    ordenPlanillas.forEach((op) => {
+        const p = getPlanillaById(op.planilla_id);
+        if (!p) return;
+        if (String(p.codigo).trim() === String(code).trim()) {
+            mids.add(Number(op.maquina_id));
+        }
+    });
+    return Array.from(mids);
+}
+
+function clearModalMachineHighlights() {
+    MODAL_MAQ_CHIPS.forEach((chip) => {
+        chip.classList.remove("hl-compi", "from-orange-400", "to-orange-500");
+        if (chip.classList.contains("obra-hl")) {
+            chip.classList.remove("from-blue-600", "to-blue-700");
+            chip.classList.add("from-fuchsia-400", "to-fuchsia-600");
+        } else {
+            chip.classList.remove("from-fuchsia-400", "to-fuchsia-600");
+            chip.classList.add("from-blue-600", "to-blue-700");
+        }
+    });
+}
+
+
+// Helpers: conseguir máquinas de la obra + resaltar/limpiar
+function getMachineIdsForObraCodes(codesSet) {
+    const mids = new Set();
+    ordenPlanillas.forEach((op) => {
+        const p = getPlanillaById(op.planilla_id);
+        if (!p) return;
+        const code = String(p.codigo).trim();
+        if (codesSet.has(code)) mids.add(Number(op.maquina_id));
+    });
+    return Array.from(mids);
+}
+
+/* ----- COLUMNAS (headers arriba de .maquina) ----- */
+function clearObraColumnHeaderHighlights() {
+    document.querySelectorAll(".maquina > :first-child").forEach((h) => {
+        if (h.classList.contains("hl-compi")) return; // prioridad compis
+        h.classList.remove("from-fuchsia-400", "to-fuchsia-600");
+        h.classList.add("from-blue-600", "to-blue-700");
+    });
+}
+
+function highlightObraColumnHeaders(machineIds) {
+    clearObraColumnHeaderHighlights();
+    machineIds.forEach((id) => {
+        const col = document.querySelector(`.maquina[data-maquina-id="${id}"] > :first-child`);
+        if (!col || col.classList.contains("hl-compi")) return; // prioridad compis
+        col.classList.remove("from-blue-600", "to-blue-700", "from-orange-400", "to-orange-500");
+        col.classList.add("from-fuchsia-400", "to-fuchsia-600");
+    });
+}
+
+
+/* ----- MINI-MAPA (chips de #modal_maquinas_con_elementos) ----- */
+function clearObraModalMachineHighlights() {
+    MODAL_MAQ_CHIPS?.forEach((chip) => {
+        if (chip.classList.contains("hl-compi")) return; // respeta compi
+        chip.classList.remove("obra-hl", "from-fuchsia-400", "to-fuchsia-600");
+        chip.classList.remove("from-orange-400", "to-orange-500");
+        chip.classList.add("from-blue-600", "to-blue-700");
+    });
+}
+
+function highlightObraModalMachines(machineIds) {
+    clearObraModalMachineHighlights(); // respeta compi si está activo
+    machineIds.forEach((id) => {
+        const chip = MODAL_MAQ_CHIPS?.get(Number(id));
+        if (!chip || chip.classList.contains("hl-compi")) return; // prioridad compi
+        chip.classList.add("obra-hl");
+        chip.classList.remove("from-blue-600", "to-blue-700", "from-orange-400", "to-orange-500");
+        chip.classList.add("from-fuchsia-400", "to-fuchsia-600");
+    });
+}
+
+
+
+/* Util centralizado para (re)aplicar highlight de obra a máquinas */
+function applyObraMachineHighlights() {
+    if (!OBRA_HL.active || !OBRA_HL.codes?.size) {
+        clearObraColumnHeaderHighlights();
+        clearObraModalMachineHighlights();
+        return;
+    }
+    const mids = getMachineIdsForObraCodes(OBRA_HL.codes);
+    highlightObraColumnHeaders(mids);
+    highlightObraModalMachines(mids);
+}
+
+// seleccionar todos los elementos
+function ensureSelectAllToolbar() {
+    const cont = document.getElementById("seleccion_elementos");
+    const modal = document.getElementById("modal_elementos");
+    if (!cont || !modal) return;
+
+    // Botón
+    let btnSel = document.getElementById("btn_sel_todos");
+    if (!btnSel) {
+        btnSel = document.createElement("button");
+        btnSel.id = "btn_sel_todos";
+        btnSel.type = "button";
+        btnSel.className =
+            "px-3 py-1 rounded-lg text-xs font-mono font-bold " +
+            "bg-gradient-to-tr from-blue-600 to-blue-700 text-white hover:opacity-90 transition";
+        document
+            .getElementById("header_seleecionar_elementos")
+            .appendChild(btnSel);
+    }
+
+    // Helpers
+    const counts = () => {
+        const total = cont.querySelectorAll(
+            ".no_seleccionado, .seleccionado"
+        ).length;
+        const sel = cont.querySelectorAll(".seleccionado").length;
+        return {
+            total,
+            sel
+        };
+    };
+
+    const updateLabel = () => {
+        const {
+            total,
+            sel
+        } = counts();
+        // ✅ sin cantidades en el texto
+        btnSel.textContent =
+            sel === total && total > 0 ?
+                "Quitar selección" :
+                "Seleccionar todos";
+    };
+
+    const setAllSeleccionados = (on) => {
+        cont.querySelectorAll(".no_seleccionado, .seleccionado").forEach(
+            (card) => {
+                if (on) {
+                    card.classList.remove(
+                        "no_seleccionado",
+                        "hover:from-orange-300",
+                        "hover:to-orange-400"
+                    );
+                    card.classList.add(
+                        "seleccionado",
+                        "to-orange-400",
+                        "from-blue-500"
+                    );
+                } else {
+                    card.classList.add(
+                        "no_seleccionado",
+                        "hover:from-orange-300",
+                        "hover:to-orange-400"
+                    );
+                    card.classList.remove(
+                        "seleccionado",
+                        "to-orange-400",
+                        "from-blue-500"
+                    );
+                }
+            }
+        );
+    };
+
+    // Click toggle (recalcula siempre total/sel)
+    btnSel.onclick = () => {
+        const {
+            total,
+            sel
+        } = counts();
+        const seleccionar = sel < total; // si no están todos, selecciona; si ya están todos, des-selecciona
+        setAllSeleccionados(seleccionar);
+        updateLabel();
+    };
+
+    // Actualiza la etiqueta cuando el usuario selecciona/deselecciona individualmente
+    if (!cont.dataset.selAllBound) {
+        cont.addEventListener("click", (ev) => {
+            if (ev.target.closest(".no_seleccionado, .seleccionado")) {
+                // Deja que el toggle de clases de tu handler se aplique primero
+                setTimeout(updateLabel, 0);
+            }
+        });
+        cont.dataset.selAllBound = "1";
+    }
+
+    // Atajo Ctrl+A (solo dentro del modal)
+    if (!modal.dataset.ctrlABound) {
+        modal.addEventListener("keydown", (ev) => {
+            if ((ev.ctrlKey || ev.metaKey) && ev.key.toLowerCase() === "a") {
+                ev.preventDefault();
+                setAllSeleccionados(true);
+                updateLabel();
+            }
+        });
+        modal.dataset.ctrlABound = "1";
+    }
+
+    // Estado inicial correcto cada vez que se abre el modal
+    updateLabel();
+}
+
+function calcularTiempoFabricacion(maq, planilla) {
+    // planilla => ordenPlanilla => {id: 9586, maquina_id: 8, planilla_id: 3294, posicion: 2}
+    // elemento => elemento
+
+    let tiempoFabricacionOrdenPlanilla = 0;
+
+    elementos.forEach((elemento) => {
+        if (planilla.id == elemento.orden_planilla_id) {
+            tiempoFabricacionOrdenPlanilla += Number(
+                elemento.tiempo_fabricacion
+            );
+        }
+    });
+
+    return tiempoFabricacionOrdenPlanilla;
+}
+
+
+// helper: devuelve un texto con la fecha/hora actual + N segundos
+function fechaMasSegundosTexto(segundos) {
+    const d = new Date(Date.now() + (Number(segundos) || 0) * 1000);
+    const fecha = d.toLocaleDateString("es-ES", {
+        year: "numeric", month: "2-digit", day: "2-digit",
+    });
+    const hora = d.toLocaleTimeString("es-ES", {
+        hour: "2-digit", minute: "2-digit",
+    });
+    return `${fecha} ${hora}`;
+}
+
+
+function formatearTiempo(segundos) {
+    segundos = Math.floor(Number(segundos) || 0);
+    const h = Math.floor(segundos / 3600);
+    const m = Math.floor((segundos % 3600) / 60);
+    const s = segundos % 60;
+
+    // formatea con ceros
+    const hh = h > 0 ? String(h).padStart(2, "0") + ":" : "";
+    const mm = (h > 0 || m > 0) ? String(m).padStart(2, "0") + ":" : "";
+    const ss = String(s).padStart(2, "0");
+
+    return hh + mm + ss;
+}
+
+// === COLOR DEL TIEMPO (respeta prioridad de tarde) ===
+function setTimeColor(card, mode) {
+    const t = card.querySelector(".planilla-time");
+    if (!t) return;
+
+    // limpiar
+    t.classList.remove("text-blue-600", "text-orange-600", "text-fuchsia-700", "text-red-700", "text-white");
+
+    // Prioridad máxima: tarde
+    if (cardIsLate(card)) {
+        if (card.classList.contains(LATE_CULPRIT_CLASS)) {
+            // culpable: fondo rojo → tiempo en blanco
+            t.classList.add("text-white");
+        } else {
+            // no culpable: sin fondo rojo → tiempo en rojo
+            t.classList.add("text-red-700");
+        }
+        return;
+    }
+
+    // No tarde → colores normales según modo
+    if (mode === "compi") t.classList.add("text-orange-600");
+    else if (mode === "obra") t.classList.add("text-fuchsia-700");
+    else t.classList.add("text-blue-600");
+}
+
+
+function buildTiemposPorOrden() {
+    // Suma tiempo_fabricacion por orden_planilla_id una sola vez
+    const mapa = new Map(); // ordenId -> segundos
+    elementos.forEach((el) => {
+        const oid = Number(el.orden_planilla_id);
+        const t = Number(el.tiempo_fabricacion) || 0;
+        mapa.set(oid, (mapa.get(oid) || 0) + t);
+    });
+    return mapa;
+}
+
+function highlightModalMachines(machineIds) {
+    const want = new Set(machineIds.map((n) => Number(n)));
+
+    for (const [mid, chip] of MODAL_MAQ_CHIPS.entries()) {
+        const isWanted = want.has(Number(mid));
+
+        if (isWanted) {
+            // Prioridad compi: pinta NARANJA
+            chip.classList.add("hl-compi");
+            chip.classList.remove("from-blue-600", "to-blue-700", "from-fuchsia-400", "to-fuchsia-600");
+            chip.classList.add("from-orange-400", "to-orange-500");
+            // OJO: NO quitamos obra-hl (se conserva de fondo)
+        } else {
+            // No es compi: quitamos naranja
+            chip.classList.remove("hl-compi", "from-orange-400", "to-orange-500");
+
+            // Si tenía obra, vuelve a ROSA; si no, AZUL
+            if (chip.classList.contains("obra-hl")) {
+                chip.classList.remove("from-blue-600", "to-blue-700");
+                chip.classList.add("from-fuchsia-400", "to-fuchsia-600");
+            } else {
+                chip.classList.remove("from-fuchsia-400", "to-fuchsia-600");
+                chip.classList.add("from-blue-600", "to-blue-700");
+            }
+        }
+    }
+}
+
+// ==== ALERTAS DE FECHA (helpers) ====
+
+// Intenta parsear "dd/mm/yyyy hh:mm", ISO, o lo que le eches.
+function parseDateLoose(str) {
+    if (!str || typeof str !== "string") return null;
+    const s = str.trim();
+
+    // 1) PATRÓN ES-ES: dd/mm/yyyy [hh[:mm[:ss]]]
+    //    También acepta dd-mm-yyyy.
+    const m = s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})(?:\s+(\d{1,2})(?::(\d{2})(?::(\d{2}))?)?)?$/);
+    if (m) {
+        const d = Number(m[1]);
+        const mo = Number(m[2]);       // 1..12
+        const y = Number(m[3]);
+        const hh = Number(m[4] ?? 0);
+        const mm = Number(m[5] ?? 0);
+        const ss = Number(m[6] ?? 0);
+        const dt = new Date(y, mo - 1, d, hh, mm, ss, 0);
+        return Number.isNaN(+dt) ? null : dt;
+    }
+
+    // 2) Cualquier otra cosa que entienda el motor (ISO, etc.)
+    const t = Date.parse(s);
+    if (!Number.isNaN(t)) return new Date(t);
+
+    return null;
+}
+
+
+const isAfter = (a, b) => a && b ? (+a > +b) : false;
+
+// Clases para avisos
+const LATE_CODE_CLASS = "late-code";        // todas las OPs del código llegan tarde
+const LATE_CULPRIT_CLASS = "late-culprit";    // esta OP, por sí sola, ya llega tarde
+
+function clearDeadlineWarnings() {
+    document.querySelectorAll(".planilla").forEach(card => {
+        card.classList.remove(
+            LATE_CODE_CLASS, LATE_CULPRIT_CLASS,
+            "border-red-500", "border-red-600", "border-red-700",
+            "ring-2", "ring-4", "ring-red-500", "ring-red-600", "ring-offset-2",
+            "animate-pulse", "bg-red-600", "bg-red-700", "bg-red-500",
+            // colores de texto que forzamos en late
+            "text-white", "text-red-700"
+        );
+
+        // restaurar base solo si no hay resaltado por obra
+        if (!card.classList.contains("obra_resaltada")) {
+            card.classList.add("border-2", "border-blue-400");
+            card.classList.add("from-neutral-100", "to-neutral-200");
+            card.classList.add("hover:from-blue-300", "hover:to-blue-400", "hover:border-blue-600", "group");
+        }
+
+        // restaurar colores de textos base
+        const posEl = card.querySelector(".posicion");
+        const codEl = card.querySelector(".codigo");
+        const timeEl = card.querySelector(".planilla-time");
+        posEl?.classList.remove("text-white", "text-red-700");
+        codEl?.classList.remove("text-white", "text-red-700");
+        timeEl?.classList.remove("text-white", "text-red-700");
+
+        setTimeColor(card, "base");
+    });
+
+    // si hay obra activa, vuelve a aplicarla (no pisa rojo al recalcular luego)
+    if (OBRA_HL.active) applyObraHighlight();
+}
+
+// No pisar estos estilos desde otras funciones (prioridad máxima)
+function cardIsLate(card) {
+    return card.classList.contains(LATE_CODE_CLASS) || card.classList.contains(LATE_CULPRIT_CLASS);
+}
+
+// NO CULPABLE (late-code): borde rojo + texto rojo
+function markLateCode(card) {
+    // limpiar posibles estilos previos
+    card.classList.remove(
+        "border-blue-400", "hover:border-blue-600",
+        "border-fuchsia-400",
+        "hover:from-blue-300", "hover:to-blue-400",
+        "from-fuchsia-200", "to-fuchsia-300",
+        "from-neutral-100", "to-neutral-200",
+        "ring-2", "ring-4", "ring-red-500", "ring-red-600", "ring-offset-2",
+        "animate-pulse", "bg-red-600", "bg-red-700", "bg-red-500"
+    );
+
+    // quitar efectos de hover que pintan colores, pero mantener la elevación
+    card.classList.remove("group");
+    card.classList.add("hover:-translate-y-[1px]");
+
+    // aplicar estilo simple
+    card.classList.add(LATE_CODE_CLASS, "border-2", "border-red-600");
+
+    // texto rojo en contenido (posición, código y tiempo)
+    setLateText(card, "red");
+
+    // el número de tiempo (helper) también se ajusta pero lo forzamos rojo aquí
+    setTimeColor(card, "late");
+}
+
+// CULPABLE (late-culprit): SIN glow, con fondo rojo y texto blanco legible
+function markLateCulprit(card) {
+    card.classList.remove(
+        "border-blue-400", "hover:border-blue-600",
+        "border-fuchsia-400",
+        "hover:from-blue-300", "hover:to-blue-400",
+        "from-fuchsia-200", "to-fuchsia-300",
+        "from-neutral-100", "to-neutral-200",
+        "ring-2", "ring-4", "ring-red-500", "ring-red-600", "ring-offset-2",
+        "animate-pulse"
+    );
+
+    card.classList.remove("group");
+    card.classList.add("hover:-translate-y-[1px]");
+
+    // fondo y borde rojo, sin halos
+    card.classList.add(LATE_CULPRIT_CLASS, "border-2", "border-red-700", "bg-red-600");
+
+    // todo el contenido en blanco para contraste
+    setLateText(card, "white");
+
+    // el tiempo en blanco (no rojo) para legibilidad sobre fondo rojo
+    setTimeColor(card, "late");
+}
+
+
+function applyDeadlineWarnings() {
+    clearDeadlineWarnings();
+
+    // Agrupar tarjetas por código y recolectar fechas
+    const byCode = new Map();
+    document.querySelectorAll(".planilla").forEach(card => {
+        const code = (card.dataset.codigo || "").trim();
+        if (!code) return;
+
+        const finProgStr = card.dataset.finProgramado || "";                  // global por código (ya viene precalculado)
+        const estStr = card.dataset.estimacionEntrega || "";              // fecha objetivo de entrega
+        const finIndStr = card.dataset.horaFinalizacionIndependiente || "";  // fin de ESTA OP
+
+        const finProg = parseDateLoose(finProgStr);
+        const est = parseDateLoose(estStr);
+        const finInd = parseDateLoose(finIndStr);
+
+        if (!byCode.has(code)) {
+            byCode.set(code, {
+                cards: [],
+                finProgCandidates: [],
+                est: null,
+            });
+        }
+        const b = byCode.get(code);
+        b.cards.push({ card, finInd, finIndStr });
+        if (finProg) b.finProgCandidates.push(finProg);
+        if (!b.est && est) b.est = est;
+
+        // útil pa revisar con el inspector
+        // card.title = `COD:${code} | FIN_IND:${finIndStr} | FIN_PROG:${finProgStr} | EST:${estStr || "(vacío)"}`;
+    });
+
+    let totalLateCode = 0;
+    let totalCulprits = 0;
+
+    byCode.forEach((b, code) => {
+        // Si hay varios finProgramado en las cards, me quedo con el MÁXIMO (seguridad extra)
+        let finProg = null;
+        if (b.finProgCandidates.length) {
+            finProg = b.finProgCandidates.reduce((acc, d) => (acc && acc > d) ? acc : d, null);
+        }
+        const est = b.est;
+
+        // Regla: si finProgramado > estimacionEntrega → todas las OPs del código “late-code”
+        if (finProg && est && +finProg > +est) {
+            b.cards.forEach(({ card }) => {
+                markLateCode(card);
+                // card.title += " | LATE-CODE(finProg>est)";
+            });
+            totalLateCode += b.cards.length;
+
+            // Culpables: las OPs cuyo fin individual también supera la estimación
+            b.cards.forEach(({ card, finInd, finIndStr }) => {
+                if (finInd && +finInd > +est) {
+                    markLateCulprit(card);
+                    // card.title += ` | LATE-CULPRIT(finInd>est:${finIndStr})`;
+                    totalCulprits++;
+                }
+            });
+        }
+        // Si no hay est o finProg, no pintamos nada (no hay manera de decidir)
+    });
+
+    // Log resumen para depurar
+    console.log(`[DL] == FIN applyDeadlineWarnings | LateCode cards: ${totalLateCode} | Culprits: ${totalCulprits}`);
+}
+
+// Forzamos color de los tres textos clave de la card
+function setLateText(card, color) {
+    const posEl = card.querySelector(".posicion");
+    const codEl = card.querySelector(".codigo");
+    const timeEl = card.querySelector(".planilla-time");
+    const remove = (el) => el?.classList.remove("text-white", "text-red-700", "text-blue-600", "text-orange-600", "text-fuchsia-700");
+
+    remove(posEl); remove(codEl); remove(timeEl);
+
+    if (color === "white") {
+        posEl?.classList.add("text-white");
+        codEl?.classList.add("text-white");
+        timeEl?.classList.add("text-white");
+    } else if (color === "red") {
+        posEl?.classList.add("text-red-700");
+        codEl?.classList.add("text-red-700");
+        timeEl?.classList.add("text-red-700");
     }
 }
