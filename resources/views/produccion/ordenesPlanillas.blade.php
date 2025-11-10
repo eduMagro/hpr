@@ -2,15 +2,18 @@
     $numMaquinas = $maquinas->count();
 @endphp
 
+
 <x-app-layout>
+    <x-menu.planillas />
 
 
-    <div class="p-6 overflow-hidden relative min-h-[calc(100vh-80px)]">
+    <div class="p-6 overflow-hidden relative max-h-[calc(100vh-80px)]">
         <div class="flex w-full justify-between">
             <h1 class="text-2xl font-bold mb-4">🧾 Planificación por Orden</h1>
             <div class="flex gap-5">
 
-                <button id="btn_mostrar_modal_obras" onclick="mostrarModalResaltarObra()"
+                <button id="btn_mostrar_modal_obras"
+                    onclick="mostrarModalResaltarObra()"
                     class="p-2 bg-gradient-to-r text-neutral-600 hover:text-white from-neutral-500/30 to-neutral-600/30 hover:from-neutral-500 hover:to-neutral-600 uppercase font-bold text-sm rounded-lg transition-all duration-75 hover:-translate-y-[1px]">Resaltar
                     por obra</button>
                 <button id="btn_quitar_resaltado" onclick="resaltarObra(1)"
@@ -37,9 +40,9 @@
             </div>
         </div>
 
-        <div id="maquinas" class="rounded-xl gap-2 flex overflow-x-scroll  h-[calc(100vh-125px)] mt-3">
+        <div id="maquinas"
+            class="rounded-xl gap-2 flex overflow-x-scroll  h-[calc(100vh-125px)] mt-3">
             @forelse($maquinas as $maq)
-
                 @php
                     foreach ($localizacionMaquinas as $loc) {
                         if ($loc->maquina_id == $maq->id) {
@@ -64,10 +67,12 @@
                 @endphp
 
                 <div class="maquina flex flex-col w-full min-w-[100px] bg-neutral-200 rounded-t-xl"
-                    data-detalles='@json($detalles)' data-maquina-id="{{ $detalles['id'] }}">
+                    data-detalles='@json($detalles)'
+                    data-maquina-id="{{ $detalles['id'] }}">
                     <div
                         class="bg-gradient-to-r from-blue-600 to-blue-700 w-full h-12 p-2 rounded-t-xl flex items-center justify-center text-white shadow-md uppercase font-bold text-xl">
-                        <p class="uppercase text-2xl font-mono">{{ $detalles['codigo'] }}</p>
+                        <p class="uppercase text-2xl font-mono">
+                            {{ $detalles['codigo'] }}</p>
                     </div>
 
                     <div
@@ -88,12 +93,11 @@
             @empty
                 No hay máquinas
             @endforelse
-            @foreach ($maquinas as $maq)
-            @endforeach
         </div>
 
 
-        <div id="modal_guardar" data-save-url="{{ route('produccion.planillas.guardar') }}"
+        <div id="modal_guardar"
+            data-save-url="{{ route('produccion.planillas.guardar') }}"
             class="opacity-0 gap-2 absolute flex -bottom-14 left-1/2 -translate-x-1/2 transition-all duration-150">
             <button id="btn_guardar"
                 class="p-2 px-10 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 rounded-xl hover:text-white font-semibold transition-all duration-150">
@@ -105,24 +109,59 @@
             </button>
         </div>
 
+        <div id="modal_maquinas_con_elementos"
+            class="hidden absolute bottom-3 left-3 rounded-lg border-2 border-blue-700 p-2 text-xs font-mono grid gap-2 grid-cols-{{ ceil(count($maquinas) / 2) }} bg-opacity-50 backdrop-blur-sm">
+
+            @foreach (array_chunk($maquinas->toArray(), 2) as $columna)
+                <div class="flex flex-col gap-1">
+                    @foreach ($columna as $maq)
+                        <div data-maquina-id="{{ $maq['id'] }}"
+                            class="chip-maq px-2 py-1 bg-gradient-to-tr from-blue-600 to-blue-700 rounded text-white font-bold text-center cursor-default">
+                            {{ $maq['codigo'] }}
+                        </div>
+                    @endforeach
+                </div>
+            @endforeach
+        </div>
+
+
+
         <div id="modal_transferir_a_maquina"
             class="bg-black bg-opacity-50 absolute top-0 left-0 w-screen h-screen flex items-center justify-center hidden backdrop-blur-sm">
             <div
                 class="bg-neutral-100 shadow-lg rounded-lg p-3 flex flex-col gap-4 items-center min-w-[calc(100vw-40vw)]">
-                <div class="uppercase font-medium">Seleccione nueva ubicación</div>
+                <div id="smpm_titulo" class="uppercase font-medium">
+                    Seleccione nueva ubicación
+                </div>
 
                 <div
                     class="grid grid-cols-2 md:grid-cols-3 w-full gap-2 p-2 max-h-96 overflow-y-scroll rounded-lg
             [&::-webkit-scrollbar]:w-2
           [&::-webkit-scrollbar-thumb]:bg-neutral-400">
                     @forelse($maquinas as $maq)
-                        <div data-id="{{ $maq->id }}" data-id="{{ $maq->id }}"
+                        <div data-id="{{ $maq->id }}"
                             class="p-3 flex maquina_transferir justify-between gap-10 items-center cursor-pointer maquina_no_seleccionada hover:-translate-y-[1px] transition-all duration-75 shadow-sm rounded-lg">
-                            <p class="text-indigo-900 font-mono font-extrabold uppercase">{{ $maq->nombre }}</p>
-                            <p class="text-xs font-mono font-semibold p-1 text-white rounded-md bg-indigo-600">
-                                {{ $maq->codigo }}</p>
+                            {{-- Nombre máquina (izquierda) --}}
+                            <p
+                                class="text-indigo-900 font-mono font-extrabold uppercase">
+                                {{ $maq->nombre }}
+                            </p>
+
+                            {{-- Meta (derecha): incompatibles + código, juntitos con gap-1 --}}
+                            <div class="maq-meta flex items-center gap-1">
+                                {{-- badge de incompatibles (se rellena desde JS) --}}
+                                <span class="badge-incompatibles hidden"></span>
+
+                                {{-- chip código máquina --}}
+                                <span
+                                    class="maq-codigo-chip text-xs font-mono font-semibold px-2 py-0.5 text-white rounded-md bg-indigo-600">
+                                    {{ $maq->codigo }}
+                                </span>
+                            </div>
                         </div>
-                    @endforeach
+                    @empty
+                    @endforelse
+
                 </div>
 
                 <div>
@@ -140,11 +179,13 @@
 
             <div
                 class="bg-neutral-100 shadow-lg rounded-lg p-3 flex flex-col gap-4 items-center min-w-[calc(100vw-40vw)]">
-                <div class="uppercase font-medium">Seleccione obra para resaltar</div>
+                <div class="uppercase font-medium">Seleccione obra para resaltar
+                </div>
 
                 <div>
-                    <input id="input_filtrar_obra" type="text" placeholder="Filtrar por nombre"
-                        class="p-2 focus:outline-fuchsia-300 rounded-lg shadow-md">
+                    <input id="input_filtrar_obra" type="text"
+                        autocomplete="off" placeholder="Filtrar por nombre"
+                        class="p-2 focus:outline-none border-b-2 bg-transparent border-fuchsia-300 placeholder-neutral-500 font-mono font-semibold">
                 </div>
 
                 <div id="obras_modal"
@@ -154,7 +195,8 @@
                     @foreach ($obras as $obra)
                         <div data-id="{{ $obra->id }}"
                             class="p-3 flex obra justify-between gap-10 items-center cursor-pointer obra_no_seleccionada hover:-translate-y-[1px] transition-all duration-75 shadow-sm rounded-lg bg-gradient-to-tr from-neutral-200 to-neutral-300 hover:from-fuchsia-300 hover:to-fuchsia-400 hover:text-fuchsia-900">
-                            <p class="font-mono font-extrabold uppercase">{{ $obra->obra }}</p>
+                            <p class="uppercase font-mono font-semibold">
+                                {{ $obra->obra }}</p>
                         </div>
                     @endforeach
                 </div>
@@ -166,9 +208,15 @@
             class="bg-black bg-opacity-50 absolute top-0 left-0 w-screen h-screen flex items-center justify-center hidden backdrop-blur-sm">
             <div id="div_elementos"
                 class="flex flex-col transition-all duration-100 p-3 bg-neutral-100 rounded-xl shadow-xl gap-3 items-center">
-                <div class="uppercase flex gap-3 justify-center items-center">
-                    <p>Elementos de <span id="seleccion_planilla_codigo" class="chip">****-******</span></p>
-                    <p>en máquina <span id="seleccion_maquina_tag" class="chip">****</span></p1>
+                <div
+                    class="uppercase flex justify-between items-center pt-2 w-full px-5">
+                    <div class="flex">
+                        <p>Elementos de <span id="seleccion_planilla_codigo"
+                                class="chip">****-******</span></p>
+                        <p>en máquina <span id="seleccion_maquina_tag"
+                                class="chip">****</span></p1>
+                    </div>
+                    <div id="header_seleecionar_elementos"></div>
                 </div>
                 <div id="seleccion_elementos"
                     class="w-full max-h-[35rem] overflow-auto grid grid-cols-4 gap-2 p-3 rounded-xl
@@ -193,13 +241,15 @@
             <div
                 class="bg-neutral-100 shadow-lg rounded-lg p-4 flex flex-col gap-4 items-center min-w-[calc(100vw-40vw)]">
                 <div class="uppercase font-semibold text-center">
-                    Coincidencias en <span id="meo_maquina_nombre" class="font-mono text-orange-700"></span>
+                    Coincidencias en <span id="meo_maquina_nombre"
+                        class="font-mono text-orange-700"></span>
                 </div>
 
                 <div class="text-sm text-gray-700 text-center">
-                    Ya existen planillas con el mismo código <span id="meo_codigo"
-                        class="font-mono font-semibold"></span>.
-                    Selecciona una para fusionar (los elementos pasarán a esa orden) o crea una nueva al final.
+                    Ya existen planillas con el mismo código <span
+                        id="meo_codigo" class="font-mono font-semibold"></span>.
+                    Selecciona una para fusionar (los elementos pasarán a esa
+                    orden) o crea una nueva al final.
                 </div>
 
                 <div id="meo_lista"
@@ -210,9 +260,12 @@
                 </div>
 
                 <div class="w-full">
-                    <label class="flex items-center gap-2 p-2 rounded-lg border cursor-pointer hover:bg-neutral-50">
-                        <input type="radio" name="meo_opcion" value="__crear_nueva__">
-                        <span class="text-sm font-semibold">Crear nueva orden al final</span>
+                    <label
+                        class="flex items-center gap-2 p-2 rounded-lg border cursor-pointer hover:bg-neutral-50">
+                        <input type="radio" name="meo_opcion"
+                            value="__crear_nueva__">
+                        <span class="text-sm font-semibold">Crear nueva orden al
+                            final</span>
                     </label>
                 </div>
 
@@ -232,7 +285,7 @@
     </div>
 
     <div id="modal_detalles"
-        class="absolute bg-opacity-50 backdrop-blur-sm bg-gradient-to-tr from-blue-200/10 to-blue-300/10 border-2 border-blue-700 left-4 uppercase top-[45vh] rounded-lg text-blue-700 font-mono font-semibold text-sm p-2 flex flex-col gap-2">
+        class="absolute bg-opacity-50 backdrop-blur-sm border-2 border-blue-700 left-4 uppercase top-[45vh] rounded-lg text-blue-700 font-mono font-semibold text-sm p-2 flex flex-col gap-2 hidden">
         <div>
             <p>Obra:</p>
             <p><span></span></p>
@@ -243,7 +296,7 @@
         </div>
         <div>
             <p>Fin programado:</p>
-            <p><span></span></p>
+            <p><span id="fin_programado"></span></p>
         </div>
         <div>
             <p>Estimación entrega:</p>
@@ -264,6 +317,7 @@
                     'dimensiones' => $elemento->dimensiones,
                     'diametro' => $elemento->diametro,
                     'diametro' => $elemento->diametro,
+                    'tiempo_fabricacion' => $elemento->tiempo_fabricacion,
                 ]) }}">
             </div>
         @endforeach
@@ -290,7 +344,6 @@
                     JSON_UNESCAPED_UNICODE,
                 ) }}'>
             </div>
-
         @endforeach
     </div>
 
@@ -456,6 +509,13 @@
         #modal_detalles span {
             color: black;
             font-size: 1rem;
+        }
+
+        .planilla.late-code,
+        .planilla.late-culprit {
+            border-color: #ef4444 !important;
+            /* red-500/600 */
+            box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.4) !important;
         }
     </style>
 
