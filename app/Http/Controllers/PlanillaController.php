@@ -31,6 +31,7 @@ use App\Services\PlanillaImport\PlanillaImportService;
 use App\Services\OrdenPlanillaService;
 use Illuminate\Support\Facades\Schema;
 use App\Services\PlanillaColaService;
+use App\Services\ImportProgress;
 
 class PlanillaController extends Controller
 {
@@ -549,51 +550,48 @@ class PlanillaController extends Controller
     {
         abort_unless(auth()->check() && auth()->user()->rol === 'oficina', 403);
 
-        $request->validate([
-            'file'             => 'required|file|mimes:xlsx,xls',
-            'fecha_aprobacion' => 'required|date',
-        ]);
-
-        $file = $request->file('file');
-        $nombreArchivo   = $file->getClientOriginalName();
-        $fechaAprobacion = Carbon::parse($request->input('fecha_aprobacion'))->startOfDay();
-
         try {
-
-            // 👉 pasamos la fecha de aprobación al service
-            $resultado = $importService->importar($file, fechaAprobacion: $fechaAprobacion);
-
-            if ($resultado->esExitoso()) {
-                $redirect = redirect()
-                    ->route('planillas.index')
-                    ->with('success', $resultado->mensaje())
-                    ->with('import_report', true)
-                    ->with('nombre_archivo', $nombreArchivo);
-
-                if ($resultado->tieneAdvertencias()) {
-                    $redirect->with('tiene_advertencias', true);
-                }
-                return $redirect;
-            }
-
-            return redirect()
-                ->back()
-                ->with('error', $resultado->mensaje())
-                ->with('nombre_archivo', $nombreArchivo);
-        } catch (\Throwable $e) {
-            Log::error('❌ Error en importación de planillas', [
-                'archivo' => $nombreArchivo,
-                'error'   => $e->getMessage(),
-                'file'    => $e->getFile(),
-                'line'    => $e->getLine(),
+            $validated = $request->validate([
+                'file'             => 'required|file|mimes:xlsx,xls',
+                'fecha_aprobacion' => 'required|date',
+                'import_id'        => 'required|string',
             ]);
 
-            return redirect()
-                ->back()
-                ->with('error', 'Error durante la importación: ' . $e->getMessage())
-                ->with('nombre_archivo', $nombreArchivo);
+            $file            = $validated['file'];
+            $nombreArchivo   = $file->getClientOriginalName();
+            $fechaAprobacion = \Illuminate\Support\Carbon::parse($validated['fecha_aprobacion'])->startOfDay();
+            $importId        = $validated['import_id'];
+
+            ImportProgress::init($importId, 1, 'Leyendo archivo...');
+
+            $resultado = $importService->importar($file, fechaAprobacion: $fechaAprobacion, importId: $importId);
+
+            if ($request->ajax()) {
+                return response()->json([
+                    'success' => $resultado->esExitoso(),
+                    'message' => $resultado->mensaje(),
+                ], $resultado->esExitoso() ? 200 : 422);
+            }
+
+            // (opcional) camino de fallback para navegadores sin fetch
+            return $resultado->esExitoso()
+                ? redirect()->route('planillas.index')->with('success', $resultado->mensaje())
+                : back()->with('error', $resultado->mensaje())->with('nombre_archivo', $nombreArchivo);
+        } catch (\Throwable $e) {
+            // ¡Muy útil en dev para ver el motivo del 500!
+            ImportProgress::setError($request->input('import_id', 'n/a'), $e->getMessage());
+
+            if ($request->ajax()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => $e->getMessage(), // en prod puedes poner mensaje genérico
+                ], 500);
+            }
+
+            return back()->with('error', 'Error durante la importación: ' . $e->getMessage());
         }
     }
+
 
     //-----------------------------------------------------------------------------------------------------
     //-----------------------------------------------------------------------------------------------------
@@ -1115,5 +1113,10 @@ class PlanillaController extends Controller
                 'message' => 'Error interno',
             ], 500);
         }
+    }
+
+    public function importProgress(string $id)
+    {
+        return response()->json(ImportProgress::get($id));
     }
 }
