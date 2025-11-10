@@ -933,6 +933,7 @@ class ProduccionController extends Controller
     }
 
     //---------------------------------------------------------- REORDENAR PLANILLAS
+    //---------------------------------------------------------- REORDENAR PLANILLAS
     public function reordenarPlanillas(Request $request)
     {
         $request->validate([
@@ -1168,6 +1169,18 @@ class ProduccionController extends Controller
         ]);
     }
 
+    public function porCodigos(Request $request)
+    {
+        $codigos = explode(',', $request->codigos);
+
+        $elementos = Elemento::whereIn('codigo', $codigos)
+            ->select('id', 'codigo', 'dimensiones', 'diametro', 'peso')
+            ->get();
+
+        return response()->json($elementos);
+    }
+    //---------------------------------------------------------- REORDENAR PLANILLAS
+    //---------------------------------------------------------- REORDENAR PLANILLAS
     /** Reordena la posición de la planilla en una máquina dada */
     private function reordenarPosicionEnMaquina(int $maquinaId, int $planillaId, int $posNueva): void
     {

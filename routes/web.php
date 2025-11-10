@@ -209,6 +209,8 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
     // ruta para renderizar una etiqueta en HTML
     Route::post('/etiquetas/render', [EtiquetaController::class, 'render'])
         ->name('etiquetas.render');
+
+    Route::get('/elementos/por-codigos', [ProduccionController::class, 'porCodigos']);
     Route::get(
         '/etiquetas/{etiquetaSubId}/validar-para-paquete',
         [PaqueteController::class, 'validarParaPaquete']
@@ -224,7 +226,6 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
     // RUTAS PROVISIONALES
     Route::post('/etiquetas/fabricar-lote', [EtiquetaController::class, 'fabricarLote'])->name('maquinas.fabricarLote');
     Route::post('/etiquetas/completar-lote', [EtiquetaController::class, 'completarLote'])->name('maquinas.completarLote');
-
 
     Route::get('/planillas/informacion', [PlanillaController::class, 'informacionMasiva'])->name('planillas.editarInformacionMasiva');
 

@@ -128,6 +128,26 @@
                             month: 'short'
                         },
                         buttonText: '5 días'
+                    },
+                    resourceTimeGrid30Days: {
+                        type: 'resourceTimeGrid',
+                        duration: {
+                            days: 1
+                        },
+                        slotMinTime: '00:00:00',
+                        slotMaxTime: '120:00:00',
+                        slotDuration: '01:00:00',
+                        slotLabelFormat: {
+                            hour: '2-digit',
+                            minute: '2-digit',
+                            hour12: false
+                        },
+                        dayHeaderFormat: {
+                            weekday: 'short',
+                            day: 'numeric',
+                            month: 'short'
+                        },
+                        buttonText: '5 días'
                     }
                 },
                 locale: 'es',
@@ -186,8 +206,9 @@
                     };
                 },
 
-                eventClick: function(info) {
+                eventClick: async function(info) {
                     const codigos = info.event.extendedProps.codigos_elementos;
+                    const elementosId = info.event.extendedProps.elementos_id;
 
                     if (!Array.isArray(codigos) || codigos.length === 0) {
                         Swal.fire({
@@ -198,12 +219,43 @@
                         return;
                     }
 
-                    // Generar URL con filtro por códigos
-                    const queryString = 'codigo=' + codigos.join(',');
-                    const url = `/elementos?${queryString}`;
+                    // Obtener datos de elementos via AJAX
+                    try {
+                        const response = await fetch(
+                            `/elementos/por-codigos?codigos=${codigos.join(',')}`);
+                        const elementos = await response.json();
 
-                    // Redirigir
-                    window.location.href = url;
+                        // Construir HTML para el modal
+                        const elementosHTML = elementos.map(el => `
+            <div class="border-b py-2">
+                <strong>${el.codigo}</strong> - ${el.descripcion}
+                <br><small>Diámetro: ${el.diametro} | Peso: ${el.peso}kg</small>
+            </div>
+        `).join('');
+
+                        // Mostrar modal con SweetAlert
+                        Swal.fire({
+                            title: `Elementos de ${info.event.title}`,
+                            html: `<div class="text-left max-h-96 overflow-y-auto">${elementosHTML}</div>`,
+                            width: '600px',
+                            showCloseButton: true,
+                            confirmButtonText: 'Ver en tabla',
+                            showCancelButton: true,
+                            cancelButtonText: 'Cerrar'
+                        }).then((result) => {
+                            if (result.isConfirmed) {
+                                // Si confirma, redirigir al listado completo
+                                window.location.href = `/elementos?codigo=${codigos.join(',')}`;
+                            }
+                        });
+
+                    } catch (error) {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Error',
+                            text: 'No se pudieron cargar los elementos'
+                        });
+                    }
                 },
                 eventContent: function(arg) {
                     const progreso = arg.event.extendedProps.progreso;
@@ -382,21 +434,36 @@
 
                         console.log(`🔄 Actualizando ${eventosNuevos.length} eventos sin recargar`);
 
-                        // Obtener IDs de eventos a actualizar
-                        const idsActualizar = eventosNuevos.map(e => e.id);
+                        // Identificar qué máquinas están siendo actualizadas (convertir a string para comparación)
+                        const maquinasAfectadas = [...new Set(eventosNuevos.map(e => String(e
+                            .resourceId)))];
+                        console.log('🔧 Máquinas afectadas:', maquinasAfectadas);
 
-                        // Eliminar solo los eventos que se van a actualizar
+                        // Eliminar SOLO los eventos de las máquinas afectadas
+                        const eventosEliminados = [];
                         calendar.getEvents().forEach(evento => {
-                            if (idsActualizar.includes(evento.id)) {
+                            const recursos = evento.getResources();
+
+                            // Verificar si algún recurso del evento pertenece a las máquinas afectadas
+                            const perteneceAMaquinaAfectada = recursos.some(recurso =>
+                                maquinasAfectadas.includes(String(recurso.id))
+                            );
+
+                            if (perteneceAMaquinaAfectada) {
+                                eventosEliminados.push(evento.id);
                                 evento.remove();
                             }
                         });
 
-                        // Agregar los eventos actualizados
+                        console.log(`🗑️ Eventos eliminados: ${eventosEliminados.length}`,
+                            eventosEliminados);
+
+                        // Agregar los eventos actualizados de las máquinas afectadas
                         eventosNuevos.forEach(eventoData => {
                             calendar.addEvent(eventoData);
                         });
 
+                        console.log(`➕ Eventos agregados: ${eventosNuevos.length}`);
                         console.log('✅ Eventos actualizados correctamente');
                     }
 
