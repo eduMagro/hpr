@@ -491,8 +491,22 @@ class ProduccionController extends Controller
 
         $initialDate = $this->calcularInitialDate();
 
+
+        // 🆕 Preparar datos de máquinas para JavaScript
+        $maquinasParaJS = $maquinas->map(function ($m) {
+            return [
+                'id' => $m->id,
+                'nombre' => $m->nombre,
+                'codigo' => $m->codigo,
+                'obra_id' => $m->obra_id,
+                'diametro_min' => $m->diametro_min,
+                'diametro_max' => $m->diametro_max,
+            ];
+        });
+
         return view('produccion.maquinas', [
             'maquinas'                         => $maquinas,
+            'maquinasParaJS' => $maquinasParaJS,
             'planillasEventos'                 => $planillasEventos,
             'cargaTurnoResumen' => $cargaTurnoResumen, // { maquina_id: { turno: {planificado,real} } }
             'planDetallado'     => $planDetallado,     // { maquina_id: { turno: [ {peso,fecha} ] } }

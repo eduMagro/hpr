@@ -330,9 +330,6 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
     Route::get('/clientes-almacen/buscar', [ClienteAlmacenController::class, 'buscar'])
         ->name('clientes-almacen.verBuscar');
 
-
-
-
     // === OBRAS ===
     Route::resource('obras', ObraController::class);
     Route::post('/obras/actualizar-tipo', [ObraController::class, 'updateTipo'])->name('obras.updateTipo');
