@@ -1057,9 +1057,19 @@ class ProduccionController extends Controller
                 $this->reordenarPosicionEnMaquina($maqDestino, $planillaId, $posNueva);
             });
 
+            // 🔄 Obtener eventos actualizados de ambas máquinas
+            $maquinasAfectadas = array_unique([$maqOrigen, $maqDestino]);
+            $eventosActualizados = $this->obtenerEventosDeMaquinas($maquinasAfectadas);
+
+            Log::info("✅ Planilla reordenada correctamente", [
+                'planilla_id' => $planillaId,
+                'eventos_actualizados' => count($eventosActualizados),
+            ]);
+
             return response()->json([
-                'success'  => true,
-                'message'  => 'Planilla reordenada correctamente.',
+                'success' => true,
+                'message' => 'Planilla reordenada correctamente.',
+                'eventos' => $eventosActualizados, // 👈 Eventos actualizados
             ]);
         } catch (\Exception $e) {
             Log::error('❌ Error al reordenar planilla: ' . $e->getMessage(), [
@@ -1073,52 +1083,89 @@ class ProduccionController extends Controller
             ], 422);
         }
     }
-
-    /** Reordena sólo en la misma máquina, sin validar nada */
-    private function soloReordenarEnMismaMaquina(int $maquinaId, int $planillaId, int $posNueva)
+    /**
+     * Obtener eventos de planillas para máquinas específicas
+     */
+    private function obtenerEventosDeMaquinas(array $maquinaIds)
     {
-        try {
-            DB::transaction(function () use ($maquinaId, $planillaId, $posNueva) {
-                $ordenActual = OrdenPlanilla::lockForUpdate()
-                    ->where('planilla_id', $planillaId)
-                    ->where('maquina_id', $maquinaId)
-                    ->first();
+        $maquinas = Maquina::whereIn('id', $maquinaIds)
+            ->whereNotNull('tipo')
+            ->orderBy('obra_id')
+            ->orderBy('id')
+            ->get();
 
-                if (!$ordenActual) {
-                    // Si no hay orden en esa máquina, lo creamos al final
-                    $maxPos = (int) (OrdenPlanilla::where('maquina_id', $maquinaId)->max('posicion') ?? 0);
-                    $ordenActual = OrdenPlanilla::create([
-                        'planilla_id' => $planillaId,
-                        'maquina_id'  => $maquinaId,
-                        'posicion'    => $maxPos + 1,
-                    ]);
-                }
+        $elementos = Elemento::with(['planilla', 'planilla.obra', 'maquina'])
+            ->whereHas('planilla', fn($q) => $q->whereIn('estado', ['pendiente', 'fabricando']))
+            ->where(fn($q) => $q->whereNull('estado')->orWhere('estado', '<>', 'fabricado'))
+            ->where(function ($q) use ($maquinaIds) {
+                $q->whereIn('maquina_id', $maquinaIds)
+                    ->orWhereIn('maquina_id_2', $maquinaIds)
+                    ->orWhereIn('maquina_id_3', $maquinaIds);
+            })
+            ->get();
 
-                $posActual = (int) $ordenActual->posicion;
-                if ($posNueva === $posActual) return;
+        $planillasAgrupadas = $elementos->groupBy(function ($e) {
+            $tipo = optional($e->maquina)->tipo;
+            $maquinaId = match ($tipo) {
+                'ensambladora' => $e->maquina_id_2,
+                'soldadora'    => $e->maquina_id_3 ?? $e->maquina_id,
+                default        => $e->maquina_id,
+            };
+            return $e->planilla_id . '-' . $maquinaId;
+        })->map(function ($grupo) {
+            $primerElemento = $grupo->first();
+            $tipo = optional($primerElemento->maquina)->tipo;
+            $maquinaId = match ($tipo) {
+                'ensambladora' => $primerElemento->maquina_id_2,
+                'soldadora'    => $primerElemento->maquina_id_3 ?? $primerElemento->maquina_id,
+                default        => $primerElemento->maquina_id,
+            };
+            return [
+                'planilla' => $primerElemento->planilla,
+                'elementos' => $grupo,
+                'maquina_id' => $maquinaId,
+            ];
+        })->filter(fn($data) => !is_null($data['maquina_id']));
 
-                if ($posNueva < $posActual) {
-                    OrdenPlanilla::where('maquina_id', $maquinaId)
-                        ->whereBetween('posicion', [$posNueva, $posActual - 1])
-                        ->increment('posicion');
-                } else {
-                    OrdenPlanilla::where('maquina_id', $maquinaId)
-                        ->whereBetween('posicion', [$posActual + 1, $posNueva])
-                        ->decrement('posicion');
-                }
+        $colasMaquinas = [];
+        foreach ($maquinas as $m) {
+            $ultimaPlanillaFabricando = Planilla::whereHas('elementos', fn($q) => $q->where('maquina_id', $m->id))
+                ->where('estado', 'fabricando')
+                ->orderByDesc('fecha_inicio')
+                ->first();
 
-                $ordenActual->update(['posicion' => $posNueva]);
-                Log::info("✅ Reordenado en misma máquina", [
-                    'maquina'  => $maquinaId,
-                    'posicion' => $posNueva
-                ]);
-            });
-
-            return response()->json(['success' => true, 'message' => 'Reordenado en la misma máquina.']);
-        } catch (\Throwable $e) {
-            Log::error('❌ Error reordenar en misma máquina: ' . $e->getMessage());
-            return response()->json(['success' => false, 'message' => 'Error: ' . $e->getMessage()], 422);
+            $colasMaquinas[$m->id] = optional($ultimaPlanillaFabricando)->fecha_inicio
+                ? toCarbon($ultimaPlanillaFabricando->fecha_inicio)
+                : now();
         }
+
+        $ordenes = OrdenPlanilla::whereIn('maquina_id', $maquinaIds)
+            ->orderBy('posicion')
+            ->get()
+            ->groupBy('maquina_id')
+            ->map(fn($ordenesMaquina) => $ordenesMaquina->pluck('planilla_id')->all());
+
+        return $this->generarEventosMaquinas($planillasAgrupadas, $ordenes, $colasMaquinas);
+    }
+    /** Reordena sólo en la misma máquina, sin validar nada */
+    private function soloReordenarEnMismaMaquina($maquinaId, $planillaId, $posNueva)
+    {
+        Log::info("🔁 Movimiento en misma máquina (sin validación)", [
+            'maquina' => $maquinaId,
+            'planilla' => $planillaId,
+            'nueva_pos' => $posNueva,
+        ]);
+
+        $this->reordenarPosicionEnMaquina($maquinaId, $planillaId, $posNueva);
+
+        // 🔄 Obtener eventos actualizados de la máquina
+        $eventosActualizados = $this->obtenerEventosDeMaquinas([$maquinaId]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Planilla reordenada en la misma máquina.',
+            'eventos' => $eventosActualizados, // 👈 Eventos actualizados
+        ]);
     }
 
     /** Reordena la posición de la planilla en una máquina dada */

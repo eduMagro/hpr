@@ -92,18 +92,16 @@
             // ------- FullCalendar -------
             const calendar = new FullCalendar.Calendar(document.getElementById('calendario'), {
                 schedulerLicenseKey: 'CC-Attribution-NonCommercial-NoDerivatives',
-                initialView: 'resourceTimelineFiveDay',
+                initialView: 'resourceTimeGridDay',
                 views: {
-                    resourceTimelineDay: {
-                        type: 'resourceTimeline',
+                    resourceTimeGridDay: {
+                        type: 'resourceTimeGrid',
                         duration: {
                             days: 1
                         },
                         slotMinTime: '00:00:00',
                         slotMaxTime: '24:00:00',
-                        slotDuration: {
-                            hours: 1
-                        },
+                        slotDuration: '01:00:00',
                         slotLabelFormat: {
                             hour: '2-digit',
                             minute: '2-digit',
@@ -111,48 +109,83 @@
                         },
                         buttonText: '1 día'
                     },
-                    resourceTimelineFiveDay: {
-                        type: 'resourceTimeline',
+                    resourceTimeGridFiveDays: {
+                        type: 'resourceTimeGrid',
                         duration: {
-                            days: 15
-                        }, // si quieres realmente 5 días, cambia a { days: 5 }
-                        slotDuration: {
-                            hours: 1
+                            days: 1
                         },
                         slotMinTime: '00:00:00',
-                        slotMaxTime: '24:00:00',
-                        slotLabelFormat: [{
-                                weekday: 'short',
-                                day: 'numeric',
-                                month: 'short'
-                            },
-                            {
-                                hour: '2-digit',
-                                minute: '2-digit',
-                                hour12: false
-                            }
-                        ],
+                        slotMaxTime: '120:00:00',
+                        slotDuration: '01:00:00',
+                        slotLabelFormat: {
+                            hour: '2-digit',
+                            minute: '2-digit',
+                            hour12: false
+                        },
+                        dayHeaderFormat: {
+                            weekday: 'short',
+                            day: 'numeric',
+                            month: 'short'
+                        },
                         buttonText: '5 días'
                     }
                 },
                 locale: 'es',
                 timeZone: 'Europe/Madrid',
                 initialDate: "{{ $initialDate }}",
-                resourceAreaHeaderContent: 'Máquinas',
                 resources: maquinas,
                 events: planillas,
-                resourceAreaWidth: '220px',
                 height: 'auto',
-                slotWidth: 80, // ancho de columna en píxeles
-                eventMinWidth: 80, // alternativa a usar CSS
+                scrollTime: '06:00:00',
                 editable: true,
                 eventResizableFromStart: false,
                 eventDurationEditable: false,
                 headerToolbar: {
                     left: 'prev,next today',
                     center: 'title',
-                    right: 'resourceTimelineDay,resourceTimelineFiveDay'
+                    right: 'resourceTimeGridDay,resourceTimeGridFiveDays'
                 },
+
+                // 🎨 NUEVO: Asignar clases a las franjas horarias según turno
+                slotLaneClassNames: function(arg) {
+                    const hour = arg.date.getHours();
+
+                    // Turno mañana: 6-14 (6:00 hasta 13:59)
+                    if (hour > 6 && hour <= 14) {
+                        return ['turno-manana'];
+                    }
+                    // Turno tarde: 14-22 (14:00 hasta 21:59)
+                    if (hour >= 14 && hour <= 22) {
+                        return ['turno-tarde'];
+                    }
+                    // Turno noche: 22-6 (22:00 hasta 5:59)
+                    if (hour >= 22 || hour <= 6) {
+                        return ['turno-noche'];
+                    }
+
+                    return [];
+                },
+                // 🏷️ NUEVO: Personalizar etiquetas de horas para mostrar turno
+                slotLabelContent: function(arg) {
+                    const hour = arg.date.getHours();
+                    const timeText = arg.text;
+
+                    let turnoIcon = '';
+
+                    // Primera hora de cada turno: añadir etiqueta
+                    if (hour === 7) {
+                        turnoIcon = '<span class="turno-label">☀️ Mañana</span>';
+                    } else if (hour === 15) {
+                        turnoIcon = '<span class="turno-label">🌤️ Tarde</span>';
+                    } else if (hour === 23) {
+                        turnoIcon = '<span class="turno-label">🌙 Noche</span>';
+                    }
+
+                    return {
+                        html: `<div class="slot-label-wrapper">${timeText}${turnoIcon}</div>`
+                    };
+                },
+
                 eventClick: function(info) {
                     const codigos = info.event.extendedProps.codigos_elementos;
 
@@ -202,6 +235,7 @@
                     const maquinaOrigenId = info.oldResource?.id ?? info.event.getResources()[0]?.id;
                     const maquinaDestinoId = info.newResource?.id ?? info.event.getResources()[0]?.id;
                     const elementosId = info.event.extendedProps.elementos_id || [];
+
                     const resultado = await Swal.fire({
                         title: '¿Reordenar planilla?',
                         html: `¿Quieres mover la planilla <strong>${codigoPlanilla}</strong> ${maquinaOrigenId !== maquinaDestinoId ? 'a otra máquina' : 'en la misma máquina'}?`,
@@ -223,13 +257,14 @@
                         .sort((a, b) => a.start - b.start);
                     const nuevaPosicion = eventosOrdenados.findIndex(ev => ev.id === info.event.id) + 1;
                     const mismaMaquina = String(maquinaOrigenId) === String(maquinaDestinoId);
+
                     const payload = {
                         id: planillaId,
                         maquina_id: maquinaDestinoId,
                         maquina_origen_id: maquinaOrigenId,
-                        misma_maquina: mismaMaquina, // 👈 nuevo
+                        misma_maquina: mismaMaquina,
                         nueva_posicion: nuevaPosicion,
-                        elementos_id: elementosId, // 👈 subset del evento
+                        elementos_id: elementosId,
                     };
 
                     try {
@@ -245,8 +280,7 @@
                             body: JSON.stringify(payload)
                         });
 
-                        const text = await res.text();
-                        let data = JSON.parse(text);
+                        const data = await res.json();
 
                         if (!res.ok || !data.success) throw {
                             response: {
@@ -254,15 +288,28 @@
                             }
                         };
 
-                        await recargarEventosCalendario();
+                        // 🔄 Actualizar solo los eventos afectados sin recargar
+                        actualizarEventosSinRecargar(data.eventos);
+
+                        // Mostrar mensaje de éxito breve
+                        const Toast = Swal.mixin({
+                            toast: true,
+                            position: 'top-end',
+                            showConfirmButton: false,
+                            timer: 1500,
+                            timerProgressBar: true,
+                        });
+                        Toast.fire({
+                            icon: 'success',
+                            title: 'Planilla reordenada'
+                        });
 
                     } catch (e) {
                         const data = e.response?.data;
 
                         if (data?.requiresConfirmation) {
                             const diametros = data.diametros.join(', ');
-                            const cantidad = data.diametros
-                                .length; // número real de diámetros fuera de rango
+                            const cantidad = data.diametros.length;
 
                             const confirmacion = await Swal.fire({
                                 title: 'Elementos fuera de rango',
@@ -275,7 +322,7 @@
 
                             if (confirmacion.isConfirmed) {
                                 try {
-                                    await fetch('/planillas/reordenar', {
+                                    const resForzado = await fetch('/planillas/reordenar', {
                                         method: 'POST',
                                         headers: {
                                             'Content-Type': 'application/json',
@@ -291,7 +338,12 @@
                                         })
                                     });
 
-                                    await recargarEventosCalendario();
+                                    const dataForzado = await resForzado.json();
+
+                                    if (!resForzado.ok || !dataForzado.success) throw dataForzado;
+
+                                    // 🔄 Actualizar eventos sin recargar
+                                    actualizarEventosSinRecargar(dataForzado.eventos);
 
                                     await Swal.fire({
                                         icon: 'success',
@@ -302,8 +354,8 @@
                                     });
 
                                 } catch (errorFinal) {
-                                    await mostrarError('Error al mover elementos', errorFinal.response
-                                        ?.data?.message || errorFinal.message);
+                                    await mostrarError('Error al mover elementos', errorFinal.message ||
+                                        'Error desconocido');
                                     info.revert();
                                 }
                             } else {
@@ -318,12 +370,34 @@
                         }
                     }
 
-                    async function recargarEventosCalendario() {
+                    // 🆕 Nueva función para actualizar eventos sin recargar la página
+                    function actualizarEventosSinRecargar(eventosNuevos) {
+                        // Limpiar tooltips
                         document.querySelectorAll('.fc-tooltip').forEach(t => t.remove());
-                        calendar.removeAllEvents();
-                        const resEventos = await fetch('/planillas/eventos');
-                        const nuevosEventos = await resEventos.json();
-                        calendar.addEventSource(nuevosEventos);
+
+                        if (!eventosNuevos || !Array.isArray(eventosNuevos)) {
+                            console.warn('No se recibieron eventos para actualizar');
+                            return;
+                        }
+
+                        console.log(`🔄 Actualizando ${eventosNuevos.length} eventos sin recargar`);
+
+                        // Obtener IDs de eventos a actualizar
+                        const idsActualizar = eventosNuevos.map(e => e.id);
+
+                        // Eliminar solo los eventos que se van a actualizar
+                        calendar.getEvents().forEach(evento => {
+                            if (idsActualizar.includes(evento.id)) {
+                                evento.remove();
+                            }
+                        });
+
+                        // Agregar los eventos actualizados
+                        eventosNuevos.forEach(eventoData => {
+                            calendar.addEvent(eventoData);
+                        });
+
+                        console.log('✅ Eventos actualizados correctamente');
                     }
 
                     async function mostrarError(titulo, mensaje) {
@@ -514,73 +588,106 @@
             });
         }); // <-- cierre correcto de DOMContentLoaded
     </script>
-
-    <script>
-        document.querySelectorAll('.estado-maquina').forEach(select => {
-            select.addEventListener('change', async function() {
-                const maquinaId = this.dataset.id;
-                const nuevoEstado = this.value;
-
-                try {
-                    const res = await fetch(`/maquinas/${maquinaId}/cambiar-estado`, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'Accept': 'application/json',
-                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')
-                                .content
-                        },
-                        body: JSON.stringify({
-                            estado: nuevoEstado
-                        })
-                    });
-
-                    const text = await res.text();
-
-                    if (!res.ok) throw new Error(text);
-
-                    const data = JSON.parse(text);
-
-                    if (data.success) {
-                        console.log(`✅ Máquina ${maquinaId} actualizada a estado "${nuevoEstado}"`);
-
-                        // 🔁 Actualizar el título del resource en FullCalendar
-                        const calendar = window.calendar; // asegúrate que tu instancia esté global
-
-                        const estado = data.estado;
-                        const colores = {
-                            activa: '🟢',
-                            averiada: '🔴',
-                            mantenimiento: '🛠️',
-                            pausa: '⏸️'
-                        };
-                        const icono = colores[estado] ?? ' ';
-                        const nombreMaquina = select.dataset.nombre ?? `Máquina ${maquinaId}`;
-                        const nuevoTitulo = `${icono} ${nombreMaquina}`;
-
-                        calendar.getResourceById(maquinaId)?.setProp('title', nuevoTitulo);
-                    }
-
-                } catch (e) {
-                    console.error('Error en respuesta:', e);
-                    Swal.fire({
-                        title: 'Error',
-                        html: `<pre style="white-space:pre-wrap;text-align:left;">${e.message}</pre>`,
-                        icon: 'error'
-                    });
-                }
-            });
-        });
-    </script>
-
     <style>
-        .fc-tooltip {
-            pointer-events: none;
-            transition: opacity 0.1s ease-in-out;
+        canvas {
+            height: 180px !important;
+            max-height: 180px !important;
         }
 
-        .fc-event {
-            min-width: 50px !important;
+        /* 🎨 ESTILOS PARA TURNOS */
+
+        /* Turno Mañana (6-14h) - Color amarillo suave */
+        .turno-manana {
+            background-color: rgba(255, 243, 205, 0.4) !important;
         }
+
+        /* Turno Tarde (14-22h) - Color naranja suave */
+        .turno-tarde {
+            background-color: rgba(255, 224, 178, 0.4) !important;
+        }
+
+        /* Turno Noche (22-6h) - Color azul oscuro suave */
+        .turno-noche {
+            background-color: rgba(197, 202, 233, 0.4) !important;
+        }
+
+        /* Líneas divisorias entre turnos */
+        .fc-timegrid-slot[data-time="06:00:00"],
+        .fc-timegrid-slot[data-time="14:00:00"],
+        .fc-timegrid-slot[data-time="22:00:00"] {
+            border-top: 3px solid #e74c3c !important;
+        }
+
+        /* Etiquetas de turno */
+        .turno-label {
+            display: block;
+            font-size: 9px;
+            font-weight: bold;
+            color: #2c3e50;
+
+            <script>
+                document.querySelectorAll('.estado-maquina').forEach(select => {
+                    select.addEventListener('change', async function() {
+                        const maquinaId = this.dataset.id;
+                        const nuevoEstado = this.value;
+
+                        try {
+                            const res = await fetch(`/maquinas/${maquinaId}/cambiar-estado`, {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'Accept': 'application/json',
+                                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')
+                                        .content
+                                },
+                                body: JSON.stringify({
+                                    estado: nuevoEstado
+                                })
+                            });
+
+                            const text = await res.text();
+
+                            if (!res.ok) throw new Error(text);
+
+                            const data = JSON.parse(text);
+
+                            if (data.success) {
+                                console.log(`✅ Máquina ${maquinaId} actualizada a estado "${nuevoEstado}"`);
+
+                                // 🔁 Actualizar el título del resource en FullCalendar
+                                const calendar = window.calendar; // asegúrate que tu instancia esté global
+
+                                const estado = data.estado;
+                                const colores = {
+                                    activa: '🟢',
+                                    averiada: '🔴',
+                                    mantenimiento: '🛠️',
+                                    pausa: '⏸️'
+                                };
+                                const icono = colores[estado] ?? ' ';
+                                const nombreMaquina = select.dataset.nombre ?? `Máquina ${maquinaId}`;
+                                const nuevoTitulo = `${icono} ${nombreMaquina}`;
+
+                                calendar.getResourceById(maquinaId)?.setProp('title', nuevoTitulo);
+                            }
+
+                        } catch (e) {
+                            console.error('Error en respuesta:', e);
+                            Swal.fire({
+                                title: 'Error',
+                                html: `<pre style="white-space:pre-wrap;text-align:left;">${e.message}</pre>`,
+                                icon: 'error'
+                            });
+                        }
+                    });
+                });
+            </script><style>.fc-tooltip {
+                pointer-events: none;
+                transition: opacity 0.1s ease-in-out;
+            }
+
+            .fc-event {
+                min-width: 50px !important;
+            }
     </style>
 </x-app-layout>
