@@ -25,6 +25,17 @@
         .machine-card {
             transition: all 0.3s ease;
         }
+
+        /* Enlace activo del sidebar */
+        .sidebar-link.bg-blue-100 {
+            background-color: rgb(219 234 254);
+            border-color: rgb(59 130 246);
+            color: rgb(29 78 216);
+        }
+
+        .sidebar-link.bg-blue-100 .text-gray-600 {
+            color: rgb(30 58 138);
+        }
     </style>
 
     <div class="relative">
@@ -69,7 +80,7 @@
                     @foreach ($registrosMaquina as $maquina)
                         <li>
                             <a href="#maquina-{{ $maquina->id }}"
-                                class="sidebar-link block px-3 py-2 text-sm rounded-lg hover:bg-blue-50 hover:text-blue-700 font-medium transition-all duration-200 truncate border border-transparent hover:border-blue-200">
+                                class="sidebar-link block px-3 py-2 text-sm rounded-lg hover:bg-blue-50 hover:text-blue-700 font-medium transition-all duration-200 truncate border border-transparent hover:border-blue-200 cursor-pointer">
                                 <span class="font-semibold">{{ $maquina->codigo }}</span>
                                 <span class="text-gray-600">— {{ $maquina->nombre }}</span>
                             </a>
@@ -83,8 +94,21 @@
         <div class="lg:ml-64 xl:ml-72 min-h-screen bg-gray-50">
             <div class="p-4 sm:p-6 lg:p-10 pt-20 lg:pt-10">
 
+            {{-- Botón para mostrar todas las máquinas --}}
+            <div id="showAllContainer" class="hidden mb-6">
+                <button id="showAllBtn"
+                    class="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors shadow-sm">
+                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M4 6h16M4 10h16M4 14h16M4 18h16"></path>
+                    </svg>
+                    Mostrar todas las máquinas
+                    <span id="machineCount" class="ml-2 bg-blue-800 px-2 py-0.5 rounded-full text-xs"></span>
+                </button>
+            </div>
+
             {{-- Grid responsive para las tarjetas --}}
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-6">
+            <div id="machinesGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-6">
             @forelse($registrosMaquina as $maquina)
                 <div id="maquina-{{ $maquina->id }}"
                     class="machine-card scroll-mt-28 bg-white border border-gray-200 rounded-xl shadow-md overflow-hidden flex flex-col h-full">
@@ -405,6 +429,10 @@
             const sidebarOverlay = document.getElementById('sidebarOverlay');
             const closeSidebar = document.getElementById('closeSidebar');
             const sidebarLinks = document.querySelectorAll('.sidebar-link');
+            const showAllContainer = document.getElementById('showAllContainer');
+            const showAllBtn = document.getElementById('showAllBtn');
+            const machineCount = document.getElementById('machineCount');
+            const allMachineCards = document.querySelectorAll('.machine-card');
 
             function openSidebar() {
                 sidebar.classList.remove('-translate-x-full');
@@ -416,6 +444,44 @@
                 sidebar.classList.add('-translate-x-full');
                 sidebarOverlay.classList.add('hidden');
                 document.body.style.overflow = ''; // Restaurar scroll
+            }
+
+            // Función para determinar si estamos en modo multi-columna
+            function isMultiColumnMode() {
+                return window.innerWidth >= 768; // md breakpoint
+            }
+
+            // Función para mostrar solo una máquina
+            function showOnlyMachine(machineId) {
+                let visibleCount = 0;
+                allMachineCards.forEach(card => {
+                    if (card.id === `maquina-${machineId}`) {
+                        card.style.display = '';
+                        visibleCount++;
+                    } else {
+                        card.style.display = 'none';
+                    }
+                });
+
+                // Mostrar botón "Mostrar todas"
+                showAllContainer.classList.remove('hidden');
+                machineCount.textContent = allMachineCards.length;
+
+                // Scroll suave al top
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            }
+
+            // Función para mostrar todas las máquinas
+            function showAllMachines() {
+                allMachineCards.forEach(card => {
+                    card.style.display = '';
+                });
+                showAllContainer.classList.add('hidden');
+
+                // Remover clase activa de todos los enlaces
+                sidebarLinks.forEach(link => {
+                    link.classList.remove('bg-blue-100', 'border-blue-500');
+                });
             }
 
             // Abrir sidebar con botón hamburguesa
@@ -433,13 +499,48 @@
                 sidebarOverlay.addEventListener('click', closeSidebarFn);
             }
 
-            // Cerrar sidebar al hacer clic en un enlace (en móvil)
+            // Botón "Mostrar todas"
+            if (showAllBtn) {
+                showAllBtn.addEventListener('click', showAllMachines);
+            }
+
+            // Manejar clic en enlaces del sidebar
             sidebarLinks.forEach(link => {
-                link.addEventListener('click', () => {
-                    if (window.innerWidth < 1024) { // Solo en móviles/tablets
+                link.addEventListener('click', (e) => {
+                    // Extraer ID de la máquina del href (#maquina-123)
+                    const href = link.getAttribute('href');
+                    const machineId = href.replace('#maquina-', '');
+
+                    if (isMultiColumnMode()) {
+                        // En modo multi-columna: filtrar máquinas
+                        e.preventDefault();
+                        showOnlyMachine(machineId);
+
+                        // Marcar enlace como activo
+                        sidebarLinks.forEach(l => l.classList.remove('bg-blue-100', 'border-blue-500'));
+                        link.classList.add('bg-blue-100', 'border-blue-500');
+                    } else {
+                        // En móvil: mantener comportamiento de scroll
+                        // No prevenir default, dejar que funcione el scroll normal
+                    }
+
+                    // Cerrar sidebar en móvil
+                    if (window.innerWidth < 1024) {
                         closeSidebarFn();
                     }
                 });
+            });
+
+            // Manejar redimensionamiento de ventana
+            let resizeTimeout;
+            window.addEventListener('resize', () => {
+                clearTimeout(resizeTimeout);
+                resizeTimeout = setTimeout(() => {
+                    // Si cambiamos de multi-columna a móvil, restaurar todas las máquinas
+                    if (!isMultiColumnMode()) {
+                        showAllMachines();
+                    }
+                }, 250);
             });
 
             // ========== MODAL DE EDICIÓN ==========
