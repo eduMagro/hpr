@@ -265,6 +265,10 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
     Route::post('/escaneo', [SalidaFerrallaController::class, 'marcarSubido'])->name('escaneo.marcarSubido');
     Route::get('/salidas/export/{mes}', [SalidaFerrallaController::class, 'export'])->name('salidas.export');
     Route::post('/planificacion/crear-salida-desde-calendario', [SalidaFerrallaController::class, 'crearSalidaDesdeCalendario'])->name('planificacion.crearSalidaDesdeCalendario');
+    Route::post('/planificacion/crear-salidas-vacias-desde-calendario', [SalidaFerrallaController::class, 'crearSalidasVaciasDesdeCalendario'])->name('planificacion.crearSalidasVaciasDesdeCalendario');
+    Route::get('/planificacion/informacion-gestion-paquetes', [SalidaFerrallaController::class, 'informacionGestionPaquetes'])->name('planificacion.informacionGestionPaquetes');
+    Route::get('/planificacion/salidas-por-planillas', [SalidaFerrallaController::class, 'obtenerSalidasPorPlanillas'])->name('planificacion.obtenerSalidasPorPlanillas');
+    Route::post('/planificacion/guardar-asignaciones-paquetes', [SalidaFerrallaController::class, 'guardarAsignacionesPaquetes'])->name('planificacion.guardarAsignacionesPaquetes');
     Route::put('/salidas/completar-desde-movimiento/{movimientoId}', [SalidaFerrallaController::class, 'completarDesdeMovimiento']);
     Route::put('/salidas/{salida}/codigo-sage', [SalidaFerrallaController::class, 'actualizarCodigoSage'])->name('salidas.editarCodigoSage');
 
