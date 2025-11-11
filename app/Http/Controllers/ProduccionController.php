@@ -91,13 +91,15 @@ class ProduccionController extends Controller
 
         // ✅ Pintar las máquinas
         $maquinas = Maquina::orderBy('obra_id')
-            ->orderBy('codigo')
-            ->get(['id', 'nombre', 'codigo', 'obra_id'])
-            ->map(function ($maquina) use ($coloresMaquinas) {
+            ->orderBy('tipo')
+            ->get(['id', 'nombre', 'codigo', 'obra_id', 'tipo'])
+            ->values()
+            ->map(function ($maquina, $index) use ($coloresMaquinas) {
                 $color = $coloresMaquinas[$maquina->obra_id] ?? '#6c757d';
                 return [
                     'id' => str_pad($maquina->id, 3, '0', STR_PAD_LEFT),
                     'title' => $maquina->codigo,
+                    'orden' => $index,
                     'extendedProps' => [
                         'backgroundColor' => $color,
                         'obra_id' => $maquina->obra_id,
@@ -108,6 +110,7 @@ class ProduccionController extends Controller
         $maquinas->push([
             'id' => 'SIN',
             'title' => 'N/A',
+            'orden' => 9999,
             'extendedProps' => [
                 'backgroundColor' => '#9ca3af',
                 'obra_id' => null,
