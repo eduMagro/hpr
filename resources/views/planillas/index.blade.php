@@ -95,6 +95,10 @@
                     const btnSend = document.getElementById('btn-confirmar-import');
                     const importIdInput = document.getElementById('import_id');
 
+                    let pollTimer = null;
+                    let currentController = null; // 👈 nuevo: para abortar fetch
+
+                    // ====================== helpers ==========================
                     function abrir() {
                         modal.classList.remove('hidden');
                     }
@@ -109,28 +113,45 @@
 
                     btnAbrir.addEventListener('click', abrir);
                     overlay.addEventListener('click', cerrar);
-                    btnCancel.addEventListener('click', cerrar);
 
+                    // ====================== cancelar ==========================
+                    btnCancel.addEventListener('click', () => {
+                        cerrar();
+                        // 👇 si hay un fetch activo, lo cancelamos
+                        if (currentController) {
+                            currentController.abort();
+                            currentController = null;
+                        }
+                        // 👇 detenemos también el polling
+                        if (pollTimer) {
+                            clearInterval(pollTimer);
+                            pollTimer = null;
+                        }
+                        // 👇 feedback visual
+                        wrap.classList.remove('hidden');
+                        txt.textContent = 'Cancelado';
+                        bar.classList.remove('bg-blue-600');
+                        bar.classList.add('bg-gray-400');
+                        msg.textContent = 'Importación cancelada por el usuario.';
+                        btnSend.disabled = false;
+                    });
+
+                    // ====================== uuid ==========================
                     function uuidv4() {
-                        // navegador moderno
                         if (crypto?.randomUUID) return crypto.randomUUID();
-                        // fallback
-                        return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g,
-                            c => {
-                                const r = Math.random() * 16 | 0,
-                                    v = c === 'x' ? r : (r & 0x3 | 0x8);
-                                return v.toString(16);
-                            });
+                        return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
+                            const r = Math.random() * 16 | 0,
+                                v = c === 'x' ? r : (r & 0x3 | 0x8);
+                            return v.toString(16);
+                        });
                     }
 
-                    let pollTimer = null;
-
+                    // ====================== polling ==========================
                     function startPolling(importId) {
                         wrap.classList.remove('hidden');
                         txt.textContent = 'Importando...';
                         msg.textContent = 'Procesando filas del Excel...';
-                        const url =
-                            `/api/planillas/import/progress/${encodeURIComponent(importId)}`;
+                        const url = `/api/planillas/import/progress/${encodeURIComponent(importId)}`;
                         pollTimer = setInterval(async () => {
                             try {
                                 const res = await fetch(url, {
@@ -138,12 +159,13 @@
                                 });
                                 if (!res.ok) return;
                                 const data = await res.json();
-                                const percent = Math.min(100, Math.max(0,
-                                    Math.round(data.percent ?? 0)));
+
+                                const percent = Math.min(100, Math.max(0, Math.round(data.percent ?? 0)));
                                 bar.style.width = percent + '%';
                                 pct.textContent = percent + '%';
                                 msg.textContent = data.message ?? '';
 
+                                // Estados
                                 if (data.status === 'error') {
                                     clearInterval(pollTimer);
                                     txt.textContent = 'Error';
@@ -151,32 +173,54 @@
                                     bar.classList.add('bg-red-600');
                                     btnSend.disabled = false;
                                 }
-                                if (data.status === 'done' || percent >=
-                                    100) {
+                                if (data.status === 'done' || percent >= 100) {
                                     clearInterval(pollTimer);
                                     txt.textContent = 'Completado';
                                     bar.style.width = '100%';
                                     pct.textContent = '100%';
-                                    msg.textContent =
-                                        'Importación finalizada.';
-                                    // Opcional: refrescar la página para ver resultados
-                                    setTimeout(() => window.location
-                                        .reload(), 800);
+
+                                    // 👇 Mostrar resumen de fallidas si existen
+                                    const fallidas = data.report?.fallidas || [];
+                                    if (fallidas.length > 0) {
+                                        const lista = fallidas
+                                            .map(f => `• ${f.codigo}: ${f.error}`)
+                                            .join('\n');
+
+                                        msg.textContent = `Importación finalizada con errores (${fallidas.length}).`;
+                                        // Si quieres más visual:
+                                        const pre = document.createElement('pre');
+                                        pre.className = 'mt-2 p-2 bg-red-50 border border-red-200 rounded text-xs max-h-40 overflow-auto whitespace-pre-wrap';
+                                        pre.textContent = lista;
+                                        msg.parentElement.appendChild(pre);
+
+                                        // (opcional) no recargar automáticamente para que puedan leer
+                                        // setTimeout(() => window.location.reload(), 2500);
+                                    } else {
+                                        msg.textContent = 'Importación finalizada.';
+                                        setTimeout(() => window.location.reload(), 800);
+                                    }
                                 }
+
                             } catch (e) {
                                 /* silencioso */
                             }
                         }, 600);
                     }
 
+                    // ====================== submit ==========================
                     form.addEventListener('submit', async function(ev) {
                         ev.preventDefault();
+
                         const importId = uuidv4();
                         importIdInput.value = importId;
                         startPolling(importId);
+
+                        // 🚫 Deshabilitamos los botones durante la importación
                         btnSend.disabled = true;
+                        btnCancel.disabled = true;
 
                         const fd = new FormData(form);
+
                         try {
                             const res = await fetch(form.action, {
                                 method: 'POST',
@@ -187,20 +231,18 @@
                             });
 
                             if (!res.ok) {
-                                let errMsg =
-                                    'No se pudo iniciar/terminar la importación.';
+                                let errMsg = 'No se pudo iniciar/terminar la importación.';
                                 try {
                                     const j = await res.json();
                                     if (j?.message) errMsg = j.message;
                                 } catch {}
+
                                 clearInterval(pollTimer);
                                 wrap.classList.remove('hidden');
                                 txt.textContent = 'Error';
                                 bar.classList.remove('bg-blue-600');
                                 bar.classList.add('bg-red-600');
-                                msg.textContent =
-                                    errMsg; // ← muestra el motivo real
-                                btnSend.disabled = false;
+                                msg.textContent = errMsg;
                             }
                         } catch (e) {
                             clearInterval(pollTimer);
@@ -208,13 +250,17 @@
                             txt.textContent = 'Error';
                             bar.classList.remove('bg-blue-600');
                             bar.classList.add('bg-red-600');
-                            msg.textContent =
-                                'Fallo de red durante la importación.';
+                            msg.textContent = 'Fallo de red durante la importación.';
+                        } finally {
+                            // ✅ Rehabilitamos botones cuando termina o falla
                             btnSend.disabled = false;
+                            btnCancel.disabled = false;
                         }
                     });
+
                 })();
             </script>
+
 
 
             <style>
@@ -371,12 +417,12 @@
                 </thead>
                 <tbody class="text-gray-700">
                     @forelse ($planillas as $planilla)
-                        <tr tabindex="0" x-data="{
+                    <tr tabindex="0" x-data="{
                             editando: false,
                             planilla: @js($planilla),
                             original: JSON.parse(JSON.stringify(@js($planilla)))
                         }"
-                            @dblclick="if(!$event.target.closest('input')) {
+                        @dblclick="if(!$event.target.closest('input')) {
                               if(!editando) {
                                 editando = true;
                               } else {
@@ -384,334 +430,334 @@
                                 editando = false;
                               }
                             }"
-                            @keydown.enter.stop="guardarCambios(planilla); editando = false"
-                            :class="{ 'bg-yellow-100': editando }"
-                            class="border-b odd:bg-gray-100 even:bg-gray-50 hover:bg-blue-200 cursor-pointer text-xs leading-none uppercase">
+                        @keydown.enter.stop="guardarCambios(planilla); editando = false"
+                        :class="{ 'bg-yellow-100': editando }"
+                        class="border-b odd:bg-gray-100 even:bg-gray-50 hover:bg-blue-200 cursor-pointer text-xs leading-none uppercase">
 
 
-                            <!-- ID -->
-                            <td class="p-2 text-center border">
+                        <!-- ID -->
+                        <td class="p-2 text-center border">
 
-                                <span x-text="planilla.id"></span>
+                            <span x-text="planilla.id"></span>
 
-                            </td>
-                            <!-- Código -->
-                            <td class="p-2 text-center border">
-                                <template x-if="!editando">
-                                    <span
-                                        x-text="planilla.codigo_limpio"></span>
-                                </template>
-                                <input x-show="editando" type="text"
-                                    x-model="planilla.codigo"
-                                    class="form-control form-control-sm">
-                            </td>
-
-                            <!-- Código Cliente -->
-                            <td class="p-2 text-center border">
-                                <template x-if="!editando">
-                                    <span
-                                        x-text="planilla.cliente.codigo ?? 'N/A'"></span>
-                                </template>
-                                <input x-show="editando" type="text"
-                                    x-model="planilla.cliente.codigo"
-                                    class="form-control form-control-sm">
-                            </td>
-
-                            <!-- Cliente -->
-                            <td class="p-2 text-center border">
-                                <template x-if="!editando">
-                                    <a href="{{ route('clientes.index', ['id' => $planilla->cliente_id]) }}"
-                                        class="text-blue-500 hover:underline">
-                                        {{ $planilla->cliente->empresa ?? 'N/A' }}
-                                    </a>
-                                </template>
-                                <input x-show="editando" type="text"
-                                    x-model="planilla.cliente.empresa"
-                                    class="form-control form-control-sm">
-                            </td>
-
-                            <!-- Código Obra -->
-                            <td class="p-2 text-center border">
-                                <template x-if="!editando">
-                                    <span
-                                        x-text="planilla.obra.cod_obra ?? 'N/A'"></span>
-                                </template>
-                                <input x-show="editando" type="text"
-                                    x-model="planilla.obra.cod_obra"
-                                    class="form-control form-control-sm">
-                            </td>
-                            <!-- Obra -->
-                            <td class="p-2 text-center border">
-                                <template x-if="!editando">
-                                    <a href="{{ route('clientes.show', ['cliente' => $planilla->cliente_id]) }}"
-                                        class="text-blue-500 hover:underline">
-                                        {{ $planilla->obra->obra ?? 'N/A' }}
-                                    </a>
-                                </template>
-                                <input x-show="editando" type="text"
-                                    x-model="planilla.obra.obra"
-                                    class="form-control form-control-sm">
-                            </td>
-
-                            <!-- Sección -->
-                            <td class="p-2 text-center border">
-                                <template x-if="!editando">
-                                    <span
-                                        x-text="planilla.seccion ?? 'N/A'"></span>
-                                </template>
-                                <input x-show="editando" type="text"
-                                    x-model="planilla.seccion"
-                                    class="form-control form-control-sm">
-                            </td>
-
-                            <!-- Descripción -->
-                            <td class="p-2 text-center border">
-                                <template x-if="!editando">
-                                    <span
-                                        x-text="planilla.descripcion ?? 'Sin descripción'"></span>
-                                </template>
-                                <input x-show="editando" type="text"
-                                    x-model="planilla.descripcion"
-                                    class="form-control form-control-sm">
-                            </td>
-
-                            <!-- Ensamblado -->
-                            <td class="p-2 text-center border">
-                                <template x-if="!editando">
-                                    <span
-                                        x-text="planilla.ensamblado ?? 'Sin datos'"></span>
-                                </template>
-                                <input x-show="editando" type="text"
-                                    x-model="planilla.ensamblado"
-                                    class="form-control form-control-sm">
-                            </td>
-
-                            <!-- Comentario -->
-                            <td class="p-2 text-center border">
-                                <template x-if="!editando">
-                                    <span
-                                        x-text="planilla.comentario ?? ' '"></span>
-                                </template>
-                                <input x-show="editando" type="text"
-                                    x-model="planilla.comentario"
-                                    class="form-control form-control-sm">
-                            </td>
-
-                            <!-- Peso Fabricado -->
-                            <td class="p-2 text-center border">
-                                <template x-if="!editando">
-                                    <span
-                                        x-text="new Intl.NumberFormat('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(parseFloat(planilla.suma_peso_completados) || 0) + ' KG'"></span>
-
-                                </template>
-                                <input x-show="editando" type="text"
-                                    x-model="planilla.suma_peso_completados"
-                                    class="form-control form-control-sm">
-                            </td>
-
-                            <!-- Peso Total -->
-                            <td class="p-2 text-center border">
-                                <template x-if="!editando">
-                                    <span
-                                        x-text="planilla.peso_total_kg"></span>
-                                </template>
-                                <input x-show="editando" type="text"
-                                    x-model="planilla.peso_total"
-                                    class="form-control form-control-sm">
-                            </td>
-
-
-                            <!-- Estado -->
-                            <td class="p-2 text-center border">
-                                <template x-if="!editando">
-                                    <span
-                                        x-text="planilla.estado.toUpperCase()"></span>
-                                </template>
-                                <select x-show="editando"
-                                    x-model="planilla.estado"
-                                    class="form-select w-full">
-                                    <option value="pendiente">Pendiente
-                                    </option>
-                                    <option value="fabricando">Fabricando
-                                    </option>
-                                    <option value="completada">Completada
-                                    </option>
-                                </select>
-                            </td>
-
-                            <!-- Fecha Inicio -->
-                            <td class="p-2 text-center border">
-                                <template x-if="!editando">
-                                    <span
-                                        x-text="planilla.fecha_inicio"></span>
-                                </template>
-                                <input x-show="editando" type="text"
-                                    x-model="planilla.fecha_inicio"
-                                    class="form-control form-control-sm"
-                                    placeholder="DD/MM/YYYY HH:mm">
-                            </td>
-
-                            <!-- Fecha Finalización -->
-                            <td class="p-2 text-center border">
-                                <template x-if="!editando">
-                                    <span
-                                        x-text="planilla.fecha_finalizacion"></span>
-                                </template>
-                                <input x-show="editando" type="text"
-                                    x-model="planilla.fecha_finalizacion"
-                                    class="form-control form-control-sm"
-                                    placeholder="DD/MM/YYYY HH:mm">
-                            </td>
-
-                            <!-- Fecha Importación -->
-                            <td class="p-2 text-center border">
+                        </td>
+                        <!-- Código -->
+                        <td class="p-2 text-center border">
+                            <template x-if="!editando">
                                 <span
-                                    x-text="new Date(planilla.created_at).toLocaleDateString()"></span>
-                            </td>
+                                    x-text="planilla.codigo_limpio"></span>
+                            </template>
+                            <input x-show="editando" type="text"
+                                x-model="planilla.codigo"
+                                class="form-control form-control-sm">
+                        </td>
 
-                            <!-- Fecha Entrega -->
-                            <td class="p-2 text-center border">
-                                <template x-if="!editando">
-                                    <span
-                                        x-text="planilla.fecha_estimada_entrega"></span>
-                                </template>
-
-                                <input x-show="editando" type="text"
-                                    x-model="planilla.fecha_estimada_entrega"
-                                    class="form-control form-control-sm"
-                                    placeholder="DD/MM/YYYY HH:mm">
-                            </td>
-
-                            <!-- Usuario -->
-                            <td class="p-2 text-center border">
+                        <!-- Código Cliente -->
+                        <td class="p-2 text-center border">
+                            <template x-if="!editando">
                                 <span
-                                    x-text="planilla.user?.nombre_completo ?? 'Desconocido'"></span>
-                            </td>
+                                    x-text="planilla.cliente.codigo ?? 'N/A'"></span>
+                            </template>
+                            <input x-show="editando" type="text"
+                                x-model="planilla.cliente.codigo"
+                                class="form-control form-control-sm">
+                        </td>
 
-                            {{-- Revisiones --}}
-                            <td class="p-2 text-center border">
-                                <template x-if="!editando">
-                                    <span
-                                        :class="planilla.revisada ?
+                        <!-- Cliente -->
+                        <td class="p-2 text-center border">
+                            <template x-if="!editando">
+                                <a href="{{ route('clientes.index', ['id' => $planilla->cliente_id]) }}"
+                                    class="text-blue-500 hover:underline">
+                                    {{ $planilla->cliente->empresa ?? 'N/A' }}
+                                </a>
+                            </template>
+                            <input x-show="editando" type="text"
+                                x-model="planilla.cliente.empresa"
+                                class="form-control form-control-sm">
+                        </td>
+
+                        <!-- Código Obra -->
+                        <td class="p-2 text-center border">
+                            <template x-if="!editando">
+                                <span
+                                    x-text="planilla.obra.cod_obra ?? 'N/A'"></span>
+                            </template>
+                            <input x-show="editando" type="text"
+                                x-model="planilla.obra.cod_obra"
+                                class="form-control form-control-sm">
+                        </td>
+                        <!-- Obra -->
+                        <td class="p-2 text-center border">
+                            <template x-if="!editando">
+                                <a href="{{ route('clientes.show', ['cliente' => $planilla->cliente_id]) }}"
+                                    class="text-blue-500 hover:underline">
+                                    {{ $planilla->obra->obra ?? 'N/A' }}
+                                </a>
+                            </template>
+                            <input x-show="editando" type="text"
+                                x-model="planilla.obra.obra"
+                                class="form-control form-control-sm">
+                        </td>
+
+                        <!-- Sección -->
+                        <td class="p-2 text-center border">
+                            <template x-if="!editando">
+                                <span
+                                    x-text="planilla.seccion ?? 'N/A'"></span>
+                            </template>
+                            <input x-show="editando" type="text"
+                                x-model="planilla.seccion"
+                                class="form-control form-control-sm">
+                        </td>
+
+                        <!-- Descripción -->
+                        <td class="p-2 text-center border">
+                            <template x-if="!editando">
+                                <span
+                                    x-text="planilla.descripcion ?? 'Sin descripción'"></span>
+                            </template>
+                            <input x-show="editando" type="text"
+                                x-model="planilla.descripcion"
+                                class="form-control form-control-sm">
+                        </td>
+
+                        <!-- Ensamblado -->
+                        <td class="p-2 text-center border">
+                            <template x-if="!editando">
+                                <span
+                                    x-text="planilla.ensamblado ?? 'Sin datos'"></span>
+                            </template>
+                            <input x-show="editando" type="text"
+                                x-model="planilla.ensamblado"
+                                class="form-control form-control-sm">
+                        </td>
+
+                        <!-- Comentario -->
+                        <td class="p-2 text-center border">
+                            <template x-if="!editando">
+                                <span
+                                    x-text="planilla.comentario ?? ' '"></span>
+                            </template>
+                            <input x-show="editando" type="text"
+                                x-model="planilla.comentario"
+                                class="form-control form-control-sm">
+                        </td>
+
+                        <!-- Peso Fabricado -->
+                        <td class="p-2 text-center border">
+                            <template x-if="!editando">
+                                <span
+                                    x-text="new Intl.NumberFormat('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(parseFloat(planilla.suma_peso_completados) || 0) + ' KG'"></span>
+
+                            </template>
+                            <input x-show="editando" type="text"
+                                x-model="planilla.suma_peso_completados"
+                                class="form-control form-control-sm">
+                        </td>
+
+                        <!-- Peso Total -->
+                        <td class="p-2 text-center border">
+                            <template x-if="!editando">
+                                <span
+                                    x-text="planilla.peso_total_kg"></span>
+                            </template>
+                            <input x-show="editando" type="text"
+                                x-model="planilla.peso_total"
+                                class="form-control form-control-sm">
+                        </td>
+
+
+                        <!-- Estado -->
+                        <td class="p-2 text-center border">
+                            <template x-if="!editando">
+                                <span
+                                    x-text="planilla.estado.toUpperCase()"></span>
+                            </template>
+                            <select x-show="editando"
+                                x-model="planilla.estado"
+                                class="form-select w-full">
+                                <option value="pendiente">Pendiente
+                                </option>
+                                <option value="fabricando">Fabricando
+                                </option>
+                                <option value="completada">Completada
+                                </option>
+                            </select>
+                        </td>
+
+                        <!-- Fecha Inicio -->
+                        <td class="p-2 text-center border">
+                            <template x-if="!editando">
+                                <span
+                                    x-text="planilla.fecha_inicio"></span>
+                            </template>
+                            <input x-show="editando" type="text"
+                                x-model="planilla.fecha_inicio"
+                                class="form-control form-control-sm"
+                                placeholder="DD/MM/YYYY HH:mm">
+                        </td>
+
+                        <!-- Fecha Finalización -->
+                        <td class="p-2 text-center border">
+                            <template x-if="!editando">
+                                <span
+                                    x-text="planilla.fecha_finalizacion"></span>
+                            </template>
+                            <input x-show="editando" type="text"
+                                x-model="planilla.fecha_finalizacion"
+                                class="form-control form-control-sm"
+                                placeholder="DD/MM/YYYY HH:mm">
+                        </td>
+
+                        <!-- Fecha Importación -->
+                        <td class="p-2 text-center border">
+                            <span
+                                x-text="new Date(planilla.created_at).toLocaleDateString()"></span>
+                        </td>
+
+                        <!-- Fecha Entrega -->
+                        <td class="p-2 text-center border">
+                            <template x-if="!editando">
+                                <span
+                                    x-text="planilla.fecha_estimada_entrega"></span>
+                            </template>
+
+                            <input x-show="editando" type="text"
+                                x-model="planilla.fecha_estimada_entrega"
+                                class="form-control form-control-sm"
+                                placeholder="DD/MM/YYYY HH:mm">
+                        </td>
+
+                        <!-- Usuario -->
+                        <td class="p-2 text-center border">
+                            <span
+                                x-text="planilla.user?.nombre_completo ?? 'Desconocido'"></span>
+                        </td>
+
+                        {{-- Revisiones --}}
+                        <td class="p-2 text-center border">
+                            <template x-if="!editando">
+                                <span
+                                    :class="planilla.revisada ?
                                             'bg-green-100 text-green-700' :
                                             'bg-gray-100 text-gray-600'"
-                                        class="px-2 py-1 rounded text-[11px] font-semibold inline-flex items-center gap-1">
-                                        <span
-                                            x-text="planilla.revisada ? 'Sí' : 'No'"></span>
-                                    </span>
-                                </template>
-
-                                <label x-show="editando"
-                                    class="inline-flex items-center gap-2">
-                                    <input type="checkbox"
-                                        x-model="planilla.revisada"
-                                        class="w-4 h-4 accent-blue-600">
-                                    <span>Revisada</span>
-                                </label>
-                            </td>
-                            <!-- Revisor -->
-                            <td class="p-2 text-center border">
-                                <span
-                                    x-text="planilla.revisor?.nombre_completo ?? '—'"></span>
-                            </td>
-                            <!-- Fecha Revisión -->
-                            <td class="p-2 text-center border">
-                                <template x-if="planilla.revisada_at">
+                                    class="px-2 py-1 rounded text-[11px] font-semibold inline-flex items-center gap-1">
                                     <span
-                                        x-text="new Date(planilla.revisada_at).toLocaleString()"></span>
-                                </template>
-                                <template x-if="!planilla.revisada_at">
-                                    <span>—</span>
-                                </template>
-                            </td>
+                                        x-text="planilla.revisada ? 'Sí' : 'No'"></span>
+                                </span>
+                            </template>
 
-                            <!-- Acciones Fila -->
-                            <td class="px-2 py-2 border text-xs font-bold">
-                                <div
-                                    class="flex items-center space-x-2 justify-center">
-                                    <!-- Mostrar solo en modo edición -->
-                                    <x-tabla.boton-guardar x-show="editando"
-                                        @click="guardarCambios(planilla); editando = false" />
-                                    <x-tabla.boton-cancelar-edicion
-                                        @click="editando = false"
-                                        x-show="editando" />
+                            <label x-show="editando"
+                                class="inline-flex items-center gap-2">
+                                <input type="checkbox"
+                                    x-model="planilla.revisada"
+                                    class="w-4 h-4 accent-blue-600">
+                                <span>Revisada</span>
+                            </label>
+                        </td>
+                        <!-- Revisor -->
+                        <td class="p-2 text-center border">
+                            <span
+                                x-text="planilla.revisor?.nombre_completo ?? '—'"></span>
+                        </td>
+                        <!-- Fecha Revisión -->
+                        <td class="p-2 text-center border">
+                            <template x-if="planilla.revisada_at">
+                                <span
+                                    x-text="new Date(planilla.revisada_at).toLocaleString()"></span>
+                            </template>
+                            <template x-if="!planilla.revisada_at">
+                                <span>—</span>
+                            </template>
+                        </td>
 
-                                    <!-- Mostrar solo cuando NO está en modo edición -->
-                                    <template x-if="!editando">
-                                        <div
-                                            class="flex items-center space-x-2">
-                                            <!-- Botón Reimportar -->
-                                            <button
-                                                @click="modalReimportar = true; planillaId = {{ $planilla->id }}"
-                                                class="w-6 h-6 bg-yellow-100 text-yellow-600 rounded hover:bg-yellow-200 flex items-center justify-center"
-                                                title="Reimportar Planilla">
-                                                <svg xmlns="http://www.w3.org/2000/svg"
-                                                    class="h-4 w-4"
-                                                    fill="none"
-                                                    viewBox="0 0 24 24"
-                                                    stroke="currentColor"
-                                                    stroke-width="2">
-                                                    <path
-                                                        stroke-linecap="round"
-                                                        stroke-linejoin="round"
-                                                        d="M4 4v6h6M20 20v-6h-6M4 20l4.586-4.586M20 4l-4.586 4.586" />
-                                                </svg>
-                                            </button>
-                                            <button
-                                                @click="
+                        <!-- Acciones Fila -->
+                        <td class="px-2 py-2 border text-xs font-bold">
+                            <div
+                                class="flex items-center space-x-2 justify-center">
+                                <!-- Mostrar solo en modo edición -->
+                                <x-tabla.boton-guardar x-show="editando"
+                                    @click="guardarCambios(planilla); editando = false" />
+                                <x-tabla.boton-cancelar-edicion
+                                    @click="editando = false"
+                                    x-show="editando" />
+
+                                <!-- Mostrar solo cuando NO está en modo edición -->
+                                <template x-if="!editando">
+                                    <div
+                                        class="flex items-center space-x-2">
+                                        <!-- Botón Reimportar -->
+                                        <button
+                                            @click="modalReimportar = true; planillaId = {{ $planilla->id }}"
+                                            class="w-6 h-6 bg-yellow-100 text-yellow-600 rounded hover:bg-yellow-200 flex items-center justify-center"
+                                            title="Reimportar Planilla">
+                                            <svg xmlns="http://www.w3.org/2000/svg"
+                                                class="h-4 w-4"
+                                                fill="none"
+                                                viewBox="0 0 24 24"
+                                                stroke="currentColor"
+                                                stroke-width="2">
+                                                <path
+                                                    stroke-linecap="round"
+                                                    stroke-linejoin="round"
+                                                    d="M4 4v6h6M20 20v-6h-6M4 20l4.586-4.586M20 4l-4.586 4.586" />
+                                            </svg>
+                                        </button>
+                                        <button
+                                            @click="
     planilla.revisada = !planilla.revisada;
     guardarCambios(planilla);
   "
-                                                class="w-6 h-6 bg-indigo-100 text-indigo-700 rounded hover:bg-indigo-200 flex items-center justify-center"
-                                                title="Marcar como revisada (José Amuedo)">
-                                                <svg xmlns="http://www.w3.org/2000/svg"
-                                                    class="h-4 w-4"
-                                                    viewBox="0 0 24 24"
-                                                    fill="currentColor">
-                                                    <path
-                                                        d="M9 12l2 2 4-4-1.5-1.5L11 11l-1.5-1.5L8 11l1 1z" />
-                                                </svg>
-                                            </button>
+                                            class="w-6 h-6 bg-indigo-100 text-indigo-700 rounded hover:bg-indigo-200 flex items-center justify-center"
+                                            title="Marcar como revisada (José Amuedo)">
+                                            <svg xmlns="http://www.w3.org/2000/svg"
+                                                class="h-4 w-4"
+                                                viewBox="0 0 24 24"
+                                                fill="currentColor">
+                                                <path
+                                                    d="M9 12l2 2 4-4-1.5-1.5L11 11l-1.5-1.5L8 11l1 1z" />
+                                            </svg>
+                                        </button>
 
-                                            {{-- <!-- Botón Completar -->
+                                        {{-- <!-- Botón Completar -->
                                             <button @click="completarPlanilla({{ $planilla->id }})"
-                                                class="w-6 h-6 bg-green-100 text-green-600 rounded hover:bg-green-200 flex items-center justify-center"
-                                                title="Completar Planilla">
-                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4"
-                                                    fill="none" viewBox="0 0 24 24" stroke="currentColor"
-                                                    stroke-width="2">
-                                                    <path stroke-linecap="round" stroke-linejoin="round"
-                                                        d="M5 13l4 4L19 7" />
-                                                </svg>
-                                            </button> --}}
+                                        class="w-6 h-6 bg-green-100 text-green-600 rounded hover:bg-green-200 flex items-center justify-center"
+                                        title="Completar Planilla">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4"
+                                            fill="none" viewBox="0 0 24 24" stroke="currentColor"
+                                            stroke-width="2">
+                                            <path stroke-linecap="round" stroke-linejoin="round"
+                                                d="M5 13l4 4L19 7" />
+                                        </svg>
+                                        </button> --}}
 
-                                            <x-tabla.boton-editar
-                                                @click="editando = true"
-                                                x-show="!editando" />
-                                            <x-tabla.boton-ver
-                                                :href="route(
+                                        <x-tabla.boton-editar
+                                            @click="editando = true"
+                                            x-show="!editando" />
+                                        <x-tabla.boton-ver
+                                            :href="route(
                                                     'planillas.show',
                                                     $planilla->id,
                                                 )" />
-                                            <x-tabla.boton-eliminar
-                                                :action="route(
+                                        <x-tabla.boton-eliminar
+                                            :action="route(
                                                     'planillas.destroy',
                                                     $planilla->id,
                                                 )" />
 
-                                        </div>
-                                    </template>
-                                </div>
-                            </td>
-                        </tr>
+                                    </div>
+                                </template>
+                            </div>
+                        </td>
+                    </tr>
                     @empty
-                        <tr>
-                            <td colspan="15"
-                                class="text-center py-4 text-gray-500">No hay
-                                planillas
-                                disponibles.
-                            </td>
-                        </tr>
+                    <tr>
+                        <td colspan="15"
+                            class="text-center py-4 text-gray-500">No hay
+                            planillas
+                            disponibles.
+                        </td>
+                    </tr>
                     @endforelse
                 </tbody>
                 <tfoot>
