@@ -22,11 +22,11 @@ class PlanificacionController extends Controller
     {
         [$startDate, $endDate] = $this->getDateRange($request);
 
-        $viewType = $request->input('viewType', 'resourceTimelineDay');
+        $viewType = $request->input('viewType', 'resourceTimeGridDay');
 
         // Eventos
-        $salidasEventos = $this->getEventosSalidas($startDate, $endDate);
-        $planillasEventos = $this->getEventosPlanillas($startDate, $endDate);
+        $salidasEventos = $this->getEventosSalidas($startDate, $endDate, $viewType);
+        $planillasEventos = $this->getEventosPlanillas($startDate, $endDate, $viewType);
         $resumenEventos = $this->getEventosResumen($planillasEventos['planillas'], $viewType);
         $eventos = collect()
             ->concat($planillasEventos['eventos'])
@@ -88,13 +88,13 @@ class PlanificacionController extends Controller
         $viewType = $request->input('viewType');
 
         // Vista día
-        if ($viewType === 'resourceTimelineDay' && $start) {
+        if (in_array($viewType, ['resourceTimeGridDay', 'timeGridDay', 'resourceTimelineDay']) && $start) {
             $fecha = Carbon::parse($start)->startOfDay();
             return [$fecha, $fecha->copy()->endOfDay()];
         }
 
         // Vista semana
-        if ($viewType === 'resourceTimelineWeek' && $start && $end) {
+        if (in_array($viewType, ['resourceTimeGridWeek', 'resourceTimelineWeek']) && $start && $end) {
             return [
                 Carbon::parse($start)->startOfDay(),
                 Carbon::parse($end)->subSecond()
@@ -163,21 +163,52 @@ class PlanificacionController extends Controller
                 'diametroMedio' => $grupo->flatMap->elementos->pluck('diametro')->filter()->avg(),
             ])->values();
 
-        $resumenEventosDia = $resumenPorDia->map(function ($r) {
+        $resumenEventosDia = $resumenPorDia->map(function ($r) use ($viewType) {
             $titulo = "📦 " . number_format($r['pesoTotal'], 0, ',', '.') . " kg | 📏 " . number_format($r['longitudTotal'], 0, ',', '.') . " m";
             if ($r['diametroMedio'] !== null) {
                 $titulo .= " | ⌀ " . number_format($r['diametroMedio'], 2, '.', '') . " mm";
             }
+
+            // Usar formato de fecha consistente sin conversión de zona horaria
+            $fechaStr = $r['fecha']->format('Y-m-d');
+
+            // En vista mensual, mostrar como evento normal
+            if ($viewType === 'dayGridMonth') {
+                return [
+                    'title' => $titulo,
+                    'start' => $fechaStr,
+                    'allDay' => true,
+                    'backgroundColor' => '#fef3c7',
+                    'borderColor' => '#fbbf24',
+                    'textColor' => '#92400e',
+                    'classNames' => ['evento-resumen-diario'],
+                    'display' => 'block',
+                    'extendedProps' => [
+                        'tipo' => 'resumen-dia',
+                        'pesoTotal' => $r['pesoTotal'],
+                        'longitudTotal' => $r['longitudTotal'],
+                        'diametroMedio' => $r['diametroMedio'],
+                        'fecha' => $fechaStr,
+                    ],
+                ];
+            }
+
+            // En vistas diaria y semanal, como evento de background (no visible, solo para encabezados)
             return [
                 'title' => $titulo,
-                'start' => $r['fecha']->startOfDay()->toIso8601String(),
-                'end' => $r['fecha']->endOfDay()->toIso8601String(),
-                'resourceId' => 'resumen-dia',
-                'allDay' => true,
-                'backgroundColor' => '#fbbf24',
-                'borderColor' => '#92400e',
-                'textColor' => '#000',
-                'tipo' => 'resumen-dia',
+                'start' => $fechaStr,
+                'display' => 'background',
+                'backgroundColor' => '#fef3c7',
+                'borderColor' => '#fbbf24',
+                'textColor' => '#92400e',
+                'classNames' => ['evento-resumen-diario'],
+                'extendedProps' => [
+                    'tipo' => 'resumen-dia',
+                    'pesoTotal' => $r['pesoTotal'],
+                    'longitudTotal' => $r['longitudTotal'],
+                    'diametroMedio' => $r['diametroMedio'],
+                    'fecha' => $fechaStr,
+                ],
             ];
         });
 
@@ -191,7 +222,7 @@ class PlanificacionController extends Controller
         return $eventosResumen;
     }
 
-    private function getEventosSalidas(Carbon $startDate, Carbon $endDate)
+    private function getEventosSalidas(Carbon $startDate, Carbon $endDate, string $viewType = '')
     {
         $salidas = Salida::with([
             // añade cod_obra aquí 👇
@@ -212,27 +243,33 @@ class PlanificacionController extends Controller
             $fechaFin   = $fechaInicio->copy()->addHours(3);
             $color      = $salida->estado === 'completada' ? '#4CAF50' : '#3B82F6';
 
-            return $salida->salidaClientes->map(function ($relacion) use ($salida, $empresa, $camion, $pesoTotal, $fechaInicio, $fechaFin, $color) {
+            return $salida->salidaClientes->map(function ($relacion) use ($salida, $empresa, $camion, $pesoTotal, $fechaInicio, $fechaFin, $color, $viewType) {
                 $obra = $relacion->obra;
 
-                return [
+                $evento = [
                     'title'        => "{$salida->codigo_salida} - {$salida->codigo_sage} - {$obra->obra} - {$pesoTotal} kg",
                     'id'           => $salida->id . '-' . $obra->id,
                     'start'        => $fechaInicio->toDateTimeString(),
                     'end'          => $fechaFin->toDateTimeString(),
-                    'resourceId'   => (string) $obra->id,
                     'tipo'         => 'salida',
                     'backgroundColor' => $color,
                     'borderColor'     => $color,
                     'extendedProps' => [
                         'tipo'         => 'salida',
-                        'cod_obra'     => $obra->cod_obra,   // <- ahora sí existe
-                        'nombre_obra'  => $obra->obra,       // <- para buscar por nombre
+                        'cod_obra'     => $obra->cod_obra,
+                        'nombre_obra'  => $obra->obra,
                         'empresa'      => $empresa,
                         'camion'       => $camion,
                         'comentario'   => $salida->comentario,
                     ],
                 ];
+
+                // Solo agregar resourceId si no es vista timeGridDay
+                if ($viewType !== 'timeGridDay') {
+                    $evento['resourceId'] = (string) $obra->id;
+                }
+
+                return $evento;
             });
         });
     }
@@ -243,7 +280,7 @@ class PlanificacionController extends Controller
      * @param Carbon $endDate
      * @return array
      */
-    private function getEventosPlanillas(Carbon $startDate, Carbon $endDate): array
+    private function getEventosPlanillas(Carbon $startDate, Carbon $endDate, string $viewType = ''): array
     {
         // 🔹 Traer planillas sin salidas en el rango
         $planillas = Planilla::with('obra', 'elementos')
@@ -254,7 +291,7 @@ class PlanificacionController extends Controller
         // 🔹 Agrupar por obra y día
         $eventos = $planillas->groupBy(function ($p) {
             return $p->obra_id . '|' . Carbon::parse($p->getRawOriginal('fecha_estimada_entrega'))->toDateString();
-        })->map(function ($grupo) {
+        })->map(function ($grupo) use ($viewType) {
             $obraId = $grupo->first()->obra_id;
             $obra = $grupo->first()->obra;
             $nombreObra = optional($obra)->obra ?? 'Obra desconocida';
@@ -298,14 +335,11 @@ class PlanificacionController extends Controller
                 $q->whereIn('paquete_id', $paqueteIds);
             })->get();
 
-            return [
+            $evento = [
                 'title' => $codObra . ' - ' . $nombreObra,
                 'id' => 'planillas-' . $obraId . '-' . md5($fechaInicio),
-                // 'start' => $fechaInicio->toIso8601String(),
-                // 'end' => $fechaInicio->copy()->addHours(2)->toIso8601String(),
-                'start' => $fechaInicio->toDateString(), // 👈 solo la fecha
-                'end' => $fechaInicio->copy()->addDay()->toDateString(), // 👈 fecha siguiente
-                'allDay' => true, // 👈 esto es CLAVE para dayGridMonth
+                'start' => $fechaInicio->toIso8601String(),
+                'end' => $fechaInicio->copy()->addHours(2)->toIso8601String(),
                 'backgroundColor' => $color,
                 'borderColor' => $color,
                 'tipo' => 'planilla',
@@ -325,6 +359,13 @@ class PlanificacionController extends Controller
                     'salidas_codigos' => $salidaRelacionada->pluck('codigo_salida')->toArray(),
                 ],
             ];
+
+            // Solo agregar resourceId si no es vista timeGridDay
+            if ($viewType !== 'timeGridDay') {
+                $evento['resourceId'] = (string) $obraId;
+            }
+
+            return $evento;
         })->sortBy([
             fn($e) => (int) preg_replace('/\D/', '', $e['extendedProps']['cod_obra'] ?? '0'),
             fn($e) => $e['start'],
@@ -339,7 +380,6 @@ class PlanificacionController extends Controller
 
     private function getResources($eventos)
     {
-
         $resourceIds = $eventos->pluck('resourceId')->filter()->unique()->values();
         $obras = Obra::with('cliente')->whereIn('id', $resourceIds)->orderBy('obra')->get();
 
@@ -348,16 +388,8 @@ class PlanificacionController extends Controller
             'title' => $obra->obra,
             'cliente' => optional($obra->cliente)->empresa,
             'cod_obra' => $obra->cod_obra,
-            'orderIndex' => 2,
-        ])->values();
-
-        $resources->prepend([
-            'id' => 'resumen-dia',
-            'title' => '📊 Resumen Diario',
-            'cliente' => '',
-            'cod_obra' => '',
             'orderIndex' => 1,
-        ]);
+        ])->values();
 
         return $resources;
     }

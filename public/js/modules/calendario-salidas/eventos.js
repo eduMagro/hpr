@@ -28,22 +28,33 @@ export async function dataEvents(viewType, info) {
         const soloPlanillas =
             document.getElementById("solo-planillas")?.checked || false;
 
+        // Separar eventos de resumen (siempre se incluyen para los encabezados)
+        const eventosResumen = eventos.filter(
+            (evento) => evento.extendedProps?.tipo === "resumen-dia"
+        );
+        const eventosNormales = eventos.filter(
+            (evento) => evento.extendedProps?.tipo !== "resumen-dia"
+        );
+
+        let eventosFiltrados = eventosNormales;
+
         if (soloSalidas && !soloPlanillas) {
             // Mostrar solo eventos de salidas
-            eventos = eventos.filter((evento) => {
+            eventosFiltrados = eventosNormales.filter((evento) => {
                 const tipo = evento.extendedProps?.tipo;
                 return tipo === "salida";
             });
         } else if (soloPlanillas && !soloSalidas) {
-            // Mostrar solo planillas, festivos y resúmenes
-            eventos = eventos.filter((evento) => {
+            // Mostrar solo planillas y festivos
+            eventosFiltrados = eventosNormales.filter((evento) => {
                 const tipo = evento.extendedProps?.tipo;
-                return tipo === "planilla" || tipo === "festivo" || !tipo; // !tipo para resúmenes sin tipo específico
+                return tipo === "planilla" || tipo === "festivo";
             });
         }
-        // Si ambos están marcados o ninguno está marcado, mostrar todos los eventos
+        // Si ambos están marcados o ninguno está marcado, mostrar todos los eventos normales
 
-        return eventos;
+        // Siempre incluir los resúmenes (aunque no se muestran visualmente)
+        return [...eventosFiltrados, ...eventosResumen];
     } catch (err) {
         console.error("fetch eventos falló:", err);
         return [];

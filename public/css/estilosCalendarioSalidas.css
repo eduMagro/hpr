@@ -273,3 +273,50 @@
     border-color: #8b5cf6;
     box-shadow: 0 0 0 1px rgba(139, 92, 246, 0.1);
 }
+
+/* 🔹 Ocultar eventos de resumen que están como background (no en vista mensual) */
+.fc .fc-bg-event.evento-resumen-diario {
+    display: none !important;
+}
+
+/* 🔹 Mostrar eventos de resumen en vista mensual */
+.fc-daygrid .fc-event.evento-resumen-diario {
+    display: block !important;
+    margin-bottom: 4px;
+}
+
+/* 🔹 Estilos para el encabezado del día con resumen en timeGrid */
+.fc-timegrid .fc-col-header-cell {
+    padding: 8px 4px !important;
+    min-height: 120px !important;
+    vertical-align: top !important;
+}
+
+.fc-timegrid .fc-col-header-cell-cushion {
+    padding: 0 !important;
+}
+
+/* 🔹 Asegurar que el contenido del encabezado se vea bien */
+.fc-timegrid .fc-col-header-cell .fc-scrollgrid-sync-inner {
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    height: 100%;
+}
+
+/* 🔹 Estilos para el encabezado de timeline (vista semanal) */
+.fc-timeline .fc-timeline-header-row {
+    min-height: 100px !important;
+}
+
+.fc-timeline .fc-timeline-slot {
+    min-width: 120px !important;
+    padding: 8px 4px !important;
+}
+
+.fc-timeline .fc-timeline-slot-cushion {
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding: 0 !important;
+}
