@@ -175,6 +175,7 @@
     <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/locales-all.global.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="{{ asset('js/elementosJs/figuraElemento.js') }}"></script>
+    <script src="{{ asset('js/multiselect-elementos.js') }}"></script>
 
     <style>
         /* Contenedor calendario */
@@ -209,6 +210,7 @@
             padding: 12px;
             cursor: move;
             transition: all 0.2s;
+            position: relative;
         }
 
         .elemento-drag:hover {
@@ -219,6 +221,31 @@
 
         .elemento-drag.fc-dragging {
             opacity: 0.5;
+        }
+
+        /* Elemento seleccionado */
+        .elemento-drag.seleccionado {
+            border-color: #2563eb;
+            background-color: #eff6ff;
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.2);
+        }
+
+        .elemento-drag.seleccionado::before {
+            content: '✓';
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            background-color: #2563eb;
+            color: white;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 14px;
+            z-index: 10;
         }
 
         .elemento-drag canvas {
@@ -233,6 +260,26 @@
             display: flex;
             justify-content: space-between;
             font-size: 0.875rem;
+        }
+
+        /* Badge con contador de selección */
+        .selection-badge {
+            position: fixed;
+            bottom: 20px;
+            right: 340px;
+            background: #2563eb;
+            color: white;
+            padding: 12px 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+            font-weight: bold;
+            z-index: 100;
+            display: none;
+            transition: all 0.3s;
+        }
+
+        .selection-badge.show {
+            display: block;
         }
 
         /* Highlight en recursos cuando se arrastra */
@@ -400,6 +447,11 @@
                 schedulerLicenseKey: 'CC-Attribution-NonCommercial-NoDerivatives',
                 initialView: 'resourceTimeGridFiveDays',
                 nextDayThreshold: '06:00:00',
+                resourceLabelContent: function(arg) {
+                    return {
+                        html: `<a href="/maquinas/${arg.resource.id}" class="text-blue-600 hover:text-blue-800 hover:underline font-semibold">${arg.resource.title}</a>`
+                    };
+                },
                 views: {
                     resourceTimeGridDay: {
                         type: 'resourceTimeGrid',
@@ -441,6 +493,7 @@
                 timeZone: 'Europe/Madrid',
                 initialDate: "{{ $initialDate }}",
                 resources: maquinas,
+                resourceOrder: false, // ✅ Mantener el orden del array sin reordenar por ID
                 events: planillas,
                 height: 'auto',
                 scrollTime: '06:00:00',
@@ -457,15 +510,56 @@
 
                 // 🎯 CLAVE: Configurar recepción de elementos externos
                 eventReceive: async function(info) {
-                    const elementoId = parseInt(info.event.extendedProps.elementoId);
-                    const planillaId = parseInt(info.event.extendedProps.planillaId);
-                    const maquinaOrigenId = parseInt(info.event.extendedProps.maquinaOriginal);
+                    const elementoDiv = document.querySelector(
+                        `.elemento-drag[data-elemento-id="${info.event.extendedProps.elementoId}"]`
+                    );
+
+                    if (!elementoDiv) {
+                        info.revert();
+                        return;
+                    }
+
+                    // Obtener datos de los elementos a mover (uno o varios)
+                    const dataMovimiento = window.MultiSelectElementos.getDataElementosParaMover(elementoDiv);
+
+
+                    // Validar que tengamos la máquina original
+                    if (!dataMovimiento.maquinaOriginal || isNaN(dataMovimiento.maquinaOriginal)) {
+                        console.error('Error: No se pudo obtener la máquina original del elemento', elementoDiv);
+                        info.revert();
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Error',
+                            text: 'No se pudo determinar la máquina original del elemento'
+                        });
+                        return;
+                    }
+
                     const maquinaDestinoId = parseInt(info.event.getResources()[0].id);
+                    const maquinaDestinoNombre = info.event.getResources()[0].title;
+                    // Calcular la posición correcta donde se soltó el elemento
+                    const eventosOrdenados = calendar.getEvents()
+                        .filter(ev => ev.getResources().some(r => r.id == maquinaDestinoId))
+                        .sort((a, b) => a.start - b.start);
+
+                    // Encontrar posición basada en el tiempo donde se soltó
+                    let nuevaPosicion = 1;
+                    for (let i = 0; i < eventosOrdenados.length; i++) {
+                        if (info.event.start < eventosOrdenados[i].start) {
+                            nuevaPosicion = i + 1;
+                            break;
+                        }
+                        nuevaPosicion = i + 2;
+                    }
 
                     // Confirmar movimiento
+                    const mensaje = dataMovimiento.cantidad > 1
+                        ? `¿Mover ${dataMovimiento.cantidad} elementos a <strong>${maquinaDestinoNombre}</strong>?`
+                        : `¿Mover elemento a <strong>${maquinaDestinoNombre}</strong>?`;
+
                     const resultado = await Swal.fire({
-                        title: '¿Mover elemento?',
-                        html: `¿Mover a <strong>${info.event.getResources()[0].title}</strong>?`,
+                        title: dataMovimiento.cantidad > 1 ? '¿Mover elementos?' : '¿Mover elemento?',
+                        html: mensaje,
                         icon: 'question',
                         showCancelButton: true,
                         confirmButtonText: 'Sí, mover',
@@ -483,48 +577,52 @@
                             headers: {
                                 'Content-Type': 'application/json',
                                 'Accept': 'application/json',
-                                'X-CSRF-TOKEN': document.querySelector(
-                                    'meta[name="csrf-token"]').content
+                                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
                             },
                             body: JSON.stringify({
-                                id: planillaId,
+                                id: dataMovimiento.planillaId,
                                 maquina_id: maquinaDestinoId,
-                                maquina_origen_id: maquinaOrigenId,
-                                nueva_posicion: 1,
-                                elementos_id: [elementoId],
-                                forzar_movimiento: true
+                                maquina_origen_id: dataMovimiento.maquinaOriginal,
+                                nueva_posicion: nuevaPosicion,
+                                elementos_id: dataMovimiento.elementosIds
                             })
                         });
 
                         const data = await res.json();
 
-                        if (data.success) {
-                            // Actualizar calendario
-                            actualizarEventosSinRecargar(data.eventos);
-
-                            // Remover elemento del panel
-                            const elementoDiv = document.querySelector(
-                                `.elemento-drag[data-elemento-id="${elementoId}"]`);
-                            if (elementoDiv) {
-                                elementoDiv.remove();
-                            }
-
-                            // Remover el evento temporal que se creó
-                            info.event.remove();
-
-                            Swal.fire({
-                                icon: 'success',
-                                title: 'Elemento movido',
-                                timer: 1500,
-                                showConfirmButton: false
-                            });
+                        if (!res.ok || !data.success) {
+                            throw new Error(data.message || 'Error al mover elementos');
                         }
+
+                        // Actualizar calendario
+                        actualizarEventosSinRecargar(data.eventos, [dataMovimiento.maquinaOriginal, maquinaDestinoId]);
+
+                        // Remover elementos del panel
+                        window.MultiSelectElementos.removerElementosDelPanel(dataMovimiento.elementosIds);
+
+                        // Remover el evento temporal que se creó
+                        info.event.remove();
+
+                        const Toast = Swal.mixin({
+                            toast: true,
+                            position: 'top-end',
+                            showConfirmButton: false,
+                            timer: 1500,
+                            timerProgressBar: true,
+                        });
+                        Toast.fire({
+                            icon: 'success',
+                            title: dataMovimiento.cantidad > 1
+                                ? `${dataMovimiento.cantidad} elementos movidos`
+                                : 'Elemento movido'
+                        });
+
                     } catch (error) {
                         info.revert();
                         Swal.fire({
                             icon: 'error',
                             title: 'Error',
-                            text: 'No se pudo mover el elemento'
+                            text: error.message || 'No se pudo mover el elemento'
                         });
                     }
                 },
@@ -538,56 +636,69 @@
                 },
 
                 slotLabelContent: function(arg) {
-                    // ✅ Usar arg.date en lugar de parsear arg.text
-                    const currentDate = new Date(arg.date);
-                    const horaReal = currentDate.getHours();
-                    const minutos = currentDate.getMinutes();
+                    // Obtener la fecha base del calendario (initialDate)
+                    const initialDate = new Date("{{ $initialDate }}");
 
-                    // Formatear la hora para mostrar
-                    const timeText =
-                        `${horaReal.toString().padStart(2, '0')}:${minutos.toString().padStart(2, '0')}`;
+                    // Parsear el texto de la hora (puede ser "07:00", "31:00", "55:00", etc.)
+                    const horaTexto = arg.text; // texto mostrado por defecto
+                    const [horaStr, minutosStr] = horaTexto.split(':');
+                    const horaTotal = parseInt(horaStr);
+                    const minutos = parseInt(minutosStr);
 
-                    // ✅ Para turno de noche (22:00), usar fecha del día siguiente
-                    let fechaMostrar = new Date(currentDate);
-                    if (horaReal === 22) {
+                    // Calcular cuántos días completos han pasado y la hora del día actual
+                    const diasCompletos = Math.floor(horaTotal / 24);
+                    const horaDelDia = horaTotal % 24;
+
+                    // Calcular la fecha real sumando los días completos a la fecha inicial
+                    const fechaReal = new Date(initialDate);
+                    fechaReal.setDate(fechaReal.getDate() + diasCompletos);
+
+                    // Debug: solo para las horas de turno
+                    if (horaDelDia === 7 || horaDelDia === 15 || horaDelDia === 23) {
+                        console.log(`Hora: ${horaTexto} → horaTotal: ${horaTotal}, diasCompletos: ${diasCompletos}, horaDelDia: ${horaDelDia}, fechaReal: ${fechaReal.toLocaleDateString('es-ES')}`);
+                    }
+
+                    // Formatear la hora para mostrar (siempre 00-23)
+                    const timeText = `${horaDelDia.toString().padStart(2, '0')}:${minutos.toString().padStart(2, '0')}`;
+
+                    // Determinar si este slot corresponde a un inicio de turno
+                    let esTurno = false;
+                    let nombreTurno = '';
+                    let fechaMostrar = new Date(fechaReal);
+
+                    if (horaDelDia === 7) {
+                        // Turno Mañana (muestra la fecha del mismo día)
+                        esTurno = true;
+                        nombreTurno = '☀️ Mañana';
+                    } else if (horaDelDia === 15) {
+                        // Turno Tarde (muestra la fecha del mismo día)
+                        esTurno = true;
+                        nombreTurno = '🌤️ Tarde';
+                    } else if (horaDelDia === 23) {
+                        // Turno Noche (muestra la fecha del día siguiente porque trabaja de noche)
+                        esTurno = true;
+                        nombreTurno = '🌙 Noche';
+                        fechaMostrar = new Date(fechaReal);
                         fechaMostrar.setDate(fechaMostrar.getDate() + 1);
                     }
 
-                    // Formatear fecha
-                    const dia = fechaMostrar.getDate().toString().padStart(2, '0');
-                    const mes = (fechaMostrar.getMonth() + 1).toString().padStart(2, '0');
-                    const año = fechaMostrar.getFullYear();
-                    const nombreDia = fechaMostrar.toLocaleDateString('es-ES', {
-                        weekday: 'short'
-                    }).toUpperCase();
-                    const fechaFormateada = `${dia}/${mes}/${año}`;
-
                     let contenido = '';
 
+                    if (esTurno) {
+                        // Formatear fecha para mostrar
+                        const dia = fechaMostrar.getDate().toString().padStart(2, '0');
+                        const mes = (fechaMostrar.getMonth() + 1).toString().padStart(2, '0');
+                        const año = fechaMostrar.getFullYear();
+                        const nombreDia = fechaMostrar.toLocaleDateString('es-ES', {
+                            weekday: 'short'
+                        }).toUpperCase();
+                        const fechaFormateada = `${dia}/${mes}/${año}`;
 
-                    if (horaReal === 7) {
-                        // 🌅 Turno Mañana (06:00)
                         contenido = `
             <div class="turno-con-fecha">
                 <div class="fecha-turno">${nombreDia}<br>${fechaFormateada}</div>
                 <div class="hora-text">${timeText}</div>
-                <span class="turno-label">☀️ Mañana</span>
-            </div>`;
-                    } else if (horaReal === 15) {
-                        // 🌤️ Turno Tarde (14:00)
-                        contenido = `
-            <div class="turno-con-fecha">
-                <div class="fecha-turno">${nombreDia}<br>${fechaFormateada}</div>
-                <div class="hora-text">${timeText}</div>
-                <span class="turno-label">🌤️ Tarde</span>
-            </div>`;
-                    } else if (horaReal === 23) {
-                        // 🌙 Turno Noche (22:00) - MUESTRA FECHA DEL DÍA SIGUIENTE
-                        contenido = `
-            <div class="turno-con-fecha">
-                <div class="fecha-turno">${nombreDia}<br>${fechaFormateada}</div>
-                <div class="hora-text">${timeText}</div>
-                <span class="turno-label">🌙 Noche</span>
+                <span class="turno-label">${nombreTurno}</span>
             </div>`;
                     } else {
                         // Horas normales sin fecha
@@ -705,7 +816,7 @@
                             throw new Error(data.message || 'Error al reordenar');
                         }
 
-                        actualizarEventosSinRecargar(data.eventos);
+                        actualizarEventosSinRecargar(data.eventos, [maquinaOrigenId, maquinaDestinoId]);
 
                         const Toast = Swal.mixin({
                             toast: true,
@@ -764,7 +875,7 @@
             window.calendar = calendar;
 
             // Función para actualizar eventos sin recargar
-            function actualizarEventosSinRecargar(eventosNuevos) {
+            function actualizarEventosSinRecargar(eventosNuevos, maquinasAfectadas = null) {
                 document.querySelectorAll('.fc-tooltip').forEach(t => t.remove());
 
                 if (!eventosNuevos || !Array.isArray(eventosNuevos)) {
@@ -772,7 +883,13 @@
                     return;
                 }
 
-                const maquinasAfectadas = [...new Set(eventosNuevos.map(e => String(e.resourceId)))];
+                // Si no se pasan máquinas afectadas, extraerlas de los eventos
+                if (!maquinasAfectadas) {
+                    maquinasAfectadas = [...new Set(eventosNuevos.map(e => String(e.resourceId)))];
+                } else {
+                    // Asegurar que sean strings
+                    maquinasAfectadas = maquinasAfectadas.map(id => String(id));
+                }
 
                 calendar.getEvents().forEach(evento => {
                     const recursos = evento.getResources();
@@ -831,6 +948,13 @@
 
                     lista.appendChild(div);
 
+                    // ✅ Evento de clic para selección múltiple
+                    div.addEventListener('click', function(e) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        window.MultiSelectElementos.toggleSeleccion(div);
+                    });
+
                     setTimeout(() => {
                         window.dibujarFiguraElemento(canvasId, elemento.dimensiones, elemento.peso);
                     }, 10);
@@ -859,6 +983,8 @@
             }
 
             function cerrarPanel() {
+                // Limpiar selección múltiple
+                window.MultiSelectElementos.limpiarSelecciones();
                 document.body.classList.remove('panel-abierto');
                 document.getElementById('panel_elementos').classList.remove('abierto');
                 document.getElementById('panel_overlay').classList.add('hidden');

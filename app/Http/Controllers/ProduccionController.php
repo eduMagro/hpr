@@ -90,9 +90,10 @@ class ProduccionController extends Controller
         $coloresEventos  = $colores['eventos'];
 
         // ✅ Pintar las máquinas
-        $maquinas = Maquina::orderBy('obra_id')
-            ->orderBy('codigo')
-            ->get(['id', 'nombre', 'codigo', 'obra_id'])
+        $maquinas = Maquina::orderByRaw('CASE WHEN obra_id IS NULL THEN 1 ELSE 0 END')
+            ->orderBy('obra_id')
+            ->orderBy('tipo')
+            ->get(['id', 'nombre', 'codigo', 'obra_id', 'tipo'])
             ->map(function ($maquina) use ($coloresMaquinas) {
                 $color = $coloresMaquinas[$maquina->obra_id] ?? '#6c757d';
                 return [
@@ -346,8 +347,9 @@ class ProduccionController extends Controller
         // 🔹 1. MÁQUINAS DISPONIBLES
         $maquinas = Maquina::whereNotNull('tipo')
             ->where('tipo', '<>', 'grua')
+            ->orderByRaw('CASE WHEN obra_id IS NULL THEN 1 ELSE 0 END')  // NULL al final
             ->orderBy('obra_id')   // primero ordena por obra
-            // luego por id dentro de cada obra
+            ->orderBy('tipo')      // luego por tipo dentro de cada obra
             ->get();
 
         $coloresPorObra = [
@@ -376,7 +378,7 @@ class ProduccionController extends Controller
                 'eventTextColor' => '#ffffff', // texto blanco para contraste
                 'obra_id' => $m->obra_id, // por si quieres usarlo en tooltips
             ];
-        });
+        })->values();
 
         // 🔹 2. ELEMENTOS ACTIVOS (para eventos del calendario)
         $elementos = Elemento::with(['planilla', 'planilla.obra', 'maquina', 'maquina_2', 'maquina_3'])
@@ -927,8 +929,9 @@ class ProduccionController extends Controller
     {
         $maquinas = Maquina::whereIn('id', $maquinaIds)
             ->whereNotNull('tipo')
+            ->orderByRaw('CASE WHEN obra_id IS NULL THEN 1 ELSE 0 END')
             ->orderBy('obra_id')
-            ->orderBy('id')
+            ->orderBy('tipo')
             ->get();
 
         $elementos = Elemento::with(['planilla', 'planilla.obra', 'maquina'])
@@ -1010,7 +1013,7 @@ class ProduccionController extends Controller
         $ids = explode(',', $request->ids);
 
         $elementos = Elemento::whereIn('id', $ids)
-            ->select('id', 'codigo', 'diametro', 'peso', 'dimensiones')
+            ->select('id', 'codigo', 'diametro', 'peso', 'dimensiones', 'maquina_id')
             ->get();
 
         return response()->json($elementos);
@@ -1264,8 +1267,9 @@ class ProduccionController extends Controller
         try {
             // 🔄 Cargar datos igual que en maquinas()
             $maquinas = Maquina::whereNotNull('tipo')
+                ->orderByRaw('CASE WHEN obra_id IS NULL THEN 1 ELSE 0 END')
                 ->orderBy('obra_id')
-                ->orderBy('id')
+                ->orderBy('tipo')
                 ->get();
 
             $elementos = Elemento::with(['planilla', 'planilla.obra', 'maquina'])

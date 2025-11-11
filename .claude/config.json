@@ -1,0 +1,16 @@
+{
+    "confirm_edits": false,
+    "confirm_shell_commands": true,
+    "show_diffs": true,
+    "auto_commit": false,
+    "safe_shell_patterns": [
+        "ls*",
+        "cat*",
+        "grep*",
+        "sed*",
+        "echo*",
+        "php artisan*",
+        "git status*",
+        "git diff*"
+    ]
+}
