@@ -48,7 +48,7 @@ class PlanificacionController extends Controller
             ->values();
 
         // Resources
-        $resources = $this->getResources($eventos);
+        $resources = $this->getResources($eventos, $viewType);
         if ($request->input('tipo') === 'resources') {
             return response()->json($resources); // ✅ usa la variable correcta
         }
@@ -164,40 +164,14 @@ class PlanificacionController extends Controller
             ])->values();
 
         $resumenEventosDia = $resumenPorDia->map(function ($r) use ($viewType) {
-            $titulo = "📦 " . number_format($r['pesoTotal'], 0, ',', '.') . " kg | 📏 " . number_format($r['longitudTotal'], 0, ',', '.') . " m";
-            if ($r['diametroMedio'] !== null) {
-                $titulo .= " | ⌀ " . number_format($r['diametroMedio'], 2, '.', '') . " mm";
-            }
+            $titulo = "📊 Resumen del día";
 
             // Usar formato de fecha consistente sin conversión de zona horaria
             $fechaStr = $r['fecha']->format('Y-m-d');
 
-            // En vista mensual, mostrar como evento normal
-            if ($viewType === 'dayGridMonth') {
-                return [
-                    'title' => $titulo,
-                    'start' => $fechaStr,
-                    'allDay' => true,
-                    'backgroundColor' => '#fef3c7',
-                    'borderColor' => '#fbbf24',
-                    'textColor' => '#92400e',
-                    'classNames' => ['evento-resumen-diario'],
-                    'display' => 'block',
-                    'extendedProps' => [
-                        'tipo' => 'resumen-dia',
-                        'pesoTotal' => $r['pesoTotal'],
-                        'longitudTotal' => $r['longitudTotal'],
-                        'diametroMedio' => $r['diametroMedio'],
-                        'fecha' => $fechaStr,
-                    ],
-                ];
-            }
-
-            // En vistas diaria y semanal, como evento de background (no visible, solo para encabezados)
-            return [
+            $evento = [
                 'title' => $titulo,
                 'start' => $fechaStr,
-                'display' => 'background',
                 'backgroundColor' => '#fef3c7',
                 'borderColor' => '#fbbf24',
                 'textColor' => '#92400e',
@@ -210,6 +184,23 @@ class PlanificacionController extends Controller
                     'fecha' => $fechaStr,
                 ],
             ];
+
+            // Configuración según vista
+            if ($viewType === 'dayGridMonth') {
+                // Vista mensual: evento normal visible
+                $evento['allDay'] = true;
+                $evento['display'] = 'auto';
+            } elseif ($viewType === 'resourceTimelineWeek') {
+                // Vista semanal: evento normal visible con resourceId para todas las obras
+                $evento['display'] = 'auto';
+                $evento['resourceId'] = '_resumen_'; // ID especial para que aparezca en todas las filas
+            } else {
+                // Vista diaria: evento background (datos disponibles pero no visible como evento)
+                $evento['allDay'] = true;
+                $evento['display'] = 'background';
+            }
+
+            return $evento;
         });
 
         // ------------------- SELECCIÓN SEGÚN VISTA -------------------
@@ -235,7 +226,7 @@ class PlanificacionController extends Controller
             ->whereBetween('fecha_salida', [$startDate, $endDate])
             ->get();
 
-        return $salidas->flatMap(function ($salida) {
+        return $salidas->flatMap(function ($salida) use ($viewType) {
             $empresa    = optional($salida->empresaTransporte)->nombre;
             $camion     = optional($salida->camion)->modelo;
             $pesoTotal  = round($salida->paquetes->sum(fn($p) => optional($p->planilla)->peso_total ?? 0), 0);
@@ -378,20 +369,36 @@ class PlanificacionController extends Controller
         ];
     }
 
-    private function getResources($eventos)
+    private function getResources($eventos, $viewType = '')
     {
         $resourceIds = $eventos->pluck('resourceId')->filter()->unique()->values();
         $obras = Obra::with('cliente')->whereIn('id', $resourceIds)->orderBy('obra')->get();
 
-        $resources = $obras->map(fn($obra) => [
+        $resources = collect();
+
+        // Agregar recurso especial para resúmenes en vista semanal
+        if ($viewType === 'resourceTimelineWeek') {
+            $resources->push([
+                'id' => '_resumen_',
+                'title' => '📊 Resumen Diario',
+                'cliente' => '',
+                'cod_obra' => '',
+                'orderIndex' => 0, // Aparece primero
+            ]);
+        }
+
+        // Agregar recursos de obras
+        $obrasResources = $obras->map(fn($obra) => [
             'id' => (string) $obra->id,
             'title' => $obra->obra,
             'cliente' => optional($obra->cliente)->empresa,
             'cod_obra' => $obra->cod_obra,
             'orderIndex' => 1,
-        ])->values();
+        ]);
 
-        return $resources;
+        $resources = $resources->concat($obrasResources);
+
+        return $resources->values();
     }
 
     public function guardarComentario(Request $request, $id)

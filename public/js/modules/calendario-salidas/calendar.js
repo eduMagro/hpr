@@ -187,6 +187,9 @@ export function crearCalendario() {
                         info.view.type
                     );
 
+                    // Limpiar resúmenes personalizados previos al cambiar de vista
+                    limpiarResumenesCustom();
+
                     // actualizar totales
                     setTimeout(() => actualizarTotales(fecha), 0);
 
@@ -202,58 +205,74 @@ export function crearCalendario() {
                 }
             },
             loading: (isLoading) => {
-                // Cuando termina de cargar eventos, actualizar encabezados y resumen
+                // Cuando termina de cargar eventos, actualizar resumen diario si estamos en vista diaria
                 if (!isLoading && calendar) {
                     const viewType = calendar.view.type;
-                    if (viewType === "resourceTimelineWeek") {
-                        // Forzar actualización de encabezados
-                        setTimeout(() => {
-                            if (calendar) {
-                                calendar.render();
-                            }
-                        }, 50);
-                    }
                     if (viewType === "resourceTimeGridDay") {
-                        // Actualizar resumen diario
-                        setTimeout(() => mostrarResumenDiario(), 100);
+                        // Pequeño delay para asegurar que el DOM está listo
+                        setTimeout(() => mostrarResumenDiario(), 150);
                     }
                 }
             },
             viewDidMount: (info) => {
+                // Limpiar resúmenes al montar nueva vista
+                limpiarResumenesCustom();
+
+                // Solo mostrar resumen custom en vista diaria
                 if (info.view.type === "resourceTimeGridDay") {
-                    mostrarResumenDiario();
+                    setTimeout(() => mostrarResumenDiario(), 100);
                 }
             },
             eventContent: (arg) => {
                 const bg = arg.event.backgroundColor || "#9CA3AF";
                 const p = arg.event.extendedProps || {};
+                const viewType = calendar?.view?.type;
 
-                // Vista mensual: mostrar resumen diario
-                if (
-                    p.tipo === "resumen-dia" &&
-                    calendar?.view?.type === "dayGridMonth"
-                ) {
-                    const peso = Number(p.pesoTotal || 0).toLocaleString();
-                    const longitud = Number(
-                        p.longitudTotal || 0
-                    ).toLocaleString();
+                // Renderizado especial para resumen diario
+                if (p.tipo === "resumen-dia") {
+                    const peso = Number(p.pesoTotal || 0).toLocaleString(undefined, {
+                        minimumFractionDigits: 0,
+                        maximumFractionDigits: 0,
+                    });
+                    const longitud = Number(p.longitudTotal || 0).toLocaleString(undefined, {
+                        minimumFractionDigits: 0,
+                        maximumFractionDigits: 0,
+                    });
                     const diametro = p.diametroMedio
-                        ? Number(p.diametroMedio).toFixed(2)
+                        ? Number(p.diametroMedio).toFixed(1)
                         : null;
 
-                    return {
-                        html: `
-                        <div class="bg-yellow-100 border border-yellow-400 rounded px-2 py-1 text-xs w-full">
-                            <div class="font-semibold text-yellow-900">📦 ${peso} kg</div>
-                            <div class="text-yellow-800">📏 ${longitud} m</div>
-                            ${
-                                diametro
-                                    ? `<div class="text-yellow-800">⌀ ${diametro} mm</div>`
-                                    : ""
-                            }
-                        </div>
-                    `,
-                    };
+                    // En vista timeline semanal, formato más compacto
+                    if (viewType === "resourceTimelineWeek") {
+                        let resumenHtml = `
+                            <div class="bg-yellow-100 border border-yellow-400 rounded px-2 py-1 text-[10px] leading-tight w-full">
+                                <div class="font-semibold text-yellow-900 mb-0.5">📦 ${peso} kg</div>
+                                <div class="text-yellow-800 mb-0.5">📏 ${longitud} m</div>
+                                ${
+                                    diametro
+                                        ? `<div class="text-yellow-800">⌀ ${diametro} mm</div>`
+                                        : ""
+                                }
+                            </div>
+                        `;
+                        return { html: resumenHtml };
+                    }
+
+                    // En vista mensual, mismo formato compacto
+                    if (viewType === "dayGridMonth") {
+                        let resumenHtml = `
+                            <div class="bg-yellow-100 border border-yellow-400 rounded px-2 py-1 text-[10px] leading-tight">
+                                <div class="font-semibold text-yellow-900 mb-0.5">📦 ${peso} kg</div>
+                                <div class="text-yellow-800 mb-0.5">📏 ${longitud} m</div>
+                                ${
+                                    diametro
+                                        ? `<div class="text-yellow-800">⌀ ${diametro} mm</div>`
+                                        : ""
+                                }
+                            </div>
+                        `;
+                        return { html: resumenHtml };
+                    }
                 }
 
                 let html = `
@@ -310,6 +329,17 @@ export function crearCalendario() {
                 return { html };
             },
             eventDidMount: function (info) {
+                const p = info.event.extendedProps || {};
+
+                // Si es un evento de resumen, no aplicar tooltips ni menú contextual
+                if (p.tipo === "resumen-dia") {
+                    // Asegurar que tenga la clase correcta
+                    info.el.classList.add("evento-resumen-diario");
+                    // No permitir interacción
+                    info.el.style.cursor = "default";
+                    return; // Salir temprano
+                }
+
                 // lee filtros actuales (código y nombre)
                 const fCod = (
                     document.getElementById("filtro-obra")?.value || ""
@@ -345,7 +375,7 @@ export function crearCalendario() {
                     }
                 }
 
-                // tooltips + menú contextual
+                // tooltips + menú contextual (solo para eventos que no son resumen)
                 if (typeof configurarTooltipsYMenus === "function") {
                     configurarTooltipsYMenus(info, calendar);
                 }
@@ -371,8 +401,9 @@ export function crearCalendario() {
             // },
 
             eventAllow: (dropInfo, draggedEvent) => {
-                // No permitir mover eventos de resumen
-                if (draggedEvent.extendedProps?.tipo === "resumen-dia") {
+                const tipo = draggedEvent.extendedProps?.tipo;
+                // No permitir mover eventos de resumen ni festivos
+                if (tipo === "resumen-dia" || tipo === "festivo") {
                     return false;
                 }
                 return true;
@@ -467,17 +498,14 @@ export function crearCalendario() {
                     slotDuration: "01:00:00",
                 },
             },
+            // slotLabelContent para vista semanal timeline - solo muestra fecha
             slotLabelContent: (arg) => {
-                // Solo para vista timeline semanal
-                if (calendar?.view?.type !== "resourceTimelineWeek") {
-                    return arg.text;
-                }
+                const viewType = calendar?.view?.type;
 
-                // Formatear fecha local
-                const year = arg.date.getFullYear();
-                const month = String(arg.date.getMonth() + 1).padStart(2, "0");
-                const day = String(arg.date.getDate()).padStart(2, "0");
-                const dateStr = `${year}-${month}-${day}`;
+                // Solo aplicar en vista timeline semanal
+                if (viewType !== "resourceTimelineWeek") {
+                    return null; // Usar formato por defecto
+                }
 
                 const fecha = new Date(arg.date);
                 const diaTexto = fecha.toLocaleDateString("es-ES", {
@@ -486,63 +514,14 @@ export function crearCalendario() {
                     month: "short",
                 });
 
-                // Buscar el resumen del día
-                let resumen = null;
-
-                try {
-                    if (calendar && calendar.getEvents) {
-                        resumen = calendar.getEvents().find((ev) => {
-                            const esFechaCorrecta =
-                                ev.extendedProps?.fecha === dateStr;
-                            const esTipoResumen =
-                                ev.extendedProps?.tipo === "resumen-dia";
-                            return esTipoResumen && esFechaCorrecta;
-                        });
-                    }
-                } catch (e) {
-                    // Si hay error, continuar sin resumen
-                }
-
-                if (resumen && resumen.extendedProps) {
-                    const peso = Number(
-                        resumen.extendedProps.pesoTotal || 0
-                    ).toLocaleString();
-                    const longitud = Number(
-                        resumen.extendedProps.longitudTotal || 0
-                    ).toLocaleString();
-                    const diametro = resumen.extendedProps.diametroMedio
-                        ? Number(resumen.extendedProps.diametroMedio).toFixed(2)
-                        : null;
-
-                    let resumenHtml = `
-                        <div class="text-center py-2">
-                            <div class="font-bold text-sm mb-2">${diaTexto}</div>
-                            <div class="bg-yellow-100 border border-yellow-400 rounded px-2 py-1 text-xs">
-                                <div class="font-semibold text-yellow-900">📦 ${peso} kg</div>
-                                <div class="text-yellow-800">📏 ${longitud} m</div>
-                                ${
-                                    diametro
-                                        ? `<div class="text-yellow-800">⌀ ${diametro} mm</div>`
-                                        : ""
-                                }
-                            </div>
-                        </div>
-                    `;
-                    return { html: resumenHtml };
-                }
-
-                // Sin resumen, solo mostrar fecha
+                // Mostrar solo la fecha (el resumen aparece como evento en fila especial)
                 return {
                     html: `<div class="text-center font-bold text-sm py-2">${diaTexto}</div>`,
                 };
             },
             dayHeaderContent: (arg) => {
-                // Formatear fecha local
-                const year = arg.date.getFullYear();
-                const month = String(arg.date.getMonth() + 1).padStart(2, "0");
-                const day = String(arg.date.getDate()).padStart(2, "0");
-                const dateStr = `${year}-${month}-${day}`;
-
+                // dayHeaderContent solo se usa en vista diaria para columnas de recursos
+                // Mostrar solo la fecha simple
                 const fecha = new Date(arg.date);
                 const diaTexto = fecha.toLocaleDateString("es-ES", {
                     weekday: "short",
@@ -550,52 +529,6 @@ export function crearCalendario() {
                     month: "short",
                 });
 
-                // Buscar el resumen del día
-                let resumen = null;
-
-                try {
-                    if (calendar && calendar.getEvents) {
-                        resumen = calendar.getEvents().find((ev) => {
-                            const esFechaCorrecta =
-                                ev.extendedProps?.fecha === dateStr;
-                            const esTipoResumen =
-                                ev.extendedProps?.tipo === "resumen-dia";
-                            return esTipoResumen && esFechaCorrecta;
-                        });
-                    }
-                } catch (e) {
-                    // Si hay error, continuar sin resumen
-                }
-
-                if (resumen && resumen.extendedProps) {
-                    const peso = Number(
-                        resumen.extendedProps.pesoTotal || 0
-                    ).toLocaleString();
-                    const longitud = Number(
-                        resumen.extendedProps.longitudTotal || 0
-                    ).toLocaleString();
-                    const diametro = resumen.extendedProps.diametroMedio
-                        ? Number(resumen.extendedProps.diametroMedio).toFixed(2)
-                        : null;
-
-                    let resumenHtml = `
-                        <div class="text-center py-2">
-                            <div class="font-bold text-base mb-2">${diaTexto}</div>
-                            <div class="bg-yellow-100 border border-yellow-400 rounded px-3 py-2 text-xs mx-1">
-                                <div class="font-semibold text-yellow-900">📦 ${peso} kg</div>
-                                <div class="text-yellow-800">📏 ${longitud} m</div>
-                                ${
-                                    diametro
-                                        ? `<div class="text-yellow-800">⌀ ${diametro} mm</div>`
-                                        : ""
-                                }
-                            </div>
-                        </div>
-                    `;
-                    return { html: resumenHtml };
-                }
-
-                // Si no hay resumen, mostrar solo la fecha
                 return {
                     html: `<div class="text-center font-bold text-base py-2">${diaTexto}</div>`,
                 };
@@ -634,9 +567,23 @@ export function crearCalendario() {
     window.addEventListener("shown.bs.collapse", safeUpdateSize);
     window.addEventListener("shown.bs.modal", safeUpdateSize);
 
-    // Función para mostrar resumen diario arriba del calendario
+    // Función para limpiar todos los resúmenes personalizados
+    function limpiarResumenesCustom() {
+        // Limpiar todos los resúmenes diarios custom que puedan existir
+        const resumenesCustom = document.querySelectorAll(".resumen-diario-custom");
+        resumenesCustom.forEach((elem) => elem.remove());
+    }
+
+    // Función para mostrar resumen diario arriba del calendario (solo vista diaria)
     function mostrarResumenDiario() {
-        if (!calendar || calendar.view.type !== "resourceTimeGridDay") return;
+        // Solo ejecutar en vista diaria
+        if (!calendar || calendar.view.type !== "resourceTimeGridDay") {
+            limpiarResumenesCustom();
+            return;
+        }
+
+        // Limpiar resúmenes previos primero
+        limpiarResumenesCustom();
 
         // Buscar evento de resumen del día actual
         const currentDate = calendar.getDate();
@@ -651,12 +598,6 @@ export function crearCalendario() {
                 ev.extendedProps?.fecha === dateStr
             );
         });
-
-        // Remover resumen anterior si existe
-        const oldResumen = document.querySelector(".resumen-diario-custom");
-        if (oldResumen) {
-            oldResumen.remove();
-        }
 
         if (resumen && resumen.extendedProps) {
             const peso = Number(
@@ -675,24 +616,28 @@ export function crearCalendario() {
             resumenDiv.innerHTML = `
                 <div class="bg-yellow-100 border-2 border-yellow-400 rounded-lg px-6 py-4 mb-4 shadow-sm">
                     <div class="flex items-center justify-center gap-8 text-base font-semibold">
-                        <div class="text-yellow-900">📦 ${peso} kg</div>
-                        <div class="text-yellow-800">📏 ${longitud} m</div>
+                        <div class="text-yellow-900">📦 Peso: ${peso} kg</div>
+                        <div class="text-yellow-800">📏 Longitud: ${longitud} m</div>
                         ${
                             diametro
-                                ? `<div class="text-yellow-800">⌀ ${diametro} mm</div>`
+                                ? `<div class="text-yellow-800">⌀ Diámetro: ${diametro} mm</div>`
                                 : ""
                         }
                     </div>
                 </div>
             `;
 
-            // Insertar antes del calendario
-            el.parentNode.insertBefore(resumenDiv, el);
+            // Verificar que el elemento calendario y su padre existen
+            if (el && el.parentNode) {
+                // Insertar antes del calendario
+                el.parentNode.insertBefore(resumenDiv, el);
+            }
         }
     }
 
-    // Exponer función para uso global
+    // Exponer funciones para uso global
     window.mostrarResumenDiario = mostrarResumenDiario;
+    window.limpiarResumenesCustom = limpiarResumenesCustom;
 
     return calendar;
 }

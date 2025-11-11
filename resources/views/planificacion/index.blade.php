@@ -93,6 +93,10 @@
             'routes' => [
                 'planificacion' => url('/planificacion'),
                 'crearSalidaDesdeCalendario' => route('planificacion.crearSalidaDesdeCalendario'),
+                'crearSalidasVaciasDesdeCalendario' => route('planificacion.crearSalidasVaciasDesdeCalendario'),
+                'informacionGestionPaquetes' => route('planificacion.informacionGestionPaquetes'),
+                'obtenerSalidasPorPlanillas' => route('planificacion.obtenerSalidasPorPlanillas'),
+                'guardarAsignacionesPaquetes' => route('planificacion.guardarAsignacionesPaquetes'),
                 'comentario' => url('/planificacion/comentario/__ID__'),
                 // para update por drag&drop: PUT /planificacion/{id}
                 'updateItem' => url('/planificacion/__ID__'),
