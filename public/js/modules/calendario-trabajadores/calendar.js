@@ -83,6 +83,7 @@ export function initCalendar(domEl) {
         },
         editable: true,
         resources: maquinas,
+        resourceOrder: "orden",
         resourceAreaWidth: "100px",
         resourceLabelDidMount(info) {
             const color = info.resource.extendedProps.backgroundColor;
