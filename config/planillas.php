@@ -111,12 +111,13 @@ return [
             */
 
             // Cortadora Manual → Individual (una etiqueta por elemento)
-            'CM' => 'individual',
+            'SL28' => 'individual',
 
             // Dobladoras Automáticas → Agrupada (una etiqueta por grupo similar)
-            'F12' => 'agrupada',
-            'PS12' => 'agrupada',
-            'MS16' => 'agrupada',
+            'F12' => 'individual',
+            'PS12' => 'individual',
+            'MS16' => 'individual',
+            'MSR20' => 'agrupada',
 
             /*
             |------------------------------------------------------------

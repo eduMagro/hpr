@@ -29,6 +29,8 @@ use Illuminate\Support\Facades\Storage;
 class EntradaController extends Controller
 {
     //------------------------------------------------------------------------------------ FILTROS
+    // ===================================================================
+
     private function aplicarFiltrosEntradas($query, Request $request)
     {
         // ===== Filtros =====
@@ -38,8 +40,6 @@ class EntradaController extends Controller
             $valor = trim((string) $request->pedido_producto_id);
             $query->whereRaw('CAST(pedido_producto_id AS CHAR) LIKE ?', ['%' . $valor . '%']);
         }
-
-
 
         // Albarán - contains, case-insensitive
         if ($request->filled('albaran')) {
@@ -64,6 +64,25 @@ class EntradaController extends Controller
         // Nave por ID (si lo envías desde un select)
         if ($request->filled('nave_id') && is_numeric($request->nave_id)) {
             $query->where('nave_id', (int) $request->nave_id);
+        }
+
+        // ✅ FILTRO PRODUCTO BASE CON 3 CAMPOS SEPARADOS (tipo, diámetro, longitud)
+        if ($request->filled('producto_tipo') || $request->filled('producto_diametro') || $request->filled('producto_longitud')) {
+            $tipo      = $request->filled('producto_tipo')      ? mb_strtolower(trim($request->producto_tipo), 'UTF-8') : null;
+            $diametro  = $request->filled('producto_diametro')  ? mb_strtolower(trim($request->producto_diametro), 'UTF-8') : null;
+            $longitud  = $request->filled('producto_longitud')  ? mb_strtolower(trim($request->producto_longitud), 'UTF-8') : null;
+
+            $query->whereHas('pedidoProducto.productoBase', function ($q) use ($tipo, $diametro, $longitud) {
+                if ($tipo !== null) {
+                    $q->whereRaw('LOWER(tipo) LIKE ?', ['%' . $tipo . '%']);
+                }
+                if ($diametro !== null) {
+                    $q->whereRaw('LOWER(diametro) LIKE ?', ['%' . $diametro . '%']);
+                }
+                if ($longitud !== null) {
+                    $q->whereRaw('LOWER(longitud) LIKE ?', ['%' . $longitud . '%']);
+                }
+            });
         }
 
         // Pedido por código (relación pedido) - contains, case-insensitive
@@ -96,8 +115,12 @@ class EntradaController extends Controller
                 $query->orderBy($sort, $order);
                 break;
 
+            case 'codigo_sage':
+                $query->orderBy('codigo_sage', $order);
+                break;
+
             case 'nave_id':
-            case 'nave': // por si usas 'nave' como key en la cabecera
+            case 'nave':
                 // Ordenar por nombre de la nave (obras.obra) en vez de por id
                 $query->leftJoin('obras as o', 'entradas.nave_id', '=', 'o.id')
                     ->orderBy('o.obra', $order)
@@ -132,18 +155,58 @@ class EntradaController extends Controller
     {
         $f = [];
 
-        if ($request->filled('pedido_producto_id')) $f[] = 'ID línea: <strong>' . (int)$request->pedido_producto_id . '</strong>';
-        if ($request->filled('albaran'))            $f[] = 'Albarán: <strong>' . e($request->albaran) . '</strong>';
-        if ($request->filled('codigo_sage'))        $f[] = 'Código SAGE: <strong>' . e($request->codigo_sage) . '</strong>';
-        if ($request->filled('obra'))               $f[] = 'Nave: <strong>' . e($request->obra) . '</strong>';
-        if ($request->filled('nave_id'))            $f[] = 'Nave ID: <strong>' . (int)$request->nave_id . '</strong>';
-        if ($request->filled('pedido_codigo'))      $f[] = 'Pedido compra: <strong>' . e($request->pedido_codigo) . '</strong>';
-        if ($request->filled('usuario'))            $f[] = 'Usuario: <strong>' . e($request->usuario) . '</strong>';
+        if ($request->filled('pedido_producto_id')) {
+            $f[] = 'ID línea: <strong>' . (int)$request->pedido_producto_id . '</strong>';
+        }
+
+        if ($request->filled('albaran')) {
+            $f[] = 'Albarán: <strong>' . e($request->albaran) . '</strong>';
+        }
+
+        if ($request->filled('codigo_sage')) {
+            $f[] = 'Código SAGE: <strong>' . e($request->codigo_sage) . '</strong>';
+        }
+
+        if ($request->filled('obra')) {
+            $f[] = 'Nave: <strong>' . e($request->obra) . '</strong>';
+        }
+
+        if ($request->filled('nave_id')) {
+            $f[] = 'Nave ID: <strong>' . (int)$request->nave_id . '</strong>';
+        }
+
+        // ✅ FILTROS ACTIVOS PARA PRODUCTO BASE (3 campos separados)
+        $productoFiltros = [];
+
+        if ($request->filled('producto_tipo')) {
+            $productoFiltros[] = 'Tipo: ' . e($request->producto_tipo);
+        }
+
+        if ($request->filled('producto_diametro')) {
+            $productoFiltros[] = 'Ø' . e($request->producto_diametro);
+        }
+
+        if ($request->filled('producto_longitud')) {
+            $productoFiltros[] = e($request->producto_longitud) . 'm';
+        }
+
+        if (!empty($productoFiltros)) {
+            $f[] = 'Producto: <strong>' . implode(' | ', $productoFiltros) . '</strong>';
+        }
+
+        if ($request->filled('pedido_codigo')) {
+            $f[] = 'Pedido compra: <strong>' . e($request->pedido_codigo) . '</strong>';
+        }
+
+        if ($request->filled('usuario')) {
+            $f[] = 'Usuario: <strong>' . e($request->usuario) . '</strong>';
+        }
 
         if ($request->filled('sort')) {
             $map = [
                 'pedido_producto_id' => 'ID Línea Pedido',
                 'albaran'            => 'Albarán',
+                'codigo_sage'        => 'Código SAGE',
                 'nave'               => 'Nave',
                 'nave_id'            => 'Nave',
                 'pedido_codigo'      => 'Pedido Compra',
@@ -160,7 +223,6 @@ class EntradaController extends Controller
 
         return $f;
     }
-
 
     private function getOrdenamientoEntradas(string $columna, string $titulo): string
     {
@@ -192,7 +254,9 @@ class EntradaController extends Controller
                 'user:id,name',
                 'productos.productoBase',
                 'productos.fabricante',
-                'pedido:id,codigo'
+                'pedido:id,codigo',
+                'nave',                           // ✅ Para mostrar nombre de la nave
+                'pedidoProducto.productoBase',    // ✅ CRÍTICO para mostrar producto base
             ])->withCount('productos');
 
             // Filtros + orden
@@ -202,6 +266,7 @@ class EntradaController extends Controller
             $ordenables = [
                 'pedido_producto_id' => $this->getOrdenamientoEntradas('pedido_producto_id', 'ID Línea Pedido'),
                 'albaran'            => $this->getOrdenamientoEntradas('albaran', 'Albarán'),
+                'codigo_sage'        => $this->getOrdenamientoEntradas('codigo_sage', 'Código SAGE'),
                 'nave_id'            => $this->getOrdenamientoEntradas('nave_id', 'Nave'),
                 'pedido_codigo'      => $this->getOrdenamientoEntradas('pedido_codigo', 'Pedido Compra'),
                 'usuario'            => $this->getOrdenamientoEntradas('usuario', 'Usuario'),

@@ -12,3 +12,8 @@ Route::post('/paquetes/{paqueteId}/añadir-etiqueta', [PaqueteController::class,
     ->name('api.paquetes.añadir-etiqueta');
 Route::delete('/paquetes/{paqueteId}/eliminar-etiqueta', [PaqueteController::class, 'eliminarEtiquetaDePaquete'])
     ->name('api.paquetes.eliminar-etiqueta');
+
+use App\Http\Controllers\PlanillaController;
+
+Route::get('/planillas/import/progress/{id}', [PlanillaController::class, 'importProgress'])
+    ->name('planillas.import.progress');

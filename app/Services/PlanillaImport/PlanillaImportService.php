@@ -14,6 +14,9 @@ use App\Services\PlanillaImport\DTOs\ImportResult;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use App\Services\PlanillaImport\CodigoEtiqueta;
+use Illuminate\Support\Carbon;
+use App\Services\ImportProgress;
 
 /**
  * Servicio principal para importación de planillas - VERSIÓN OPTIMIZADA
@@ -23,6 +26,7 @@ use Illuminate\Support\Facades\Log;
  * - Bulk inserts para elementos y etiquetas
  * - Reducción de queries N+1
  * - Cache de máquinas y validaciones
+ * - ✅ CORREGIDO: Códigos de etiqueta correlativos en batch
  */
 class PlanillaImportService
 {
@@ -35,91 +39,70 @@ class PlanillaImportService
         protected ExcelReader $reader,
         protected PlanillaProcessor $processor,
         protected AsignarMaquinaService $asignador,
-        protected OrdenPlanillaService $ordenService
+        protected OrdenPlanillaService $ordenService,
+        protected CodigoEtiqueta $codigoService  // ✅ NUEVO
     ) {}
-
     /**
      * Importa planillas desde un archivo Excel.
      *
      * @param UploadedFile $file
      * @return ImportResult
      */
-    public function importar(UploadedFile $file): ImportResult
+    public function importar(UploadedFile $file, ?Carbon $fechaAprobacion = null, ?string $importId = null): ImportResult
     {
         $nombreArchivo = $file->getClientOriginalName();
+        Log::channel('planilla_import')->info("📥 Iniciando importación: {$nombreArchivo}");
 
-        Log::channel('planilla_import')->info("🔥 Iniciando importación de archivo: {$nombreArchivo}");
-
-        // 1. VALIDACIÓN PRE-PROCESAMIENTO
         $validacion = $this->validator->validar($file);
-
         if (!$validacion->esValido()) {
-            Log::channel('planilla_import')->warning("❌ Validación fallida: {$nombreArchivo}", $validacion->errores());
-            return ImportResult::error(
-                $validacion->errores(),
-                $validacion->advertencias(),
-                $nombreArchivo
-            );
+            if ($importId) ImportProgress::setError($importId, 'Validación fallida.');
+            return ImportResult::error($validacion->errores(), $validacion->advertencias(), $nombreArchivo);
         }
 
-        // 2. LECTURA Y PREPARACIÓN DE DATOS
         $datos = $this->reader->leer($file);
-
         if ($datos->estaVacio()) {
-            return ImportResult::error([
-                "{$nombreArchivo} no contiene filas válidas tras filtrado."
-            ], [], $nombreArchivo);
+            if ($importId) ImportProgress::setError($importId, 'El archivo no contiene filas válidas.');
+            return ImportResult::error(["{$nombreArchivo} no contiene filas válidas tras filtrado."], [], $nombreArchivo);
         }
 
-        Log::channel('planilla_import')->info("📊 Datos leídos", [
-            'total_filas' => $datos->totalFilas(),
-            'filas_validas' => $datos->filasValidas(),
-            'planillas_detectadas' => $datos->planillasDetectadas(),
-        ]);
+        // Total de filas válidas (x = número de consultas/filas)
+        $totalFilas = (int) $datos->filasValidas();
+        if ($importId) {
+            ImportProgress::init($importId, $totalFilas, "Filas totales: {$totalFilas}");
+        }
 
-        // 3. VERIFICAR DUPLICADOS (una sola query)
+        // Duplicados
         $duplicados = $this->verificarDuplicados($datos->codigosPlanillas());
-
         $advertenciasIniciales = [];
         $datosFiltrados = $datos;
 
         if (!empty($duplicados)) {
-            // ⚠️ ADVERTIR sobre duplicados pero CONTINUAR
-            $advertenciasIniciales[] = "Las siguientes planillas ya existen y fueron omitidas: " . implode(', ', $duplicados);
-            $advertenciasIniciales[] = "Use el botón 'Reimportar' para actualizar planillas existentes.";
-
-            Log::channel('planilla_import')->warning("⚠️ Planillas duplicadas detectadas, serán omitidas", [
-                'duplicados' => $duplicados,
-            ]);
-
-            // FILTRAR las planillas duplicadas del procesamiento
+            $advertenciasIniciales[] = "Omitidas (ya existen): " . implode(', ', $duplicados);
             $datosFiltrados = $datos->filtrarPlanillas($duplicados);
 
-            // Si después de filtrar no queda nada, entonces sí es error
-            if ($datosFiltrados->estaVacio()) {
-                return ImportResult::error([
-                    "Todas las planillas del archivo ya existen en el sistema."
-                ], $advertenciasIniciales, $nombreArchivo);
+            // Recalcular total real a procesar tras filtrar
+            if ($importId) {
+                $totalFilas = max(1, (int) $datosFiltrados->filasValidas());
+                ImportProgress::init($importId, $totalFilas, "Filas a procesar: {$totalFilas}");
             }
 
-            Log::channel('planilla_import')->info("📊 Continuando con planillas no duplicadas", [
-                'planillas_a_procesar' => $datosFiltrados->planillasDetectadas(),
-            ]);
+            if ($datosFiltrados->estaVacio()) {
+                if ($importId) ImportProgress::setError($importId, "Todo ya existía.");
+                return ImportResult::error(["Todas las planillas del archivo ya existen."], $advertenciasIniciales, $nombreArchivo);
+            }
         }
 
-        // 4. PRE-CARGAR DATOS EN CACHE (con datos filtrados)
         $this->precargarCaches($datosFiltrados);
 
-        // 5. PROCESAMIENTO OPTIMIZADO CON BATCH PROCESSING (con datos filtrados)
-        $resultado = $this->procesarPlanillasBatch($datosFiltrados, $advertenciasIniciales);
+        // 🔢 contador de códigos/etiquetas, etc.
+        $this->codigoService->inicializarContadorBatch();
 
-        Log::channel('planilla_import')->info("✅ Importación completada", [
-            'total_en_archivo' => $datos->planillasDetectadas(),
-            'duplicadas_omitidas' => count($duplicados),
-            'exitosas' => count($resultado['exitosas']),
-            'fallidas' => count($resultado['fallidas']),
-        ]);
+        // => procesamos en lotes, avanzando progreso por fila
+        $resultado = $this->procesarPlanillasBatchConProgreso($datosFiltrados, $advertenciasIniciales, $fechaAprobacion, $importId);
 
+        $this->codigoService->resetearContadorBatch();
+
+        if ($importId) ImportProgress::setDone($importId, 'Importación finalizada.');
         return ImportResult::success(
             $resultado['exitosas'],
             $resultado['fallidas'],
@@ -187,6 +170,14 @@ class PlanillaImportService
         ]);
 
         try {
+            // ✅ INICIALIZAR CONTADOR DE ETIQUETAS PARA REIMPORTACIÓN
+            // Aunque es una sola planilla, necesitamos el contador para mantener
+            // la correlatividad con otras etiquetas del mes
+            // ✅ INICIALIZAR SERVICIO DE CÓDIGOS
+            $this->codigoService->inicializarContadorBatch();
+
+            Log::channel('planilla_import')->info("🔢 [REIMPORT] Contador de etiquetas inicializado");
+
             DB::beginTransaction();
 
             // 4. ELIMINAR SOLO ELEMENTOS PENDIENTES
@@ -198,7 +189,7 @@ class PlanillaImportService
                 ->where('estado', 'pendiente')
                 ->delete();
 
-            Log::channel('planilla_import')->info("🗑️ Elementos pendientes eliminados", [
+            Log::channel('planilla_import')->info("🗑️ Elementos pendientes eliminados", [
                 'cantidad' => $elementosEliminados,
             ]);
 
@@ -229,10 +220,13 @@ class PlanillaImportService
             // 8. ASIGNAR MÁQUINAS
             $this->asignador->repartirPlanilla($planilla->id);
 
-            // 9. CREAR/ACTUALIZAR ORDEN_PLANILLAS
+            // 9. ✅ APLICAR POLÍTICA DE SUBETIQUETAS (MÉTODO CORRECTO)
+            $this->processor->aplicarPoliticaSubetiquetasPostAsignacion($planilla);
+
+            // 10. CREAR/ACTUALIZAR ORDEN_PLANILLAS
             $ordenesCreadas = $this->ordenService->crearOrdenParaPlanilla($planilla->id);
 
-            // 10. RECALCULAR TOTALES (pero mantener fecha de entrega)
+            // 11. RECALCULAR TOTALES (pero mantener fecha de entrega)
             $elementos = $planilla->fresh()->elementos;
             $pesoTotal = $elementos->sum('peso');
             $tiempoTotal = $elementos->sum('tiempo_fabricacion') +
@@ -244,7 +238,14 @@ class PlanillaImportService
                 // NO actualizar fecha_estimada_entrega
             ]);
 
+
+            // ✅ RESETEAR CONTADOR DESPUÉS DE REIMPORTACIÓN
             DB::commit();
+
+            // ✅ RESETEAR SERVICIO
+            $this->codigoService->resetearContadorBatch();
+
+            Log::channel('planilla_import')->info("🔄 [REIMPORT] Contador de etiquetas reseteado");
 
             Log::channel('planilla_import')->info("✅ Reimportación completada", [
                 'planilla' => $planilla->codigo,
@@ -267,6 +268,9 @@ class PlanillaImportService
             );
         } catch (\Throwable $e) {
             DB::rollBack();
+
+            // ✅ RESETEAR EN CASO DE ERROR
+            $this->codigoService->resetearContadorBatch();
 
             Log::channel('planilla_import')->error("❌ Error en reimportación", [
                 'planilla' => $planilla->codigo,
@@ -339,7 +343,7 @@ class PlanillaImportService
             ->keyBy('id')
             ->toArray();
 
-        Log::channel('planilla_import')->info("🗄️ Caches precargados", [
+        Log::channel('planilla_import')->info("🗄️ Caches precargados", [
             'clientes' => count($this->cacheClientes),
             'obras' => count($this->cacheObras),
             'maquinas' => count($this->cacheMaquinas),
@@ -348,31 +352,38 @@ class PlanillaImportService
 
     /**
      * Procesa planillas en lotes para mejor rendimiento.
-     * 
-     * OPTIMIZACIÓN: Procesa múltiples planillas en una sola transacción
-     * cuando sea posible, reduciendo overhead de commits.
      *
      * @param DatosImportacion $datos
-     * @param array $advertenciasIniciales Advertencias previas (ej: duplicados)
+     * @param array $advertenciasIniciales
+     * @param \Illuminate\Support\Carbon|null $fechaAprobacion  // si viene, se usa para fijar fecha_estimada_entrega = +7 días
      * @return array
      */
-    protected function procesarPlanillasBatch(DatosImportacion $datos, array $advertenciasIniciales = []): array
-    {
-        $exitosas = [];
-        $fallidas = [];
+    protected function procesarPlanillasBatch(
+        DatosImportacion $datos,
+        array $advertenciasIniciales = [],
+        ?Carbon $fechaAprobacion = null
+    ): array {
+        $exitosas     = [];
+        $fallidas     = [];
         $advertencias = $advertenciasIniciales;
         $estadisticas = [
-            'tiempo_total' => 0,
-            'elementos_creados' => 0,
-            'etiquetas_creadas' => 0,
-            'ordenes_creadas' => 0,
+            'tiempo_total'       => 0,
+            'elementos_creados'  => 0,
+            'etiquetas_creadas'  => 0,
+            'ordenes_creadas'    => 0,
         ];
 
         $porPlanilla = $datos->agruparPorPlanilla();
-        $batchSize = config('planillas.importacion.batch_size', 5);
+        $batchSize   = config('planillas.importacion.batch_size', 5);
 
-        // Dividir en lotes
+        // Dividir en lotes manteniendo claves (códigos de planilla)
         $batches = array_chunk($porPlanilla, $batchSize, true);
+
+        Log::channel('planilla_import')->info("📦 [BATCH] Iniciando procesamiento", [
+            'total_planillas' => count($porPlanilla),
+            'num_batches'     => count($batches),
+            'batch_size'      => $batchSize,
+        ]);
 
         foreach ($batches as $batchIndex => $batch) {
             $inicioBatch = microtime(true);
@@ -380,66 +391,87 @@ class PlanillaImportService
             try {
                 DB::beginTransaction();
 
+                Log::channel('planilla_import')->info("📦 [BATCH {$batchIndex}] Procesando " . count($batch) . " planillas");
+
                 foreach ($batch as $codigoPlanilla => $filasPlanilla) {
                     $inicioPlanilla = microtime(true);
 
                     try {
-                        // 1️⃣ Procesar planilla
+                        // 1) Procesar planilla (crea planilla + etiquetas + elementos)
+                        //    NOTA: false => no aplicar política de subetiquetas aún.
                         $resultado = $this->processor->procesar(
                             $codigoPlanilla,
                             $filasPlanilla,
-                            $advertencias
+                            $advertencias,
+                            null,
+                            false
                         );
 
-                        // 2️⃣ Asignar máquinas
+                        // 1.1) Si viene fecha de aprobación, fijamos fecha_estimada_entrega = aprobación + 7 días
+                        if ($fechaAprobacion) {
+                            $resultado->planilla->fecha_estimada_entrega = $fechaAprobacion->copy()->addDays(7);
+                            $resultado->planilla->save();
+                        }
+
+
+                        // 2) Asignar máquinas
                         $this->asignador->repartirPlanilla($resultado->planilla->id);
 
-                        // 3️⃣ Crear orden_planillas
+                        // 3) Aplicar política de subetiquetas post-asignación
+                        $this->processor->aplicarPoliticaSubetiquetasPostAsignacion($resultado->planilla);
+
+                        // 4) Crear orden_planillas
                         $ordenesCreadas = $this->ordenService->crearOrdenParaPlanilla($resultado->planilla->id);
 
+                        // 5) Métricas
                         $exitosas[] = $codigoPlanilla;
-
                         $estadisticas['elementos_creados'] += $resultado->elementosCreados;
                         $estadisticas['etiquetas_creadas'] += $resultado->etiquetasCreadas;
-                        $estadisticas['ordenes_creadas'] += $ordenesCreadas;
-                        $estadisticas['tiempo_total'] += (microtime(true) - $inicioPlanilla);
+                        $estadisticas['ordenes_creadas']   += $ordenesCreadas;
+                        $estadisticas['tiempo_total']      += (microtime(true) - $inicioPlanilla);
 
                         Log::channel('planilla_import')->debug("✅ Planilla {$codigoPlanilla}", [
                             'elementos' => $resultado->elementosCreados,
-                            'tiempo' => round(microtime(true) - $inicioPlanilla, 2) . 's',
+                            'etiquetas' => $resultado->etiquetasCreadas,
+                            'tiempo'    => round(microtime(true) - $inicioPlanilla, 2) . 's',
                         ]);
                     } catch (\Throwable $e) {
                         $fallidas[] = [
                             'codigo' => $codigoPlanilla,
-                            'error' => $e->getMessage(),
+                            'error'  => $e->getMessage(),
                         ];
 
-                        Log::channel('planilla_import')->error("❌ Error en planilla {$codigoPlanilla}: {$e->getMessage()}");
+                        Log::channel('planilla_import')->error("❌ Error en planilla {$codigoPlanilla}: {$e->getMessage()}", [
+                            'file' => $e->getFile(),
+                            'line' => $e->getLine(),
+                        ]);
                     }
                 }
 
                 DB::commit();
 
-                Log::channel('planilla_import')->info("📦 Batch {$batchIndex} completado", [
+                Log::channel('planilla_import')->info("✅ [BATCH {$batchIndex}] Completado", [
                     'planillas' => count($batch),
-                    'tiempo' => round(microtime(true) - $inicioBatch, 2) . 's',
+                    'exitosas'  => count(array_filter(array_keys($batch), fn($k) => in_array($k, $exitosas, true))),
+                    'tiempo'    => round(microtime(true) - $inicioBatch, 2) . 's',
                 ]);
             } catch (\Throwable $e) {
                 DB::rollBack();
 
-                foreach ($batch as $codigoPlanilla => $filasPlanilla) {
-                    if (!in_array($codigoPlanilla, $exitosas)) {
+                // Marcar como fallidas las que no entraron en exitosas
+                foreach ($batch as $codigoPlanilla => $_) {
+                    if (!in_array($codigoPlanilla, $exitosas, true)) {
                         $fallidas[] = [
                             'codigo' => $codigoPlanilla,
-                            'error' => "Error en batch: {$e->getMessage()}",
+                            'error'  => "Error en batch: {$e->getMessage()}",
                         ];
                     }
                 }
 
-                Log::channel('planilla_import')->error("❌ Error en batch {$batchIndex}", [
+                Log::channel('planilla_import')->error("❌ [BATCH {$batchIndex}] Error crítico", [
                     'error' => $e->getMessage(),
-                    'file' => $e->getFile(),
-                    'line' => $e->getLine(),
+                    'file'  => $e->getFile(),
+                    'line'  => $e->getLine(),
                 ]);
             }
         }
@@ -447,8 +479,101 @@ class PlanillaImportService
         $advertenciasUnicas = array_values(array_unique($advertencias));
 
         return [
-            'exitosas' => $exitosas,
-            'fallidas' => $fallidas,
+            'exitosas'     => $exitosas,
+            'fallidas'     => $fallidas,
+            'advertencias' => $advertenciasUnicas,
+            'estadisticas' => $estadisticas,
+        ];
+    }
+
+    protected function procesarPlanillasBatchConProgreso(
+        DatosImportacion $datos,
+        array $advertenciasIniciales = [],
+        ?Carbon $fechaAprobacion = null,
+        ?string $importId = null
+    ): array {
+        $exitosas     = [];
+        $fallidas     = [];
+        $advertencias = $advertenciasIniciales;
+        $estadisticas = [
+            'tiempo_total'       => 0,
+            'elementos_creados'  => 0,
+            'etiquetas_creadas'  => 0,
+            'ordenes_creadas'    => 0,
+        ];
+
+        $porPlanilla = $datos->agruparPorPlanilla();
+        $batchSize   = config('planillas.importacion.batch_size', 5);
+        $batches     = array_chunk($porPlanilla, $batchSize, true);
+
+        foreach ($batches as $batchIndex => $batch) {
+            $inicioBatch = microtime(true);
+            try {
+                DB::beginTransaction();
+
+                foreach ($batch as $codigoPlanilla => $filasPlanilla) {
+                    $inicioPlanilla = microtime(true);
+                    $filasDeEstaPlanilla = is_array($filasPlanilla) ? count($filasPlanilla) : 0;
+
+                    try {
+                        $resultado = $this->processor->procesar(
+                            $codigoPlanilla,
+                            $filasPlanilla,
+                            $advertencias,
+                            null,
+                            false
+                        );
+
+                        if ($fechaAprobacion) {
+                            $resultado->planilla->fecha_estimada_entrega = $fechaAprobacion->copy()->addDays(7);
+                            $resultado->planilla->save();
+                        }
+
+                        $this->asignador->repartirPlanilla($resultado->planilla->id);
+                        $this->processor->aplicarPoliticaSubetiquetasPostAsignacion($resultado->planilla);
+                        $ordenesCreadas = $this->ordenService->crearOrdenParaPlanilla($resultado->planilla->id);
+
+                        $exitosas[] = $codigoPlanilla;
+                        $estadisticas['elementos_creados'] += $resultado->elementosCreados;
+                        $estadisticas['etiquetas_creadas'] += $resultado->etiquetasCreadas;
+                        $estadisticas['ordenes_creadas']   += $ordenesCreadas;
+                        $estadisticas['tiempo_total']      += (microtime(true) - $inicioPlanilla);
+
+                        // 👈 progreso por filas (avanza en bloque por planilla)
+                        if ($importId && $filasDeEstaPlanilla > 0) {
+                            ImportProgress::advance($importId, $filasDeEstaPlanilla, "Procesada {$codigoPlanilla}");
+                        }
+                    } catch (\Throwable $e) {
+                        $fallidas[] = ['codigo' => $codigoPlanilla, 'error' => $e->getMessage()];
+                        Log::channel('planilla_import')->error("❌ Error en planilla {$codigoPlanilla}: {$e->getMessage()}", [
+                            'file' => $e->getFile(),
+                            'line' => $e->getLine(),
+                        ]);
+
+                        // Incluso si falla, avanza para no estancar la barra (contamos sus filas)
+                        if ($importId && $filasDeEstaPlanilla > 0) {
+                            ImportProgress::advance($importId, $filasDeEstaPlanilla, "Error en {$codigoPlanilla}");
+                        }
+                    }
+                }
+
+                DB::commit();
+            } catch (\Throwable $e) {
+                DB::rollBack();
+                foreach ($batch as $codigoPlanilla => $_) {
+                    if (!in_array($codigoPlanilla, $exitosas, true)) {
+                        $fallidas[] = ['codigo' => $codigoPlanilla, 'error' => "Error en batch: {$e->getMessage()}"];
+                    }
+                }
+                if ($importId) ImportProgress::advance($importId, 0, 'Error en lote, continuando...');
+            }
+        }
+
+        $advertenciasUnicas = array_values(array_unique($advertencias));
+
+        return [
+            'exitosas'     => $exitosas,
+            'fallidas'     => $fallidas,
             'advertencias' => $advertenciasUnicas,
             'estadisticas' => $estadisticas,
         ];

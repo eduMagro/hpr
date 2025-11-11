@@ -254,7 +254,30 @@
                                 <td class="px-2 py-3 text-center border">{{ $producto->n_paquete }}</td>
                                 <td class="px-2 py-3 text-center border">{{ $producto->peso_inicial }} kg</td>
                                 <td class="px-2 py-3 text-center border">{{ $producto->peso_stock }} kg</td>
-                                <td class="px-2 py-3 text-center border">{{ $producto->estado }}</td>
+                                <td class="px-2 py-3 text-center border">
+                                    @if ($producto->estado === 'consumido')
+                                        <div class="relative group inline-block">
+                                            <span class="cursor-help">{{ $producto->estado }}</span>
+                                            <div
+                                                class="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-10">
+                                                <div class="font-semibold mb-1">Información de consumo</div>
+                                                @if ($producto->fecha_consumido)
+                                                    <div>📅
+                                                        {{ \Carbon\Carbon::parse($producto->fecha_consumido)->format('d/m/Y H:i') }}
+                                                    </div>
+                                                @endif
+                                                @if ($producto->consumidoPor)
+                                                    <div>👤 {{ $producto->consumidoPor->nombre_completo }}</div>
+                                                @endif
+                                                <div
+                                                    class="absolute top-full left-1/2 transform -translate-x-1/2 border-4 border-transparent border-t-gray-900">
+                                                </div>
+                                            </div>
+                                        </div>
+                                    @else
+                                        {{ $producto->estado }}
+                                    @endif
+                                </td>
                                 <td class="px-2 py-3 text-center border">
                                     @if (isset($producto->ubicacion->nombre))
                                         {{ $producto->ubicacion->nombre }}
@@ -352,7 +375,7 @@
             </button>
             @if (request('codigo'))
             <a href="{{ route('productos.index') }}"
-                class="text-sm text-gray-600 underline hover:text-gray-800">Limpiar</a>
+                class="text-sm text-gray-600 underline hover:text-gray-800">Limpiar</a> 
             @endif
             </form>
         </div> --}}
@@ -361,8 +384,8 @@
                 <form method="GET" action="{{ route('productos.index') }}"
                     class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 items-end">
 
-                    <x-tabla.input name="codigo" label="Código"
-                        placeholder="Buscar por QR..." autofocus autocomplete="off"/>
+                    <x-tabla.input name="codigo" label="Código" placeholder="Buscar por QR..." autofocus
+                        autocomplete="off" />
 
                     <select id="producto_base_id" name="producto_base_id"
                         class="w-full px-2 py-1 border border-gray-300 rounded text-xs text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500">

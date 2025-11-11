@@ -72,12 +72,16 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
     Route::post('/entradas/importar-albaran', [EntradaController::class, 'subirPdf'])
         ->name('entradas.crearImportarAlbaranPdf');
     Route::get('/entradas/pdf/{id}', [EntradaController::class, 'descargarPdf'])->name('entradas.crearDescargarPdf');
-
+    Route::get('/pedidos/stock-html', [PedidoController::class, 'obtenerStockHtml'])->name('pedidos.verStockHtml');
     Route::resource('pedidos_globales', PedidoGlobalController::class);
     Route::resource('pedidos', PedidoController::class);
     Route::get('pedidos/{pedido}/recepcion/{producto_base}', [PedidoController::class, 'recepcion'])->name('pedidos.recepcion');
-    Route::post('/pedidos/sugerir-pedido-global', [PedidoController::class, 'sugerirPedidoGlobal'])->name('pedidos.sugerir-pedido-global');
+    Route::post('/pedidos/sugerir-pedido-global', [PedidoController::class, 'sugerirPedidoGlobal'])->name('pedidos.verSugerir-pedido-global');
 
+    Route::post('/pedidos/{pedido}/actualizar-linea', [PedidoController::class, 'actualizarLinea'])
+        ->name('pedidos.actualizarLinea');
+    Route::patch('/pedidos/{id}/observaciones', [PedidoController::class, 'actualizarObservaciones'])
+        ->name('pedidos.actualizarObservaciones');
     // Procesar la recepción del producto base
     Route::post('pedidos/{pedido}/recepcion/{producto_base}', [PedidoController::class, 'procesarRecepcion'])->name('pedidos.recepcion.guardar');
 
@@ -145,7 +149,6 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
     // Route::post('/vacaciones/reprogramar', [VacacionesController::class, 'reprogramar'])->name('vacaciones.reprogramar');
     // Route::post('/vacaciones/eliminar-evento', [VacacionesController::class, 'eliminarEvento'])->name('vacaciones.eliminarEvento');
 
-
     // === TURNOS ===
     Route::resource('turnos', TurnoController::class);
     Route::resource('asignaciones-turnos', AsignacionTurnoController::class);
@@ -204,7 +207,7 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
     Route::post('/etiquetas/{etiqueta}/patron-corte-simple', [EtiquetaController::class, 'calcularPatronCorteSimple'])->name('etiquetas.calcularPatronCorteSimple');
     Route::post('/etiquetas/{etiqueta}/patron-corte-optimizado', [EtiquetaController::class, 'calcularPatronCorteOptimizado'])->name('etiquetas.calcularPatronCorteOptimizado');
     // ruta para renderizar una etiqueta en HTML
-    Route::post('/etiquetas/render', [App\Http\Controllers\EtiquetaController::class, 'render'])
+    Route::post('/etiquetas/render', [EtiquetaController::class, 'render'])
         ->name('etiquetas.render');
     Route::get(
         '/etiquetas/{etiquetaSubId}/validar-para-paquete',
@@ -212,7 +215,6 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
     )->name('etiquetas.validar-para-paquete');
 
     // === tratamos PAQUETES en maquinas.show ===
-
 
     Route::resource('paquetes', PaqueteController::class);
     Route::resource('etiquetas', EtiquetaController::class);
@@ -266,8 +268,6 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
     Route::put('/salidas/{salida}/codigo-sage', [SalidaFerrallaController::class, 'actualizarCodigoSage'])->name('salidas.editarCodigoSage');
 
     // === SALIDAS ALMACEN ===
-
-
     Route::get('salidas-almacen/disponibilidad', [SalidaAlmacenController::class, 'disponibilidad'])
         ->name('salidas-almacen.verDisponibilidad');
 
@@ -393,6 +393,21 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
         return response()->json(['ok' => true]);
     });
     Route::post('/proteger/{seccion}', [ClaveSeccionController::class, 'verificar'])->name('proteger.seccion');
+
+
+
+    // === ORDENES PLANILLAS ===
+    Route::get('/produccion/OrdenesPlanillas', [App\Http\Controllers\ProduccionController::class, 'verOrdenesPlanillas'])
+        ->name('produccion.verOrdenesPlanillas');
+
+    // obtener elementos con js
+    Route::get('/api/elementos', [ElementoController::class, 'filtrar']);
+
+    Route::post('/produccion/planillas/guardar', [\App\Http\Controllers\ProduccionController::class, 'guardar'])
+        ->name('produccion.planillas.guardar');
+
+    Route::post('/planillas/import', [PlanillaController::class, 'import'])
+        ->name('planillas.crearImport');
 });
 
 

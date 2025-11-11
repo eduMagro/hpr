@@ -127,6 +127,7 @@ class VerificarAccesoSeccion
                     // Permiso de EDITAR (aquí está el fix)
                     || (in_array($accionRuta, ['edit', 'update', 'destroy'])
                         || Str::startsWith($accionRuta, 'editar')
+                        || Str::startsWith($accionRuta, 'actualizar')
                         || Str::startsWith($accionRuta, 'update')  // ← AGREGAR ESTA LÍNEA
                         || Str::startsWith($accionRuta, 'destroy')
                         || Str::startsWith($accionRuta, 'delete')

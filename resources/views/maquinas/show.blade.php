@@ -39,8 +39,8 @@
             @if ($maquina->tipo === 'grua')
                 <div class="grid grid-cols-1 sm:grid-cols-8 gap-6">
                     {{-- <x-maquinas.tipo.tipo-grua :movimientosPendientes="$movimientosPendientes" :ubicaciones="$ubicaciones" :paquetes="$paquetes" /> --}}
-                    <x-maquinas.tipo.tipo-grua :movimientos-pendientes="$movimientosPendientes" :movimientos-completados="$movimientosCompletados" :ubicaciones-disponibles-por-producto-base="$ubicacionesDisponiblesPorProductoBase" />
-
+                    <x-maquinas.tipo.tipo-grua :maquina="$maquina" :movimientos-pendientes="$movimientosPendientes" :movimientos-completados="$movimientosCompletados"
+                        :ubicaciones-disponibles-por-producto-base="$ubicacionesDisponiblesPorProductoBase" />
                     @include('components.maquinas.modales.grua.modales-grua')
                 @elseif ($maquina->tipo === 'dobladora_manual')
                     <div class="grid grid-cols-1 sm:grid-cols-8 gap-6">

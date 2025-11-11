@@ -14,7 +14,6 @@ class Pedido extends Model
         'pedido_global_id',
         'fabricante_id',
         'distribuidor_id',
-        'obra_id',
         'obra_manual',
         'peso_total',
         'fecha_pedido',
@@ -81,17 +80,17 @@ class Pedido extends Model
     {
         return $this->belongsTo(Distribuidor::class);
     }
-    public function obra()
-    {
-        return $this->belongsTo(Obra::class);
-    }
+
 
     public function productos()
     {
         return $this->belongsToMany(ProductoBase::class, 'pedido_productos')
             ->withPivot([
                 'id',
+                'codigo',
                 'pedido_global_id',
+                'obra_id',
+                'obra_manual',
                 'cantidad',
                 'cantidad_recepcionada',
                 'estado',
@@ -100,8 +99,6 @@ class Pedido extends Model
             ])
             ->withTimestamps();
     }
-
-
     public function entradas()
     {
         return $this->hasMany(Entrada::class);

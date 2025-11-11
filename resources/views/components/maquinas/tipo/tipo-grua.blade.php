@@ -1,12 +1,12 @@
 <div class="w-full sm:col-span-8">
-    {{-- 🟡 PENDIENTES --}}
+
     <div class="mb-4 flex justify-center">
         <button onclick="abrirModalMovimientoLibre()"
             class="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-4 py-2 rounded-lg shadow">
             ➕ Crear Movimiento Libre
         </button>
     </div>
-
+    {{-- 🟢 PENDIENTES --}}
     <div class="bg-red-200 border border-red-400 rounded-lg p-4 mt-4">
         <h3 class="text-base sm:text-lg font-bold text-red-800 mb-3">📦 Movimientos Pendientes</h3>
         @if ($movimientosPendientes->isEmpty())
@@ -14,73 +14,118 @@
         @else
             <ul class="space-y-3">
                 @foreach ($movimientosPendientes as $mov)
-                    <li class="p-3 border border-red-200 rounded shadow-sm bg-white text-sm">
-                        <div class="flex flex-col gap-2">
-                            <p><strong>Tipo:</strong> {{ ucfirst($mov->tipo) }}</p>
-                            <p><strong>Descripción:</strong> {{ $mov->descripcion }}</p>
-                            <p><strong>Solicitado por:</strong>
-                                {{ optional($mov->solicitadoPor)->nombre_completo ?? 'N/A' }}</p>
-                            <p><strong>Fecha:</strong> {{ $mov->created_at->format('d/m/Y H:i') }}</p>
+                    @if (strtolower($mov->tipo) === 'entrada' && $mov->pedido)
+                        @php
+                            // Obtener proveedor (fabricante o distribuidor)
+                            $proveedor =
+                                $mov->pedido->fabricante?->nombre ??
+                                ($mov->pedido->distribuidor?->nombre ?? 'No especificado');
 
-                            @if (strtolower($mov->tipo) === 'bajada de paquete')
+                            // Obtener producto base
+                            $productoBase = $mov->productoBase;
+                            $descripcionProducto = $productoBase
+                                ? sprintf(
+                                    '%s Ø%s%s',
+                                    ucfirst($productoBase->tipo),
+                                    $productoBase->diametro,
+                                    $productoBase->tipo === 'barra' && $productoBase->longitud
+                                        ? ' x ' . $productoBase->longitud . 'm'
+                                        : '',
+                                )
+                                : 'Producto no especificado';
+
+                            // Obtener cantidad del pedido
+                            $cantidadPedido = $mov->pedidoProducto?->cantidad ?? 'N/A';
+                            $codigoLinea = $mov->pedidoProducto?->codigo ?? 'N/A';
+                        @endphp
+
+                        <li class="p-3 border border-red-200 rounded shadow-sm bg-white text-sm">
+                            <div class="flex flex-col gap-2">
+                                <p><strong>Tipo:</strong> {{ ucfirst($mov->tipo) }}</p>
+
+                                <div class="bg-blue-50 p-2 rounded border border-blue-200">
+                                    <p class="font-semibold text-blue-900 mb-1">{{ $codigoLinea }}</p>
+                                    <p class="text-sm"><strong>Proveedor:</strong> {{ $proveedor }}</p>
+                                    <p class="text-sm"><strong>Producto:</strong> {{ $descripcionProducto }}</p>
+                                    <p class="text-sm"><strong>Peso:</strong> {{ $cantidadPedido }} kg</p>
+                                </div>
+
+                                <p><strong>Solicitado por:</strong>
+                                    {{ optional($mov->solicitadoPor)->nombre_completo ?? 'N/A' }}</p>
+                                <p><strong>Fecha:</strong> {{ $mov->created_at->format('d/m/Y H:i') }}</p>
+
                                 @php
-                                    $datosMovimiento = [
-                                        'id' => $mov->id,
-                                        'paquete_id' => $mov->paquete_id,
-                                        'ubicacion_origen' => $mov->ubicacion_origen,
-                                        'descripcion' => $mov->descripcion,
-                                    ];
+                                    $productoBaseId = $mov->producto_base_id ?? ($mov->productoBase?->id ?? '');
+                                    $urlRecepcion = "/pedidos/{$mov->pedido->id}/recepcion/{$productoBaseId}?movimiento_id={$mov->id}&maquina_id={$maquina->id}";
                                 @endphp
 
-                                <button type="button" onclick='abrirModalBajadaPaquete(@json($datosMovimiento))'
-                                    class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded w-full sm:w-auto">
-                                    📦 Ejecutar bajada
-                                </button>
-                            @endif
+                                <a href="{{ $urlRecepcion }}" style="background-color: orange; color: white;"
+                                    class="text-sm px-3 py-2 rounded mt-2 w-full sm:w-auto border border-black inline-block text-center">
+                                    Entrada
+                                </a>
+                            </div>
+                        </li>
+                    @else
+                        <li class="p-3 border border-red-200 rounded shadow-sm bg-white text-sm">
+                            <div class="flex flex-col gap-2">
+                                <p><strong>Tipo:</strong> {{ ucfirst($mov->tipo) }}</p>
+                                <p><strong>Descripción:</strong> {{ $mov->descripcion }}</p>
+                                <p><strong>Solicitado por:</strong>
+                                    {{ optional($mov->solicitadoPor)->nombre_completo ?? 'N/A' }}</p>
+                                <p><strong>Fecha:</strong> {{ $mov->created_at->format('d/m/Y H:i') }}</p>
 
-                            @if (strtolower($mov->tipo) === 'recarga materia prima')
-                                <button
-                                    onclick='abrirModalRecargaMateriaPrima(
-                                        @json($mov->id),
-                                        @json($mov->tipo),
-                                        @json(optional($mov->producto)->codigo),
-                                        @json($mov->maquina_destino),
-                                        @json($mov->producto_base_id),
-                                        @json($ubicacionesDisponiblesPorProductoBase[$mov->producto_base_id] ?? []),
-                                        @json(optional($mov->maquinaDestino)->nombre ?? 'Máquina desconocida'),
-                                        @json(optional($mov->productoBase)->tipo ?? ''),
-                                        @json(optional($mov->productoBase)->diametro ?? ''),
-                                        @json(optional($mov->productoBase)->longitud ?? '')
-                                    )'
-                                    class="bg-green-600 hover:bg-green-700 text-white text-sm px-3 py-2 rounded mt-2 w-full sm:w-auto">
-                                    ✅ Ejecutar recarga
-                                </button>
-                            @endif
-
-                            @if (strtolower($mov->tipo) === 'entrada' && $mov->pedido)
-                                <button onclick='abrirModalPedidoDesdeMovimiento(@json($mov))'
-                                    style="background-color: orange; color: white;"
-                                    class="text-sm px-3 py-2 rounded mt-2 w-full sm:w-auto border border-black">
-                                    🏗️ Ver pedido
-                                </button>
-                            @endif
-
-                            @if (strtolower($mov->tipo) === 'salida')
-                                <button onclick='ejecutarSalida(@json($mov->id))'
-                                    class="bg-purple-600 hover:bg-purple-700 text-white text-sm px-3 py-2 rounded mt-2 w-full sm:w-auto">
-                                    🚛 Ejecutar salida
-                                </button>
-                            @endif
-                            @if (strtolower($mov->tipo) === 'salida almacén')
-                                <button onclick='ejecutarSalidaAlmacen(@json($mov->id))'
-                                    class="bg-purple-600 hover:bg-purple-700 text-white text-sm px-3 py-2 rounded mt-2 w-full sm:w-auto">
-                                    🚛 Ejecutar salida
-                                </button>
-                            @endif
-
-
-                        </div>
-                    </li>
+                                {{-- BAJADA DE PAQUETE --}}
+                                @if (strtolower($mov->tipo) === 'bajada de paquete')
+                                    @php
+                                        $datosMovimiento = [
+                                            'id' => $mov->id,
+                                            'paquete_id' => $mov->paquete_id,
+                                            'ubicacion_origen' => $mov->ubicacion_origen,
+                                            'descripcion' => $mov->descripcion,
+                                        ];
+                                    @endphp
+                                    <button type="button"
+                                        onclick='abrirModalBajadaPaquete(@json($datosMovimiento))'
+                                        class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded w-full sm:w-auto">
+                                        📦 Ejecutar bajada
+                                    </button>
+                                @endif
+                                {{-- RECARGA MATERIA PRIMA --}}
+                                @if (strtolower($mov->tipo) === 'recarga materia prima')
+                                    <button
+                                        onclick='abrirModalRecargaMateriaPrima(
+                                            @json($mov->id),
+                                            @json($mov->tipo),
+                                            @json(optional($mov->producto)->codigo),
+                                            @json($mov->maquina_destino),
+                                            @json($mov->producto_base_id),
+                                            @json($ubicacionesDisponiblesPorProductoBase[$mov->producto_base_id] ?? []),
+                                            @json(optional($mov->maquinaDestino)->nombre ?? 'Máquina desconocida'),
+                                            @json(optional($mov->productoBase)->tipo ?? ''),
+                                            @json(optional($mov->productoBase)->diametro ?? ''),
+                                            @json(optional($mov->productoBase)->longitud ?? '')
+                                        )'
+                                        class="bg-green-600 hover:bg-green-700 text-white text-sm px-3 py-2 rounded mt-2 w-full sm:w-auto">
+                                        ✅ Ejecutar recarga
+                                    </button>
+                                @endif
+                                {{-- SALIDA --}}
+                                @if (strtolower($mov->tipo) === 'salida')
+                                    <button onclick='ejecutarSalida(@json($mov->id))'
+                                        class="bg-purple-600 hover:bg-purple-700 text-white text-sm px-3 py-2 rounded mt-2 w-full sm:w-auto">
+                                        🚛 Ejecutar salida
+                                    </button>
+                                @endif
+                                {{-- SALIDA ALMACEN --}}
+                                @if (strtolower($mov->tipo) === 'salida almacén')
+                                    <button onclick='ejecutarSalidaAlmacen(@json($mov->id))'
+                                        class="bg-purple-600 hover:bg-purple-700 text-white text-sm px-3 py-2 rounded mt-2 w-full sm:w-auto">
+                                        🚛 Ejecutar salida
+                                    </button>
+                                @endif
+                            </div>
+                        </li>
+                    @endif
                 @endforeach
             </ul>
         @endif
@@ -98,7 +143,7 @@
                     <li class="p-3 border border-green-200 rounded shadow-sm bg-white text-sm movimiento-completado">
                         <div class="flex flex-col gap-2">
                             <p><strong>Tipo:</strong> {{ ucfirst($mov->tipo) }}</p>
-                            <p><strong>Descripción:</strong> {!! $mov->descripcion_html !!}</p>
+                            <p>{!! $mov->descripcion_html !!}</p>
                             <p><strong>Solicitado por:</strong>
                                 {{ optional($mov->solicitadoPor)->nombre_completo ?? 'N/A' }}</p>
                             <p><strong>Ejecutado por:</strong>
