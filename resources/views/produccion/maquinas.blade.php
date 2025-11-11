@@ -13,7 +13,65 @@
                 </ul>
             </div>
         @endif
+        <!-- Filtros de resaltado -->
+        <div class="mt-4 bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <h3 class="text-sm font-semibold text-blue-900 mb-3 flex items-center gap-2">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+                </svg>
+                Filtros de resaltado
+            </h3>
 
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                <!-- Filtro por fecha de entrega -->
+                <label class="text-sm">
+                    <span class="block text-gray-700 font-medium mb-1">Fecha de entrega:</span>
+                    <input type="date" id="filtroFechaEntrega"
+                        class="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                </label>
+
+                <!-- Filtro por obra -->
+                <label class="text-sm">
+                    <span class="block text-gray-700 font-medium mb-1">Obra:</span>
+                    <select id="filtroObra"
+                        class="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                        <option value="">Todas</option>
+                        <!-- Las opciones se llenarán dinámicamente -->
+                    </select>
+                </label>
+
+                <!-- Filtro por estado -->
+                <label class="text-sm">
+                    <span class="block text-gray-700 font-medium mb-1">Estado:</span>
+                    <select id="filtroEstado"
+                        class="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                        <option value="">Todos</option>
+                        <option value="pendiente">Pendiente</option>
+                        <option value="fabricando">Fabricando</option>
+                        <option value="completada">Completada</option>
+                    </select>
+                </label>
+
+                <!-- Botones de acción -->
+                <div class="flex flex-col gap-2">
+                    <button id="aplicarResaltado"
+                        class="bg-blue-600 text-white px-4 py-2 rounded shadow hover:bg-blue-700 transition text-sm font-medium">
+                        🔍 Aplicar filtro
+                    </button>
+                    <button id="limpiarResaltado"
+                        class="bg-gray-400 text-white px-4 py-2 rounded shadow hover:bg-gray-500 transition text-sm font-medium">
+                        ✖ Limpiar filtro
+                    </button>
+                </div>
+            </div>
+
+            <!-- Indicador de filtros activos -->
+            <div id="filtrosActivos" class="mt-3 text-xs text-blue-700 hidden">
+                <span class="font-semibold">Filtros activos:</span>
+                <span id="textoFiltrosActivos"></span>
+            </div>
+        </div>
         <!-- Por esta versión con transición -->
         <div id="contenedor-calendario" class="bg-white shadow rounded-lg p-4 transition-all duration-300">
             <div id="calendario" class="h-[80vh] w-full"></div>
@@ -273,6 +331,43 @@
         /* Asegurar que las etiquetas no se corten */
         .fc-timegrid-slot-label-frame {
             overflow: visible !important;
+        }
+
+        /* Filtros para resaltado de eventos */
+        /* Estilos para resaltado de eventos */
+        .fc-event.evento-resaltado {
+            box-shadow: 0 0 0 3px #3b82f6, 0 0 12px rgba(59, 130, 246, 0.5) !important;
+            z-index: 100 !important;
+            transform: scale(1.02);
+            transition: all 0.2s ease;
+        }
+
+        .fc-event.evento-opaco {
+            opacity: 0.25 !important;
+            filter: grayscale(50%);
+            transition: all 0.2s ease;
+        }
+
+        .fc-event.evento-resaltado:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 0 4px #2563eb, 0 0 16px rgba(37, 99, 235, 0.6) !important;
+        }
+
+        /* Animación de pulso para eventos resaltados */
+        @keyframes pulso-resaltado {
+
+            0%,
+            100% {
+                box-shadow: 0 0 0 3px #3b82f6, 0 0 12px rgba(59, 130, 246, 0.5);
+            }
+
+            50% {
+                box-shadow: 0 0 0 5px #3b82f6, 0 0 20px rgba(59, 130, 246, 0.7);
+            }
+        }
+
+        .fc-event.evento-resaltado.pulsando {
+            animation: pulso-resaltado 1.5s ease-in-out infinite;
         }
     </style>
     <script>
@@ -713,12 +808,12 @@
                     const canvasId = `canvas-panel-${elemento.id}`;
 
                     div.innerHTML = `
-            <canvas id="${canvasId}" width="240" height="120"></canvas>
-            <div class="elemento-info-mini">
-                <span><strong>⌀${elemento.diametro}mm</strong></span>
-                <span><strong>${elemento.peso}kg</strong></span>
-            </div>
-        `;
+                        <canvas id="${canvasId}" width="240" height="120"></canvas>
+                        <div class="elemento-info-mini">
+                            <span><strong>⌀${elemento.diametro}mm</strong></span>
+                            <span><strong>${elemento.peso}kg</strong></span>
+                        </div>
+                    `;
 
                     lista.appendChild(div);
 
@@ -931,6 +1026,396 @@
                     }
                 });
             });
+
+            // ================================
+            // SISTEMA DE FILTROS DE RESALTADO
+            // ================================
+
+            let filtrosActivos = {
+                fechaEntrega: null,
+                obra: null,
+                estado: null
+            };
+            /**
+             * Parsea una fecha desde string DD/MM/YYYY HH:mm a objeto Date
+             */
+            function parsearFechaEvento(fechaStr) {
+                if (!fechaStr || fechaStr === '—') {
+                    console.log('📅 parsearFechaEvento: fecha vacía o inválida', fechaStr);
+                    return null;
+                }
+
+                // Formato: "DD/MM/YYYY HH:mm"
+                const partes = fechaStr.match(/(\d{2})\/(\d{2})\/(\d{4})/);
+                if (!partes) {
+                    console.warn('⚠️ parsearFechaEvento: no se pudo parsear', fechaStr);
+                    return null;
+                }
+
+                const [_, dia, mes, anio] = partes;
+                const fecha = new Date(anio, mes - 1, dia);
+
+                console.log(`📅 parsearFechaEvento: "${fechaStr}" → ${fecha.toLocaleDateString('es-ES')}`);
+                return fecha;
+            }
+
+            /**
+             * Compara dos fechas sin considerar la hora
+             */
+            function fechasIguales(fecha1, fecha2) {
+                if (!fecha1 || !fecha2) {
+                    console.log('⚖️ fechasIguales: alguna fecha es null', {
+                        fecha1,
+                        fecha2
+                    });
+                    return false;
+                }
+
+                const iguales = fecha1.getDate() === fecha2.getDate() &&
+                    fecha1.getMonth() === fecha2.getMonth() &&
+                    fecha1.getFullYear() === fecha2.getFullYear();
+
+                console.log('⚖️ fechasIguales:', {
+                    fecha1: fecha1.toLocaleDateString('es-ES'),
+                    fecha2: fecha2.toLocaleDateString('es-ES'),
+                    resultado: iguales ? '✅ IGUALES' : '❌ DIFERENTES'
+                });
+
+                return iguales;
+            }
+
+            /**
+             * Determina si un evento cumple con los filtros activos
+             */
+            function cumpleFiltros(evento) {
+                const props = evento.extendedProps;
+
+                // Filtro por fecha de entrega
+                if (filtrosActivos.fechaEntrega) {
+                    const fechaEvento = parsearFechaEvento(props.fecha_entrega);
+                    const cumple = fechasIguales(fechaEvento, filtrosActivos.fechaEntrega);
+
+                    console.log('Fecha filtro:', filtrosActivos.fechaEntrega.toLocaleDateString('es-ES'));
+                    console.log('Fecha evento:', props.fecha_entrega);
+                    console.log('Cumple fecha:', cumple ? '✅' : '❌');
+
+                    if (!cumple) return false;
+                }
+
+                // Filtro por obra
+                if (filtrosActivos.obra && filtrosActivos.obra !== '') {
+                    const cumple = props.obra === filtrosActivos.obra;
+                    console.log('Obra filtro:', filtrosActivos.obra);
+                    console.log('Obra evento:', props.obra);
+                    console.log('Cumple obra:', cumple ? '✅' : '❌');
+
+                    if (!cumple) return false;
+                }
+
+                // Filtro por estado
+                if (filtrosActivos.estado && filtrosActivos.estado !== '') {
+                    const cumple = props.estado === filtrosActivos.estado;
+                    console.log('Estado filtro:', filtrosActivos.estado);
+                    console.log('Estado evento:', props.estado);
+                    console.log('Cumple estado:', cumple ? '✅' : '❌');
+
+                    if (!cumple) return false;
+                }
+
+                return true;
+            }
+
+            /**
+             * Aplica el resaltado a los eventos del calendario
+             */
+            function aplicarResaltadoEventos() {
+                console.clear();
+                console.log('🎨 APLICANDO FILTROS');
+
+                const hayFiltros = Object.values(filtrosActivos).some(v => v !== null && v !== '');
+
+                console.log('Filtros activos:', filtrosActivos);
+
+                if (!hayFiltros) {
+                    limpiarResaltado();
+                    return;
+                }
+
+                setTimeout(() => {
+                    // Agrupar eventos por planilla
+                    const eventosPorPlanilla = {};
+
+                    calendar.getEvents().forEach(evento => {
+                        // Extraer ID de planilla del ID del evento (formato: "planilla-123-seg1")
+                        const match = evento.id.match(/^planilla-(\d+)-seg\d+$/);
+                        if (!match) return;
+
+                        const planillaId = match[1];
+
+                        if (!eventosPorPlanilla[planillaId]) {
+                            eventosPorPlanilla[planillaId] = {
+                                eventos: [],
+                                props: evento.extendedProps,
+                                title: evento.extendedProps.codigo || evento.title
+                            };
+                        }
+
+                        eventosPorPlanilla[planillaId].eventos.push(evento);
+                    });
+
+                    console.log('Total planillas encontradas:', Object.keys(eventosPorPlanilla).length);
+
+                    let planillasResaltadas = 0;
+                    let segmentosResaltados = 0;
+
+                    // Evaluar cada planilla
+                    Object.entries(eventosPorPlanilla).forEach(([planillaId, data]) => {
+                        console.group(`📋 Planilla ${data.title}`);
+                        console.log('Segmentos:', data.eventos.length);
+                        console.log('Props:', data.props);
+
+                        const cumple = cumpleFiltros(data.eventos[
+                            0]); // Evaluar con el primer segmento
+
+                        // Aplicar a TODOS los segmentos de esta planilla
+                        data.eventos.forEach(evento => {
+                            const elementos = document.querySelectorAll('.fc-event');
+                            let elementoDOM = null;
+
+                            elementos.forEach(el => {
+                                if (el.fcSeg && el.fcSeg.eventRange.def.publicId ===
+                                    evento.id) {
+                                    elementoDOM = el;
+                                }
+                            });
+
+                            if (!elementoDOM) return;
+
+                            // Remover clases previas
+                            elementoDOM.classList.remove('evento-resaltado', 'evento-opaco',
+                                'pulsando');
+
+                            if (cumple) {
+                                elementoDOM.classList.add('evento-resaltado', 'pulsando');
+                                segmentosResaltados++;
+                            } else {
+                                elementoDOM.classList.add('evento-opaco');
+                            }
+                        });
+
+                        if (cumple) {
+                            planillasResaltadas++;
+                            console.log('✅ RESALTADA (todos los segmentos)');
+                        } else {
+                            console.log('⚪ OPACADA (todos los segmentos)');
+                        }
+
+                        console.groupEnd();
+                    });
+
+                    console.log(`━━━━━━━━━━━━━━━━`);
+                    console.log(`✅ Planillas resaltadas: ${planillasResaltadas}`);
+                    console.log(`📊 Segmentos resaltados: ${segmentosResaltados}`);
+
+                    actualizarIndicadorFiltros(planillasResaltadas);
+
+                    if (planillasResaltadas === 0) {
+                        Swal.fire({
+                            icon: 'info',
+                            title: 'Sin resultados',
+                            timer: 2000,
+                            showConfirmButton: false
+                        });
+                    } else {
+                        Swal.fire({
+                            icon: 'success',
+                            title: `${planillasResaltadas} planilla(s) resaltada(s)`,
+                            text: `${segmentosResaltados} segmento(s) en total`,
+                            timer: 2000,
+                            showConfirmButton: false
+                        });
+                    }
+                }, 100);
+            }
+            /**
+             * Limpia todos los resaltados
+             */
+            function limpiarResaltado() {
+                console.log('%c🧹 LIMPIANDO FILTROS', 'font-size: 14px; font-weight: bold; color: #dc2626;');
+
+                calendar.getEvents().forEach(evento => {
+                    const elemento = evento.el;
+                    if (elemento) {
+                        elemento.classList.remove('evento-resaltado', 'evento-opaco', 'pulsando');
+                    }
+                });
+
+                // Limpiar filtros
+                filtrosActivos = {
+                    fechaEntrega: null,
+                    obra: null,
+                    estado: null
+                };
+
+                console.log('✅ Todos los resaltados eliminados');
+                console.log('✅ Filtros reseteados');
+
+                // Limpiar inputs
+                document.getElementById('filtroFechaEntrega').value = '';
+                document.getElementById('filtroObra').value = '';
+                document.getElementById('filtroEstado').value = '';
+
+                // Ocultar indicador
+                document.getElementById('filtrosActivos').classList.add('hidden');
+            }
+            /**
+             * Actualiza el indicador visual de filtros activos
+             */
+            function actualizarIndicadorFiltros(cantidad) {
+                const indicador = document.getElementById('filtrosActivos');
+                const texto = document.getElementById('textoFiltrosActivos');
+
+                let descripcion = [];
+
+                if (filtrosActivos.fechaEntrega) {
+                    descripcion.push(`Entrega: ${filtrosActivos.fechaEntrega.toLocaleDateString('es-ES')}`);
+                }
+                if (filtrosActivos.obra) {
+                    descripcion.push(`Obra: ${filtrosActivos.obra}`);
+                }
+                if (filtrosActivos.estado) {
+                    descripcion.push(`Estado: ${filtrosActivos.estado}`);
+                }
+
+                texto.textContent =
+                    `${descripcion.join(' | ')} → ${cantidad} resultado${cantidad !== 1 ? 's' : ''}`;
+                indicador.classList.remove('hidden');
+            }
+
+            /**
+             * Puebla el select de obras con las obras únicas de los eventos
+             */
+            function inicializarSelectObras() {
+                const obras = new Set();
+                calendar.getEvents().forEach(evento => {
+                    const obra = evento.extendedProps.obra;
+                    if (obra && obra !== '—') {
+                        obras.add(obra);
+                    }
+                });
+
+                const select = document.getElementById('filtroObra');
+                Array.from(obras).sort().forEach(obra => {
+                    const option = document.createElement('option');
+                    option.value = obra;
+                    option.textContent = obra;
+                    select.appendChild(option);
+                });
+            }
+
+            // ================================
+            // EVENT LISTENERS PARA FILTROS
+            // ================================
+
+            document.getElementById('aplicarResaltado').addEventListener('click', function() {
+                // Capturar valores
+                const fechaInput = document.getElementById('filtroFechaEntrega').value;
+                const obraInput = document.getElementById('filtroObra').value;
+                const estadoInput = document.getElementById('filtroEstado').value;
+
+                // Actualizar filtros activos
+                filtrosActivos.fechaEntrega = fechaInput ? new Date(fechaInput) : null;
+                filtrosActivos.obra = obraInput || null;
+                filtrosActivos.estado = estadoInput || null;
+
+                // Aplicar
+                aplicarResaltadoEventos();
+            });
+
+            document.getElementById('limpiarResaltado').addEventListener('click', function() {
+                limpiarResaltado();
+
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Filtros limpiados',
+                    timer: 1500,
+                    showConfirmButton: false
+                });
+            });
+
+            // Aplicar filtro al presionar Enter en el input de fecha
+            document.getElementById('filtroFechaEntrega').addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    document.getElementById('aplicarResaltado').click();
+                }
+            });
+
+            // Inicializar después de que el calendario esté listo
+            setTimeout(() => {
+                inicializarSelectObras();
+            }, 500);
+
+            /**
+             * 🔧 FUNCIÓN DE DEBUG - Inspeccionar un evento específico
+             * Úsala en la consola: debugEvento('nombre-del-evento')
+             */
+            window.debugEvento = function(nombreEvento) {
+                console.clear();
+                console.log('%c🔍 DEBUG DE EVENTO ESPECÍFICO',
+                    'font-size: 16px; font-weight: bold; color: #8b5cf6;');
+                console.log('━'.repeat(80));
+
+                const eventos = calendar.getEvents();
+                const evento = eventos.find(e => e.title.toLowerCase().includes(nombreEvento.toLowerCase()));
+
+                if (!evento) {
+                    console.error(`❌ No se encontró evento con nombre: "${nombreEvento}"`);
+                    console.log('📋 Eventos disponibles:');
+                    eventos.forEach((e, i) => console.log(`  ${i + 1}. ${e.title}`));
+                    return;
+                }
+
+                console.log('✅ Evento encontrado:', evento.title);
+                console.log('━'.repeat(80));
+
+                console.group('📋 Información completa del evento');
+                console.log('ID:', evento.id);
+                console.log('Title:', evento.title);
+                console.log('Start:', evento.start);
+                console.log('End:', evento.end);
+                console.log('Resource ID:', evento.getResources()[0]?.id);
+                console.groupEnd();
+
+                console.group('🔧 Extended Props');
+                Object.entries(evento.extendedProps).forEach(([key, value]) => {
+                    console.log(`${key}:`, value);
+                });
+                console.groupEnd();
+
+                console.log('━'.repeat(80));
+                console.log('🎯 Probando contra filtros activos:');
+                cumpleFiltros(evento);
+            };
+
+            // Añade también esta función para listar todos los eventos
+            window.listarEventos = function() {
+                console.clear();
+                console.log('%c📋 LISTA DE TODOS LOS EVENTOS',
+                    'font-size: 16px; font-weight: bold; color: #059669;');
+                console.log('━'.repeat(80));
+
+                const eventos = calendar.getEvents();
+                console.log(`Total: ${eventos.length} eventos\n`);
+
+                eventos.forEach((e, i) => {
+                    console.group(`${i + 1}. ${e.title}`);
+                    console.log('Fecha entrega:', e.extendedProps.fecha_entrega);
+                    console.log('Obra:', e.extendedProps.obra);
+                    console.log('Estado:', e.extendedProps.estado);
+                    console.groupEnd();
+                });
+            };
+
         });
     </script>
 </x-app-layout>
