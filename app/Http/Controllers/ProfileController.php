@@ -262,7 +262,20 @@ class ProfileController extends Controller
 
     public function index(Request $request)
     {
+        $auth = auth()->user();
+
+        if (!$auth) {
+            return redirect()->route('login');
+        }
+
+        // si no es oficina, lo llevamos a su propia ficha
+        if ($auth->rol !== 'oficina') {
+            return redirect()->route('users.show', $auth->id);
+        }
+
+        // A partir de aquí, solo oficina: tabla de usuarios
         $usuariosConectados = DB::table('sessions')->whereNotNull('user_id')->distinct('user_id')->count();
+
         $obras = Obra::where('estado', 'activa')
             ->where(function ($query) {
                 $query->where('tipo', 'montaje')
@@ -281,34 +294,30 @@ class ProfileController extends Controller
             ->get();
 
         $categorias = Categoria::orderBy('nombre')->get();
-        $empresas = Empresa::orderBy('nombre')->get();
-        $maquinas = Maquina::orderBy('nombre')->get();
-        $roles = User::distinct()->pluck('rol')->filter()->sort();
-        $turnos = User::distinct()->pluck('turno')->filter()->sort();
+        $empresas   = Empresa::orderBy('nombre')->get();
+        $maquinas   = Maquina::orderBy('nombre')->get();
+        $roles      = User::distinct()->pluck('rol')->filter()->sort();
+        $turnos     = User::distinct()->pluck('turno')->filter()->sort();
         $totalSolicitudesPendientes = VacacionesSolicitud::where('estado', 'pendiente')->count();
-        $user = auth()->user();
-
-        // Obtener todos los nombres de turnos válidos (mañana, tarde, noche, festivo, etc.)
-        $turnosValidos = Turno::pluck('nombre')->toArray();
 
         $ordenables = [
-            'id' => $this->getOrdenamiento('id', 'ID'),
+            'id'              => $this->getOrdenamiento('id', 'ID'),
             'nombre_completo' => $this->getOrdenamiento('nombre_completo', 'Nombre'),
-            'email' => $this->getOrdenamiento('email', 'Email'),
-            'numero_corto' => $this->getOrdenamiento('numero_corto', 'Nº Corporativo'),
-            'dni' => $this->getOrdenamiento('dni', 'DNI'),
-            'empresa' => $this->getOrdenamiento('empresa', 'Empresa'),
-            'rol' => $this->getOrdenamiento('rol', 'Rol'),
-            'categoria' => $this->getOrdenamiento('categoria', 'Categoría'),
-            'maquina_id' => $this->getOrdenamiento('maquina_id', 'Máquina'),
-            'turno' => $this->getOrdenamiento('turno', 'Turno'),
-            'estado' => $this->getOrdenamiento('estado', 'Estado'),
+            'email'           => $this->getOrdenamiento('email', 'Email'),
+            'numero_corto'    => $this->getOrdenamiento('numero_corto', 'Nº Corporativo'),
+            'dni'             => $this->getOrdenamiento('dni', 'DNI'),
+            'empresa'         => $this->getOrdenamiento('empresa', 'Empresa'),
+            'rol'             => $this->getOrdenamiento('rol', 'Rol'),
+            'categoria'       => $this->getOrdenamiento('categoria', 'Categoría'),
+            'maquina_id'      => $this->getOrdenamiento('maquina_id', 'Máquina'),
+            'turno'           => $this->getOrdenamiento('turno', 'Turno'),
+            'estado'          => $this->getOrdenamiento('estado', 'Estado'),
         ];
 
         // Obtener usuarios según filtros (sin paginar aún)
         $usuarios = $this->aplicarFiltros($request)->with('categoria', 'empresa', 'maquina')->get();
 
-        // Filtrado por "estado de conexión" en colección
+        // Filtrado por estado de conexión en colección
         if ($request->filled('estado')) {
             if ($request->estado === 'activo') {
                 $usuarios = $usuarios->filter(fn($u) => $u->isOnline());
@@ -319,8 +328,9 @@ class ProfileController extends Controller
 
         // Paginar manualmente la colección
         $currentPage = LengthAwarePaginator::resolveCurrentPage();
-        $perPage = $request->input('per_page', 10);
-        $offset = ($currentPage - 1) * $perPage;
+        $perPage     = $request->input('per_page', 10);
+        $offset      = ($currentPage - 1) * $perPage;
+
         $registrosUsuarios = new LengthAwarePaginator(
             $usuarios->slice($offset, $perPage)->values(),
             $usuarios->count(),
@@ -331,14 +341,11 @@ class ProfileController extends Controller
 
         $filtrosActivos = $this->filtrosActivos($request);
 
-        $resumen = $this->getResumenAsistencia($user);
-        $horasMensuales = $this->getHorasMensuales($user);
-
+        // OJO: aquí NO pasamos 'user', 'resumen', ni 'horasMensuales'
         return view('User.index', compact(
             'registrosUsuarios',
             'usuariosConectados',
             'obras',
-            'user',
             'empresas',
             'categorias',
             'maquinas',
@@ -347,26 +354,55 @@ class ProfileController extends Controller
             'filtrosActivos',
             'ordenables',
             'totalSolicitudesPendientes',
-            'obrasHierrosPacoReyes',
-            'resumen',
-            'horasMensuales'
+            'obrasHierrosPacoReyes'
         ));
     }
 
+
+
     public function show($id)
     {
+        $auth = auth()->user();
+
+        if ($auth->rol !== 'oficina' && (int)$auth->id !== (int)$id) {
+            abort(403);
+        }
+
         $user = User::with(['asignacionesTurnos.turno'])->findOrFail($id);
-        $inicioAño = Carbon::now()->startOfYear();
         $turnos = Turno::all();
 
         $resumen = $this->getResumenAsistencia($user);
         $horasMensuales = $this->getHorasMensuales($user);
 
+        $esOficina = $auth->rol === 'oficina';
+
+        $config = [
+            'userId'   => $user->id,
+            'locale'   => 'es',
+            'csrfToken' => csrf_token(),
+            'routes'   => [
+                'eventosUrl'          => route('users.verEventos-turnos', $user->id),
+                'resumenUrl'          => route('users.verResumen-asistencia', ['user' => $user->id]),
+                'vacacionesStoreUrl'  => route('vacaciones.solicitar'),
+                // añade más rutas si luego habilitas “asignar turnos/estados”
+            ],
+            'enableListMonth' => true,
+            'mobileBreakpoint' => 768,
+            'permissions' => [
+                // Oficina puede gestionar/editar; Operario solo pedir vacaciones
+                'canRequestVacations' => !$esOficina,
+                'canEditHours'        => $esOficina,
+                'canAssignShifts'     => false,   // déjalo en false si aún no lo usas
+                'canAssignStates'     => false,   // idem
+            ],
+        ];
+
         return view('User.show', compact(
             'user',
             'turnos',
             'resumen',
-            'horasMensuales'
+            'horasMensuales',
+            'config'
         ));
     }
 
