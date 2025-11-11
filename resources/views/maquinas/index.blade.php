@@ -5,25 +5,73 @@
         html {
             scroll-behavior: smooth;
         }
+
+        /* Animaciones suaves para el sidebar */
+        .sidebar-transition {
+            transition: transform 0.3s ease-in-out;
+        }
+
+        /* Overlay para móviles */
+        .sidebar-overlay {
+            transition: opacity 0.3s ease-in-out;
+        }
+
+        /* Mejoras visuales */
+        .machine-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+        }
+
+        .machine-card {
+            transition: all 0.3s ease;
+        }
     </style>
 
-    <div class="flex w-full">
+    <div class="relative">
+        {{-- Botón hamburguesa para móviles --}}
+        <button id="sidebarToggle"
+            class="fixed top-4 left-4 z-50 lg:hidden bg-blue-600 text-white p-3 rounded-lg shadow-lg hover:bg-blue-700 transition-colors">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16">
+                </path>
+            </svg>
+        </button>
 
-        {{-- 🚀 MENÚ LATERAL FIJO --}}
-        <aside role="navigation" class="fixed left-0 h-screen w-64 bg-white shadow-md z-20 overflow-y-auto">
-            <x-tabla.boton-azul :href="route('maquinas.create')" class="m-4 w-[calc(100%-2rem)] text-center">
-                ➕ Crear Nueva Máquina
-            </x-tabla.boton-azul>
+        {{-- Overlay para cerrar sidebar en móvil --}}
+        <div id="sidebarOverlay"
+            class="fixed inset-0 bg-black bg-opacity-50 z-30 hidden lg:hidden sidebar-overlay"></div>
 
-            <div class="p-4 border-t border-gray-200">
-                <h3 class="text-lg font-bold text-gray-800 mb-3 px-2">Navegación por Máquina</h3>
+        {{-- MENÚ LATERAL RESPONSIVE --}}
+        <aside id="sidebar" role="navigation"
+            class="fixed left-0 top-0 h-screen w-64 md:w-72 bg-white shadow-xl z-40 overflow-y-auto sidebar-transition transform -translate-x-full lg:translate-x-0">
+
+            {{-- Botón cerrar en móvil --}}
+            <div class="lg:hidden flex justify-end p-4">
+                <button id="closeSidebar"
+                    class="text-gray-600 hover:text-gray-900 p-2 rounded-lg hover:bg-gray-100">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12">
+                        </path>
+                    </svg>
+                </button>
+            </div>
+
+            <div class="px-4 pb-4">
+                <x-tabla.boton-azul :href="route('maquinas.create')" class="w-full text-center">
+                    ➕ Crear Nueva Máquina
+                </x-tabla.boton-azul>
+            </div>
+
+            <div class="px-4 pb-4 border-t border-gray-200 pt-4">
+                <h3 class="text-lg font-bold text-gray-800 mb-3">Navegación por Máquina</h3>
 
                 <ul class="space-y-1">
                     @foreach ($registrosMaquina as $maquina)
                         <li>
                             <a href="#maquina-{{ $maquina->id }}"
-                                class="block px-3 py-2 text-sm rounded hover:bg-gray-100 hover:text-blue-800 font-medium transition-colors duration-200 truncate">
-                                {{ $maquina->codigo }} — {{ $maquina->nombre }}
+                                class="sidebar-link block px-3 py-2 text-sm rounded-lg hover:bg-blue-50 hover:text-blue-700 font-medium transition-all duration-200 truncate border border-transparent hover:border-blue-200">
+                                <span class="font-semibold">{{ $maquina->codigo }}</span>
+                                <span class="text-gray-600">— {{ $maquina->nombre }}</span>
                             </a>
                         </li>
                     @endforeach
@@ -31,50 +79,80 @@
             </div>
         </aside>
 
-        <!-- Contenido principal -->
-        <div class="flex-1 ml-64 p-10">
+        {{-- Contenido principal --}}
+        <div class="lg:ml-64 xl:ml-72 min-h-screen bg-gray-50">
+            <div class="p-4 sm:p-6 lg:p-10 pt-20 lg:pt-10">
 
+            {{-- Grid responsive para las tarjetas --}}
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-6">
             @forelse($registrosMaquina as $maquina)
                 <div id="maquina-{{ $maquina->id }}"
-                    class="scroll-mt-28 bg-white border rounded-lg shadow-md mb-8 overflow-hidden">
+                    class="machine-card scroll-mt-28 bg-white border border-gray-200 rounded-xl shadow-md overflow-hidden flex flex-col h-full">
 
-                    <!-- Imagen -->
-                    <div class="w-full h-64 bg-gray-100 flex items-center justify-center">
+                    {{-- Imagen responsive --}}
+                    <div class="w-full h-48 bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center flex-shrink-0">
                         @if ($maquina->imagen)
                             <img src="{{ asset($maquina->imagen) }}" alt="Imagen de {{ $maquina->nombre }}"
-                                class="object-contain h-full">
+                                class="object-contain h-full w-full p-4">
                         @else
-                            <span class="text-gray-500">Sin imagen</span>
+                            <div class="text-center">
+                                <svg class="mx-auto h-16 w-16 text-gray-300" fill="none" stroke="currentColor"
+                                    viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z">
+                                    </path>
+                                </svg>
+                                <span class="text-gray-400 text-sm mt-2 block">Sin imagen</span>
+                            </div>
                         @endif
                     </div>
 
-                    <!-- Datos principales -->
-                    <div class="p-4 space-y-2">
-                        <h3 class="text-xl font-bold text-gray-800">
-                            {{ $maquina->codigo }} — {{ $maquina->nombre }}
-                        </h3>
+                    {{-- Datos principales --}}
+                    <div class="p-4 space-y-3 flex-1 flex flex-col">
+                        {{-- Título --}}
+                        <div class="border-b border-gray-200 pb-2">
+                            <h3 class="text-base font-bold text-gray-900 line-clamp-2">
+                                <span class="text-blue-600">{{ $maquina->codigo }}</span>
+                                <span class="text-gray-400 text-sm">—</span>
+                                <span class="text-sm">{{ $maquina->nombre }}</span>
+                            </h3>
+                        </div>
 
-                        <p class="text-sm text-gray-700">
-                            Estado:
-                            @php
-                                $inProduction =
-                                    $maquina->tipo == 'ensambladora'
-                                        ? $maquina->elementos_ensambladora > 0
-                                        : $maquina->elementos_count > 0;
-                            @endphp
-                            <span class="{{ $inProduction ? 'text-green-600' : 'text-red-500' }}">
-                                {{ $inProduction ? 'En producción' : 'Sin trabajo' }}
-                            </span>
-                        </p>
-                        <p class="text-sm text-gray-700">
-                            Nave:
+                        {{-- Grid de información --}}
+                        <div class="grid grid-cols-1 gap-2 text-sm flex-1">
+                            {{-- Estado --}}
+                            <div class="flex items-center">
+                                @php
+                                    $inProduction =
+                                        $maquina->tipo == 'ensambladora'
+                                            ? $maquina->elementos_ensambladora > 0
+                                            : $maquina->elementos_count > 0;
+                                @endphp
+                                <span class="font-semibold text-gray-700 mr-2">Estado:</span>
+                                <span
+                                    class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium {{ $inProduction ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800' }}">
+                                    {{ $inProduction ? '✓ En producción' : '○ Sin trabajo' }}
+                                </span>
+                            </div>
 
-                            <span>
-                                {{ $maquina->obra?->obra ?? 'Sin Nave asignada' }}
+                            {{-- Nave --}}
+                            <div class="flex items-start flex-col">
+                                <span class="font-semibold text-gray-700 text-xs">Nave:</span>
+                                <span class="text-gray-600 text-xs truncate w-full">
+                                    {{ $maquina->obra?->obra ?? 'Sin Nave asignada' }}
+                                </span>
+                            </div>
 
-                            </span>
-                        </p>
+                            {{-- Diámetros --}}
+                            <div class="flex items-start flex-col">
+                                <span class="font-semibold text-gray-700 text-xs">Diámetros:</span>
+                                <span class="text-gray-600 text-xs">
+                                    {{ $maquina->diametro_min }} - {{ $maquina->diametro_max }} mm
+                                </span>
+                            </div>
+                        </div>
 
+                        {{-- Operarios --}}
                         @php
                             $asignacionesHoy = $usuariosPorMaquina->get($maquina->id, collect());
                             $ordenTurno = ['noche' => 0, 'mañana' => 1, 'tarde' => 2];
@@ -84,17 +162,23 @@
                             });
                         @endphp
 
-                        <div class="text-sm text-gray-700 mb-2">
-                            <strong>Operarios en turno:</strong>
+                        <div class="bg-gray-50 rounded-lg p-2.5">
+                            <strong class="text-xs text-gray-700 block mb-1.5">Operarios:</strong>
                             @if ($asignacionesOrdenadas->isEmpty())
-                                <span class="text-gray-500">Ninguno</span>
+                                <span class="text-xs text-gray-500 italic">Ninguno</span>
                             @else
-                                <ul class="list-disc pl-5">
+                                <ul class="space-y-1 max-h-20 overflow-y-auto">
                                     @foreach ($asignacionesOrdenadas as $asig)
-                                        <li>
-                                            {{ $asig->user->name }}
-                                            <span class="text-gray-500 text-xs">
-                                                ({{ ucfirst(data_get($asig, 'turno.nombre', 'Sin turno')) }})
+                                        <li class="text-xs text-gray-700 flex items-center">
+                                            <svg class="w-3 h-3 mr-1.5 text-gray-400 flex-shrink-0" fill="currentColor"
+                                                viewBox="0 0 20 20">
+                                                <path fill-rule="evenodd"
+                                                    d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z"
+                                                    clip-rule="evenodd"></path>
+                                            </svg>
+                                            <span class="truncate flex-1">{{ $asig->user->name }}</span>
+                                            <span class="ml-1 text-[10px] text-gray-500 bg-white px-1.5 py-0.5 rounded flex-shrink-0">
+                                                {{ substr(ucfirst(data_get($asig, 'turno.nombre', 'Sin')), 0, 1) }}
                                             </span>
                                         </li>
                                     @endforeach
@@ -102,95 +186,138 @@
                             @endif
                         </div>
 
-                        <p class="text-sm text-gray-700">
-                            Rango de diámetros: <strong>{{ $maquina->diametro_min }} mm</strong> -
-                            <strong>{{ $maquina->diametro_max }} mm</strong>
-                        </p>
-
-                        <!-- Subir imagen -->
+                        {{-- Subir imagen --}}
                         <form action="{{ route('maquinas.imagen', $maquina->id) }}" method="POST"
-                            enctype="multipart/form-data" class="mt-2">
+                            enctype="multipart/form-data" class="border-t border-gray-200 pt-3 mt-auto">
                             @csrf
                             @method('PUT')
 
-                            <div class="flex items-center gap-2">
-                                <input type="file" name="imagen" accept="image/*"
-                                    class="block w-full text-sm text-gray-600 border border-gray-300 rounded p-1 file:mr-2 file:py-1 file:px-3 file:border-0 file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
-                                    required>
-                                <button type="submit"
-                                    class="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded text-sm">
-                                    Subir
-                                </button>
-                            </div>
+                            <details class="group">
+                                <summary class="text-xs font-semibold text-blue-600 cursor-pointer hover:text-blue-700 list-none flex items-center justify-between">
+                                    <span>Actualizar imagen</span>
+                                    <svg class="w-4 h-4 transition-transform group-open:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                                    </svg>
+                                </summary>
+                                <div class="flex flex-col gap-2 mt-2">
+                                    <input type="file" name="imagen" accept="image/*"
+                                        class="text-xs text-gray-600 border border-gray-300 rounded-lg p-1.5 file:mr-2 file:py-1 file:px-2 file:border-0 file:bg-blue-50 file:text-blue-700 file:rounded-md file:text-xs file:font-medium hover:file:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                        required>
+                                    <button type="submit"
+                                        class="bg-green-600 hover:bg-green-700 text-white px-4 py-1.5 rounded-lg text-xs font-medium transition-colors shadow-sm">
+                                        Subir
+                                    </button>
+                                </div>
+                            </details>
                         </form>
                     </div>
 
-
-                    <!-- Acciones finales: eliminar, editar, iniciar sesión -->
-                    <div class="mt-4 flex justify-between items-center">
-                        <x-tabla.boton-eliminar :action="route('maquinas.destroy', $maquina->id)" />
-                        <a href="javascript:void(0);" class="text-blue-500 hover:text-blue-700 text-sm open-edit-modal"
-                            data-id="{{ $maquina->id }}">
-                            Editar
-                        </a>
+                    {{-- Acciones --}}
+                    <div class="bg-gray-50 px-3 py-3 border-t border-gray-200 flex flex-col gap-2 mt-auto">
                         <a href="{{ route('maquinas.show', $maquina->id) }}"
-                            class="text-blue-500 hover:text-blue-700 text-sm">
+                            class="w-full inline-flex items-center justify-center px-3 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg transition-colors shadow-sm">
+                            <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                            </svg>
                             Iniciar Sesión
                         </a>
 
+                        <div class="flex gap-2">
+                            <a href="javascript:void(0);"
+                                class="open-edit-modal flex-1 inline-flex items-center justify-center px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium rounded-lg transition-colors"
+                                data-id="{{ $maquina->id }}">
+                                <svg class="w-3.5 h-3.5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z">
+                                    </path>
+                                </svg>
+                                Editar
+                            </a>
+
+                            <x-tabla.boton-eliminar :action="route('maquinas.destroy', $maquina->id)" />
+                        </div>
                     </div>
                 </div>
             @empty
-                <p class="text-gray-600">No hay máquinas disponibles.</p>
+                <div class="col-span-full bg-white rounded-xl border-2 border-dashed border-gray-300 p-12 text-center">
+                    <svg class="mx-auto h-16 w-16 text-gray-400" fill="none" stroke="currentColor"
+                        viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z">
+                        </path>
+                    </svg>
+                    <h3 class="mt-4 text-lg font-medium text-gray-900">No hay máquinas disponibles</h3>
+                    <p class="mt-2 text-sm text-gray-500">Comienza creando una nueva máquina.</p>
+                </div>
             @endforelse
+            </div>
+
+            {{-- Paginación dentro del contenedor --}}
+            @if ($registrosMaquina->hasPages())
+                <div class="mt-8 flex justify-center">
+                    {{ $registrosMaquina->links('vendor.pagination.bootstrap-5') }}
+                </div>
+            @endif
+            </div>
         </div>
     </div>
 
-    <!-- Paginación -->
-    <div class="mt-6 flex justify-center">
-        {{ $registrosMaquina->links('vendor.pagination.bootstrap-5') }}
-    </div>
+    {{-- Modal de edición mejorado --}}
+    <div id="editModal"
+        class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 justify-center items-center p-4 overflow-y-auto">
+        <div
+            class="bg-white rounded-xl shadow-2xl w-full max-w-3xl my-8 mx-auto transform transition-all">
+            {{-- Header del modal --}}
+            <div class="bg-gradient-to-r from-blue-600 to-blue-700 px-6 py-4 rounded-t-xl">
+                <h2 class="text-xl font-bold text-white">Editar Máquina</h2>
+            </div>
 
-    <!-- Modal de edición -->
-    <div id="editModal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 justify-center items-center">
-        <div class="bg-white rounded-lg shadow-lg w-full max-w-3xl p-6 relative">
-            <h2 class="text-xl font-bold mb-4 text-gray-800">Editar Máquina</h2>
-
-            <form id="editMaquinaForm">
+            <form id="editMaquinaForm" class="p-6">
                 @csrf
                 <input type="hidden" id="edit-id" name="id">
 
-                <!-- Grid de 2 columnas -->
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <!-- Código -->
+                {{-- Grid de 2 columnas responsive --}}
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-[60vh] overflow-y-auto pr-2">
+                    {{-- Código --}}
                     <div>
-                        <label for="edit-codigo" class="block text-sm font-semibold text-gray-700 mb-1">Código</label>
+                        <label for="edit-codigo" class="block text-sm font-semibold text-gray-700 mb-2">
+                            Código
+                        </label>
                         <input id="edit-codigo" name="codigo" type="text"
-                            class="w-full border rounded px-3 py-2 text-sm">
+                            class="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors">
                     </div>
 
-                    <!-- Nombre -->
+                    {{-- Nombre --}}
                     <div>
-                        <label for="edit-nombre" class="block text-sm font-semibold text-gray-700 mb-1">Nombre</label>
+                        <label for="edit-nombre" class="block text-sm font-semibold text-gray-700 mb-2">
+                            Nombre
+                        </label>
                         <input id="edit-nombre" name="nombre" type="text"
-                            class="w-full border rounded px-3 py-2 text-sm">
+                            class="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors">
                     </div>
 
-                    <!-- Obra asignada -->
+                    {{-- Obra asignada --}}
                     <div>
-                        <label for="edit-obra_id" class="block text-sm font-semibold text-gray-700 mb-1">Obra
-                            asignada</label>
-                        <select id="edit-obra_id" name="obra_id" class="w-full border rounded px-3 py-2 text-sm">
+                        <label for="edit-obra_id" class="block text-sm font-semibold text-gray-700 mb-2">
+                            Obra asignada
+                        </label>
+                        <select id="edit-obra_id" name="obra_id"
+                            class="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors bg-white">
                             <option value="">Sin asignar</option>
                             @foreach ($obras as $obra)
                                 <option value="{{ $obra->id }}">{{ $obra->obra }}</option>
                             @endforeach
                         </select>
                     </div>
-                    <!-- Tipo -->
+
+                    {{-- Tipo --}}
                     <div>
-                        <label for="edit-tipo" class="block text-sm font-semibold text-gray-700 mb-1">Tipo</label>
-                        <select id="edit-tipo" name="tipo" class="w-full border rounded px-3 py-2 text-sm">
+                        <label for="edit-tipo" class="block text-sm font-semibold text-gray-700 mb-2">
+                            Tipo
+                        </label>
+                        <select id="edit-tipo" name="tipo"
+                            class="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors bg-white">
                             <option value="">— Selecciona tipo —</option>
                             <option value="cortadora_dobladora">Cortadora-Dobladora</option>
                             <option value="ensambladora">Ensambladora</option>
@@ -201,62 +328,69 @@
                         </select>
                     </div>
 
-                    <!-- Diámetro mínimo -->
+                    {{-- Diámetro mínimo --}}
                     <div>
-                        <label for="edit-diametro_min" class="block text-sm font-semibold text-gray-700 mb-1">Diámetro
-                            mínimo</label>
+                        <label for="edit-diametro_min" class="block text-sm font-semibold text-gray-700 mb-2">
+                            Diámetro mínimo (mm)
+                        </label>
                         <input id="edit-diametro_min" name="diametro_min" type="number"
-                            class="w-full border rounded px-3 py-2 text-sm">
+                            class="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors">
                     </div>
 
-                    <!-- Diámetro máximo -->
+                    {{-- Diámetro máximo --}}
                     <div>
-                        <label for="edit-diametro_max" class="block text-sm font-semibold text-gray-700 mb-1">Diámetro
-                            máximo</label>
+                        <label for="edit-diametro_max" class="block text-sm font-semibold text-gray-700 mb-2">
+                            Diámetro máximo (mm)
+                        </label>
                         <input id="edit-diametro_max" name="diametro_max" type="number"
-                            class="w-full border rounded px-3 py-2 text-sm">
+                            class="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors">
                     </div>
 
-                    <!-- Peso mínimo -->
+                    {{-- Peso mínimo --}}
                     <div>
-                        <label for="edit-peso_min" class="block text-sm font-semibold text-gray-700 mb-1">Peso
-                            mínimo</label>
+                        <label for="edit-peso_min" class="block text-sm font-semibold text-gray-700 mb-2">
+                            Peso mínimo
+                        </label>
                         <input id="edit-peso_min" name="peso_min" type="number"
-                            class="w-full border rounded px-3 py-2 text-sm">
+                            class="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors">
                     </div>
 
-                    <!-- Peso máximo -->
+                    {{-- Peso máximo --}}
                     <div>
-                        <label for="edit-peso_max" class="block text-sm font-semibold text-gray-700 mb-1">Peso
-                            máximo</label>
+                        <label for="edit-peso_max" class="block text-sm font-semibold text-gray-700 mb-2">
+                            Peso máximo
+                        </label>
                         <input id="edit-peso_max" name="peso_max" type="number"
-                            class="w-full border rounded px-3 py-2 text-sm">
+                            class="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors">
                     </div>
 
-                    <!-- Ancho en metros -->
+                    {{-- Ancho en metros --}}
                     <div>
-                        <label for="edit-ancho_m" class="block text-sm font-semibold text-gray-700 mb-1">Ancho
-                            (m)</label>
+                        <label for="edit-ancho_m" class="block text-sm font-semibold text-gray-700 mb-2">
+                            Ancho (m)
+                        </label>
                         <input id="edit-ancho_m" name="ancho_m" type="number" step="0.01"
-                            class="w-full border rounded px-3 py-2 text-sm">
+                            class="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors">
                     </div>
 
-                    <!-- Largo en metros -->
+                    {{-- Largo en metros --}}
                     <div>
-                        <label for="edit-largo_m" class="block text-sm font-semibold text-gray-700 mb-1">Largo
-                            (m)</label>
+                        <label for="edit-largo_m" class="block text-sm font-semibold text-gray-700 mb-2">
+                            Largo (m)
+                        </label>
                         <input id="edit-largo_m" name="largo_m" type="number" step="0.01"
-                            class="w-full border rounded px-3 py-2 text-sm">
+                            class="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors">
                     </div>
                 </div>
 
-                <!-- Botones -->
-                <div class="flex justify-end gap-3 mt-6">
+                {{-- Botones del modal --}}
+                <div class="flex flex-col sm:flex-row justify-end gap-3 mt-6 pt-4 border-t border-gray-200">
                     <button type="button" id="closeModal"
-                        class="px-4 py-2 bg-gray-300 text-gray-800 rounded hover:bg-gray-400">
+                        class="px-6 py-2.5 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 font-medium transition-colors border border-gray-300">
                         Cancelar
                     </button>
-                    <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">
+                    <button type="submit"
+                        class="px-6 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium transition-colors shadow-sm">
                         Guardar cambios
                     </button>
                 </div>
@@ -265,21 +399,66 @@
     </div>
     <script>
         (function() {
+            // ========== SIDEBAR TOGGLE ==========
+            const sidebar = document.getElementById('sidebar');
+            const sidebarToggle = document.getElementById('sidebarToggle');
+            const sidebarOverlay = document.getElementById('sidebarOverlay');
+            const closeSidebar = document.getElementById('closeSidebar');
+            const sidebarLinks = document.querySelectorAll('.sidebar-link');
+
+            function openSidebar() {
+                sidebar.classList.remove('-translate-x-full');
+                sidebarOverlay.classList.remove('hidden');
+                document.body.style.overflow = 'hidden'; // Prevenir scroll del body
+            }
+
+            function closeSidebarFn() {
+                sidebar.classList.add('-translate-x-full');
+                sidebarOverlay.classList.add('hidden');
+                document.body.style.overflow = ''; // Restaurar scroll
+            }
+
+            // Abrir sidebar con botón hamburguesa
+            if (sidebarToggle) {
+                sidebarToggle.addEventListener('click', openSidebar);
+            }
+
+            // Cerrar sidebar con botón X
+            if (closeSidebar) {
+                closeSidebar.addEventListener('click', closeSidebarFn);
+            }
+
+            // Cerrar sidebar con overlay
+            if (sidebarOverlay) {
+                sidebarOverlay.addEventListener('click', closeSidebarFn);
+            }
+
+            // Cerrar sidebar al hacer clic en un enlace (en móvil)
+            sidebarLinks.forEach(link => {
+                link.addEventListener('click', () => {
+                    if (window.innerWidth < 1024) { // Solo en móviles/tablets
+                        closeSidebarFn();
+                    }
+                });
+            });
+
+            // ========== MODAL DE EDICIÓN ==========
             const modal = document.getElementById('editModal');
-            const modalContent = document.getElementById('editModalContent');
             const closeBtn = document.getElementById('closeModal');
 
             function openModal() {
                 modal.classList.remove('hidden');
                 modal.classList.add('flex');
+                document.body.style.overflow = 'hidden';
             }
 
             function closeModal() {
                 modal.classList.add('hidden');
                 modal.classList.remove('flex');
+                document.body.style.overflow = '';
             }
 
-            // Abrir: cuando haces clic en “Editar”
+            // Abrir modal al hacer clic en "Editar"
             document.querySelectorAll('.open-edit-modal').forEach(btn => {
                 btn.addEventListener('click', function() {
                     const id = this.dataset.id;
@@ -291,8 +470,7 @@
                             document.getElementById('edit-id').value = data.id ?? '';
                             ['codigo', 'nombre', 'diametro_min', 'diametro_max', 'peso_min',
                                 'peso_max', 'ancho_m', 'largo_m', 'tipo'
-                            ]
-                            .forEach(f => {
+                            ].forEach(f => {
                                 const el = document.getElementById(`edit-${f}`);
                                 if (el) el.value = (data[f] ?? '');
                             });
@@ -321,24 +499,31 @@
                 });
             });
 
-            // Cerrar: botón “Cancelar”
+            // Cerrar modal con botón "Cancelar"
             if (closeBtn) {
                 closeBtn.addEventListener('click', closeModal);
             }
 
-            // Cerrar: clic en el fondo (pero no dentro del panel)
+            // Cerrar modal con clic en el fondo
             modal.addEventListener('click', (e) => {
-                if (!modalContent.contains(e.target)) closeModal();
-            });
-
-            // Cerrar: tecla ESC
-            document.addEventListener('keydown', (e) => {
-                if (e.key === 'Escape' && !modal.classList.contains('hidden')) {
+                if (e.target === modal) {
                     closeModal();
                 }
             });
 
-            // Envío del formulario (sin cambios, pero no toques display inline)
+            // Cerrar modal con tecla ESC
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape') {
+                    if (!modal.classList.contains('hidden')) {
+                        closeModal();
+                    }
+                    if (!sidebar.classList.contains('-translate-x-full') && window.innerWidth < 1024) {
+                        closeSidebarFn();
+                    }
+                }
+            });
+
+            // Envío del formulario de edición
             document.getElementById('editMaquinaForm').addEventListener('submit', function(e) {
                 e.preventDefault();
                 const id = document.getElementById('edit-id').value;
