@@ -1,4 +1,23 @@
 {
+<<<<<<< HEAD
+    "permissions": {
+        "allow": [
+            "Bash(php artisan:*)",
+            "Bash(nul)",
+            "Bash(dir:*)",
+            "Bash(findstr:*)",
+            "Bash(composer require:*)",
+            "Bash(php --version:*)",
+            "Bash(curl:*)",
+            "Bash(php:*)",
+            "Bash(del:*)",
+            "Bash(composer show:*)",
+            "Bash(composer require:*)"
+        ],
+        "deny": [],
+        "ask": []
+    }
+=======
   "permissions": {
     "allow": [
       "Bash(php artisan cache:clear:*)",
@@ -8,4 +27,5 @@
     "deny": [],
     "ask": []
   }
+>>>>>>> origin/main
 }

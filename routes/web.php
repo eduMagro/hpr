@@ -212,6 +212,7 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
     Route::get('/produccion/trabajadores', [ProduccionController::class, 'trabajadores'])->name('produccion.verTrabajadores');
     Route::get('/produccion/trabajadores-obra', [ProduccionController::class, 'trabajadoresObra'])->name('produccion.verTrabajadoresObra');
     Route::get('/produccion/maquinas', [ProduccionController::class, 'maquinas'])->name('produccion.verMaquinas');
+    Route::get('/produccion/cargas-maquinas', [ProduccionController::class, 'cargasMaquinas'])->name('produccion.cargasMaquinas');
     //MSR20 BVBS
     Route::get('/maquinas/{maquina}/exportar-bvbs', [MaquinaController::class, 'exportarBVBS'])
         ->name('maquinas.exportar-bvbs');
@@ -236,6 +237,8 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
     // ruta para renderizar una etiqueta en HTML
     Route::post('/etiquetas/render', [EtiquetaController::class, 'render'])
         ->name('etiquetas.render');
+
+    Route::get('/elementos/por-ids', [ProduccionController::class, 'porIds'])->name('elementos.verPorIds');
     Route::get(
         '/etiquetas/{etiquetaSubId}/validar-para-paquete',
         [PaqueteController::class, 'validarParaPaquete']
@@ -244,14 +247,23 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
     // === tratamos PAQUETES en maquinas.show ===
 
     Route::resource('paquetes', PaqueteController::class);
-    Route::resource('etiquetas', EtiquetaController::class);
-    Route::resource('elementos', ElementoController::class);
+
+    // 🔥 RUTA MIGRADA A LIVEWIRE - index ahora usa Livewire (sin recargar página)
+    Route::get('/etiquetas', App\Livewire\EtiquetasTable::class)->name('etiquetas.index');
+
+    // Resto de rutas del resource (show, create, edit, update, destroy)
+    Route::resource('etiquetas', EtiquetaController::class)->except(['index']);
+
+    // 🔥 RUTA MIGRADA A LIVEWIRE - index ahora usa Livewire (sin recargar página)
+    Route::get('/elementos', App\Livewire\ElementosTable::class)->name('elementos.index');
+
+    // Resto de rutas del resource (show, create, edit, update, destroy)
+    Route::resource('elementos', ElementoController::class)->except(['index']);
 
 
     // RUTAS PROVISIONALES
     Route::post('/etiquetas/fabricar-lote', [EtiquetaController::class, 'fabricarLote'])->name('maquinas.fabricarLote');
     Route::post('/etiquetas/completar-lote', [EtiquetaController::class, 'completarLote'])->name('maquinas.completarLote');
-
 
     Route::get('/planillas/informacion', [PlanillaController::class, 'informacionMasiva'])->name('planillas.editarInformacionMasiva');
 
@@ -260,12 +272,13 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
         ->name('paquetes.tamaño');
 
     // === PLANILLAS Y PLANIFICACIÓN ===
+    Route::post('/planillas/{planilla}/marcar-revisada', [PlanillaController::class, 'marcarRevisada'])->name('planillas.marcarRevisada');
     Route::resource('planillas', PlanillaController::class);
     Route::post('planillas/import', [PlanillaController::class, 'import'])->name('planillas.crearImport');
     Route::post('/planillas/reordenar', [ProduccionController::class, 'reordenarPlanillas'])->name('planillas.editarReordenar');
     Route::resource('planificacion', PlanificacionController::class)->only(['index', 'store', 'update', 'destroy']);
 
-    Route::put('/planificacion/comentario/{id}', [PlanificacionController::class, 'editarGuardarComentario']);
+    Route::put('/planificacion/comentario/{id}', [PlanificacionController::class, 'guardarComentario']);
     Route::post('/planillas/{planilla}/reimportar', [PlanillaController::class, 'reimportar'])->name('planillas.crearReimportar');
     Route::post('/planillas/completar', [PlanillaController::class, 'completar'])->name('planillas.completar');
     Route::get('/planificacion/index', [PlanificacionController::class, 'index'])->name('planificacion.index');
@@ -291,6 +304,10 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
     Route::post('/escaneo', [SalidaFerrallaController::class, 'marcarSubido'])->name('escaneo.marcarSubido');
     Route::get('/salidas/export/{mes}', [SalidaFerrallaController::class, 'export'])->name('salidas.export');
     Route::post('/planificacion/crear-salida-desde-calendario', [SalidaFerrallaController::class, 'crearSalidaDesdeCalendario'])->name('planificacion.crearSalidaDesdeCalendario');
+    Route::post('/planificacion/crear-salidas-vacias-desde-calendario', [SalidaFerrallaController::class, 'crearSalidasVaciasDesdeCalendario'])->name('planificacion.crearSalidasVaciasDesdeCalendario');
+    Route::get('/planificacion/informacion-gestion-paquetes', [SalidaFerrallaController::class, 'informacionGestionPaquetes'])->name('planificacion.informacionGestionPaquetes');
+    Route::get('/planificacion/salidas-por-planillas', [SalidaFerrallaController::class, 'obtenerSalidasPorPlanillas'])->name('planificacion.obtenerSalidasPorPlanillas');
+    Route::post('/planificacion/guardar-asignaciones-paquetes', [SalidaFerrallaController::class, 'guardarAsignacionesPaquetes'])->name('planificacion.guardarAsignacionesPaquetes');
     Route::put('/salidas/completar-desde-movimiento/{movimientoId}', [SalidaFerrallaController::class, 'completarDesdeMovimiento']);
     Route::put('/salidas/{salida}/codigo-sage', [SalidaFerrallaController::class, 'actualizarCodigoSage'])->name('salidas.editarCodigoSage');
 
@@ -355,9 +372,6 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
     Route::resource('clientes-almacen', ClienteAlmacenController::class);
     Route::get('/clientes-almacen/buscar', [ClienteAlmacenController::class, 'buscar'])
         ->name('clientes-almacen.verBuscar');
-
-
-
 
     // === OBRAS ===
     Route::resource('obras', ObraController::class);
@@ -426,6 +440,10 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
     // === ORDENES PLANILLAS ===
     Route::get('/produccion/OrdenesPlanillas', [App\Http\Controllers\ProduccionController::class, 'verOrdenesPlanillas'])
         ->name('produccion.verOrdenesPlanillas');
+
+    // 🔄 Endpoint para actualizaciones en tiempo real
+    Route::get('/produccion/maquinas/actualizaciones', [App\Http\Controllers\ProduccionController::class, 'obtenerActualizaciones'])
+        ->name('produccion.actualizaciones');
 
     // obtener elementos con js
     Route::get('/api/elementos', [ElementoController::class, 'filtrar']);

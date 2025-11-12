@@ -224,6 +224,7 @@ class PlanillaProcessor
             'fecha_estimada_entrega' => now()
                 ->addDays(config('planillas.importacion.dias_entrega_default', 7))
                 ->setTime(10, 0, 0),
+            'revisada' => false, // ⚠️ Por defecto NO revisada (requiere aprobación)
         ]);
     }
 
