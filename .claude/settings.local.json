@@ -1,31 +1,20 @@
 {
-<<<<<<< HEAD
-    "permissions": {
-        "allow": [
-            "Bash(php artisan:*)",
-            "Bash(nul)",
-            "Bash(dir:*)",
-            "Bash(findstr:*)",
-            "Bash(composer require:*)",
-            "Bash(php --version:*)",
-            "Bash(curl:*)",
-            "Bash(php:*)",
-            "Bash(del:*)",
-            "Bash(composer show:*)",
-            "Bash(composer require:*)"
-        ],
-        "deny": [],
-        "ask": []
-    }
-=======
   "permissions": {
     "allow": [
-      "Bash(php artisan cache:clear:*)",
-      "Bash(php artisan config:clear:*)",
-      "Bash(php artisan:*)"
+      "Bash(php artisan:*)",
+      "Bash(nul)",
+      "Bash(dir:*)",
+      "Bash(findstr:*)",
+      "Bash(composer require:*)",
+      "Bash(php --version:*)",
+      "Bash(curl:*)",
+      "Bash(php:*)",
+      "Bash(del:*)",
+      "Bash(composer show:*)",
+      "Bash(composer require:*)",
+      "Bash(composer dump-autoload:*)"
     ],
     "deny": [],
     "ask": []
   }
->>>>>>> origin/main
 }
