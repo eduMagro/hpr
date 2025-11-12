@@ -408,6 +408,52 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
 
     Route::post('/planillas/import', [PlanillaController::class, 'import'])
         ->name('planillas.crearImport');
+
+    /**
+     * RUTAS PARA EL MÓDULO DE LOCALIZACIONES
+     * 
+     * Este archivo contiene todas las rutas relacionadas con el mapa de localizaciones
+     * Agregar estas rutas al archivo routes/web.php
+     */
+    // Vista principal del índice de localizaciones
+    Route::get('/localizaciones', [LocalizacionController::class, 'index'])
+        ->name('localizaciones.index');
+
+    // Vista del mapa de localizaciones de paquetes (NUEVA)
+    Route::get('/localizaciones/mapa', [LocalizacionController::class, 'mapaLocalizaciones'])
+        ->name('localizaciones.mapa');
+
+    // Vista para editar el mapa
+    Route::get('/localizaciones/editar-mapa', [LocalizacionController::class, 'editarMapa'])
+        ->name('localizaciones.editarMapa');
+
+    // Vista para crear nueva localización
+    Route::get('/localizaciones/create', [LocalizacionController::class, 'create'])
+        ->name('localizaciones.create');
+
+    // API: Verificar si existe localización en coordenadas
+    Route::post('/localizaciones/verificar', [LocalizacionController::class, 'verificar'])
+        ->name('localizaciones.verificar');
+
+    // API: Guardar nueva localización
+    Route::post('/localizaciones', [LocalizacionController::class, 'store'])
+        ->name('localizaciones.store');
+
+    // API: Guardar localización de paquete (NUEVA)
+    Route::post('/localizaciones/paquete', [LocalizacionController::class, 'guardarLocalizacionPaquete'])
+        ->name('localizaciones.guardarPaquete');
+
+    // API: Obtener detalles de una localización específica
+    Route::get('/localizaciones/{id}', [LocalizacionController::class, 'show'])
+        ->name('localizaciones.show');
+
+    // API: Actualizar localización existente
+    Route::put('/localizaciones/{id}', [LocalizacionController::class, 'update'])
+        ->name('localizaciones.update');
+
+    // API: Eliminar localización
+    Route::delete('/localizaciones/{id}', [LocalizacionController::class, 'destroy'])
+        ->name('localizaciones.destroy');
 });
 
 
