@@ -48,7 +48,8 @@ class User extends Authenticatable
         'dias_vacaciones',
         'estado',
         'updated_by',
-
+        'puede_usar_asistente',
+        'puede_modificar_bd',
     ];
 
     /**
@@ -72,6 +73,8 @@ class User extends Authenticatable
         'updated_at' => 'datetime',
         'email_verified_at' => 'datetime',
         'password' => 'hashed',
+        'puede_usar_asistente' => 'boolean',
+        'puede_modificar_bd' => 'boolean',
     ];
     public function getRutaImagenAttribute()
     {
