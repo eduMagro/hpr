@@ -53,6 +53,33 @@ use Illuminate\Support\Facades\Log;
 
 Route::get('/', [PageController::class, 'index'])->middleware(['auth', 'verified'])->name('dashboard');
 
+// Ruta del Asistente Virtual
+use App\Http\Controllers\AsistenteVirtualController;
+Route::get('/asistente', [AsistenteVirtualController::class, 'index'])
+    ->middleware(['auth', 'puede.asistente'])
+    ->name('asistente.index');
+
+// Administración de permisos del Asistente (solo admins)
+Route::get('/asistente/permisos', [AsistenteVirtualController::class, 'administrarPermisos'])
+    ->middleware(['auth'])
+    ->name('asistente.permisos');
+
+// API del Asistente Virtual
+// Rate limiting: 60 requests por minuto general, 15 para envío de mensajes
+Route::middleware(['auth', 'puede.asistente', 'throttle:60,1'])
+    ->prefix('api/asistente')->group(function () {
+    Route::get('/conversaciones', [AsistenteVirtualController::class, 'obtenerConversaciones']);
+    Route::post('/conversaciones', [AsistenteVirtualController::class, 'crearConversacion']);
+    Route::get('/conversaciones/{conversacionId}/mensajes', [AsistenteVirtualController::class, 'obtenerMensajes']);
+    Route::delete('/conversaciones/{conversacionId}', [AsistenteVirtualController::class, 'eliminarConversacion']);
+    Route::get('/sugerencias', [AsistenteVirtualController::class, 'obtenerSugerencias']);
+    Route::post('/permisos/{userId}', [AsistenteVirtualController::class, 'actualizarPermisos']);
+
+    // Ruta de envío de mensajes con rate limiting más estricto
+    Route::post('/mensaje', [AsistenteVirtualController::class, 'enviarMensaje'])
+        ->middleware('throttle:15,1'); // Solo 15 mensajes por minuto
+});
+
 Route::middleware(['auth', 'acceso.seccion'])->group(function () {
     // === PERFIL DE USUARIO ===
     Route::get('/users/{id}/edit', [ProfileController::class, 'edit'])->name('profile.edit');

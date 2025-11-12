@@ -1,4 +1,5 @@
 {
+<<<<<<< HEAD
     "permissions": {
         "allow": [
             "Bash(php artisan:*)",
@@ -16,4 +17,15 @@
         "deny": [],
         "ask": []
     }
+=======
+  "permissions": {
+    "allow": [
+      "Bash(php artisan cache:clear:*)",
+      "Bash(php artisan config:clear:*)",
+      "Bash(php artisan:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+>>>>>>> origin/main
 }

@@ -4,7 +4,11 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
+<<<<<<< HEAD
     "content-hash": "f2c38faa482628033a58d5d3c122917f",
+=======
+    "content-hash": "463e1dbaab3530123c16e12e1d4207bf",
+>>>>>>> origin/main
     "packages": [
         {
             "name": "archtechx/enums",
@@ -4894,13 +4898,25 @@
             },
             "type": "library",
             "autoload": {
+<<<<<<< HEAD
                 "files": ["src/OpenAI.php"],
+=======
+                "files": [
+                    "src/OpenAI.php"
+                ],
+>>>>>>> origin/main
                 "psr-4": {
                     "OpenAI\\": "src/"
                 }
             },
             "notification-url": "https://packagist.org/downloads/",
+<<<<<<< HEAD
             "license": ["MIT"],
+=======
+            "license": [
+                "MIT"
+            ],
+>>>>>>> origin/main
             "authors": [
                 {
                     "name": "Nuno Maduro",
@@ -4974,7 +4990,13 @@
             "type": "library",
             "extra": {
                 "laravel": {
+<<<<<<< HEAD
                     "providers": ["OpenAI\\Laravel\\ServiceProvider"]
+=======
+                    "providers": [
+                        "OpenAI\\Laravel\\ServiceProvider"
+                    ]
+>>>>>>> origin/main
                 }
             },
             "autoload": {
@@ -4983,7 +5005,13 @@
                 }
             },
             "notification-url": "https://packagist.org/downloads/",
+<<<<<<< HEAD
             "license": ["MIT"],
+=======
+            "license": [
+                "MIT"
+            ],
+>>>>>>> origin/main
             "authors": [
                 {
                     "name": "Nuno Maduro",
@@ -5076,10 +5104,21 @@
                 "psr-4": {
                     "Http\\Discovery\\": "src/"
                 },
+<<<<<<< HEAD
                 "exclude-from-classmap": ["src/Composer/Plugin.php"]
             },
             "notification-url": "https://packagist.org/downloads/",
             "license": ["MIT"],
+=======
+                "exclude-from-classmap": [
+                    "src/Composer/Plugin.php"
+                ]
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+>>>>>>> origin/main
             "authors": [
                 {
                     "name": "Márk Sági-Kazár",
@@ -5136,7 +5175,13 @@
                 }
             },
             "notification-url": "https://packagist.org/downloads/",
+<<<<<<< HEAD
             "license": ["MIT"],
+=======
+            "license": [
+                "MIT"
+            ],
+>>>>>>> origin/main
             "authors": [
                 {
                     "name": "Tobias Nyholm",
