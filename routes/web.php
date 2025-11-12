@@ -416,12 +416,13 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
      * Agregar estas rutas al archivo routes/web.php
      */
     // Vista principal del índice de localizaciones
+    // Vista principal del índice de localizaciones
     Route::get('/localizaciones', [LocalizacionController::class, 'index'])
         ->name('localizaciones.index');
 
     // Vista del mapa de localizaciones de paquetes (NUEVA)
-    Route::get('/localizaciones/mapa', [LocalizacionController::class, 'mapaLocalizaciones'])
-        ->name('localizaciones.mapa');
+    Route::get('/mapa-paquetes', [LocalizacionController::class, 'mapaLocalizaciones'])
+        ->name('mapa.paquetes');
 
     // Vista para editar el mapa
     Route::get('/localizaciones/editar-mapa', [LocalizacionController::class, 'editarMapa'])

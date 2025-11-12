@@ -41,7 +41,7 @@
     <div class="relative">
         {{-- Botón hamburguesa para móviles --}}
         <button id="sidebarToggle"
-            class="fixed top-4 left-4 z-50 lg:hidden bg-blue-600 text-white p-3 rounded-lg shadow-lg hover:bg-blue-700 transition-colors">
+            class="fixed mt-2 left-4 z-50 lg:hidden bg-blue-600 text-white p-3 rounded-lg shadow-lg hover:bg-blue-700 transition-colors">
             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16">
                 </path>
@@ -54,7 +54,7 @@
 
         {{-- MENÚ LATERAL RESPONSIVE --}}
         <aside id="sidebar" role="navigation"
-            class="fixed left-0 top-0 h-screen w-64 md:w-72 bg-white shadow-xl z-40 overflow-y-auto sidebar-transition transform -translate-x-full lg:translate-x-0">
+            class="fixed left-0 top-0 pt-[50px] h-screen w-64 md:w-72 bg-white shadow-xl z-40 overflow-y-auto sidebar-transition transform -translate-x-full lg:translate-x-0">
 
             {{-- Botón cerrar en móvil --}}
             <div class="lg:hidden flex justify-end p-4">
@@ -91,7 +91,7 @@
         </aside>
 
         {{-- Contenido principal --}}
-        <div class="lg:ml-64 xl:ml-72 min-h-screen bg-gray-50">
+        <div class="lg:ml-64 xl:ml-72 min-h-screen">
             <div class="p-4 sm:p-6 lg:p-10 pt-20 lg:pt-10">
 
             {{-- Botón para mostrar todas las máquinas --}}

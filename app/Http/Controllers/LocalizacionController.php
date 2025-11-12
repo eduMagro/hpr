@@ -813,10 +813,8 @@ class LocalizacionController extends Controller
 
     //------------------------------------------------------------------------------------ MAPA LOCALIZACIONES()
     /**
-     * Vista principal del mapa de localizaciones de paquetes
-     * Muestra un mapa interactivo con todos los paquetes y máquinas ubicados en la nave
-     * 
-     * @return \Illuminate\View\View
+     * Vista del mapa de localizaciones mostrando los PAQUETES ubicados
+     * Similar a index() pero enfocado en visualizar paquetes en lugar de gestionar localizaciones
      */
     public function mapaLocalizaciones()
     {
@@ -826,38 +824,35 @@ class LocalizacionController extends Controller
             ->orderBy('obra')
             ->get();
 
-        // 2) Determinar la obra activa (pasada por parámetro ?obra=ID o la primera disponible)
+        // 2) Determinar la obra activa (desde parámetro ?obra=ID o la primera disponible)
         $obraActualId = request('obra');
         $obraActiva   = $obras->firstWhere('id', $obraActualId) ?? $obras->first();
         $cliente      = $obraActiva?->cliente;
 
-        // 3) Obtener dimensiones de la nave en metros
-        // Estas dimensiones definen el tamaño real del espacio físico
+        // 3) Dimensiones de la nave en metros (convertidas a celdas de 0.5m)
         $anchoM = max(1, (int) ($obraActiva->ancho_m ?? 22));
         $largoM = max(1, (int) ($obraActiva->largo_m ?? 115));
-
-        // 4) Calcular el grid en celdas (cada celda = 0.5m)
-        // Esto permite una precisión de medio metro para colocar elementos
-        $columnasReales = $anchoM * 2; // Multiplicamos por 2 porque cada metro = 2 celdas
+        $columnasReales = $anchoM * 2; // cada celda = 0.5m
         $filasReales    = $largoM * 2;
 
-        // 5) Determinar orientación del mapa (vertical u horizontal)
-        // El mapa se mostrará siempre con el lado más largo en horizontal para mejor visualización
-        $estaGirado     = $filasReales > $columnasReales; // true si el largo > ancho
-        $columnasVista  = $estaGirado ? $filasReales : $columnasReales;
-        $filasVista     = $estaGirado ? $columnasReales : $filasReales;
+        // 4) Sin rotación: el mapa siempre crece de ABAJO hacia ARRIBA
+        $estaGirado = false; // ⬅️ CRÍTICO: desactivamos rotación
+        $columnasVista = $columnasReales; // ancho
+        $filasVista    = $filasReales;    // largo (vertical)
 
-        // 6) Cargar todas las localizaciones de máquinas en la nave
+        // 5) Inicializar colecciones
         $localizacionesMaquinas = collect();
-        $localizacionesZonas = collect();
-        
+        $localizacionesZonas    = collect();
+        $paquetesConLocalizacion = collect();
+        $ocupadas = [];
+
         if ($obraActiva) {
-            // Obtener todas las localizaciones de la nave (máquinas y zonas)
+            // 5.1) Cargar TODAS las localizaciones de la nave (máquinas y zonas)
             $localizaciones = Localizacion::with('maquina:id,nombre')
                 ->where('nave_id', $obraActiva->id)
                 ->get();
 
-            // Separar máquinas de zonas
+            // 5.2) Separar localizaciones de MÁQUINAS
             $localizacionesMaquinas = $localizaciones
                 ->where('tipo', 'maquina')
                 ->whereNotNull('maquina_id')
@@ -877,269 +872,105 @@ class LocalizacionController extends Controller
                     ];
                 });
 
-            // Zonas (transitable, almacenamiento, carga_descarga)
+            // 5.3) Separar localizaciones de ZONAS (transitable, almacenamiento, carga_descarga)
             $localizacionesZonas = $localizaciones
                 ->filter(fn($l) => $l->tipo !== 'maquina')
                 ->values()
                 ->map(function ($l) {
+                    $tipoNorm = str_replace('-', '_', (string) $l->tipo);
                     return [
                         'id'      => (int) $l->id,
                         'x1'      => (int) $l->x1,
                         'y1'      => (int) $l->y1,
                         'x2'      => (int) $l->x2,
                         'y2'      => (int) $l->y2,
-                        'tipo'    => (string) str_replace('-', '_', $l->tipo),
-                        'nombre'  => (string) ($l->nombre ?: strtoupper(str_replace('_', '/', $l->tipo))),
+                        'tipo'    => $tipoNorm,
+                        'nombre'  => (string) ($l->nombre ?: strtoupper(str_replace('_', ' ', $tipoNorm))),
                         'nave_id' => (int) $l->nave_id,
                     ];
                 });
+
+            // 5.4) Coordenadas ocupadas (para colisiones, excluye transitables)
+            $ocupadas = $localizaciones
+                ->filter(fn($l) => str_replace('-', '_', $l->tipo) !== 'transitable')
+                ->map(fn($l) => [
+                    'x1' => (int) $l->x1,
+                    'y1' => (int) $l->y1,
+                    'x2' => (int) $l->x2,
+                    'y2' => (int) $l->y2,
+                ])->values()->all();
+
+            // 5.5) ⭐ OBTENER PAQUETES CON LOCALIZACIÓN EN ESTA NAVE
+            $paquetesConLocalizacion = Paquete::with([
+                'localizacionPaquete', // coordenadas x1,y1,x2,y2
+                'etiquetas.elementos', // para calcular tipo de contenido
+                'planilla'             // info adicional si la necesitas
+            ])
+            ->where('nave_id', $obraActiva->id)
+            ->whereHas('localizacionPaquete') // solo paquetes con localización
+            ->get()
+            ->map(function ($paquete) {
+                $loc = $paquete->localizacionPaquete;
+                
+                return [
+                    'id'                => (int) $paquete->id,
+                    'codigo'            => (string) $paquete->codigo,
+                    'peso'              => (float) $paquete->peso,
+                    'x1'                => (int) $loc->x1,
+                    'y1'                => (int) $loc->y1,
+                    'x2'                => (int) $loc->x2,
+                    'y2'                => (int) $loc->y2,
+                    'tipo_contenido'    => $paquete->getTipoContenido(), // 'barras', 'estribos', 'mixto'
+                    'cantidad_elementos' => $paquete->etiquetas->sum(fn($e) => $e->elementos->count()),
+                    'planilla'          => $paquete->planilla?->codigo,
+                ];
+            });
         }
 
-        // 7) Cargar todos los paquetes con sus localizaciones
-        $paquetesConLocalizacion = $this->obtenerPaquetesConLocalizacion($obraActiva);
-
-        // 8) Preparar información de dimensiones para la cabecera
+        // 6) Información para la cabecera
         $dimensiones = [
             'ancho' => $anchoM,
             'largo' => $largoM,
             'obra'  => $obraActiva?->obra,
         ];
 
-        // 9) Contexto JavaScript para la vista
-        // Este objeto se pasará al frontend para manejar la interactividad del mapa
+        // 7) Sectores verticales cada 20m
+        $sectorSize = 20;
+        $numeroSectores = max(1, (int) ceil($largoM / $sectorSize));
+
+        // 8) Contexto para JavaScript
         $ctx = [
             'naveId'         => $obraActiva?->id,
-            'estaGirado'     => $estaGirado,
+            'estaGirado'     => false, // ⬅️ siempre false = crecimiento vertical
             'columnasReales' => $columnasReales,
             'filasReales'    => $filasReales,
             'columnasVista'  => $columnasVista,
             'filasVista'     => $filasVista,
-            'anchoM'         => $anchoM,
-            'largoM'         => $largoM,
+            'ocupadas'       => $ocupadas,
         ];
 
-        // 10) Log para debugging
-        Log::debug('Mapa Localizaciones - Datos cargados', [
+        // 9) Log de debug
+        Log::debug('mapaPaquetes payload', [
             'obra_id'        => $obraActiva?->id,
             'grid_real'      => "{$columnasReales}x{$filasReales}",
-            'grid_vista'     => "{$columnasVista}x{$filasVista}",
+            'loc_maquinas'   => $localizacionesMaquinas->count(),
+            'loc_zonas'      => $localizacionesZonas->count(),
             'paquetes_count' => $paquetesConLocalizacion->count(),
-            'maquinas_count' => $localizacionesMaquinas->count(),
         ]);
 
-        // Retornar la vista con todos los datos necesarios
-        return view('localizaciones.mapaLocalizaciones', [
-            'obras'                  => $obras,
-            'obraActualId'           => $obraActualId,
-            'obraActiva'             => $obraActiva,
-            'cliente'                => $cliente,
-            'dimensiones'            => $dimensiones,
-            'columnasVista'          => $columnasVista,
-            'filasVista'             => $filasVista,
-            'localizacionesMaquinas' => $localizacionesMaquinas,
-            'localizacionesZonas'    => $localizacionesZonas,
-            'paquetesConLocalizacion'=> $paquetesConLocalizacion,
-            'ctx'                    => $ctx,
+        // 10) Retornar vista
+        return view('mapa_paquetes.mapaLocalizaciones', [
+            'obras'                     => $obras,
+            'obraActualId'              => $obraActualId,
+            'cliente'                   => $cliente,
+            'dimensiones'               => $dimensiones,
+            'numeroSectores'            => $numeroSectores,
+            'columnasVista'             => $columnasVista,
+            'filasVista'                => $filasVista,
+            'localizacionesMaquinas'    => $localizacionesMaquinas,
+            'localizacionesZonas'       => $localizacionesZonas,
+            'paquetesConLocalizacion'   => $paquetesConLocalizacion,
+            'ctx'                       => $ctx,
         ]);
-    }
-
-    //------------------------------------------------------------------------------------ OBTENER PAQUETES CON LOCALIZACION()
-    /**
-     * Obtiene todos los paquetes que tienen localización asignada
-     * y calcula sus dimensiones basándose en los elementos que contienen
-     * 
-     * @param Obra|null $obra La obra activa
-     * @return \Illuminate\Support\Collection
-     */
-    private function obtenerPaquetesConLocalizacion($obra)
-    {
-        if (!$obra) {
-            return collect();
-        }
-
-        // Obtener todos los paquetes de la nave que tienen localización
-        $paquetes = Paquete::with([
-            'localizacionPaquete', // Relación con la ubicación en el mapa
-            'etiquetas.elementos'  // Etiquetas y sus elementos para calcular dimensiones
-        ])
-        ->where('nave_id', $obra->id)
-        ->whereHas('localizacionPaquete') // Solo paquetes con localización asignada
-        ->get();
-
-        return $paquetes->map(function ($paquete) {
-            $loc = $paquete->localizacionPaquete;
-            
-            // Calcular dimensiones del paquete basándose en sus elementos
-            $dimensiones = $this->calcularDimensionesPaquete($paquete);
-
-            return [
-                'id'              => (int) $paquete->id,
-                'codigo'          => (string) $paquete->codigo,
-                'peso'            => (float) $paquete->peso,
-                'x1'              => (int) $loc->x1,
-                'y1'              => (int) $loc->y1,
-                'x2'              => (int) $loc->x2,
-                'y2'              => (int) $loc->y2,
-                'ancho_celdas'    => (int) ($loc->x2 - $loc->x1 + 1),
-                'alto_celdas'     => (int) ($loc->y2 - $loc->y1 + 1),
-                'tipo_contenido'  => $dimensiones['tipo'], // 'barras', 'estribos' o 'mixto'
-                'longitud_maxima' => $dimensiones['longitud_maxima'], // Para orientación
-                'cantidad_elementos' => $dimensiones['cantidad'],
-            ];
-        })->values();
-    }
-
-    //------------------------------------------------------------------------------------ CALCULAR DIMENSIONES PAQUETE()
-    /**
-     * Calcula las dimensiones que debe tener un paquete en el mapa
-     * basándose en los elementos (barras/estribos) que contiene
-     * 
-     * @param Paquete $paquete
-     * @return array ['tipo' => string, 'longitud_maxima' => float, 'cantidad' => int]
-     */
-    private function calcularDimensionesPaquete($paquete)
-    {
-        $tieneBarras = false;
-        $tieneEstribos = false;
-        $longitudMaxima = 0;
-        $cantidadTotal = 0;
-
-        // Recorrer todas las etiquetas del paquete
-        foreach ($paquete->etiquetas as $etiqueta) {
-            foreach ($etiqueta->elementos as $elemento) {
-                $cantidadTotal++;
-
-                // Detectar tipo de elemento por su figura o dimensiones
-                // Los estribos suelen ser elementos más pequeños y con forma específica
-                if ($this->esEstribo($elemento)) {
-                    $tieneEstribos = true;
-                } else {
-                    $tieneBarras = true;
-                    // Para barras, guardamos la longitud máxima para orientar el rectángulo
-                    $longitudMaxima = max($longitudMaxima, (float) $elemento->longitud);
-                }
-            }
-        }
-
-        // Determinar tipo de contenido
-        $tipo = 'mixto';
-        if ($tieneBarras && !$tieneEstribos) {
-            $tipo = 'barras';
-        } elseif ($tieneEstribos && !$tieneBarras) {
-            $tipo = 'estribos';
-        }
-
-        return [
-            'tipo'             => $tipo,
-            'longitud_maxima'  => $longitudMaxima,
-            'cantidad'         => $cantidadTotal,
-        ];
-    }
-
-    //------------------------------------------------------------------------------------ ES ESTRIBO()
-    /**
-     * Determina si un elemento es un estribo basándose en sus características
-     * 
-     * @param mixed $elemento
-     * @return bool
-     */
-    private function esEstribo($elemento)
-    {
-        // Los estribos normalmente tienen una figura específica
-        // o longitudes/diámetros menores que las barras
-        if (isset($elemento->figura)) {
-            $figura = strtolower($elemento->figura);
-            // Añade aquí las figuras que identifiquen estribos en tu sistema
-            return in_array($figura, ['estribo', 'cerco', 'u', 'l']);
-        }
-
-        // Alternativa: detectar por dimensiones (estribos suelen ser < 3m)
-        if (isset($elemento->longitud)) {
-            return (float) $elemento->longitud < 3.0;
-        }
-
-        return false;
-    }
-
-    //------------------------------------------------------------------------------------ GUARDAR LOCALIZACION PAQUETE()
-    /**
-     * Guarda o actualiza la localización de un paquete en el mapa
-     * 
-     * @param Request $request
-     * @return \Illuminate\Http\JsonResponse
-     */
-    public function guardarLocalizacionPaquete(Request $request)
-    {
-        // Validar datos recibidos
-        $validator = Validator::make($request->all(), [
-            'paquete_id' => 'required|integer|exists:paquetes,id',
-            'x1'         => 'required|integer|min:1',
-            'y1'         => 'required|integer|min:1',
-            'x2'         => 'required|integer|min:1',
-            'y2'         => 'required|integer|min:1',
-            'nave_id'    => 'required|integer|exists:obras,id',
-        ], [
-            'paquete_id.required' => 'Debe indicar el paquete.',
-            'paquete_id.exists'   => 'El paquete indicado no existe.',
-            'nave_id.required'    => 'Debe indicar la nave.',
-            'nave_id.exists'      => 'La nave indicada no existe.',
-        ]);
-
-        if ($validator->fails()) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Errores de validación.',
-                'errors'  => $validator->errors()
-            ], 422);
-        }
-
-        try {
-            // Normalizar coordenadas (asegurar que x1 < x2 y y1 < y2)
-            $x1 = min($request->x1, $request->x2);
-            $x2 = max($request->x1, $request->x2);
-            $y1 = min($request->y1, $request->y2);
-            $y2 = max($request->y1, $request->y2);
-
-            // Verificar si ya existe una localización para este paquete
-            $localizacion = LocalizacionPaquete::where('paquete_id', $request->paquete_id)->first();
-
-            if ($localizacion) {
-                // Actualizar localización existente
-                $localizacion->update([
-                    'x1' => $x1,
-                    'y1' => $y1,
-                    'x2' => $x2,
-                    'y2' => $y2,
-                ]);
-                $mensaje = 'Localización del paquete actualizada correctamente.';
-            } else {
-                // Crear nueva localización
-                $localizacion = LocalizacionPaquete::create([
-                    'paquete_id' => $request->paquete_id,
-                    'x1'         => $x1,
-                    'y1'         => $y1,
-                    'x2'         => $x2,
-                    'y2'         => $y2,
-                ]);
-                $mensaje = 'Localización del paquete guardada correctamente.';
-            }
-
-            return response()->json([
-                'success'      => true,
-                'message'      => $mensaje,
-                'localizacion' => $localizacion,
-            ], 200);
-
-        } catch (\Throwable $e) {
-            Log::error('Error al guardar localización de paquete', [
-                'error' => $e->getMessage(),
-                'paquete_id' => $request->paquete_id,
-            ]);
-
-            return response()->json([
-                'success' => false,
-                'message' => 'Error al guardar la localización del paquete.',
-            ], 500);
-        }
     }
 }
