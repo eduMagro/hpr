@@ -3,24 +3,205 @@
     <x-menu.planillas />
     <div class="w-full px-6 py-4">
         <div class="flex flex-wrap items-center gap-x-4 gap-y-2 mb-4">
-            <!-- Formulario de importación -->
-            <!-- Formulario de importación -->
-            <form method="POST" action="{{ route('planillas.crearImport') }}" enctype="multipart/form-data"
-                x-data="{ cargando: false }" x-on:submit="cargando = true" x-init="$watch('cargando', value => document.body.style.cursor = value ? 'wait' : 'default')"
-                class="form-cargando flex items-center gap-2 relative">
 
-                @csrf
+            {{-- Botón y modal: igual que antes --}}
+            <button type="button" id="btn-abrir-import"
+                class="px-4 py-2 rounded bg-blue-600 hover:bg-blue-700 text-white font-bold">
+                Importar planillas
+            </button>
 
-                {{-- Campo de archivo --}}
-                <x-tabla.input type="file" name="file" id="file" class="file:mr-2" />
+            <div id="modal-import" class="fixed inset-0 z-[60] hidden">
+                <div id="modal-import-overlay" class="absolute inset-0 bg-black/50"></div>
+                <div class="relative mx-auto mt-24 bg-white rounded-lg shadow-xl w-[95%] max-w-md p-5">
+                    <h3 class="text-lg font-semibold mb-3">Importar planillas
+                    </h3>
+                    <p class="text-sm text-gray-600 mb-4">
+                        Selecciona el archivo y el <b>día de aprobación</b>.
+                        La <b>fecha estimada de entrega</b> = <b>aprobación + 7
+                            días</b>.
+                    </p>
 
-                {{-- Botón --}}
-                <x-boton-submit texto="Importar" color="blue" />
+                    <form id="form-import-modal" method="POST" action="{{ route('planillas.crearImport') }}"
+                        enctype="multipart/form-data">
+                        @csrf
 
-                {{-- Overlay bloqueante --}}
-                <div x-show="cargando" x-transition.opacity class="fixed inset-0 bg-black/0 z-50" style="cursor: wait"
-                    x-cloak></div>
-            </form>
+                        <input type="hidden" name="import_id" id="import_id">
+
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Archivo
+                            (.xlsx / .xls)</label>
+                        <input type="file" name="file" id="file" accept=".xlsx,.xls"
+                            class="w-full border rounded px-3 py-2 mb-4" required>
+
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Día
+                            de aprobación</label>
+                        <input type="date" name="fecha_aprobacion" id="fecha_aprobacion"
+                            class="w-full border rounded px-3 py-2 mb-4" required>
+
+                        {{-- Barra de progreso --}}
+                        <div id="import-progress-wrap" class="hidden mb-3">
+                            <div class="flex justify-between text-sm mb-1">
+                                <span id="import-progress-text" class="text-gray-700">Progreso</span>
+                                <span id="import-progress-percent" class="text-gray-500">0%</span>
+                            </div>
+                            <div class="w-full bg-gray-200 rounded h-3 overflow-hidden">
+                                <div id="import-progress-bar" class="h-3 bg-blue-600 transition-all duration-200"
+                                    style="width:0%"></div>
+                            </div>
+                            <p id="import-progress-msg" class="text-xs text-gray-500 mt-1"></p>
+                        </div>
+
+                        <div class="flex justify-end gap-2 pt-2">
+                            <button type="button" id="btn-cancelar-import"
+                                class="px-4 py-2 rounded bg-gray-200 hover:bg-gray-300">
+                                Cancelar
+                            </button>
+                            <button type="submit" id="btn-confirmar-import"
+                                class="px-4 py-2 rounded bg-blue-600 hover:bg-blue-700 text-white">
+                                Confirmar e importar
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <script>
+                (function() {
+                    const btnAbrir = document.getElementById('btn-abrir-import');
+                    const modal = document.getElementById('modal-import');
+                    const overlay = document.getElementById('modal-import-overlay');
+                    const btnCancel = document.getElementById('btn-cancelar-import');
+                    const form = document.getElementById('form-import-modal');
+                    const inputFecha = document.getElementById('fecha_aprobacion');
+
+                    const wrap = document.getElementById('import-progress-wrap');
+                    const bar = document.getElementById('import-progress-bar');
+                    const pct = document.getElementById('import-progress-percent');
+                    const msg = document.getElementById('import-progress-msg');
+                    const txt = document.getElementById('import-progress-text');
+                    const btnSend = document.getElementById('btn-confirmar-import');
+                    const importIdInput = document.getElementById('import_id');
+
+                    function abrir() {
+                        modal.classList.remove('hidden');
+                    }
+
+                    function cerrar() {
+                        modal.classList.add('hidden');
+                    }
+
+                    const hoy = new Date().toISOString().split('T')[0];
+                    inputFecha.value = hoy;
+                    inputFecha.max = hoy;
+
+                    btnAbrir.addEventListener('click', abrir);
+                    overlay.addEventListener('click', cerrar);
+                    btnCancel.addEventListener('click', cerrar);
+
+                    function uuidv4() {
+                        // navegador moderno
+                        if (crypto?.randomUUID) return crypto.randomUUID();
+                        // fallback
+                        return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g,
+                            c => {
+                                const r = Math.random() * 16 | 0,
+                                    v = c === 'x' ? r : (r & 0x3 | 0x8);
+                                return v.toString(16);
+                            });
+                    }
+
+                    let pollTimer = null;
+
+                    function startPolling(importId) {
+                        wrap.classList.remove('hidden');
+                        txt.textContent = 'Importando...';
+                        msg.textContent = 'Procesando filas del Excel...';
+                        const url =
+                            `/api/planillas/import/progress/${encodeURIComponent(importId)}`;
+                        pollTimer = setInterval(async () => {
+                            try {
+                                const res = await fetch(url, {
+                                    cache: 'no-store'
+                                });
+                                if (!res.ok) return;
+                                const data = await res.json();
+                                const percent = Math.min(100, Math.max(0,
+                                    Math.round(data.percent ?? 0)));
+                                bar.style.width = percent + '%';
+                                pct.textContent = percent + '%';
+                                msg.textContent = data.message ?? '';
+
+                                if (data.status === 'error') {
+                                    clearInterval(pollTimer);
+                                    txt.textContent = 'Error';
+                                    bar.classList.remove('bg-blue-600');
+                                    bar.classList.add('bg-red-600');
+                                    btnSend.disabled = false;
+                                }
+                                if (data.status === 'done' || percent >=
+                                    100) {
+                                    clearInterval(pollTimer);
+                                    txt.textContent = 'Completado';
+                                    bar.style.width = '100%';
+                                    pct.textContent = '100%';
+                                    msg.textContent =
+                                        'Importación finalizada.';
+                                    // Opcional: refrescar la página para ver resultados
+                                    setTimeout(() => window.location
+                                        .reload(), 800);
+                                }
+                            } catch (e) {
+                                /* silencioso */
+                            }
+                        }, 600);
+                    }
+
+                    form.addEventListener('submit', async function(ev) {
+                        ev.preventDefault();
+                        const importId = uuidv4();
+                        importIdInput.value = importId;
+                        startPolling(importId);
+                        btnSend.disabled = true;
+
+                        const fd = new FormData(form);
+                        try {
+                            const res = await fetch(form.action, {
+                                method: 'POST',
+                                body: fd,
+                                headers: {
+                                    'X-Requested-With': 'XMLHttpRequest'
+                                }
+                            });
+
+                            if (!res.ok) {
+                                let errMsg =
+                                    'No se pudo iniciar/terminar la importación.';
+                                try {
+                                    const j = await res.json();
+                                    if (j?.message) errMsg = j.message;
+                                } catch {}
+                                clearInterval(pollTimer);
+                                wrap.classList.remove('hidden');
+                                txt.textContent = 'Error';
+                                bar.classList.remove('bg-blue-600');
+                                bar.classList.add('bg-red-600');
+                                msg.textContent =
+                                    errMsg; // ← muestra el motivo real
+                                btnSend.disabled = false;
+                            }
+                        } catch (e) {
+                            clearInterval(pollTimer);
+                            wrap.classList.remove('hidden');
+                            txt.textContent = 'Error';
+                            bar.classList.remove('bg-blue-600');
+                            bar.classList.add('bg-red-600');
+                            msg.textContent =
+                                'Fallo de red durante la importación.';
+                            btnSend.disabled = false;
+                        }
+                    });
+                })();
+            </script>
+
 
             <style>
                 .cursor-espera * {
@@ -41,22 +222,25 @@
         </div>
 
         <!-- Badge de planillas sin revisar -->
-        @if($planillasSinRevisar > 0)
+        @if ($planillasSinRevisar > 0)
             <div class="mb-4 bg-yellow-100 border-l-4 border-yellow-500 p-4 rounded-r-lg shadow">
                 <div class="flex items-center justify-between">
                     <div class="flex items-center gap-3">
                         <span class="text-3xl">⚠️</span>
                         <div>
                             <h3 class="text-lg font-bold text-yellow-800">
-                                {{ $planillasSinRevisar }} {{ $planillasSinRevisar === 1 ? 'planilla pendiente' : 'planillas pendientes' }} de revisión
+                                {{ $planillasSinRevisar }}
+                                {{ $planillasSinRevisar === 1 ? 'planilla pendiente' : 'planillas pendientes' }} de
+                                revisión
                             </h3>
                             <p class="text-sm text-yellow-700">
-                                Las planillas sin revisar aparecen en <strong>GRIS</strong> en el calendario de producción
+                                Las planillas sin revisar aparecen en <strong>GRIS</strong> en el calendario de
+                                producción
                             </p>
                         </div>
                     </div>
                     <a href="{{ route('planillas.index', ['revisada' => '0']) }}"
-                       class="bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-2 px-4 rounded transition-colors">
+                        class="bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-2 px-4 rounded transition-colors">
                         Ver planillas sin revisar
                     </a>
                 </div>
@@ -86,7 +270,7 @@
                         <th class="p-2 border">{!! $ordenables['fecha_inicio'] !!}</th>
                         <th class="p-2 border">{!! $ordenables['fecha_finalizacion'] !!}</th>
                         <th class="p-2 border">{!! $ordenables['fecha_importacion'] ?? '' !!}</th>
-                        <th class="p-2 border">{!! $ordenables['fecha_entrega'] !!}</th>
+                        <th class="p-2 border">{!! $ordenables['fecha_estimada_entrega'] !!}</th>
                         <th class="p-2 border">{!! $ordenables['nombre_completo'] !!}</th>
                         <th class="p-2 border">{!! $ordenables['revisada'] !!}</th>
                         <th class="p-2 border">Revisada por</th>
@@ -160,7 +344,11 @@
                                 <x-tabla.input name="nombre_completo" value="{{ request('nombre_completo') }}" />
                             </th>
                             <th class="p-1 border">
-                                <x-tabla.select name="revisada" :options="['' => 'Todas', '1' => 'Sí', '0' => 'No']" :selected="request()->query('revisada', '')" />
+                                <x-tabla.select name="revisada" :options="[
+                                    '' => 'Todas',
+                                    '1' => 'Sí',
+                                    '0' => 'No',
+                                ]" :selected="request()->query('revisada', '')" />
                             </th>
 
                             <th class="p-1 border"></th>
@@ -311,9 +499,12 @@
                                     <span x-text="planilla.estado.toUpperCase()"></span>
                                 </template>
                                 <select x-show="editando" x-model="planilla.estado" class="form-select w-full">
-                                    <option value="pendiente">Pendiente</option>
-                                    <option value="fabricando">Fabricando</option>
-                                    <option value="completada">Completada</option>
+                                    <option value="pendiente">Pendiente
+                                    </option>
+                                    <option value="fabricando">Fabricando
+                                    </option>
+                                    <option value="completada">Completada
+                                    </option>
                                 </select>
                             </td>
 
@@ -359,7 +550,9 @@
                             <td class="p-2 text-center border">
                                 <template x-if="!editando">
                                     <span
-                                        :class="planilla.revisada ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'"
+                                        :class="planilla.revisada ?
+                                            'bg-green-100 text-green-700' :
+                                            'bg-gray-100 text-gray-600'"
                                         class="px-2 py-1 rounded text-[11px] font-semibold inline-flex items-center gap-1">
                                         <span x-text="planilla.revisada ? 'Sí' : 'No'"></span>
                                     </span>
@@ -432,19 +625,6 @@
                                                 </svg>
                                             </button> --}}
 
-                                            <!-- Botón Ver Elementos -->
-                                            <a href="{{ route('elementos.index', ['planilla_id' => $planilla->id]) }}"
-                                                target="_blank"
-                                                class="w-6 h-6 bg-purple-100 text-purple-600 rounded hover:bg-purple-200 flex items-center justify-center"
-                                                title="Ver elementos de esta planilla (se abre en nueva pestaña)">
-                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4"
-                                                    fill="none" viewBox="0 0 24 24" stroke="currentColor"
-                                                    stroke-width="2">
-                                                    <path stroke-linecap="round" stroke-linejoin="round"
-                                                        d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
-                                                </svg>
-                                            </a>
-
                                             <x-tabla.boton-editar @click="editando = true" x-show="!editando" />
                                             <x-tabla.boton-ver :href="route('planillas.show', $planilla->id)" />
                                             <x-tabla.boton-eliminar :action="route('planillas.destroy', $planilla->id)" />
@@ -456,7 +636,8 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="15" class="text-center py-4 text-gray-500">No hay planillas
+                            <td colspan="15" class="text-center py-4 text-gray-500">No hay
+                                planillas
                                 disponibles.
                             </td>
                         </tr>
@@ -466,9 +647,11 @@
                     <tr class="bg-gradient-to-r from-blue-50 to-blue-100 border-t border-blue-300">
                         <td colspan="100%" class="px-6 py-3" style="padding: 0" colspan="999">
                             <div class="flex justify-end items-center gap-4 px-6 py-3 text-sm text-gray-700">
-                                <span class="font-semibold">Total peso filtrado:</span>
+                                <span class="font-semibold">Total peso
+                                    filtrado:</span>
                                 <span class="text-base font-bold text-blue-800">
-                                    {{ number_format($totalPesoFiltrado, 2, ',', '.') }} kg
+                                    {{ number_format($totalPesoFiltrado, 2, ',', '.') }}
+                                    kg
                                 </span>
                             </div>
                         </td>
@@ -480,7 +663,8 @@
             </table>
             <!-- Modal Reimportar Planilla -->
             <div @keydown.escape.window="modalReimportar = false">
-                <div x-show="modalReimportar" class="fixed inset-0 bg-black bg-opacity-50 z-40" x-cloak></div>
+                <div x-show="modalReimportar" class="fixed inset-0 bg-black bg-opacity-50 z-40" x-cloak>
+                </div>
 
                 <div x-show="modalReimportar" x-transition:enter="transition ease-out duration-300"
                     x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100"
@@ -490,7 +674,8 @@
                     x-cloak>
 
                     <div class="px-6 py-4">
-                        <h2 class="text-lg font-bold text-gray-800 mb-4">📤 Añade modificaciones del cliente</h2>
+                        <h2 class="text-lg font-bold text-gray-800 mb-4">📤
+                            Añade modificaciones del cliente</h2>
 
                         <form method="POST" :action="`/planillas/${planillaId}/reimportar`"
                             enctype="multipart/form-data" @submit="modalReimportar = false" class="space-y-4">
@@ -531,28 +716,36 @@
                     method: 'PUT',
                     headers: {
                         'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                        'X-CSRF-TOKEN': document.querySelector(
+                            'meta[name="csrf-token"]').getAttribute(
+                            'content')
                     },
                     body: JSON.stringify(planilla)
                 })
                 .then(async response => {
-                    const contentType = response.headers.get('content-type');
+                    const contentType = response.headers.get(
+                        'content-type');
                     let data = {};
 
-                    if (contentType && contentType.includes('application/json')) {
+                    if (contentType && contentType.includes(
+                            'application/json')) {
                         data = await response.json();
                     } else {
                         const text = await response.text();
-                        throw new Error("El servidor devolvió una respuesta inesperada: " + text.slice(0,
-                            100)); // corta para no saturar
+                        throw new Error(
+                            "El servidor devolvió una respuesta inesperada: " +
+                            text.slice(0,
+                                100)); // corta para no saturar
                     }
 
                     if (response.ok && data.success) {
                         window.location.reload();
                     } else {
-                        let errorMsg = data.message || "Ha ocurrido un error inesperado.";
+                        let errorMsg = data.message ||
+                            "Ha ocurrido un error inesperado.";
                         if (data.errors) {
-                            errorMsg = Object.values(data.errors).flat().join("<br>");
+                            errorMsg = Object.values(data.errors).flat()
+                                .join("<br>");
                         }
 
                         Swal.fire({
@@ -563,7 +756,8 @@
                             showCancelButton: true,
                             cancelButtonText: "Reportar Error"
                         }).then((result) => {
-                            if (result.dismiss === Swal.DismissReason.cancel) {
+                            if (result.dismiss === Swal
+                                .DismissReason.cancel) {
                                 notificarProgramador(errorMsg);
                             }
                         });
@@ -574,7 +768,8 @@
                     Swal.fire({
                         icon: "error",
                         title: "Error de conexión",
-                        text: error.message || "No se pudo actualizar la planilla. Inténtalo nuevamente.",
+                        text: error.message ||
+                            "No se pudo actualizar la planilla. Inténtalo nuevamente.",
                         confirmButtonText: "OK"
                     });
                 });
@@ -594,17 +789,21 @@
             }).then(async (result) => {
                 if (result.isConfirmed) {
                     try {
-                        const res = await fetch('/planillas/completar', {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')
-                                    .getAttribute('content')
-                            },
-                            body: JSON.stringify({
-                                id: planillaId
-                            })
-                        });
+                        const res = await fetch(
+                            '/planillas/completar', {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'X-CSRF-TOKEN': document
+                                        .querySelector(
+                                            'meta[name="csrf-token"]'
+                                        )
+                                        .getAttribute('content')
+                                },
+                                body: JSON.stringify({
+                                    id: planillaId
+                                })
+                            });
 
                         const data = await res.json();
 
@@ -619,11 +818,15 @@
                                 location.reload();
                             });
                         } else {
-                            Swal.fire('Error', data.message || 'Error al completar la planilla', 'error');
+                            Swal.fire('Error', data.message ||
+                                'Error al completar la planilla',
+                                'error');
                         }
                     } catch (error) {
                         console.error(error);
-                        Swal.fire('Error', 'Error de conexión al completar la planilla', 'error');
+                        Swal.fire('Error',
+                            'Error de conexión al completar la planilla',
+                            'error');
                     }
                 }
             });

@@ -563,41 +563,16 @@ async function guardarAsignacionesPaquetes(asignaciones, calendar) {
 
 /* ===================== Comentar salida ===================== */
 async function comentarSalida(salidaId, comentarioActual, calendar) {
-    const { value, isConfirmed } = await Swal.fire({
-        title: "✏️ Agregar comentario",
-        input: "textarea",
-        inputValue: comentarioActual || "",
-        inputPlaceholder: "Escribe aquí…",
-        showCancelButton: true,
-        confirmButtonText: "💾 Guardar",
-    });
-    if (!isConfirmed) return;
-
-    const url = (window.AppSalidas?.routes?.comentario || "").replace(
-        "__ID__",
-        salidaId
-    );
+    // Cerrar el menú contextual si está abierto
     try {
-        const res = await fetch(url, {
-            method: "PUT",
-            headers: {
-                "Content-Type": "application/json",
-                "X-CSRF-TOKEN": window.AppSalidas?.csrf,
-            },
-            body: JSON.stringify({ comentario: value }),
-        });
-        const data = await res.json();
-        await Swal.fire(
-            data.success ? "" : "⚠️",
-            data.message ||
-                (data.success ? "Comentario guardado" : "No se pudo guardar"),
-            data.success ? "success" : "warning"
-        );
-        if (data.success && calendar) calendar.refetchEvents();
-    } catch (err) {
-        console.error(err);
-        Swal.fire("", "Ocurrió un error al guardar", "error");
-    }
+        closeMenu();
+    } catch (_) {}
+
+    // Disparar evento de Livewire para abrir el modal
+    window.Livewire.dispatch('abrirComentario', { salidaId });
+
+    // Guardar referencia al calendario para actualización posterior
+    window._calendarRef = calendar;
 }
 
 /* ===================== Asignar código SAGE ===================== */
@@ -1221,3 +1196,42 @@ function hacerDraggableSwal(handleSelector = ".swal2-title", remember = false) {
 
     handle.addEventListener("pointerdown", onPointerDown);
 }
+
+/* ===================== Livewire Event Listeners ===================== */
+// Escuchar el evento comentarioGuardado de Livewire
+document.addEventListener('DOMContentLoaded', function() {
+    window.addEventListener('comentarioGuardado', (event) => {
+        const { salidaId, comentario } = event.detail;
+
+        // Obtener referencia al calendario
+        const calendar = window._calendarRef;
+
+        if (calendar) {
+            // Actualizar solo el evento específico sin recargar todo el calendario
+            const calendarEvent = calendar.getEventById(`salida-${salidaId}`);
+
+            if (calendarEvent) {
+                // Actualizar las propiedades extendidas del evento
+                calendarEvent.setExtendedProp('comentario', comentario);
+
+                // Si el evento tiene un tooltip, actualizarlo
+                if (calendarEvent._def && calendarEvent._def.extendedProps) {
+                    calendarEvent._def.extendedProps.comentario = comentario;
+                }
+            }
+
+            // Mostrar notificación de éxito
+            if (typeof Swal !== 'undefined') {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Comentario guardado',
+                    text: 'El comentario se ha guardado correctamente',
+                    timer: 2000,
+                    showConfirmButton: false,
+                    toast: true,
+                    position: 'top-end'
+                });
+            }
+        }
+    });
+});

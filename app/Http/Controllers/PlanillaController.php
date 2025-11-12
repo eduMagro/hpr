@@ -19,7 +19,7 @@ use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Validation\ValidationException;
 use Exception;
 use Illuminate\Support\Str;
-use Carbon\Carbon;
+use Illuminate\Support\Carbon;
 use App\Services\AsignacionMaquinaIAService;
 use App\Models\OrdenPlanilla;
 use App\Services\PlanillaService;
@@ -31,6 +31,7 @@ use App\Services\PlanillaImport\PlanillaImportService;
 use App\Services\OrdenPlanillaService;
 use Illuminate\Support\Facades\Schema;
 use App\Services\PlanillaColaService;
+use App\Services\ImportProgress;
 
 class PlanillaController extends Controller
 {
@@ -147,6 +148,7 @@ class PlanillaController extends Controller
         $sortBy = $request->input('sort', 'created_at');
         $order  = $request->input('order', 'desc');
 
+        // aplicarOrdenamiento(): columnasPermitidas
         $columnasPermitidas = [
             'codigo',
             'codigo_cliente',
@@ -164,10 +166,11 @@ class PlanillaController extends Controller
             'fecha_inicio',
             'fecha_finalizacion',
             'fecha_importacion',
-            'fecha_entrega',
+            'fecha_estimada_entrega',
             'nombre_completo',
-            'created_at', // por si quieres permitir también esta
+            'created_at',
         ];
+
 
         if (!in_array($sortBy, $columnasPermitidas, true)) {
             $sortBy = 'fecha_estimada_entrega'; // Fallback seguro
@@ -365,7 +368,7 @@ class PlanillaController extends Controller
                 'fecha_inicio' => $this->getOrdenamiento('fecha_inicio', 'Fecha Inicio'),
                 'fecha_finalizacion' => $this->getOrdenamiento('fecha_finalizacion', 'Fecha Finalización'),
                 'fecha_importacion' => $this->getOrdenamiento('fecha_importacion', 'Fecha Importación'),
-                'fecha_entrega' => $this->getOrdenamiento('fecha_entrega', 'Fecha Entrega'),
+                'fecha_estimada_entrega' => $this->getOrdenamiento('fecha_estimada_entrega', 'Fecha Entrega'), // <- ✅ corregido
                 'nombre_completo' => $this->getOrdenamiento('nombre_completo', 'Usuario'),
                 'revisada' => $this->getOrdenamiento('revisada', 'Revisada'),
             ];
@@ -552,58 +555,51 @@ class PlanillaController extends Controller
     // Método import() actualizado con nombre de archivo
     public function import(Request $request, PlanillaImportService $importService)
     {
-        // 0) Seguridad básica
         abort_unless(auth()->check() && auth()->user()->rol === 'oficina', 403);
 
-        // 1) Validación del archivo
-        $request->validate([
-            'file' => 'required|file|mimes:xlsx,xls'
-        ], [
-            'file.required' => 'Debes seleccionar un archivo.',
-            'file.mimes' => 'El archivo debe ser .xlsx o .xls',
-        ]);
-
-        $file = $request->file('file');
-        $nombreArchivo = $file->getClientOriginalName(); // ✅ Capturar nombre
-
-        // 2) Delegar todo al servicio de importación
         try {
-            $resultado = $importService->importar($file);
-
-            if ($resultado->esExitoso()) {
-                // ✅ Pasar metadata adicional para el alert
-                $redirect = redirect()
-                    ->route('planillas.index')
-                    ->with('success', $resultado->mensaje())
-                    ->with('import_report', true) // Identificador de reporte de importación
-                    ->with('nombre_archivo', $nombreArchivo); // ✅ Nombre del archivo
-
-                // ✅ Si hay advertencias, indicarlo
-                if ($resultado->tieneAdvertencias()) {
-                    $redirect->with('tiene_advertencias', true);
-                }
-
-                return $redirect;
-            } else {
-                return redirect()
-                    ->back()
-                    ->with('error', $resultado->mensaje())
-                    ->with('nombre_archivo', $nombreArchivo); // ✅ También en errores
-            }
-        } catch (\Throwable $e) {
-            Log::error('❌ Error en importación de planillas', [
-                'archivo' => $nombreArchivo,
-                'error' => $e->getMessage(),
-                'file' => $e->getFile(),
-                'line' => $e->getLine(),
+            $validated = $request->validate([
+                'file'             => 'required|file|mimes:xlsx,xls',
+                'fecha_aprobacion' => 'required|date',
+                'import_id'        => 'required|string',
             ]);
 
-            return redirect()
-                ->back()
-                ->with('error', 'Error durante la importación: ' . $e->getMessage())
-                ->with('nombre_archivo', $nombreArchivo); // ✅ También en excepciones
+            $file            = $validated['file'];
+            $nombreArchivo   = $file->getClientOriginalName();
+            $fechaAprobacion = \Illuminate\Support\Carbon::parse($validated['fecha_aprobacion'])->startOfDay();
+            $importId        = $validated['import_id'];
+
+            ImportProgress::init($importId, 1, 'Leyendo archivo...');
+
+            $resultado = $importService->importar($file, fechaAprobacion: $fechaAprobacion, importId: $importId);
+
+            if ($request->ajax()) {
+                return response()->json([
+                    'success' => $resultado->esExitoso(),
+                    'message' => $resultado->mensaje(),
+                ], $resultado->esExitoso() ? 200 : 422);
+            }
+
+            // (opcional) camino de fallback para navegadores sin fetch
+            return $resultado->esExitoso()
+                ? redirect()->route('planillas.index')->with('success', $resultado->mensaje())
+                : back()->with('error', $resultado->mensaje())->with('nombre_archivo', $nombreArchivo);
+        } catch (\Throwable $e) {
+            // ¡Muy útil en dev para ver el motivo del 500!
+            ImportProgress::setError($request->input('import_id', 'n/a'), $e->getMessage());
+
+            if ($request->ajax()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => $e->getMessage(), // en prod puedes poner mensaje genérico
+                ], 500);
+            }
+
+            return back()->with('error', 'Error durante la importación: ' . $e->getMessage());
         }
     }
+
+
     //-----------------------------------------------------------------------------------------------------
     //-----------------------------------------------------------------------------------------------------
     //-----------------------------------------------------------------------------------------------------
@@ -1149,4 +1145,9 @@ class PlanillaController extends Controller
         return redirect()->back()->with('success', 'Planilla marcada como revisada correctamente');
     }
 
+
+    public function importProgress(string $id)
+    {
+        return response()->json(ImportProgress::get($id));
+    }
 }

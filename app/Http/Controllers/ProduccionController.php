@@ -99,6 +99,7 @@ class ProduccionController extends Controller
                 return [
                     'id' => str_pad($maquina->id, 3, '0', STR_PAD_LEFT),
                     'title' => $maquina->codigo,
+                    'orden' => $index,
                     'extendedProps' => [
                         'backgroundColor' => $color,
                         'obra_id' => $maquina->obra_id,
@@ -109,6 +110,7 @@ class ProduccionController extends Controller
         $maquinas->push([
             'id' => 'SIN',
             'title' => 'N/A',
+            'orden' => 9999,
             'extendedProps' => [
                 'backgroundColor' => '#9ca3af',
                 'obra_id' => null,
@@ -353,7 +355,7 @@ class ProduccionController extends Controller
         // Obtener planillas que cambiaron desde el último timestamp
         $planillasActualizadas = Planilla::where('updated_at', '>', $desde)
             ->whereIn('estado', ['pendiente', 'fabricando', 'completada'])
-            ->with(['elementos' => function($q) {
+            ->with(['elementos' => function ($q) {
                 $q->select('id', 'planilla_id', 'estado', 'maquina_id');
             }, 'obra'])
             ->get();
@@ -1348,7 +1350,7 @@ class ProduccionController extends Controller
                                 'cod_obra'       => optional($planilla->obra)->cod_obra ?? '—',
                                 'cliente'        => optional($planilla->obra->cliente)->empresa ?? '—',
                                 'cod_cliente'    => optional($planilla->obra->cliente)->codigo ?? '—',
-                                'codigo_planilla'=> $planilla->codigo_limpio ?? ('Planilla #' . $planilla->id),
+                                'codigo_planilla' => $planilla->codigo_limpio ?? ('Planilla #' . $planilla->id),
                                 'estado'         => $planilla->estado,
                                 'duracion_horas' => round($duracionSegundos / 3600, 2),
                                 'progreso'       => $progreso,

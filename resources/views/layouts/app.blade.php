@@ -44,6 +44,9 @@
     <!-- ✅ FullCalendar (solo si es necesario en esta vista) -->
     @stack('calendar') {{-- así solo lo cargas si lo necesitas --}}
 
+    <!-- Livewire Styles -->
+    @livewireStyles
+
     <style>
         /* Oculta cualquier elemento marcado con x-cloak hasta que Alpine quite el atributo */
         [x-cloak] {
@@ -98,6 +101,9 @@
         </main>
     </div>
     @stack('scripts')
+
+    <!-- Livewire Scripts -->
+    @livewireScripts
 <script src="https://cdn.tailwindcss.com"></script>
     @livewireScripts
 </body>
