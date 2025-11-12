@@ -182,9 +182,43 @@ class MaquinaController extends Controller
                 ->get();
         }
 
-        // 4) Cola de planillas
-        $posicion1 = request()->input('posicion_1', 1); // Por defecto posición 1
-        $posicion2 = request()->input('posicion_2', null); // Por defecto null (no mostrar segunda)
+        // 4) Cola de planillas con lógica de salto de planillas sin revisar
+        $posicion1Request = request()->input('posicion_1', 1);
+        $posicion2Request = request()->input('posicion_2', null);
+
+        // ⚠️ LÓGICA DE SALTO: Buscar primera planilla revisada
+        $ordenesPlanillas = OrdenPlanilla::where('maquina_id', $maquina->id)
+            ->with('planilla')
+            ->orderBy('posicion', 'asc')
+            ->get();
+
+        // Encontrar la primera posición con planilla revisada
+        $posicion1 = null;
+        $posicion2 = null;
+
+        foreach ($ordenesPlanillas as $orden) {
+            if ($orden->planilla && $orden->planilla->revisada) {
+                if (is_null($posicion1)) {
+                    $posicion1 = $orden->posicion;
+                } elseif (is_null($posicion2)) {
+                    $posicion2 = $orden->posicion;
+                    break; // Ya tenemos las dos posiciones
+                }
+            }
+        }
+
+        // Si el usuario especificó posiciones manualmente, respetarlas
+        if ($posicion1Request) {
+            $posicion1 = $posicion1Request;
+        }
+        if ($posicion2Request) {
+            $posicion2 = $posicion2Request;
+        }
+
+        // Si no hay posición 1 válida, usar la primera disponible (aunque no esté revisada)
+        if (is_null($posicion1) && $ordenesPlanillas->isNotEmpty()) {
+            $posicion1 = $ordenesPlanillas->first()->posicion;
+        }
 
         // Filtrar posiciones válidas (mayores a 0)
         $posiciones = collect([$posicion1, $posicion2])
@@ -193,7 +227,7 @@ class MaquinaController extends Controller
             ->unique()
             ->values();
 
-        // 4) Cola de planillas con posiciones específicas
+        // Cola de planillas con posiciones específicas
         [$planillasActivas, $elementosFiltrados, $ordenManual, $posicionesDisponibles] =
             $this->aplicarColaPlanillasPorPosicion($maquina, $elementosMaquina, $posiciones);
 

@@ -39,6 +39,30 @@
 
 
         </div>
+
+        <!-- Badge de planillas sin revisar -->
+        @if($planillasSinRevisar > 0)
+            <div class="mb-4 bg-yellow-100 border-l-4 border-yellow-500 p-4 rounded-r-lg shadow">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-3">
+                        <span class="text-3xl">⚠️</span>
+                        <div>
+                            <h3 class="text-lg font-bold text-yellow-800">
+                                {{ $planillasSinRevisar }} {{ $planillasSinRevisar === 1 ? 'planilla pendiente' : 'planillas pendientes' }} de revisión
+                            </h3>
+                            <p class="text-sm text-yellow-700">
+                                Las planillas sin revisar aparecen en <strong>GRIS</strong> en el calendario de producción
+                            </p>
+                        </div>
+                    </div>
+                    <a href="{{ route('planillas.index', ['revisada' => '0']) }}"
+                       class="bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-2 px-4 rounded transition-colors">
+                        Ver planillas sin revisar
+                    </a>
+                </div>
+            </div>
+        @endif
+
         <x-tabla.filtros-aplicados :filtros="$filtrosActivos" />
         <!-- TABLA DE PLANILLAS -->
         <div x-data="{ modalReimportar: false, planillaId: null }" class="w-full overflow-x-auto bg-white shadow-lg rounded-lg">
@@ -407,6 +431,19 @@
                                                         d="M5 13l4 4L19 7" />
                                                 </svg>
                                             </button> --}}
+
+                                            <!-- Botón Ver Elementos -->
+                                            <a href="{{ route('elementos.index', ['planilla_id' => $planilla->id]) }}"
+                                                target="_blank"
+                                                class="w-6 h-6 bg-purple-100 text-purple-600 rounded hover:bg-purple-200 flex items-center justify-center"
+                                                title="Ver elementos de esta planilla (se abre en nueva pestaña)">
+                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4"
+                                                    fill="none" viewBox="0 0 24 24" stroke="currentColor"
+                                                    stroke-width="2">
+                                                    <path stroke-linecap="round" stroke-linejoin="round"
+                                                        d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+                                                </svg>
+                                            </a>
 
                                             <x-tabla.boton-editar @click="editando = true" x-show="!editando" />
                                             <x-tabla.boton-ver :href="route('planillas.show', $planilla->id)" />

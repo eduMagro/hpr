@@ -185,6 +185,7 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
     Route::get('/produccion/trabajadores', [ProduccionController::class, 'trabajadores'])->name('produccion.verTrabajadores');
     Route::get('/produccion/trabajadores-obra', [ProduccionController::class, 'trabajadoresObra'])->name('produccion.verTrabajadoresObra');
     Route::get('/produccion/maquinas', [ProduccionController::class, 'maquinas'])->name('produccion.verMaquinas');
+    Route::get('/produccion/cargas-maquinas', [ProduccionController::class, 'cargasMaquinas'])->name('produccion.cargasMaquinas');
     //MSR20 BVBS
     Route::get('/maquinas/{maquina}/exportar-bvbs', [MaquinaController::class, 'exportarBVBS'])
         ->name('maquinas.exportar-bvbs');
@@ -219,8 +220,18 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
     // === tratamos PAQUETES en maquinas.show ===
 
     Route::resource('paquetes', PaqueteController::class);
-    Route::resource('etiquetas', EtiquetaController::class);
-    Route::resource('elementos', ElementoController::class);
+
+    // 🔥 RUTA MIGRADA A LIVEWIRE - index ahora usa Livewire (sin recargar página)
+    Route::get('/etiquetas', App\Livewire\EtiquetasTable::class)->name('etiquetas.index');
+
+    // Resto de rutas del resource (show, create, edit, update, destroy)
+    Route::resource('etiquetas', EtiquetaController::class)->except(['index']);
+
+    // 🔥 RUTA MIGRADA A LIVEWIRE - index ahora usa Livewire (sin recargar página)
+    Route::get('/elementos', App\Livewire\ElementosTable::class)->name('elementos.index');
+
+    // Resto de rutas del resource (show, create, edit, update, destroy)
+    Route::resource('elementos', ElementoController::class)->except(['index']);
 
 
     // RUTAS PROVISIONALES
@@ -234,6 +245,7 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
         ->name('paquetes.tamaño');
 
     // === PLANILLAS Y PLANIFICACIÓN ===
+    Route::post('/planillas/{planilla}/marcar-revisada', [PlanillaController::class, 'marcarRevisada'])->name('planillas.marcarRevisada');
     Route::resource('planillas', PlanillaController::class);
     Route::post('planillas/import', [PlanillaController::class, 'import'])->name('planillas.crearImport');
     Route::post('/planillas/reordenar', [ProduccionController::class, 'reordenarPlanillas'])->name('planillas.editarReordenar');
@@ -401,6 +413,10 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
     // === ORDENES PLANILLAS ===
     Route::get('/produccion/OrdenesPlanillas', [App\Http\Controllers\ProduccionController::class, 'verOrdenesPlanillas'])
         ->name('produccion.verOrdenesPlanillas');
+
+    // 🔄 Endpoint para actualizaciones en tiempo real
+    Route::get('/produccion/maquinas/actualizaciones', [App\Http\Controllers\ProduccionController::class, 'obtenerActualizaciones'])
+        ->name('produccion.actualizaciones');
 
     // obtener elementos con js
     Route::get('/api/elementos', [ElementoController::class, 'filtrar']);

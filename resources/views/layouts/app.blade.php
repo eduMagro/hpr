@@ -74,7 +74,7 @@
         }
     </style>
 
-
+    @livewireStyles
 </head>
 
 <body class="font-sans antialiased">
@@ -99,6 +99,7 @@
     </div>
     @stack('scripts')
 <script src="https://cdn.tailwindcss.com"></script>
+    @livewireScripts
 </body>
 
 </html>
