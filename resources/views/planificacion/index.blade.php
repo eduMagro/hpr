@@ -129,6 +129,7 @@
     <link rel="stylesheet" href="{{ asset('css/estilosCalendarioSalidas.css') }}">
     <script type="module" src="{{ asset('js/modules/calendario-salidas/index.js') }}"></script>
 
-
+    <!-- Componente Livewire para comentarios -->
+    @livewire('planificacion.comentario-salida')
 
 </x-app-layout>

@@ -372,7 +372,12 @@ class PlanificacionController extends Controller
         $salida->comentario = $request->comentario;
         $salida->save();
 
-        return response()->json(['success' => true]);
+        return response()->json([
+            'success' => true,
+            'message' => 'Comentario guardado correctamente',
+            'comentario' => $salida->comentario,
+            'salida_id' => $salida->id
+        ]);
     }
 
     public function update(Request $request, $id)

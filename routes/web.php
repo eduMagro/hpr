@@ -238,7 +238,7 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
     Route::post('/planillas/reordenar', [ProduccionController::class, 'reordenarPlanillas'])->name('planillas.editarReordenar');
     Route::resource('planificacion', PlanificacionController::class)->only(['index', 'store', 'update', 'destroy']);
 
-    Route::put('/planificacion/comentario/{id}', [PlanificacionController::class, 'editarGuardarComentario']);
+    Route::put('/planificacion/comentario/{id}', [PlanificacionController::class, 'guardarComentario']);
     Route::post('/planillas/{planilla}/reimportar', [PlanillaController::class, 'reimportar'])->name('planillas.crearReimportar');
     Route::post('/planillas/completar', [PlanillaController::class, 'completar'])->name('planillas.completar');
     Route::get('/planificacion/index', [PlanificacionController::class, 'index'])->name('planificacion.index');
