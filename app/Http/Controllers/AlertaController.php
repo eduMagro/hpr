@@ -199,11 +199,18 @@ class AlertaController extends Controller
         $categoriaNombre = optional($user->categoriaRelacion)->nombre ?? $user->categoria;
         $perPage = $request->input('per_page', 10); // valor por defecto 10
         $perPageTodas = $request->input('per_page_todas', 20); // por defecto 20
-        $alertas = Alerta::whereHas('leidas', function ($q) use ($user) {
-            $q->where('user_id', $user->id);
-        })
-            ->orWhere('user_id_1', $user->id) // permite ver las enviadas por él mismo
-            ->orderBy('created_at', 'desc')
+
+        // SOLO traer mensajes RAÍZ (hilos completos, no respuestas individuales)
+        $alertas = Alerta::whereNull('parent_id') // Solo mensajes raíz
+            ->where(function($query) use ($user) {
+                $query->whereHas('leidas', function ($q) use ($user) {
+                    $q->where('user_id', $user->id);
+                })
+                ->orWhere('user_id_1', $user->id); // permite ver las enviadas por él mismo
+            })
+            ->with(['respuestas', 'usuario1']) // Cargar respuestas y usuario
+            ->withCount('respuestas') // Contar respuestas
+            ->orderBy('updated_at', 'desc') // Ordenar por última actividad
             ->paginate($perPage);
 
 
@@ -222,6 +229,11 @@ class AlertaController extends Controller
             // Añadir versión corta y completa del mensaje
             $alerta->mensaje_completo = $alerta->mensaje;
             $alerta->mensaje_corto = Str::words($alerta->mensaje, 4, '...');
+
+            // Obtener la última respuesta para mostrar actividad reciente
+            $ultimaRespuesta = $alerta->respuestas()->latest('created_at')->first();
+            $alerta->ultima_actividad = $ultimaRespuesta ? $ultimaRespuesta->created_at : $alerta->created_at;
+            $alerta->total_respuestas = $alerta->respuestas_count;
 
             return $alerta;
         });
@@ -617,20 +629,21 @@ $ordenablesAlertas = [];
     /**
      * Construir el hilo de conversación recursivamente
      */
-    private function construirHilo($mensaje, $user)
+    private function construirHilo($mensaje, $user, $incluirMensajeRaiz = true)
     {
         $data = [
             'id' => $mensaje->id,
             'mensaje' => $mensaje->mensaje,
             'created_at' => $mensaje->created_at->format('d/m/Y H:i'),
             'user_id_1' => $mensaje->user_id_1,
-            'emisor' => $mensaje->usuario1 ? $mensaje->usuario1->name : 'Usuario desconocido',
+            'emisor' => $mensaje->usuario1 ? ($mensaje->usuario1->nombre_completo ?? $mensaje->usuario1->name) : 'Usuario desconocido',
             'es_propio' => $mensaje->user_id_1 === $user->id,
+            'es_raiz' => $mensaje->parent_id === null,
             'respuestas' => []
         ];
 
         foreach ($mensaje->respuestas as $respuesta) {
-            $data['respuestas'][] = $this->construirHilo($respuesta, $user);
+            $data['respuestas'][] = $this->construirHilo($respuesta, $user, false);
         }
 
         return $data;
