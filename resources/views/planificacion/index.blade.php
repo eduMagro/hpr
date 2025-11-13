@@ -3,6 +3,20 @@
 
     <x-menu.salidas.salidas />
 
+    <!-- Botones de navegación -->
+    <div class="mb-6 border-b border-gray-200">
+        <div class="flex space-x-2">
+            <a href="{{ route('produccion.verMaquinas') }}"
+               class="px-6 py-3 font-semibold text-gray-600 hover:text-blue-600 hover:bg-gray-50 border-b-2 border-transparent transition-colors">
+                Producción/Máquinas
+            </a>
+            <a href="{{ route('planificacion.index') }}"
+               class="px-6 py-3 font-semibold text-blue-600 border-b-2 border-blue-600 bg-blue-50 transition-colors">
+                Planificación
+            </a>
+        </div>
+    </div>
+
     <div class="py-6">
         <!-- Contenedor del Calendario -->
         <div class="w-full bg-white">
@@ -79,6 +93,10 @@
             'routes' => [
                 'planificacion' => url('/planificacion'),
                 'crearSalidaDesdeCalendario' => route('planificacion.crearSalidaDesdeCalendario'),
+                'crearSalidasVaciasDesdeCalendario' => route('planificacion.crearSalidasVaciasDesdeCalendario'),
+                'informacionGestionPaquetes' => route('planificacion.informacionGestionPaquetes'),
+                'obtenerSalidasPorPlanillas' => route('planificacion.obtenerSalidasPorPlanillas'),
+                'guardarAsignacionesPaquetes' => route('planificacion.guardarAsignacionesPaquetes'),
                 'comentario' => url('/planificacion/comentario/__ID__'),
                 // para update por drag&drop: PUT /planificacion/{id}
                 'updateItem' => url('/planificacion/__ID__'),
@@ -129,6 +147,7 @@
     <link rel="stylesheet" href="{{ asset('css/estilosCalendarioSalidas.css') }}">
     <script type="module" src="{{ asset('js/modules/calendario-salidas/index.js') }}"></script>
 
-
+    <!-- Componente Livewire para comentarios -->
+    @livewire('planificacion.comentario-salida')
 
 </x-app-layout>

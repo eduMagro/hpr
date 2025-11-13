@@ -394,6 +394,12 @@
                     </select>
                 </div>
 
+                <div class="mb-3">
+                    <label for="precio_referencia" class="block text-sm font-medium text-gray-700">Precio de Referencia (€) - Opcional</label>
+                    <input type="number" name="precio_referencia" step="0.01" min="0"
+                        class="w-full border border-gray-300 rounded px-3 py-2" placeholder="Ej: 6.40">
+                </div>
+
                 <div class="text-right pt-4">
                     <button type="button" onclick="cerrarModalPedidoGlobal()"
                         class="mr-2 px-4 py-2 rounded border border-gray-300 hover:bg-gray-100">
@@ -437,15 +443,25 @@
                     const contentType = res.headers.get("content-type") || '';
                     if (res.ok && contentType.includes("application/json")) {
                         await res.json();
-                        alert('Pedido global creado correctamente.');
-                        window.location.reload();
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Éxito',
+                            text: 'Pedido global creado correctamente.',
+                            confirmButtonColor: '#16a34a'
+                        }).then(() => {
+                            window.location.reload();
+                        });
                     } else {
                         const text = await res.text();
                         throw new Error("Error inesperado:\n" + text.slice(0, 600));
                     }
                 })
                 .catch(err => {
-                    alert(err.message || 'Error creando pedido global.');
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: err.message || 'Error creando pedido global.'
+                    });
                 });
         });
 
@@ -468,11 +484,21 @@
                         }
                         throw new Error(mensaje);
                     }
-                    alert('Pedido global actualizado.');
-                    window.location.reload();
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Éxito',
+                        text: 'Pedido global actualizado correctamente.',
+                        confirmButtonColor: '#16a34a'
+                    }).then(() => {
+                        window.location.reload();
+                    });
                 })
                 .catch(error => {
-                    alert(error.message || 'No se pudo actualizar el pedido global.');
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: error.message || 'No se pudo actualizar el pedido global.'
+                    });
                 });
         }
     </script>

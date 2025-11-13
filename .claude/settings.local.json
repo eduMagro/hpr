@@ -1,0 +1,31 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(php artisan cache:clear:*)",
+      "Bash(php artisan config:clear:*)",
+      "Bash(php artisan:*)",
+      "Bash(composer show:*)",
+      "Bash(test:*)",
+      "Bash(composer dump-autoload:*)",
+      "Bash(composer update:*)",
+      "Bash(nul)",
+      "Bash(composer require:*)",
+      "Bash(composer config:*)"
+      "Bash(php artisan:*)",
+      "Bash(nul)",
+      "Bash(dir:*)",
+      "Bash(findstr:*)",
+      "Bash(composer require:*)",
+      "Bash(php --version:*)",
+      "Bash(curl:*)",
+      "Bash(php:*)",
+      "Bash(del:*)",
+      "Bash(composer show:*)",
+      "Bash(composer require:*)",
+      "Bash(composer dump-autoload:*)",
+      "Bash(composer install:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

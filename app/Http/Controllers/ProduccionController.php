@@ -90,14 +90,16 @@ class ProduccionController extends Controller
         $coloresEventos  = $colores['eventos'];
 
         // ✅ Pintar las máquinas
-        $maquinas = Maquina::orderBy('obra_id')
-            ->orderBy('codigo')
-            ->get(['id', 'nombre', 'codigo', 'obra_id'])
+        $maquinas = Maquina::orderByRaw('CASE WHEN obra_id IS NULL THEN 1 ELSE 0 END')
+            ->orderBy('obra_id')
+            ->orderBy('tipo')
+            ->get(['id', 'nombre', 'codigo', 'obra_id', 'tipo'])
             ->map(function ($maquina) use ($coloresMaquinas) {
                 $color = $coloresMaquinas[$maquina->obra_id] ?? '#6c757d';
                 return [
                     'id' => str_pad($maquina->id, 3, '0', STR_PAD_LEFT),
                     'title' => $maquina->codigo,
+                    'orden' => $index,
                     'extendedProps' => [
                         'backgroundColor' => $color,
                         'obra_id' => $maquina->obra_id,
@@ -108,6 +110,7 @@ class ProduccionController extends Controller
         $maquinas->push([
             'id' => 'SIN',
             'title' => 'N/A',
+            'orden' => 9999,
             'extendedProps' => [
                 'backgroundColor' => '#9ca3af',
                 'obra_id' => null,
@@ -335,6 +338,62 @@ class ProduccionController extends Controller
         ]);
     }
 
+    /**
+     * 🔄 Endpoint para obtener actualizaciones en tiempo real del calendario
+     */
+    public function obtenerActualizaciones(Request $request)
+    {
+        $ultimaActualizacion = $request->input('timestamp');
+
+        // Convertir timestamp a Carbon
+        try {
+            $desde = $ultimaActualizacion ? Carbon::parse($ultimaActualizacion) : Carbon::now()->subMinutes(1);
+        } catch (\Exception $e) {
+            $desde = Carbon::now()->subMinutes(1);
+        }
+
+        // Obtener planillas que cambiaron desde el último timestamp
+        $planillasActualizadas = Planilla::where('updated_at', '>', $desde)
+            ->whereIn('estado', ['pendiente', 'fabricando', 'completada'])
+            ->with(['elementos' => function ($q) {
+                $q->select('id', 'planilla_id', 'estado', 'maquina_id');
+            }, 'obra'])
+            ->get();
+
+        $actualizaciones = [];
+
+        foreach ($planillasActualizadas as $planilla) {
+            // Agrupar elementos por máquina
+            $elementosPorMaquina = $planilla->elementos->groupBy('maquina_id');
+
+            foreach ($elementosPorMaquina as $maquinaId => $elementos) {
+                $completados = $elementos->where('estado', 'fabricado')->count();
+                $total = $elementos->count();
+                $progreso = $total > 0 ? round(($completados / $total) * 100) : 0;
+
+                $actualizaciones[] = [
+                    'planilla_id' => $planilla->id,
+                    'maquina_id' => $maquinaId,
+                    'codigo' => $planilla->codigo_limpio ?? $planilla->codigo,
+                    'estado' => $planilla->estado,
+                    'progreso' => $progreso,
+                    'revisada' => (bool)$planilla->revisada,
+                    'completado' => $completados === $total && $total > 0,
+                    'elementos_completados' => $completados,
+                    'elementos_total' => $total,
+                    'obra' => optional($planilla->obra)->obra ?? '—',
+                ];
+            }
+        }
+
+        return response()->json([
+            'timestamp' => now()->toIso8601String(),
+            'actualizaciones' => $actualizaciones,
+            'total' => count($actualizaciones),
+            'success' => true,
+        ]);
+    }
+
     //---------------------------------------------------------- MAQUINAS
     public function maquinas(Request $request)
     {
@@ -343,11 +402,11 @@ class ProduccionController extends Controller
         $fechaFin    = $request->input('fechaFin');    // 'YYYY-MM-DD'
         $turnoFiltro = $request->input('turno');       // 'mañana' | 'tarde' | 'noche' | null
 
-        // 🔹 1. MÁQUINAS DISPONIBLES
-        $maquinas = Maquina::whereNotNull('tipo')
-            ->where('tipo', '<>', 'grua')
+        // 🔹 1. MÁQUINAS DISPONIBLES - TODAS excepto grúas
+        $maquinas = Maquina::where('tipo', '<>', 'grua')
+            ->orderByRaw('CASE WHEN obra_id IS NULL THEN 1 ELSE 0 END')  // NULL al final
             ->orderBy('obra_id')   // primero ordena por obra
-            // luego por id dentro de cada obra
+            ->orderBy('tipo')      // luego por tipo dentro de cada obra
             ->get();
 
         $coloresPorObra = [
@@ -376,7 +435,7 @@ class ProduccionController extends Controller
                 'eventTextColor' => '#ffffff', // texto blanco para contraste
                 'obra_id' => $m->obra_id, // por si quieres usarlo en tooltips
             ];
-        });
+        })->values();
 
         // 🔹 2. ELEMENTOS ACTIVOS (para eventos del calendario)
         $elementos = Elemento::with(['planilla', 'planilla.obra', 'maquina', 'maquina_2', 'maquina_3'])
@@ -442,7 +501,7 @@ class ProduccionController extends Controller
                 : Carbon::now();
         }
 
-        // 🔹 4. Obtener ordenes desde la tabla orden_planillas
+        // 🔹 4. Obtener ordenes desde la tabla orden_planillas (SIN reordenar)
         $ordenes = OrdenPlanilla::orderBy('posicion')
             ->get()
             ->groupBy('maquina_id')
@@ -491,8 +550,22 @@ class ProduccionController extends Controller
 
         $initialDate = $this->calcularInitialDate();
 
+
+        // 🆕 Preparar datos de máquinas para JavaScript
+        $maquinasParaJS = $maquinas->map(function ($m) {
+            return [
+                'id' => $m->id,
+                'nombre' => $m->nombre,
+                'codigo' => $m->codigo,
+                'obra_id' => $m->obra_id,
+                'diametro_min' => $m->diametro_min,
+                'diametro_max' => $m->diametro_max,
+            ];
+        });
+
         return view('produccion.maquinas', [
             'maquinas'                         => $maquinas,
+            'maquinasParaJS' => $maquinasParaJS,
             'planillasEventos'                 => $planillasEventos,
             'cargaTurnoResumen' => $cargaTurnoResumen, // { maquina_id: { turno: {planificado,real} } }
             'planDetallado'     => $planDetallado,     // { maquina_id: { turno: [ {peso,fecha} ] } }
@@ -541,9 +614,38 @@ class ProduccionController extends Controller
         return now()->toDateString();
     }
     /**
+     * 🔧 Obtiene la fecha real de finalización según el tipo de máquina
+     * Busca en los campos de etiqueta correspondientes
+     */
+    private function obtenerFechaRealElemento(Elemento $e): ?\Carbon\Carbon
+    {
+        $etiqueta = $e->etiquetaRelacion;
+        if (!$etiqueta) {
+            // Fallback al updated_at si está fabricado
+            return $e->estado === 'fabricado' ? \Carbon\Carbon::parse($e->updated_at) : null;
+        }
+
+        $tipoMaquina = optional($e->maquina)->tipo;
+
+        // Según el tipo de máquina, usar los campos correspondientes
+        $fechaFin = match ($tipoMaquina) {
+            'ensambladora' => $etiqueta->fecha_finalizacion_ensamblado,
+            'soldadora'    => $etiqueta->fecha_finalizacion_soldadura,
+            default        => $etiqueta->fecha_finalizacion, // dobladora/cortadora
+        };
+
+        if ($fechaFin) {
+            return $fechaFin instanceof \Carbon\Carbon ? $fechaFin : \Carbon\Carbon::parse($fechaFin);
+        }
+
+        // Fallback: si está fabricado pero no tiene fecha, usar updated_at
+        return $e->estado === 'fabricado' ? \Carbon\Carbon::parse($e->updated_at) : null;
+    }
+
+    /**
      * Calcula por máquina y turno:
      *  - Planificado: por hora estimada de fin (inicio estimado o created_at + tiempo_fabricacion)
-     *  - Real: por hora real de fin (fecha_fin/fecha_fin_real); si no hay, intenta fallbacks
+     *  - Real: por hora real de fin usando campos de etiquetas según tipo de máquina
      *
      * Devuelve:
      *  - planResumido[mq][turno] = {planificado, real}
@@ -573,7 +675,7 @@ class ProduccionController extends Controller
             return ($horaHHmm >= $ini || $horaHHmm < $fin);
         };
 
-        $elementos = Elemento::with(['planilla', 'planilla.obra', 'maquina'])
+        $elementos = Elemento::with(['planilla', 'planilla.obra', 'maquina', 'maquina_2', 'maquina_3', 'etiquetaRelacion'])
             ->whereHas('planilla', fn($q) => $q->whereIn('estado', ['pendiente', 'fabricando', 'completada']))
             ->get();
 
@@ -612,12 +714,10 @@ class ProduccionController extends Controller
 
 
             // -------- REAL --------
-            $finReal = $e->fecha_fin
-                ?? $e->fecha_fin_real
-                ?? ($e->estado === 'fabricado' ? $e->updated_at : null);
+            // 🔧 Usar la nueva función que obtiene fecha real desde etiquetas
+            $finRealC = $this->obtenerFechaRealElemento($e);
 
-            if ($finReal) {
-                $finRealC = $finReal instanceof \Carbon\Carbon ? $finReal : \Carbon\Carbon::parse($finReal);
+            if ($finRealC) {
                 $horaReal = $finRealC->format('H:i');
                 $fechaReal = $finRealC->toDateString();
 
@@ -658,6 +758,435 @@ class ProduccionController extends Controller
     }
 
     //---------------------------------------------------------- GENERAR EVENTOS MAQUINAS
+
+
+
+    /** ¿Es no laborable? (festivo o fin de semana) */
+    private function esNoLaborable(Carbon $dia, array $festivosSet): bool
+    {
+        return isset($festivosSet[$dia->toDateString()]) || $dia->isWeekend();
+    }
+
+    /** 00:00 del siguiente día laborable a partir de $dt. */
+    private function siguienteLaborableInicio(Carbon $dt, array $festivosSet): Carbon
+    {
+        $x = $dt->copy()->startOfDay();
+        while ($this->esNoLaborable($x, $festivosSet)) {
+            $x->addDay();
+        }
+        return $x;
+    }
+
+    /**
+     * Divide una duración (segundos) en tramos [start,end) exclusivamente en días laborables.
+     * Si el inicio cae en no laborable, arranca en el siguiente laborable 00:00.
+     * Consume hasta 24h del día laborable y continúa en el siguiente laborable.
+     */
+    private function generarTramosLaborales(Carbon $inicio, int $durSeg, array $festivosSet): array
+    {
+
+
+        $tramos   = [];
+        $restante = max(0, (int) $durSeg);
+
+        // Si el inicio cae en no laborable -> al siguiente laborable 00:00
+        if ($this->esNoLaborable($inicio, $festivosSet)) {
+            $inicio = $this->siguienteLaborableInicio($inicio, $festivosSet);
+        }
+
+        $cursor  = $inicio->copy();
+        $iter    = 0;
+        $iterMax = 10000; // salvavidas
+
+        while ($restante > 0) {
+            if (++$iter > $iterMax) {
+                Log::error('TRAMOS TX: iteraciones excedidas, posible bucle', [
+                    'cursor'   => $cursor->toIso8601String(),
+                    'restante' => $restante,
+                ]);
+                break;
+            }
+
+            // Saltar no laborables completos
+            if ($this->esNoLaborable($cursor, $festivosSet)) {
+                $cursor = $this->siguienteLaborableInicio($cursor, $festivosSet);
+
+                continue;
+            }
+
+            // Límite exclusivo del día = 00:00 del día siguiente
+            $limiteDia = $cursor->copy()->startOfDay()->addDay();
+
+            // Capacidad del día (en segundos) usando timestamps (evita rarezas DST)
+            $tsCursor   = (int) $cursor->getTimestamp();
+            $tsLimite   = (int) $limiteDia->getTimestamp();
+            $capacidad  = $tsLimite - $tsCursor; // >= 0
+
+            if ($capacidad <= 0) {
+                // avanzar primero al límite del día y luego al próximo laborable
+                if ($tsCursor < $tsLimite) {
+                    $cursor = $limiteDia->copy();
+                }
+                $cursor = $this->siguienteLaborableInicio($cursor, $festivosSet);
+                Log::warning('TRAMOS T3: capacidad <= 0, salto a próximo laborable', ['cursor' => $cursor->toIso8601String()]);
+                continue;
+            }
+
+            $consume = min($restante, $capacidad);
+
+            // tramo
+            $start = $cursor->copy();
+            $end   = $cursor->copy()->addSeconds($consume);
+            $tramos[] = ['start' => $start, 'end' => $end];
+
+            // avanzar
+            $restante -= $consume;
+            $cursor    = $end;
+
+            // si queda trabajo y estamos en/tras el límite del día → próximo laborable
+            $tsCursor = (int) $cursor->getTimestamp();
+            if ($restante > 0 && $tsCursor >= $tsLimite) {
+                $cursor = $this->siguienteLaborableInicio($cursor, $festivosSet);
+            }
+        }
+
+
+        return $tramos;
+    }
+
+    //---------------------------------------------------------- CARGAS MAQUINAS
+    public function cargasMaquinas(Request $request)
+    {
+        // 🔹 Filtros del formulario (opcionales)
+        $fechaInicio = $request->input('fechaInicio'); // 'YYYY-MM-DD'
+        $fechaFin    = $request->input('fechaFin');    // 'YYYY-MM-DD'
+        $turnoFiltro = $request->input('turno');       // 'mañana' | 'tarde' | 'noche' | null
+
+        // 🔹 MÁQUINAS DISPONIBLES
+        $maquinas = Maquina::whereNotNull('tipo')
+            ->where('tipo', '<>', 'grua')
+            ->orderByRaw('CASE WHEN obra_id IS NULL THEN 1 ELSE 0 END')  // NULL al final
+            ->orderBy('obra_id')   // primero ordena por obra
+            ->orderBy('tipo')      // luego por tipo dentro de cada obra
+            ->get();
+
+        // 🔹 Calcular cargas por turno
+        $turnosLista = Turno::all();
+        [$cargaTurnoResumen, $planDetallado, $realDetallado] =
+            $this->calcularPlanificadoYRealPorTurno($maquinas, $fechaInicio, $fechaFin, $turnoFiltro);
+
+        return view('produccion.cargas-maquinas', [
+            'maquinas'           => $maquinas,
+            'cargaTurnoResumen'  => $cargaTurnoResumen,
+            'planDetallado'      => $planDetallado,
+            'realDetallado'      => $realDetallado,
+            'turnosLista'        => $turnosLista,
+            'filtro_fecha_inicio' => $fechaInicio,
+            'filtro_fecha_fin'   => $fechaFin,
+            'filtro_turno'       => $turnoFiltro,
+        ]);
+    }
+
+    //---------------------------------------------------------- REORDENAR PLANILLAS
+    //---------------------------------------------------------- REORDENAR PLANILLAS
+    public function reordenarPlanillas(Request $request)
+    {
+        $request->validate([
+            'id'                => 'required|integer|exists:planillas,id',
+            'maquina_id'        => 'required|integer|exists:maquinas,id',
+            'maquina_origen_id' => 'required|integer|exists:maquinas,id',
+            'nueva_posicion'    => 'required|integer|min:1',
+            'forzar_movimiento' => 'sometimes|boolean',
+            'elementos_id'      => 'sometimes|array',
+            'elementos_id.*'    => 'integer|exists:elementos,id',
+            'crear_nueva_posicion' => 'sometimes|boolean',
+        ]);
+
+        $planillaId   = (int) $request->id;
+        $maqDestino   = (int) $request->maquina_id;
+        $maqOrigen    = (int) $request->maquina_origen_id;
+        $posNueva     = (int) $request->nueva_posicion;
+        $forzar       = (bool) $request->boolean('forzar_movimiento');
+        $subsetIds    = collect($request->input('elementos_id', []))->map(fn($v) => (int)$v);
+        $crearNuevaPosicion = $request->boolean('crear_nueva_posicion', false);
+
+        Log::info("➡️ ReordenarPlanillas iniciado", [
+            'planilla_id'       => $planillaId,
+            'maquina_destino'   => $maqDestino,
+            'maquina_origen'    => $maqOrigen,
+            'nueva_posicion'    => $posNueva,
+            'forzar_movimiento' => $forzar,
+            'elementos_id'      => $subsetIds->values(),
+        ]);
+
+        // 1) MISMA MÁQUINA → sólo reordenar, NADA de validar
+        if ($maqOrigen === $maqDestino) {
+            return $this->soloReordenarEnMismaMaquina($maqDestino, $planillaId, $posNueva);
+        }
+
+        // 2) Cambio de máquina → validar SÓLO el subset del evento
+        if ($subsetIds->isEmpty()) {
+            // Sin subset no sabemos qué querías mover: mejor pedirlo
+            return response()->json([
+                'success' => false,
+                'message' => 'No se recibieron elementos del evento (elementos_id).',
+            ], 422);
+        }
+
+        $maquina = Maquina::findOrFail($maqDestino);
+        $elementos = Elemento::whereIn('id', $subsetIds)->get();
+
+        [$compatibles, $incompatibles, $diametrosIncompatibles] = $this->partirPorCompatibilidadPhp($elementos, $maquina);
+
+        Log::info("🔍 Compatibilidad subset", [
+            'compatibles'   => $compatibles->pluck('id')->values(),
+            'incompatibles' => $incompatibles->pluck('id')->values(),
+            'diametros'     => $diametrosIncompatibles->values(),
+        ]);
+
+        if ($incompatibles->isNotEmpty() && !$forzar) {
+            Log::warning("⚠️ Mezcla detectada: requiere confirmación parcial");
+            return response()->json([
+                'success' => false,
+                'requiresConfirmation' => true,
+                'message' => 'Hay elementos con diámetros incompatibles. ¿Quieres mover sólo los compatibles?',
+                'diametros' => $diametrosIncompatibles->values(),
+                // devolvemos los que SÍ se pueden mover (como esperas en el front)
+                'elementos' => $compatibles->pluck('id')->values(),
+            ], 422);
+        }
+
+        // 🔍 Verificar si ya existen elementos de esta planilla en otra posición de la máquina destino
+        $ordenExistente = OrdenPlanilla::where('planilla_id', $planillaId)
+            ->where('maquina_id', $maqDestino)
+            ->first();
+
+        // Si existe un orden en la máquina destino y no es el mismo que el origen, verificar si realmente hay elementos allí
+        if ($ordenExistente && $maqOrigen !== $maqDestino && !$crearNuevaPosicion) {
+            // Verificar si realmente hay elementos de esta planilla en esa máquina
+            $elementosExistentes = Elemento::where('planilla_id', $planillaId)
+                ->where('maquina_id', $maqDestino)
+                ->exists();
+
+            if ($elementosExistentes) {
+                Log::warning("⚠️ Ya existen elementos de esta planilla en otra posición de la máquina destino");
+                return response()->json([
+                    'success' => false,
+                    'requiresNuevaPosicionConfirmation' => true,
+                    'message' => "Ya hay elementos de esta planilla en la posición {$ordenExistente->posicion} de esta máquina. ¿Quieres crear una nueva posición o mover a la posición existente?",
+                    'posicion_existente' => $ordenExistente->posicion,
+                ], 422);
+            }
+        }
+
+        try {
+            DB::transaction(function () use ($planillaId, $maqOrigen, $maqDestino, $posNueva, $compatibles, $subsetIds, $forzar, $crearNuevaPosicion) {
+                // 3) Movimiento (parcial si venía forzado)
+                if ($compatibles->isNotEmpty()) {
+                    Elemento::whereIn('id', $compatibles->pluck('id'))->update(['maquina_id' => $maqDestino]);
+                    Log::info("➡️ Elementos actualizados a máquina destino", [
+                        'destino' => $maqDestino,
+                        'ids'     => $compatibles->pluck('id')->values(),
+                    ]);
+                } else {
+                    // No hay ninguno compatible
+                    throw new \Exception('No se pudo mover ningún elemento compatible a la máquina destino.');
+                }
+
+                // 4) Gestionar colas (sacar de origen, meter en destino si hace falta)
+                // Si ya existe orden en destino, lo usamos; si no, lo creamos al final y luego reordenamos.
+                $ordenDestino = OrdenPlanilla::where('planilla_id', $planillaId)
+                    ->where('maquina_id', $maqDestino)
+                    ->first();
+
+                // Si el usuario quiere crear una nueva posición, siempre crear un nuevo OrdenPlanilla
+                if ($crearNuevaPosicion && $ordenDestino) {
+                    // Ya existe uno, pero el usuario quiere crear una nueva posición
+                    // En este caso, NO reutilizamos el existente, creamos uno nuevo
+                    $ordenDestino = null;
+                }
+
+                if (!$ordenDestino) {
+                    // 🆕 Si se está creando una nueva posición, insertarla en la posición deseada
+                    // y desplazar las demás. Si no, añadirla al final.
+                    if ($crearNuevaPosicion) {
+                        // Desplazar posiciones >= $posNueva
+                        OrdenPlanilla::where('maquina_id', $maqDestino)
+                            ->where('posicion', '>=', $posNueva)
+                            ->increment('posicion');
+
+                        $ordenDestino = OrdenPlanilla::create([
+                            'planilla_id' => $planillaId,
+                            'maquina_id'  => $maqDestino,
+                            'posicion'    => $posNueva,
+                        ]);
+                        Log::info("➕ Orden creado en nueva posición", ['posicion' => $posNueva, 'crear_nueva' => true]);
+                    } else {
+                        $maxPos = (int) (OrdenPlanilla::where('maquina_id', $maqDestino)->max('posicion') ?? 0);
+                        $ordenDestino = OrdenPlanilla::create([
+                            'planilla_id' => $planillaId,
+                            'maquina_id'  => $maqDestino,
+                            'posicion'    => $maxPos + 1,
+                        ]);
+                        Log::info("➕ Orden creado al final", ['posicion' => $maxPos + 1, 'crear_nueva' => false]);
+                    }
+                }
+
+                // En el origen, si no quedan elementos (o si tu regla es sacarla siempre en cambio de máquina):
+                // aquí puedes decidir si eliminar el orden de origen o no.
+                // Si deseas mantener una sola cola por planilla, elimina del origen:
+                $ordenOrigen = OrdenPlanilla::where('planilla_id', $planillaId)
+                    ->where('maquina_id', $maqOrigen)
+                    ->first();
+                if ($ordenOrigen) {
+                    // comprueba si aún quedan elementos en origen (opcional)
+                    $quedanEnOrigen = Elemento::where('planilla_id', $planillaId)
+                        ->where('maquina_id', $maqOrigen)
+                        ->exists();
+
+                    if (!$quedanEnOrigen) {
+                        $posAnterior = $ordenOrigen->posicion;
+                        OrdenPlanilla::where('maquina_id', $maqOrigen)
+                            ->where('posicion', '>', $posAnterior)
+                            ->decrement('posicion');
+                        $ordenOrigen->delete();
+                        Log::info("🗑️ Orden eliminado de máquina origen y posiciones recompactadas", [
+                            'maquina' => $maqOrigen,
+                            'pos'     => $posAnterior,
+                        ]);
+                    }
+                }
+
+                // 5) Reordenar en destino a la posición deseada
+                // ⚠️ SOLO si NO se acaba de crear con la posición correcta
+                if (!$crearNuevaPosicion) {
+                    $this->reordenarPosicionEnMaquina($maqDestino, $planillaId, $posNueva);
+                }
+            });
+
+            // 🔄 Obtener eventos actualizados de ambas máquinas
+            $maquinasAfectadas = array_unique([$maqOrigen, $maqDestino]);
+            $eventosActualizados = $this->obtenerEventosDeMaquinas($maquinasAfectadas);
+
+            Log::info("✅ Planilla reordenada correctamente", [
+                'planilla_id' => $planillaId,
+                'eventos_actualizados' => count($eventosActualizados),
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Planilla reordenada correctamente.',
+                'eventos' => $eventosActualizados, // 👈 Eventos actualizados
+            ]);
+        } catch (\Exception $e) {
+            Log::error('❌ Error al reordenar planilla: ' . $e->getMessage(), [
+                'request' => $request->all(),
+                'user_id' => auth()->id(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Error: ' . $e->getMessage(),
+            ], 422);
+        }
+    }
+    /**
+     * Obtener eventos de planillas para máquinas específicas
+     */
+    private function obtenerEventosDeMaquinas(array $maquinaIds)
+    {
+        $maquinas = Maquina::whereIn('id', $maquinaIds)
+            ->whereNotNull('tipo')
+            ->orderByRaw('CASE WHEN obra_id IS NULL THEN 1 ELSE 0 END')
+            ->orderBy('obra_id')
+            ->orderBy('tipo')
+            ->get();
+
+        $elementos = Elemento::with(['planilla', 'planilla.obra', 'maquina'])
+            ->whereHas('planilla', fn($q) => $q->whereIn('estado', ['pendiente', 'fabricando']))
+            ->where(fn($q) => $q->whereNull('estado')->orWhere('estado', '<>', 'fabricado'))
+            ->where(function ($q) use ($maquinaIds) {
+                $q->whereIn('maquina_id', $maquinaIds)
+                    ->orWhereIn('maquina_id_2', $maquinaIds)
+                    ->orWhereIn('maquina_id_3', $maquinaIds);
+            })
+            ->get();
+
+        $planillasAgrupadas = $elementos->groupBy(function ($e) {
+            $tipo = optional($e->maquina)->tipo;
+            $maquinaId = match ($tipo) {
+                'ensambladora' => $e->maquina_id_2,
+                'soldadora'    => $e->maquina_id_3 ?? $e->maquina_id,
+                default        => $e->maquina_id,
+            };
+            return $e->planilla_id . '-' . $maquinaId;
+        })->map(function ($grupo) {
+            $primerElemento = $grupo->first();
+            $tipo = optional($primerElemento->maquina)->tipo;
+            $maquinaId = match ($tipo) {
+                'ensambladora' => $primerElemento->maquina_id_2,
+                'soldadora'    => $primerElemento->maquina_id_3 ?? $primerElemento->maquina_id,
+                default        => $primerElemento->maquina_id,
+            };
+            return [
+                'planilla' => $primerElemento->planilla,
+                'elementos' => $grupo,
+                'maquina_id' => $maquinaId,
+            ];
+        })->filter(fn($data) => !is_null($data['maquina_id']));
+
+        $colasMaquinas = [];
+        foreach ($maquinas as $m) {
+            $ultimaPlanillaFabricando = Planilla::whereHas('elementos', fn($q) => $q->where('maquina_id', $m->id))
+                ->where('estado', 'fabricando')
+                ->orderByDesc('fecha_inicio')
+                ->first();
+
+            $colasMaquinas[$m->id] = optional($ultimaPlanillaFabricando)->fecha_inicio
+                ? toCarbon($ultimaPlanillaFabricando->fecha_inicio)
+                : now();
+        }
+
+        $ordenes = OrdenPlanilla::whereIn('maquina_id', $maquinaIds)
+            ->orderBy('posicion')
+            ->get()
+            ->groupBy('maquina_id')
+            ->map(fn($ordenesMaquina) => $ordenesMaquina->pluck('planilla_id')->all());
+
+        return $this->generarEventosMaquinas($planillasAgrupadas, $ordenes, $colasMaquinas);
+    }
+    /** Reordena sólo en la misma máquina, sin validar nada */
+    private function soloReordenarEnMismaMaquina($maquinaId, $planillaId, $posNueva)
+    {
+        Log::info("🔁 Movimiento en misma máquina (sin validación)", [
+            'maquina' => $maquinaId,
+            'planilla' => $planillaId,
+            'nueva_pos' => $posNueva,
+        ]);
+
+        $this->reordenarPosicionEnMaquina($maquinaId, $planillaId, $posNueva);
+
+        // 🔄 Obtener eventos actualizados de la máquina
+        $eventosActualizados = $this->obtenerEventosDeMaquinas([$maquinaId]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Planilla reordenada en la misma máquina.',
+            'eventos' => $eventosActualizados, // 👈 Eventos actualizados
+        ]);
+    }
+
+    public function porIds(Request $request)
+    {
+        $ids = explode(',', $request->ids);
+
+        $elementos = Elemento::whereIn('id', $ids)
+            ->select('id', 'codigo', 'diametro', 'peso', 'dimensiones', 'maquina_id')
+            ->get();
+
+        return response()->json($elementos);
+    }
+
     private function generarEventosMaquinas($planillasAgrupadas, $ordenes, $colasMaquinas)
     {
 
@@ -787,31 +1316,51 @@ class ProduccionController extends Controller
                     // Fecha de entrega (ahora robusta)
                     $fechaEntrega = $this->parseFechaEntregaFlexible($planilla->fecha_estimada_entrega, $appTz);
 
-                    // Semáforo (rojo si fin real supera entrega)
-                    $backgroundColor = ($fechaEntrega && $fechaFinReal->gt($fechaEntrega)) ? '#ef4444' : '#22c55e';
+                    // ⚠️ SISTEMA DE REVISIÓN: Si no está revisada → GRIS
+                    if (!$planilla->revisada) {
+                        $backgroundColor = '#9e9e9e'; // Gris para planillas sin revisar
+                    } else {
+                        // Semáforo (rojo si fin real supera entrega)
+                        $backgroundColor = ($fechaEntrega && $fechaFinReal->gt($fechaEntrega)) ? '#ef4444' : '#22c55e';
+                    }
 
                     // Eventos por tramo
                     foreach ($tramos as $i => $t) {
                         $tStart = $t['start'] instanceof Carbon ? $t['start'] : Carbon::parse($t['start']);
                         $tEnd   = $t['end']   instanceof Carbon ? $t['end']   : Carbon::parse($t['end']);
 
+                        // Título del evento con advertencia si no está revisada
+                        $tituloEvento = $planilla->codigo_limpio ?? ('Planilla #' . $planilla->id);
+                        if (!$planilla->revisada) {
+                            $tituloEvento = '⚠️ ' . $tituloEvento . ' (SIN REVISAR)';
+                        }
+
                         $planillasEventos->push([
                             'id'              => 'planilla-' . $planilla->id . '-seg' . ($i + 1),
-                            'title'           => $planilla->codigo_limpio ?? ('Planilla #' . $planilla->id),
+                            'title'           => $tituloEvento,
                             'codigo'          => $planilla->codigo_limpio ?? ('Planilla #' . $planilla->id),
                             'start'           => $tStart->toIso8601String(),
                             'end'             => $tEnd->toIso8601String(),
                             'resourceId'      => $maquinaId,
                             'backgroundColor' => $backgroundColor,
+                            'borderColor'     => !$planilla->revisada ? '#757575' : null, // Borde gris oscuro si no revisada
+                            'classNames'      => !$planilla->revisada ? ['evento-sin-revisar'] : ['evento-revisado'],
                             'extendedProps' => [
                                 'obra'           => optional($planilla->obra)->obra ?? '—',
+                                'cod_obra'       => optional($planilla->obra)->cod_obra ?? '—',
+                                'cliente'        => optional($planilla->obra->cliente)->empresa ?? '—',
+                                'cod_cliente'    => optional($planilla->obra->cliente)->codigo ?? '—',
+                                'codigo_planilla' => $planilla->codigo_limpio ?? ('Planilla #' . $planilla->id),
                                 'estado'         => $planilla->estado,
                                 'duracion_horas' => round($duracionSegundos / 3600, 2),
                                 'progreso'       => $progreso,
                                 'fecha_entrega'  => $fechaEntrega?->format('d/m/Y H:i') ?? '—',
                                 'fin_programado' => $fechaFinReal->format('d/m/Y H:i'),
-                                'codigos_elementos' => $grupo->pluck('codigo')->values(),   // ya lo tienes
-                                'elementos_id'      => $grupo->pluck('id')->values(),       // AÑADE ESTO
+                                'codigos_elementos' => $grupo->pluck('codigo')->values(),
+                                'elementos_id'      => $grupo->pluck('id')->values(),
+                                'revisada'          => $planilla->revisada, // Agregar info de revisión
+                                'revisada_por'      => optional($planilla->revisor)->name,
+                                'revisada_at'       => $planilla->revisada_at?->format('d/m/Y H:i'),
                             ],
 
                         ]);
@@ -837,290 +1386,8 @@ class ProduccionController extends Controller
 
         return $planillasEventos->values();
     }
-
-
-    /** ¿Es no laborable? (festivo o fin de semana) */
-    private function esNoLaborable(Carbon $dia, array $festivosSet): bool
-    {
-        return isset($festivosSet[$dia->toDateString()]) || $dia->isWeekend();
-    }
-
-    /** 00:00 del siguiente día laborable a partir de $dt. */
-    private function siguienteLaborableInicio(Carbon $dt, array $festivosSet): Carbon
-    {
-        $x = $dt->copy()->startOfDay();
-        while ($this->esNoLaborable($x, $festivosSet)) {
-            $x->addDay();
-        }
-        return $x;
-    }
-
-    /**
-     * Divide una duración (segundos) en tramos [start,end) exclusivamente en días laborables.
-     * Si el inicio cae en no laborable, arranca en el siguiente laborable 00:00.
-     * Consume hasta 24h del día laborable y continúa en el siguiente laborable.
-     */
-    private function generarTramosLaborales(Carbon $inicio, int $durSeg, array $festivosSet): array
-    {
-
-
-        $tramos   = [];
-        $restante = max(0, (int) $durSeg);
-
-        // Si el inicio cae en no laborable -> al siguiente laborable 00:00
-        if ($this->esNoLaborable($inicio, $festivosSet)) {
-            $inicio = $this->siguienteLaborableInicio($inicio, $festivosSet);
-        }
-
-        $cursor  = $inicio->copy();
-        $iter    = 0;
-        $iterMax = 10000; // salvavidas
-
-        while ($restante > 0) {
-            if (++$iter > $iterMax) {
-                Log::error('TRAMOS TX: iteraciones excedidas, posible bucle', [
-                    'cursor'   => $cursor->toIso8601String(),
-                    'restante' => $restante,
-                ]);
-                break;
-            }
-
-            // Saltar no laborables completos
-            if ($this->esNoLaborable($cursor, $festivosSet)) {
-                $cursor = $this->siguienteLaborableInicio($cursor, $festivosSet);
-
-                continue;
-            }
-
-            // Límite exclusivo del día = 00:00 del día siguiente
-            $limiteDia = $cursor->copy()->startOfDay()->addDay();
-
-            // Capacidad del día (en segundos) usando timestamps (evita rarezas DST)
-            $tsCursor   = (int) $cursor->getTimestamp();
-            $tsLimite   = (int) $limiteDia->getTimestamp();
-            $capacidad  = $tsLimite - $tsCursor; // >= 0
-
-            if ($capacidad <= 0) {
-                // avanzar primero al límite del día y luego al próximo laborable
-                if ($tsCursor < $tsLimite) {
-                    $cursor = $limiteDia->copy();
-                }
-                $cursor = $this->siguienteLaborableInicio($cursor, $festivosSet);
-                Log::warning('TRAMOS T3: capacidad <= 0, salto a próximo laborable', ['cursor' => $cursor->toIso8601String()]);
-                continue;
-            }
-
-            $consume = min($restante, $capacidad);
-
-            // tramo
-            $start = $cursor->copy();
-            $end   = $cursor->copy()->addSeconds($consume);
-            $tramos[] = ['start' => $start, 'end' => $end];
-
-            // avanzar
-            $restante -= $consume;
-            $cursor    = $end;
-
-            // si queda trabajo y estamos en/tras el límite del día → próximo laborable
-            $tsCursor = (int) $cursor->getTimestamp();
-            if ($restante > 0 && $tsCursor >= $tsLimite) {
-                $cursor = $this->siguienteLaborableInicio($cursor, $festivosSet);
-            }
-        }
-
-
-        return $tramos;
-    }
-
     //---------------------------------------------------------- REORDENAR PLANILLAS
-    public function reordenarPlanillas(Request $request)
-    {
-        $request->validate([
-            'id'                => 'required|integer|exists:planillas,id',
-            'maquina_id'        => 'required|integer|exists:maquinas,id',
-            'maquina_origen_id' => 'required|integer|exists:maquinas,id',
-            'nueva_posicion'    => 'required|integer|min:1',
-            'forzar_movimiento' => 'sometimes|boolean',
-            'elementos_id'      => 'sometimes|array',
-            'elementos_id.*'    => 'integer|exists:elementos,id',
-        ]);
-
-        $planillaId   = (int) $request->id;
-        $maqDestino   = (int) $request->maquina_id;
-        $maqOrigen    = (int) $request->maquina_origen_id;
-        $posNueva     = (int) $request->nueva_posicion;
-        $forzar       = (bool) $request->boolean('forzar_movimiento');
-        $subsetIds    = collect($request->input('elementos_id', []))->map(fn($v) => (int)$v);
-
-        Log::info("➡️ ReordenarPlanillas iniciado", [
-            'planilla_id'       => $planillaId,
-            'maquina_destino'   => $maqDestino,
-            'maquina_origen'    => $maqOrigen,
-            'nueva_posicion'    => $posNueva,
-            'forzar_movimiento' => $forzar,
-            'elementos_id'      => $subsetIds->values(),
-        ]);
-
-        // 1) MISMA MÁQUINA → sólo reordenar, NADA de validar
-        if ($maqOrigen === $maqDestino) {
-            return $this->soloReordenarEnMismaMaquina($maqDestino, $planillaId, $posNueva);
-        }
-
-        // 2) Cambio de máquina → validar SÓLO el subset del evento
-        if ($subsetIds->isEmpty()) {
-            // Sin subset no sabemos qué querías mover: mejor pedirlo
-            return response()->json([
-                'success' => false,
-                'message' => 'No se recibieron elementos del evento (elementos_id).',
-            ], 422);
-        }
-
-        $maquina = Maquina::findOrFail($maqDestino);
-        $elementos = Elemento::whereIn('id', $subsetIds)->get();
-
-        [$compatibles, $incompatibles, $diametrosIncompatibles] = $this->partirPorCompatibilidadPhp($elementos, $maquina);
-
-        Log::info("🔍 Compatibilidad subset", [
-            'compatibles'   => $compatibles->pluck('id')->values(),
-            'incompatibles' => $incompatibles->pluck('id')->values(),
-            'diametros'     => $diametrosIncompatibles->values(),
-        ]);
-
-        if ($incompatibles->isNotEmpty() && !$forzar) {
-            Log::warning("⚠️ Mezcla detectada: requiere confirmación parcial");
-            return response()->json([
-                'success' => false,
-                'requiresConfirmation' => true,
-                'message' => 'Hay elementos con diámetros incompatibles. ¿Quieres mover sólo los compatibles?',
-                'diametros' => $diametrosIncompatibles->values(),
-                // devolvemos los que SÍ se pueden mover (como esperas en el front)
-                'elementos' => $compatibles->pluck('id')->values(),
-            ], 422);
-        }
-
-        try {
-            DB::transaction(function () use ($planillaId, $maqOrigen, $maqDestino, $posNueva, $compatibles, $subsetIds, $forzar) {
-                // 3) Movimiento (parcial si venía forzado)
-                if ($compatibles->isNotEmpty()) {
-                    Elemento::whereIn('id', $compatibles->pluck('id'))->update(['maquina_id' => $maqDestino]);
-                    Log::info("➡️ Elementos actualizados a máquina destino", [
-                        'destino' => $maqDestino,
-                        'ids'     => $compatibles->pluck('id')->values(),
-                    ]);
-                } else {
-                    // No hay ninguno compatible
-                    throw new \Exception('No se pudo mover ningún elemento compatible a la máquina destino.');
-                }
-
-                // 4) Gestionar colas (sacar de origen, meter en destino si hace falta)
-                // Si ya existe orden en destino, lo usamos; si no, lo creamos al final y luego reordenamos.
-                $ordenDestino = OrdenPlanilla::where('planilla_id', $planillaId)
-                    ->where('maquina_id', $maqDestino)
-                    ->first();
-
-                if (!$ordenDestino) {
-                    $maxPos = (int) (OrdenPlanilla::where('maquina_id', $maqDestino)->max('posicion') ?? 0);
-                    $ordenDestino = OrdenPlanilla::create([
-                        'planilla_id' => $planillaId,
-                        'maquina_id'  => $maqDestino,
-                        'posicion'    => $maxPos + 1,
-                    ]);
-                    Log::info("➕ Orden creado en máquina destino", ['posicion' => $maxPos + 1]);
-                }
-
-                // En el origen, si no quedan elementos (o si tu regla es sacarla siempre en cambio de máquina):
-                // aquí puedes decidir si eliminar el orden de origen o no.
-                // Si deseas mantener una sola cola por planilla, elimina del origen:
-                $ordenOrigen = OrdenPlanilla::where('planilla_id', $planillaId)
-                    ->where('maquina_id', $maqOrigen)
-                    ->first();
-                if ($ordenOrigen) {
-                    // comprueba si aún quedan elementos en origen (opcional)
-                    $quedanEnOrigen = Elemento::where('planilla_id', $planillaId)
-                        ->where('maquina_id', $maqOrigen)
-                        ->exists();
-
-                    if (!$quedanEnOrigen) {
-                        $posAnterior = $ordenOrigen->posicion;
-                        OrdenPlanilla::where('maquina_id', $maqOrigen)
-                            ->where('posicion', '>', $posAnterior)
-                            ->decrement('posicion');
-                        $ordenOrigen->delete();
-                        Log::info("🗑️ Orden eliminado de máquina origen y posiciones recompactadas", [
-                            'maquina' => $maqOrigen,
-                            'pos'     => $posAnterior,
-                        ]);
-                    }
-                }
-
-                // 5) Reordenar en destino a la posición deseada
-                $this->reordenarPosicionEnMaquina($maqDestino, $planillaId, $posNueva);
-            });
-
-            return response()->json([
-                'success'  => true,
-                'message'  => 'Planilla reordenada correctamente.',
-            ]);
-        } catch (\Exception $e) {
-            Log::error('❌ Error al reordenar planilla: ' . $e->getMessage(), [
-                'request' => $request->all(),
-                'user_id' => auth()->id(),
-            ]);
-
-            return response()->json([
-                'success' => false,
-                'message' => 'Error: ' . $e->getMessage(),
-            ], 422);
-        }
-    }
-
-    /** Reordena sólo en la misma máquina, sin validar nada */
-    private function soloReordenarEnMismaMaquina(int $maquinaId, int $planillaId, int $posNueva)
-    {
-        try {
-            DB::transaction(function () use ($maquinaId, $planillaId, $posNueva) {
-                $ordenActual = OrdenPlanilla::lockForUpdate()
-                    ->where('planilla_id', $planillaId)
-                    ->where('maquina_id', $maquinaId)
-                    ->first();
-
-                if (!$ordenActual) {
-                    // Si no hay orden en esa máquina, lo creamos al final
-                    $maxPos = (int) (OrdenPlanilla::where('maquina_id', $maquinaId)->max('posicion') ?? 0);
-                    $ordenActual = OrdenPlanilla::create([
-                        'planilla_id' => $planillaId,
-                        'maquina_id'  => $maquinaId,
-                        'posicion'    => $maxPos + 1,
-                    ]);
-                }
-
-                $posActual = (int) $ordenActual->posicion;
-                if ($posNueva === $posActual) return;
-
-                if ($posNueva < $posActual) {
-                    OrdenPlanilla::where('maquina_id', $maquinaId)
-                        ->whereBetween('posicion', [$posNueva, $posActual - 1])
-                        ->increment('posicion');
-                } else {
-                    OrdenPlanilla::where('maquina_id', $maquinaId)
-                        ->whereBetween('posicion', [$posActual + 1, $posNueva])
-                        ->decrement('posicion');
-                }
-
-                $ordenActual->update(['posicion' => $posNueva]);
-                Log::info("✅ Reordenado en misma máquina", [
-                    'maquina'  => $maquinaId,
-                    'posicion' => $posNueva
-                ]);
-            });
-
-            return response()->json(['success' => true, 'message' => 'Reordenado en la misma máquina.']);
-        } catch (\Throwable $e) {
-            Log::error('❌ Error reordenar en misma máquina: ' . $e->getMessage());
-            return response()->json(['success' => false, 'message' => 'Error: ' . $e->getMessage()], 422);
-        }
-    }
-
+    //---------------------------------------------------------- REORDENAR PLANILLAS
     /** Reordena la posición de la planilla en una máquina dada */
     private function reordenarPosicionEnMaquina(int $maquinaId, int $planillaId, int $posNueva): void
     {
@@ -1188,8 +1455,9 @@ class ProduccionController extends Controller
         try {
             // 🔄 Cargar datos igual que en maquinas()
             $maquinas = Maquina::whereNotNull('tipo')
+                ->orderByRaw('CASE WHEN obra_id IS NULL THEN 1 ELSE 0 END')
                 ->orderBy('obra_id')
-                ->orderBy('id')
+                ->orderBy('tipo')
                 ->get();
 
             $elementos = Elemento::with(['planilla', 'planilla.obra', 'maquina'])

@@ -178,6 +178,7 @@ class PedidoGlobalController extends Controller
                 'cantidad_total' => 'required|numeric|min:0',
                 'fabricante_id' => 'nullable|exists:fabricantes,id',
                 'distribuidor_id' => 'nullable|exists:distribuidores,id',
+                'precio_referencia' => 'nullable|numeric|min:0|max:9999999999.99',
             ]);
 
             // Crear nuevo pedido global
@@ -186,6 +187,7 @@ class PedidoGlobalController extends Controller
             $pedidoGlobal->cantidad_total = $validated['cantidad_total'];
             $pedidoGlobal->fabricante_id = $validated['fabricante_id'];
             $pedidoGlobal->distribuidor_id = $validated['distribuidor_id'] ?? null; // Asignar distribuidor si existe
+            $pedidoGlobal->precio_referencia = $validated['precio_referencia'] ?? null;
             $pedidoGlobal->estado = 'pendiente';
             $pedidoGlobal->save();
 

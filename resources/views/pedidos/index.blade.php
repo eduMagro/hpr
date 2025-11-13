@@ -786,7 +786,6 @@
             }
 
             const datos = {
-                _method: 'PUT',
                 linea_id: lineaId,
                 obra_id: obraHpr || obraExterna || null,
                 obra_manual: obraManual || null,
@@ -797,11 +796,29 @@
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                        'Accept': 'application/json'
                     },
                     body: JSON.stringify(datos)
                 })
-                .then(response => response.json())
+                .then(response => {
+                    // Verificar si la respuesta es JSON válido
+                    const contentType = response.headers.get('content-type');
+                    if (!contentType || !contentType.includes('application/json')) {
+                        return response.text().then(text => {
+                            console.error('Respuesta no es JSON:', text);
+                            throw new Error('La respuesta del servidor no es JSON válido');
+                        });
+                    }
+
+                    if (!response.ok) {
+                        return response.json().then(err => {
+                            throw new Error(err.message || `Error del servidor: ${response.status}`);
+                        });
+                    }
+
+                    return response.json();
+                })
                 .then(data => {
                     if (data.success) {
                         Swal.fire({
@@ -822,11 +839,11 @@
                     }
                 })
                 .catch(error => {
-                    console.error('Error:', error);
+                    console.error('Error completo:', error);
                     Swal.fire({
                         icon: 'error',
                         title: 'Error',
-                        text: 'Error al actualizar la línea'
+                        text: error.message || 'Error al actualizar la línea'
                     });
                 });
         }
