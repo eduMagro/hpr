@@ -173,6 +173,9 @@ class NominaController extends Controller
     {
         $request->validate([
             'mes_anio' => 'required|date_format:Y-m',
+        ], [
+            'mes_anio.required' => 'Debes seleccionar un mes y año para solicitar tu nómina.',
+            'mes_anio.date_format' => 'El formato del mes y año no es válido. Por favor, selecciona una fecha correcta.',
         ]);
 
         // Obtener mes y año
@@ -183,6 +186,17 @@ class NominaController extends Controller
         // Usuario y DNI limpio
         $user = auth()->user();
         $dni = strtoupper(preg_replace('/[^A-Z0-9]/', '', $user->dni));
+
+        // 🔒 SEGURIDAD: Verificar que el usuario tiene email configurado
+        if (empty($user->email)) {
+            \Log::warning('🚨 Intento de solicitar nómina sin email configurado', [
+                'user_id' => $user->id,
+                'dni' => $dni,
+                'ip_address' => $request->ip(),
+                'timestamp' => now(),
+            ]);
+            return back()->with('error', 'No tienes un correo electrónico configurado. Contacta con el departamento de programador.');
+        }
 
         // Carpeta principal del mes
         $carpetaBase = storage_path("app/private/nominas/nominas_{$anio}/nomina_{$mes}_{$anio}");
@@ -205,29 +219,94 @@ class NominaController extends Controller
         }
 
         if (empty($archivos)) {
-            return back()->with('error', 'No se encontró ninguna nómina para el mes de ' . $mes . '.');
+            // 🔍 LOG: Intento de acceso a nómina inexistente
+            \Log::warning('🚨 Intento de acceso a nómina inexistente', [
+                'user_id' => $user->id,
+                'user_email' => $user->email,
+                'dni' => $dni,
+                'mes' => $mes,
+                'anio' => $anio,
+                'ip_address' => $request->ip(),
+                'user_agent' => $request->userAgent(),
+                'timestamp' => now(),
+            ]);
+
+            return back()->with('error', 'No se encontró ninguna nómina para el mes de ' . $mes . ' de ' . $anio . '. Si crees que esto es un error, contacta con el departamento de administración.');
         }
 
         $rutaArchivo = $archivos[0];
 
-        // Nombre que verá el usuario al descargar
+        // Nombre que verá el usuario en el email
         $nombreDescarga = 'Nomina_' . $user->nombre_completo . '_' . $mes . '_' . $anio . '.pdf';
 
-        // Registrar alerta de descarga
-        try {
-            app(AlertaService::class)->crearAlerta(
-                emisorId: $user->id,
-                destinatarioId: $user->id,
-                mensaje: 'Te has descargado ' . $nombreDescarga,
-                tipo: 'usuario'
-            );
-        } catch (\Throwable $e) {
-            \Log::error('❌ Error creando alerta de descarga de nómina: ' . $e->getMessage());
-        }
-
-        return response()->download($rutaArchivo, $nombreDescarga, [
-            'Content-Type' => 'application/pdf',
+        // 🔐 SEGURIDAD: Registrar acceso completo con IP y timestamp
+        \Log::info('📧 Envío de nómina por email', [
+            'user_id' => $user->id,
+            'user_name' => $user->nombre_completo,
+            'user_email' => $user->email,
+            'dni' => $dni,
+            'mes' => $mes,
+            'anio' => $anio,
+            'archivo' => basename($rutaArchivo),
+            'ip_address' => $request->ip(),
+            'user_agent' => $request->userAgent(),
+            'timestamp' => now(),
+            'success' => false, // se actualizará después del envío
         ]);
+
+        // 📧 Enviar nómina por email
+        try {
+            \Mail::to($user->email)->send(
+                new \App\Mail\NominaEnviada(
+                    $user->name, // Solo el nombre, no el nombre completo
+                    $mes . ' ' . $anio,
+                    $rutaArchivo,
+                    $nombreDescarga
+                )
+            );
+
+            // Actualizar log de éxito
+            \Log::info('✅ Nómina enviada correctamente por email', [
+                'user_id' => $user->id,
+                'user_email' => $user->email,
+                'dni' => $dni,
+                'mes' => $mes,
+                'anio' => $anio,
+                'ip_address' => $request->ip(),
+                'timestamp' => now(),
+                'success' => true,
+            ]);
+
+            // Registrar alerta de envío
+            try {
+                app(AlertaService::class)->crearAlerta(
+                    emisorId: $user->id,
+                    destinatarioId: $user->id,
+                    mensaje: 'Se ha enviado tu nómina de ' . $mes . ' ' . $anio . ' a tu correo electrónico (' . $user->email . ')',
+                    tipo: 'usuario'
+                );
+            } catch (\Throwable $e) {
+                \Log::error('❌ Error creando alerta de envío de nómina: ' . $e->getMessage());
+            }
+
+            return back()->with('success', 'Tu nómina de ' . $mes . ' ' . $anio . ' ha sido enviada a tu correo electrónico: ' . $user->email);
+
+        } catch (\Throwable $e) {
+            // 🔥 ERROR: Falló el envío de email
+            \Log::error('🔥 Error al enviar nómina por email', [
+                'user_id' => $user->id,
+                'user_email' => $user->email,
+                'dni' => $dni,
+                'mes' => $mes,
+                'anio' => $anio,
+                'ip_address' => $request->ip(),
+                'timestamp' => now(),
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            return back()->with('error', '❌ Ha ocurrido un error al enviar tu nómina por email. Por favor, inténtalo de nuevo más tarde o contacta con el departamento de administración.');
+        }
     }
 
 

@@ -390,7 +390,7 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
     Route::get('/simulacion-inversa', [NominaController::class, 'formularioInverso'])->name('nomina.inversa');
     Route::post('/simulacion-inversa', [NominaController::class, 'simularDesdeNeto'])->name('nomina.inversa.calcular');
     Route::post('/nominas/dividir', [NominaController::class, 'dividirNominas'])->name('nominas.dividir');
-    Route::get('/mis-nominas/descargar', [NominaController::class, 'descargarNominasMes'])->name('nominas.crearDescargarMes');
+    Route::post('/mis-nominas/enviar', [NominaController::class, 'descargarNominasMes'])->name('nominas.crearDescargarMes');
 
     // === ALERTAS Y ESTADISTICAS ===
     Route::prefix('estadisticas')->group(function () {
