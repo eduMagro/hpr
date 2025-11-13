@@ -489,5 +489,122 @@ async function eliminarSalida(salidaId) {
     }
 }
 
-// Exportar función globalmente
+/* ===================== Toggle filtro de paquetes ===================== */
+/**
+ * Cambia entre mostrar todos los paquetes pendientes o solo los de la obra/cliente
+ * SIN RECARGAR LA PÁGINA
+ */
+function toggleFiltroPaquetes() {
+    // Obtener el estado actual del toggle desde window.AppGestionSalidas
+    const mostrandoTodos = window.AppGestionSalidas.mostrarTodosPaquetes;
+
+    // Cambiar el estado
+    window.AppGestionSalidas.mostrarTodosPaquetes = !mostrandoTodos;
+
+    // Seleccionar el conjunto de paquetes correcto
+    const paquetesAMostrar = window.AppGestionSalidas.mostrarTodosPaquetes
+        ? window.paquetesTodos
+        : window.paquetesFiltrados;
+
+    // Renderizar los paquetes en el DOM
+    renderizarPaquetesDisponibles(paquetesAMostrar);
+
+    // Actualizar el botón del toggle
+    actualizarBotonToggle();
+
+    // Actualizar el texto explicativo
+    actualizarTextoExplicativo();
+
+    // Re-inicializar el drag and drop
+    inicializarDragAndDrop();
+}
+
+/**
+ * Renderiza los paquetes disponibles en el contenedor
+ */
+function renderizarPaquetesDisponibles(paquetes) {
+    const container = document.querySelector('.paquetes-zona[data-salida-id="null"]');
+
+    if (!container) {
+        console.error('No se encontró el contenedor de paquetes disponibles');
+        return;
+    }
+
+    // Limpiar el contenedor
+    container.innerHTML = '';
+
+    // Crear elementos para cada paquete
+    paquetes.forEach(paquete => {
+        const paqueteDiv = document.createElement('div');
+        paqueteDiv.className = 'paquete-item bg-white border border-gray-300 rounded p-2 mb-2 cursor-move hover:shadow-md transition-shadow';
+        paqueteDiv.draggable = true;
+        paqueteDiv.dataset.paqueteId = paquete.id;
+        paqueteDiv.dataset.peso = paquete.peso;
+
+        paqueteDiv.innerHTML = `
+            <div class="flex items-center justify-between text-xs">
+                <span class="font-medium">📦 ${paquete.codigo}</span>
+                <button onclick="mostrarDibujo(${paquete.id}); event.stopPropagation();"
+                    class="text-blue-500 hover:underline text-xs">
+                    👁️ Ver
+                </button>
+            </div>
+            <div class="flex items-center justify-between text-xs mt-1">
+                <span class="text-gray-500">${paquete.planilla_codigo || 'N/A'}</span>
+                <span class="text-gray-600">${parseFloat(paquete.peso).toFixed(2)} kg</span>
+            </div>
+            ${window.AppGestionSalidas.mostrarTodosPaquetes ? `
+                <div class="text-xs text-gray-500 mt-1 border-t border-gray-200 pt-1">
+                    <div class="truncate" title="${paquete.obra}">🏗️ ${paquete.obra}</div>
+                    <div class="truncate" title="${paquete.cliente}">👤 ${paquete.cliente}</div>
+                </div>
+            ` : ''}
+        `;
+
+        container.appendChild(paqueteDiv);
+    });
+
+    console.log(`✅ Renderizados ${paquetes.length} paquetes`);
+}
+
+/**
+ * Actualiza el botón de toggle con el color y texto correcto
+ */
+function actualizarBotonToggle() {
+    const boton = document.getElementById('btn-toggle-paquetes');
+
+    if (!boton) return;
+
+    const mostrandoTodos = window.AppGestionSalidas.mostrarTodosPaquetes;
+
+    if (mostrandoTodos) {
+        // Mostrando todos - botón naranja, texto para cambiar a filtrado
+        boton.className = 'text-xs px-3 py-1 rounded-md transition-colors bg-orange-500 hover:bg-orange-600 text-white';
+        boton.innerHTML = '📍 Ver solo obra/cliente';
+    } else {
+        // Mostrando filtrado - botón azul, texto para cambiar a todos
+        boton.className = 'text-xs px-3 py-1 rounded-md transition-colors bg-blue-500 hover:bg-blue-600 text-white';
+        boton.innerHTML = '🌐 Ver todos pendientes';
+    }
+}
+
+/**
+ * Actualiza el texto explicativo debajo del título
+ */
+function actualizarTextoExplicativo() {
+    const parrafo = document.querySelector('.paquetes-zona[data-salida-id="null"]').closest('.bg-gray-50').querySelector('p.text-xs');
+
+    if (!parrafo) return;
+
+    const mostrandoTodos = window.AppGestionSalidas.mostrarTodosPaquetes;
+
+    if (mostrandoTodos) {
+        parrafo.innerHTML = 'Mostrando <strong>TODOS</strong> los paquetes pendientes sin filtro';
+    } else {
+        parrafo.innerHTML = 'Mostrando solo paquetes de <strong>esta obra/cliente</strong>';
+    }
+}
+
+// Exportar funciones globalmente
 window.eliminarSalida = eliminarSalida;
+window.toggleFiltroPaquetes = toggleFiltroPaquetes;

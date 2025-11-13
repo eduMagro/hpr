@@ -1,7 +1,16 @@
 {
   "permissions": {
     "allow": [
-      "Bash(cat:*)"
+      "Bash(cat:*)",
+      "Bash(git log:*)",
+      "Bash(php artisan tinker:*)",
+      "Bash(mysql:*)",
+      "Bash(dir \"C:\\xampp\\htdocs\\manager\\database\\migrations\" /b)",
+      "Bash(findstr:*)",
+      "Bash(php artisan make:livewire:*)",
+      "Bash(php artisan schema:show:*)",
+      "Bash(php artisan model:show:*)",
+      "Bash(php check_elemento.php:*)"
     ],
     "deny": [],
     "ask": []

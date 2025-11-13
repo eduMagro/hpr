@@ -917,7 +917,27 @@ class SalidaFerrallaController extends Controller
 
             $salida = Salida::findOrFail($salidaId);
 
-            // Primero, eliminar todos los paquetes actuales de esta salida
+            // Obtener los paquetes actualmente asignados a esta salida
+            $paquetesAnteriores = DB::table('salidas_paquetes')
+                ->where('salida_id', $salidaId)
+                ->pluck('paquete_id')
+                ->toArray();
+
+            // Identificar paquetes que se ELIMINAN de la salida (estaban antes, ya no están ahora)
+            $paquetesEliminados = array_diff($paquetesAnteriores, $paquetesIds);
+
+            // Cambiar estado a 'pendiente' para paquetes eliminados
+            if (!empty($paquetesEliminados)) {
+                Paquete::whereIn('id', $paquetesEliminados)
+                    ->update(['estado' => 'pendiente']);
+
+                Log::info('📦 Paquetes cambiados a pendiente', [
+                    'paquetes_ids' => $paquetesEliminados,
+                    'estado' => 'pendiente',
+                ]);
+            }
+
+            // Eliminar todos los paquetes actuales de esta salida
             DB::table('salidas_paquetes')
                 ->where('salida_id', $salidaId)
                 ->delete();
@@ -946,11 +966,21 @@ class SalidaFerrallaController extends Controller
 
             if (!empty($insertData)) {
                 DB::table('salidas_paquetes')->insert($insertData);
+
+                // Cambiar estado a 'asignado_a_salida' para paquetes asignados
+                Paquete::whereIn('id', $paquetesIds)
+                    ->update(['estado' => 'asignado_a_salida']);
+
+                Log::info('📦 Paquetes cambiados a asignado_a_salida', [
+                    'paquetes_ids' => $paquetesIds,
+                    'estado' => 'asignado_a_salida',
+                ]);
             }
 
             Log::info('✅ Paquetes de salida guardados', [
                 'salida_id' => $salidaId,
                 'num_paquetes_asignados' => count($insertData),
+                'num_paquetes_eliminados' => count($paquetesEliminados),
             ]);
 
             return response()->json([
@@ -1390,6 +1420,7 @@ class SalidaFerrallaController extends Controller
     public function gestionarSalidas(Request $request)
     {
         $planillasIds = explode(',', $request->get('planillas', ''));
+        $mostrarTodosPaquetes = $request->get('todos_paquetes', '0') === '1'; // Toggle para mostrar todos los paquetes
 
         if (empty($planillasIds[0])) {
             return redirect()->route('planificacion.index')
@@ -1413,42 +1444,56 @@ class SalidaFerrallaController extends Controller
                 return $planilla;
             });
 
-        // Obtener las obras de las planillas (asumimos que comparten obra)
+        // Obtener las obras y clientes de las planillas
         $obrasIds = $planillas->pluck('obra_id')->unique()->filter();
+        $clientesIds = $planillas->pluck('cliente_id')->unique()->filter();
 
         Log::info('🔍 Buscando salidas', [
             'obras_ids' => $obrasIds->toArray(),
+            'clientes_ids' => $clientesIds->toArray(),
         ]);
 
-        // Buscar salidas de estas obras con estado pendiente
-        // O salidas recientes sin obra asignada (recién creadas)
-        $salidasExistentes = Salida::with(['paquetes.planilla', 'paquetes.etiquetas.elementos', 'empresaTransporte', 'camion', 'obras'])
-            ->where(function($query) use ($obrasIds) {
-                // Salidas con obras específicas y estado pendiente
-                $query->where('estado', 'pendiente')
-                      ->whereHas('obras', function ($q) use ($obrasIds) {
-                          $q->whereIn('obras.id', $obrasIds);
-                      });
-            })
-            ->orWhere(function($query) {
-                // O salidas pendientes recientes sin obra (vacías recién creadas)
-                $query->where('estado', 'pendiente')
-                      ->whereDoesntHave('obras')
-                      ->where('created_at', '>=', now()->subDays(7));
+        // Buscar SOLO salidas con estado pendiente para estas obras/clientes
+        $salidasExistentes = Salida::with(['paquetes.planilla', 'paquetes.etiquetas.elementos', 'empresaTransporte', 'camion', 'obras', 'clientes'])
+            ->where('estado', 'pendiente')
+            ->where(function($query) use ($obrasIds, $clientesIds) {
+                // Salidas con obras específicas
+                $query->whereHas('obras', function ($q) use ($obrasIds) {
+                    $q->whereIn('obras.id', $obrasIds);
+                })
+                // O salidas con clientes específicos
+                ->orWhereHas('clientes', function ($q) use ($clientesIds) {
+                    $q->whereIn('clientes.id', $clientesIds);
+                });
             })
             ->orderBy('created_at', 'desc')
             ->get();
 
-        Log::info('✅ Salidas encontradas', [
+        Log::info('✅ Salidas encontradas (solo pendientes)', [
             'cantidad' => $salidasExistentes->count(),
             'salidas' => $salidasExistentes->pluck('codigo_salida')->toArray(),
         ]);
 
-        // Obtener paquetes disponibles: solo con estado 'pendiente' de estas planillas
-        $paquetesDisponibles = Paquete::with(['planilla', 'etiquetas.elementos'])
+        // Obtener AMBOS conjuntos de paquetes para filtrado dinámico sin recarga
+        // 1. Paquetes de las planillas seleccionadas (obra/cliente específico)
+        $paquetesFiltrados = Paquete::with(['planilla.obra', 'planilla.cliente', 'etiquetas.elementos'])
             ->whereIn('planilla_id', $planillasIds)
             ->where('estado', 'pendiente')
             ->get();
+
+        // 2. TODOS los paquetes pendientes disponibles
+        $paquetesTodos = Paquete::with(['planilla.obra', 'planilla.cliente', 'etiquetas.elementos'])
+            ->where('estado', 'pendiente')
+            ->whereDoesntHave('salidas') // No asignados a ninguna salida
+            ->get();
+
+        Log::info('📦 Cargando paquetes para filtrado dinámico', [
+            'paquetes_filtrados' => $paquetesFiltrados->count(),
+            'paquetes_todos' => $paquetesTodos->count(),
+        ]);
+
+        // El conjunto inicial depende del toggle
+        $paquetesDisponibles = $mostrarTodosPaquetes ? $paquetesTodos : $paquetesFiltrados;
 
         // Obtener empresas y camiones para los formularios
         $empresas = EmpresaTransporte::all();
@@ -1457,9 +1502,14 @@ class SalidaFerrallaController extends Controller
         return view('salidas.gestionar-salidas', [
             'planillas' => $planillas,
             'salidasExistentes' => $salidasExistentes,
-            'paquetesDisponibles' => $paquetesDisponibles,
+            'paquetesDisponibles' => $paquetesDisponibles, // Los que se muestran inicialmente
+            'paquetesFiltrados' => $paquetesFiltrados, // Para JavaScript - solo de obra/cliente
+            'paquetesTodos' => $paquetesTodos, // Para JavaScript - todos pendientes
             'empresas' => $empresas,
             'camiones' => $camiones,
+            'mostrarTodosPaquetes' => $mostrarTodosPaquetes, // Pasar el estado del toggle
+            'obrasIds' => $obrasIds,
+            'clientesIds' => $clientesIds,
         ]);
     }
 

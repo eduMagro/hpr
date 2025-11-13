@@ -1418,8 +1418,17 @@ class ProduccionController extends Controller
                     $grupoCount       = $grupo instanceof Collection ? $grupo->count() : (is_countable($grupo) ? count($grupo) : 0);
                     $duracionSegundos = max($grupoCount * 20 * 60, 3600); // mínimo 1 hora
 
-                    $fechaInicio      = $inicioCola->copy();
-
+                    // ⚠️ LÓGICA CORREGIDA:
+                    // - Si está FABRICANDO y tiene fecha_inicio → usar esa fecha y calcular duración hasta now()
+                    // - Si está PENDIENTE → el INICIO se actualiza a now() si ya pasó
+                    if ($planilla->estado === 'fabricando' && $planilla->fecha_inicio) {
+                        $fechaInicio = toCarbon($planilla->fecha_inicio);
+                        // Para fabricando, la duración es desde fecha_inicio hasta now()
+                        $duracionSegundos = max($fechaInicio->diffInSeconds(Carbon::now()), 3600);
+                    } else {
+                        // Para planillas pendientes, si la cola ya pasó, usar now()
+                        $fechaInicio = $inicioCola->gt(Carbon::now()) ? $inicioCola->copy() : Carbon::now();
+                    }
 
                     $tramos = $this->generarTramosLaborales($fechaInicio, $duracionSegundos, $festivosSet);
 
@@ -1432,7 +1441,6 @@ class ProduccionController extends Controller
                     $fechaFinReal = $ultimoTramo['end'] instanceof Carbon
                         ? $ultimoTramo['end']->copy()
                         : Carbon::parse($ultimoTramo['end']);
-
 
                     // Progreso
                     $progreso = null;

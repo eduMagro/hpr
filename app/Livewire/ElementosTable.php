@@ -278,7 +278,12 @@ class ElementosTable extends Component
         // Detectar si se está viendo elementos de una planilla específica
         $planilla = null;
         if (!empty($this->planilla_id)) {
-            $planilla = Planilla::find($this->planilla_id);
+            $planilla = Planilla::with(['cliente', 'obra', 'revisor'])->find($this->planilla_id);
+        } elseif (!empty($this->codigo_planilla)) {
+            // Buscar por código de planilla
+            $planilla = Planilla::with(['cliente', 'obra', 'revisor'])
+                ->where('codigo', 'like', '%' . trim($this->codigo_planilla) . '%')
+                ->first();
         }
 
         return view('livewire.elementos-table', [

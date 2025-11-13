@@ -129,7 +129,23 @@
 
                         {{-- Columna de Paquetes Disponibles --}}
                         <div class="bg-gray-50 border-2 border-gray-300 rounded-lg p-4 min-h-[400px]">
-                            <div class="font-semibold text-gray-900 mb-3">📋 Paquetes Disponibles</div>
+                            <div class="mb-3">
+                                <div class="flex items-center justify-between mb-2">
+                                    <div class="font-semibold text-gray-900">📋 Paquetes Disponibles</div>
+                                    <button type="button" id="btn-toggle-paquetes"
+                                            onclick="toggleFiltroPaquetes()"
+                                            class="text-xs px-3 py-1 rounded-md transition-colors {{ $mostrarTodosPaquetes ? 'bg-orange-500 hover:bg-orange-600 text-white' : 'bg-blue-500 hover:bg-blue-600 text-white' }}">
+                                        {{ $mostrarTodosPaquetes ? '📍 Ver solo obra/cliente' : '🌐 Ver todos pendientes' }}
+                                    </button>
+                                </div>
+                                <p class="text-xs text-gray-600">
+                                    @if($mostrarTodosPaquetes)
+                                        Mostrando <strong>TODOS</strong> los paquetes pendientes sin filtro
+                                    @else
+                                        Mostrando solo paquetes de <strong>esta obra/cliente</strong>
+                                    @endif
+                                </p>
+                            </div>
                             <div class="paquetes-zona drop-zone bg-white rounded border-2 border-dashed border-gray-400 p-2 min-h-[300px]"
                                 data-salida-id="null">
                                 @foreach ($paquetesDisponibles as $paquete)
@@ -198,6 +214,7 @@
             'planillasIds' => $planillas->pluck('id')->toArray(),
             'empresas' => $empresas,
             'camiones' => $camiones,
+            'mostrarTodosPaquetes' => $mostrarTodosPaquetes,
             'routes' => [
                 'crearSalidasVacias' => route('salidas.crearSalidasVaciasMasivo'),
                 'guardarAsignacionesPaquetes' => route('planificacion.guardarAsignacionesPaquetes'),
@@ -205,36 +222,69 @@
             ],
         ];
 
+        // Función para mapear paquetes con elementos
+        $mapearPaqueteConElementos = function($paquete) {
+            $elementos = [];
+            foreach ($paquete->etiquetas ?? [] as $etiqueta) {
+                foreach ($etiqueta->elementos ?? [] as $elemento) {
+                    $elementos[] = [
+                        'id' => $elemento->id,
+                        'x' => $elemento->coordenada_x,
+                        'y' => $elemento->coordenada_y,
+                        'diametro' => $elemento->diametro,
+                        'longitud' => $elemento->longitud,
+                        'forma' => $elemento->forma,
+                        'a' => $elemento->a,
+                        'b' => $elemento->b,
+                        'c' => $elemento->c,
+                        'd' => $elemento->d,
+                        'e' => $elemento->e,
+                        'r' => $elemento->r,
+                    ];
+                }
+            }
+            return [
+                'id' => $paquete->id,
+                'codigo' => $paquete->codigo,
+                'planilla_id' => $paquete->planilla_id,
+                'planilla_codigo' => $paquete->planilla->codigo ?? 'N/A',
+                'obra' => $paquete->planilla->obra->obra ?? 'N/A',
+                'cliente' => $paquete->planilla->cliente->empresa ?? 'N/A',
+                'peso' => $paquete->peso,
+                'elementos' => $elementos,
+            ];
+        };
+
+        // Preparar paquetes filtrados (obra/cliente)
+        $paquetesFiltradosJS = $paquetesFiltrados->map($mapearPaqueteConElementos);
+
+        // Preparar todos los paquetes
+        $paquetesTodosJS = $paquetesTodos->map($mapearPaqueteConElementos);
+
         // Combinar todos los paquetes (disponibles + asignados a salidas) con sus elementos
         $todosPaquetes = $paquetesDisponibles->concat($salidasExistentes->flatMap->paquetes)
             ->unique('id')
-            ->map(function($paquete) {
-                // Aplanar la estructura etiquetas->elementos para que el JS pueda consumirlo
-                $elementos = [];
-                foreach ($paquete->etiquetas as $etiqueta) {
-                    foreach ($etiqueta->elementos as $elemento) {
-                        $elementos[] = [
-                            'id' => $elemento->id,
-                            'dimensiones' => $elemento->dimensiones,
-                        ];
-                    }
-                }
-
-                return [
-                    'id' => $paquete->id,
-                    'codigo' => $paquete->codigo,
-                    'peso' => $paquete->peso,
-                    'elementos' => $elementos,
-                ];
+            ->map(function($paquete) use ($mapearPaqueteConElementos) {
+                return $mapearPaqueteConElementos($paquete);
             });
+
     @endphp
 
     {{-- SweetAlert2 --}}
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
     <script>
+        // Configuración de la aplicación
         window.AppGestionSalidas = @json($cfg);
+
+        // Todos los paquetes (para visualización de dibujos)
         window.paquetes = @json($todosPaquetes);
+
+        // Paquetes filtrados (solo obra/cliente)
+        window.paquetesFiltrados = @json($paquetesFiltradosJS);
+
+        // Todos los paquetes pendientes (sin filtro)
+        window.paquetesTodos = @json($paquetesTodosJS);
     </script>
 
     <script src="{{ asset('js/gestion-salidas.js') }}"></script>

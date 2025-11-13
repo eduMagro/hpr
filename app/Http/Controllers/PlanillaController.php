@@ -338,83 +338,8 @@ class PlanillaController extends Controller
     //------------------------------------------------------------------------------------ INDEX()
     public function index(Request $request)
     {
-
-        $user = auth()->user();
-        $esAdmin = $user->esAdminDepartamento()
-            || $user->esProduccionDepartamento(); // ⬅️ nuevo helper
-
-        try {
-            // 1️⃣ Iniciar la consulta base con relaciones
-            $query = Planilla::with(['user', 'elementos', 'cliente', 'obra', 'revisor']);
-            // Filtro “solo mis planillas” salvo admins
-            if (! $esAdmin) {
-                $query->where('users_id', $user->id);    // Ajusta el nombre de columna
-            }
-
-            $query = $this->aplicarFiltros($query, $request);
-            $query = $this->aplicarOrdenamiento($query, $request);
-
-
-            $totalPesoFiltrado = (clone $query)->sum('peso_total');
-            // 3️⃣ Definir columnas ordenables para la vista (cabecera de la tabla)
-            $ordenables = [
-                'codigo' => $this->getOrdenamiento('codigo', 'Código'),
-                'codigo_cliente' => $this->getOrdenamiento('codigo_cliente', 'Código Cliente'),
-                'cliente' => $this->getOrdenamiento('cliente', 'Cliente'),
-                'cod_obra' => $this->getOrdenamiento('cod_obra', 'Código Obra'),
-                'nom_obra' => $this->getOrdenamiento('nom_obra', 'Obra'),
-                'seccion' => $this->getOrdenamiento('seccion', 'Sección'),
-                'descripcion' => $this->getOrdenamiento('descripcion', 'Descripción'),
-                'ensamblado' => $this->getOrdenamiento('ensamblado', 'Ensamblado'),
-                'comentario' => $this->getOrdenamiento('comentario', 'Comentario'),
-                'peso_fabricado' => $this->getOrdenamiento('peso_fabricado', 'Peso Fabricado'),
-                'peso_total' => $this->getOrdenamiento('peso_total', 'Peso Total'),
-                'estado' => $this->getOrdenamiento('estado', 'Estado'),
-                'fecha_inicio' => $this->getOrdenamiento('fecha_inicio', 'Fecha Inicio'),
-                'fecha_finalizacion' => $this->getOrdenamiento('fecha_finalizacion', 'Fecha Finalización'),
-                'fecha_importacion' => $this->getOrdenamiento('fecha_importacion', 'Fecha Importación'),
-                'fecha_estimada_entrega' => $this->getOrdenamiento('fecha_estimada_entrega', 'Fecha Entrega'), // <- ✅ corregido
-                'nombre_completo' => $this->getOrdenamiento('nombre_completo', 'Usuario'),
-                'revisada' => $this->getOrdenamiento('revisada', 'Revisada'),
-            ];
-
-
-            // 6️⃣ Aplicar paginación y mantener filtros al cambiar de página
-            $perPage = $request->input('per_page', 10);
-            $planillas = $query->paginate($perPage)->appends($request->except('page'));
-
-            // 7️⃣ Cargar suma de pesos fabricados por planilla
-            $planillas->loadSum([
-                'elementos as suma_peso_completados' => function ($query) {
-                    $query->where('estado', 'fabricado');
-                }
-            ], 'peso');
-
-            // 🔟 Obtener texto de filtros aplicados para mostrar en la vista
-            $filtrosActivos = $this->filtrosActivos($request);
-            // En tu controlador
-            $clientes = Cliente::select('id', 'codigo', 'empresa')->get();
-            $obras = Obra::select('id', 'cod_obra', 'obra')->get();
-
-            // ⚠️ Contador de planillas sin revisar
-            $planillasSinRevisar = Planilla::where('revisada', false)
-                ->whereIn('estado', ['pendiente', 'fabricando'])
-                ->count();
-
-            // ✅ Retornar la vista con todos los datos necesarios
-            return view('planillas.index', compact(
-                'planillas',
-                'clientes',
-                'obras',
-                'ordenables',
-                'filtrosActivos',
-                'totalPesoFiltrado',
-                'planillasSinRevisar',
-            ));
-        } catch (Exception $e) {
-            // ⚠️ Si algo falla, redirigir con mensaje de error
-            return redirect()->back()->with('error', 'Ocurrió un error: ' . $e->getMessage());
-        }
+        // Retornar vista Livewire
+        return view('planillas.index');
     }
 
     //------------------------------------------------------------------------------------ SHOW()
