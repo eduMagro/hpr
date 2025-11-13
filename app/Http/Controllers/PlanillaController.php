@@ -548,6 +548,8 @@ class PlanillaController extends Controller
     // Método import() actualizado con nombre de archivo
     public function import(Request $request, PlanillaImportService $importService)
     {
+        ini_set('max_execution_time', 600);
+        set_time_limit(600);
         abort_unless(auth()->check() && auth()->user()->rol === 'oficina', 403);
 
         try {
