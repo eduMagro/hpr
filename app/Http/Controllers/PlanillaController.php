@@ -390,6 +390,13 @@ class PlanillaController extends Controller
             // En tu controlador
             $clientes = Cliente::select('id', 'codigo', 'empresa')->get();
             $obras = Obra::select('id', 'cod_obra', 'obra')->get();
+
+            // ⚠️ Contador de planillas sin revisar
+            $planillasSinRevisar = Planilla::where('revisada', false)
+                ->whereIn('estado', ['pendiente', 'fabricando'])
+                ->count();
+
+
             // ✅ Retornar la vista con todos los datos necesarios
             return view('planillas.index', compact(
                 'planillas',
@@ -398,11 +405,35 @@ class PlanillaController extends Controller
                 'ordenables',
                 'filtrosActivos',
                 'totalPesoFiltrado',
+                'planillasSinRevisar',
             ));
         } catch (Exception $e) {
             // ⚠️ Si algo falla, redirigir con mensaje de error
             return redirect()->back()->with('error', 'Ocurrió un error: ' . $e->getMessage());
         }
+    }
+
+    /**
+     * Marca una planilla como revisada
+     */
+    public function marcarRevisada(Request $request, Planilla $planilla)
+    {
+        $planilla->update([
+            'revisada' => true,
+            'revisada_por_id' => auth()->id(),
+            'revisada_at' => now(),
+        ]);
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Planilla marcada como revisada correctamente',
+                'revisada_por' => auth()->user()->name,
+                'revisada_at' => now()->format('d/m/Y H:i'),
+            ]);
+        }
+
+        return redirect()->back()->with('success', 'Planilla marcada como revisada correctamente');
     }
 
     //------------------------------------------------------------------------------------ SHOW()

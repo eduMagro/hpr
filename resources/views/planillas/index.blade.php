@@ -409,6 +409,38 @@
 
 
         </div>
+
+
+        <!-- Badge de planillas sin revisar -->
+        @if ($planillasSinRevisar > 0)
+            <div
+                class="mb-4 bg-yellow-100 border-l-4 border-yellow-500 p-4 rounded-r-lg shadow">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-3">
+                        <span class="text-3xl">⚠️</span>
+                        <div>
+                            <h3 class="text-lg font-bold text-yellow-800">
+                                {{ $planillasSinRevisar }}
+                                {{ $planillasSinRevisar === 1 ? 'planilla pendiente' : 'planillas pendientes' }}
+                                de
+                                revisión
+                            </h3>
+                            <p class="text-sm text-yellow-700">
+                                Las planillas sin revisar aparecen en
+                                <strong>GRIS</strong> en el calendario de
+                                producción
+                            </p>
+                        </div>
+                    </div>
+                    <a href="{{ route('planillas.index', ['revisada' => '0']) }}"
+                        class="bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-2 px-4 rounded transition-colors">
+                        Ver planillas sin revisar
+                    </a>
+                </div>
+            </div>
+        @endif
+
+
         <x-tabla.filtros-aplicados :filtros="$filtrosActivos" />
         <!-- TABLA DE PLANILLAS -->
         <div x-data="{ modalReimportar: false, planillaId: null }"
