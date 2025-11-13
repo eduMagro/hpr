@@ -419,7 +419,7 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
 
     Route::resource('alertas', AlertaController::class)->only(['index', 'store', 'update', 'destroy'])->names('alertas');
     Route::post('/alertas/marcar-leidas', [AlertaController::class, 'marcarLeidas'])->name('alertas.verMarcarLeidas');
-
+    Route::get('/alertas/{id}/hilo', [AlertaController::class, 'obtenerHilo'])->name('alertas.verHilo');
     Route::get('/alertas/sin-leer', [AlertaController::class, 'sinLeer'])->name('alertas.verSinLeer');
     Route::get('/estadisticas', [EstadisticasController::class, 'index'])->name('estadisticas.index');
 
