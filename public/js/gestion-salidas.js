@@ -322,3 +322,172 @@ async function guardarAsignaciones() {
         Swal.fire('❌', 'Error al guardar las asignaciones', 'error');
     }
 }
+
+/* ===================== Mostrar dibujo del paquete ===================== */
+function mostrarDibujo(paqueteId) {
+    const paquete = window.paquetes.find((p) => p.id == paqueteId);
+    console.log('🔍 Buscando paquete:', paqueteId, 'Encontrado:', paquete);
+
+    if (!paquete) {
+        console.warn('No se encontró el paquete.');
+        return;
+    }
+
+    // Obtener los elementos del paquete
+    const elementos = paquete.elementos || [];
+    console.log('📦 Elementos del paquete:', elementos);
+
+    if (elementos.length === 0) {
+        Swal.fire('⚠️', 'Este paquete no tiene elementos para dibujar.', 'warning');
+        return;
+    }
+
+    // Obtener el modal y el contenedor del canvas
+    const modal = document.getElementById('modal-dibujo');
+    const canvasContainer = document.getElementById('canvas-dibujo').parentElement;
+
+    // Limpiar el contenedor
+    const oldCanvas = document.getElementById('canvas-dibujo');
+    if (oldCanvas) {
+        oldCanvas.remove();
+    }
+
+    // Crear un contenedor para todos los elementos
+    const elementosContainer = document.createElement('div');
+    elementosContainer.id = 'canvas-dibujo';
+    elementosContainer.style.width = '100%';
+    elementosContainer.style.display = 'flex';
+    elementosContainer.style.flexDirection = 'column';
+    elementosContainer.style.gap = '20px';
+
+    // Dibujar cada elemento en su propio contenedor
+    elementos.forEach((elemento, index) => {
+        const elementoDiv = document.createElement('div');
+        elementoDiv.id = `elemento-${elemento.id}`;
+        elementoDiv.style.width = '100%';
+        elementoDiv.style.height = '200px'; // Altura fija en vez de minHeight
+        elementoDiv.style.border = '1px solid #e5e7eb';
+        elementoDiv.style.borderRadius = '4px';
+        elementoDiv.style.background = 'white';
+        elementoDiv.style.position = 'relative';
+
+        elementosContainer.appendChild(elementoDiv);
+    });
+
+    // Agregar al DOM primero
+    canvasContainer.appendChild(elementosContainer);
+
+    // Mostrar el modal PRIMERO para que los elementos tengan dimensiones reales
+    modal.classList.remove('hidden');
+
+    // Usar requestAnimationFrame para asegurar que el navegador renderizó el modal
+    requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+            elementos.forEach((elemento) => {
+                console.log(`🎨 Dibujando elemento ${elemento.id}`);
+                const contenedor = document.getElementById(`elemento-${elemento.id}`);
+                if (contenedor) {
+                    const rect = contenedor.getBoundingClientRect();
+                    console.log(`📐 Dimensiones del contenedor ${elemento.id}:`, rect.width, 'x', rect.height);
+                }
+
+                if (typeof window.dibujarFiguraElemento === 'function') {
+                    window.dibujarFiguraElemento(`elemento-${elemento.id}`, elemento.dimensiones, null);
+                } else {
+                    console.error('❌ dibujarFiguraElemento no está disponible');
+                }
+            });
+        });
+    });
+}
+
+// Exportar función globalmente
+window.mostrarDibujo = mostrarDibujo;
+
+/* ===================== Eliminar salida ===================== */
+async function eliminarSalida(salidaId) {
+    const result = await Swal.fire({
+        title: '¿Eliminar salida?',
+        text: 'Los paquetes asignados volverán a estar disponibles. Esta acción no se puede deshacer.',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#dc2626',
+        cancelButtonColor: '#6b7280',
+        confirmButtonText: 'Sí, eliminar',
+        cancelButtonText: 'Cancelar'
+    });
+
+    if (!result.isConfirmed) {
+        return;
+    }
+
+    try {
+        Swal.fire({
+            title: 'Eliminando salida...',
+            text: 'Por favor espera',
+            allowOutsideClick: false,
+            didOpen: () => {
+                Swal.showLoading();
+            }
+        });
+
+        const response = await fetch(`/salidas-ferralla/${salidaId}`, {
+            method: 'DELETE',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'X-CSRF-TOKEN': window.AppGestionSalidas.csrf,
+            }
+        });
+
+        // Primero leer como texto para poder mostrarlo en caso de error
+        const responseText = await response.text();
+
+        let data;
+        try {
+            data = JSON.parse(responseText);
+        } catch (parseError) {
+            console.error('Error al parsear JSON:', parseError);
+            console.error('Respuesta del servidor:', responseText);
+            Swal.fire('Error', 'Error al procesar la respuesta del servidor. Revisa la consola para más detalles.', 'error');
+            return;
+        }
+
+        if (response.ok && data.success) {
+            // Obtener todos los paquetes de esta salida
+            const zonaSalida = document.querySelector(`.drop-zone[data-salida-id="${salidaId}"]`);
+            const paquetes = zonaSalida ? zonaSalida.querySelectorAll('.paquete-item') : [];
+
+            // Mover los paquetes a la zona de disponibles
+            const zonaDisponibles = document.querySelector('.drop-zone[data-salida-id="null"]');
+            if (zonaDisponibles && paquetes.length > 0) {
+                paquetes.forEach(paquete => {
+                    zonaDisponibles.appendChild(paquete);
+                });
+            }
+
+            // Eliminar el contenedor completo de la salida (el div padre con bg-blue-50)
+            const contenedorSalida = zonaSalida ? zonaSalida.closest('.bg-blue-50') : null;
+            if (contenedorSalida) {
+                contenedorSalida.remove();
+            }
+
+            // Mostrar mensaje de éxito
+            Swal.fire({
+                icon: 'success',
+                title: 'Salida eliminada',
+                text: 'La salida ha sido eliminada correctamente',
+                timer: 2000,
+                showConfirmButton: false
+            });
+        } else {
+            Swal.fire('Error', data.message || 'No se pudo eliminar la salida', 'error');
+        }
+    } catch (error) {
+        console.error('Error completo:', error);
+        Swal.fire('Error', 'Error al eliminar la salida: ' + error.message, 'error');
+    }
+}
+
+// Exportar función globalmente
+window.eliminarSalida = eliminarSalida;

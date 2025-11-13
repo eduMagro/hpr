@@ -203,7 +203,10 @@ class PaqueteController extends Controller
         $paquetesPage = $query->paginate($perPage)->appends($request->query());
 
         /* ── Para el JSON y scripts auxiliares (sin paginar) ── */
-        $paquetesAll = Paquete::with('etiquetas:id,paquete_id,etiqueta_sub_id,nombre,codigo,peso')
+        $paquetesAll = Paquete::with([
+                'etiquetas:id,paquete_id,etiqueta_sub_id,nombre,codigo,peso',
+                'etiquetas.elementos:id,etiqueta_id,dimensiones'
+            ])
             ->select('id', 'codigo')
             ->latest()
             ->take(100) // 🔸 solo los 100 últimos, ajusta según lo que necesites
@@ -223,6 +226,10 @@ class PaqueteController extends Controller
                 'nombre'         => $e->nombre,
                 'codigo'         => $e->codigo,
                 'peso_kg'        => $e->peso_kg,
+                'elementos'      => $e->elementos->map(fn($el) => [
+                    'id'           => $el->id,
+                    'dimensiones'  => $el->dimensiones,
+                ]),
             ]),
         ]);
 

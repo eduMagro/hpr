@@ -234,34 +234,66 @@ class PlanificacionController extends Controller
             $fechaFin   = $fechaInicio->copy()->addHours(3);
             $color      = $salida->estado === 'completada' ? '#4CAF50' : '#3B82F6';
 
-            return $salida->salidaClientes->map(function ($relacion) use ($salida, $empresa, $camion, $pesoTotal, $fechaInicio, $fechaFin, $color, $viewType) {
-                $obra = $relacion->obra;
+            // Si la salida tiene salidaClientes, generar un evento por cada uno
+            if ($salida->salidaClientes->isNotEmpty()) {
+                return $salida->salidaClientes->map(function ($relacion) use ($salida, $empresa, $camion, $pesoTotal, $fechaInicio, $fechaFin, $color, $viewType) {
+                    $obra = $relacion->obra;
+                    $codigoSage = $salida->codigo_sage ? " - {$salida->codigo_sage}" : '';
 
-                $evento = [
-                    'title'        => "{$salida->codigo_salida} - {$salida->codigo_sage} - {$obra->obra} - {$pesoTotal} kg",
-                    'id'           => $salida->id . '-' . $obra->id,
-                    'start'        => $fechaInicio->toDateTimeString(),
-                    'end'          => $fechaFin->toDateTimeString(),
-                    'tipo'         => 'salida',
-                    'backgroundColor' => $color,
-                    'borderColor'     => $color,
-                    'extendedProps' => [
+                    $evento = [
+                        'title'        => "{$salida->codigo_salida}{$codigoSage} - {$obra->obra} - {$pesoTotal} kg",
+                        'id'           => $salida->id . '-' . $obra->id,
+                        'start'        => $fechaInicio->toDateTimeString(),
+                        'end'          => $fechaFin->toDateTimeString(),
                         'tipo'         => 'salida',
-                        'cod_obra'     => $obra->cod_obra,
-                        'nombre_obra'  => $obra->obra,
-                        'empresa'      => $empresa,
-                        'camion'       => $camion,
-                        'comentario'   => $salida->comentario,
-                    ],
-                ];
+                        'backgroundColor' => $color,
+                        'borderColor'     => $color,
+                        'extendedProps' => [
+                            'tipo'         => 'salida',
+                            'cod_obra'     => $obra->cod_obra,
+                            'nombre_obra'  => $obra->obra,
+                            'empresa'      => $empresa,
+                            'camion'       => $camion,
+                            'comentario'   => $salida->comentario,
+                        ],
+                    ];
 
-                // Solo agregar resourceId si no es vista timeGridDay
-                if ($viewType !== 'timeGridDay') {
-                    $evento['resourceId'] = (string) $obra->id;
-                }
+                    // Solo agregar resourceId si no es vista timeGridDay
+                    if ($viewType !== 'timeGridDay') {
+                        $evento['resourceId'] = (string) $obra->id;
+                    }
 
-                return $evento;
-            });
+                    return $evento;
+                });
+            }
+
+            // Si la salida NO tiene salidaClientes, generar un evento sin obra específica
+            $codigoSage = $salida->codigo_sage ? " - {$salida->codigo_sage}" : '';
+            $evento = [
+                'title'        => "{$salida->codigo_salida}{$codigoSage} - Sin obra asignada - {$pesoTotal} kg",
+                'id'           => $salida->id . '-sin-obra',
+                'start'        => $fechaInicio->toDateTimeString(),
+                'end'          => $fechaFin->toDateTimeString(),
+                'tipo'         => 'salida',
+                'backgroundColor' => $color,
+                'borderColor'     => $color,
+                'extendedProps' => [
+                    'tipo'         => 'salida',
+                    'cod_obra'     => '',
+                    'nombre_obra'  => 'Sin obra asignada',
+                    'empresa'      => $empresa,
+                    'camion'       => $camion,
+                    'comentario'   => $salida->comentario ?? '',
+                    'salida_id'    => $salida->id,
+                ],
+            ];
+
+            // Agregar resourceId especial para vistas basadas en recursos
+            if ($viewType !== 'timeGridDay') {
+                $evento['resourceId'] = '_sin_obra_';
+            }
+
+            return collect([$evento]);
         });
     }
 
@@ -384,6 +416,21 @@ class PlanificacionController extends Controller
                 'cliente' => '',
                 'cod_obra' => '',
                 'orderIndex' => 0, // Aparece primero
+            ]);
+        }
+
+        // Agregar recurso especial para salidas sin obra asignada
+        $tieneSalidasSinObra = $eventos->contains(function($evento) {
+            return isset($evento['resourceId']) && $evento['resourceId'] === '_sin_obra_';
+        });
+
+        if ($tieneSalidasSinObra) {
+            $resources->push([
+                'id' => '_sin_obra_',
+                'title' => '🚚 Salidas sin Obra',
+                'cliente' => '',
+                'cod_obra' => '',
+                'orderIndex' => 0.5, // Aparece después del resumen pero antes de las obras
             ]);
         }
 

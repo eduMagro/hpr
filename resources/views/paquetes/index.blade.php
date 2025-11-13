@@ -55,56 +55,6 @@
                 </tbody>
                 <tbody class="text-gray-700 text-sm">
                     @forelse ($paquetes as $paquete)
-                        <!-- Modal de Detalle de Paquete (Dinamico) -->
-                        <div id="modal-detalle-paquete"
-                            class="hidden fixed inset-0 bg-gray-900 bg-opacity-60 flex justify-center items-center z-50">
-                            <div
-                                class="bg-white rounded-xl shadow-xl max-w-5xl w-full max-h-[90vh] overflow-y-auto p-6 relative">
-                                {{-- Botón Imprimir todas --}}
-                                <button x-data="{
-                                    cargando: false,
-                                    async imprimir() {
-                                        this.cargando = true;
-                                
-                                        // Esperar 1 frame real para que el DOM actualice el spinner
-                                        await new Promise(resolve => requestAnimationFrame(resolve));
-                                
-                                        // Esperar un poco más si hay canvas implicados
-                                        await new Promise(resolve => setTimeout(resolve, 30));
-                                
-                                        await imprimirTodasDelPaquete({{ $paquete->id }});
-                                
-                                        this.cargando = false;
-                                    }
-                                }" x-on:click="imprimir" x-bind:disabled="cargando"
-                                    class="w-6 h-6 bg-orange-100 text-orange-600 rounded hover:bg-orange-200 flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
-                                    title="Imprimir todas las etiquetas del paquete">
-
-                                    <span x-show="!cargando">🖨️</span>
-
-                                    <svg x-show="cargando" class="h-4 w-4 animate-spin"
-                                        xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                        <circle class="opacity-25" cx="12" cy="12" r="10"
-                                            stroke="currentColor" stroke-width="4" />
-                                        <path class="opacity-75" fill="currentColor"
-                                            d="M4 12a8 8 0 018-8v4l3.536-3.536A9 9 0 103 12h4z" />
-                                    </svg>
-                                </button>
-
-
-                                <button onclick="cerrarModalDetalle()"
-                                    class="absolute top-2 right-2 text-red-600 hover:text-red-800 text-xl font-bold">✖</button>
-
-                                <h2 class="text-2xl font-bold mb-4 text-center">🏷️ Etiquetas del Paquete</h2>
-
-                                <div id="contenido-detalle-paquete" class="space-y-4">
-                                    <!-- Aquí se insertarán dinámicamente las etiquetas del paquete -->
-                                </div>
-
-
-
-                            </div>
-                        </div>
                         <tr class="border-b odd:bg-gray-100 even:bg-gray-50 hover:bg-blue-200">
                             <td class="p-2 text-center border">{{ $paquete->id }}</td>
                             <td class="p-2 text-center border">{{ $paquete->codigo }}</td>
@@ -205,79 +155,126 @@
         <!-- Paginación -->
         <x-tabla.paginacion :paginador="$paquetes" />
 
+        {{-- Modal para visualizar elementos del paquete --}}
+        <div id="modal-dibujo" class="hidden fixed inset-0 bg-gray-900 bg-opacity-50 flex justify-center items-center p-4">
+            <div class="bg-white p-4 sm:p-6 rounded-lg w-full sm:w-[800px] md:w-[900px] lg:w-[1000px] max-w-[95vw] max-h-[90vh] flex flex-col shadow-lg relative">
+                <button id="cerrar-modal" class="absolute top-2 right-2 text-red-600 hover:bg-red-100">
+                    ✖
+                </button>
 
+                <h2 class="text-xl font-semibold mb-4 text-center">Elementos del paquete</h2>
 
+                <div class="overflow-y-auto flex-1 min-h-0" style="max-height: 75vh;">
+                    <div id="canvas-dibujo" class="border max-w-full h-auto"></div>
+                </div>
+            </div>
+        </div>
 
         <script>
+            // Preparar datos de paquetes con sus elementos
+            window.paquetes = @json($paquetesJson);
+
             function mostrarDetallePaquete(paqueteId) {
                 const paquete = window.paquetes.find(p => p.id === paqueteId);
-                if (!paquete || !paquete.etiquetas) return;
+                console.log('🔍 Buscando paquete:', paqueteId, 'Encontrado:', paquete);
 
-                const contenedor = document.getElementById('contenido-detalle-paquete');
-                contenedor.innerHTML = '';
+                if (!paquete) {
+                    console.warn('No se encontró el paquete.');
+                    return;
+                }
 
-                paquete.etiquetas.forEach((etiqueta) => {
-                    const safeId = etiqueta.etiqueta_sub_id.replace(/\./g, '_');
-                    const html = `
-        <div class="bg-orange-300 border border-black p-4 shadow-md rounded-md">
-            <div class="flex justify-between">
-                <h3 class="text-lg font-bold text-gray-900">
-                    ${etiqueta.etiqueta_sub_id} - ${etiqueta.nombre || 'Sin nombre'}
-                </h3>
-            </div>
-            <p><strong>Código:</strong> ${etiqueta.codigo}</p>
-            <p><strong>Peso:</strong> ${etiqueta.peso_kg} kg</p>
-            <canvas id="canvas-imprimir-etiqueta-${safeId}" class="w-full border mt-2" height="100"></canvas>
-        </div>
-    `;
-                    contenedor.insertAdjacentHTML('beforeend', html);
+                // Obtener los elementos del paquete desde las etiquetas
+                const elementos = [];
+                if (paquete.etiquetas && paquete.etiquetas.length > 0) {
+                    paquete.etiquetas.forEach(etiqueta => {
+                        if (etiqueta.elementos && etiqueta.elementos.length > 0) {
+                            etiqueta.elementos.forEach(elemento => {
+                                elementos.push({
+                                    id: elemento.id,
+                                    dimensiones: elemento.dimensiones
+                                });
+                            });
+                        }
+                    });
+                }
+
+                console.log('📦 Elementos del paquete:', elementos);
+
+                if (elementos.length === 0) {
+                    Swal.fire('⚠️', 'Este paquete no tiene elementos para dibujar.', 'warning');
+                    return;
+                }
+
+                // Obtener el modal y el contenedor del canvas
+                const modal = document.getElementById('modal-dibujo');
+                const canvasContainer = document.getElementById('canvas-dibujo');
+
+                // Limpiar el contenedor
+                canvasContainer.innerHTML = '';
+                canvasContainer.style.width = '100%';
+                canvasContainer.style.display = 'flex';
+                canvasContainer.style.flexDirection = 'column';
+                canvasContainer.style.gap = '20px';
+
+                // Dibujar cada elemento en su propio contenedor
+                elementos.forEach((elemento) => {
+                    const elementoDiv = document.createElement('div');
+                    elementoDiv.id = `elemento-${elemento.id}`;
+                    elementoDiv.style.width = '100%';
+                    elementoDiv.style.height = '200px';
+                    elementoDiv.style.border = '1px solid #e5e7eb';
+                    elementoDiv.style.borderRadius = '4px';
+                    elementoDiv.style.background = 'white';
+                    elementoDiv.style.position = 'relative';
+
+                    canvasContainer.appendChild(elementoDiv);
                 });
 
+                // Mostrar el modal PRIMERO para que los elementos tengan dimensiones reales
+                modal.classList.remove('hidden');
 
+                // Usar requestAnimationFrame para asegurar que el navegador renderizó el modal
+                requestAnimationFrame(() => {
+                    requestAnimationFrame(() => {
+                        elementos.forEach((elemento) => {
+                            console.log(`🎨 Dibujando elemento ${elemento.id}`);
 
-                document.getElementById('modal-detalle-paquete').classList.remove('hidden');
-
-                // Espera a que el DOM esté pintado para llamar a la función de dibujo
-                setTimeout(() => {
-                    const etiquetasFiltradas = window.elementosAgrupadosScript.filter(({
-                            etiqueta
-                        }) =>
-                        paquete.etiquetas.some(e => e.etiqueta_sub_id === etiqueta.etiqueta_sub_id)
-                    );
-
-                    dibujarCanvasParaEtiquetas(etiquetasFiltradas);
-
-                }, 100);
+                            if (typeof window.dibujarFiguraElemento === 'function') {
+                                window.dibujarFiguraElemento(`elemento-${elemento.id}`, elemento.dimensiones, null);
+                            } else {
+                                console.error('❌ dibujarFiguraElemento no está disponible');
+                            }
+                        });
+                    });
+                });
             }
 
-            function cerrarModalDetalle() {
-                document.getElementById('modal-detalle-paquete').classList.add('hidden');
-            }
+            // Cerrar modal
+            document.addEventListener('DOMContentLoaded', function() {
+                const cerrarBtn = document.getElementById('cerrar-modal');
+                const modal = document.getElementById('modal-dibujo');
 
-            //......................................................................................
+                if (cerrarBtn) {
+                    cerrarBtn.addEventListener('click', function() {
+                        modal.classList.add('hidden');
+                    });
+                }
 
-            window.paquetes = @json($paquetesJson);
-            window.elementosAgrupadosScript = @json($elementosAgrupadosScript);
+                // Cerrar al hacer click fuera del modal
+                if (modal) {
+                    modal.addEventListener('click', function(e) {
+                        if (e.target === modal) {
+                            modal.classList.add('hidden');
+                        }
+                    });
+                }
+            });
         </script>
+
         <!-- SCRIPT PARA IMPRIMIR QR -->
         <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
         <script src="{{ asset('js/imprimirQrS.js') }}"></script>
-        <script src="{{ asset('js/maquinaJS/canvasMaquinaSinBoton.js') }}" defer></script>
-        <script>
-            function imprimirTodasDelPaquete(paqueteId) {
-                return new Promise((resolve) => {
-                    const paquete = window.paquetes.find(p => p.id === paqueteId);
-                    if (!paquete || !paquete.etiquetas) return resolve();
-
-                    const etiquetaIds = paquete.etiquetas.map(e => e.etiqueta_sub_id.replace(/\./g, '_'));
-
-                    // Esperar a que canvas estén dibujados si es necesario
-                    setTimeout(() => {
-                        imprimirEtiquetasLote(etiquetaIds);
-                        resolve();
-                    }, 10);
-                });
-            }
-        </script>
+        <script src="{{ asset('js/elementosJs/figuraElemento.js') }}" defer></script>
+        <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
 </x-app-layout>

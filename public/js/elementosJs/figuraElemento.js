@@ -624,11 +624,13 @@ document.addEventListener("DOMContentLoaded", function () {
         } else {
             // Si no es canvas, obtener dimensiones del contenedor
             const rect = contenedor.getBoundingClientRect();
+            console.log("🔍 getBoundingClientRect:", rect);
+            console.log("🔍 contenedor.style:", { width: contenedor.style.width, height: contenedor.style.height });
             ancho = rect.width > 0 ? rect.width : parseInt(contenedor.style.width) || 600;
             alto = rect.height > 0 ? rect.height : parseInt(contenedor.style.height) || 400;
         }
 
-        console.log("📐 Dimensiones del contenedor:", { ancho, alto });
+        console.log("📐 Dimensiones finales del contenedor:", { ancho, alto });
 
         const svg = crearSVG(ancho, alto, "white");
 
@@ -761,7 +763,9 @@ document.addEventListener("DOMContentLoaded", function () {
             console.log("✅ Path dibujado correctamente con grosor:", lineWidth);
 
             // Añadir acotaciones solo si el contenedor es suficientemente grande
+            console.log("🔍 Verificando acotaciones:", { ancho, alto, cumpleCondicion: (ancho > 150 && alto > 80) });
             if (ancho > 150 && alto > 80) {
+                console.log("✅ Dibujando acotaciones...");
                 const fontSize = ancho < 300 ? 8 : 10;
 
                 // Calcular puntos transformados para las acotaciones usando la medida ajustada
@@ -834,11 +838,16 @@ document.addEventListener("DOMContentLoaded", function () {
 
                 // Agrupar por dirección (paralelos comparten acotación)
                 const segmentosUnicos = agruparSegmentosPorDireccion(segmentosCombinados);
+                console.log("📊 Segmentos únicos para acotar:", segmentosUnicos.length, segmentosUnicos);
 
                 // Dibujar solo las acotaciones únicas
-                segmentosUnicos.forEach(s => {
+                segmentosUnicos.forEach((s, idx) => {
+                    console.log(`📏 Dibujando acotación ${idx}:`, s.label);
                     dibujarAcotacion(svg, s.p1, s.p2, s.label, fontSize);
                 });
+                console.log("✅ Acotaciones completadas");
+            } else {
+                console.log("⚠️ Contenedor muy pequeño para acotaciones");
             }
         } else {
             console.error("❌ Path vacío");

@@ -2,21 +2,43 @@
     <x-slot name="title">Planificación por Máquina</x-slot>
     <x-menu.planillas />
 
-    <!-- Botones de navegación -->
-    <div class="mb-6 border-b border-gray-200">
-        <div class="flex space-x-2">
-            <a href="{{ route('produccion.verMaquinas') }}"
-               class="px-6 py-3 font-semibold text-blue-600 border-b-2 border-blue-600 bg-blue-50 transition-colors">
-                Producción/Máquinas
-            </a>
-            <a href="{{ route('produccion.cargasMaquinas') }}"
-               class="px-6 py-3 font-semibold text-gray-600 hover:text-blue-600 hover:bg-gray-50 border-b-2 border-transparent transition-colors">
-                Cargas Máquinas
-            </a>
-            <a href="{{ route('planificacion.index') }}"
-               class="px-6 py-3 font-semibold text-gray-600 hover:text-blue-600 hover:bg-gray-50 border-b-2 border-transparent transition-colors">
-                Planificación
-            </a>
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <!-- Botones de navegación -->
+        <div class="mb-6 border-b border-gray-200">
+            <div class="flex space-x-2">
+                <a href="{{ route('produccion.verMaquinas') }}"
+                   class="px-6 py-3 font-semibold text-blue-600 border-b-2 border-blue-600 bg-blue-50 transition-colors">
+                    Producción/Máquinas
+                </a>
+                <a href="{{ route('produccion.cargasMaquinas') }}"
+                   class="px-6 py-3 font-semibold text-gray-600 hover:text-blue-600 hover:bg-gray-50 border-b-2 border-transparent transition-colors">
+                    Cargas Máquinas
+                </a>
+                <a href="{{ route('planificacion.index') }}"
+                   class="px-6 py-3 font-semibold text-gray-600 hover:text-blue-600 hover:bg-gray-50 border-b-2 border-transparent transition-colors">
+                    Planificación
+                </a>
+            </div>
+        </div>
+
+        <!-- Botones de acción -->
+        <div class="mb-4 flex gap-3">
+            <button onclick="mostrarSelectorMaquinaRedistribuir()"
+                    class="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors shadow">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                </svg>
+                <span class="font-medium">Redistribuir Elementos</span>
+            </button>
+
+            <button onclick="mostrarSelectorMaquinaEstado()"
+                    class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors shadow">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+                <span class="font-medium">Cambiar Estado Máquina</span>
+            </button>
         </div>
     </div>
 
@@ -316,6 +338,26 @@
                 </button>
                 <button onclick="cerrarModalResultados()" class="bg-green-500 hover:bg-green-600 text-white px-6 py-2 rounded-lg transition-colors">
                     Aceptar
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Selector de Máquina -->
+    <div id="modalSelectorMaquina" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-2xl mx-4 max-h-[80vh] overflow-hidden flex flex-col">
+            <div id="selectorHeader" class="bg-blue-600 text-white px-6 py-4 rounded-t-lg">
+                <h3 class="text-lg font-semibold" id="selectorTitulo">Seleccionar Máquina</h3>
+                <p class="text-sm opacity-90">Elige la máquina sobre la que quieres realizar la acción</p>
+            </div>
+            <div class="p-6 overflow-y-auto flex-1">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-3" id="listaMaquinas">
+                    <!-- Se llenará dinámicamente con las máquinas -->
+                </div>
+            </div>
+            <div class="bg-gray-50 px-6 py-4 rounded-b-lg flex justify-end border-t">
+                <button onclick="cerrarModalSelectorMaquina()" class="bg-gray-300 hover:bg-gray-400 text-gray-700 px-4 py-2 rounded-lg transition-colors">
+                    Cancelar
                 </button>
             </div>
         </div>
@@ -2554,6 +2596,86 @@
             modal.classList.add('hidden');
             modal.classList.remove('flex');
             maquinaActualId = null;
+        }
+
+        // Funciones para selector de máquina desde botones superiores
+        let accionSeleccionada = null; // 'estado' o 'redistribuir'
+
+        function mostrarSelectorMaquinaEstado() {
+            accionSeleccionada = 'estado';
+            const header = document.getElementById('selectorHeader');
+            const titulo = document.getElementById('selectorTitulo');
+            header.className = 'bg-blue-600 text-white px-6 py-4 rounded-t-lg';
+            titulo.textContent = 'Cambiar Estado de Máquina';
+            mostrarSelectorMaquina();
+        }
+
+        function mostrarSelectorMaquinaRedistribuir() {
+            accionSeleccionada = 'redistribuir';
+            const header = document.getElementById('selectorHeader');
+            const titulo = document.getElementById('selectorTitulo');
+            header.className = 'bg-orange-600 text-white px-6 py-4 rounded-t-lg';
+            titulo.textContent = 'Redistribuir Elementos de Máquina';
+            mostrarSelectorMaquina();
+        }
+
+        function mostrarSelectorMaquina() {
+            const modal = document.getElementById('modalSelectorMaquina');
+            const listaMaquinas = document.getElementById('listaMaquinas');
+
+            // Limpiar lista
+            listaMaquinas.innerHTML = '';
+
+            // Obtener todas las máquinas del calendario
+            const resources = calendar.getResources();
+
+            resources.forEach(resource => {
+                const maquinaId = resource.id;
+                const maquinaNombre = resource.title;
+
+                const boton = document.createElement('button');
+                boton.className = 'p-4 border-2 border-gray-300 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition-all text-left flex items-center gap-3 group';
+                boton.onclick = () => seleccionarMaquina(maquinaId);
+
+                const colorIcon = accionSeleccionada === 'estado' ? 'text-blue-600' : 'text-orange-600';
+
+                boton.innerHTML = `
+                    <div class="${colorIcon} group-hover:scale-110 transition-transform">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z" />
+                        </svg>
+                    </div>
+                    <div class="flex-1">
+                        <div class="font-semibold text-gray-800">${maquinaNombre}</div>
+                        <div class="text-xs text-gray-500">ID: ${maquinaId}</div>
+                    </div>
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-400 group-hover:text-blue-600 group-hover:translate-x-1 transition-all" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                    </svg>
+                `;
+
+                listaMaquinas.appendChild(boton);
+            });
+
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        }
+
+        function cerrarModalSelectorMaquina() {
+            const modal = document.getElementById('modalSelectorMaquina');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+            accionSeleccionada = null;
+        }
+
+        function seleccionarMaquina(maquinaId) {
+            cerrarModalSelectorMaquina();
+
+            if (accionSeleccionada === 'estado') {
+                abrirModalEstado(maquinaId);
+            } else if (accionSeleccionada === 'redistribuir') {
+                abrirModalRedistribuir(maquinaId);
+            }
         }
 
         let datosRedistribucion = null; // Para almacenar los datos para el reporte

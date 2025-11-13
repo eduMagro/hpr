@@ -11,6 +11,7 @@ class SalidaCliente extends Model
     protected $fillable = [
         'salida_id',
         'cliente_id',
+        'obra_id',
         'horas_paralizacion',
         'importe_paralizacion',
         'horas_grua',

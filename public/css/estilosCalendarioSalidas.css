@@ -355,3 +355,86 @@
 .fc-daygrid .fc-event.evento-resumen-diario .fc-event-main {
     padding: 2px !important;
 }
+
+/* 🔹 Reducir ancho de columnas de fin de semana en vista mensual (70% del ancho normal) */
+.fc-dayGridMonth-view .fc-day-sat,
+.fc-dayGridMonth-view .fc-day-sun {
+    width: 10% !important;
+    min-width: 100px !important;
+}
+
+/* 🔹 Ajustar también las celdas de encabezado */
+.fc-dayGridMonth-view .fc-col-header-cell.fc-day-sat,
+.fc-dayGridMonth-view .fc-col-header-cell.fc-day-sun {
+    width: 10% !important;
+    min-width: 100px !important;
+}
+
+/* 🔹 Días laborables toman más espacio */
+.fc-dayGridMonth-view .fc-day:not(.fc-day-sat):not(.fc-day-sun) {
+    width: 16% !important;
+}
+
+.fc-dayGridMonth-view .fc-col-header-cell:not(.fc-day-sat):not(.fc-day-sun) {
+    width: 16% !important;
+}
+
+/* 🔹 Hacer que todos los eventos ocupen todo el ancho de la celda en vista mensual */
+/* FORZAR ancho completo ignorando completamente el sistema de FullCalendar */
+/* Excluir eventos de resumen para no afectarlos */
+.fc-dayGridMonth-view .fc-daygrid-event-harness:not(:has(.evento-resumen-diario)) {
+    position: static !important;
+    inset: unset !important;
+    left: unset !important;
+    right: unset !important;
+    top: unset !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 0 2px 0 !important;
+    float: none !important;
+}
+
+.fc-dayGridMonth-view .fc-daygrid-event-harness:not(:has(.evento-resumen-diario)):before,
+.fc-dayGridMonth-view .fc-daygrid-event-harness:not(:has(.evento-resumen-diario)):after {
+    content: none !important;
+}
+
+.fc-dayGridMonth-view .fc-daygrid-event:not(.evento-resumen-diario) {
+    position: static !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    border-radius: 3px !important;
+    float: none !important;
+}
+
+.fc-dayGridMonth-view .fc-daygrid-day-events {
+    margin: 0 !important;
+    padding: 0 !important;
+    display: block !important;
+    width: 100% !important;
+}
+
+.fc-dayGridMonth-view .fc-daygrid-day-bottom {
+    margin: 0 !important;
+}
+
+.fc-dayGridMonth-view .fc-daygrid-event .fc-event-main {
+    padding: 2px 4px !important;
+}
+
+/* 🔹 Eliminar dot event (punto que aparece cuando hay múltiples eventos) */
+.fc-dayGridMonth-view .fc-daygrid-event-dot {
+    display: none !important;
+}
+
+/* 🔹 Asegurar que el contenedor de eventos no tenga padding lateral */
+.fc-dayGridMonth-view .fc-daygrid-day-frame {
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+}
+
+.fc-dayGridMonth-view .fc-daygrid-day-top {
+    padding-left: 2px !important;
+    padding-right: 2px !important;
+}

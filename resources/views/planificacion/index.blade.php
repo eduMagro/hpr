@@ -93,10 +93,6 @@
             'routes' => [
                 'planificacion' => url('/planificacion'),
                 'crearSalidaDesdeCalendario' => route('planificacion.crearSalidaDesdeCalendario'),
-                'crearSalidasVaciasDesdeCalendario' => route('planificacion.crearSalidasVaciasDesdeCalendario'),
-                'informacionGestionPaquetes' => route('planificacion.informacionGestionPaquetes'),
-                'obtenerSalidasPorPlanillas' => route('planificacion.obtenerSalidasPorPlanillas'),
-                'guardarAsignacionesPaquetes' => route('planificacion.guardarAsignacionesPaquetes'),
                 'informacionPaquetesSalida' => route('planificacion.informacionPaquetesSalida'),
                 'guardarPaquetesSalida' => route('planificacion.guardarPaquetesSalida'),
                 'comentario' => url('/planificacion/comentario/__ID__'),

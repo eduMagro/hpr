@@ -71,16 +71,36 @@
                         {{-- Columnas de Salidas --}}
                         @foreach ($salidasExistentes as $salida)
                             <div class="bg-blue-50 border-2 border-blue-200 rounded-lg p-4 min-h-[400px]">
-                                <div class="font-semibold text-blue-900 mb-3 flex items-center justify-between">
-                                    <div>
-                                        <p class="text-sm">🚚 {{ $salida->codigo_salida }}</p>
-                                        <p class="text-xs text-gray-600">
-                                            {{ $salida->empresaTransporte->nombre ?? 'Sin empresa' }}</p>
-                                        <p class="text-xs text-gray-600">{{ $salida->camion->modelo ?? 'Sin camión' }}
-                                        </p>
+                                <div class="font-semibold text-blue-900 mb-3">
+                                    <div class="flex items-start justify-between mb-2">
+                                        <div class="flex-1">
+                                            <p class="text-sm">🚚 {{ $salida->codigo_salida }}</p>
+                                        </div>
+                                        <button onclick="eliminarSalida({{ $salida->id }})"
+                                                class="text-red-600 hover:text-red-800 hover:bg-red-100 rounded p-1 transition-colors"
+                                                title="Eliminar salida">
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                                <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd" />
+                                            </svg>
+                                        </button>
                                     </div>
-                                    <span class="text-xs bg-blue-200 px-2 py-1 rounded peso-total-salida"
-                                        data-salida-id="{{ $salida->id }}">0 kg</span>
+                                    <div class="text-xs text-gray-600 space-y-1">
+                                        @php
+                                            // Obtener obras y clientes únicos de los paquetes de esta salida
+                                            $obras = $salida->paquetes->pluck('planilla.obra.obra')->unique()->filter();
+                                            $clientes = $salida->paquetes->pluck('planilla.cliente.empresa')->unique()->filter();
+                                        @endphp
+                                        @if($obras->isNotEmpty())
+                                            <p class="truncate" title="{{ $obras->implode(', ') }}">🏗️ {{ $obras->implode(', ') }}</p>
+                                        @endif
+                                        @if($clientes->isNotEmpty())
+                                            <p class="truncate" title="{{ $clientes->implode(', ') }}">👤 {{ $clientes->implode(', ') }}</p>
+                                        @endif
+                                        <p>{{ $salida->empresaTransporte->nombre ?? 'Sin empresa' }}</p>
+                                        <p>{{ $salida->camion->modelo ?? 'Sin camión' }}</p>
+                                        <p class="bg-blue-200 px-2 py-1 rounded inline-block peso-total-salida"
+                                           data-salida-id="{{ $salida->id }}">0 kg</p>
+                                    </div>
                                 </div>
 
                                 <div class="paquetes-zona drop-zone bg-white rounded border-2 border-dashed border-blue-300 p-2 min-h-[300px]"
@@ -159,7 +179,7 @@
     {{-- Modal para visualizar elementos del paquete --}}
     <div id="modal-dibujo" class="hidden fixed inset-0 bg-gray-900 bg-opacity-50 flex justify-center items-center p-4">
         <div
-            class="bg-white p-4 sm:p-6 rounded-lg w-full sm:w-auto max-w-[95vw] max-h-[90vh] flex flex-col shadow-lg relative">
+            class="bg-white p-4 sm:p-6 rounded-lg w-full sm:w-[800px] md:w-[900px] lg:w-[1000px] max-w-[95vw] max-h-[90vh] flex flex-col shadow-lg relative">
             <button id="cerrar-modal" class="absolute top-2 right-2 text-red-600 hover:bg-red-100">
                 ✖
             </button>
@@ -218,5 +238,5 @@
     </script>
 
     <script src="{{ asset('js/gestion-salidas.js') }}"></script>
-    <script src="{{ asset('js/paquetesJs/figurasPaquete.js') }}" defer></script>
+    <script src="{{ asset('js/elementosJs/figuraElemento.js') }}" defer></script>
 </x-app-layout>

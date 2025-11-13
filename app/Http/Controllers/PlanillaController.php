@@ -176,6 +176,11 @@ class PlanillaController extends Controller
             $sortBy = 'fecha_estimada_entrega'; // Fallback seguro
         }
 
+        // Mapear fecha_importacion a created_at (la columna real en la BD)
+        if ($sortBy === 'fecha_importacion') {
+            $sortBy = 'created_at';
+        }
+
         $order = strtolower($order) === 'asc' ? 'asc' : 'desc';
 
         return $query->orderBy($sortBy, $order);

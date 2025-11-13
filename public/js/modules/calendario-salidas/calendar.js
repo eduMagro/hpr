@@ -118,6 +118,10 @@ export function crearCalendario() {
             initialView: vistaGuardada,
             initialDate: fechaGuardada ? new Date(fechaGuardada) : undefined,
 
+            /* Evitar que los eventos se agrupen en columnas en vista mensual */
+            dayMaxEventRows: false,
+            dayMaxEvents: false,
+
             /* timeline */
             slotMinTime: "06:00:00",
             slotMaxTime: "18:00:00",
@@ -221,6 +225,35 @@ export function crearCalendario() {
                 // Solo mostrar resumen custom en vista diaria
                 if (info.view.type === "resourceTimeGridDay") {
                     setTimeout(() => mostrarResumenDiario(), 100);
+                }
+
+                // Forzar ancho completo en vista mensual (excluyendo resumen)
+                if (info.view.type === "dayGridMonth") {
+                    setTimeout(() => {
+                        document.querySelectorAll('.fc-daygrid-event-harness').forEach(harness => {
+                            // No aplicar a eventos de resumen
+                            const event = harness.querySelector('.evento-resumen-diario');
+                            if (!event) {
+                                harness.style.setProperty('width', '100%', 'important');
+                                harness.style.setProperty('max-width', '100%', 'important');
+                                harness.style.setProperty('position', 'static', 'important');
+                                harness.style.setProperty('left', 'unset', 'important');
+                                harness.style.setProperty('right', 'unset', 'important');
+                                harness.style.setProperty('top', 'unset', 'important');
+                                harness.style.setProperty('inset', 'unset', 'important');
+                                harness.style.setProperty('margin', '0 0 2px 0', 'important');
+                            }
+                        });
+                        document.querySelectorAll('.fc-daygrid-event:not(.evento-resumen-diario)').forEach(event => {
+                            event.style.setProperty('width', '100%', 'important');
+                            event.style.setProperty('max-width', '100%', 'important');
+                            event.style.setProperty('margin', '0', 'important');
+                            event.style.setProperty('position', 'static', 'important');
+                            event.style.setProperty('left', 'unset', 'important');
+                            event.style.setProperty('right', 'unset', 'important');
+                            event.style.setProperty('inset', 'unset', 'important');
+                        });
+                    }, 50);
                 }
             },
             eventContent: (arg) => {
@@ -338,6 +371,31 @@ export function crearCalendario() {
                     // No permitir interacción
                     info.el.style.cursor = "default";
                     return; // Salir temprano
+                }
+
+                // Forzar ancho completo en vista mensual (solo para eventos normales, no resumen)
+                if (info.view.type === "dayGridMonth") {
+                    // Forzar en el contenedor padre (harness)
+                    const harness = info.el.closest('.fc-daygrid-event-harness');
+                    if (harness) {
+                        harness.style.setProperty('width', '100%', 'important');
+                        harness.style.setProperty('max-width', '100%', 'important');
+                        harness.style.setProperty('position', 'static', 'important');
+                        harness.style.setProperty('left', 'unset', 'important');
+                        harness.style.setProperty('right', 'unset', 'important');
+                        harness.style.setProperty('top', 'unset', 'important');
+                        harness.style.setProperty('inset', 'unset', 'important');
+                        harness.style.setProperty('margin', '0 0 2px 0', 'important');
+                    }
+
+                    // Forzar en el elemento del evento
+                    info.el.style.setProperty('width', '100%', 'important');
+                    info.el.style.setProperty('max-width', '100%', 'important');
+                    info.el.style.setProperty('margin', '0', 'important');
+                    info.el.style.setProperty('position', 'static', 'important');
+                    info.el.style.setProperty('left', 'unset', 'important');
+                    info.el.style.setProperty('right', 'unset', 'important');
+                    info.el.style.setProperty('inset', 'unset', 'important');
                 }
 
                 // lee filtros actuales (código y nombre)
