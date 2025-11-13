@@ -3,7 +3,14 @@
     "allow": [
       "Bash(php artisan cache:clear:*)",
       "Bash(php artisan config:clear:*)",
-      "Bash(php artisan:*)"
+      "Bash(php artisan:*)",
+      "Bash(composer show:*)",
+      "Bash(test:*)",
+      "Bash(composer dump-autoload:*)",
+      "Bash(composer update:*)",
+      "Bash(nul)",
+      "Bash(composer require:*)",
+      "Bash(composer config:*)"
     ],
     "deny": [],
     "ask": []

@@ -1,0 +1,11 @@
+--- a/vendor/openai-php/laravel/src/ServiceProvider.php
++++ b/vendor/openai-php/laravel/src/ServiceProvider.php
+@@ -30,7 +30,7 @@ final class ServiceProvider extends BaseServiceProvider implements DeferrablePr
+                 throw ApiKeyIsMissing::create();
+             }
+
+-            return OpenAI::factory()
++            return \OpenAI::factory()
+                 ->withApiKey($apiKey)
+                 ->withOrganization($organization)
+                 ->withHttpHeader('OpenAI-Beta', 'assistants=v2')
