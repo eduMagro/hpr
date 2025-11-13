@@ -680,9 +680,9 @@ class ProfileController extends Controller
         // Obtener el usuario autenticado
         $authUser = auth()->user();
 
-        // Verificar si el usuario autenticado es administrador
-        if ($authUser->rol !== 'oficina') {
-            return redirect()->route('dashboard')->with('abort', 'No tienes permiso para editar perfiles.');
+        // 🔒 Verificar si el usuario autenticado es programador
+        if ($authUser->rol !== 'programador') {
+            return redirect()->route('dashboard')->with('abort', 'No tienes permiso para editar perfiles. Solo el departamento de programador puede editar usuarios.');
         }
 
         // Buscar el usuario que se quiere editar
@@ -710,9 +710,9 @@ class ProfileController extends Controller
         // Obtener el usuario autenticado
         $authUser = auth()->user();
 
-        // Verificar si el usuario autenticado es administrador
-        if ($authUser->rol !== 'oficina') {
-            return redirect()->route('dashboard')->with('error', 'No tienes permiso para actualizar perfiles.');
+        // 🔒 Verificar si el usuario autenticado es programador
+        if ($authUser->rol !== 'programador') {
+            return redirect()->route('dashboard')->with('error', 'No tienes permiso para actualizar perfiles. Solo el departamento de programador puede editar DNI y email.');
         }
 
         // Buscar el usuario que se quiere actualizar
@@ -770,12 +770,15 @@ class ProfileController extends Controller
     public function actualizarUsuario(Request $request, $id)
     {
         try {
+            // 🔒 Verificar que el usuario autenticado es programador para editar DNI y email
+            $authUser = auth()->user();
+            $isProgramador = $authUser->rol === 'programador';
+
             // ✅ Validar los datos con mensajes personalizados
-            $request->validate([
+            $validationRules = [
                 'name'             => 'required|string|max:50',
                 'primer_apellido'  => 'nullable|string|max:100',
                 'segundo_apellido' => 'nullable|string|max:100',
-                'email'            => 'required|email|max:255|unique:users,email,' . $id,
                 'movil_personal'   => 'nullable|string|max:255',
                 'movil_empresa'    => 'nullable|string|max:255',
                 'numero_corto'     => [
@@ -783,19 +786,26 @@ class ProfileController extends Controller
                     'digits:4', // exactamente 4 dígitos
                     'unique:users,numero_corto,' . $id,
                 ],
-                'dni' => [
-                    'nullable',
-                    'string',
-                    'size:9',
-                    'regex:/^([0-9]{8}[A-Z]|[XYZ][0-9]{7}[A-Z])$/',
-                    'unique:users,dni,' . $id,
-                ],
                 'empresa_id'   => 'nullable|exists:empresas,id',
                 'rol'          => 'required|string|max:50',
                 'categoria_id' => 'nullable|exists:categorias,id',
                 'maquina_id'   => 'nullable|exists:maquinas,id',
                 'turno'        => 'nullable|string|in:nocturno,diurno,mañana,flexible',
-            ], [
+            ];
+
+            // Solo programador puede editar email y dni
+            if ($isProgramador) {
+                $validationRules['email'] = 'required|email|max:255|unique:users,email,' . $id;
+                $validationRules['dni'] = [
+                    'nullable',
+                    'string',
+                    'size:9',
+                    'regex:/^([0-9]{8}[A-Z]|[XYZ][0-9]{7}[A-Z])$/',
+                    'unique:users,dni,' . $id,
+                ];
+            }
+
+            $request->validate($validationRules, [
                 'numero_corto.digits' => 'El número corporativo debe tener exactamente 4 cifras.',
                 'numero_corto.unique' => 'Este número corporativo ya está asignado a otro usuario.',
             ]);
@@ -810,29 +820,34 @@ class ProfileController extends Controller
             $nombre          = ucfirst(mb_strtolower($request->name));
             $apellido1       = $request->primer_apellido ? ucfirst(mb_strtolower($request->primer_apellido)) : null;
             $apellido2       = $request->segundo_apellido ? ucfirst(mb_strtolower($request->segundo_apellido)) : null;
-            $email           = strtolower($request->email);
             $movil_personal  = $request->movil_personal ? str_replace(' ', '', $request->movil_personal) : null;
             $movil_empresa   = $request->movil_empresa ? str_replace(' ', '', $request->movil_empresa) : null;
             $numero_corto    = $request->numero_corto ? str_pad(preg_replace('/\D/', '', $request->numero_corto), 4, '0', STR_PAD_LEFT) : null;
-            $dni             = $request->dni ? strtoupper($request->dni) : null;
 
-            // ✅ Actualización
-            $resultado = $usuario->update([
+            // Preparar datos de actualización
+            $datosActualizar = [
                 'name'            => $nombre,
                 'primer_apellido' => $apellido1,
                 'segundo_apellido' => $apellido2,
-                'email'           => $email,
                 'movil_personal'  => $movil_personal,
                 'movil_empresa'   => $movil_empresa,
                 'numero_corto'    => $numero_corto,
-                'dni'             => $dni,
                 'empresa_id'      => $request->empresa_id,
                 'rol'             => $request->rol,
                 'categoria_id'    => $request->categoria_id,
                 'maquina_id'      => $request->maquina_id,
                 'turno'           => $request->turno,
                 'updated_by'      => auth()->id(),
-            ]);
+            ];
+
+            // Solo programador puede actualizar email y dni
+            if ($isProgramador) {
+                $datosActualizar['email'] = strtolower($request->email);
+                $datosActualizar['dni'] = $request->dni ? strtoupper($request->dni) : null;
+            }
+
+            // ✅ Actualización
+            $resultado = $usuario->update($datosActualizar);
 
             if (!$resultado) {
                 return response()->json(['error' => 'No se pudo actualizar el usuario.'], 500);
