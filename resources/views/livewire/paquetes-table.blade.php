@@ -228,35 +228,21 @@
     <script>
         // Preparar datos de paquetes con sus elementos
         window.paquetes = @json($paquetesJson);
-        console.log('🎯 window.paquetes cargado:', window.paquetes);
-        console.log('📊 Total de paquetes disponibles:', window.paquetes.length);
 
         function mostrarDetallePaquete(paqueteId) {
             const paquete = window.paquetes.find(p => p.id === paqueteId);
-            console.log('🔍 Buscando paquete:', paqueteId);
-            console.log('📦 Paquete encontrado:', paquete);
-            console.log('📋 Todos los paquetes disponibles:', window.paquetes);
 
             if (!paquete) {
-                console.error('❌ No se encontró el paquete con ID:', paqueteId);
-                Swal.fire('⚠️', 'No se encontró el paquete. Recarga la página e intenta de nuevo.', 'warning');
+                console.warn('No se encontró el paquete.');
                 return;
             }
 
             // Obtener los elementos del paquete desde las etiquetas
             const elementos = [];
             if (paquete.etiquetas && paquete.etiquetas.length > 0) {
-                console.log('🏷️ Etiquetas del paquete:', paquete.etiquetas);
                 paquete.etiquetas.forEach(etiqueta => {
-                    console.log('🏷️ Procesando etiqueta:', etiqueta);
                     if (etiqueta.elementos && etiqueta.elementos.length > 0) {
-                        console.log('🔧 Elementos de la etiqueta:', etiqueta.elementos);
                         etiqueta.elementos.forEach(elemento => {
-                            console.log('🔍 Elemento individual:', {
-                                id: elemento.id,
-                                dimensiones: elemento.dimensiones,
-                                tipo_dimensiones: typeof elemento.dimensiones
-                            });
                             elementos.push({
                                 id: elemento.id,
                                 dimensiones: elemento.dimensiones
@@ -265,8 +251,6 @@
                     }
                 });
             }
-
-            console.log('📦 Elementos extraídos para dibujar:', elementos);
 
             if (elementos.length === 0) {
                 Swal.fire('⚠️', 'Este paquete no tiene elementos para dibujar.', 'warning');

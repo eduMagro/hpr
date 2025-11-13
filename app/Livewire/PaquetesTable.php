@@ -213,45 +213,17 @@ class PaquetesTable extends Component
         // Incluir los paquetes de la página actual + últimos 100 para el modal
         $paquetesActualesIds = $paquetes->pluck('id');
 
-        // Cargar paquetes SIN select restrictions para que las relaciones funcionen correctamente
-        // Combinar IDs de página actual con últimos 100
-        $ultimosPaquetesIds = Paquete::orderBy('created_at', 'desc')
-            ->limit(100)
-            ->pluck('id');
-
-        $todosLosIds = $paquetesActualesIds->merge($ultimosPaquetesIds)->unique();
-
-        \Log::info('📦 Cargando paquetes para modal', [
-            'ids_pagina_actual' => $paquetesActualesIds->toArray(),
-            'total_ids_a_cargar' => $todosLosIds->count(),
-        ]);
-
+        // SOLUCIÓN SIMPLE: Cargar solo los paquetes de la página actual con todas sus relaciones
         $paquetesAll = Paquete::with(['etiquetas.elementos'])
-            ->whereIn('id', $todosLosIds)
+            ->whereIn('id', $paquetesActualesIds)
             ->get();
-
-        \Log::info('📦 Paquetes cargados:', [
-            'total' => $paquetesAll->count(),
-            'primer_paquete_id' => $paquetesAll->first()->id ?? 'N/A',
-            'tiene_etiquetas' => $paquetesAll->first()->etiquetas->count() ?? 0,
-            'tiene_elementos' => $paquetesAll->first()->etiquetas->first()->elementos->count() ?? 0,
-        ]);
 
         $paquetesJson = $paquetesAll->map(function($p) {
             $etiquetas = $p->etiquetas->map(function($e) {
                 $elementos = $e->elementos->map(function($el) {
-                    // Debug: Log TODOS los elementos para ver qué pasa
-                    \Log::debug('🔍 Mapeando elemento', [
-                        'elemento_id' => $el->id,
-                        'dimensiones_raw' => $el->dimensiones,
-                        'dimensiones_isset' => isset($el->dimensiones),
-                        'dimensiones_empty' => empty($el->dimensiones),
-                        'attributes' => $el->getAttributes(),
-                    ]);
-
                     return [
                         'id'           => $el->id,
-                        'dimensiones'  => $el->dimensiones ?? '',
+                        'dimensiones'  => $el->dimensiones,
                     ];
                 });
 

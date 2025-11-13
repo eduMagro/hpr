@@ -10,7 +10,8 @@
       "Bash(php artisan make:livewire:*)",
       "Bash(php artisan schema:show:*)",
       "Bash(php artisan model:show:*)",
-      "Bash(php check_elemento.php:*)"
+      "Bash(php check_elemento.php:*)",
+      "Bash(php:*)"
     ],
     "deny": [],
     "ask": []
