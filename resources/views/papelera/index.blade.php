@@ -1,7 +1,6 @@
-@extends('layouts.app')
-
-@section('content')
-    <h1>Papelera de reciclaje</h1>
+<x-app-layout>
+    <div class="w-full px-6 py-4">
+        <h1 class="text-2xl font-bold mb-4">Papelera de reciclaje</h1>
 
     <h2>Paquetes eliminados</h2>
     <table>

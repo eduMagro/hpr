@@ -63,6 +63,12 @@ class Movimiento extends Model
         return $this->belongsTo(PedidoProducto::class, 'pedido_producto_id');
     }
 
+    // Alias para snake_case
+    public function pedido_producto()
+    {
+        return $this->pedidoProducto();
+    }
+
     public function salida()
     {
         return $this->belongsTo(Salida::class);

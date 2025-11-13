@@ -2,309 +2,309 @@
 
 return [
     'main' => [
-    [
-        'id' => 'produccion',
-        'label' => 'Producción',
-        'icon' => '🏭',
-        'route' => 'secciones.produccion',
-        'color' => 'blue',
-        'submenu' => [
-            [
-                'label' => 'Máquinas',
-                'route' => 'maquinas.index',
-                'icon' => '⚙️',
-                'actions' => [
-                    ['label' => 'Ver todas', 'route' => 'maquinas.index', 'permission' => 'ver'],
-                    ['label' => 'Nueva máquina', 'route' => 'maquinas.create', 'permission' => 'crear'],
-                ]
-            ],
-            [
-                'label' => 'Productos',
-                'route' => 'productos.index',
-                'icon' => '🧱',
-                'actions' => [
-                    ['label' => 'Ver todos', 'route' => 'productos.index', 'permission' => 'ver'],
-                    ['label' => 'Nuevo producto', 'route' => 'productos.create', 'permission' => 'crear'],
-                ]
-            ],
-            [
-                'label' => 'Planillas',
-                'route' => 'planillas.index',
-                'icon' => '📄',
-                'actions' => [
-                    ['label' => 'Ver todas', 'route' => 'planillas.index', 'permission' => 'ver'],
-                    ['label' => 'Nueva planilla', 'route' => 'planillas.create', 'permission' => 'crear'],
-                    ['label' => 'Órdenes', 'route' => 'produccion.verOrdenesPlanillas', 'permission' => 'ver'],
-                ]
-            ],
-            [
-                'label' => 'Etiquetas',
-                'route' => 'etiquetas.index',
-                'icon' => '🏷️',
-                'actions' => [
-                    ['label' => 'Ver todas', 'route' => 'etiquetas.index', 'permission' => 'ver'],
-                ]
-            ],
-            [
-                'label' => 'Elementos',
-                'route' => 'elementos.index',
-                'icon' => '🔩',
-                'actions' => [
-                    ['label' => 'Ver todos', 'route' => 'elementos.index', 'permission' => 'ver'],
-                ]
-            ],
-            [
-                'label' => 'Paquetes',
-                'route' => 'paquetes.index',
-                'icon' => '📦',
-                'actions' => [
-                    ['label' => 'Ver todos', 'route' => 'paquetes.index', 'permission' => 'ver'],
-                    ['label' => 'Nuevo paquete', 'route' => 'paquetes.create', 'permission' => 'crear'],
-                ]
-            ],
-            [
-                'label' => 'Ubicaciones',
-                'route' => 'ubicaciones.index',
-                'icon' => '📍',
-                'actions' => [
-                    ['label' => 'Ver todas', 'route' => 'ubicaciones.index', 'permission' => 'ver'],
-                    ['label' => 'Nueva ubicación', 'route' => 'ubicaciones.create', 'permission' => 'crear'],
-                ]
-            ],
-            [
-                'label' => 'Movimientos',
-                'route' => 'movimientos.index',
-                'icon' => '🔄',
-                'actions' => [
-                    ['label' => 'Ver todos', 'route' => 'movimientos.index', 'permission' => 'ver'],
-                    ['label' => 'Nuevo movimiento', 'route' => 'movimientos.create', 'permission' => 'crear'],
-                ]
-            ],
-        ]
-    ],
-    [
-        'id' => 'planificacion',
-        'label' => 'Planificación',
-        'icon' => '📅',
-        'route' => 'secciones.planificacion',
-        'color' => 'purple',
-        'submenu' => [
-            [
-                'label' => 'Planificación Portes',
-                'route' => 'planificacion.index',
-                'icon' => '🚚',
-                'actions' => [
-                    ['label' => 'Ver calendario', 'route' => 'planificacion.index', 'permission' => 'ver'],
-                ]
-            ],
-            [
-                'label' => 'Trabajadores',
-                'route' => 'produccion.verTrabajadores',
-                'icon' => '👷',
-                'actions' => [
-                    ['label' => 'Ver planificación', 'route' => 'produccion.verTrabajadores', 'permission' => 'ver'],
-                ]
-            ],
-            [
-                'label' => 'Trabajadores Obra',
-                'route' => 'produccion.verTrabajadoresObra',
-                'icon' => '🏗️',
-                'actions' => [
-                    ['label' => 'Ver asignaciones', 'route' => 'produccion.verTrabajadoresObra', 'permission' => 'ver'],
-                ]
-            ],
-            [
-                'label' => 'Máquinas',
-                'route' => 'produccion.verMaquinas',
-                'icon' => '⚙️',
-                'actions' => [
-                    ['label' => 'Ver planificación', 'route' => 'produccion.verMaquinas', 'permission' => 'ver'],
-                ]
-            ],
-        ]
-    ],
-    [
-        'id' => 'logistica',
-        'label' => 'Logística',
-        'icon' => '🚛',
-        'route' => 'secciones.logistica',
-        'color' => 'green',
-        'submenu' => [
-            [
-                'label' => 'Entradas',
-                'route' => 'entradas.index',
-                'icon' => '⬇️',
-                'actions' => [
-                    ['label' => 'Ver todas', 'route' => 'entradas.index', 'permission' => 'ver'],
-                    ['label' => 'Nueva entrada', 'route' => 'entradas.create', 'permission' => 'crear'],
-                ]
-            ],
-            [
-                'label' => 'Salidas Ferralla',
-                'route' => 'salidas-ferralla.index',
-                'icon' => '➡️',
-                'actions' => [
-                    ['label' => 'Ver todas', 'route' => 'salidas-ferralla.index', 'permission' => 'ver'],
-                    ['label' => 'Nueva salida', 'route' => 'salidas-ferralla.create', 'permission' => 'crear'],
-                ]
-            ],
-            [
-                'label' => 'Salidas Almacén',
-                'route' => 'salidas-almacen.index',
-                'icon' => '📤',
-                'actions' => [
-                    ['label' => 'Ver todas', 'route' => 'salidas-almacen.index', 'permission' => 'ver'],
-                    ['label' => 'Nueva salida', 'route' => 'salidas-almacen.create', 'permission' => 'crear'],
-                ]
-            ],
-            [
-                'label' => 'Pedidos Compra',
-                'route' => 'pedidos.index',
-                'icon' => '🛒',
-                'actions' => [
-                    ['label' => 'Ver todos', 'route' => 'pedidos.index', 'permission' => 'ver'],
-                    ['label' => 'Nuevo pedido', 'route' => 'pedidos.create', 'permission' => 'crear'],
-                ]
-            ],
-            [
-                'label' => 'Pedidos Globales',
-                'route' => 'pedidos_globales.index',
-                'icon' => '🌐',
-                'actions' => [
-                    ['label' => 'Ver todos', 'route' => 'pedidos_globales.index', 'permission' => 'ver'],
-                    ['label' => 'Nuevo pedido', 'route' => 'pedidos_globales.create', 'permission' => 'crear'],
-                ]
-            ],
-            [
-                'label' => 'Proveedores',
-                'route' => 'fabricantes.index',
-                'icon' => '🏭',
-                'actions' => [
-                    ['label' => 'Ver todos', 'route' => 'fabricantes.index', 'permission' => 'ver'],
-                    ['label' => 'Nuevo proveedor', 'route' => 'fabricantes.create', 'permission' => 'crear'],
-                ]
-            ],
-            [
-                'label' => 'Empresas Transporte',
-                'route' => 'empresas-transporte.index',
-                'icon' => '🚚',
-                'actions' => [
-                    ['label' => 'Ver todas', 'route' => 'empresas-transporte.index', 'permission' => 'ver'],
-                    ['label' => 'Nueva empresa', 'route' => 'empresas-transporte.create', 'permission' => 'crear'],
-                ]
-            ],
-        ]
-    ],
-    [
-        'id' => 'rrhh',
-        'label' => 'Recursos Humanos',
-        'icon' => '👥',
-        'route' => 'secciones.recursos-humanos',
-        'color' => 'indigo',
-        'submenu' => [
-            [
-                'label' => 'Usuarios',
-                'route' => 'users.index',
-                'icon' => '👤',
-                'actions' => [
-                    ['label' => 'Ver tabla usuarios', 'route' => 'users.index', 'permission' => 'ver'],
-                ]
-            ],
-            [
-                'label' => 'Registrar Usuario',
-                'route' => 'users.create',
-                'icon' => '➕',
-                'actions' => [
-                    ['label' => 'Crear nuevo usuario', 'route' => 'users.create', 'permission' => 'crear'],
-                ]
-            ],
-            [
-                'label' => 'Vacaciones',
-                'route' => 'vacaciones.index',
-                'icon' => '🌴',
-                'actions' => [
-                    ['label' => 'Ver todas', 'route' => 'vacaciones.index', 'permission' => 'ver'],
-                    ['label' => 'Solicitar', 'route' => 'vacaciones.create', 'permission' => 'crear'],
-                ]
-            ],
-            [
-                'label' => 'Registros Entrada/Salida',
-                'route' => 'asignaciones-turnos.index',
-                'icon' => '🕐',
-                'actions' => [
-                    ['label' => 'Ver registros', 'route' => 'asignaciones-turnos.index', 'permission' => 'ver'],
-                ]
-            ],
-        ]
-    ],
-    [
-        'id' => 'comercial',
-        'label' => 'Comercial',
-        'icon' => '🤝',
-        'route' => 'secciones.comercial',
-        'color' => 'orange',
-        'submenu' => [
-            [
-                'label' => 'Clientes',
-                'route' => 'clientes.index',
-                'icon' => '👥',
-                'actions' => [
-                    ['label' => 'Ver todos', 'route' => 'clientes.index', 'permission' => 'ver'],
-                    ['label' => 'Nuevo cliente', 'route' => 'clientes.create', 'permission' => 'crear'],
-                ]
-            ],
-            [
-                'label' => 'Empresas',
-                'route' => 'empresas.index',
-                'icon' => '🏢',
-                'actions' => [
-                    ['label' => 'Ver todas', 'route' => 'empresas.index', 'permission' => 'ver'],
-                ]
-            ],
-        ]
-    ],
-    [
-        'id' => 'sistema',
-        'label' => 'Sistema',
-        'icon' => '⚙️',
-        'route' => 'secciones.sistema',
-        'color' => 'gray',
-        'submenu' => [
-            [
-                'label' => 'Alertas',
-                'route' => 'alertas.index',
-                'icon' => '🔔',
-                'badge' => 'alertas_count', // Se llenará dinámicamente
-                'actions' => [
-                    ['label' => 'Ver todas', 'route' => 'alertas.index', 'permission' => 'ver'],
-                ]
-            ],
-            [
-                'label' => 'Papelera',
-                'route' => 'papelera.index',
-                'icon' => '🗑️',
-                'actions' => [
-                    ['label' => 'Ver elementos', 'route' => 'papelera.index', 'permission' => 'ver'],
-                ]
-            ],
-            [
-                'label' => 'Ayuda',
-                'route' => 'ayuda.index',
-                'icon' => '❓',
-                'actions' => [
-                    ['label' => 'Centro de ayuda', 'route' => 'ayuda.index', 'permission' => 'ver'],
-                ]
-            ],
-            [
-                'label' => 'Estadísticas',
-                'route' => 'estadisticas.index',
-                'icon' => '📊',
-                'actions' => [
-                    ['label' => 'Ver panel', 'route' => 'estadisticas.index', 'permission' => 'ver'],
-                ]
-            ],
-        ]
-    ],
+        [
+            'id' => 'produccion',
+            'label' => 'Producción',
+            'icon' => '🏭',
+            'route' => 'secciones.produccion',
+            'color' => 'blue',
+            'submenu' => [
+                [
+                    'label' => 'Máquinas',
+                    'route' => 'maquinas.index',
+                    'icon' => '⚙️',
+                    'actions' => [
+                        ['label' => 'Ver todas', 'route' => 'maquinas.index', 'permission' => 'ver'],
+                        ['label' => 'Nueva máquina', 'route' => 'maquinas.create', 'permission' => 'crear'],
+                    ]
+                ],
+                [
+                    'label' => 'Productos',
+                    'route' => 'productos.index',
+                    'icon' => '🧱',
+                    'actions' => [
+                        ['label' => 'Ver todos', 'route' => 'productos.index', 'permission' => 'ver'],
+                        ['label' => 'Nuevo producto', 'route' => 'productos.create', 'permission' => 'crear'],
+                    ]
+                ],
+                [
+                    'label' => 'Planillas',
+                    'route' => 'planillas.index',
+                    'icon' => '📄',
+                    'actions' => [
+                        ['label' => 'Ver todas', 'route' => 'planillas.index', 'permission' => 'ver'],
+                        ['label' => 'Nueva planilla', 'route' => 'planillas.create', 'permission' => 'crear'],
+                        ['label' => 'Órdenes', 'route' => 'produccion.verOrdenesPlanillas', 'permission' => 'ver'],
+                    ]
+                ],
+                [
+                    'label' => 'Etiquetas',
+                    'route' => 'etiquetas.index',
+                    'icon' => '🏷️',
+                    'actions' => [
+                        ['label' => 'Ver todas', 'route' => 'etiquetas.index', 'permission' => 'ver'],
+                    ]
+                ],
+                [
+                    'label' => 'Elementos',
+                    'route' => 'elementos.index',
+                    'icon' => '🔩',
+                    'actions' => [
+                        ['label' => 'Ver todos', 'route' => 'elementos.index', 'permission' => 'ver'],
+                    ]
+                ],
+                [
+                    'label' => 'Paquetes',
+                    'route' => 'paquetes.index',
+                    'icon' => '📦',
+                    'actions' => [
+                        ['label' => 'Ver todos', 'route' => 'paquetes.index', 'permission' => 'ver'],
+                        ['label' => 'Nuevo paquete', 'route' => 'paquetes.create', 'permission' => 'crear'],
+                    ]
+                ],
+                [
+                    'label' => 'Ubicaciones',
+                    'route' => 'ubicaciones.index',
+                    'icon' => '📍',
+                    'actions' => [
+                        ['label' => 'Ver todas', 'route' => 'ubicaciones.index', 'permission' => 'ver'],
+                        ['label' => 'Nueva ubicación', 'route' => 'ubicaciones.create', 'permission' => 'crear'],
+                    ]
+                ],
+                [
+                    'label' => 'Movimientos',
+                    'route' => 'movimientos.index',
+                    'icon' => '🔄',
+                    'actions' => [
+                        ['label' => 'Ver todos', 'route' => 'movimientos.index', 'permission' => 'ver'],
+                        ['label' => 'Nuevo movimiento', 'route' => 'movimientos.create', 'permission' => 'crear'],
+                    ]
+                ],
+            ]
+        ],
+        [
+            'id' => 'planificacion',
+            'label' => 'Planificación',
+            'icon' => '📅',
+            'route' => 'secciones.planificacion',
+            'color' => 'purple',
+            'submenu' => [
+                [
+                    'label' => 'Planificación Portes',
+                    'route' => 'planificacion.index',
+                    'icon' => '🚚',
+                    'actions' => [
+                        ['label' => 'Ver calendario', 'route' => 'planificacion.index', 'permission' => 'ver'],
+                    ]
+                ],
+                [
+                    'label' => 'Trabajadores',
+                    'route' => 'produccion.verTrabajadores',
+                    'icon' => '👷',
+                    'actions' => [
+                        ['label' => 'Ver planificación', 'route' => 'produccion.verTrabajadores', 'permission' => 'ver'],
+                    ]
+                ],
+                [
+                    'label' => 'Trabajadores Obra',
+                    'route' => 'produccion.verTrabajadoresObra',
+                    'icon' => '🏗️',
+                    'actions' => [
+                        ['label' => 'Ver asignaciones', 'route' => 'produccion.verTrabajadoresObra', 'permission' => 'ver'],
+                    ]
+                ],
+                [
+                    'label' => 'Máquinas',
+                    'route' => 'produccion.verMaquinas',
+                    'icon' => '⚙️',
+                    'actions' => [
+                        ['label' => 'Ver planificación', 'route' => 'produccion.verMaquinas', 'permission' => 'ver'],
+                    ]
+                ],
+            ]
+        ],
+        [
+            'id' => 'logistica',
+            'label' => 'Logística',
+            'icon' => '🚛',
+            'route' => 'secciones.logistica',
+            'color' => 'green',
+            'submenu' => [
+                [
+                    'label' => 'Entradas',
+                    'route' => 'entradas.index',
+                    'icon' => '⬇️',
+                    'actions' => [
+                        ['label' => 'Ver todas', 'route' => 'entradas.index', 'permission' => 'ver'],
+                        ['label' => 'Nueva entrada', 'route' => 'entradas.create', 'permission' => 'crear'],
+                    ]
+                ],
+                [
+                    'label' => 'Salidas Ferralla',
+                    'route' => 'salidas-ferralla.index',
+                    'icon' => '➡️',
+                    'actions' => [
+                        ['label' => 'Ver todas', 'route' => 'salidas-ferralla.index', 'permission' => 'ver'],
+                        ['label' => 'Nueva salida', 'route' => 'salidas-ferralla.create', 'permission' => 'crear'],
+                    ]
+                ],
+                [
+                    'label' => 'Salidas Almacén',
+                    'route' => 'salidas-almacen.index',
+                    'icon' => '📤',
+                    'actions' => [
+                        ['label' => 'Ver todas', 'route' => 'salidas-almacen.index', 'permission' => 'ver'],
+                        ['label' => 'Nueva salida', 'route' => 'salidas-almacen.create', 'permission' => 'crear'],
+                    ]
+                ],
+                [
+                    'label' => 'Pedidos Compra',
+                    'route' => 'pedidos.index',
+                    'icon' => '🛒',
+                    'actions' => [
+                        ['label' => 'Ver todos', 'route' => 'pedidos.index', 'permission' => 'ver'],
+                        ['label' => 'Nuevo pedido', 'route' => 'pedidos.create', 'permission' => 'crear'],
+                    ]
+                ],
+                [
+                    'label' => 'Pedidos Globales',
+                    'route' => 'pedidos_globales.index',
+                    'icon' => '🌐',
+                    'actions' => [
+                        ['label' => 'Ver todos', 'route' => 'pedidos_globales.index', 'permission' => 'ver'],
+                        ['label' => 'Nuevo pedido', 'route' => 'pedidos_globales.create', 'permission' => 'crear'],
+                    ]
+                ],
+                [
+                    'label' => 'Proveedores',
+                    'route' => 'fabricantes.index',
+                    'icon' => '🏭',
+                    'actions' => [
+                        ['label' => 'Ver todos', 'route' => 'fabricantes.index', 'permission' => 'ver'],
+                        ['label' => 'Nuevo proveedor', 'route' => 'fabricantes.create', 'permission' => 'crear'],
+                    ]
+                ],
+                [
+                    'label' => 'Empresas Transporte',
+                    'route' => 'empresas-transporte.index',
+                    'icon' => '🚚',
+                    'actions' => [
+                        ['label' => 'Ver todas', 'route' => 'empresas-transporte.index', 'permission' => 'ver'],
+                        ['label' => 'Nueva empresa', 'route' => 'empresas-transporte.create', 'permission' => 'crear'],
+                    ]
+                ],
+            ]
+        ],
+        [
+            'id' => 'rrhh',
+            'label' => 'Recursos Humanos',
+            'icon' => '👥',
+            'route' => 'secciones.recursos-humanos',
+            'color' => 'indigo',
+            'submenu' => [
+                [
+                    'label' => 'Usuarios',
+                    'route' => 'users.index',
+                    'icon' => '👤',
+                    'actions' => [
+                        ['label' => 'Ver tabla usuarios', 'route' => 'users.index', 'permission' => 'ver'],
+                    ]
+                ],
+                [
+                    'label' => 'Registrar Usuario',
+                    'route' => 'register',
+                    'icon' => '➕',
+                    'actions' => [
+                        ['label' => 'Crear nuevo usuario', 'route' => 'register', 'permission' => 'crear'],
+                    ]
+                ],
+                [
+                    'label' => 'Vacaciones',
+                    'route' => 'vacaciones.index',
+                    'icon' => '🌴',
+                    'actions' => [
+                        ['label' => 'Ver todas', 'route' => 'vacaciones.index', 'permission' => 'ver'],
+                        ['label' => 'Solicitar', 'route' => 'vacaciones.create', 'permission' => 'crear'],
+                    ]
+                ],
+                [
+                    'label' => 'Registros Entrada/Salida',
+                    'route' => 'asignaciones-turnos.index',
+                    'icon' => '🕐',
+                    'actions' => [
+                        ['label' => 'Ver registros', 'route' => 'asignaciones-turnos.index', 'permission' => 'ver'],
+                    ]
+                ],
+            ]
+        ],
+        [
+            'id' => 'comercial',
+            'label' => 'Comercial',
+            'icon' => '🤝',
+            'route' => 'secciones.comercial',
+            'color' => 'orange',
+            'submenu' => [
+                [
+                    'label' => 'Clientes',
+                    'route' => 'clientes.index',
+                    'icon' => '👥',
+                    'actions' => [
+                        ['label' => 'Ver todos', 'route' => 'clientes.index', 'permission' => 'ver'],
+                        ['label' => 'Nuevo cliente', 'route' => 'clientes.create', 'permission' => 'crear'],
+                    ]
+                ],
+                [
+                    'label' => 'Empresas',
+                    'route' => 'empresas.index',
+                    'icon' => '🏢',
+                    'actions' => [
+                        ['label' => 'Ver todas', 'route' => 'empresas.index', 'permission' => 'ver'],
+                    ]
+                ],
+            ]
+        ],
+        [
+            'id' => 'sistema',
+            'label' => 'Sistema',
+            'icon' => '⚙️',
+            'route' => 'secciones.sistema',
+            'color' => 'gray',
+            'submenu' => [
+                [
+                    'label' => 'Alertas',
+                    'route' => 'alertas.index',
+                    'icon' => '🔔',
+                    'badge' => 'alertas_count', // Se llenará dinámicamente
+                    'actions' => [
+                        ['label' => 'Ver todas', 'route' => 'alertas.index', 'permission' => 'ver'],
+                    ]
+                ],
+                [
+                    'label' => 'Papelera',
+                    'route' => 'papelera.index',
+                    'icon' => '🗑️',
+                    'actions' => [
+                        ['label' => 'Ver elementos', 'route' => 'papelera.index', 'permission' => 'ver'],
+                    ]
+                ],
+                [
+                    'label' => 'Ayuda',
+                    'route' => 'ayuda.index',
+                    'icon' => '❓',
+                    'actions' => [
+                        ['label' => 'Centro de ayuda', 'route' => 'ayuda.index', 'permission' => 'ver'],
+                    ]
+                ],
+                [
+                    'label' => 'Estadísticas',
+                    'route' => 'estadisticas.index',
+                    'icon' => '📊',
+                    'actions' => [
+                        ['label' => 'Ver panel', 'route' => 'estadisticas.index', 'permission' => 'ver'],
+                    ]
+                ],
+            ]
+        ],
     ],
 
     // Menús contextuales para cada módulo
@@ -648,9 +648,10 @@ return [
         'estadisticas' => [
             'items' => [
                 ['label' => 'Panel General', 'route' => 'estadisticas.index', 'icon' => '📊'],
-                ['label' => 'Producción', 'route' => 'estadisticas.produccion', 'icon' => '🏭'],
-                ['label' => 'Comercial', 'route' => 'estadisticas.comercial', 'icon' => '🤝'],
-                ['label' => 'Inventario', 'route' => 'estadisticas.inventario', 'icon' => '📦'],
+                ['label' => 'Stock', 'route' => 'estadisticas.verStock', 'icon' => '📦'],
+                ['label' => 'Obras', 'route' => 'estadisticas.verObras', 'icon' => '🏗️'],
+                ['label' => 'Consumo Máquinas', 'route' => 'estadisticas.verConsumo-maquinas', 'icon' => '⚙️'],
+                ['label' => 'Técnicos Despiece', 'route' => 'estadisticas.verTecnicosDespiece', 'icon' => '👷'],
             ],
             'config' => [
                 'colorBase' => 'gray',

@@ -29,8 +29,6 @@
 
 <x-app-layout>
     <x-slot name="title">Detalles de {{ $user->name }}</x-slot>
-    <x-menu.usuarios :totalSolicitudesPendientes="$totalSolicitudesPendientes ?? 0" />
-
     {{-- Botones de fichaje: solo operarios --}}
     @if (!$esOficina)
         <div class="flex justify-between items-center w-full gap-4 p-4">

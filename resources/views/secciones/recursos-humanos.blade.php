@@ -23,7 +23,7 @@
                     </div>
                 </a>
 
-                <a href="{{ route('users.create') }}" class="bg-white rounded-lg shadow-md hover:shadow-xl transition-all duration-300 overflow-hidden group">
+                <a href="{{ route('register') }}" class="bg-white rounded-lg shadow-md hover:shadow-xl transition-all duration-300 overflow-hidden group">
                     <div class="bg-gradient-to-br from-indigo-500 to-indigo-600 p-6 text-center">
                         <span class="text-6xl">➕</span>
                     </div>

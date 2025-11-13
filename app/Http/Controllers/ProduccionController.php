@@ -94,7 +94,7 @@ class ProduccionController extends Controller
             ->orderBy('obra_id')
             ->orderBy('tipo')
             ->get(['id', 'nombre', 'codigo', 'obra_id', 'tipo'])
-            ->map(function ($maquina) use ($coloresMaquinas) {
+            ->map(function ($maquina, $index) use ($coloresMaquinas) {
                 $color = $coloresMaquinas[$maquina->obra_id] ?? '#6c757d';
                 return [
                     'id' => str_pad($maquina->id, 3, '0', STR_PAD_LEFT),

@@ -254,6 +254,62 @@ class PlanillasTable extends Component
         $this->resetPage();
     }
 
+    public function getFiltrosActivos()
+    {
+        $filtros = [];
+
+        if (!empty($this->codigo)) {
+            $filtros[] = "<strong>Código:</strong> {$this->codigo}";
+        }
+        if (!empty($this->codigo_cliente)) {
+            $filtros[] = "<strong>Cód. Cliente:</strong> {$this->codigo_cliente}";
+        }
+        if (!empty($this->cliente)) {
+            $filtros[] = "<strong>Cliente:</strong> {$this->cliente}";
+        }
+        if (!empty($this->cod_obra)) {
+            $filtros[] = "<strong>Cód. Obra:</strong> {$this->cod_obra}";
+        }
+        if (!empty($this->nom_obra)) {
+            $filtros[] = "<strong>Obra:</strong> {$this->nom_obra}";
+        }
+        if (!empty($this->seccion)) {
+            $filtros[] = "<strong>Sección:</strong> {$this->seccion}";
+        }
+        if (!empty($this->descripcion)) {
+            $filtros[] = "<strong>Descripción:</strong> {$this->descripcion}";
+        }
+        if (!empty($this->ensamblado)) {
+            $filtros[] = "<strong>Ensamblado:</strong> {$this->ensamblado}";
+        }
+        if (!empty($this->comentario)) {
+            $filtros[] = "<strong>Comentario:</strong> {$this->comentario}";
+        }
+        if (!empty($this->estado)) {
+            $filtros[] = "<strong>Estado:</strong> " . ucfirst($this->estado);
+        }
+        if (!empty($this->fecha_inicio)) {
+            $filtros[] = "<strong>Fecha Inicio:</strong> {$this->fecha_inicio}";
+        }
+        if (!empty($this->fecha_finalizacion)) {
+            $filtros[] = "<strong>Fecha Finalización:</strong> {$this->fecha_finalizacion}";
+        }
+        if (!empty($this->fecha_importacion)) {
+            $filtros[] = "<strong>Fecha Importación:</strong> {$this->fecha_importacion}";
+        }
+        if (!empty($this->fecha_estimada_entrega)) {
+            $filtros[] = "<strong>Fecha Estimada Entrega:</strong> {$this->fecha_estimada_entrega}";
+        }
+        if (!empty($this->usuario)) {
+            $filtros[] = "<strong>Usuario:</strong> {$this->usuario}";
+        }
+        if ($this->revisada !== '') {
+            $filtros[] = "<strong>Revisada:</strong> " . ($this->revisada ? 'Sí' : 'No');
+        }
+
+        return $filtros;
+    }
+
     public function verSinRevisar()
     {
         $this->revisada = '0';
@@ -347,6 +403,7 @@ class PlanillasTable extends Component
             'obras' => $obras,
             'totalPesoFiltrado' => $totalPesoFiltrado,
             'planillasSinRevisar' => $planillasSinRevisar,
+            'filtrosActivos' => $this->getFiltrosActivos(),
         ]);
     }
 }

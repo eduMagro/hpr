@@ -108,6 +108,16 @@ class Pedido extends Model
         return $this->hasMany(PedidoProducto::class);
     }
 
+    public function lineas()
+    {
+        return $this->hasMany(PedidoProducto::class);
+    }
+
+    public function createdBy()
+    {
+        return $this->belongsTo(User::class, 'created_by');
+    }
+
     public function getFechaPedidoFormateadaAttribute()
     {
         return optional($this->fecha_pedido)->format('d-m-Y');

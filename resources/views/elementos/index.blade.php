@@ -1,15 +1,6 @@
 <x-app-layout>
     <x-slot name="title">Elementos - {{ config('app.name') }}</x-slot>
     @php
-        $menu = \App\Services\MenuService::getContextMenu('elementos');
-    @endphp
-    <x-navigation.context-menu
-        :items="$menu['items']"
-        :colorBase="$menu['config']['colorBase']"
-        :style="$menu['config']['style']"
-        :mobileLabel="$menu['config']['mobileLabel']"
-    />
-    @php
         $filtrosActivos = [];
 
         if (request('buscar')) {
@@ -107,7 +98,7 @@
         <x-tabla.filtros-aplicados :filtros="$filtrosActivos" />
 
         <!-- Banner de revisión de planilla -->
-        @if($planilla && !$planilla->revisada)
+        @if ($planilla && !$planilla->revisada)
             <div class="mb-4 bg-red-100 border-l-4 border-red-500 p-4 rounded-r-lg shadow">
                 <div class="flex items-center justify-between">
                     <div class="flex items-center gap-3">
@@ -117,15 +108,16 @@
                                 Planilla {{ $planilla->codigo }} SIN REVISAR
                             </h3>
                             <p class="text-sm text-red-700">
-                                Esta planilla aparece en <strong>GRIS</strong> en el calendario. Revisa las máquinas asignadas y marca como revisada cuando esté correcta.
+                                Esta planilla aparece en <strong>GRIS</strong> en el calendario. Revisa las máquinas
+                                asignadas y marca como revisada cuando esté correcta.
                             </p>
                         </div>
                     </div>
                     <form action="{{ route('planillas.marcarRevisada', $planilla->id) }}" method="POST"
-                          onsubmit="return confirm('¿Marcar esta planilla como revisada?\n\nAparecerá en color normal en el calendario de producción.');">
+                        onsubmit="return confirm('¿Marcar esta planilla como revisada?\n\nAparecerá en color normal en el calendario de producción.');">
                         @csrf
                         <button type="submit"
-                                class="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded transition-colors whitespace-nowrap">
+                            class="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded transition-colors whitespace-nowrap">
                             ✅ Marcar como revisada
                         </button>
                     </form>
@@ -133,7 +125,7 @@
             </div>
         @endif
 
-        @if($planilla && $planilla->revisada)
+        @if ($planilla && $planilla->revisada)
             <div class="mb-4 bg-green-100 border-l-4 border-green-500 p-4 rounded-r-lg shadow">
                 <div class="flex items-center gap-3">
                     <span class="text-3xl">✅</span>
@@ -306,8 +298,9 @@
                             <!-- MAQUINA 1 -->
                             <td class="px-1 py-3 text-center border">
                                 <div class="flex items-center justify-center gap-1">
-                                    <select class="text-xs border rounded px-1 py-0.5 flex-1" data-id="{{ $elemento->id }}"
-                                        data-field="maquina_id" onchange="actualizarCampoElemento(this)">
+                                    <select class="text-xs border rounded px-1 py-0.5 flex-1"
+                                        data-id="{{ $elemento->id }}" data-field="maquina_id"
+                                        onchange="actualizarCampoElemento(this)">
                                         <option value="">N/A</option>
                                         @foreach ($maquinas->whereIn('tipo', ['cortadora_dobladora', 'estribadora', 'cortadora manual']) as $maquina)
                                             <option value="{{ $maquina->id }}" @selected($elemento->maquina_id === $maquina->id)>
@@ -319,11 +312,9 @@
                                         class="w-6 h-6 bg-blue-100 text-blue-600 rounded hover:bg-blue-200 flex items-center justify-center abrir-modal-dibujo flex-shrink-0"
                                         data-id="{{ $elemento->id }}" data-codigo="{{ $elemento->codigo }}"
                                         data-dimensiones="{{ $elemento->dimensiones }}"
-                                        data-peso="{{ $elemento->peso_kg }}"
-                                        title="Ver figura del elemento">
-                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4"
-                                            fill="none" viewBox="0 0 24 24" stroke="currentColor"
-                                            stroke-width="2">
+                                        data-peso="{{ $elemento->peso_kg }}" title="Ver figura del elemento">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none"
+                                            viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                                             <path stroke-linecap="round" stroke-linejoin="round"
                                                 d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                                             <path stroke-linecap="round" stroke-linejoin="round"

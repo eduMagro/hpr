@@ -19,7 +19,6 @@
 
                 <a href="{{ route('dashboard') }}" class="flex items-center space-x-3 group">
                     <x-application-logo class="block h-8 w-auto fill-current text-gray-800 dark:text-gray-200 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition" />
-                    <span class="hidden md:block text-lg font-semibold text-gray-800 dark:text-gray-200">Manager</span>
                 </a>
             </div>
 

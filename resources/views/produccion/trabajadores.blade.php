@@ -1,6 +1,5 @@
 <x-app-layout>
     <x-slot name="title">Planificación Producción</x-slot>
-    <x-menu.usuarios :totalSolicitudesPendientes="$totalSolicitudesPendientes ?? 0" />
 
     <div class="py-6">
         <!-- Contenedor del Calendario -->

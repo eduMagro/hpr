@@ -85,6 +85,7 @@
                         $hasBadge = isset($badges[$item['route']]) && $badges[$item['route']] > 0;
                     @endphp
                     <a href="{{ route($item['route']) }}"
+                       wire:navigate
                        class="relative flex items-center justify-between px-4 py-3 text-sm font-medium transition-colors border-b last:border-b-0 dark:border-gray-700
                               {{ $active
                                   ? $colores['bgLite'] . ' dark:bg-' . $colorBase . '-900/50 ' . $colores['activoTxt'] . ' dark:text-' . $colorBase . '-300 border-l-4 border-' . $colorBase . '-600'
@@ -117,6 +118,7 @@
                     $hasBadge = isset($badges[$item['route']]) && $badges[$item['route']] > 0;
                 @endphp
                 <a href="{{ route($item['route']) }}"
+                   wire:navigate
                    class="relative group transition-all duration-200
                           @if($style === 'tabs')
                               flex-1 text-center {{ $currentSize }} font-semibold

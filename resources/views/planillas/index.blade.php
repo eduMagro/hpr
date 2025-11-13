@@ -1,10 +1,5 @@
 <x-app-layout>
     <x-slot name="title">Planillas - {{ config('app.name') }}</x-slot>
-<<<<<<< HEAD
-    <div class="w-full px-6 py-4">
-        <div class="flex flex-wrap items-center gap-x-4 gap-y-2 mb-4">
-=======
->>>>>>> origin/59-edu
 
     {{-- Modal de importar planillas (fuera del componente Livewire) --}}
     <div id="modal-import" class="fixed inset-0 z-[60] hidden">
@@ -57,13 +52,21 @@
     </div>
 
     <script>
-        (function() {
-            const btnAbrir = document.getElementById('btn-abrir-import');
-            const modal = document.getElementById('modal-import');
-            const overlay = document.getElementById('modal-import-overlay');
-            const btnCancel = document.getElementById('btn-cancelar-import');
-            const form = document.getElementById('form-import-modal');
-            const inputFecha = document.getElementById('fecha_aprobacion');
+        document.addEventListener('DOMContentLoaded', function() {
+            // Esperar a que Livewire cargue
+            function initModal() {
+                const btnAbrir = document.getElementById('btn-abrir-import');
+                const modal = document.getElementById('modal-import');
+                const overlay = document.getElementById('modal-import-overlay');
+                const btnCancel = document.getElementById('btn-cancelar-import');
+                const form = document.getElementById('form-import-modal');
+                const inputFecha = document.getElementById('fecha_aprobacion');
+
+                if (!btnAbrir) {
+                    // Si el botón no existe aún, reintentar después de un delay
+                    setTimeout(initModal, 100);
+                    return;
+                }
 
             const wrap = document.getElementById('import-progress-wrap');
             const bar = document.getElementById('import-progress-bar');
@@ -131,7 +134,50 @@
                             bar.style.width = '100%';
                             pct.textContent = '100%';
                             msg.textContent = 'Importación finalizada.';
-                            setTimeout(() => window.location.reload(), 800);
+
+                            // Cerrar el modal de importación
+                            setTimeout(() => {
+                                cerrar();
+
+                                // Mostrar SweetAlert con el resultado
+                                const advertencias = data.advertencias || [];
+                                const resultado = data.resultado || {};
+                                const mensajeCompleto = data.mensaje_completo || '';
+
+                                // Convertir saltos de línea a <br>
+                                const mensajeHtml = mensajeCompleto.replace(/\n/g, '<br>');
+
+                                const config = {
+                                    icon: advertencias.length > 0 ? 'warning' : 'success',
+                                    title: advertencias.length > 0 ? 'Importación completada con advertencias' : 'Importación completada',
+                                    html: '<div style="text-align: left; font-family: monospace; white-space: pre-wrap;">' +
+                                        mensajeHtml + '</div>',
+                                    confirmButtonColor: '#28a745',
+                                    width: '650px',
+                                };
+
+                                // Si tiene advertencias, añadir botón de reportar
+                                if (advertencias.length > 0) {
+                                    config.showCancelButton = true;
+                                    config.cancelButtonText = '⚠️ Reportar Advertencias';
+                                    config.confirmButtonText = 'Aceptar';
+                                    config.cancelButtonColor = '#f59e0b';
+                                }
+
+                                if (typeof Swal !== 'undefined') {
+                                    Swal.fire(config).then((result) => {
+                                        // Si clickeó en "Reportar Advertencias"
+                                        if (result.dismiss === Swal.DismissReason.cancel && advertencias.length > 0) {
+                                            const asunto = 'Advertencias en importación de planillas';
+                                            notificarProgramador(mensajeCompleto, asunto);
+                                        }
+                                        // Recargar la página después de cerrar el modal
+                                        window.location.reload();
+                                    });
+                                } else {
+                                    window.location.reload();
+                                }
+                            }, 500);
                         }
                     } catch (e) {}
                 }, 600);
@@ -176,7 +222,11 @@
                     btnSend.disabled = false;
                 }
             });
-        })();
+            }
+
+            // Iniciar el modal
+            initModal();
+        });
     </script>
 
     <style>

@@ -1,6 +1,6 @@
 <x-app-layout>
     <x-slot name="title">Planificación por Máquina</x-slot>
-<<<<<<< HEAD
+
 
     <div class="py-6">
         @if (!empty($erroresPlanillas))
@@ -11,28 +11,8 @@
                         <li>{{ $error }}</li>
                     @endforeach
                 </ul>
-=======
-    <x-menu.planillas />
-
-    <div class="w-full px-2">
-        <!-- Botones de navegación -->
-        <div class="mb-3 border-b border-gray-200">
-            <div class="flex space-x-2">
-                <a href="{{ route('produccion.verMaquinas') }}"
-                    class="px-6 py-3 font-semibold text-blue-600 border-b-2 border-blue-600 bg-blue-50 transition-colors">
-                    Producción/Máquinas
-                </a>
-                <a href="{{ route('produccion.cargasMaquinas') }}"
-                    class="px-6 py-3 font-semibold text-gray-600 hover:text-blue-600 hover:bg-gray-50 border-b-2 border-transparent transition-colors">
-                    Cargas Máquinas
-                </a>
-                <a href="{{ route('planificacion.index') }}"
-                    class="px-6 py-3 font-semibold text-gray-600 hover:text-blue-600 hover:bg-gray-50 border-b-2 border-transparent transition-colors">
-                    Planificación
-                </a>
->>>>>>> origin/59-edu
             </div>
-        </div>
+        @endif
 
         <div class="py-2">
             @if (!empty($erroresPlanillas))
@@ -113,7 +93,8 @@
 
                             <!-- Filtro por Código Planilla -->
                             <div>
-                                <label class="block text-gray-700 font-medium mb-1 text-xs">Cód. Planilla</label>
+                                <label class="block text-gray-700 font-medium mb-1 text-xs">Cód.
+                                    Planilla</label>
                                 <input type="text" id="filtroCodigoPlanilla" placeholder="Buscar..."
                                     class="w-full border border-gray-300 rounded px-2 py-1 text-xs focus:ring-1 focus:ring-blue-500 focus:border-blue-500">
                             </div>
@@ -249,8 +230,10 @@
                 <div class="p-6">
                     <div class="mb-4 bg-orange-50 border border-orange-200 rounded-lg p-4">
                         <p class="text-sm text-orange-800">
-                            <strong>⚠️ Atención:</strong> Esta acción redistribuirá los elementos pendientes de esta
-                            máquina en las otras máquinas disponibles, siguiendo las reglas de asignación automática.
+                            <strong>⚠️ Atención:</strong> Esta acción redistribuirá los elementos pendientes de
+                            esta
+                            máquina en las otras máquinas disponibles, siguiendo las reglas de asignación
+                            automática.
                         </p>
                     </div>
                     <label class="block text-gray-700 font-medium mb-3">Selecciona qué redistribuir:</label>
@@ -328,17 +311,23 @@
                         <table class="min-w-full divide-y divide-gray-200 text-sm">
                             <thead class="bg-gray-50 sticky top-0">
                                 <tr>
-                                    <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">ID</th>
-                                    <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Marca
+                                    <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                                        ID</th>
+                                    <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                                        Marca
                                     </th>
-                                    <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Ø</th>
-                                    <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Peso
+                                    <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                                        Ø</th>
+                                    <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                                        Peso
                                     </th>
                                     <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">
                                         Planilla</th>
-                                    <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Máquina
+                                    <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                                        Máquina
                                         Anterior</th>
-                                    <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Nueva
+                                    <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                                        Nueva
                                         Máquina</th>
                                 </tr>
                             </thead>
@@ -690,7 +679,7 @@
             }
 
             /* Para resourceTimeGrid: hacer sticky toda la sección del header */
-            .fc-resource-timeline .fc-scrollgrid-section-header > tr > * {
+            .fc-resource-timeline .fc-scrollgrid-section-header>tr>* {
                 position: sticky !important;
                 top: 0 !important;
                 z-index: 3 !important;
@@ -1652,7 +1641,9 @@
                                 headerSection.style.width = '';
                             }
                         }
-                    }, { passive: true });
+                    }, {
+                        passive: true
+                    });
 
                     console.log('✅ Listener de scroll en window agregado');
                 }, 500);
@@ -1707,7 +1698,7 @@
                         eventoEls.forEach(eventoEl => {
                             const rect = eventoEl.getBoundingClientRect();
                             const distancia = Math.abs(e.clientY - (rect.top + rect.height /
-                            2));
+                                2));
                             if (distancia < distanciaMinima) {
                                 distanciaMinima = distancia;
                                 eventoMasCercano = evento;
@@ -2131,7 +2122,7 @@
                                     }
                                     // También verificar por atributos data
                                     const dataEventId = el.getAttribute(
-                                        'data-event-id') ||
+                                            'data-event-id') ||
                                         el.querySelector('[data-event-id]')
                                         ?.getAttribute('data-event-id');
                                     if (dataEventId === evento.id && !elementosDOM
@@ -2511,7 +2502,7 @@
                         if (eventos.length === 0) {
                             console.log(
                                 `⚠️ No se encontraron eventos para planilla ${upd.planilla_id} en máquina ${upd.maquina_id}`
-                                );
+                            );
                             return;
                         }
 
@@ -2574,7 +2565,7 @@
                                     evento.remove();
                                     console.log(
                                         `🗑️ Evento de planilla ${upd.codigo} eliminado (completada)`
-                                        );
+                                    );
                                 }, 3000);
                             }
 
@@ -2839,7 +2830,7 @@
 
                 if (!confirm(
                         `¿Estás seguro de redistribuir ${tipo === 'todos' ? 'TODOS los elementos' : 'los primeros elementos'} de esta máquina?`
-                        )) {
+                    )) {
                     return;
                 }
 

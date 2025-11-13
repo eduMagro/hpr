@@ -1,5 +1,6 @@
 <x-app-layout>
     <x-slot name="title">Entradas - {{ config('app.name') }}</x-slot>
+
     @php
         $menu = \App\Services\MenuService::getContextMenu('entradas');
     @endphp

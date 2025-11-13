@@ -1,6 +1,5 @@
 <x-app-layout>
     <x-slot name="title">Proveedores - {{ config('app.name') }}</x-slot>
-    <x-menu.materiales />
 
     <div class="px-4 py-4">
         <div x-data="{ openProveedorModal: false }" class="container mx-auto p-4">

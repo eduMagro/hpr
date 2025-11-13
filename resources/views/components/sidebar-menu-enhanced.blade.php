@@ -339,6 +339,7 @@ class="flex h-screen">
                             @foreach($section['submenu'] as $item)
                                 <div class="flex items-center group">
                                     <a href="{{ route($item['route']) }}"
+                                       wire:navigate
                                        @click="if (window.innerWidth < 768) { open = false; localStorage.setItem('sidebar_open', 'false'); }"
                                        class="flex-1 flex items-center justify-between px-3 py-2 rounded-lg text-sm transition
                                               {{ $currentRoute === $item['route'] || str_starts_with($currentRoute, explode('.', $item['route'])[0])
@@ -374,6 +375,7 @@ class="flex h-screen">
         <div class="p-3 border-t border-gray-800 space-y-2">
             <!-- Dashboard -->
             <a href="{{ route('dashboard') }}"
+               wire:navigate
                class="flex items-center space-x-3 px-3 py-2 rounded-lg hover:bg-gray-800 transition text-sm group">
                 <svg class="w-5 h-5 flex-shrink-0 text-gray-400 group-hover:text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path>

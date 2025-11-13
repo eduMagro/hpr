@@ -6,17 +6,6 @@
             scroll-behavior: smooth;
         }
 
-        /* Animaciones suaves para el sidebar */
-        .sidebar-transition {
-            transition: transform 0.3s ease-in-out;
-        }
-
-        /* Overlay para móviles */
-        .sidebar-overlay {
-            transition: opacity 0.3s ease-in-out;
-        }
-
-        /* Mejoras visuales */
         .machine-card:hover {
             transform: translateY(-2px);
             box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
@@ -25,93 +14,35 @@
         .machine-card {
             transition: all 0.3s ease;
         }
-
-        /* Enlace activo del sidebar */
-        .sidebar-link.bg-blue-100 {
-            background-color: rgb(219 234 254);
-            border-color: rgb(59 130 246);
-            color: rgb(29 78 216);
-        }
-
-        .sidebar-link.bg-blue-100 .text-gray-600 {
-            color: rgb(30 58 138);
-        }
     </style>
 
-    <div class="relative">
-        {{-- Botón hamburguesa para móviles --}}
-        <button id="sidebarToggle"
-            class="fixed top-4 left-4 z-50 lg:hidden bg-blue-600 text-white p-3 rounded-lg shadow-lg hover:bg-blue-700 transition-colors">
-            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16">
-                </path>
-            </svg>
-        </button>
+    <div class="p-4 sm:p-6 lg:p-10 bg-gray-50 min-h-screen">
 
-        {{-- Overlay para cerrar sidebar en móvil --}}
-        <div id="sidebarOverlay"
-            class="fixed inset-0 bg-black bg-opacity-50 z-30 hidden lg:hidden sidebar-overlay"></div>
+        {{-- Header con filtro --}}
+        <div class="mb-6 flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
+            <h1 class="text-2xl font-bold text-gray-900">Máquinas</h1>
 
-        {{-- MENÚ LATERAL RESPONSIVE --}}
-        <aside id="sidebar" role="navigation"
-            class="fixed left-0 top-0 h-screen w-64 md:w-72 bg-white shadow-xl z-40 overflow-y-auto sidebar-transition transform -translate-x-full lg:translate-x-0">
+            <div class="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
+                {{-- Filtro de máquina --}}
+                <select id="machineFilter" class="border border-gray-300 rounded-lg px-4 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white">
+                    <option value="">Todas las máquinas ({{ $registrosMaquina->count() }})</option>
+                    @foreach ($registrosMaquina as $maquina)
+                        <option value="{{ $maquina->id }}">{{ $maquina->codigo }} — {{ $maquina->nombre }}</option>
+                    @endforeach
+                </select>
 
-            {{-- Botón cerrar en móvil --}}
-            <div class="lg:hidden flex justify-end p-4">
-                <button id="closeSidebar"
-                    class="text-gray-600 hover:text-gray-900 p-2 rounded-lg hover:bg-gray-100">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12">
-                        </path>
-                    </svg>
-                </button>
-            </div>
-
-            <div class="px-4 pb-4">
-                <x-tabla.boton-azul :href="route('maquinas.create')" class="w-full text-center">
-                    ➕ Crear Nueva Máquina
+                {{-- Botón crear nueva máquina --}}
+                <x-tabla.boton-azul :href="route('maquinas.create')" class="whitespace-nowrap">
+                    ➕ Nueva Máquina
                 </x-tabla.boton-azul>
             </div>
+        </div>
 
-            <div class="px-4 pb-4 border-t border-gray-200 pt-4">
-                <h3 class="text-lg font-bold text-gray-800 mb-3">Navegación por Máquina</h3>
-
-                <ul class="space-y-1">
-                    @foreach ($registrosMaquina as $maquina)
-                        <li>
-                            <a href="#maquina-{{ $maquina->id }}"
-                                class="sidebar-link block px-3 py-2 text-sm rounded-lg hover:bg-blue-50 hover:text-blue-700 font-medium transition-all duration-200 truncate border border-transparent hover:border-blue-200 cursor-pointer">
-                                <span class="font-semibold">{{ $maquina->codigo }}</span>
-                                <span class="text-gray-600">— {{ $maquina->nombre }}</span>
-                            </a>
-                        </li>
-                    @endforeach
-                </ul>
-            </div>
-        </aside>
-
-        {{-- Contenido principal --}}
-        <div class="lg:ml-64 xl:ml-72 min-h-screen bg-gray-50">
-            <div class="p-4 sm:p-6 lg:p-10 pt-20 lg:pt-10">
-
-            {{-- Botón para mostrar todas las máquinas --}}
-            <div id="showAllContainer" class="hidden mb-6">
-                <button id="showAllBtn"
-                    class="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors shadow-sm">
-                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M4 6h16M4 10h16M4 14h16M4 18h16"></path>
-                    </svg>
-                    Mostrar todas las máquinas
-                    <span id="machineCount" class="ml-2 bg-blue-800 px-2 py-0.5 rounded-full text-xs"></span>
-                </button>
-            </div>
-
-            {{-- Grid responsive para las tarjetas --}}
-            <div id="machinesGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-6">
+        {{-- Grid responsive para las tarjetas --}}
+        <div id="machinesGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-6">
             @forelse($registrosMaquina as $maquina)
-                <div id="maquina-{{ $maquina->id }}"
-                    class="machine-card scroll-mt-28 bg-white border border-gray-200 rounded-xl shadow-md overflow-hidden flex flex-col h-full">
+                <div id="maquina-{{ $maquina->id }}" data-machine-id="{{ $maquina->id }}"
+                    class="machine-card bg-white border border-gray-200 rounded-xl shadow-md overflow-hidden flex flex-col h-full">
 
                     {{-- Imagen responsive --}}
                     <div class="w-full h-48 bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center flex-shrink-0">
@@ -275,24 +206,20 @@
                     <p class="mt-2 text-sm text-gray-500">Comienza creando una nueva máquina.</p>
                 </div>
             @endforelse
-            </div>
-
-            {{-- Paginación dentro del contenedor --}}
-            @if ($registrosMaquina->hasPages())
-                <div class="mt-8 flex justify-center">
-                    {{ $registrosMaquina->links('vendor.pagination.bootstrap-5') }}
-                </div>
-            @endif
-            </div>
         </div>
+
+        {{-- Paginación --}}
+        @if ($registrosMaquina->hasPages())
+            <div class="mt-8 flex justify-center">
+                {{ $registrosMaquina->links('vendor.pagination.bootstrap-5') }}
+            </div>
+        @endif
     </div>
 
-    {{-- Modal de edición mejorado --}}
+    {{-- Modal de edición --}}
     <div id="editModal"
         class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 justify-center items-center p-4 overflow-y-auto">
-        <div
-            class="bg-white rounded-xl shadow-2xl w-full max-w-3xl my-8 mx-auto transform transition-all">
-            {{-- Header del modal --}}
+        <div class="bg-white rounded-xl shadow-2xl w-full max-w-3xl my-8 mx-auto transform transition-all">
             <div class="bg-gradient-to-r from-blue-600 to-blue-700 px-6 py-4 rounded-t-xl">
                 <h2 class="text-xl font-bold text-white">Editar Máquina</h2>
             </div>
@@ -301,31 +228,21 @@
                 @csrf
                 <input type="hidden" id="edit-id" name="id">
 
-                {{-- Grid de 2 columnas responsive --}}
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-[60vh] overflow-y-auto pr-2">
-                    {{-- Código --}}
                     <div>
-                        <label for="edit-codigo" class="block text-sm font-semibold text-gray-700 mb-2">
-                            Código
-                        </label>
+                        <label for="edit-codigo" class="block text-sm font-semibold text-gray-700 mb-2">Código</label>
                         <input id="edit-codigo" name="codigo" type="text"
                             class="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors">
                     </div>
 
-                    {{-- Nombre --}}
                     <div>
-                        <label for="edit-nombre" class="block text-sm font-semibold text-gray-700 mb-2">
-                            Nombre
-                        </label>
+                        <label for="edit-nombre" class="block text-sm font-semibold text-gray-700 mb-2">Nombre</label>
                         <input id="edit-nombre" name="nombre" type="text"
                             class="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors">
                     </div>
 
-                    {{-- Obra asignada --}}
                     <div>
-                        <label for="edit-obra_id" class="block text-sm font-semibold text-gray-700 mb-2">
-                            Obra asignada
-                        </label>
+                        <label for="edit-obra_id" class="block text-sm font-semibold text-gray-700 mb-2">Obra asignada</label>
                         <select id="edit-obra_id" name="obra_id"
                             class="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors bg-white">
                             <option value="">Sin asignar</option>
@@ -335,11 +252,8 @@
                         </select>
                     </div>
 
-                    {{-- Tipo --}}
                     <div>
-                        <label for="edit-tipo" class="block text-sm font-semibold text-gray-700 mb-2">
-                            Tipo
-                        </label>
+                        <label for="edit-tipo" class="block text-sm font-semibold text-gray-700 mb-2">Tipo</label>
                         <select id="edit-tipo" name="tipo"
                             class="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors bg-white">
                             <option value="">— Selecciona tipo —</option>
@@ -352,62 +266,43 @@
                         </select>
                     </div>
 
-                    {{-- Diámetro mínimo --}}
                     <div>
-                        <label for="edit-diametro_min" class="block text-sm font-semibold text-gray-700 mb-2">
-                            Diámetro mínimo (mm)
-                        </label>
+                        <label for="edit-diametro_min" class="block text-sm font-semibold text-gray-700 mb-2">Diámetro mínimo (mm)</label>
                         <input id="edit-diametro_min" name="diametro_min" type="number"
                             class="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors">
                     </div>
 
-                    {{-- Diámetro máximo --}}
                     <div>
-                        <label for="edit-diametro_max" class="block text-sm font-semibold text-gray-700 mb-2">
-                            Diámetro máximo (mm)
-                        </label>
+                        <label for="edit-diametro_max" class="block text-sm font-semibold text-gray-700 mb-2">Diámetro máximo (mm)</label>
                         <input id="edit-diametro_max" name="diametro_max" type="number"
                             class="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors">
                     </div>
 
-                    {{-- Peso mínimo --}}
                     <div>
-                        <label for="edit-peso_min" class="block text-sm font-semibold text-gray-700 mb-2">
-                            Peso mínimo
-                        </label>
+                        <label for="edit-peso_min" class="block text-sm font-semibold text-gray-700 mb-2">Peso mínimo</label>
                         <input id="edit-peso_min" name="peso_min" type="number"
                             class="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors">
                     </div>
 
-                    {{-- Peso máximo --}}
                     <div>
-                        <label for="edit-peso_max" class="block text-sm font-semibold text-gray-700 mb-2">
-                            Peso máximo
-                        </label>
+                        <label for="edit-peso_max" class="block text-sm font-semibold text-gray-700 mb-2">Peso máximo</label>
                         <input id="edit-peso_max" name="peso_max" type="number"
                             class="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors">
                     </div>
 
-                    {{-- Ancho en metros --}}
                     <div>
-                        <label for="edit-ancho_m" class="block text-sm font-semibold text-gray-700 mb-2">
-                            Ancho (m)
-                        </label>
+                        <label for="edit-ancho_m" class="block text-sm font-semibold text-gray-700 mb-2">Ancho (m)</label>
                         <input id="edit-ancho_m" name="ancho_m" type="number" step="0.01"
                             class="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors">
                     </div>
 
-                    {{-- Largo en metros --}}
                     <div>
-                        <label for="edit-largo_m" class="block text-sm font-semibold text-gray-700 mb-2">
-                            Largo (m)
-                        </label>
+                        <label for="edit-largo_m" class="block text-sm font-semibold text-gray-700 mb-2">Largo (m)</label>
                         <input id="edit-largo_m" name="largo_m" type="number" step="0.01"
                             class="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors">
                     </div>
                 </div>
 
-                {{-- Botones del modal --}}
                 <div class="flex flex-col sm:flex-row justify-end gap-3 mt-6 pt-4 border-t border-gray-200">
                     <button type="button" id="closeModal"
                         class="px-6 py-2.5 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 font-medium transition-colors border border-gray-300">
@@ -421,129 +316,31 @@
             </form>
         </div>
     </div>
+
     <script>
         (function() {
-            // ========== SIDEBAR TOGGLE ==========
-            const sidebar = document.getElementById('sidebar');
-            const sidebarToggle = document.getElementById('sidebarToggle');
-            const sidebarOverlay = document.getElementById('sidebarOverlay');
-            const closeSidebar = document.getElementById('closeSidebar');
-            const sidebarLinks = document.querySelectorAll('.sidebar-link');
-            const showAllContainer = document.getElementById('showAllContainer');
-            const showAllBtn = document.getElementById('showAllBtn');
-            const machineCount = document.getElementById('machineCount');
+            const machineFilter = document.getElementById('machineFilter');
             const allMachineCards = document.querySelectorAll('.machine-card');
 
-            function openSidebar() {
-                sidebar.classList.remove('-translate-x-full');
-                sidebarOverlay.classList.remove('hidden');
-                document.body.style.overflow = 'hidden'; // Prevenir scroll del body
-            }
+            // Filtrar máquinas por select
+            machineFilter.addEventListener('change', function() {
+                const selectedId = this.value;
 
-            function closeSidebarFn() {
-                sidebar.classList.add('-translate-x-full');
-                sidebarOverlay.classList.add('hidden');
-                document.body.style.overflow = ''; // Restaurar scroll
-            }
-
-            // Función para determinar si estamos en modo multi-columna
-            function isMultiColumnMode() {
-                return window.innerWidth >= 768; // md breakpoint
-            }
-
-            // Función para mostrar solo una máquina
-            function showOnlyMachine(machineId) {
-                let visibleCount = 0;
                 allMachineCards.forEach(card => {
-                    if (card.id === `maquina-${machineId}`) {
+                    if (selectedId === '' || card.dataset.machineId === selectedId) {
                         card.style.display = '';
-                        visibleCount++;
                     } else {
                         card.style.display = 'none';
                     }
                 });
 
-                // Mostrar botón "Mostrar todas"
-                showAllContainer.classList.remove('hidden');
-                machineCount.textContent = allMachineCards.length;
-
-                // Scroll suave al top
-                window.scrollTo({ top: 0, behavior: 'smooth' });
-            }
-
-            // Función para mostrar todas las máquinas
-            function showAllMachines() {
-                allMachineCards.forEach(card => {
-                    card.style.display = '';
-                });
-                showAllContainer.classList.add('hidden');
-
-                // Remover clase activa de todos los enlaces
-                sidebarLinks.forEach(link => {
-                    link.classList.remove('bg-blue-100', 'border-blue-500');
-                });
-            }
-
-            // Abrir sidebar con botón hamburguesa
-            if (sidebarToggle) {
-                sidebarToggle.addEventListener('click', openSidebar);
-            }
-
-            // Cerrar sidebar con botón X
-            if (closeSidebar) {
-                closeSidebar.addEventListener('click', closeSidebarFn);
-            }
-
-            // Cerrar sidebar con overlay
-            if (sidebarOverlay) {
-                sidebarOverlay.addEventListener('click', closeSidebarFn);
-            }
-
-            // Botón "Mostrar todas"
-            if (showAllBtn) {
-                showAllBtn.addEventListener('click', showAllMachines);
-            }
-
-            // Manejar clic en enlaces del sidebar
-            sidebarLinks.forEach(link => {
-                link.addEventListener('click', (e) => {
-                    // Extraer ID de la máquina del href (#maquina-123)
-                    const href = link.getAttribute('href');
-                    const machineId = href.replace('#maquina-', '');
-
-                    if (isMultiColumnMode()) {
-                        // En modo multi-columna: filtrar máquinas
-                        e.preventDefault();
-                        showOnlyMachine(machineId);
-
-                        // Marcar enlace como activo
-                        sidebarLinks.forEach(l => l.classList.remove('bg-blue-100', 'border-blue-500'));
-                        link.classList.add('bg-blue-100', 'border-blue-500');
-                    } else {
-                        // En móvil: mantener comportamiento de scroll
-                        // No prevenir default, dejar que funcione el scroll normal
-                    }
-
-                    // Cerrar sidebar en móvil
-                    if (window.innerWidth < 1024) {
-                        closeSidebarFn();
-                    }
-                });
+                // Scroll al top si se filtró
+                if (selectedId) {
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                }
             });
 
-            // Manejar redimensionamiento de ventana
-            let resizeTimeout;
-            window.addEventListener('resize', () => {
-                clearTimeout(resizeTimeout);
-                resizeTimeout = setTimeout(() => {
-                    // Si cambiamos de multi-columna a móvil, restaurar todas las máquinas
-                    if (!isMultiColumnMode()) {
-                        showAllMachines();
-                    }
-                }, 250);
-            });
-
-            // ========== MODAL DE EDICIÓN ==========
+            // Modal de edición
             const modal = document.getElementById('editModal');
             const closeBtn = document.getElementById('closeModal');
 
@@ -559,7 +356,6 @@
                 document.body.style.overflow = '';
             }
 
-            // Abrir modal al hacer clic en "Editar"
             document.querySelectorAll('.open-edit-modal').forEach(btn => {
                 btn.addEventListener('click', function() {
                     const id = this.dataset.id;
@@ -567,7 +363,6 @@
                     fetch(`/maquinas/${id}/json`)
                         .then(res => res.json())
                         .then(data => {
-                            // Rellenar campos
                             document.getElementById('edit-id').value = data.id ?? '';
                             ['codigo', 'nombre', 'diametro_min', 'diametro_max', 'peso_min',
                                 'peso_max', 'ancho_m', 'largo_m', 'tipo'
@@ -576,7 +371,6 @@
                                 if (el) el.value = (data[f] ?? '');
                             });
 
-                            // Select obra con fallback
                             const obraSelect = document.getElementById('edit-obra_id');
                             if (obraSelect) {
                                 const obraId = data.obra_id ?? '';
@@ -584,8 +378,7 @@
                                 if (!opt && obraId) {
                                     opt = document.createElement('option');
                                     opt.value = obraId;
-                                    opt.textContent = (data.obra && data.obra.obra) ? data.obra
-                                        .obra : `Obra #${obraId}`;
+                                    opt.textContent = (data.obra && data.obra.obra) ? data.obra.obra : `Obra #${obraId}`;
                                     obraSelect.appendChild(opt);
                                 }
                                 obraSelect.value = opt ? obraId : '';
@@ -600,31 +393,22 @@
                 });
             });
 
-            // Cerrar modal con botón "Cancelar"
             if (closeBtn) {
                 closeBtn.addEventListener('click', closeModal);
             }
 
-            // Cerrar modal con clic en el fondo
             modal.addEventListener('click', (e) => {
                 if (e.target === modal) {
                     closeModal();
                 }
             });
 
-            // Cerrar modal con tecla ESC
             document.addEventListener('keydown', (e) => {
-                if (e.key === 'Escape') {
-                    if (!modal.classList.contains('hidden')) {
-                        closeModal();
-                    }
-                    if (!sidebar.classList.contains('-translate-x-full') && window.innerWidth < 1024) {
-                        closeSidebarFn();
-                    }
+                if (e.key === 'Escape' && !modal.classList.contains('hidden')) {
+                    closeModal();
                 }
             });
 
-            // Envío del formulario de edición
             document.getElementById('editMaquinaForm').addEventListener('submit', function(e) {
                 e.preventDefault();
                 const id = document.getElementById('edit-id').value;
@@ -656,6 +440,4 @@
             });
         })();
     </script>
-
-
 </x-app-layout>

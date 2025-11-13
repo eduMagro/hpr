@@ -102,14 +102,28 @@ class PlanillaImportService
 
         $this->codigoService->resetearContadorBatch();
 
-        if ($importId) ImportProgress::setDone($importId, 'Importación finalizada.');
-        return ImportResult::success(
+        $importResult = ImportResult::success(
             $resultado['exitosas'],
             $resultado['fallidas'],
             $resultado['advertencias'],
             $resultado['estadisticas'],
             $nombreArchivo
         );
+
+        // Guardar resultado completo en el progreso para que el frontend lo muestre
+        if ($importId) {
+            ImportProgress::setDone($importId, 'Importación finalizada.', [
+                'resultado' => [
+                    'planillas_creadas' => count($resultado['exitosas']),
+                    'elementos_creados' => $resultado['estadisticas']['elementos'] ?? 0,
+                ],
+                'advertencias' => $resultado['advertencias'],
+                'mensaje_completo' => $importResult->mensaje(),
+                'tiene_advertencias' => $importResult->tieneAdvertencias(),
+            ]);
+        }
+
+        return $importResult;
     }
 
     /**

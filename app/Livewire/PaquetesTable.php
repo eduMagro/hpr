@@ -194,6 +194,50 @@ class PaquetesTable extends Component
         $this->resetPage();
     }
 
+    public function getFiltrosActivos()
+    {
+        $filtros = [];
+
+        if (!empty($this->paquete_id)) {
+            $filtros[] = "<strong>ID:</strong> {$this->paquete_id}";
+        }
+        if (!empty($this->codigo)) {
+            $filtros[] = "<strong>Código:</strong> {$this->codigo}";
+        }
+        if (!empty($this->planilla)) {
+            $filtros[] = "<strong>Planilla:</strong> {$this->planilla}";
+        }
+        if (!empty($this->cod_obra)) {
+            $filtros[] = "<strong>Cód. Obra:</strong> {$this->cod_obra}";
+        }
+        if (!empty($this->nom_obra)) {
+            $filtros[] = "<strong>Obra:</strong> {$this->nom_obra}";
+        }
+        if (!empty($this->codigo_cliente)) {
+            $filtros[] = "<strong>Cód. Cliente:</strong> {$this->codigo_cliente}";
+        }
+        if (!empty($this->cliente)) {
+            $filtros[] = "<strong>Cliente:</strong> {$this->cliente}";
+        }
+        if (!empty($this->nave)) {
+            $filtros[] = "<strong>Nave:</strong> {$this->nave}";
+        }
+        if (!empty($this->ubicacion)) {
+            $filtros[] = "<strong>Ubicación:</strong> {$this->ubicacion}";
+        }
+        if (!empty($this->estado)) {
+            $filtros[] = "<strong>Estado:</strong> " . ucfirst($this->estado);
+        }
+        if (!empty($this->created_at)) {
+            $filtros[] = "<strong>Fecha Creación:</strong> {$this->created_at}";
+        }
+        if (!empty($this->fecha_limite)) {
+            $filtros[] = "<strong>Fecha Límite:</strong> {$this->fecha_limite}";
+        }
+
+        return $filtros;
+    }
+
     public function render()
     {
         $query = Paquete::with([
@@ -247,6 +291,7 @@ class PaquetesTable extends Component
         return view('livewire.paquetes-table', [
             'paquetes' => $paquetes,
             'paquetesJson' => $paquetesJson,
+            'filtrosActivos' => $this->getFiltrosActivos(),
         ]);
     }
 }

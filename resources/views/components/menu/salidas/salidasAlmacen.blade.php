@@ -31,6 +31,7 @@
                 $esActivo = Str::startsWith($rutaActual, $tab['route']);
             @endphp
             <a href="{{ route($tab['route']) }}"
+                wire:navigate
                 class="px-3 py-2 font-medium whitespace-nowrap border-b-2
                     {{ $esActivo
                         ? "$colores[bg] $colores[txt] border-$colorBase-600"

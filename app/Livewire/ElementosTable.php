@@ -247,6 +247,71 @@ class ElementosTable extends Component
         $this->resetPage();
     }
 
+    public function getFiltrosActivos()
+    {
+        $filtros = [];
+
+        if (!empty($this->elemento_id)) {
+            $filtros[] = "<strong>ID:</strong> {$this->elemento_id}";
+        }
+        if (!empty($this->codigo)) {
+            $filtros[] = "<strong>Código:</strong> {$this->codigo}";
+        }
+        if (!empty($this->codigo_planilla)) {
+            $filtros[] = "<strong>Cód. Planilla:</strong> {$this->codigo_planilla}";
+        }
+        if (!empty($this->etiqueta)) {
+            $filtros[] = "<strong>Etiqueta:</strong> {$this->etiqueta}";
+        }
+        if (!empty($this->subetiqueta)) {
+            $filtros[] = "<strong>Subetiqueta:</strong> {$this->subetiqueta}";
+        }
+        if (!empty($this->dimensiones)) {
+            $filtros[] = "<strong>Dimensiones:</strong> {$this->dimensiones}";
+        }
+        if (!empty($this->diametro)) {
+            $filtros[] = "<strong>Diámetro:</strong> {$this->diametro}";
+        }
+        if (!empty($this->barras)) {
+            $filtros[] = "<strong>Barras:</strong> {$this->barras}";
+        }
+        if (!empty($this->maquina)) {
+            $filtros[] = "<strong>Máquina 1:</strong> {$this->maquina}";
+        }
+        if (!empty($this->maquina_2)) {
+            $filtros[] = "<strong>Máquina 2:</strong> {$this->maquina_2}";
+        }
+        if (!empty($this->maquina3)) {
+            $filtros[] = "<strong>Máquina 3:</strong> {$this->maquina3}";
+        }
+        if (!empty($this->producto1)) {
+            $filtros[] = "<strong>Producto 1:</strong> {$this->producto1}";
+        }
+        if (!empty($this->producto2)) {
+            $filtros[] = "<strong>Producto 2:</strong> {$this->producto2}";
+        }
+        if (!empty($this->producto3)) {
+            $filtros[] = "<strong>Producto 3:</strong> {$this->producto3}";
+        }
+        if (!empty($this->figura)) {
+            $filtros[] = "<strong>Figura:</strong> {$this->figura}";
+        }
+        if (!empty($this->peso)) {
+            $filtros[] = "<strong>Peso:</strong> {$this->peso}";
+        }
+        if (!empty($this->longitud)) {
+            $filtros[] = "<strong>Longitud:</strong> {$this->longitud}";
+        }
+        if (!empty($this->estado)) {
+            $filtros[] = "<strong>Estado:</strong> {$this->estado}";
+        }
+        if (!empty($this->planilla_id)) {
+            $filtros[] = "<strong>Planilla ID:</strong> {$this->planilla_id}";
+        }
+
+        return $filtros;
+    }
+
     public function render()
     {
         $query = Elemento::with([
@@ -291,6 +356,7 @@ class ElementosTable extends Component
             'maquinas' => $maquinas,
             'totalPesoFiltrado' => $totalPesoFiltrado,
             'planilla' => $planilla,
+            'filtrosActivos' => $this->getFiltrosActivos(),
         ])->layout('layouts.app');
     }
 }

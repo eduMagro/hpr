@@ -170,7 +170,10 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
     Route::post('/localizaciones/store-paquete', [LocalizacionController::class, 'storePaquete'])->name('localizaciones.storePaquete');
     // === USUARIOS Y VACACIONES ===
 
-    Route::resource('users', ProfileController::class);
+    Route::resource('users', ProfileController::class)->except(['create', 'store']);
+    Route::get('/users/create', function () {
+        return redirect()->route('register');
+    })->name('users.create');
     Route::put('/actualizar-usuario/{id}', [ProfileController::class, 'actualizarUsuario'])->name('usuarios.updateActualizar');
     Route::get('/users/{user}/resumen-asistencia', [ProfileController::class, 'resumenAsistencia'])->name('users.verResumen-asistencia');
     Route::get('/users/{user}/eventos-turnos', [ProfileController::class, 'eventosTurnos'])->name('users.verEventos-turnos');

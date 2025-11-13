@@ -215,6 +215,56 @@ class EtiquetasTable extends Component
         $this->resetPage();
     }
 
+    public function getFiltrosActivos()
+    {
+        $filtros = [];
+
+        if (!empty($this->etiqueta_id)) {
+            $filtros[] = "<strong>ID:</strong> {$this->etiqueta_id}";
+        }
+        if (!empty($this->codigo)) {
+            $filtros[] = "<strong>Código:</strong> {$this->codigo}";
+        }
+        if (!empty($this->etiqueta_sub_id)) {
+            $filtros[] = "<strong>Subetiqueta:</strong> {$this->etiqueta_sub_id}";
+        }
+        if (!empty($this->codigo_planilla)) {
+            $filtros[] = "<strong>Cód. Planilla:</strong> {$this->codigo_planilla}";
+        }
+        if (!empty($this->paquete)) {
+            $filtros[] = "<strong>Paquete:</strong> {$this->paquete}";
+        }
+        if (!empty($this->numero_etiqueta)) {
+            $filtros[] = "<strong>Nº Etiqueta:</strong> {$this->numero_etiqueta}";
+        }
+        if (!empty($this->nombre)) {
+            $filtros[] = "<strong>Nombre:</strong> {$this->nombre}";
+        }
+        if (!empty($this->inicio_fabricacion)) {
+            $filtros[] = "<strong>Inicio Fabricación:</strong> {$this->inicio_fabricacion}";
+        }
+        if (!empty($this->final_fabricacion)) {
+            $filtros[] = "<strong>Final Fabricación:</strong> {$this->final_fabricacion}";
+        }
+        if (!empty($this->inicio_ensamblado)) {
+            $filtros[] = "<strong>Inicio Ensamblado:</strong> {$this->inicio_ensamblado}";
+        }
+        if (!empty($this->final_ensamblado)) {
+            $filtros[] = "<strong>Final Ensamblado:</strong> {$this->final_ensamblado}";
+        }
+        if (!empty($this->inicio_soldadura)) {
+            $filtros[] = "<strong>Inicio Soldadura:</strong> {$this->inicio_soldadura}";
+        }
+        if (!empty($this->final_soldadura)) {
+            $filtros[] = "<strong>Final Soldadura:</strong> {$this->final_soldadura}";
+        }
+        if (!empty($this->estado)) {
+            $filtros[] = "<strong>Estado:</strong> " . ucfirst($this->estado);
+        }
+
+        return $filtros;
+    }
+
     public function render()
     {
         $query = Etiqueta::with([
@@ -245,6 +295,7 @@ class EtiquetasTable extends Component
         return view('livewire.etiquetas-table', [
             'etiquetas' => $etiquetas,
             'etiquetasJson' => $etiquetasJson,
+            'filtrosActivos' => $this->getFiltrosActivos(),
         ])->layout('layouts.app');
     }
 }

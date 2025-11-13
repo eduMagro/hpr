@@ -511,9 +511,21 @@ class PlanillaController extends Controller
             }
 
             // (opcional) camino de fallback para navegadores sin fetch
-            return $resultado->esExitoso()
-                ? redirect()->route('planillas.index')->with('success', $resultado->mensaje())
-                : back()->with('error', $resultado->mensaje())->with('nombre_archivo', $nombreArchivo);
+            if ($resultado->esExitoso()) {
+                $redirect = redirect()
+                    ->route('planillas.index')
+                    ->with('success', $resultado->mensaje())
+                    ->with('import_report', true)
+                    ->with('nombre_archivo', $nombreArchivo);
+
+                if ($resultado->tieneAdvertencias()) {
+                    $redirect->with('tiene_advertencias', true);
+                }
+
+                return $redirect;
+            }
+
+            return back()->with('error', $resultado->mensaje())->with('nombre_archivo', $nombreArchivo);
         } catch (\Throwable $e) {
             // ¡Muy útil en dev para ver el motivo del 500!
             ImportProgress::setError($request->input('import_id', 'n/a'), $e->getMessage());

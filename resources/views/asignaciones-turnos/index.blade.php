@@ -1,6 +1,5 @@
 <x-app-layout>
     <x-slot name="title">Asignaciones de Turnos</x-slot>
-    <x-menu.usuarios :totalSolicitudesPendientes="$totalSolicitudesPendientes ?? 0" />
 
     <div class="w-full px-6 py-4">
 
@@ -116,8 +115,7 @@
                                 <x-tabla.input name="entrada" type="text" :value="request('entrada')" class="w-full text-xs" />
                             </th>
                             <th class="p-1 border">
-                                <x-tabla.input name="salida" type="text" :value="request('salida')"
-                                    class="w-full text-xs" />
+                                <x-tabla.input name="salida" type="text" :value="request('salida')" class="w-full text-xs" />
                             </th>
                             <th class="p-1 border">
 

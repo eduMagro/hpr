@@ -1,24 +1,11 @@
 <x-app-layout>
     <x-slot name="title">Usuarios - {{ config('app.name') }}</x-slot>
+
     <style>
         [x-cloak] {
             display: none !important;
         }
     </style>
-
-    @php
-        $menu = \App\Services\MenuService::getContextMenu('usuarios', [
-            'vacaciones.index' => $totalSolicitudesPendientes ?? 0
-        ]);
-    @endphp
-    <x-navigation.context-menu
-        :items="$menu['items']"
-        :colorBase="$menu['config']['colorBase']"
-        :style="$menu['config']['style']"
-        :mobileLabel="$menu['config']['mobileLabel']"
-        :badges="$menu['badges']"
-        :checkRole="$menu['config']['checkRole'] ?? null"
-    />
 
     {{-- Solo oficina ve la tabla (los demás son redirigidos en el controller) --}}
     <x-tabla.filtros-aplicados :filtros="$filtrosActivos" />

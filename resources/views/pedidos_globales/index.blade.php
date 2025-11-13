@@ -1,7 +1,5 @@
 <x-app-layout>
     <x-slot name="title">Pedidos Globales - {{ config('app.name') }}</x-slot>
-    <x-menu.materiales />
-
     <div class="px-4 py-6">
 
         <button onclick="abrirModalPedidoGlobal()"
@@ -395,7 +393,8 @@
                 </div>
 
                 <div class="mb-3">
-                    <label for="precio_referencia" class="block text-sm font-medium text-gray-700">Precio de Referencia (€) - Opcional</label>
+                    <label for="precio_referencia" class="block text-sm font-medium text-gray-700">Precio de
+                        Referencia (€) - Opcional</label>
                     <input type="number" name="precio_referencia" step="0.01" min="0"
                         class="w-full border border-gray-300 rounded px-3 py-2" placeholder="Ej: 6.40">
                 </div>

@@ -40,6 +40,7 @@
                         $ruta = rutaNave($obra);
                     @endphp
                     <a href="{{ $ruta }}"
+                        wire:navigate
                         class="relative block px-2 py-3 text-sm font-medium transition
                             {{ $active
                                 ? $colores['bgLite'] . ' ' . $colores['activoTxt'] . ' font-semibold'
@@ -58,6 +59,7 @@
                     $ruta = rutaNave($obra);
                 @endphp
                 <a href="{{ $ruta }}"
+                    wire:navigate
                     class="relative flex-1 text-center px-4 py-2 font-semibold transition
                         {{ $active
                             ? $colores['bgActivo'] . ' ' . $colores['txt']
