@@ -553,7 +553,7 @@ class PlanillaImportService
                         $estadisticas['ordenes_creadas']   += $ordenesCreadas;
                         $estadisticas['tiempo_total']      += (microtime(true) - $inicioPlanilla);
 
-                        // 👈 progreso por filas (avanza en bloque por planilla)
+                        // progreso por filas (avanza en bloque por planilla)
                         if ($importId && $filasDeEstaPlanilla > 0) {
                             ImportProgress::advance($importId, $filasDeEstaPlanilla, "Procesada {$codigoPlanilla}");
                         }

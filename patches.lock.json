@@ -1,0 +1,17 @@
+{
+    "_hash": "bda4108626716e50b541f957fa63c214e39e6b39151393265ca7758b378dbe90",
+    "patches": {
+        "openai-php/laravel": [
+            {
+                "package": "openai-php/laravel",
+                "description": "0",
+                "url": "patches/openai-laravel-namespace-fix.patch",
+                "sha256": "6496c075d2551c4a1e9b4ccf13566d7a6eb8da18d117a44e60eada1031f43bc8",
+                "depth": 1,
+                "extra": {
+                    "provenance": "root"
+                }
+            }
+        ]
+    }
+}
