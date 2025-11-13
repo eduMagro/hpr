@@ -1,6 +1,7 @@
 {
   "permissions": {
     "allow": [
+<<<<<<< HEAD
       "Bash(php artisan cache:clear:*)",
       "Bash(php artisan config:clear:*)",
       "Bash(php artisan:*)",
@@ -14,16 +15,19 @@
       "Bash(php artisan:*)",
       "Bash(nul)",
       "Bash(dir:*)",
+=======
+      "Bash(cat:*)",
+      "Bash(git log:*)",
+      "Bash(php artisan tinker:*)",
+      "Bash(mysql:*)",
+      "Bash(dir \"C:\\xampp\\htdocs\\manager\\database\\migrations\" /b)",
+>>>>>>> origin/59-edu
       "Bash(findstr:*)",
-      "Bash(composer require:*)",
-      "Bash(php --version:*)",
-      "Bash(curl:*)",
-      "Bash(php:*)",
-      "Bash(del:*)",
-      "Bash(composer show:*)",
-      "Bash(composer require:*)",
-      "Bash(composer dump-autoload:*)",
-      "Bash(composer install:*)"
+      "Bash(php artisan make:livewire:*)",
+      "Bash(php artisan schema:show:*)",
+      "Bash(php artisan model:show:*)",
+      "Bash(php check_elemento.php:*)",
+      "Bash(php:*)"
     ],
     "deny": [],
     "ask": []

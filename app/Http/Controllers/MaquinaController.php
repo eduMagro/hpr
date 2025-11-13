@@ -28,6 +28,7 @@ use Illuminate\Support\Collection;
 use App\Services\SugeridorProductoBaseService;
 use Illuminate\Support\Facades\Log;
 use App\Services\ProgressBVBSService;
+use App\Services\AsignarMaquinaService;
 use App\Services\PlanillaColaService;
 
 class MaquinaController extends Controller
@@ -1161,5 +1162,140 @@ class MaquinaController extends Controller
                 'Cache-Control' => 'no-store, no-cache, must-revalidate',
             ]
         );
+    }
+
+    /**
+     * Redistribuye los elementos pendientes de una máquina en otras máquinas disponibles
+     *
+     * @param Request $request
+     * @param int $id ID de la máquina
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function redistribuir(Request $request, $id)
+    {
+        $request->validate([
+            'tipo' => 'required|in:primeros,todos',
+        ]);
+
+        $maquina = Maquina::findOrFail($id);
+        $tipo = $request->input('tipo');
+
+        try {
+            // Obtener elementos pendientes de esta máquina
+            $elementosQuery = Elemento::with(['planilla'])
+                ->where('maquina_id', $id)
+                ->where('estado', 'pendiente')
+                ->orderBy('created_at', 'asc'); // Ordenar por fecha de creación
+
+            // Si es "primeros", limitamos a un número razonable (por ejemplo, los primeros 50)
+            if ($tipo === 'primeros') {
+                $elementosQuery->limit(50);
+            }
+
+            $elementos = $elementosQuery->get();
+
+            if ($elementos->isEmpty()) {
+                return response()->json([
+                    'success' => false,
+                    'mensaje' => 'No hay elementos pendientes para redistribuir en esta máquina.',
+                ]);
+            }
+
+            // Guardar información original de cada elemento
+            $detallesOriginales = [];
+            foreach ($elementos as $elemento) {
+                $detallesOriginales[$elemento->id] = [
+                    'id' => $elemento->id,
+                    'marca' => $elemento->marca,
+                    'diametro' => $elemento->diametro,
+                    'peso' => $elemento->peso,
+                    'planilla_codigo' => $elemento->planilla ? $elemento->planilla->codigo : 'N/A',
+                    'maquina_anterior' => $maquina->nombre,
+                ];
+            }
+
+            // Quitar la asignación de máquina a estos elementos
+            $elementosIds = $elementos->pluck('id')->toArray();
+            Elemento::whereIn('id', $elementosIds)->update(['maquina_id' => null]);
+
+            // Agrupar elementos por planilla
+            $elementosPorPlanilla = $elementos->groupBy('planilla_id');
+
+            $asignarMaquinaService = new AsignarMaquinaService();
+            $redistribuidos = 0;
+
+            // Redistribuir cada grupo de elementos usando el servicio de asignación
+            foreach ($elementosPorPlanilla as $planillaId => $grupoElementos) {
+                try {
+                    // Repartir la planilla completa (solo reasignará los elementos sin máquina)
+                    $asignarMaquinaService->repartirPlanilla($planillaId);
+                    $redistribuidos += $grupoElementos->count();
+                } catch (\Exception $e) {
+                    Log::error("Error redistribuyendo planilla {$planillaId}: " . $e->getMessage());
+                }
+            }
+
+            // Obtener las nuevas asignaciones
+            $elementosActualizados = Elemento::with(['maquina'])
+                ->whereIn('id', $elementosIds)
+                ->get()
+                ->keyBy('id');
+
+            // Crear el detalle de la redistribución
+            $detalles = [];
+            $resumen = [];
+
+            foreach ($detallesOriginales as $elementoId => $original) {
+                $elementoActualizado = $elementosActualizados->get($elementoId);
+                $nuevaMaquina = $elementoActualizado && $elementoActualizado->maquina
+                    ? $elementoActualizado->maquina->nombre
+                    : 'Sin asignar';
+
+                $detalles[] = [
+                    'elemento_id' => $elementoId,
+                    'marca' => $original['marca'],
+                    'diametro' => $original['diametro'],
+                    'peso' => $original['peso'],
+                    'planilla' => $original['planilla_codigo'],
+                    'maquina_anterior' => $original['maquina_anterior'],
+                    'maquina_nueva' => $nuevaMaquina,
+                ];
+
+                // Crear resumen por máquina
+                if (!isset($resumen[$nuevaMaquina])) {
+                    $resumen[$nuevaMaquina] = [
+                        'nombre' => $nuevaMaquina,
+                        'cantidad' => 0,
+                        'peso_total' => 0,
+                    ];
+                }
+                $resumen[$nuevaMaquina]['cantidad']++;
+                $resumen[$nuevaMaquina]['peso_total'] += (float)$original['peso'];
+            }
+
+            // Convertir resumen a array de valores
+            $resumen = array_values($resumen);
+
+            $mensaje = $tipo === 'todos'
+                ? "Se redistribuyeron {$redistribuidos} elementos de toda la cola de trabajo."
+                : "Se redistribuyeron los primeros {$redistribuidos} elementos de la cola.";
+
+            Log::info("Máquina {$maquina->id} ({$maquina->nombre}): {$mensaje}");
+
+            return response()->json([
+                'success' => true,
+                'mensaje' => $mensaje,
+                'redistribuidos' => $redistribuidos,
+                'detalles' => $detalles,
+                'resumen' => $resumen,
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error("Error en redistribuir máquina {$id}: " . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'mensaje' => 'Error al redistribuir elementos: ' . $e->getMessage(),
+            ], 500);
+        }
     }
 }

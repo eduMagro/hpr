@@ -42,10 +42,16 @@ class AsignarMaquinaService
 
         Log::channel('planilla_import')->info("📋 [AsignarMaquina] Planilla {$planillaId} - Clasificación: {$grupos['estribos']->count()} estribos, {$grupos['resto']->count()} resto");
 
-        // Obtener máquinas disponibles
+        // Obtener máquinas disponibles (solo activas)
 
-        $maquinas = Maquina::naveA()->get()->keyBy('id');
-        Log::channel('planilla_import')->debug("🏭 [AsignarMaquina] Máquinas disponibles en Nave A: {$maquinas->count()}");
+        $maquinas = Maquina::naveA()
+            ->where(function($query) {
+                $query->where('estado', 'activa')
+                      ->orWhereNull('estado');
+            })
+            ->get()
+            ->keyBy('id');
+        Log::channel('planilla_import')->debug("🏭 [AsignarMaquina] Máquinas activas disponibles en Nave A: {$maquinas->count()}");
 
         // Calcular cargas actuales
         $cargas = $this->cargasPendientesPorMaquina();

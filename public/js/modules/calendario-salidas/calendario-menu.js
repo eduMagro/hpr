@@ -112,297 +112,154 @@ function extraerPlanillasIds(event) {
     return m ? [Number(m[1])] : [];
 }
 
-/* ===================== Crear salidas vacías ===================== */
-async function crearSalidasVacias(planillasIds, calendar) {
+/* ===================== Gestionar paquetes de una salida ===================== */
+async function gestionarPaquetesSalida(salidaId, calendar) {
     try {
-        // Preguntar cuántas salidas quiere crear
-        const { value: cantidad, isConfirmed } = await Swal.fire({
-            title: "🚚 Crear Salidas",
-            html: `
-                <div class="text-left">
-                    <p class="text-sm text-gray-600 mb-3">
-                        Se crearán salidas <strong>vacías</strong> asociadas a esta agrupación de planillas.
-                    </p>
-                    <p class="text-sm text-gray-600 mb-3">
-                        Posteriormente podrás gestionar los paquetes de cada salida.
-                    </p>
-                    <label class="block text-sm font-medium mb-2">
-                        ¿Cuántas salidas deseas crear?
-                    </label>
-                    <input
-                        type="number"
-                        id="cantidad-salidas"
-                        class="swal2-input !mt-0"
-                        min="1"
-                        max="10"
-                        value="1"
-                        placeholder="Número de salidas"
-                    >
-                </div>
-            `,
-            showCancelButton: true,
-            confirmButtonText: "✅ Crear Salidas",
-            cancelButtonText: "Cancelar",
-            focusConfirm: false,
-            preConfirm: () => {
-                const input = document.getElementById("cantidad-salidas");
-                const valor = parseInt(input.value);
+        closeMenu();
+    } catch (_) {}
 
-                if (!valor || valor < 1) {
-                    Swal.showValidationMessage("Debes indicar al menos 1 salida");
-                    return false;
-                }
-
-                if (valor > 10) {
-                    Swal.showValidationMessage("Máximo 10 salidas a la vez");
-                    return false;
-                }
-
-                return valor;
-            },
-            didOpen: () => {
-                setTimeout(() => {
-                    document.getElementById("cantidad-salidas")?.focus();
-                }, 100);
-            },
-        });
-
-        if (!isConfirmed || !cantidad) return;
-
-        // Crear las salidas vacías
-        const res = await fetch(
-            window.AppSalidas?.routes?.crearSalidasVaciasDesdeCalendario,
-            {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    "X-CSRF-TOKEN": window.AppSalidas?.csrf,
-                },
-                body: JSON.stringify({
-                    planillas_ids: planillasIds,
-                    cantidad: cantidad,
-                }),
-            }
-        );
-
-        const data = await res.json();
-
-        if (data.success) {
-            await Swal.fire({
-                icon: "success",
-                title: "✅ Salidas Creadas",
-                html: `
-                    <p class="mb-3">Se han creado <strong>${cantidad}</strong> salida${
-                    cantidad > 1 ? "s" : ""
-                } vacía${cantidad > 1 ? "s" : ""}.</p>
-                    <p class="text-sm text-gray-600">Ahora puedes gestionar los paquetes de cada salida.</p>
-                `,
-                confirmButtonText: "🔧 Gestionar Paquetes",
-                showCancelButton: true,
-                cancelButtonText: "Cerrar",
-            }).then((result) => {
-                if (result.isConfirmed) {
-                    // Abrir interfaz de gestión de paquetes
-                    abrirGestionPaquetes(planillasIds, data.salidas_ids, calendar);
-                }
-            });
-
-            if (calendar) {
-                calendar.refetchEvents();
-                calendar.refetchResources?.();
-            }
-        } else {
-            await Swal.fire(
-                "⚠️",
-                data.message || "No se pudieron crear las salidas",
-                "warning"
-            );
-        }
-    } catch (err) {
-        console.error(err);
-        Swal.fire("❌", "Hubo un problema al crear las salidas.", "error");
+    if (!salidaId) {
+        return Swal.fire("⚠️", "ID de salida inválido.", "warning");
     }
-}
 
-/* ===================== Gestionar paquetes de salidas ===================== */
-async function abrirGestionPaquetes(planillasIds, salidasIds, calendar) {
     try {
-        // Obtener información de planillas y salidas
+        // Obtener información de la salida y sus paquetes
         const infoRes = await fetch(
-            `${window.AppSalidas?.routes?.informacionGestionPaquetes}?planillas_ids=${encodeURIComponent(
-                planillasIds.join(",")
-            )}&salidas_ids=${encodeURIComponent(salidasIds.join(","))}`,
+            `${window.AppSalidas?.routes?.informacionPaquetesSalida}?salida_id=${salidaId}`,
             {
                 headers: { Accept: "application/json" },
             }
         );
 
-        if (!infoRes.ok) throw new Error("Error al cargar información");
+        if (!infoRes.ok) {
+            throw new Error("Error al cargar información de la salida");
+        }
 
-        const { planillas, salidas, paquetes } = await infoRes.json();
+        const { salida, paquetesAsignados, paquetesDisponibles } = await infoRes.json();
 
-        // Construir interfaz
-        mostrarInterfazGestionPaquetes(
-            planillas,
-            salidas,
-            paquetes,
-            planillasIds,
+        // Construir y mostrar interfaz
+        mostrarInterfazGestionPaquetesSalida(
+            salida,
+            paquetesAsignados,
+            paquetesDisponibles,
             calendar
         );
     } catch (err) {
         console.error(err);
         Swal.fire(
             "❌",
-            "Error al cargar la información de gestión",
+            "Error al cargar la información de la salida",
             "error"
         );
     }
 }
 
-/* ===================== Gestionar salidas existentes ===================== */
-async function gestionarSalidasExistentes(planillasIds, calendar) {
-    try {
-        // Obtener salidas relacionadas con estas planillas
-        const res = await fetch(
-            `${window.AppSalidas?.routes?.obtenerSalidasPorPlanillas}?planillas_ids=${encodeURIComponent(
-                planillasIds.join(",")
-            )}`,
-            {
-                headers: { Accept: "application/json" },
-            }
-        );
-
-        if (!res.ok) throw new Error("Error al cargar salidas");
-
-        const { salidas } = await res.json();
-
-        if (!salidas || salidas.length === 0) {
-            await Swal.fire(
-                "ℹ️",
-                "No hay salidas relacionadas con estas planillas. Crea nuevas salidas primero.",
-                "info"
-            );
-            return;
-        }
-
-        // Abrir interfaz con las salidas existentes
-        abrirGestionPaquetes(planillasIds, salidas.map((s) => s.id), calendar);
-    } catch (err) {
-        console.error(err);
-        Swal.fire("❌", "Error al cargar las salidas", "error");
-    }
-}
-
-/* ===================== Mostrar interfaz gestión paquetes ===================== */
-function mostrarInterfazGestionPaquetes(
-    planillas,
-    salidas,
-    paquetes,
-    planillasIds,
+/* ===================== Mostrar interfaz gestión paquetes salida ===================== */
+function mostrarInterfazGestionPaquetesSalida(
+    salida,
+    paquetesAsignados,
+    paquetesDisponibles,
     calendar
 ) {
-    const html = construirInterfazGestionPaquetes(planillas, salidas, paquetes);
+    const html = construirInterfazGestionPaquetesSalida(
+        salida,
+        paquetesAsignados,
+        paquetesDisponibles
+    );
 
     Swal.fire({
-        title: "🔧 Gestión de Paquetes",
+        title: `📦 Gestionar Paquetes - Salida ${salida.codigo_salida || salida.id}`,
         html,
-        width: Math.min(window.innerWidth * 0.95, 1400),
+        width: Math.min(window.innerWidth * 0.95, 1200),
         showConfirmButton: true,
         showCancelButton: true,
         confirmButtonText: "💾 Guardar Cambios",
         cancelButtonText: "Cancelar",
         focusConfirm: false,
         customClass: {
-            popup: "w-full max-w-screen-2xl",
+            popup: "w-full max-w-screen-xl",
         },
         didOpen: () => {
-            inicializarDragAndDrop();
+            inicializarDragAndDropSalida();
         },
         preConfirm: () => {
-            return recolectarAsignaciones();
+            return recolectarPaquetesSalida();
         },
     }).then(async (result) => {
         if (result.isConfirmed && result.value) {
-            await guardarAsignacionesPaquetes(result.value, calendar);
+            await guardarPaquetesSalida(salida.id, result.value, calendar);
         }
     });
 }
 
-/* ===================== Construir HTML interfaz ===================== */
-function construirInterfazGestionPaquetes(planillas, salidas, paquetes) {
-    // Agrupar paquetes por salida
-    const paquetesPorSalida = {};
-    const paquetesDisponibles = [];
+/* ===================== Construir HTML interfaz gestión paquetes salida ===================== */
+function construirInterfazGestionPaquetesSalida(
+    salida,
+    paquetesAsignados,
+    paquetesDisponibles
+) {
+    // Calcular totales de la salida
+    const totalKgAsignados = paquetesAsignados.reduce(
+        (sum, p) => sum + (parseFloat(p.peso) || 0),
+        0
+    );
 
-    paquetes.forEach((paquete) => {
-        if (paquete.salida_id) {
-            if (!paquetesPorSalida[paquete.salida_id]) {
-                paquetesPorSalida[paquete.salida_id] = [];
-            }
-            paquetesPorSalida[paquete.salida_id].push(paquete);
-        } else {
-            paquetesDisponibles.push(paquete);
-        }
-    });
-
-    // Construir columnas de salidas
-    const columnaSalidas = salidas
-        .map((salida) => {
-            const paquetesSalida = paquetesPorSalida[salida.id] || [];
-            const totalKg = paquetesSalida.reduce(
-                (sum, p) => sum + (parseFloat(p.peso) || 0),
-                0
-            );
-
-            return `
-            <div class="salida-column bg-blue-50 border-2 border-blue-200 rounded-lg p-3 min-h-[300px]">
-                <div class="font-semibold text-blue-900 mb-2 flex items-center justify-between">
-                    <span>🚚 ${salida.codigo_salida || `Salida #${salida.id}`}</span>
-                    <span class="text-xs bg-blue-200 px-2 py-1 rounded">${totalKg.toFixed(
-                        2
-                    )} kg</span>
-                </div>
-                <div
-                    class="paquetes-zona drop-zone"
-                    data-salida-id="${salida.id}"
-                    style="min-height: 250px; border: 2px dashed #3b82f6; border-radius: 8px; padding: 8px;"
-                >
-                    ${construirPaquetesHTML(paquetesSalida)}
-                </div>
+    // Información de la salida
+    const infoSalida = `
+        <div class="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
+            <div class="grid grid-cols-2 gap-2 text-sm">
+                <div><strong>Código:</strong> ${salida.codigo_salida || "N/A"}</div>
+                <div><strong>Código SAGE:</strong> ${salida.codigo_sage || "Sin asignar"}</div>
+                <div><strong>Fecha salida:</strong> ${new Date(salida.fecha_salida).toLocaleString("es-ES")}</div>
+                <div><strong>Estado:</strong> ${salida.estado || "pendiente"}</div>
+                <div><strong>Empresa transporte:</strong> ${salida.empresa_transporte?.nombre || "Sin asignar"}</div>
+                <div><strong>Camión:</strong> ${salida.camion?.modelo || "Sin asignar"}</div>
             </div>
-        `;
-        })
-        .join("");
+        </div>
+    `;
 
     return `
         <div class="text-left">
+            ${infoSalida}
+
             <p class="text-sm text-gray-600 mb-4">
-                Arrastra los paquetes entre las salidas para reorganizarlos. Los paquetes sin asignar están en la zona inferior.
+                Arrastra paquetes entre las zonas para asignarlos o quitarlos de esta salida.
             </p>
 
-            <div class="grid grid-cols-${Math.min(
-                salidas.length,
-                4
-            )} gap-4 mb-4" style="grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));">
-                ${columnaSalidas}
-            </div>
+            <div class="grid grid-cols-2 gap-4">
+                <!-- Paquetes asignados a esta salida -->
+                <div class="bg-green-50 border-2 border-green-200 rounded-lg p-3">
+                    <div class="font-semibold text-green-900 mb-2 flex items-center justify-between">
+                        <span>📦 Paquetes en esta salida</span>
+                        <span class="text-xs bg-green-200 px-2 py-1 rounded" id="peso-asignados">${totalKgAsignados.toFixed(2)} kg</span>
+                    </div>
+                    <div
+                        class="paquetes-zona-salida drop-zone"
+                        data-zona="asignados"
+                        style="min-height: 400px; border: 2px dashed #10b981; border-radius: 8px; padding: 8px;"
+                    >
+                        ${construirPaquetesHTMLSalida(paquetesAsignados)}
+                    </div>
+                </div>
 
-            <div class="bg-gray-50 border-2 border-gray-300 rounded-lg p-3 mt-4">
-                <div class="font-semibold text-gray-900 mb-2">📦 Paquetes Disponibles (Sin Asignar)</div>
-                <div
-                    class="paquetes-zona drop-zone"
-                    data-salida-id="null"
-                    style="min-height: 150px; border: 2px dashed #6b7280; border-radius: 8px; padding: 8px;"
-                >
-                    ${construirPaquetesHTML(paquetesDisponibles)}
+                <!-- Paquetes disponibles -->
+                <div class="bg-gray-50 border-2 border-gray-300 rounded-lg p-3">
+                    <div class="font-semibold text-gray-900 mb-2">📋 Paquetes Disponibles</div>
+                    <div
+                        class="paquetes-zona-salida drop-zone"
+                        data-zona="disponibles"
+                        style="min-height: 400px; border: 2px dashed #6b7280; border-radius: 8px; padding: 8px;"
+                    >
+                        ${construirPaquetesHTMLSalida(paquetesDisponibles)}
+                    </div>
                 </div>
             </div>
         </div>
     `;
 }
 
-/* ===================== Construir HTML paquetes ===================== */
-function construirPaquetesHTML(paquetes) {
+/* ===================== Construir HTML paquetes salida ===================== */
+function construirPaquetesHTMLSalida(paquetes) {
     if (!paquetes || paquetes.length === 0) {
         return '<div class="text-gray-400 text-sm text-center py-4">Sin paquetes</div>';
     }
@@ -411,19 +268,18 @@ function construirPaquetesHTML(paquetes) {
         .map(
             (paquete) => `
         <div
-            class="paquete-item bg-white border border-gray-300 rounded p-2 mb-2 cursor-move hover:shadow-md transition-shadow"
+            class="paquete-item-salida bg-white border border-gray-300 rounded p-2 mb-2 cursor-move hover:shadow-md transition-shadow"
             draggable="true"
             data-paquete-id="${paquete.id}"
-            data-salida-actual="${paquete.salida_id || "null"}"
         >
             <div class="flex items-center justify-between text-xs">
                 <span class="font-medium">📦 Paquete #${paquete.id}</span>
-                <span class="text-gray-600">${
-                    parseFloat(paquete.peso || 0).toFixed(2) || "0"
-                } kg</span>
+                <span class="text-gray-600">${parseFloat(paquete.peso || 0).toFixed(2)} kg</span>
             </div>
             <div class="text-xs text-gray-500 mt-1">
-                Planilla: ${paquete.planilla?.codigo || paquete.planilla_id}
+                <div>Planilla: ${paquete.planilla?.codigo || paquete.planilla_id}</div>
+                <div>Obra: ${paquete.planilla?.obra?.obra || "N/A"}</div>
+                ${paquete.planilla?.obra?.cod_obra ? `<div>Código: ${paquete.planilla.obra.cod_obra}</div>` : ""}
             </div>
         </div>
     `
@@ -431,12 +287,12 @@ function construirPaquetesHTML(paquetes) {
         .join("");
 }
 
-/* ===================== Inicializar drag and drop ===================== */
-function inicializarDragAndDrop() {
+/* ===================== Inicializar drag and drop salida ===================== */
+function inicializarDragAndDropSalida() {
     let draggedElement = null;
 
     // Eventos de drag para los paquetes
-    document.querySelectorAll(".paquete-item").forEach((item) => {
+    document.querySelectorAll(".paquete-item-salida").forEach((item) => {
         item.addEventListener("dragstart", (e) => {
             draggedElement = item;
             item.style.opacity = "0.5";
@@ -452,7 +308,8 @@ function inicializarDragAndDrop() {
     document.querySelectorAll(".drop-zone").forEach((zone) => {
         zone.addEventListener("dragover", (e) => {
             e.preventDefault();
-            zone.style.backgroundColor = "#e0f2fe";
+            const zonaType = zone.dataset.zona;
+            zone.style.backgroundColor = zonaType === "asignados" ? "#d1fae5" : "#e0f2fe";
         });
 
         zone.addEventListener("dragleave", (e) => {
@@ -471,76 +328,68 @@ function inicializarDragAndDrop() {
                 // Agregar elemento a la nueva zona
                 zone.appendChild(draggedElement);
 
-                // Actualizar datos
-                const nuevaSalidaId = zone.dataset.salidaId;
-                draggedElement.dataset.salidaActual = nuevaSalidaId;
-
                 // Actualizar totales
-                actualizarTotalesSalidas();
+                actualizarTotalesSalida();
             }
         });
     });
 }
 
-/* ===================== Actualizar totales salidas ===================== */
-function actualizarTotalesSalidas() {
-    document.querySelectorAll(".salida-column").forEach((column) => {
-        const zona = column.querySelector(".drop-zone");
-        const paquetes = zona.querySelectorAll(".paquete-item");
+/* ===================== Actualizar totales salida ===================== */
+function actualizarTotalesSalida() {
+    const zonaAsignados = document.querySelector('[data-zona="asignados"]');
+    const paquetes = zonaAsignados?.querySelectorAll(".paquete-item-salida");
 
-        let totalKg = 0;
-        paquetes.forEach((p) => {
-            const pesoText = p.querySelector(".text-gray-600").textContent;
-            const peso = parseFloat(pesoText) || 0;
-            totalKg += peso;
-        });
-
-        const badge = column.querySelector(".bg-blue-200");
-        if (badge) {
-            badge.textContent = `${totalKg.toFixed(2)} kg`;
-        }
-    });
-}
-
-/* ===================== Recolectar asignaciones ===================== */
-function recolectarAsignaciones() {
-    const asignaciones = [];
-
-    document.querySelectorAll(".paquete-item").forEach((item) => {
-        const paqueteId = parseInt(item.dataset.paqueteId);
-        const salidaId = item.dataset.salidaActual;
-
-        asignaciones.push({
-            paquete_id: paqueteId,
-            salida_id: salidaId === "null" ? null : parseInt(salidaId),
-        });
+    let totalKg = 0;
+    paquetes?.forEach((p) => {
+        const pesoText = p.querySelector(".text-gray-600")?.textContent;
+        const peso = parseFloat(pesoText) || 0;
+        totalKg += peso;
     });
 
-    return asignaciones;
+    const badge = document.getElementById("peso-asignados");
+    if (badge) {
+        badge.textContent = `${totalKg.toFixed(2)} kg`;
+    }
 }
 
-/* ===================== Guardar asignaciones ===================== */
-async function guardarAsignacionesPaquetes(asignaciones, calendar) {
+/* ===================== Recolectar paquetes salida ===================== */
+function recolectarPaquetesSalida() {
+    const zonaAsignados = document.querySelector('[data-zona="asignados"]');
+    const paquetesAsignados = Array.from(
+        zonaAsignados?.querySelectorAll(".paquete-item-salida") || []
+    ).map((item) => parseInt(item.dataset.paqueteId));
+
+    return {
+        paquetes_ids: paquetesAsignados,
+    };
+}
+
+/* ===================== Guardar paquetes salida ===================== */
+async function guardarPaquetesSalida(salidaId, data, calendar) {
     try {
         const res = await fetch(
-            window.AppSalidas?.routes?.guardarAsignacionesPaquetes,
+            window.AppSalidas?.routes?.guardarPaquetesSalida,
             {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
                     "X-CSRF-TOKEN": window.AppSalidas?.csrf,
                 },
-                body: JSON.stringify({ asignaciones }),
+                body: JSON.stringify({
+                    salida_id: salidaId,
+                    paquetes_ids: data.paquetes_ids,
+                }),
             }
         );
 
-        const data = await res.json();
+        const responseData = await res.json();
 
-        if (data.success) {
+        if (responseData.success) {
             await Swal.fire({
                 icon: "success",
                 title: "✅ Cambios Guardados",
-                text: "Las asignaciones de paquetes se han actualizado correctamente.",
+                text: "Los paquetes de la salida se han actualizado correctamente.",
                 timer: 2000,
             });
 
@@ -551,13 +400,13 @@ async function guardarAsignacionesPaquetes(asignaciones, calendar) {
         } else {
             await Swal.fire(
                 "⚠️",
-                data.message || "No se pudieron guardar los cambios",
+                responseData.message || "No se pudieron guardar los cambios",
                 "warning"
             );
         }
     } catch (err) {
         console.error(err);
-        Swal.fire("❌", "Error al guardar las asignaciones", "error");
+        Swal.fire("❌", "Error al guardar los paquetes", "error");
     }
 }
 
@@ -1037,19 +886,9 @@ export function attachEventoContextMenu(info, calendar) {
             const planillasIds = extraerPlanillasIds(ev);
             items = [
                 {
-                    label: "Crear salidas",
-                    icon: "🚚",
-                    onClick: () => crearSalidasVacias(planillasIds, calendar),
-                },
-                {
-                    label: "Gestionar salidas existentes",
-                    icon: "🔧",
-                    onClick: () => gestionarSalidasExistentes(planillasIds, calendar),
-                },
-                {
-                    label: "Ver Planillas de Agrupación",
-                    icon: "🧾",
-                    onClick: () => salidasCreate(planillasIds, calendar),
+                    label: "Gestionar Salidas y Paquetes",
+                    icon: "📦",
+                    onClick: () => window.location.href = `/salidas-ferralla/gestionar-salidas?planillas=${planillasIds.join(",")}`,
                 },
                 {
                     label: "Cambiar fechas de entrega",
@@ -1058,23 +897,31 @@ export function attachEventoContextMenu(info, calendar) {
                 },
             ];
         } else if (tipo === "salida") {
+            // El ID del evento viene en formato "salida_id-obra_id", extraer solo el salida_id
+            const salidaId = typeof ev.id === 'string' ? ev.id.split('-')[0] : ev.id;
+
             items = [
                 {
                     label: "Abrir salida",
                     icon: "🧾",
-                    onClick: () => window.open(`/salidas/${ev.id}`, "_blank"),
+                    onClick: () => window.open(`/salidas-ferralla/${salidaId}`, "_blank"),
+                },
+                {
+                    label: "Gestionar paquetes",
+                    icon: "📦",
+                    onClick: () => gestionarPaquetesSalida(salidaId, calendar),
                 },
                 {
                     label: "Asignar código SAGE",
                     icon: "🏷️",
                     onClick: () =>
-                        asignarCodigoSalida(ev.id, p.codigo || "", calendar),
+                        asignarCodigoSalida(salidaId, p.codigo || "", calendar),
                 },
                 {
                     label: "Agregar comentario",
                     icon: "✍️",
                     onClick: () =>
-                        comentarSalida(ev.id, p.comentario || "", calendar),
+                        comentarSalida(salidaId, p.comentario || "", calendar),
                 },
             ];
         } else {

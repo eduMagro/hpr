@@ -335,57 +335,15 @@ class SalidaFerrallaController extends Controller
 
     public function create(Request $request)
     {
-        // Si se han pasado planillas desde el calendario, usamos solo esas
-        $planillasIds = explode(',', $request->get('planillas', ''));
+        // Redirigir a la nueva vista de gestión de salidas
+        $planillas = $request->get('planillas', '');
 
-        // Base del query
-        $planillasQuery = Planilla::with([
-            'paquetes' => function ($query) {
-                // Filtramos paquetes sin salida
-                $query->whereDoesntHave('salidas');
-            },
-            'paquetes.etiquetas',
-            'cliente',
-            'obra'
-        ]);
-
-        // Si se recibieron planillas por parámetro, filtramos
-        if (!empty($planillasIds[0])) {
-            $planillasQuery->whereIn('id', $planillasIds);
+        if (empty($planillas)) {
+            return redirect()->route('planificacion.index')
+                ->with('info', 'Selecciona planillas desde el calendario para crear salidas');
         }
 
-        // Obtener las planillas
-        $planillasCompletadas = $planillasQuery
-            ->orderBy('fecha_estimada_entrega', 'asc')
-            ->get()
-            ->map(function ($planilla) {
-                // Aquí definimos colores y etiquetas según estado
-                $estado = $planilla->estado;
-                $colorClass = match ($estado) {
-                    'completada' => 'bg-green-500 text-white',
-                    'pendiente' => 'bg-yellow-500 text-black',
-                    'en_proceso' => 'bg-blue-500 text-white',
-                    default => 'bg-gray-400 text-white',
-                };
-
-                // Le añadimos atributos dinámicos que luego usarás en Blade
-                $planilla->estado_label = ucfirst($estado);
-                $planilla->estado_class = $colorClass;
-
-                return $planilla;
-            });
-
-        // Obtener paquetes
-        $paquetes = $planillasCompletadas->pluck('paquetes')->flatten();
-
-        // Empresas con camiones
-        $empresas = EmpresaTransporte::with('camiones')->get();
-
-        return view('salidas.create', [
-            'planillasCompletadas' => $planillasCompletadas,
-            'paquetes' => $paquetes,
-            'empresas' => $empresas,
-        ]);
+        return redirect()->route('salidas-ferralla.gestionar-salidas', ['planillas' => $planillas]);
     }
 
     public function store(Request $request)
@@ -723,194 +681,6 @@ class SalidaFerrallaController extends Controller
         }
     }
 
-    public function crearSalidasVaciasDesdeCalendario(Request $request)
-    {
-        // Log inicial para confirmar que el método se está ejecutando
-        Log::info('🚀 Iniciando crearSalidasVaciasDesdeCalendario', [
-            'request_all' => $request->all(),
-            'user_id' => auth()->id() ?? 'guest',
-            'url' => $request->fullUrl(),
-            'method' => $request->method(),
-            'ip' => $request->ip(),
-        ]);
-
-        try {
-            $request->validate([
-                'planillas_ids' => 'required|array|min:1',
-                'planillas_ids.*' => 'exists:planillas,id',
-                'cantidad' => 'required|integer|min:1|max:10',
-            ]);
-
-            Log::info('✅ Validación pasada', [
-                'planillas_ids' => $request->planillas_ids,
-                'cantidad' => $request->cantidad,
-            ]);
-
-            // Obtener la primera planilla para la fecha
-            $primeraPlanilla = Planilla::whereIn('id', $request->planillas_ids)->first();
-            $fechaSalida = $primeraPlanilla
-                ? $primeraPlanilla->getRawOriginal('fecha_estimada_entrega')
-                : now();
-
-            Log::info('📅 Fecha salida determinada', [
-                'fecha_salida' => $fechaSalida,
-                'planilla_id' => $primeraPlanilla?->id,
-            ]);
-
-            $salidasCreadas = [];
-
-            // Crear N salidas vacías
-            for ($i = 0; $i < $request->cantidad; $i++) {
-                $numero = $i + 1;
-                Log::info("🔄 Creando salida {$numero} de {$request->cantidad}");
-
-                // Crear la salida vacía
-                $salida = Salida::create([
-                    'fecha_salida' => $fechaSalida,
-                    'estado' => 'pendiente',
-                ]);
-
-                // Generar código salida
-                $codigo_salida = 'AS' . substr(date('Y'), 2) . '/' . str_pad($salida->id, 4, '0', STR_PAD_LEFT);
-                $salida->codigo_salida = $codigo_salida;
-                $salida->save();
-
-                Log::info("✅ Salida creada", [
-                    'salida_id' => $salida->id,
-                    'codigo_salida' => $codigo_salida,
-                ]);
-
-                // Asociar cliente y obra basado en las planillas (sin paquetes aún)
-                $pivotData = [];
-                foreach ($request->planillas_ids as $planilla_id) {
-                    $planilla = Planilla::with('obra')->find($planilla_id);
-                    if ($planilla && $planilla->cliente_id && $planilla->obra) {
-                        $clave = $planilla->cliente_id . '_' . $planilla->obra->id;
-                        if (!isset($pivotData[$clave])) {
-                            $pivotData[$clave] = [
-                                'salida_id' => $salida->id,
-                                'cliente_id' => $planilla->cliente_id,
-                                'obra_id' => $planilla->obra->id,
-                                'horas_paralizacion' => 0,
-                                'importe_paralizacion' => 0,
-                                'horas_grua' => 0,
-                                'importe_grua' => 0,
-                                'horas_almacen' => 0,
-                                'importe' => 0,
-                                'created_at' => now(),
-                                'updated_at' => now(),
-                            ];
-                        }
-                    }
-                }
-
-                if (!empty($pivotData)) {
-                    DB::table('salida_cliente')->insert(array_values($pivotData));
-                    Log::info("📦 Relaciones salida_cliente creadas", [
-                        'salida_id' => $salida->id,
-                        'num_relaciones' => count($pivotData),
-                    ]);
-                }
-
-                $salidasCreadas[] = [
-                    'id' => $salida->id,
-                    'codigo_salida' => $codigo_salida,
-                ];
-            }
-
-            Log::info('✅ Todas las salidas vacías creadas con éxito', [
-                'cantidad' => $request->cantidad,
-                'salidas_ids' => array_column($salidasCreadas, 'id'),
-                'codigos' => array_column($salidasCreadas, 'codigo_salida'),
-                'planillas_ids' => $request->planillas_ids,
-            ]);
-
-            return response()->json([
-                'success' => true,
-                'message' => "Se crearon {$request->cantidad} salida(s) vacía(s) con éxito",
-                'salidas_ids' => array_column($salidasCreadas, 'id'),
-                'salidas' => $salidasCreadas,
-            ]);
-        } catch (\Illuminate\Validation\ValidationException $e) {
-            // Error de validación
-            Log::warning('⚠️ Validación fallida al crear salidas vacías', [
-                'errors' => $e->errors(),
-                'request_data' => $request->all(),
-                'user_id' => auth()->id() ?? 'guest',
-            ]);
-            throw $e;
-        } catch (\Exception $e) {
-            Log::error('❌ Error al crear salidas vacías desde calendario', [
-                'error_message' => $e->getMessage(),
-                'error_file' => $e->getFile(),
-                'error_line' => $e->getLine(),
-                'stack_trace' => $e->getTraceAsString(),
-                'request_data' => [
-                    'planillas_ids' => $request->planillas_ids ?? [],
-                    'cantidad' => $request->cantidad ?? null,
-                ],
-                'user_id' => auth()->id() ?? 'guest',
-                'timestamp' => now()->toDateTimeString(),
-            ]);
-
-            return response()->json([
-                'success' => false,
-                'message' => 'Error al crear las salidas vacías: ' . $e->getMessage()
-            ], 500);
-        }
-    }
-
-    public function obtenerSalidasPorPlanillas(Request $request)
-    {
-        try {
-            Log::info('🔍 Obteniendo salidas por planillas', [
-                'planillas_ids' => $request->input('planillas_ids'),
-            ]);
-
-            $planillasIds = explode(',', $request->input('planillas_ids', ''));
-
-            // Obtener todos los paquetes de estas planillas
-            $paquetesIds = Paquete::whereIn('planilla_id', $planillasIds)
-                ->pluck('id')
-                ->toArray();
-
-            // Obtener salidas que contengan alguno de estos paquetes
-            $salidas = Salida::with(['salidaClientes.obra:id,obra,cod_obra', 'paquetes'])
-                ->whereHas('paquetes', function ($query) use ($paquetesIds) {
-                    $query->whereIn('paquetes.id', $paquetesIds);
-                })
-                ->get()
-                ->map(function ($salida) {
-                    return [
-                        'id' => $salida->id,
-                        'codigo_salida' => $salida->codigo_salida,
-                        'fecha_salida' => $salida->fecha_salida,
-                        'estado' => $salida->estado,
-                        'num_paquetes' => $salida->paquetes->count(),
-                    ];
-                });
-
-            Log::info('✅ Salidas obtenidas', [
-                'num_salidas' => $salidas->count(),
-            ]);
-
-            return response()->json([
-                'salidas' => $salidas,
-            ]);
-        } catch (\Exception $e) {
-            Log::error('❌ Error al obtener salidas por planillas', [
-                'error_message' => $e->getMessage(),
-                'error_file' => $e->getFile(),
-                'error_line' => $e->getLine(),
-                'stack_trace' => $e->getTraceAsString(),
-            ]);
-
-            return response()->json([
-                'error' => 'Error al cargar las salidas: ' . $e->getMessage()
-            ], 500);
-        }
-    }
-
     public function guardarAsignacionesPaquetes(Request $request)
     {
         try {
@@ -960,10 +730,14 @@ class SalidaFerrallaController extends Controller
                                 'updated_at' => now(),
                             ]);
 
+                            // Actualizar estado del paquete a 'asignado_a_salida'
+                            $paquete->update(['estado' => 'asignado_a_salida']);
+
                             $actualizados++;
                             Log::info("📦 Paquete asociado a salida", [
                                 'paquete_id' => $paquete->id,
                                 'salida_id' => $salida->id,
+                                'estado' => 'asignado_a_salida',
                             ]);
                         }
                     }
@@ -974,9 +748,13 @@ class SalidaFerrallaController extends Controller
                         ->delete();
 
                     if ($deleted > 0) {
+                        // Volver el estado a 'pendiente'
+                        $paquete->update(['estado' => 'pendiente']);
+
                         $actualizados++;
                         Log::info("📦 Paquete desasociado de salida", [
                             'paquete_id' => $paquete->id,
+                            'estado' => 'pendiente',
                         ]);
                     }
                 }
@@ -1012,82 +790,99 @@ class SalidaFerrallaController extends Controller
         }
     }
 
-    public function informacionGestionPaquetes(Request $request)
+    /**
+     * Obtiene información de una salida específica y sus paquetes para la gestión individual
+     */
+    public function informacionPaquetesSalida(Request $request)
     {
         try {
-            Log::info('🔍 Obteniendo información para gestión de paquetes', [
-                'planillas_ids' => $request->input('planillas_ids'),
-                'salidas_ids' => $request->input('salidas_ids'),
+            $salidaId = $request->input('salida_id');
+
+            Log::info('🔍 Obteniendo información de paquetes para salida', [
+                'salida_id' => $salidaId,
             ]);
 
-            $planillasIds = explode(',', $request->input('planillas_ids', ''));
-            $salidasIds = explode(',', $request->input('salidas_ids', ''));
+            // Obtener la salida con sus relaciones
+            $salida = Salida::with([
+                'salidaClientes.obra:id,obra,cod_obra',
+                'empresaTransporte:id,nombre',
+                'camion:id,modelo',
+            ])->findOrFail($salidaId);
 
-            // Obtener planillas con información relevante
-            $planillas = Planilla::with(['obra:id,obra,cod_obra', 'user:id,name'])
-                ->whereIn('id', $planillasIds)
-                ->get()
-                ->map(function ($planilla) {
-                    return [
-                        'id' => $planilla->id,
-                        'codigo' => $planilla->codigo,
-                        'obra' => $planilla->obra?->obra,
-                        'cod_obra' => $planilla->obra?->cod_obra,
-                        'operario' => $planilla->user?->name,
-                        'peso_total' => $planilla->peso_total,
-                        'fecha_estimada_entrega' => $planilla->fecha_estimada_entrega,
-                    ];
-                });
-
-            // Obtener salidas
-            $salidas = Salida::with(['salidaClientes.obra:id,obra,cod_obra'])
-                ->whereIn('id', $salidasIds)
-                ->get()
-                ->map(function ($salida) {
-                    return [
-                        'id' => $salida->id,
-                        'codigo_salida' => $salida->codigo_salida,
-                        'fecha_salida' => $salida->fecha_salida,
-                        'estado' => $salida->estado,
-                        'obras' => $salida->salidaClientes->map(fn($sc) => [
-                            'id' => $sc->obra?->id,
-                            'nombre' => $sc->obra?->obra,
-                            'cod_obra' => $sc->obra?->cod_obra,
-                        ])->unique('id')->values(),
-                    ];
-                });
-
-            // Obtener todos los paquetes de las planillas con su salida actual
-            $paquetes = Paquete::with(['planilla:id,codigo', 'salida:id,codigo_salida'])
-                ->whereIn('planilla_id', $planillasIds)
+            // Obtener paquetes asignados a esta salida
+            $paquetesAsignados = Paquete::with(['planilla.obra:id,obra,cod_obra'])
+                ->whereHas('salidas', function ($q) use ($salidaId) {
+                    $q->where('salidas.id', $salidaId);
+                })
                 ->get()
                 ->map(function ($paquete) {
                     return [
                         'id' => $paquete->id,
                         'codigo' => $paquete->codigo,
                         'planilla_id' => $paquete->planilla_id,
-                        'planilla_codigo' => $paquete->planilla?->codigo,
-                        'salida_id' => $paquete->salida_id,
-                        'salida_codigo' => $paquete->salida?->codigo_salida,
                         'peso' => $paquete->peso,
-                        'longitud' => $paquete->longitud,
-                        'diametro' => $paquete->diametro,
+                        'planilla' => [
+                            'id' => $paquete->planilla->id ?? null,
+                            'codigo' => $paquete->planilla->codigo ?? null,
+                            'obra' => [
+                                'id' => $paquete->planilla->obra->id ?? null,
+                                'obra' => $paquete->planilla->obra->obra ?? null,
+                                'cod_obra' => $paquete->planilla->obra->cod_obra ?? null,
+                            ],
+                        ],
                     ];
                 });
 
-            Log::info('✅ Información de gestión obtenida', [
-                'num_planillas' => $planillas->count(),
-                'num_salidas' => $salidas->count(),
-                'num_paquetes' => $paquetes->count(),
+            // Obtener las planillas relacionadas con los paquetes de esta salida
+            $planillasIds = $paquetesAsignados->pluck('planilla_id')->unique()->filter();
+
+            // Obtener paquetes disponibles: de las mismas planillas pero sin salida asignada
+            $paquetesDisponibles = Paquete::with(['planilla.obra:id,obra,cod_obra'])
+                ->whereIn('planilla_id', $planillasIds)
+                ->whereDoesntHave('salidas')
+                ->get()
+                ->map(function ($paquete) {
+                    return [
+                        'id' => $paquete->id,
+                        'codigo' => $paquete->codigo,
+                        'planilla_id' => $paquete->planilla_id,
+                        'peso' => $paquete->peso,
+                        'planilla' => [
+                            'id' => $paquete->planilla->id ?? null,
+                            'codigo' => $paquete->planilla->codigo ?? null,
+                            'obra' => [
+                                'id' => $paquete->planilla->obra->id ?? null,
+                                'obra' => $paquete->planilla->obra->obra ?? null,
+                                'cod_obra' => $paquete->planilla->obra->cod_obra ?? null,
+                            ],
+                        ],
+                    ];
+                });
+
+            Log::info('✅ Información de paquetes de salida obtenida', [
+                'num_paquetes_asignados' => $paquetesAsignados->count(),
+                'num_paquetes_disponibles' => $paquetesDisponibles->count(),
             ]);
 
             return response()->json([
-                'planillas' => $planillas,
-                'salidas' => $salidas,
-                'paquetes' => $paquetes,
+                'salida' => [
+                    'id' => $salida->id,
+                    'codigo_salida' => $salida->codigo_salida,
+                    'codigo_sage' => $salida->codigo_sage,
+                    'fecha_salida' => $salida->fecha_salida,
+                    'estado' => $salida->estado,
+                    'empresa_transporte' => [
+                        'nombre' => $salida->empresaTransporte->nombre ?? null,
+                    ],
+                    'camion' => [
+                        'modelo' => $salida->camion->modelo ?? null,
+                    ],
+                ],
+                'paquetesAsignados' => $paquetesAsignados,
+                'paquetesDisponibles' => $paquetesDisponibles,
             ]);
         } catch (\Exception $e) {
-            Log::error('❌ Error al obtener información de gestión de paquetes', [
+            Log::error('❌ Error al obtener información de paquetes de salida', [
                 'error_message' => $e->getMessage(),
                 'error_file' => $e->getFile(),
                 'error_line' => $e->getLine(),
@@ -1095,7 +890,120 @@ class SalidaFerrallaController extends Controller
             ]);
 
             return response()->json([
-                'error' => 'Error al cargar la información: ' . $e->getMessage()
+                'error' => 'Error al cargar la información de la salida: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Guarda los paquetes asignados a una salida específica
+     */
+    public function guardarPaquetesSalida(Request $request)
+    {
+        try {
+            Log::info('💾 Guardando paquetes de salida', [
+                'salida_id' => $request->input('salida_id'),
+                'num_paquetes' => count($request->input('paquetes_ids', [])),
+            ]);
+
+            $request->validate([
+                'salida_id' => 'required|exists:salidas,id',
+                'paquetes_ids' => 'required|array',
+                'paquetes_ids.*' => 'exists:paquetes,id',
+            ]);
+
+            $salidaId = $request->input('salida_id');
+            $paquetesIds = $request->input('paquetes_ids', []);
+
+            $salida = Salida::findOrFail($salidaId);
+
+            // Obtener los paquetes actualmente asignados a esta salida
+            $paquetesAnteriores = DB::table('salidas_paquetes')
+                ->where('salida_id', $salidaId)
+                ->pluck('paquete_id')
+                ->toArray();
+
+            // Identificar paquetes que se ELIMINAN de la salida (estaban antes, ya no están ahora)
+            $paquetesEliminados = array_diff($paquetesAnteriores, $paquetesIds);
+
+            // Cambiar estado a 'pendiente' para paquetes eliminados
+            if (!empty($paquetesEliminados)) {
+                Paquete::whereIn('id', $paquetesEliminados)
+                    ->update(['estado' => 'pendiente']);
+
+                Log::info('📦 Paquetes cambiados a pendiente', [
+                    'paquetes_ids' => $paquetesEliminados,
+                    'estado' => 'pendiente',
+                ]);
+            }
+
+            // Eliminar todos los paquetes actuales de esta salida
+            DB::table('salidas_paquetes')
+                ->where('salida_id', $salidaId)
+                ->delete();
+
+            // Luego, agregar los nuevos paquetes
+            $insertData = [];
+            foreach ($paquetesIds as $paqueteId) {
+                // Verificar que el paquete no esté ya en otra salida
+                $existeEnOtraSalida = DB::table('salidas_paquetes')
+                    ->where('paquete_id', $paqueteId)
+                    ->where('salida_id', '!=', $salidaId)
+                    ->exists();
+
+                if ($existeEnOtraSalida) {
+                    // Eliminar de la otra salida primero
+                    DB::table('salidas_paquetes')
+                        ->where('paquete_id', $paqueteId)
+                        ->delete();
+                }
+
+                $insertData[] = [
+                    'salida_id' => $salidaId,
+                    'paquete_id' => $paqueteId,
+                ];
+            }
+
+            if (!empty($insertData)) {
+                DB::table('salidas_paquetes')->insert($insertData);
+
+                // Cambiar estado a 'asignado_a_salida' para paquetes asignados
+                Paquete::whereIn('id', $paquetesIds)
+                    ->update(['estado' => 'asignado_a_salida']);
+
+                Log::info('📦 Paquetes cambiados a asignado_a_salida', [
+                    'paquetes_ids' => $paquetesIds,
+                    'estado' => 'asignado_a_salida',
+                ]);
+            }
+
+            Log::info('✅ Paquetes de salida guardados', [
+                'salida_id' => $salidaId,
+                'num_paquetes_asignados' => count($insertData),
+                'num_paquetes_eliminados' => count($paquetesEliminados),
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Los paquetes de la salida se han actualizado correctamente',
+                'num_paquetes' => count($insertData),
+            ]);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            Log::warning('⚠️ Validación fallida al guardar paquetes de salida', [
+                'errors' => $e->errors(),
+            ]);
+            throw $e;
+        } catch (\Exception $e) {
+            Log::error('❌ Error al guardar paquetes de salida', [
+                'error_message' => $e->getMessage(),
+                'error_file' => $e->getFile(),
+                'error_line' => $e->getLine(),
+                'stack_trace' => $e->getTraceAsString(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al guardar los paquetes de la salida: ' . $e->getMessage()
             ], 500);
         }
     }
@@ -1476,17 +1384,240 @@ class SalidaFerrallaController extends Controller
             // Buscar la salida o lanzar excepción si no existe
             $salida = Salida::findOrFail($id);
 
-            // Si existen relaciones (por ejemplo, registros en salidas_paquetes o salida_cliente),
-            // puedes eliminarlas de forma automática si definiste ON DELETE CASCADE en las claves foráneas.
-            // En caso contrario, deberías eliminarlas manualmente antes de eliminar la salida.
+            // Liberar los paquetes asignados (eliminar relaciones de la tabla pivot)
+            $salida->paquetes()->detach();
 
+            // Eliminar la salida
             $salida->delete();
 
-            return redirect()->route('salidas.ferralla.index')
+            // Si es petición AJAX, devolver JSON
+            if (request()->expectsJson() || request()->ajax()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Salida eliminada correctamente.'
+                ]);
+            }
+
+            return redirect()->route('salidas-ferralla.index')
                 ->with('success', 'Salida eliminada correctamente.');
         } catch (\Exception $e) {
-            return redirect()->route('salidas.ferralla.index')
+            // Si es petición AJAX, devolver JSON con error
+            if (request()->expectsJson() || request()->ajax()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Hubo un problema al eliminar la salida: ' . $e->getMessage()
+                ], 500);
+            }
+
+            return redirect()->route('salidas-ferralla.index')
                 ->with('error', 'Hubo un problema al eliminar la salida: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Muestra la vista para gestionar salidas y paquetes de planillas agrupadas
+     */
+    public function gestionarSalidas(Request $request)
+    {
+        $planillasIds = explode(',', $request->get('planillas', ''));
+        $mostrarTodosPaquetes = $request->get('todos_paquetes', '0') === '1'; // Toggle para mostrar todos los paquetes
+
+        if (empty($planillasIds[0])) {
+            return redirect()->route('planificacion.index')
+                ->with('error', 'No se especificaron planillas para gestionar');
+        }
+
+        // Obtener planillas con sus relaciones
+        $planillas = Planilla::with(['obra', 'cliente', 'paquetes'])
+            ->whereIn('id', $planillasIds)
+            ->get()
+            ->map(function ($planilla) {
+                $estado = $planilla->estado;
+                $colorClass = match ($estado) {
+                    'completada' => 'bg-green-500 text-white',
+                    'pendiente' => 'bg-yellow-500 text-black',
+                    'fabricando' => 'bg-blue-500 text-white',
+                    default => 'bg-gray-400 text-white',
+                };
+
+                $planilla->estado_class = $colorClass;
+                return $planilla;
+            });
+
+        // Obtener las obras y clientes de las planillas
+        $obrasIds = $planillas->pluck('obra_id')->unique()->filter();
+        $clientesIds = $planillas->pluck('cliente_id')->unique()->filter();
+
+        Log::info('🔍 Buscando salidas', [
+            'obras_ids' => $obrasIds->toArray(),
+            'clientes_ids' => $clientesIds->toArray(),
+        ]);
+
+        // Buscar SOLO salidas con estado pendiente para estas obras/clientes
+        $salidasExistentes = Salida::with(['paquetes.planilla', 'paquetes.etiquetas.elementos', 'empresaTransporte', 'camion', 'obras', 'clientes'])
+            ->where('estado', 'pendiente')
+            ->where(function($query) use ($obrasIds, $clientesIds) {
+                // Salidas con obras específicas
+                $query->whereHas('obras', function ($q) use ($obrasIds) {
+                    $q->whereIn('obras.id', $obrasIds);
+                })
+                // O salidas con clientes específicos
+                ->orWhereHas('clientes', function ($q) use ($clientesIds) {
+                    $q->whereIn('clientes.id', $clientesIds);
+                });
+            })
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        Log::info('✅ Salidas encontradas (solo pendientes)', [
+            'cantidad' => $salidasExistentes->count(),
+            'salidas' => $salidasExistentes->pluck('codigo_salida')->toArray(),
+        ]);
+
+        // Obtener AMBOS conjuntos de paquetes para filtrado dinámico sin recarga
+        // 1. Paquetes de las planillas seleccionadas (obra/cliente específico)
+        $paquetesFiltrados = Paquete::with(['planilla.obra', 'planilla.cliente', 'etiquetas.elementos'])
+            ->whereIn('planilla_id', $planillasIds)
+            ->where('estado', 'pendiente')
+            ->get();
+
+        // 2. TODOS los paquetes pendientes disponibles
+        $paquetesTodos = Paquete::with(['planilla.obra', 'planilla.cliente', 'etiquetas.elementos'])
+            ->where('estado', 'pendiente')
+            ->whereDoesntHave('salidas') // No asignados a ninguna salida
+            ->get();
+
+        Log::info('📦 Cargando paquetes para filtrado dinámico', [
+            'paquetes_filtrados' => $paquetesFiltrados->count(),
+            'paquetes_todos' => $paquetesTodos->count(),
+        ]);
+
+        // El conjunto inicial depende del toggle
+        $paquetesDisponibles = $mostrarTodosPaquetes ? $paquetesTodos : $paquetesFiltrados;
+
+        // Obtener empresas y camiones para los formularios
+        $empresas = EmpresaTransporte::all();
+        $camiones = Camion::with('empresaTransporte')->get();
+
+        return view('salidas.gestionar-salidas', [
+            'planillas' => $planillas,
+            'salidasExistentes' => $salidasExistentes,
+            'paquetesDisponibles' => $paquetesDisponibles, // Los que se muestran inicialmente
+            'paquetesFiltrados' => $paquetesFiltrados, // Para JavaScript - solo de obra/cliente
+            'paquetesTodos' => $paquetesTodos, // Para JavaScript - todos pendientes
+            'empresas' => $empresas,
+            'camiones' => $camiones,
+            'mostrarTodosPaquetes' => $mostrarTodosPaquetes, // Pasar el estado del toggle
+            'obrasIds' => $obrasIds,
+            'clientesIds' => $clientesIds,
+        ]);
+    }
+
+    /**
+     * Crea múltiples salidas vacías de forma masiva
+     */
+    public function crearSalidasVaciasMasivo(Request $request)
+    {
+        try {
+            Log::info('📦 Creando salidas vacías masivamente', [
+                'num_salidas' => count($request->input('salidas', [])),
+                'planillas_ids' => $request->input('planillas_ids'),
+            ]);
+
+            $request->validate([
+                'salidas' => 'required|array|min:1',
+                'salidas.*.fecha_salida' => 'required|date',
+                'salidas.*.camion_id' => 'nullable|exists:camiones,id',
+                'salidas.*.empresa_transporte_id' => 'nullable|exists:empresas_transporte,id',
+                'planillas_ids' => 'required|array',
+            ]);
+
+            $salidasData = $request->input('salidas');
+            $planillasIds = $request->input('planillas_ids');
+
+            // Obtener información de las planillas para construir el código de salida
+            $planillas = Planilla::with('obra.cliente')->whereIn('id', $planillasIds)->get();
+            $obra = $planillas->first()->obra ?? null;
+            $codigoObra = $obra ? $obra->cod_obra : 'OBRA';
+
+            $salidasCreadas = [];
+
+            foreach ($salidasData as $index => $salidaData) {
+                // Generar código de salida único
+                $fechaSalida = Carbon::parse($salidaData['fecha_salida']);
+                $año = $fechaSalida->format('y');
+                $mes = $fechaSalida->format('m');
+
+                // Buscar el último número de salida para este año y mes
+                $ultimoNumero = Salida::where('codigo_salida', 'LIKE', "S{$año}{$mes}%")
+                    ->orderBy('codigo_salida', 'desc')
+                    ->value('codigo_salida');
+
+                if ($ultimoNumero) {
+                    $numero = intval(substr($ultimoNumero, 5)) + 1;
+                } else {
+                    $numero = 1;
+                }
+
+                $codigoSalida = sprintf('S%s%s%04d', $año, $mes, $numero + $index);
+
+                // Crear la salida
+                $salida = Salida::create([
+                    'codigo_salida' => $codigoSalida,
+                    'fecha_salida' => $fechaSalida,
+                    'empresa_id' => $salidaData['empresa_transporte_id'] ?? null,
+                    'camion_id' => $salidaData['camion_id'] ?? null,
+                    'codigo_sage' => $salidaData['codigo_sage'] ?? null,
+                    'estado' => 'pendiente',
+                ]);
+
+                // Asociar la salida con las obras de las planillas
+                // Esto permite filtrar salidas por obra después
+                if ($obra && $obra->id) {
+                    SalidaCliente::create([
+                        'salida_id' => $salida->id,
+                        'cliente_id' => $obra->cliente_id ?? null,
+                        'obra_id' => $obra->id,
+                    ]);
+                }
+
+                $salidasCreadas[] = $salida;
+
+                Log::info('✅ Salida vacía creada', [
+                    'codigo_salida' => $codigoSalida,
+                    'salida_id' => $salida->id,
+                ]);
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Salidas creadas correctamente',
+                'salidas_creadas' => count($salidasCreadas),
+                'salidas' => collect($salidasCreadas)->map(fn($s) => [
+                    'id' => $s->id,
+                    'codigo_salida' => $s->codigo_salida,
+                ]),
+            ]);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            Log::warning('⚠️ Validación fallida al crear salidas vacías masivo', [
+                'errors' => $e->errors(),
+            ]);
+            return response()->json([
+                'success' => false,
+                'message' => 'Error de validación: ' . json_encode($e->errors()),
+            ], 422);
+        } catch (\Exception $e) {
+            Log::error('❌ Error al crear salidas vacías masivo', [
+                'error_message' => $e->getMessage(),
+                'error_file' => $e->getFile(),
+                'error_line' => $e->getLine(),
+                'stack_trace' => $e->getTraceAsString(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al crear las salidas: ' . $e->getMessage()
+            ], 500);
         }
     }
 }

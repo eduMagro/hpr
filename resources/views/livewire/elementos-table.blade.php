@@ -47,7 +47,7 @@
                         </h3>
                         <p class="text-sm text-green-700">
                             Revisada por <strong>{{ $planilla->revisor->name ?? 'N/A' }}</strong>
-                            el {{ $planilla->revisada_at?->format('d/m/Y H:i') ?? 'N/A' }}
+                            el {{ $planilla->fecha_revision ? (is_string($planilla->fecha_revision) && str_contains($planilla->fecha_revision, '/') ? \Carbon\Carbon::createFromFormat('d/m/Y H:i', $planilla->fecha_revision)->format('d/m/Y H:i') : \Carbon\Carbon::parse($planilla->fecha_revision)->format('d/m/Y H:i')) : 'N/A' }}
                         </p>
                     </div>
                 </div>
@@ -459,95 +459,8 @@
             </table>
         </div>
 
-        <!-- Paginación con selector de cantidad por página -->
-        <div class="m-4 text-center">
-            <div class="inline-flex items-center justify-center gap-2 text-sm">
-                <label class="text-gray-600">Mostrar</label>
-                <select wire:model.live="perPage" class="border border-gray-300 rounded px-2 py-1 text-sm text-gray-800 bg-white">
-                    <option value="10">10</option>
-                    <option value="25">25</option>
-                    <option value="50">50</option>
-                    <option value="100">100</option>
-                </select>
-                <span class="text-gray-600">por página</span>
-            </div>
-        </div>
-
-        @if ($elementos->hasPages())
-            <div class="mt-6 space-y-3 text-center">
-                {{-- Texto resumen --}}
-                <div class="text-sm text-gray-600">
-                    Mostrando
-                    <span class="font-semibold">{{ $elementos->firstItem() }}</span>
-                    a
-                    <span class="font-semibold">{{ $elementos->lastItem() }}</span>
-                    de
-                    <span class="font-semibold">{{ $elementos->total() }}</span>
-                    resultados
-                </div>
-
-                {{-- Paginación --}}
-                <div class="flex justify-center">
-                    <div class="inline-flex flex-wrap gap-1 bg-white px-2 py-1 mb-6 rounded-md shadow-sm">
-                        {{-- Botón anterior --}}
-                        @if ($elementos->onFirstPage())
-                            <span class="px-3 py-1 text-xs text-gray-400 cursor-not-allowed"><<</span>
-                        @else
-                            <button wire:click="previousPage" class="px-3 py-1 text-xs text-blue-600 hover:bg-blue-100 rounded transition"><<</button>
-                        @endif
-
-                        {{-- Lógica de paginación con recorte --}}
-                        @php
-                            $current = $elementos->currentPage();
-                            $last = $elementos->lastPage();
-                            $range = 2;
-                            $pages = [];
-
-                            $pages[] = 1;
-
-                            for ($i = $current - $range; $i <= $current + $range; $i++) {
-                                if ($i > 1 && $i < $last) {
-                                    $pages[] = $i;
-                                }
-                            }
-
-                            if ($last > 1) {
-                                $pages[] = $last;
-                            }
-
-                            $pages = array_unique($pages);
-                            sort($pages);
-                        @endphp
-
-                        @php $prevPage = 0; @endphp
-                        @foreach ($pages as $page)
-                            @if ($prevPage && $page > $prevPage + 1)
-                                <span class="px-2 text-xs text-gray-400">…</span>
-                            @endif
-
-                            @if ($page == $current)
-                                <span class="px-3 py-1 text-xs font-bold bg-blue-600 text-white rounded shadow border border-blue-700">
-                                    {{ $page }}
-                                </span>
-                            @else
-                                <button wire:click="gotoPage({{ $page }})" class="px-3 py-1 text-xs text-blue-600 hover:bg-blue-100 rounded transition">
-                                    {{ $page }}
-                                </button>
-                            @endif
-
-                            @php $prevPage = $page; @endphp
-                        @endforeach
-
-                        {{-- Botón siguiente --}}
-                        @if ($elementos->hasMorePages())
-                            <button wire:click="nextPage" class="px-3 py-1 text-xs text-blue-600 hover:bg-blue-100 rounded transition">>></button>
-                        @else
-                            <span class="px-3 py-1 text-xs text-gray-400 cursor-not-allowed">>></span>
-                        @endif
-                    </div>
-                </div>
-            </div>
-        @endif
+        <!-- Paginación Livewire -->
+        <x-tabla.paginacion-livewire :paginador="$elementos" />
 
         <!-- Modal de dibujo -->
         <div id="modal-dibujo" class="hidden fixed inset-0 flex justify-end items-center pr-96 pointer-events-none" wire:ignore>

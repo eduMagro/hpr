@@ -109,6 +109,16 @@
             return isNaN(d.getTime()) ? null : d;
         };
 
+        // 📊 Calcular el máximo global de TODOS los datos para escala uniforme
+        let maximoGlobal = 0;
+        Object.values(cargaTurnoResumen).forEach(turnos => {
+            Object.values(turnos).forEach(datos => {
+                maximoGlobal = Math.max(maximoGlobal, datos.planificado ?? 0, datos.real ?? 0);
+            });
+        });
+        // Añadir un 10% de margen superior
+        maximoGlobal = Math.ceil(maximoGlobal * 1.1);
+
         Object.entries(cargaTurnoResumen).forEach(([maquinaId, turnos]) => {
             const canvas = document.getElementById(`grafico-maquina-${maquinaId}`);
             if (!canvas) return;
@@ -151,6 +161,7 @@
                     scales: {
                         y: {
                             beginAtZero: true,
+                            max: maximoGlobal, // 🎯 Escala fija para todas las gráficas
                             title: {
                                 display: true,
                                 text: 'Kg'
@@ -182,6 +193,10 @@
             const turnoSel = ($turno?.value || '').toLowerCase();
             pintarTextoRango();
 
+            // 📊 Calcular datos filtrados y encontrar máximo global
+            const datosFiltrados = {};
+            let nuevoMaximoGlobal = 0;
+
             Object.entries(planDetallado).forEach(([maquinaId, turnosPlan]) => {
                 const etiquetas = turnoSel ? [turnoSel] : ['mañana', 'tarde', 'noche'];
 
@@ -204,10 +219,22 @@
                     .reduce((suma, e) => suma + (Number(e.peso) || 0), 0)
                 );
 
+                datosFiltrados[maquinaId] = { etiquetas, planificado, real };
+
+                // Actualizar máximo global
+                nuevoMaximoGlobal = Math.max(nuevoMaximoGlobal, ...planificado, ...real);
+            });
+
+            // Añadir margen del 10%
+            nuevoMaximoGlobal = Math.ceil(nuevoMaximoGlobal * 1.1);
+
+            // 🎯 Actualizar todas las gráficas con la misma escala
+            Object.entries(datosFiltrados).forEach(([maquinaId, datos]) => {
                 if (charts[maquinaId]) {
-                    charts[maquinaId].data.labels = etiquetas.map(s => s.charAt(0).toUpperCase() + s.slice(1));
-                    charts[maquinaId].data.datasets[0].data = planificado;
-                    charts[maquinaId].data.datasets[1].data = real;
+                    charts[maquinaId].data.labels = datos.etiquetas.map(s => s.charAt(0).toUpperCase() + s.slice(1));
+                    charts[maquinaId].data.datasets[0].data = datos.planificado;
+                    charts[maquinaId].data.datasets[1].data = datos.real;
+                    charts[maquinaId].options.scales.y.max = nuevoMaximoGlobal; // 🎯 Escala uniforme
                     charts[maquinaId].update();
                 }
             });

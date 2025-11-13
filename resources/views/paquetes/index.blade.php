@@ -1,5 +1,6 @@
 <x-app-layout>
     <x-slot name="title">Paquetes - {{ config('app.name') }}</x-slot>
+<<<<<<< HEAD
     <div class="w-full p-4 sm:p-6">
         <!-- Contenedor de la tabla -->
         <x-tabla.filtros-aplicados :filtros="$filtrosActivos" />
@@ -278,5 +279,8 @@
                 });
             }
         </script>
+=======
+>>>>>>> origin/59-edu
 
+    @livewire('paquetes-table')
 </x-app-layout>

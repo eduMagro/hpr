@@ -416,95 +416,8 @@
             </table>
         </div>
 
-        <!-- Paginación con selector de cantidad por página -->
-        <div class="m-4 text-center">
-            <div class="inline-flex items-center justify-center gap-2 text-sm">
-                <label class="text-gray-600">Mostrar</label>
-                <select wire:model.live="perPage" class="border border-gray-300 rounded px-2 py-1 text-sm text-gray-800 bg-white">
-                    <option value="10">10</option>
-                    <option value="25">25</option>
-                    <option value="50">50</option>
-                    <option value="100">100</option>
-                </select>
-                <span class="text-gray-600">por página</span>
-            </div>
-        </div>
-
-        @if ($etiquetas->hasPages())
-            <div class="mt-6 space-y-3 text-center">
-                {{-- Texto resumen --}}
-                <div class="text-sm text-gray-600">
-                    Mostrando
-                    <span class="font-semibold">{{ $etiquetas->firstItem() }}</span>
-                    a
-                    <span class="font-semibold">{{ $etiquetas->lastItem() }}</span>
-                    de
-                    <span class="font-semibold">{{ $etiquetas->total() }}</span>
-                    resultados
-                </div>
-
-                {{-- Paginación --}}
-                <div class="flex justify-center">
-                    <div class="inline-flex flex-wrap gap-1 bg-white px-2 py-1 mb-6 rounded-md shadow-sm">
-                        {{-- Botón anterior --}}
-                        @if ($etiquetas->onFirstPage())
-                            <span class="px-3 py-1 text-xs text-gray-400 cursor-not-allowed"><<</span>
-                        @else
-                            <button wire:click="previousPage" class="px-3 py-1 text-xs text-blue-600 hover:bg-blue-100 rounded transition"><<</button>
-                        @endif
-
-                        {{-- Lógica de paginación con recorte --}}
-                        @php
-                            $current = $etiquetas->currentPage();
-                            $last = $etiquetas->lastPage();
-                            $range = 2;
-                            $pages = [];
-
-                            $pages[] = 1;
-
-                            for ($i = $current - $range; $i <= $current + $range; $i++) {
-                                if ($i > 1 && $i < $last) {
-                                    $pages[] = $i;
-                                }
-                            }
-
-                            if ($last > 1) {
-                                $pages[] = $last;
-                            }
-
-                            $pages = array_unique($pages);
-                            sort($pages);
-                        @endphp
-
-                        @php $prevPage = 0; @endphp
-                        @foreach ($pages as $page)
-                            @if ($prevPage && $page > $prevPage + 1)
-                                <span class="px-2 text-xs text-gray-400">…</span>
-                            @endif
-
-                            @if ($page == $current)
-                                <span class="px-3 py-1 text-xs font-bold bg-blue-600 text-white rounded shadow border border-blue-700">
-                                    {{ $page }}
-                                </span>
-                            @else
-                                <button wire:click="gotoPage({{ $page }})" class="px-3 py-1 text-xs text-blue-600 hover:bg-blue-100 rounded transition">
-                                    {{ $page }}
-                                </button>
-                            @endif
-
-                            @php $prevPage = $page; @endphp
-                        @endforeach
-
-                        {{-- Botón siguiente --}}
-                        @if ($etiquetas->hasMorePages())
-                            <button wire:click="nextPage" class="px-3 py-1 text-xs text-blue-600 hover:bg-blue-100 rounded transition">>></button>
-                        @else
-                            <span class="px-3 py-1 text-xs text-gray-400 cursor-not-allowed">>></span>
-                        @endif
-                    </div>
-                </div>
-            </div>
-        @endif
+        <!-- Paginación Livewire -->
+        <x-tabla.paginacion-livewire :paginador="$etiquetas" />
 
         <!-- Modal para mostrar etiqueta -->
         <div id="modalEtiqueta"
@@ -622,6 +535,29 @@
         window.etiquetasConElementos = @json($etiquetasJson);
     </script>
     <script>
+        // Función para renderizar SVG de etiqueta usando el código ya cargado de canvasMaquina.js
+        function renderizarSVGEtiqueta(etiquetaId, grupo) {
+            const contenedor = document.getElementById(`contenedor-svg-${etiquetaId}`);
+            if (!contenedor || !grupo.elementos || grupo.elementos.length === 0) {
+                console.log('No hay elementos para renderizar');
+                return;
+            }
+
+            // Actualizar window.elementosAgrupadosScript temporalmente
+            const elementosAgrupadosOriginal = window.elementosAgrupadosScript;
+            window.elementosAgrupadosScript = [grupo];
+
+            // Disparar manualmente un evento DOMContentLoaded falso
+            // para que canvasMaquina.js procese el nuevo contenedor
+            const event = new Event('DOMContentLoaded');
+            document.dispatchEvent(event);
+
+            // Restaurar después de un momento
+            setTimeout(() => {
+                window.elementosAgrupadosScript = elementosAgrupadosOriginal;
+            }, 200);
+        }
+
         function mostrar(etiquetaId) {
             const datos = window.etiquetasConElementos[etiquetaId];
             if (!datos) return;
@@ -667,7 +603,7 @@
                             </h3>
                         </div>
 
-                        <!-- Canvas -->
+                        <!-- SVG Container -->
                         <div id="contenedor-svg-${etiquetaId}" class="w-full flex-1"></div>
 
                         <!-- Canvas oculto para impresión -->
@@ -685,10 +621,22 @@
             modal.classList.remove('hidden');
             modal.classList.add('flex');
 
-            // Esperar a que el DOM se actualice y dibujar el canvas
+            // Preparar datos para renderizar con el sistema existente
+            const grupoEtiqueta = {
+                id: etiquetaId,
+                etiqueta: {
+                    id: etiquetaId,
+                    etiqueta_sub_id: subId,
+                    nombre: nombre,
+                    peso_kg: peso,
+                    estado: estado
+                },
+                elementos: datos.elementos || []
+            };
+
+            // Esperar a que el DOM se actualice y renderizar el SVG
             setTimeout(() => {
-                const canvasId = `canvas-imprimir-etiqueta-${subId}`;
-                dibujarCanvasEtiqueta(canvasId, datos.elementos);
+                renderizarSVGEtiqueta(etiquetaId, grupoEtiqueta);
             }, 50);
         }
 
@@ -713,8 +661,8 @@
             modal.classList.remove('flex');
         }
     </script>
-    <script src="{{ asset('js/maquinaJS/canvasMaquina.js') }}" defer></script>
-    <script src="{{ asset('js/maquinaJS/canvasMaquinaSinBoton.js') }}" defer></script>
+    <script src="{{ asset('js/maquinaJS/canvasMaquina.js') }}"></script>
+    <script src="{{ asset('js/maquinaJS/canvasMaquinaSinBoton.js') }}"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <script>
         const domSafe = (v) => String(v).replace(/[^A-Za-z0-9_-]/g, '-');
