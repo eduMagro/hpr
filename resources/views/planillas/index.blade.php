@@ -11,10 +11,8 @@
             </button>
 
             <div id="modal-import" class="fixed inset-0 z-[60] hidden">
-                <div id="modal-import-overlay"
-                    class="absolute inset-0 bg-black/50"></div>
-                <div
-                    class="relative mx-auto mt-24 bg-white rounded-lg shadow-xl w-[95%] max-w-md p-5">
+                <div id="modal-import-overlay" class="absolute inset-0 bg-black/50"></div>
+                <div class="relative mx-auto mt-24 bg-white rounded-lg shadow-xl w-[95%] max-w-md p-5">
                     <h3 class="text-lg font-semibold mb-3">Importar planillas
                     </h3>
                     <p class="text-sm text-gray-600 mb-4">
@@ -23,45 +21,33 @@
                             días</b>.
                     </p>
 
-                    <form id="form-import-modal" method="POST"
-                        action="{{ route('planillas.crearImport') }}"
+                    <form id="form-import-modal" method="POST" action="{{ route('planillas.crearImport') }}"
                         enctype="multipart/form-data">
                         @csrf
 
                         <input type="hidden" name="import_id" id="import_id">
 
-                        <label
-                            class="block text-sm font-medium text-gray-700 mb-1">Archivo
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Archivo
                             (.xlsx / .xls)</label>
-                        <input type="file" name="file" id="file"
-                            accept=".xlsx,.xls"
-                            class="w-full border rounded px-3 py-2 mb-4"
-                            required>
+                        <input type="file" name="file" id="file" accept=".xlsx,.xls"
+                            class="w-full border rounded px-3 py-2 mb-4" required>
 
-                        <label
-                            class="block text-sm font-medium text-gray-700 mb-1">Día
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Día
                             de aprobación</label>
-                        <input type="date" name="fecha_aprobacion"
-                            id="fecha_aprobacion"
-                            class="w-full border rounded px-3 py-2 mb-4"
-                            required>
+                        <input type="date" name="fecha_aprobacion" id="fecha_aprobacion"
+                            class="w-full border rounded px-3 py-2 mb-4" required>
 
                         {{-- Barra de progreso --}}
                         <div id="import-progress-wrap" class="hidden mb-3">
                             <div class="flex justify-between text-sm mb-1">
-                                <span id="import-progress-text"
-                                    class="text-gray-700">Progreso</span>
-                                <span id="import-progress-percent"
-                                    class="text-gray-500">0%</span>
+                                <span id="import-progress-text" class="text-gray-700">Progreso</span>
+                                <span id="import-progress-percent" class="text-gray-500">0%</span>
                             </div>
-                            <div
-                                class="w-full bg-gray-200 rounded h-3 overflow-hidden">
-                                <div id="import-progress-bar"
-                                    class="h-3 bg-blue-600 transition-all duration-200"
+                            <div class="w-full bg-gray-200 rounded h-3 overflow-hidden">
+                                <div id="import-progress-bar" class="h-3 bg-blue-600 transition-all duration-200"
                                     style="width:0%"></div>
                             </div>
-                            <p id="import-progress-msg"
-                                class="text-xs text-gray-500 mt-1"></p>
+                            <p id="import-progress-msg" class="text-xs text-gray-500 mt-1"></p>
                         </div>
 
                         <div class="flex justify-end gap-2 pt-2">
@@ -224,24 +210,47 @@
                 }
             </style>
 
-            <form action="{{ route('planillas.completarTodas') }}"
-                method="POST"
+            <form action="{{ route('planillas.completarTodas') }}" method="POST"
                 onsubmit="return confirm('¿Completar todas las planillas pendientes?');">
                 @csrf
-                <button type="submit"
-                    class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
+                <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
                     Completar todas las planillas
                 </button>
             </form>
 
 
         </div>
+
+        <!-- Badge de planillas sin revisar -->
+        @if ($planillasSinRevisar > 0)
+            <div class="mb-4 bg-yellow-100 border-l-4 border-yellow-500 p-4 rounded-r-lg shadow">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-3">
+                        <span class="text-3xl">⚠️</span>
+                        <div>
+                            <h3 class="text-lg font-bold text-yellow-800">
+                                {{ $planillasSinRevisar }}
+                                {{ $planillasSinRevisar === 1 ? 'planilla pendiente' : 'planillas pendientes' }} de
+                                revisión
+                            </h3>
+                            <p class="text-sm text-yellow-700">
+                                Las planillas sin revisar aparecen en <strong>GRIS</strong> en el calendario de
+                                producción
+                            </p>
+                        </div>
+                    </div>
+                    <a href="{{ route('planillas.index', ['revisada' => '0']) }}"
+                        class="bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-2 px-4 rounded transition-colors">
+                        Ver planillas sin revisar
+                    </a>
+                </div>
+            </div>
+        @endif
+
         <x-tabla.filtros-aplicados :filtros="$filtrosActivos" />
         <!-- TABLA DE PLANILLAS -->
-        <div x-data="{ modalReimportar: false, planillaId: null }"
-            class="w-full overflow-x-auto bg-white shadow-lg rounded-lg">
-            <table
-                class="w-full min-w-[1000px] border border-gray-300 rounded-lg">
+        <div x-data="{ modalReimportar: false, planillaId: null }" class="w-full overflow-x-auto bg-white shadow-lg rounded-lg">
+            <table class="w-full min-w-[1000px] border border-gray-300 rounded-lg">
                 <thead class="bg-blue-500 text-white text-4">
                     <tr class="text-center text-xs uppercase">
 
@@ -271,93 +280,75 @@
                     </tr>
 
                     <tr class="text-center text-xs uppercase">
-                        <form method="GET"
-                            action="{{ route('planillas.index') }}">
+                        <form method="GET" action="{{ route('planillas.index') }}">
 
                             <th class="p-1 border">
 
                             </th>
                             <th class="p-1 border">
-                                <x-tabla.input name="codigo"
-                                    value="{{ request('codigo') }}" />
+                                <x-tabla.input name="codigo" value="{{ request('codigo') }}" />
                             </th>
                             <th class="p-1 border">
-                                <x-tabla.input name="codigo_cliente"
-                                    value="{{ request('codigo_cliente') }}" />
+                                <x-tabla.input name="codigo_cliente" value="{{ request('codigo_cliente') }}" />
                             </th>
                             <th class="p-1 border">
-                                <x-tabla.input name="cliente"
-                                    value="{{ request('cliente') }}" />
+                                <x-tabla.input name="cliente" value="{{ request('cliente') }}" />
                             </th>
                             <th class="p-1 border">
-                                <x-tabla.input name="cod_obra"
-                                    value="{{ request('cod_obra') }}" />
+                                <x-tabla.input name="cod_obra" value="{{ request('cod_obra') }}" />
                             </th>
                             <th class="p-1 border">
-                                <x-tabla.input name="nom_obra"
-                                    value="{{ request('nom_obra') }}" />
+                                <x-tabla.input name="nom_obra" value="{{ request('nom_obra') }}" />
                             </th>
                             <th class="p-1 border">
-                                <x-tabla.input name="seccion"
-                                    value="{{ request('seccion') }}" />
+                                <x-tabla.input name="seccion" value="{{ request('seccion') }}" />
                             </th>
                             <th class="p-1 border">
-                                <x-tabla.input name="descripcion"
-                                    value="{{ request('descripcion') }}" />
+                                <x-tabla.input name="descripcion" value="{{ request('descripcion') }}" />
                             </th>
                             <th class="p-1 border">
-                                <x-tabla.input name="ensamblado"
-                                    value="{{ request('ensamblado') }}" />
+                                <x-tabla.input name="ensamblado" value="{{ request('ensamblado') }}" />
                             </th>
                             <th class="p-1 border">
-                                <x-tabla.input name="comentario"
-                                    value="{{ request('comentario') }}" />
+                                <x-tabla.input name="comentario" value="{{ request('comentario') }}" />
                             </th>
                             <th class="p-1 border"></th> {{-- Peso Fabricado --}}
                             <th class="p-1 border"></th> {{-- Peso Total --}}
 
                             <th class="p-1 border">
-                                <x-tabla.select name="estado"
-                                    :options="[
-                                        'pendiente' => 'Pendiente',
-                                        'fabricando' => 'Fabricando',
-                                        'completada' => 'Completada',
-                                        'montaje' => 'Montaje',
-                                    ]" :selected="request('estado')"
-                                    empty="Todos" />
+                                <x-tabla.select name="estado" :options="[
+                                    'pendiente' => 'Pendiente',
+                                    'fabricando' => 'Fabricando',
+                                    'completada' => 'Completada',
+                                    'montaje' => 'Montaje',
+                                ]" :selected="request('estado')" empty="Todos" />
                             </th>
 
                             <th class="p-1 border">
-                                <x-tabla.input type="date"
-                                    name="fecha_inicio"
+                                <x-tabla.input type="date" name="fecha_inicio"
                                     value="{{ request('fecha_inicio') }}" />
                             </th>
                             <th class="p-1 border">
-                                <x-tabla.input type="date"
-                                    name="fecha_finalizacion"
+                                <x-tabla.input type="date" name="fecha_finalizacion"
                                     value="{{ request('fecha_finalizacion') }}" />
                             </th>
                             <th class="p-1 border">
-                                <x-tabla.input type="date"
-                                    name="fecha_importacion"
+                                <x-tabla.input type="date" name="fecha_importacion"
                                     value="{{ request('fecha_importacion') }}" />
                             </th>
                             <th class="p-1 border">
-                                <x-tabla.input type="date"
-                                    name="fecha_estimada_entrega"
+                                <x-tabla.input type="date" name="fecha_estimada_entrega"
                                     value="{{ request('fecha_estimada_entrega') }}" />
                             </th>
                             <th class="p-1 border">
-                                <x-tabla.input name="nombre_completo"
-                                    value="{{ request('nombre_completo') }}" />
+                                <x-tabla.input name="nombre_completo" value="{{ request('nombre_completo') }}" />
                             </th>
                             <th class="p-1 border">
-                                <x-tabla.select name="revisada"
-                                    :options="[
-                                        '' => 'Todas',
-                                        '1' => 'Sí',
-                                        '0' => 'No',
-                                    ]" :selected="request()->query('revisada', '')" />
+                                <x-tabla.select name="revisada" :options="[
+                                    '' => 'Todas',
+                                    '1' => 'Sí',
+                                    '0' => 'No',
+                                ]" :selected="request()->query('revisada', '')" />
                             </th>
 
                             <th class="p-1 border"></th>
@@ -398,22 +389,18 @@
                             <!-- Código -->
                             <td class="p-2 text-center border">
                                 <template x-if="!editando">
-                                    <span
-                                        x-text="planilla.codigo_limpio"></span>
+                                    <span x-text="planilla.codigo_limpio"></span>
                                 </template>
-                                <input x-show="editando" type="text"
-                                    x-model="planilla.codigo"
+                                <input x-show="editando" type="text" x-model="planilla.codigo"
                                     class="form-control form-control-sm">
                             </td>
 
                             <!-- Código Cliente -->
                             <td class="p-2 text-center border">
                                 <template x-if="!editando">
-                                    <span
-                                        x-text="planilla.cliente.codigo ?? 'N/A'"></span>
+                                    <span x-text="planilla.cliente.codigo ?? 'N/A'"></span>
                                 </template>
-                                <input x-show="editando" type="text"
-                                    x-model="planilla.cliente.codigo"
+                                <input x-show="editando" type="text" x-model="planilla.cliente.codigo"
                                     class="form-control form-control-sm">
                             </td>
 
@@ -425,19 +412,16 @@
                                         {{ $planilla->cliente->empresa ?? 'N/A' }}
                                     </a>
                                 </template>
-                                <input x-show="editando" type="text"
-                                    x-model="planilla.cliente.empresa"
+                                <input x-show="editando" type="text" x-model="planilla.cliente.empresa"
                                     class="form-control form-control-sm">
                             </td>
 
                             <!-- Código Obra -->
                             <td class="p-2 text-center border">
                                 <template x-if="!editando">
-                                    <span
-                                        x-text="planilla.obra.cod_obra ?? 'N/A'"></span>
+                                    <span x-text="planilla.obra.cod_obra ?? 'N/A'"></span>
                                 </template>
-                                <input x-show="editando" type="text"
-                                    x-model="planilla.obra.cod_obra"
+                                <input x-show="editando" type="text" x-model="planilla.obra.cod_obra"
                                     class="form-control form-control-sm">
                             </td>
                             <!-- Obra -->
@@ -448,52 +432,43 @@
                                         {{ $planilla->obra->obra ?? 'N/A' }}
                                     </a>
                                 </template>
-                                <input x-show="editando" type="text"
-                                    x-model="planilla.obra.obra"
+                                <input x-show="editando" type="text" x-model="planilla.obra.obra"
                                     class="form-control form-control-sm">
                             </td>
 
                             <!-- Sección -->
                             <td class="p-2 text-center border">
                                 <template x-if="!editando">
-                                    <span
-                                        x-text="planilla.seccion ?? 'N/A'"></span>
+                                    <span x-text="planilla.seccion ?? 'N/A'"></span>
                                 </template>
-                                <input x-show="editando" type="text"
-                                    x-model="planilla.seccion"
+                                <input x-show="editando" type="text" x-model="planilla.seccion"
                                     class="form-control form-control-sm">
                             </td>
 
                             <!-- Descripción -->
                             <td class="p-2 text-center border">
                                 <template x-if="!editando">
-                                    <span
-                                        x-text="planilla.descripcion ?? 'Sin descripción'"></span>
+                                    <span x-text="planilla.descripcion ?? 'Sin descripción'"></span>
                                 </template>
-                                <input x-show="editando" type="text"
-                                    x-model="planilla.descripcion"
+                                <input x-show="editando" type="text" x-model="planilla.descripcion"
                                     class="form-control form-control-sm">
                             </td>
 
                             <!-- Ensamblado -->
                             <td class="p-2 text-center border">
                                 <template x-if="!editando">
-                                    <span
-                                        x-text="planilla.ensamblado ?? 'Sin datos'"></span>
+                                    <span x-text="planilla.ensamblado ?? 'Sin datos'"></span>
                                 </template>
-                                <input x-show="editando" type="text"
-                                    x-model="planilla.ensamblado"
+                                <input x-show="editando" type="text" x-model="planilla.ensamblado"
                                     class="form-control form-control-sm">
                             </td>
 
                             <!-- Comentario -->
                             <td class="p-2 text-center border">
                                 <template x-if="!editando">
-                                    <span
-                                        x-text="planilla.comentario ?? ' '"></span>
+                                    <span x-text="planilla.comentario ?? ' '"></span>
                                 </template>
-                                <input x-show="editando" type="text"
-                                    x-model="planilla.comentario"
+                                <input x-show="editando" type="text" x-model="planilla.comentario"
                                     class="form-control form-control-sm">
                             </td>
 
@@ -504,19 +479,16 @@
                                         x-text="new Intl.NumberFormat('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(parseFloat(planilla.suma_peso_completados) || 0) + ' KG'"></span>
 
                                 </template>
-                                <input x-show="editando" type="text"
-                                    x-model="planilla.suma_peso_completados"
+                                <input x-show="editando" type="text" x-model="planilla.suma_peso_completados"
                                     class="form-control form-control-sm">
                             </td>
 
                             <!-- Peso Total -->
                             <td class="p-2 text-center border">
                                 <template x-if="!editando">
-                                    <span
-                                        x-text="planilla.peso_total_kg"></span>
+                                    <span x-text="planilla.peso_total_kg"></span>
                                 </template>
-                                <input x-show="editando" type="text"
-                                    x-model="planilla.peso_total"
+                                <input x-show="editando" type="text" x-model="planilla.peso_total"
                                     class="form-control form-control-sm">
                             </td>
 
@@ -524,12 +496,9 @@
                             <!-- Estado -->
                             <td class="p-2 text-center border">
                                 <template x-if="!editando">
-                                    <span
-                                        x-text="planilla.estado.toUpperCase()"></span>
+                                    <span x-text="planilla.estado.toUpperCase()"></span>
                                 </template>
-                                <select x-show="editando"
-                                    x-model="planilla.estado"
-                                    class="form-select w-full">
+                                <select x-show="editando" x-model="planilla.estado" class="form-select w-full">
                                     <option value="pendiente">Pendiente
                                     </option>
                                     <option value="fabricando">Fabricando
@@ -542,50 +511,39 @@
                             <!-- Fecha Inicio -->
                             <td class="p-2 text-center border">
                                 <template x-if="!editando">
-                                    <span
-                                        x-text="planilla.fecha_inicio"></span>
+                                    <span x-text="planilla.fecha_inicio"></span>
                                 </template>
-                                <input x-show="editando" type="text"
-                                    x-model="planilla.fecha_inicio"
-                                    class="form-control form-control-sm"
-                                    placeholder="DD/MM/YYYY HH:mm">
+                                <input x-show="editando" type="text" x-model="planilla.fecha_inicio"
+                                    class="form-control form-control-sm" placeholder="DD/MM/YYYY HH:mm">
                             </td>
 
                             <!-- Fecha Finalización -->
                             <td class="p-2 text-center border">
                                 <template x-if="!editando">
-                                    <span
-                                        x-text="planilla.fecha_finalizacion"></span>
+                                    <span x-text="planilla.fecha_finalizacion"></span>
                                 </template>
-                                <input x-show="editando" type="text"
-                                    x-model="planilla.fecha_finalizacion"
-                                    class="form-control form-control-sm"
-                                    placeholder="DD/MM/YYYY HH:mm">
+                                <input x-show="editando" type="text" x-model="planilla.fecha_finalizacion"
+                                    class="form-control form-control-sm" placeholder="DD/MM/YYYY HH:mm">
                             </td>
 
                             <!-- Fecha Importación -->
                             <td class="p-2 text-center border">
-                                <span
-                                    x-text="new Date(planilla.created_at).toLocaleDateString()"></span>
+                                <span x-text="new Date(planilla.created_at).toLocaleDateString()"></span>
                             </td>
 
                             <!-- Fecha Entrega -->
                             <td class="p-2 text-center border">
                                 <template x-if="!editando">
-                                    <span
-                                        x-text="planilla.fecha_estimada_entrega"></span>
+                                    <span x-text="planilla.fecha_estimada_entrega"></span>
                                 </template>
 
-                                <input x-show="editando" type="text"
-                                    x-model="planilla.fecha_estimada_entrega"
-                                    class="form-control form-control-sm"
-                                    placeholder="DD/MM/YYYY HH:mm">
+                                <input x-show="editando" type="text" x-model="planilla.fecha_estimada_entrega"
+                                    class="form-control form-control-sm" placeholder="DD/MM/YYYY HH:mm">
                             </td>
 
                             <!-- Usuario -->
                             <td class="p-2 text-center border">
-                                <span
-                                    x-text="planilla.user?.nombre_completo ?? 'Desconocido'"></span>
+                                <span x-text="planilla.user?.nombre_completo ?? 'Desconocido'"></span>
                             </td>
 
                             {{-- Revisiones --}}
@@ -596,29 +554,24 @@
                                             'bg-green-100 text-green-700' :
                                             'bg-gray-100 text-gray-600'"
                                         class="px-2 py-1 rounded text-[11px] font-semibold inline-flex items-center gap-1">
-                                        <span
-                                            x-text="planilla.revisada ? 'Sí' : 'No'"></span>
+                                        <span x-text="planilla.revisada ? 'Sí' : 'No'"></span>
                                     </span>
                                 </template>
 
-                                <label x-show="editando"
-                                    class="inline-flex items-center gap-2">
-                                    <input type="checkbox"
-                                        x-model="planilla.revisada"
+                                <label x-show="editando" class="inline-flex items-center gap-2">
+                                    <input type="checkbox" x-model="planilla.revisada"
                                         class="w-4 h-4 accent-blue-600">
                                     <span>Revisada</span>
                                 </label>
                             </td>
                             <!-- Revisor -->
                             <td class="p-2 text-center border">
-                                <span
-                                    x-text="planilla.revisor?.nombre_completo ?? '—'"></span>
+                                <span x-text="planilla.revisor?.nombre_completo ?? '—'"></span>
                             </td>
                             <!-- Fecha Revisión -->
                             <td class="p-2 text-center border">
                                 <template x-if="planilla.revisada_at">
-                                    <span
-                                        x-text="new Date(planilla.revisada_at).toLocaleString()"></span>
+                                    <span x-text="new Date(planilla.revisada_at).toLocaleString()"></span>
                                 </template>
                                 <template x-if="!planilla.revisada_at">
                                     <span>—</span>
@@ -627,33 +580,23 @@
 
                             <!-- Acciones Fila -->
                             <td class="px-2 py-2 border text-xs font-bold">
-                                <div
-                                    class="flex items-center space-x-2 justify-center">
+                                <div class="flex items-center space-x-2 justify-center">
                                     <!-- Mostrar solo en modo edición -->
                                     <x-tabla.boton-guardar x-show="editando"
                                         @click="guardarCambios(planilla); editando = false" />
-                                    <x-tabla.boton-cancelar-edicion
-                                        @click="editando = false"
-                                        x-show="editando" />
+                                    <x-tabla.boton-cancelar-edicion @click="editando = false" x-show="editando" />
 
                                     <!-- Mostrar solo cuando NO está en modo edición -->
                                     <template x-if="!editando">
-                                        <div
-                                            class="flex items-center space-x-2">
+                                        <div class="flex items-center space-x-2">
                                             <!-- Botón Reimportar -->
-                                            <button
-                                                @click="modalReimportar = true; planillaId = {{ $planilla->id }}"
+                                            <button @click="modalReimportar = true; planillaId = {{ $planilla->id }}"
                                                 class="w-6 h-6 bg-yellow-100 text-yellow-600 rounded hover:bg-yellow-200 flex items-center justify-center"
                                                 title="Reimportar Planilla">
-                                                <svg xmlns="http://www.w3.org/2000/svg"
-                                                    class="h-4 w-4"
-                                                    fill="none"
-                                                    viewBox="0 0 24 24"
-                                                    stroke="currentColor"
+                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4"
+                                                    fill="none" viewBox="0 0 24 24" stroke="currentColor"
                                                     stroke-width="2">
-                                                    <path
-                                                        stroke-linecap="round"
-                                                        stroke-linejoin="round"
+                                                    <path stroke-linecap="round" stroke-linejoin="round"
                                                         d="M4 4v6h6M20 20v-6h-6M4 20l4.586-4.586M20 4l-4.586 4.586" />
                                                 </svg>
                                             </button>
@@ -664,12 +607,9 @@
   "
                                                 class="w-6 h-6 bg-indigo-100 text-indigo-700 rounded hover:bg-indigo-200 flex items-center justify-center"
                                                 title="Marcar como revisada (José Amuedo)">
-                                                <svg xmlns="http://www.w3.org/2000/svg"
-                                                    class="h-4 w-4"
-                                                    viewBox="0 0 24 24"
-                                                    fill="currentColor">
-                                                    <path
-                                                        d="M9 12l2 2 4-4-1.5-1.5L11 11l-1.5-1.5L8 11l1 1z" />
+                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4"
+                                                    viewBox="0 0 24 24" fill="currentColor">
+                                                    <path d="M9 12l2 2 4-4-1.5-1.5L11 11l-1.5-1.5L8 11l1 1z" />
                                                 </svg>
                                             </button>
 
@@ -685,19 +625,9 @@
                                                 </svg>
                                             </button> --}}
 
-                                            <x-tabla.boton-editar
-                                                @click="editando = true"
-                                                x-show="!editando" />
-                                            <x-tabla.boton-ver
-                                                :href="route(
-                                                    'planillas.show',
-                                                    $planilla->id,
-                                                )" />
-                                            <x-tabla.boton-eliminar
-                                                :action="route(
-                                                    'planillas.destroy',
-                                                    $planilla->id,
-                                                )" />
+                                            <x-tabla.boton-editar @click="editando = true" x-show="!editando" />
+                                            <x-tabla.boton-ver :href="route('planillas.show', $planilla->id)" />
+                                            <x-tabla.boton-eliminar :action="route('planillas.destroy', $planilla->id)" />
 
                                         </div>
                                     </template>
@@ -706,8 +636,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="15"
-                                class="text-center py-4 text-gray-500">No hay
+                            <td colspan="15" class="text-center py-4 text-gray-500">No hay
                                 planillas
                                 disponibles.
                             </td>
@@ -715,16 +644,12 @@
                     @endforelse
                 </tbody>
                 <tfoot>
-                    <tr
-                        class="bg-gradient-to-r from-blue-50 to-blue-100 border-t border-blue-300">
-                        <td colspan="100%" class="px-6 py-3"
-                            style="padding: 0" colspan="999">
-                            <div
-                                class="flex justify-end items-center gap-4 px-6 py-3 text-sm text-gray-700">
+                    <tr class="bg-gradient-to-r from-blue-50 to-blue-100 border-t border-blue-300">
+                        <td colspan="100%" class="px-6 py-3" style="padding: 0" colspan="999">
+                            <div class="flex justify-end items-center gap-4 px-6 py-3 text-sm text-gray-700">
                                 <span class="font-semibold">Total peso
                                     filtrado:</span>
-                                <span
-                                    class="text-base font-bold text-blue-800">
+                                <span class="text-base font-bold text-blue-800">
                                     {{ number_format($totalPesoFiltrado, 2, ',', '.') }}
                                     kg
                                 </span>
@@ -738,17 +663,13 @@
             </table>
             <!-- Modal Reimportar Planilla -->
             <div @keydown.escape.window="modalReimportar = false">
-                <div x-show="modalReimportar"
-                    class="fixed inset-0 bg-black bg-opacity-50 z-40" x-cloak>
+                <div x-show="modalReimportar" class="fixed inset-0 bg-black bg-opacity-50 z-40" x-cloak>
                 </div>
 
-                <div x-show="modalReimportar"
-                    x-transition:enter="transition ease-out duration-300"
-                    x-transition:enter-start="opacity-0 scale-95"
-                    x-transition:enter-end="opacity-100 scale-100"
+                <div x-show="modalReimportar" x-transition:enter="transition ease-out duration-300"
+                    x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100"
                     x-transition:leave="transition ease-in duration-200"
-                    x-transition:leave-start="opacity-100 scale-100"
-                    x-transition:leave-end="opacity-0 scale-95"
+                    x-transition:leave-start="opacity-100 scale-100" x-transition:leave-end="opacity-0 scale-95"
                     class="fixed z-50 top-1/2 left-1/2 w-11/12 max-w-lg transform -translate-x-1/2 -translate-y-1/2 bg-white rounded-lg shadow-lg"
                     x-cloak>
 
@@ -756,27 +677,20 @@
                         <h2 class="text-lg font-bold text-gray-800 mb-4">📤
                             Añade modificaciones del cliente</h2>
 
-                        <form method="POST"
-                            :action="`/planillas/${planillaId}/reimportar`"
-                            enctype="multipart/form-data"
-                            @submit="modalReimportar = false"
-                            class="space-y-4">
+                        <form method="POST" :action="`/planillas/${planillaId}/reimportar`"
+                            enctype="multipart/form-data" @submit="modalReimportar = false" class="space-y-4">
                             @csrf
 
                             <div>
-                                <label for="archivo"
-                                    class="block text-sm font-medium text-gray-700">Selecciona
+                                <label for="archivo" class="block text-sm font-medium text-gray-700">Selecciona
                                     el
                                     nuevo archivo:</label>
-                                <input type="file" name="archivo"
-                                    id="archivo" accept=".csv,.xlsx,.xls"
-                                    required
-                                    class="mt-1 block w-full border border-gray-300 rounded p-2 text-sm">
+                                <input type="file" name="archivo" id="archivo" accept=".csv,.xlsx,.xls"
+                                    required class="mt-1 block w-full border border-gray-300 rounded p-2 text-sm">
                             </div>
 
                             <div class="flex justify-end gap-2">
-                                <button type="button"
-                                    @click="modalReimportar = false"
+                                <button type="button" @click="modalReimportar = false"
                                     class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-semibold px-4 py-2 rounded">
                                     Cancelar
                                 </button>
