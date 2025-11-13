@@ -374,6 +374,68 @@ $ordenablesAlertas = [];
             $usuariosDestino = collect(); // colección vacía
             $alerta = null;
 
+            // 🔹 CASO 0: RESPUESTA A UN MENSAJE (CON PARENT_ID)
+            if ($request->has('parent_id')) {
+                try {
+                    $mensajePadre = Alerta::findOrFail($request->parent_id);
+
+                    $request->validate([
+                        'mensaje' => 'required|string|max:1000',
+                        'parent_id' => 'required|exists:alertas,id',
+                    ]);
+
+                    // La respuesta va dirigida al emisor original
+                    $data = [
+                        'mensaje'   => $request->mensaje,
+                        'user_id_1' => $user->id,
+                        'user_id_2' => session()->get('companero_id', null),
+                        'parent_id' => $mensajePadre->id,
+                        'leida'     => false,
+                    ];
+
+                    // Copiar el destino del mensaje padre pero invertido
+                    if ($mensajePadre->destinatario_id) {
+                        $data['destinatario_id'] = $mensajePadre->user_id_1;
+                        $usuariosDestino = User::where('id', $mensajePadre->user_id_1)->get();
+                    } elseif ($mensajePadre->destino) {
+                        $data['destinatario_id'] = $mensajePadre->user_id_1;
+                        $usuariosDestino = User::where('id', $mensajePadre->user_id_1)->get();
+                    } elseif ($mensajePadre->destinatario) {
+                        $data['destinatario_id'] = $mensajePadre->user_id_1;
+                        $usuariosDestino = User::where('id', $mensajePadre->user_id_1)->get();
+                    } else {
+                        // Si no hay destino específico, enviar al emisor del mensaje padre
+                        $data['destinatario_id'] = $mensajePadre->user_id_1;
+                        $usuariosDestino = User::where('id', $mensajePadre->user_id_1)->get();
+                    }
+
+                    $alerta = Alerta::create($data);
+
+                    foreach ($usuariosDestino as $destinatario) {
+                        AlertaLeida::create([
+                            'alerta_id' => $alerta->id,
+                            'user_id'   => $destinatario->id,
+                            'leida_en'  => null,
+                        ]);
+                    }
+
+                    // Siempre devolver JSON para respuestas (peticiones AJAX)
+                    return response()->json(['success' => true, 'message' => 'Respuesta enviada correctamente']);
+                } catch (ValidationException $e) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Error de validación',
+                        'errors' => $e->errors()
+                    ], 422);
+                } catch (\Exception $e) {
+                    Log::error('Error al enviar respuesta: ' . $e->getMessage());
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Error al enviar la respuesta: ' . $e->getMessage()
+                    ], 500);
+                }
+            }
+
             // 🔹 CASO 1: ENVÍO DIRECTO A DEPARTAMENTOS (API o JS)
             if ($request->has('enviar_a_departamentos')) {
                 $departamentosRaw = $request->input('enviar_a_departamentos');
@@ -522,5 +584,55 @@ $ordenablesAlertas = [];
 
             return redirect()->back()->with('error', 'Error: ' . $e->getMessage());
         }
+    }
+
+    /**
+     * Obtener el hilo completo de conversación de una alerta
+     */
+    public function obtenerHilo($id)
+    {
+        try {
+            $alerta = Alerta::with(['usuario1', 'usuario2', 'destinatarioUser'])->findOrFail($id);
+            $user = auth()->user();
+
+            // Obtener el mensaje raíz
+            $mensajeRaiz = $alerta->mensajeRaiz();
+
+            // Obtener todas las respuestas recursivamente
+            $hilo = $this->construirHilo($mensajeRaiz, $user);
+
+            return response()->json([
+                'success' => true,
+                'hilo' => $hilo
+            ]);
+        } catch (\Throwable $e) {
+            Log::error('❌ Error al obtener hilo: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al cargar el hilo de conversación'
+            ], 500);
+        }
+    }
+
+    /**
+     * Construir el hilo de conversación recursivamente
+     */
+    private function construirHilo($mensaje, $user)
+    {
+        $data = [
+            'id' => $mensaje->id,
+            'mensaje' => $mensaje->mensaje,
+            'created_at' => $mensaje->created_at->format('d/m/Y H:i'),
+            'user_id_1' => $mensaje->user_id_1,
+            'emisor' => $mensaje->usuario1 ? $mensaje->usuario1->name : 'Usuario desconocido',
+            'es_propio' => $mensaje->user_id_1 === $user->id,
+            'respuestas' => []
+        ];
+
+        foreach ($mensaje->respuestas as $respuesta) {
+            $data['respuestas'][] = $this->construirHilo($respuesta, $user);
+        }
+
+        return $data;
     }
 }
