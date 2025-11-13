@@ -53,27 +53,25 @@ class PlanillaImportService
         $nombreArchivo = $file->getClientOriginalName();
         Log::channel('planilla_import')->info("📥 Iniciando importación: {$nombreArchivo}");
 
-        // 1) Validación
         $validacion = $this->validator->validar($file);
         if (!$validacion->esValido()) {
             if ($importId) ImportProgress::setError($importId, 'Validación fallida.');
             return ImportResult::error($validacion->errores(), $validacion->advertencias(), $nombreArchivo);
         }
 
-        // 2) Lectura
         $datos = $this->reader->leer($file);
         if ($datos->estaVacio()) {
             if ($importId) ImportProgress::setError($importId, 'El archivo no contiene filas válidas.');
             return ImportResult::error(["{$nombreArchivo} no contiene filas válidas tras filtrado."], [], $nombreArchivo);
         }
 
-        // 3) Inicializar progreso con el total de filas detectadas
+        // Total de filas válidas (x = número de consultas/filas)
         $totalFilas = (int) $datos->filasValidas();
         if ($importId) {
             ImportProgress::init($importId, $totalFilas, "Filas totales: {$totalFilas}");
         }
 
-        // 4) Duplicados (omitimos las planillas que ya existen)
+        // Duplicados
         $duplicados = $this->verificarDuplicados($datos->codigosPlanillas());
         $advertenciasIniciales = [];
         $datosFiltrados = $datos;
@@ -94,34 +92,17 @@ class PlanillaImportService
             }
         }
 
-        // 5) Precargas
         $this->precargarCaches($datosFiltrados);
 
-        // 6) Inicializar contador de códigos/etiquetas
+        // 🔢 contador de códigos/etiquetas, etc.
         $this->codigoService->inicializarContadorBatch();
 
-        // 7) Procesar (con progreso por filas)
-        $resultado = $this->procesarPlanillasBatchConProgreso(
-            $datosFiltrados,
-            $advertenciasIniciales,
-            $fechaAprobacion,
-            $importId
-        );
+        // => procesamos en lotes, avanzando progreso por fila
+        $resultado = $this->procesarPlanillasBatchConProgreso($datosFiltrados, $advertenciasIniciales, $fechaAprobacion, $importId);
 
-        // 8) Reset servicio de códigos
         $this->codigoService->resetearContadorBatch();
 
-        // 9) Cerrar progreso con un informe (fallidas/exitosas/stats)
-        if ($importId) {
-            $report = [
-                'fallidas' => $resultado['fallidas'] ?? [],
-                'exitosas' => $resultado['exitosas'] ?? [],
-                'stats'    => $resultado['estadisticas'] ?? [],
-            ];
-            ImportProgress::setDone($importId, 'Importación finalizada.', $report);
-        }
-
-        // 10) Respuesta final
+        if ($importId) ImportProgress::setDone($importId, 'Importación finalizada.');
         return ImportResult::success(
             $resultado['exitosas'],
             $resultado['fallidas'],
@@ -130,7 +111,6 @@ class PlanillaImportService
             $nombreArchivo
         );
     }
-
 
     /**
      * Reimporta elementos pendientes de una planilla existente.
@@ -559,18 +539,9 @@ class PlanillaImportService
                         $estadisticas['ordenes_creadas']   += $ordenesCreadas;
                         $estadisticas['tiempo_total']      += (microtime(true) - $inicioPlanilla);
 
-                        // progreso por filas (avanza en bloque por planilla)
+                        // 👈 progreso por filas (avanza en bloque por planilla)
                         if ($importId && $filasDeEstaPlanilla > 0) {
-                            // obtenemos el estado actual para calcular el número de línea
-                            $estado = \App\Services\ImportProgress::get($importId);
-                            $lineaActual = min($estado['current'] + $filasDeEstaPlanilla, $estado['total']);
-                            $total = $estado['total'] ?? 0;
-
-                            ImportProgress::advance(
-                                $importId,
-                                $filasDeEstaPlanilla,
-                                "Línea {$lineaActual} / {$total}"
-                            );
+                            ImportProgress::advance($importId, $filasDeEstaPlanilla, "Procesada {$codigoPlanilla}");
                         }
                     } catch (\Throwable $e) {
                         $fallidas[] = ['codigo' => $codigoPlanilla, 'error' => $e->getMessage()];

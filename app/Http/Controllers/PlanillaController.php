@@ -555,8 +555,6 @@ class PlanillaController extends Controller
     // Método import() actualizado con nombre de archivo
     public function import(Request $request, PlanillaImportService $importService)
     {
-        ini_set('max_execution_time', 600);
-        set_time_limit(600);
         abort_unless(auth()->check() && auth()->user()->rol === 'oficina', 403);
 
         try {
@@ -576,58 +574,10 @@ class PlanillaController extends Controller
             $resultado = $importService->importar($file, fechaAprobacion: $fechaAprobacion, importId: $importId);
 
             if ($request->ajax()) {
-                // Preparar respuesta detallada con información de errores
-                $responseData = [
+                return response()->json([
                     'success' => $resultado->esExitoso(),
                     'message' => $resultado->mensaje(),
-                    'errors' => [],
-                    'warnings' => [],
-                    'statistics' => [
-                        'exitosas' => 0,
-                        'fallidas' => 0,
-                        'elementos_creados' => 0,
-                        'etiquetas_creadas' => 0,
-                    ],
-                    'nombre_archivo' => $nombreArchivo
-                ];
-
-                // Usar los métodos getter de ImportResult
-                $exitosas = $resultado->exitosas();
-                $fallidas = $resultado->fallidas();
-                $advertencias = $resultado->advertencias();
-                $estadisticas = $resultado->estadisticas();
-
-                // Si hubo fallos, incluir detalles completos
-                if (!empty($fallidas)) {
-                    $responseData['errors'] = array_map(function ($fallida) {
-                        return [
-                            'codigo' => is_array($fallida) ? ($fallida['codigo'] ?? 'Desconocido') : 'Desconocido',
-                            'error' => is_array($fallida) ? ($fallida['error'] ?? 'Error no especificado') : $fallida
-                        ];
-                    }, $fallidas);
-                }
-
-                // Incluir advertencias si las hay
-                if (!empty($advertencias)) {
-                    $responseData['warnings'] = $advertencias;
-                }
-
-                // Incluir estadísticas
-                $responseData['statistics'] = [
-                    'exitosas' => is_array($exitosas) ? count($exitosas) : 0,
-                    'fallidas' => is_array($fallidas) ? count($fallidas) : 0,
-                    'elementos_creados' => isset($estadisticas['elementos_creados']) ? $estadisticas['elementos_creados'] : 0,
-                    'etiquetas_creadas' => isset($estadisticas['etiquetas_creadas']) ? $estadisticas['etiquetas_creadas'] : 0,
-                ];
-
-                // Log para debug
-                Log::info('Import response data:', [
-                    'statistics' => $responseData['statistics'],
-                    'exitosas_array' => $exitosas,
-                    'estadisticas_raw' => $estadisticas
-                ]);
-
-                return response()->json($responseData, $resultado->esExitoso() ? 200 : 422);
+                ], $resultado->esExitoso() ? 200 : 422);
             }
 
             // (opcional) camino de fallback para navegadores sin fetch
@@ -642,7 +592,6 @@ class PlanillaController extends Controller
                 return response()->json([
                     'success' => false,
                     'message' => $e->getMessage(), // en prod puedes poner mensaje genérico
-                    'errors' => [['codigo' => 'SISTEMA', 'error' => $e->getMessage()]]
                 ], 500);
             }
 
