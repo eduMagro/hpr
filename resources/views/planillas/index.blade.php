@@ -97,6 +97,8 @@
 
                     function abrir() {
                         modal.classList.remove('hidden');
+                        // Generar UUID cuando se abre el modal
+                        importIdInput.value = uuidv4();
                     }
 
                     function cerrar() {
@@ -149,8 +151,9 @@
                                     txt.textContent = 'Error';
                                     bar.classList.remove('bg-blue-600');
                                     bar.classList.add('bg-red-600');
-                                    btnSend.disabled = false;
                                 }
+                                // No recargamos automáticamente cuando llega al 100%
+                                // El manejo se hace en el callback del submit
                                 if (data.status === 'done' || percent >=
                                     100) {
                                     clearInterval(pollTimer);
@@ -159,9 +162,6 @@
                                     pct.textContent = '100%';
                                     msg.textContent =
                                         'Importación finalizada.';
-                                    // Opcional: refrescar la página para ver resultados
-                                    setTimeout(() => window.location
-                                        .reload(), 800);
                                 }
                             } catch (e) {
                                 /* silencioso */
@@ -171,10 +171,10 @@
 
                     form.addEventListener('submit', async function(ev) {
                         ev.preventDefault();
-                        const importId = uuidv4();
-                        importIdInput.value = importId;
+                        const importId = importIdInput.value;
                         startPolling(importId);
                         btnSend.disabled = true;
+                        btnCancel.disabled = true;
 
                         const fd = new FormData(form);
                         try {
@@ -186,31 +186,204 @@
                                 }
                             });
 
-                            if (!res.ok) {
-                                let errMsg =
-                                    'No se pudo iniciar/terminar la importación.';
-                                try {
-                                    const j = await res.json();
-                                    if (j?.message) errMsg = j.message;
-                                } catch {}
-                                clearInterval(pollTimer);
-                                wrap.classList.remove('hidden');
-                                txt.textContent = 'Error';
-                                bar.classList.remove('bg-blue-600');
-                                bar.classList.add('bg-red-600');
-                                msg.textContent =
-                                    errMsg; // ← muestra el motivo real
+                            const data = await res.json();
+
+                            // Log para debug
+                            console.log('Respuesta del servidor:', data);
+                            console.log('Estadísticas recibidas:', data
+                                .statistics);
+
+                            // Detener polling
+                            if (pollTimer) clearInterval(pollTimer);
+
+                            if (res.ok && data.success) {
+                                // Verificar si hubo errores a pesar del éxito
+                                if (!data.errors || data.errors.length ===
+                                    0) {
+                                    // Todo perfecto - mostrar éxito
+                                    const stats = data.statistics || {};
+                                    const exitosas = stats.exitosas || 0;
+                                    const elementos = stats
+                                        .elementos_creados || 0;
+                                    const etiquetas = stats
+                                        .etiquetas_creadas || 0;
+                                    const nombreArchivo = data
+                                        .nombre_archivo || 'archivo';
+
+                                    await Swal.fire({
+                                        icon: 'success',
+                                        title: '¡Importación exitosa!',
+                                        html: `
+                                            <div class="text-left space-y-3">
+                                                <div class="bg-white p-3 rounded border border-gray-200">
+                                                    <p class="text-gray-700"><strong>📄 Archivo:</strong> ${nombreArchivo}</p>
+                                                    <p class="text-gray-700 mt-2"><strong>✅ Planillas importadas exitosamente:</strong> ${exitosas}</p>
+                                                    <p class="text-gray-700 mt-2"><strong>📦 Elementos creados:</strong> ${elementos}</p>
+                                                    <p class="text-gray-700 mt-2"><strong>🏷️ Etiquetas creadas:</strong> ${etiquetas}</p>
+                                                </div>
+                                            </div>
+                                        `,
+                                        confirmButtonText: 'OK',
+                                        confirmButtonColor: '#3085d6',
+                                        width: '500px'
+                                    });
+                                } else {
+                                    // Éxito parcial - mostrar ambos resultados
+                                    let html = '<div class="text-left">';
+
+                                    if (data.statistics && data.statistics
+                                        .exitosas > 0) {
+                                        html += `
+                                            <div class="bg-green-50 p-3 rounded mb-3">
+                                                <p class="font-semibold text-green-800 mb-2">✅ Importadas correctamente:</p>
+                                                <p class="text-sm text-green-700">${data.statistics.exitosas} planilla(s) procesada(s) exitosamente</p>
+                                            </div>
+                                        `;
+                                    }
+
+                                    html += `
+                                        <div class="bg-red-50 p-3 rounded max-h-96 overflow-y-auto">
+                                            <p class="font-semibold text-red-800 mb-2">❌ Errores detectados (${data.errors.length}):</p>
+                                            <ul class="text-sm text-red-700 space-y-2">
+                                    `;
+
+                                    data.errors.forEach((error) => {
+                                        html += `
+                                            <li class="border-b border-red-200 pb-2 last:border-b-0">
+                                                <strong>Planilla: ${error.codigo}</strong><br>
+                                                <span class="text-xs">Error: ${error.error}</span>
+                                            </li>
+                                        `;
+                                    });
+
+                                    html += '</ul></div>';
+
+                                    if (data.warnings && data.warnings
+                                        .length > 0) {
+                                        html += `
+                                            <div class="bg-yellow-50 p-3 rounded mt-3">
+                                                <p class="font-semibold text-yellow-800 mb-2">⚠️ Advertencias:</p>
+                                                <ul class="text-sm text-yellow-700 space-y-1">
+                                        `;
+
+                                        data.warnings.forEach((warning) => {
+                                            html +=
+                                                `<li>• ${warning}</li>`;
+                                        });
+
+                                        html += '</ul></div>';
+                                    }
+
+                                    html += '</div>';
+
+                                    await Swal.fire({
+                                        icon: 'warning',
+                                        title: 'Importación completada con errores',
+                                        html: html,
+                                        confirmButtonText: 'Entendido',
+                                        confirmButtonColor: '#f59e0b',
+                                        width: '600px'
+                                    });
+                                }
+
+                                // Cerrar modal y resetear
+                                cerrar();
+                                form.reset();
+                                inputFecha.value = hoy;
+                                wrap.classList.add('hidden');
+                                bar.style.width = '0%';
+                                bar.classList.remove('bg-red-600');
+                                bar.classList.add('bg-blue-600');
                                 btnSend.disabled = false;
+                                btnCancel.disabled = false;
+
+                                // Recargar página para ver resultados
+                                window.location.reload();
+
+                            } else {
+                                // Error completo - ninguna planilla importada correctamente
+                                let errorHtml = '<div class="text-left">';
+
+                                if (data.message) {
+                                    errorHtml +=
+                                        `<p class="mb-3 font-semibold">${data.message}</p>`;
+                                }
+
+                                if (data.errors && data.errors.length > 0) {
+                                    errorHtml += `
+                                        <div class="bg-red-50 p-3 rounded max-h-96 overflow-y-auto">
+                                            <p class="font-semibold text-red-800 mb-2">❌ Errores detectados (${data.errors.length}):</p>
+                                            <ul class="text-sm text-red-700 space-y-2">
+                                    `;
+
+                                    data.errors.forEach((error) => {
+                                        errorHtml += `
+                                            <li class="border-b border-red-200 pb-2 last:border-b-0">
+                                                <strong>Planilla: ${error.codigo}</strong><br>
+                                                <span class="text-xs">Error: ${error.error}</span>
+                                            </li>
+                                        `;
+                                    });
+
+                                    errorHtml += '</ul></div>';
+                                }
+
+                                if (data.warnings && data.warnings.length >
+                                    0) {
+                                    errorHtml += `
+                                        <div class="bg-yellow-50 p-3 rounded mt-3">
+                                            <p class="font-semibold text-yellow-800 mb-2">⚠️ Advertencias:</p>
+                                            <ul class="text-sm text-yellow-700 space-y-1">
+                                    `;
+
+                                    data.warnings.forEach((warning) => {
+                                        errorHtml +=
+                                            `<li>• ${warning}</li>`;
+                                    });
+
+                                    errorHtml += '</ul></div>';
+                                }
+
+                                errorHtml += '</div>';
+
+                                await Swal.fire({
+                                    icon: 'error',
+                                    title: 'Error en la importación',
+                                    html: errorHtml,
+                                    confirmButtonText: 'Entendido',
+                                    confirmButtonColor: '#d33',
+                                    width: '600px'
+                                });
+
+                                // Resetear el formulario pero mantener modal abierto
+                                wrap.classList.add('hidden');
+                                bar.style.width = '0%';
+                                bar.classList.remove('bg-red-600');
+                                bar.classList.add('bg-blue-600');
+                                btnSend.disabled = false;
+                                btnCancel.disabled = false;
                             }
+
                         } catch (e) {
-                            clearInterval(pollTimer);
-                            wrap.classList.remove('hidden');
-                            txt.textContent = 'Error';
-                            bar.classList.remove('bg-blue-600');
-                            bar.classList.add('bg-red-600');
-                            msg.textContent =
-                                'Fallo de red durante la importación.';
+                            // Detener polling en caso de error
+                            if (pollTimer) clearInterval(pollTimer);
+
+                            console.error('Error en la importación:', e);
+
+                            await Swal.fire({
+                                icon: 'error',
+                                title: 'Error de conexión',
+                                text: 'No se pudo completar la importación. Por favor, intenta nuevamente.',
+                                confirmButtonText: 'OK',
+                                confirmButtonColor: '#d33'
+                            });
+
+                            wrap.classList.add('hidden');
+                            bar.style.width = '0%';
+                            bar.classList.remove('bg-red-600');
+                            bar.classList.add('bg-blue-600');
                             btnSend.disabled = false;
+                            btnCancel.disabled = false;
                         }
                     });
                 })();
