@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 /**
@@ -10,6 +11,8 @@ use Illuminate\Database\Eloquent\Model;
  */
 class Paquete extends Model
 {
+    use HasFactory;
+
     protected $table = 'paquetes';
 
     protected $fillable = [
@@ -20,6 +23,39 @@ class Paquete extends Model
         'peso',
         'subido',
     ];
+
+    // ==================== MÉTODOS ESTÁTICOS ====================
+
+    /**
+     * Genera un código único para un paquete con el formato: PYYMMnnnn
+     * Donde:
+     * - P = Prefijo para paquete
+     * - YY = Año (2 dígitos)
+     * - MM = Mes (2 dígitos)
+     * - nnnn = Número secuencial (4 dígitos con padding)
+     * 
+     * @return string Código generado
+     */
+    public static function generarCodigo()
+    {
+        $year = now()->format('y');
+        $month = now()->format('m');
+
+        $ultimoCodigo = self::where('codigo', 'LIKE', "P{$year}{$month}%")
+            ->orderBy('codigo', 'desc')
+            ->value('codigo');
+
+        if ($ultimoCodigo) {
+            $ultimoNumero = intval(substr($ultimoCodigo, 5));
+            $nuevoNumero = str_pad($ultimoNumero + 1, 4, '0', STR_PAD_LEFT);
+        } else {
+            $nuevoNumero = '0001';
+        }
+
+        return "P{$year}{$month}{$nuevoNumero}";
+    }
+
+    // ==================== RELACIONES ====================
 
     /**
      * Relación: Un paquete pertenece a una nave (obra)
@@ -72,12 +108,24 @@ class Paquete extends Model
     }
 
     /**
+     * Relación: Un paquete puede estar asociado a muchas salidas
+     * (Relación muchos a muchos a través de tabla pivote salidas_paquetes)
+     */
+    public function salidas()
+    {
+        return $this->belongsToMany(Salida::class, 'salidas_paquetes', 'paquete_id', 'salida_id');
+    }
+
+    /**
      * Relación: Un paquete puede estar en muchas salidas
+     * (Acceso directo a la tabla pivote)
      */
     public function salidasPaquetes()
     {
         return $this->hasMany(SalidaPaquete::class, 'paquete_id');
     }
+
+    // ==================== ACCESSORS ====================
 
     /**
      * Accessor: Obtiene las dimensiones del paquete en celdas
@@ -94,6 +142,39 @@ class Paquete extends Model
         }
         return null;
     }
+
+    /**
+     * Calcula el tamaño del paquete basándose en las longitudes máximas
+     * de cada elemento (extraídas del campo dimensiones de cada elemento).
+     * El ancho es fijo: 1 metro.
+     * Las dimensiones almacenadas están en cm, convertimos a metros.
+     * 
+     * @return array ['ancho' => float, 'longitud' => float] en metros
+     */
+    public function getTamañoAttribute()
+    {
+        $maxLongitudCm = 0;
+
+        foreach ($this->etiquetas as $etiqueta) {
+            foreach ($etiqueta->elementos as $elemento) {
+                $maxLongitudElemento = $this->extraerMaxLongitudDeDimensiones($elemento->dimensiones);
+
+                if ($maxLongitudElemento > $maxLongitudCm) {
+                    $maxLongitudCm = $maxLongitudElemento;
+                }
+            }
+        }
+
+        // ✅ Convertimos de cm a metros (corregido)
+        $maxLongitudM = $maxLongitudCm / 100;
+
+        return [
+            'ancho'    => 1,
+            'longitud' => $maxLongitudM
+        ];
+    }
+
+    // ==================== MÉTODOS ÚTILES ====================
 
     /**
      * Método: Verifica si el paquete tiene localización asignada
@@ -128,8 +209,40 @@ class Paquete extends Model
         return 'mixto';
     }
 
+    // ==================== MÉTODOS PRIVADOS ====================
+
+    /**
+     * Extrae la longitud máxima de un string de dimensiones en cm.
+     * Ejemplo: "10 90d 200 90d" => devuelve 200 (cm).
+     * 
+     * @param string|null $dimensiones String con las dimensiones
+     * @return float Longitud máxima en cm
+     */
+    protected function extraerMaxLongitudDeDimensiones($dimensiones)
+    {
+        if (!$dimensiones) return 0;
+
+        $partes = preg_split('/\s+/', trim($dimensiones));
+        $max = 0;
+
+        foreach ($partes as $parte) {
+            // ignoramos las partes que contengan 'd' (grados)
+            if (strpos($parte, 'd') === false && is_numeric($parte)) {
+                $valor = floatval($parte);
+                if ($valor > $max) {
+                    $max = $valor;
+                }
+            }
+        }
+
+        return $max; // en cm
+    }
+
     /**
      * Método privado: Determina si un elemento es un estribo
+     * 
+     * @param object $elemento Elemento a evaluar
+     * @return bool True si es estribo, false si no
      */
     private function esEstribo($elemento)
     {

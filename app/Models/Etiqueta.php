@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 /**
@@ -12,7 +13,11 @@ use Illuminate\Database\Eloquent\Model;
  */
 class Etiqueta extends Model
 {
+    use HasFactory;
+
     protected $table = 'etiquetas';
+
+    protected $appends = ['peso_kg'];
 
     protected $fillable = [
         'codigo',
@@ -91,6 +96,14 @@ class Etiqueta extends Model
     }
 
     /**
+     * Relación: Usuario relacionado con el ensamblador principal
+     */
+    public function user()
+    {
+        return $this->belongsTo(User::class, 'ensamblador1_id');
+    }
+
+    /**
      * Relaciones con operarios
      */
     public function operario1()
@@ -121,6 +134,52 @@ class Etiqueta extends Model
     public function ensamblador2()
     {
         return $this->belongsTo(User::class, 'ensamblador2_id');
+    }
+
+    // ==================== ACCESSORS ====================
+
+    /**
+     * Accessor: Formatea el peso en kilogramos
+     */
+    public function getPesoKgAttribute()
+    {
+        if (is_null($this->peso)) {
+            return 'No asignado';
+        }
+
+        return number_format((float) $this->peso, 2, ',', '.') . ' kg';
+    }
+
+    /**
+     * Accessor: Obtiene el nombre del ensamblador principal
+     */
+    public function getUserNameAttribute()
+    {
+        return optional($this->ensamblador1)->name ?? 'N/A';
+    }
+
+    /**
+     * Accessor: Obtiene el nombre del ensamblador secundario
+     */
+    public function getUser2NameAttribute()
+    {
+        return optional($this->ensamblador2)->name ?? 'N/A';
+    }
+
+    /**
+     * Accessor: Obtiene el nombre del soldador principal
+     */
+    public function getSoldNameAttribute()
+    {
+        return optional($this->soldador1)->name ?? 'N/A';
+    }
+
+    /**
+     * Accessor: Obtiene el nombre del soldador secundario
+     */
+    public function getSold2NameAttribute()
+    {
+        return optional($this->soldador2)->name ?? 'N/A';
     }
 
     // ==================== MÉTODOS ÚTILES ====================

@@ -54,7 +54,7 @@
 
         {{-- MENÚ LATERAL RESPONSIVE --}}
         <aside id="sidebar" role="navigation"
-            class="fixed left-0 top-0 pt-[50px] h-screen w-64 md:w-72 bg-white shadow-xl z-40 overflow-y-auto sidebar-transition transform -translate-x-full lg:translate-x-0">
+            class="fixed left-0 top-0 pt-[50px] h-screen overflow-hidden w-64 md:w-72 bg-white shadow-xl z-40 sidebar-transition transform -translate-x-full lg:translate-x-0">
 
             {{-- Botón cerrar en móvil --}}
             <div class="lg:hidden flex justify-end p-4">
@@ -76,7 +76,7 @@
             <div class="px-4 pb-4 border-t border-gray-200 pt-4">
                 <h3 class="text-lg font-bold text-gray-800 mb-3">Navegación por Máquina</h3>
 
-                <ul class="space-y-1">
+                <ul class="space-y-1 overflow-y-auto">
                     @foreach ($registrosMaquina as $maquina)
                         <li>
                             <a href="#maquina-{{ $maquina->id }}"

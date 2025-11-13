@@ -41,6 +41,39 @@ class LocalizacionPaquete extends Model
         return $this->belongsTo(Paquete::class, 'paquete_id');
     }
 
+    /**
+     * Relación: (Opcional) Relación con localización si la usas
+     * Por ejemplo, si quieres saber a qué localización pertenece.
+     * 
+     * @return \Illuminate\Database\Eloquent\Relations\BelongsTo
+     */
+    public function localizacion()
+    {
+        return $this->belongsTo(Localizacion::class, 'localizacion_id');
+    }
+
+    /**
+     * Relación: Una localización puede tener una localización de paquete asociada
+     * (Relación recursiva - uso poco común pero mantenida por compatibilidad)
+     * 
+     * @return \Illuminate\Database\Eloquent\Relations\HasOne
+     */
+    public function localizacionPaquete()
+    {
+        return $this->hasOne(LocalizacionPaquete::class, 'paquete_id');
+    }
+
+    /**
+     * Relación: Una localización puede tener múltiples localizaciones de paquetes
+     * (Relación recursiva - uso poco común pero mantenida por compatibilidad)
+     * 
+     * @return \Illuminate\Database\Eloquent\Relations\HasMany
+     */
+    public function localizacionesPaquetes()
+    {
+        return $this->hasMany(LocalizacionPaquete::class, 'localizacion_id');
+    }
+
     // ==================== ACCESSORS ====================
 
     /**
