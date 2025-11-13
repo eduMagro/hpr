@@ -1,6 +1,14 @@
 <x-app-layout>
     <x-slot name="title">Elementos - {{ config('app.name') }}</x-slot>
-    <x-menu.planillas />
+    @php
+        $menu = \App\Services\MenuService::getContextMenu('elementos');
+    @endphp
+    <x-navigation.context-menu
+        :items="$menu['items']"
+        :colorBase="$menu['config']['colorBase']"
+        :style="$menu['config']['style']"
+        :mobileLabel="$menu['config']['mobileLabel']"
+    />
     @php
         $filtrosActivos = [];
 

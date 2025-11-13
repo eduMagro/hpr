@@ -4,7 +4,15 @@
 
 
 <x-app-layout>
-    <x-menu.planillas />
+    @php
+        $menu = \App\Services\MenuService::getContextMenu('planillas');
+    @endphp
+    <x-navigation.context-menu
+        :items="$menu['items']"
+        :colorBase="$menu['config']['colorBase']"
+        :style="$menu['config']['style']"
+        :mobileLabel="$menu['config']['mobileLabel']"
+    />
 
 
     <div class="p-6 overflow-hidden relative max-h-[calc(100vh-80px)]">

@@ -1,6 +1,14 @@
 <x-app-layout>
     <x-slot name="title">Cargas de Máquinas</x-slot>
-    <x-menu.planillas />
+    @php
+        $menu = \App\Services\MenuService::getContextMenu('maquinas');
+    @endphp
+    <x-navigation.context-menu
+        :items="$menu['items']"
+        :colorBase="$menu['config']['colorBase']"
+        :style="$menu['config']['style']"
+        :mobileLabel="$menu['config']['mobileLabel']"
+    />
 
     <!-- Botones de navegación -->
     <div class="mb-6 border-b border-gray-200">

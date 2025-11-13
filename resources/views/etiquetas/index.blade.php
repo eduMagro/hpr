@@ -1,6 +1,14 @@
     <x-app-layout>
         <x-slot name="title">Etiquetas - {{ config('app.name') }}</x-slot>
-        <x-menu.planillas />
+        @php
+            $menu = \App\Services\MenuService::getContextMenu('etiquetas');
+        @endphp
+        <x-navigation.context-menu
+            :items="$menu['items']"
+            :colorBase="$menu['config']['colorBase']"
+            :style="$menu['config']['style']"
+            :mobileLabel="$menu['config']['mobileLabel']"
+        />
         <div class="w-full p-4 sm:p-2">
             <!-- Tabla con formularios de búsqueda -->
             <x-tabla.filtros-aplicados :filtros="$filtrosActivos" />

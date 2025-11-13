@@ -1206,4 +1206,9 @@ class ElementoController extends Controller
             'estado' => $elemento->estado
         ]);
     }
+
+    public function show(Elemento $elemento)
+    {
+        //
+    }
 }

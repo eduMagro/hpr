@@ -1,24 +1,5 @@
 <x-app-layout>
     <x-slot name="title">Planificación por Máquina</x-slot>
-    <x-menu.planillas />
-
-    <!-- Botones de navegación -->
-    <div class="mb-6 border-b border-gray-200">
-        <div class="flex space-x-2">
-            <a href="{{ route('produccion.verMaquinas') }}"
-               class="px-6 py-3 font-semibold text-blue-600 border-b-2 border-blue-600 bg-blue-50 transition-colors">
-                Producción/Máquinas
-            </a>
-            <a href="{{ route('produccion.cargasMaquinas') }}"
-               class="px-6 py-3 font-semibold text-gray-600 hover:text-blue-600 hover:bg-gray-50 border-b-2 border-transparent transition-colors">
-                Cargas Máquinas
-            </a>
-            <a href="{{ route('planificacion.index') }}"
-               class="px-6 py-3 font-semibold text-gray-600 hover:text-blue-600 hover:bg-gray-50 border-b-2 border-transparent transition-colors">
-                Planificación
-            </a>
-        </div>
-    </div>
 
     <div class="py-6">
         @if (!empty($erroresPlanillas))

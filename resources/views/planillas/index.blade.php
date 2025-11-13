@@ -1,6 +1,5 @@
 <x-app-layout>
     <x-slot name="title">Planillas - {{ config('app.name') }}</x-slot>
-    <x-menu.planillas />
     <div class="w-full px-6 py-4">
         <div class="flex flex-wrap items-center gap-x-4 gap-y-2 mb-4">
 

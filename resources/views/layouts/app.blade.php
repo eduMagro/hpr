@@ -80,32 +80,56 @@
     @livewireStyles
 </head>
 
-<body class="font-sans antialiased">
-    <div class="min-h-screen bg-gray-100">
-        @include('layouts.navigation')
-        @include('layouts.alerts')
-        <x-notificacion-alerta />
-        <!-- Page Heading -->
-        @isset($header)
-            <header class="bg-white shadow">
-                <div class="max-w-7xl mx-auto py-4 px-4 sm:px-6 lg:px-8">
-                    {{ $header }}
+<body class="font-sans antialiased transition-colors duration-200">
+    <div class="flex h-screen bg-gray-100 dark:bg-gray-900 overflow-hidden">
+        <!-- Sidebar Menu Enhanced -->
+        <x-sidebar-menu-enhanced />
 
+        <!-- Main Content Area -->
+        <div class="flex-1 flex flex-col overflow-hidden">
+            <!-- Top Header Enhanced -->
+            <x-top-header-enhanced />
+
+            <!-- Alerts -->
+            @include('layouts.alerts')
+            <x-notificacion-alerta />
+
+            <!-- Page Content with Scroll -->
+            <main class="flex-1 overflow-y-auto bg-gray-50 dark:bg-gray-900 transition-colors">
+                <div class="py-6 px-4 sm:px-6 lg:px-8">
+                    <!-- Breadcrumbs -->
+                    <x-breadcrumbs />
+
+                    <!-- Page Heading -->
+                    @isset($header)
+                        <header class="mb-6">
+                            <div class="bg-white dark:bg-gray-800 shadow-sm rounded-lg px-6 py-4 border border-gray-200 dark:border-gray-700 transition-colors">
+                                {{ $header }}
+                            </div>
+                        </header>
+                    @endisset
+
+                    <!-- Main Content -->
+                    <div class="transition-colors">
+                        {{ $slot }}
+                    </div>
                 </div>
-            </header>
-        @endisset
-
-        <!-- Page Content -->
-        <main>
-            {{ $slot }}
-        </main>
+            </main>
+        </div>
     </div>
     @stack('scripts')
 
     <!-- Livewire Scripts -->
     @livewireScripts
-<script src="https://cdn.tailwindcss.com"></script>
-    @livewireScripts
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Dark Mode Support Script -->
+    <script>
+        // Aplicar dark mode desde localStorage al cargar
+        if (localStorage.getItem('dark_mode') === 'true') {
+            document.documentElement.classList.add('dark');
+        }
+    </script>
 </body>
 
 </html>

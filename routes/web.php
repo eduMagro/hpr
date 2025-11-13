@@ -53,8 +53,26 @@ use Illuminate\Support\Facades\Log;
 
 Route::get('/', [PageController::class, 'index'])->middleware(['auth', 'verified'])->name('dashboard');
 
+// Rutas de secciones principales
+Route::get('/produccion', [PageController::class, 'produccion'])->middleware(['auth', 'verified'])->name('secciones.produccion');
+Route::get('/seccion-planificacion', [PageController::class, 'planificacionSeccion'])->middleware(['auth', 'verified'])->name('secciones.planificacion');
+Route::get('/logistica', [PageController::class, 'logistica'])->middleware(['auth', 'verified'])->name('secciones.logistica');
+Route::get('/recursos-humanos', [PageController::class, 'recursosHumanos'])->middleware(['auth', 'verified'])->name('secciones.recursos-humanos');
+Route::get('/comercial', [PageController::class, 'comercial'])->middleware(['auth', 'verified'])->name('secciones.comercial');
+Route::get('/sistema', [PageController::class, 'sistema'])->middleware(['auth', 'verified'])->name('secciones.sistema');
+
+// Rutas antiguas redirigidas (compatibilidad)
+Route::get('/inventario', function() {
+    return redirect()->route('secciones.produccion');
+})->middleware(['auth', 'verified'])->name('secciones.inventario');
+
+Route::get('/compras', function() {
+    return redirect()->route('secciones.logistica');
+})->middleware(['auth', 'verified'])->name('secciones.compras');
+
 // Ruta del Asistente Virtual
 use App\Http\Controllers\AsistenteVirtualController;
+
 Route::get('/asistente', [AsistenteVirtualController::class, 'index'])
     ->middleware(['auth', 'puede.asistente'])
     ->name('asistente.index');
@@ -68,17 +86,17 @@ Route::get('/asistente/permisos', [AsistenteVirtualController::class, 'administr
 // Rate limiting: 60 requests por minuto general, 15 para envío de mensajes
 Route::middleware(['auth', 'puede.asistente', 'throttle:60,1'])
     ->prefix('api/asistente')->group(function () {
-    Route::get('/conversaciones', [AsistenteVirtualController::class, 'obtenerConversaciones']);
-    Route::post('/conversaciones', [AsistenteVirtualController::class, 'crearConversacion']);
-    Route::get('/conversaciones/{conversacionId}/mensajes', [AsistenteVirtualController::class, 'obtenerMensajes']);
-    Route::delete('/conversaciones/{conversacionId}', [AsistenteVirtualController::class, 'eliminarConversacion']);
-    Route::get('/sugerencias', [AsistenteVirtualController::class, 'obtenerSugerencias']);
-    Route::post('/permisos/{userId}', [AsistenteVirtualController::class, 'actualizarPermisos']);
+        Route::get('/conversaciones', [AsistenteVirtualController::class, 'obtenerConversaciones']);
+        Route::post('/conversaciones', [AsistenteVirtualController::class, 'crearConversacion']);
+        Route::get('/conversaciones/{conversacionId}/mensajes', [AsistenteVirtualController::class, 'obtenerMensajes']);
+        Route::delete('/conversaciones/{conversacionId}', [AsistenteVirtualController::class, 'eliminarConversacion']);
+        Route::get('/sugerencias', [AsistenteVirtualController::class, 'obtenerSugerencias']);
+        Route::post('/permisos/{userId}', [AsistenteVirtualController::class, 'actualizarPermisos']);
 
-    // Ruta de envío de mensajes con rate limiting más estricto
-    Route::post('/mensaje', [AsistenteVirtualController::class, 'enviarMensaje'])
-        ->middleware('throttle:15,1'); // Solo 15 mensajes por minuto
-});
+        // Ruta de envío de mensajes con rate limiting más estricto
+        Route::post('/mensaje', [AsistenteVirtualController::class, 'enviarMensaje'])
+            ->middleware('throttle:15,1'); // Solo 15 mensajes por minuto
+    });
 
 Route::middleware(['auth', 'acceso.seccion'])->group(function () {
     // === PERFIL DE USUARIO ===
@@ -258,8 +276,7 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
     Route::get('/elementos', App\Livewire\ElementosTable::class)->name('elementos.index');
 
     // Resto de rutas del resource (show, create, edit, update, destroy)
-    Route::resource('elementos', ElementoController::class)->except(['index']);
-
+    Route::resource('elementos', ElementoController::class);
 
     // RUTAS PROVISIONALES
     Route::post('/etiquetas/fabricar-lote', [EtiquetaController::class, 'fabricarLote'])->name('maquinas.fabricarLote');

@@ -136,4 +136,68 @@ class PageController extends Controller
 
         return $tienePermisoPorDept;
     }
+
+    /**
+     * Sección de Producción
+     */
+    public function produccion()
+    {
+        return view('secciones.produccion');
+    }
+
+    /**
+     * Sección de Inventario
+     */
+    public function inventario()
+    {
+        return view('secciones.inventario');
+    }
+
+    /**
+     * Sección de Comercial
+     */
+    public function comercial()
+    {
+        return view('secciones.comercial');
+    }
+
+    /**
+     * Sección de Compras
+     */
+    public function compras()
+    {
+        return view('secciones.compras');
+    }
+
+    /**
+     * Sección de Recursos Humanos
+     */
+    public function recursosHumanos()
+    {
+        return view('secciones.recursos-humanos');
+    }
+
+    /**
+     * Sección de Sistema
+     */
+    public function sistema()
+    {
+        return view('secciones.sistema');
+    }
+
+    /**
+     * Sección de Planificación
+     */
+    public function planificacionSeccion()
+    {
+        return view('secciones.planificacion');
+    }
+
+    /**
+     * Sección de Logística
+     */
+    public function logistica()
+    {
+        return view('secciones.logistica');
+    }
 }

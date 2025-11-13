@@ -4,7 +4,6 @@
         'maquinasDisponibles' => $maquinasDisponibles,
     ])
 
-    <x-menu.materiales />
     <div class="w-full px-6 py-4">
         <!-- Botón para crear una nueva entrada con estilo Bootstrap -->
         <div class="mb-4 flex justify-center space-x-2">

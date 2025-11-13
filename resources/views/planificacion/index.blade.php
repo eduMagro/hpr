@@ -1,89 +1,84 @@
 <x-app-layout>
     <x-slot name="title">Planificación Salidas</x-slot>
 
-    <x-menu.salidas.salidas />
-
-    <!-- Botones de navegación -->
-    <div class="mb-6 border-b border-gray-200">
-        <div class="flex space-x-2">
-            <a href="{{ route('produccion.verMaquinas') }}"
-               class="px-6 py-3 font-semibold text-gray-600 hover:text-blue-600 hover:bg-gray-50 border-b-2 border-transparent transition-colors">
-                Producción/Máquinas
-            </a>
-            <a href="{{ route('planificacion.index') }}"
-               class="px-6 py-3 font-semibold text-blue-600 border-b-2 border-blue-600 bg-blue-50 transition-colors">
-                Planificación
-            </a>
-        </div>
-    </div>
-
-    <div class="py-6">
-        <!-- Contenedor del Calendario -->
-        <div class="w-full bg-white">
-            <div class="mb-6 flex flex-col md:flex-row gap-4 justify-center">
-                <!-- Filtro por código de obra -->
-                <div class="flex items-center gap-2">
-                    <label for="filtro-obra" class="text-sm text-gray-700">Filtrar por:</label>
-                    <input id="filtro-obra" type="text" placeholder="Código de obra"
-                        class="border rounded px-2 py-1 text-sm w-32" autocomplete="off" />
-                    <input id="filtro-nombre-obra" type="text" placeholder="Nombre de obra"
-                        class="border rounded px-2 py-1 text-sm w-64" autocomplete="off" />
-
-                    {{-- ♻️ Botón reset --}}
-                    <button type="button"
-                        class="bg-yellow-500 hover:bg-yellow-600 text-white px-2 py-1 rounded text-xs flex items-center justify-center"
-                        id="btn-reset-filtros" title="Restablecer filtros">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24"
-                            stroke="currentColor" stroke-width="2">
-                            <path stroke-linecap="round" stroke-linejoin="round"
-                                d="M4 4v5h.582M20 20v-5h-.581M4.582 9A7.5 7.5 0 0112 4.5a7.5 7.5 0 016.418 3.418M19.418 15A7.5 7.5 0 0112 19.5a7.5 7.5 0 01-6.418-3.418" />
-                        </svg>
-                    </button>
-
-                </div>
-
-                <!-- Filtros de tipo de evento -->
-                <div class="flex items-center gap-3">
-                    <div class="checkbox-container">
-                        <input type="checkbox" id="solo-salidas"
-                            class="rounded border-gray-300 text-green-600 focus:ring-green-500" />
-                        <label for="solo-salidas" class="text-sm text-gray-700 cursor-pointer">Solo salidas</label>
+    <div class="py-6 px-4">
+        <div class="max-w-[1800px] mx-auto">
+            <!-- Sección de Filtros y Resúmenes -->
+            <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
+                <!-- Filtros -->
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                    <!-- Filtro por código de obra -->
+                    <div class="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                        <h4 class="text-sm font-semibold text-gray-700 mb-3">Filtrar por obra</h4>
+                        <div class="flex flex-wrap items-center gap-2">
+                            <input id="filtro-obra" type="text" placeholder="Código de obra"
+                                class="border-gray-300 rounded-md px-3 py-2 text-sm flex-1 min-w-[120px] focus:ring-purple-500 focus:border-purple-500"
+                                autocomplete="off" />
+                            <input id="filtro-nombre-obra" type="text" placeholder="Nombre de obra"
+                                class="border-gray-300 rounded-md px-3 py-2 text-sm flex-1 min-w-[200px] focus:ring-purple-500 focus:border-purple-500"
+                                autocomplete="off" />
+                            <button type="button"
+                                class="bg-yellow-500 hover:bg-yellow-600 text-white px-3 py-2 rounded-md text-sm flex items-center justify-center transition"
+                                id="btn-reset-filtros" title="Restablecer filtros">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24"
+                                    stroke="currentColor" stroke-width="2">
+                                    <path stroke-linecap="round" stroke-linejoin="round"
+                                        d="M4 4v5h.582M20 20v-5h-.581M4.582 9A7.5 7.5 0 0112 4.5a7.5 7.5 0 016.418 3.418M19.418 15A7.5 7.5 0 0112 19.5a7.5 7.5 0 01-6.418-3.418" />
+                                </svg>
+                            </button>
+                        </div>
                     </div>
-                    <div class="checkbox-container">
-                        <input type="checkbox" id="solo-planillas"
-                            class="rounded border-gray-300 text-purple-600 focus:ring-purple-500" />
-                        <label for="solo-planillas" class="text-sm text-gray-700 cursor-pointer">Solo planillas y
-                            resúmenes</label>
+
+                    <!-- Filtros de tipo de evento -->
+                    <div class="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                        <h4 class="text-sm font-semibold text-gray-700 mb-3">Filtrar por tipo</h4>
+                        <div class="flex flex-col gap-2">
+                            <div class="flex items-center">
+                                <input type="checkbox" id="solo-salidas"
+                                    class="rounded border-gray-300 text-green-600 focus:ring-green-500 h-4 w-4" />
+                                <label for="solo-salidas" class="ml-2 text-sm text-gray-700 cursor-pointer">Solo salidas</label>
+                            </div>
+                            <div class="flex items-center">
+                                <input type="checkbox" id="solo-planillas"
+                                    class="rounded border-gray-300 text-purple-600 focus:ring-purple-500 h-4 w-4" />
+                                <label for="solo-planillas" class="ml-2 text-sm text-gray-700 cursor-pointer">Solo planillas y resúmenes</label>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
-                <!-- Resumen Semanal -->
-                <div class="max-w-sm bg-blue-50 border border-blue-200 rounded-md p-3 shadow-sm text-sm">
-
-                    <h3 class="text-base font-semibold text-blue-700 mb-1 text-center">
-                        Resumen semanal <span id="resumen-semanal-fecha" class="text-gray-600 text-sm"></span>
-                    </h3>
-                    <div class="flex items-center justify-center gap-3">
-                        <p id="resumen-semanal-peso">📦 0 kg</p>
-                        <p id="resumen-semanal-longitud">📏 0 m</p>
-                        <p id="resumen-semanal-diametro"></p>
+                <!-- Resúmenes -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <!-- Resumen Semanal -->
+                    <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 shadow-sm">
+                        <h3 class="text-base font-semibold text-blue-700 mb-3 text-center">
+                            Resumen semanal <span id="resumen-semanal-fecha" class="text-gray-600 text-sm"></span>
+                        </h3>
+                        <div class="flex items-center justify-center gap-4 text-sm">
+                            <p id="resumen-semanal-peso" class="font-medium">📦 0 kg</p>
+                            <p id="resumen-semanal-longitud" class="font-medium">📏 0 m</p>
+                            <p id="resumen-semanal-diametro" class="font-medium"></p>
+                        </div>
                     </div>
-                </div>
 
-                <!-- Resumen Mensual -->
-                <div class="max-w-sm bg-blue-50 border border-blue-200 rounded-md p-3 shadow-sm text-sm">
-                    <h3 class="text-base font-semibold text-blue-700 mb-1 text-center">
-                        Resumen mensual <span id="resumen-mensual-fecha" class="text-gray-600 text-sm"></span>
-                    </h3>
-                    <div class="flex items-center justify-center gap-3">
-                        <p id="resumen-mensual-peso">📦 0 kg</p>
-                        <p id="resumen-mensual-longitud">📏 0 m</p>
-                        <p id="resumen-mensual-diametro"></p>
+                    <!-- Resumen Mensual -->
+                    <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 shadow-sm">
+                        <h3 class="text-base font-semibold text-blue-700 mb-3 text-center">
+                            Resumen mensual <span id="resumen-mensual-fecha" class="text-gray-600 text-sm"></span>
+                        </h3>
+                        <div class="flex items-center justify-center gap-4 text-sm">
+                            <p id="resumen-mensual-peso" class="font-medium">📦 0 kg</p>
+                            <p id="resumen-mensual-longitud" class="font-medium">📏 0 m</p>
+                            <p id="resumen-mensual-diametro" class="font-medium"></p>
+                        </div>
                     </div>
                 </div>
             </div>
 
-            <div id="calendario" class="h-[80vh] w-full"></div>
+            <!-- Calendario -->
+            <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+                <div id="calendario" class="h-[80vh] w-full"></div>
+            </div>
         </div>
     </div>
 

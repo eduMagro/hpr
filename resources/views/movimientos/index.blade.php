@@ -1,17 +1,10 @@
 <x-app-layout>
     <x-slot name="title">Movimientos - {{ config('app.name') }}</x-slot>
-    <x-slot name="header">
-        <h2 class="font-semibold text-xl text-gray-800 leading-tight">
-            {{ __('Movimientos') }}
-        </h2>
-    </x-slot>
 
     <div class="w-full px-6 py-4">
         <!-- Botón para crear un nuevo movimiento con estilo Bootstrap -->
         <div class="mb-4">
             <div class="container mx-auto">
-                <h1 class="text-2xl font-bold mb-6">Página de Inventario</h1>
-
                 <!-- Botón que abre el modal -->
                 <div class="mb-4 flex justify-center">
                     <button onclick="abrirModalMovimientoLibre()"

@@ -5,5 +5,13 @@
             {{ __('Estadísticas') }}
         </h2>
     </x-slot>
-    <x-menu.estadisticas />
+    @php
+        $menu = \App\Services\MenuService::getContextMenu('estadisticas');
+    @endphp
+    <x-navigation.context-menu
+        :items="$menu['items']"
+        :colorBase="$menu['config']['colorBase']"
+        :style="$menu['config']['style']"
+        :mobileLabel="$menu['config']['mobileLabel']"
+    />
 </x-app-layout>
