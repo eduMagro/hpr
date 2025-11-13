@@ -202,6 +202,7 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
     // === MAQUINAS Y PRODUCCIÓN ===
     Route::resource('maquinas', MaquinaController::class);
     Route::post('/maquinas/{id}/cambiar-estado', [MaquinaController::class, 'cambiarEstado'])->name('maquinas.cambiarEstado');
+    Route::post('/maquinas/{id}/redistribuir', [MaquinaController::class, 'redistribuir'])->name('maquinas.redistribuir');
     Route::post('/maquinas/sesion/guardar', [MaquinaController::class, 'guardarSesion'])->name('maquinas.sesion.guardar');
     Route::get('/maquinas/{id}/json', [MaquinaController::class, 'showJson'])->name('maquinas.json');
     Route::post('/turnos/cambiar-maquina', [Maquinacontroller::class, 'cambiarMaquina'])->name('turno.cambiarMaquina');
@@ -213,6 +214,10 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
     Route::get('/produccion/trabajadores-obra', [ProduccionController::class, 'trabajadoresObra'])->name('produccion.verTrabajadoresObra');
     Route::get('/produccion/maquinas', [ProduccionController::class, 'maquinas'])->name('produccion.verMaquinas');
     Route::get('/produccion/cargas-maquinas', [ProduccionController::class, 'cargasMaquinas'])->name('produccion.cargasMaquinas');
+
+    // Endpoints dinámicos para el calendario de máquinas
+    Route::get('/api/produccion/maquinas/recursos', [ProduccionController::class, 'obtenerRecursos'])->name('api.produccion.recursos');
+    Route::get('/api/produccion/maquinas/eventos', [ProduccionController::class, 'obtenerEventos'])->name('api.produccion.eventos');
     //MSR20 BVBS
     Route::get('/maquinas/{maquina}/exportar-bvbs', [MaquinaController::class, 'exportarBVBS'])
         ->name('maquinas.exportar-bvbs');
@@ -297,17 +302,23 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
     Route::post('/update-field', [EmpresaTransporteController::class, 'updateField'])->name('empresas-transporte.editarField');
 
     // === SALIDAS FERRALLA ===
+    // Rutas específicas ANTES del resource (para evitar conflictos)
+    Route::get('/salidas-ferralla/gestionar-salidas', [SalidaFerrallaController::class, 'gestionarSalidas'])->name('salidas-ferralla.gestionar-salidas');
+    Route::get('/salidas/export/{mes}', [SalidaFerrallaController::class, 'export'])->name('salidas.export');
+
     Route::resource('salidas-ferralla', SalidaFerrallaController::class);
     Route::delete('/salidas/{salida}/quitar-paquete/{paquete}', [SalidaFerrallaController::class, 'quitarPaquete'])->name('salidas.editarQuitarPaquete');
     Route::put('/salidas/{salida}/actualizar-estado', [SalidaFerrallaController::class, 'editarActualizarEstado']);
     Route::post('/actualizar-fecha-salida', [SalidaFerrallaController::class, 'actualizarFechaSalida']);
     Route::post('/escaneo', [SalidaFerrallaController::class, 'marcarSubido'])->name('escaneo.marcarSubido');
-    Route::get('/salidas/export/{mes}', [SalidaFerrallaController::class, 'export'])->name('salidas.export');
     Route::post('/planificacion/crear-salida-desde-calendario', [SalidaFerrallaController::class, 'crearSalidaDesdeCalendario'])->name('planificacion.crearSalidaDesdeCalendario');
     Route::post('/planificacion/crear-salidas-vacias-desde-calendario', [SalidaFerrallaController::class, 'crearSalidasVaciasDesdeCalendario'])->name('planificacion.crearSalidasVaciasDesdeCalendario');
     Route::get('/planificacion/informacion-gestion-paquetes', [SalidaFerrallaController::class, 'informacionGestionPaquetes'])->name('planificacion.informacionGestionPaquetes');
     Route::get('/planificacion/salidas-por-planillas', [SalidaFerrallaController::class, 'obtenerSalidasPorPlanillas'])->name('planificacion.obtenerSalidasPorPlanillas');
     Route::post('/planificacion/guardar-asignaciones-paquetes', [SalidaFerrallaController::class, 'guardarAsignacionesPaquetes'])->name('planificacion.guardarAsignacionesPaquetes');
+    Route::get('/planificacion/informacion-paquetes-salida', [SalidaFerrallaController::class, 'informacionPaquetesSalida'])->name('planificacion.informacionPaquetesSalida');
+    Route::post('/planificacion/guardar-paquetes-salida', [SalidaFerrallaController::class, 'guardarPaquetesSalida'])->name('planificacion.guardarPaquetesSalida');
+    Route::post('/salidas/crear-salidas-vacias-masivo', [SalidaFerrallaController::class, 'crearSalidasVaciasMasivo'])->name('salidas.crearSalidasVaciasMasivo');
     Route::put('/salidas/completar-desde-movimiento/{movimientoId}', [SalidaFerrallaController::class, 'completarDesdeMovimiento']);
     Route::put('/salidas/{salida}/codigo-sage', [SalidaFerrallaController::class, 'actualizarCodigoSage'])->name('salidas.editarCodigoSage');
 

@@ -16,7 +16,8 @@ class Paquete extends Model
         'nave_id',
         'planilla_id',
         'ubicacion_id',
-        'peso'
+        'peso',
+        'estado'
     ];
 
     public static function generarCodigo()
@@ -66,9 +67,37 @@ class Paquete extends Model
     {
         return $this->belongsToMany(Salida::class, 'salidas_paquetes', 'paquete_id', 'salida_id');
     }
+
+    /**
+     * Relación: Obtiene la salida principal del paquete (la primera asociada).
+     * Útil para cuando el paquete tiene una única salida o queremos la principal.
+     */
+    public function salida()
+    {
+        return $this->belongsToMany(Salida::class, 'salidas_paquetes', 'paquete_id', 'salida_id')->limit(1);
+    }
+
     public function salidasPaquetes()
     {
         return $this->hasMany(SalidaPaquete::class);
+    }
+
+    /**
+     * Accessor: Obtiene el ID de la salida principal del paquete.
+     * Retorna null si no tiene salida asignada.
+     */
+    public function getSalidaIdAttribute()
+    {
+        // Primero intentar obtener desde la relación si ya está cargada
+        if ($this->relationLoaded('salida')) {
+            $salida = $this->salida->first();
+            return $salida ? $salida->id : null;
+        }
+
+        // Si no está cargada, hacer una consulta directa
+        return \DB::table('salidas_paquetes')
+            ->where('paquete_id', $this->id)
+            ->value('salida_id');
     }
 
     /**

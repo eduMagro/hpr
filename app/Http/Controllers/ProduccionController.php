@@ -581,6 +581,150 @@ class ProduccionController extends Controller
         ]);
     }
 
+    /**
+     * Obtener recursos (máquinas) para el calendario de forma dinámica
+     */
+    public function obtenerRecursos(Request $request)
+    {
+        try {
+            $maquinas = Maquina::where('tipo', '<>', 'grua')
+                ->orderByRaw('CASE WHEN obra_id IS NULL THEN 1 ELSE 0 END')
+                ->orderBy('obra_id')
+                ->orderBy('tipo')
+                ->get();
+
+            $coloresPorObra = [
+                1 => '#1d4ed8',
+                2 => '#16a34a',
+                3 => '#b91c1c',
+                4 => '#f59e0b',
+            ];
+
+            $resources = $maquinas->map(function ($m) use ($coloresPorObra) {
+                $color = $coloresPorObra[$m->obra_id] ?? '#6b7280';
+
+                return [
+                    'id' => $m->id,
+                    'title' => match ($m->estado) {
+                        'activa' => '🟢 ' . $m->nombre,
+                        'averiada' => '🔴 ' . $m->nombre,
+                        'mantenimiento' => '🛠️ ' . $m->nombre,
+                        'pausa' => '⏸️ ' . $m->nombre,
+                        default => ' ' . $m->nombre,
+                    },
+                    'eventBackgroundColor' => $color,
+                    'eventBorderColor' => $color,
+                    'eventTextColor' => '#ffffff',
+                    'obra_id' => $m->obra_id,
+                ];
+            })->values()->all();
+
+            Log::info('✅ obtenerRecursos: devolviendo ' . count($resources) . ' máquinas');
+
+            return response()->json($resources);
+        } catch (\Throwable $e) {
+            Log::error('❌ obtenerRecursos error', [
+                'msg' => $e->getMessage(),
+                'file' => $e->getFile() . ':' . $e->getLine()
+            ]);
+
+            return response()->json([]);
+        }
+    }
+
+    /**
+     * Obtener eventos (planillas) para el calendario de forma dinámica
+     */
+    public function obtenerEventos(Request $request)
+    {
+        // Este método devuelve los mismos eventos que el método maquinas()
+        // pero en formato JSON para actualización dinámica
+
+        // Reutilizar exactamente la misma lógica que maquinas()
+
+        // 1. Obtener máquinas (necesarias para las colas)
+        $maquinas = Maquina::where('tipo', '<>', 'grua')
+            ->orderByRaw('CASE WHEN obra_id IS NULL THEN 1 ELSE 0 END')
+            ->orderBy('obra_id')
+            ->orderBy('tipo')
+            ->get();
+
+        // 2. Elementos activos
+        $elementos = Elemento::with(['planilla', 'planilla.obra', 'maquina', 'maquina_2', 'maquina_3'])
+            ->whereHas('planilla', fn($q) => $q->whereIn('estado', ['pendiente', 'fabricando']))
+            ->get();
+
+        $maquinaReal = function ($e) {
+            $tipo1 = optional($e->maquina)->tipo;
+            $tipo2 = optional($e->maquina_2)->tipo;
+            $tipo3 = optional($e->maquina_3)->tipo;
+
+            if ($tipo1 === 'ensambladora') return $e->maquina_id_2;
+            if ($tipo1 === 'soldadora') return $e->maquina_id_3 ?? $e->maquina_id;
+            if ($tipo1 === 'dobladora_manual') return $e->maquina_id;
+            if ($tipo2 === 'dobladora_manual') return $e->maquina_id_2;
+
+            return $e->maquina_id;
+        };
+
+        $planillasAgrupadas = $elementos
+            ->groupBy(function ($e) use ($maquinaReal) {
+                $maquinaId = $maquinaReal($e);
+                return $e->planilla_id . '-' . $maquinaId;
+            })
+            ->map(function ($grupo) use ($maquinaReal) {
+                $primero   = $grupo->first();
+                $maquinaId = $maquinaReal($primero);
+
+                return [
+                    'planilla'   => $primero->planilla,
+                    'elementos'  => $grupo,
+                    'maquina_id' => $maquinaId,
+                ];
+            })
+            ->filter(fn($data) => !is_null($data['maquina_id']));
+
+        // 3. Calcular colas iniciales de cada máquina
+        $colasMaquinas = [];
+        foreach ($maquinas as $m) {
+            $ultimaPlanillaFabricando = Planilla::whereHas('elementos', fn($q) => $q->where('maquina_id', $m->id))
+                ->where('estado', 'fabricando')
+                ->orderByDesc('fecha_inicio')
+                ->first();
+
+            $colasMaquinas[$m->id] = optional($ultimaPlanillaFabricando)->fecha_inicio
+                ? toCarbon($ultimaPlanillaFabricando->fecha_inicio)
+                : Carbon::now();
+        }
+
+        // 4. Obtener ordenes desde la tabla orden_planillas
+        $ordenes = OrdenPlanilla::orderBy('posicion')
+            ->get()
+            ->groupBy('maquina_id')
+            ->map(fn($ordenesMaquina) => $ordenesMaquina->pluck('planilla_id')->all());
+
+        // 5. Generar eventos usando el mismo método que maquinas()
+        try {
+            $planillasEventos = $this->generarEventosMaquinas($planillasAgrupadas, $ordenes, $colasMaquinas);
+
+            // Convertir Collection a array para asegurar formato JSON correcto
+            $eventosArray = $planillasEventos->values()->all();
+
+            Log::info('✅ obtenerEventos: devolviendo ' . count($eventosArray) . ' eventos');
+
+            return response()->json($eventosArray);
+        } catch (\Throwable $e) {
+            Log::error('❌ obtenerEventos::generarEventosMaquinas', [
+                'msg' => $e->getMessage(),
+                'file' => $e->getFile() . ':' . $e->getLine(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            // Devolver array vacío en caso de error para que el calendario no falle
+            return response()->json([]);
+        }
+    }
+
     private function calcularInitialDate(): string
     {
         $planillasPrimeraPos = OrdenPlanilla::with(['planilla:id,estado,fecha_inicio'])
@@ -1375,8 +1519,8 @@ class ProduccionController extends Controller
                         'err'   => $e->getMessage(),
                         'file'  => $e->getFile() . ':' . $e->getLine(),
                     ]);
-                    // si quieres ver el error en pantalla mientras debug:
-                    abort(500, "Error en generarEventosMaquinas (clave {$clave}): " . $e->getMessage());
+                    // Continuar con la siguiente planilla en lugar de abortar
+                    continue;
                 }
             }
 

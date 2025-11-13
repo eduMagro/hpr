@@ -614,6 +614,29 @@
         window.etiquetasConElementos = @json($etiquetasJson);
     </script>
     <script>
+        // Función para renderizar SVG de etiqueta usando el código ya cargado de canvasMaquina.js
+        function renderizarSVGEtiqueta(etiquetaId, grupo) {
+            const contenedor = document.getElementById(`contenedor-svg-${etiquetaId}`);
+            if (!contenedor || !grupo.elementos || grupo.elementos.length === 0) {
+                console.log('No hay elementos para renderizar');
+                return;
+            }
+
+            // Actualizar window.elementosAgrupadosScript temporalmente
+            const elementosAgrupadosOriginal = window.elementosAgrupadosScript;
+            window.elementosAgrupadosScript = [grupo];
+
+            // Disparar manualmente un evento DOMContentLoaded falso
+            // para que canvasMaquina.js procese el nuevo contenedor
+            const event = new Event('DOMContentLoaded');
+            document.dispatchEvent(event);
+
+            // Restaurar después de un momento
+            setTimeout(() => {
+                window.elementosAgrupadosScript = elementosAgrupadosOriginal;
+            }, 200);
+        }
+
         function mostrar(etiquetaId) {
             const datos = window.etiquetasConElementos[etiquetaId];
             if (!datos) return;
@@ -659,7 +682,7 @@
                             </h3>
                         </div>
 
-                        <!-- Canvas -->
+                        <!-- SVG Container -->
                         <div id="contenedor-svg-${etiquetaId}" class="w-full flex-1"></div>
 
                         <!-- Canvas oculto para impresión -->
@@ -677,10 +700,22 @@
             modal.classList.remove('hidden');
             modal.classList.add('flex');
 
-            // Esperar a que el DOM se actualice y dibujar el canvas
+            // Preparar datos para renderizar con el sistema existente
+            const grupoEtiqueta = {
+                id: etiquetaId,
+                etiqueta: {
+                    id: etiquetaId,
+                    etiqueta_sub_id: subId,
+                    nombre: nombre,
+                    peso_kg: peso,
+                    estado: estado
+                },
+                elementos: datos.elementos || []
+            };
+
+            // Esperar a que el DOM se actualice y renderizar el SVG
             setTimeout(() => {
-                const canvasId = `canvas-imprimir-etiqueta-${subId}`;
-                dibujarCanvasEtiqueta(canvasId, datos.elementos);
+                renderizarSVGEtiqueta(etiquetaId, grupoEtiqueta);
             }, 50);
         }
 
@@ -705,8 +740,8 @@
             modal.classList.remove('flex');
         }
     </script>
-    <script src="{{ asset('js/maquinaJS/canvasMaquina.js') }}" defer></script>
-    <script src="{{ asset('js/maquinaJS/canvasMaquinaSinBoton.js') }}" defer></script>
+    <script src="{{ asset('js/maquinaJS/canvasMaquina.js') }}"></script>
+    <script src="{{ asset('js/maquinaJS/canvasMaquinaSinBoton.js') }}"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <script>
         const domSafe = (v) => String(v).replace(/[^A-Za-z0-9_-]/g, '-');

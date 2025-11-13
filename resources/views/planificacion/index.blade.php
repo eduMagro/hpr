@@ -97,6 +97,8 @@
                 'informacionGestionPaquetes' => route('planificacion.informacionGestionPaquetes'),
                 'obtenerSalidasPorPlanillas' => route('planificacion.obtenerSalidasPorPlanillas'),
                 'guardarAsignacionesPaquetes' => route('planificacion.guardarAsignacionesPaquetes'),
+                'informacionPaquetesSalida' => route('planificacion.informacionPaquetesSalida'),
+                'guardarPaquetesSalida' => route('planificacion.guardarPaquetesSalida'),
                 'comentario' => url('/planificacion/comentario/__ID__'),
                 // para update por drag&drop: PUT /planificacion/{id}
                 'updateItem' => url('/planificacion/__ID__'),

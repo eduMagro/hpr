@@ -179,6 +179,148 @@
     <script src="{{ asset('js/elementosJs/figuraElemento.js') }}"></script>
     <script src="{{ asset('js/multiselect-elementos.js') }}"></script>
 
+    <!-- Modal Cambiar Estado -->
+    <div id="modalEstado" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-md mx-4">
+            <div class="bg-blue-600 text-white px-6 py-4 rounded-t-lg">
+                <h3 class="text-lg font-semibold">Cambiar Estado de Máquina</h3>
+                <p id="nombreMaquinaEstado" class="text-sm opacity-90"></p>
+            </div>
+            <div class="p-6">
+                <label class="block text-gray-700 font-medium mb-3">Selecciona el nuevo estado:</label>
+                <div class="space-y-2">
+                    <button onclick="cambiarEstado('activa')" class="w-full bg-green-500 hover:bg-green-600 text-white px-4 py-3 rounded-lg flex items-center justify-center gap-2 transition-colors">
+                        <span class="text-xl">🟢</span>
+                        <span class="font-medium">Activa</span>
+                    </button>
+                    <button onclick="cambiarEstado('averiada')" class="w-full bg-red-500 hover:bg-red-600 text-white px-4 py-3 rounded-lg flex items-center justify-center gap-2 transition-colors">
+                        <span class="text-xl">🔴</span>
+                        <span class="font-medium">Averiada</span>
+                    </button>
+                    <button onclick="cambiarEstado('mantenimiento')" class="w-full bg-yellow-500 hover:bg-yellow-600 text-white px-4 py-3 rounded-lg flex items-center justify-center gap-2 transition-colors">
+                        <span class="text-xl">🛠️</span>
+                        <span class="font-medium">Mantenimiento</span>
+                    </button>
+                    <button onclick="cambiarEstado('pausa')" class="w-full bg-gray-500 hover:bg-gray-600 text-white px-4 py-3 rounded-lg flex items-center justify-center gap-2 transition-colors">
+                        <span class="text-xl">⏸️</span>
+                        <span class="font-medium">Pausa</span>
+                    </button>
+                </div>
+            </div>
+            <div class="bg-gray-50 px-6 py-4 rounded-b-lg flex justify-end">
+                <button onclick="cerrarModalEstado()" class="bg-gray-300 hover:bg-gray-400 text-gray-700 px-4 py-2 rounded-lg transition-colors">
+                    Cancelar
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Redistribuir Cola -->
+    <div id="modalRedistribuir" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-md mx-4">
+            <div class="bg-orange-600 text-white px-6 py-4 rounded-t-lg">
+                <h3 class="text-lg font-semibold">Redistribuir Cola de Trabajo</h3>
+                <p id="nombreMaquinaRedistribuir" class="text-sm opacity-90"></p>
+            </div>
+            <div class="p-6">
+                <div class="mb-4 bg-orange-50 border border-orange-200 rounded-lg p-4">
+                    <p class="text-sm text-orange-800">
+                        <strong>⚠️ Atención:</strong> Esta acción redistribuirá los elementos pendientes de esta máquina en las otras máquinas disponibles, siguiendo las reglas de asignación automática.
+                    </p>
+                </div>
+                <label class="block text-gray-700 font-medium mb-3">Selecciona qué redistribuir:</label>
+                <div class="space-y-2">
+                    <button onclick="redistribuir('primeros')" class="w-full bg-orange-400 hover:bg-orange-500 text-white px-4 py-3 rounded-lg flex items-center justify-start gap-3 transition-colors">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                        </svg>
+                        <div class="text-left">
+                            <div class="font-medium">Los primeros elementos</div>
+                            <div class="text-xs opacity-90">Redistribuir solo los próximos en la cola</div>
+                        </div>
+                    </button>
+                    <button onclick="redistribuir('todos')" class="w-full bg-orange-600 hover:bg-orange-700 text-white px-4 py-3 rounded-lg flex items-center justify-start gap-3 transition-colors">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                        </svg>
+                        <div class="text-left">
+                            <div class="font-medium">Todos los elementos pendientes</div>
+                            <div class="text-xs opacity-90">Redistribuir toda la cola de trabajo</div>
+                        </div>
+                    </button>
+                </div>
+            </div>
+            <div class="bg-gray-50 px-6 py-4 rounded-b-lg flex justify-end">
+                <button onclick="cerrarModalRedistribuir()" class="bg-gray-300 hover:bg-gray-400 text-gray-700 px-4 py-2 rounded-lg transition-colors">
+                    Cancelar
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Resultados de Redistribución -->
+    <div id="modalResultados" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50 overflow-y-auto">
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-4xl mx-4 my-8">
+            <div class="bg-green-600 text-white px-6 py-4 rounded-t-lg sticky top-0">
+                <h3 class="text-lg font-semibold">✅ Redistribución Completada</h3>
+                <p id="mensajeResultados" class="text-sm opacity-90"></p>
+            </div>
+
+            <!-- Resumen por máquina -->
+            <div class="p-6 border-b border-gray-200">
+                <h4 class="font-semibold text-gray-800 mb-3 flex items-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                    </svg>
+                    Resumen por Máquina
+                </h4>
+                <div id="resumenMaquinas" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                    <!-- Se llenará dinámicamente -->
+                </div>
+            </div>
+
+            <!-- Detalle de elementos -->
+            <div class="p-6">
+                <h4 class="font-semibold text-gray-800 mb-3 flex items-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                    </svg>
+                    Detalle de Elementos Redistribuidos
+                </h4>
+                <div class="overflow-x-auto max-h-96 overflow-y-auto">
+                    <table class="min-w-full divide-y divide-gray-200 text-sm">
+                        <thead class="bg-gray-50 sticky top-0">
+                            <tr>
+                                <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">ID</th>
+                                <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Marca</th>
+                                <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Ø</th>
+                                <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Peso</th>
+                                <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Planilla</th>
+                                <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Máquina Anterior</th>
+                                <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Nueva Máquina</th>
+                            </tr>
+                        </thead>
+                        <tbody id="detalleElementos" class="bg-white divide-y divide-gray-200">
+                            <!-- Se llenará dinámicamente -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="bg-gray-50 px-6 py-4 rounded-b-lg flex justify-between items-center sticky bottom-0">
+                <button onclick="descargarReporte()" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg transition-colors flex items-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                    Descargar Reporte
+                </button>
+                <button onclick="cerrarModalResultados()" class="bg-green-500 hover:bg-green-600 text-white px-6 py-2 rounded-lg transition-colors">
+                    Aceptar
+                </button>
+            </div>
+        </div>
+    </div>
+
     <style>
         /* Contenedor calendario */
         #contenedor-calendario {
@@ -457,6 +599,41 @@
             animation: pulso-resaltado 1.5s ease-in-out infinite;
         }
 
+        /* ===== HEADER FIJO DEL CALENDARIO ===== */
+        /* Hacer sticky el header de las columnas de fecha/hora */
+        .fc-col-header {
+            position: sticky !important;
+            top: 0 !important;
+            z-index: 5 !important;
+            background-color: white !important;
+        }
+
+        /* Hacer sticky el header del área de recursos (máquinas) */
+        .fc-datagrid-header {
+            position: sticky !important;
+            top: 0 !important;
+            z-index: 6 !important;
+            background-color: white !important;
+        }
+
+        /* Asegurar que el scrollable del calendario no oculte los headers */
+        .fc-scroller {
+            overflow-y: auto !important;
+        }
+
+        /* Agregar sombra al header para mejorar la visibilidad */
+        .fc-col-header::after,
+        .fc-datagrid-header::after {
+            content: '';
+            position: absolute;
+            bottom: -4px;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(to bottom, rgba(0,0,0,0.1), transparent);
+            pointer-events: none;
+        }
+
         /* Indicador de posición durante arrastre */
         #indicador_posicion {
             transition: left 0.05s ease-out, top 0.05s ease-out;
@@ -508,7 +685,35 @@
                 nextDayThreshold: '06:00:00',
                 resourceLabelContent: function(arg) {
                     return {
-                        html: `<a href="/maquinas/${arg.resource.id}" class="text-blue-600 hover:text-blue-800 hover:underline font-semibold">${arg.resource.title}</a>`
+                        html: `
+                            <div class="flex items-center justify-between gap-1 w-full">
+                                <a href="/maquinas/${arg.resource.id}"
+                                   class="text-blue-600 hover:text-blue-800 hover:underline font-semibold flex-1 maquina-nombre"
+                                   data-maquina-id="${arg.resource.id}"
+                                   data-maquina-titulo="${arg.resource.title}">${arg.resource.title}</a>
+                                <div class="flex gap-1">
+                                    <button
+                                        onclick="event.stopPropagation(); abrirModalEstado(${arg.resource.id})"
+                                        class="bg-blue-500 hover:bg-blue-600 text-white px-2 py-1 rounded text-xs"
+                                        title="Cambiar estado"
+                                        data-maquina-id="${arg.resource.id}">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                        </svg>
+                                    </button>
+                                    <button
+                                        onclick="event.stopPropagation(); abrirModalRedistribuir(${arg.resource.id})"
+                                        class="bg-orange-500 hover:bg-orange-600 text-white px-2 py-1 rounded text-xs"
+                                        title="Redistribuir cola"
+                                        data-maquina-id="${arg.resource.id}">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                                        </svg>
+                                    </button>
+                                </div>
+                            </div>
+                        `
                     };
                 },
                 views: {
@@ -529,9 +734,22 @@
                 locale: 'es',
                 timeZone: 'Europe/Madrid',
                 initialDate: "{{ $initialDate }}",
-                resources: maquinas,
-                resourceOrder: false, // ✅ Mantener el orden del array sin reordenar por ID
-                events: planillas,
+                // ✅ CAMBIO: Usar endpoints dinámicos en lugar de datos estáticos
+                resources: {
+                    url: '{{ route("api.produccion.recursos") }}',
+                    failure: function(error) {
+                        console.error('❌ Error al cargar recursos:', error);
+                        alert('Error al cargar las máquinas. Revisa la consola.');
+                    }
+                },
+                resourceOrder: false,
+                events: {
+                    url: '{{ route("api.produccion.eventos") }}',
+                    failure: function(error) {
+                        console.error('❌ Error al cargar eventos:', error);
+                        alert('Error al cargar los eventos. Revisa la consola.');
+                    }
+                },
                 height: 'auto',
                 scrollTime: '06:00:00',
                 editable: true,
@@ -2201,44 +2419,291 @@
                 // No necesitamos hacer nada especial aquí
             }
 
-            function mostrarNotificacion(mensaje, tipo = 'info') {
-                // Colores según tipo
-                const colores = {
-                    'info': 'bg-blue-600',
-                    'success': 'bg-green-600',
-                    'warning': 'bg-yellow-600',
-                    'error': 'bg-red-600'
-                };
+        });
 
-                const iconos = {
-                    'info': '🔄',
-                    'success': '✅',
-                    'warning': '⚠️',
-                    'error': '❌'
-                };
+        // ============================================================
+        // FUNCIONES GLOBALES (fuera de DOMContentLoaded)
+        // ============================================================
 
-                const toast = document.createElement('div');
-                toast.className = `fixed top-4 right-4 ${colores[tipo]} text-white px-4 py-3 rounded-lg shadow-lg z-[9999] transition-opacity duration-300`;
+        // Función para mostrar notificaciones toast
+        function mostrarNotificacion(mensaje, tipo = 'info') {
+            const colores = {
+                'info': 'bg-blue-600',
+                'success': 'bg-green-600',
+                'warning': 'bg-yellow-600',
+                'error': 'bg-red-600'
+            };
+
+            const iconos = {
+                'info': '🔄',
+                'success': '✅',
+                'warning': '⚠️',
+                'error': '❌'
+            };
+
+            const toast = document.createElement('div');
+            toast.className = `fixed top-4 right-4 ${colores[tipo]} text-white px-4 py-3 rounded-lg shadow-lg z-[9999] transition-opacity duration-300`;
+            toast.style.opacity = '0';
+            toast.innerHTML = `
+                <div class="flex items-center gap-2">
+                    <span class="text-xl">${iconos[tipo]}</span>
+                    <span class="font-medium">${mensaje}</span>
+                </div>
+            `;
+
+            document.body.appendChild(toast);
+
+            // Fade in
+            setTimeout(() => toast.style.opacity = '1', 10);
+
+            // Fade out y remover
+            setTimeout(() => {
                 toast.style.opacity = '0';
-                toast.innerHTML = `
-                    <div class="flex items-center gap-2">
-                        <span class="text-xl">${iconos[tipo]}</span>
-                        <span class="font-medium">${mensaje}</span>
-                    </div>
-                `;
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
 
-                document.body.appendChild(toast);
+        let maquinaActualId = null;
 
-                // Fade in
-                setTimeout(() => toast.style.opacity = '1', 10);
+        // Modal Estado
+        function abrirModalEstado(maquinaId) {
+            console.log('🔵 abrirModalEstado llamado con ID:', maquinaId, 'tipo:', typeof maquinaId);
+            maquinaActualId = maquinaId;
+            console.log('🔵 maquinaActualId establecido en:', maquinaActualId);
 
-                // Fade out y remover
-                setTimeout(() => {
-                    toast.style.opacity = '0';
-                    setTimeout(() => toast.remove(), 300);
-                }, 3000);
+            // Obtener el título del enlace usando el data-maquina-id
+            const link = document.querySelector(`a.maquina-nombre[data-maquina-id="${maquinaId}"]`);
+            const nombreMaquina = link ? link.textContent : 'Máquina';
+            console.log('🔵 Nombre de máquina obtenido del DOM:', nombreMaquina);
+
+            document.getElementById('nombreMaquinaEstado').textContent = nombreMaquina;
+            const modal = document.getElementById('modalEstado');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        }
+
+        function cerrarModalEstado() {
+            const modal = document.getElementById('modalEstado');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+            maquinaActualId = null;
+        }
+
+        async function cambiarEstado(nuevoEstado) {
+            if (!maquinaActualId) return;
+
+            try {
+                const csrfToken = document.querySelector('meta[name="csrf-token"]');
+                if (!csrfToken) {
+                    console.error('No se encontró el token CSRF');
+                    alert('Error: No se encontró el token de seguridad. Recarga la página.');
+                    return;
+                }
+
+                const response = await fetch(`/maquinas/${maquinaActualId}/cambiar-estado`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': csrfToken.content
+                    },
+                    body: JSON.stringify({ estado: nuevoEstado })
+                });
+
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    console.error('Error del servidor:', errorText);
+                    throw new Error(`Error HTTP ${response.status}: ${response.statusText}`);
+                }
+
+                const data = await response.json();
+
+                if (data.success) {
+                    cerrarModalEstado();
+                    console.log('✅ Estado actualizado en el servidor');
+
+                    // Refrescar recursos para obtener el emoji actualizado del endpoint
+                    calendar.refetchResources();
+                    console.log('✅ Recursos refrescados desde el endpoint');
+                } else {
+                    alert('Error al cambiar el estado: ' + (data.mensaje || 'Error desconocido'));
+                }
+            } catch (error) {
+                console.error('Error completo:', error);
+                alert('Error al comunicarse con el servidor: ' + error.message);
+            }
+        }
+
+        // Modal Redistribuir
+        function abrirModalRedistribuir(maquinaId) {
+            console.log('🟠 abrirModalRedistribuir llamado con ID:', maquinaId);
+            maquinaActualId = maquinaId;
+
+            // Obtener el título del enlace usando el data-maquina-id
+            const link = document.querySelector(`a.maquina-nombre[data-maquina-id="${maquinaId}"]`);
+            const nombreMaquina = link ? link.textContent : 'Máquina';
+
+            document.getElementById('nombreMaquinaRedistribuir').textContent = nombreMaquina;
+            const modal = document.getElementById('modalRedistribuir');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        }
+
+        function cerrarModalRedistribuir() {
+            const modal = document.getElementById('modalRedistribuir');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+            maquinaActualId = null;
+        }
+
+        let datosRedistribucion = null; // Para almacenar los datos para el reporte
+
+        async function redistribuir(tipo) {
+            if (!maquinaActualId) return;
+
+            if (!confirm(`¿Estás seguro de redistribuir ${tipo === 'todos' ? 'TODOS los elementos' : 'los primeros elementos'} de esta máquina?`)) {
+                return;
             }
 
+            try {
+                const csrfToken = document.querySelector('meta[name="csrf-token"]');
+                if (!csrfToken) {
+                    console.error('No se encontró el token CSRF');
+                    alert('Error: No se encontró el token de seguridad. Recarga la página.');
+                    return;
+                }
+
+                const response = await fetch(`/maquinas/${maquinaActualId}/redistribuir`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': csrfToken.content
+                    },
+                    body: JSON.stringify({ tipo: tipo })
+                });
+
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    console.error('Error del servidor:', errorText);
+                    throw new Error(`Error HTTP ${response.status}: ${response.statusText}`);
+                }
+
+                const data = await response.json();
+
+                if (data.success) {
+                    cerrarModalRedistribuir();
+                    // Guardar datos para el reporte
+                    datosRedistribucion = data;
+                    // Mostrar modal de resultados
+                    mostrarResultados(data);
+                } else {
+                    alert('Error al redistribuir: ' + (data.mensaje || 'Error desconocido'));
+                }
+            } catch (error) {
+                console.error('Error completo:', error);
+                alert('Error al comunicarse con el servidor: ' + error.message);
+            }
+        }
+
+        function mostrarResultados(data) {
+            // Actualizar mensaje principal
+            document.getElementById('mensajeResultados').textContent = data.mensaje;
+
+            // Llenar resumen por máquina
+            const resumenMaquinas = document.getElementById('resumenMaquinas');
+            resumenMaquinas.innerHTML = '';
+
+            data.resumen.forEach(maquina => {
+                const card = document.createElement('div');
+                card.className = 'bg-blue-50 border border-blue-200 rounded-lg p-4';
+                card.innerHTML = `
+                    <div class="font-semibold text-blue-900 mb-2">${maquina.nombre}</div>
+                    <div class="text-sm text-blue-700">
+                        <div>📦 ${maquina.cantidad} elemento${maquina.cantidad !== 1 ? 's' : ''}</div>
+                        <div>⚖️ ${maquina.peso_total.toFixed(2)} kg</div>
+                    </div>
+                `;
+                resumenMaquinas.appendChild(card);
+            });
+
+            // Llenar tabla de detalles
+            const detalleElementos = document.getElementById('detalleElementos');
+            detalleElementos.innerHTML = '';
+
+            data.detalles.forEach(elemento => {
+                const row = document.createElement('tr');
+                row.className = 'hover:bg-gray-50';
+                row.innerHTML = `
+                    <td class="px-3 py-2 whitespace-nowrap text-gray-900">${elemento.elemento_id}</td>
+                    <td class="px-3 py-2 whitespace-nowrap text-gray-600">${elemento.marca}</td>
+                    <td class="px-3 py-2 whitespace-nowrap text-gray-600">${elemento.diametro}</td>
+                    <td class="px-3 py-2 whitespace-nowrap text-gray-600">${elemento.peso} kg</td>
+                    <td class="px-3 py-2 whitespace-nowrap text-gray-600">${elemento.planilla}</td>
+                    <td class="px-3 py-2 whitespace-nowrap text-gray-500">${elemento.maquina_anterior}</td>
+                    <td class="px-3 py-2 whitespace-nowrap">
+                        <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                            ${elemento.maquina_nueva}
+                        </span>
+                    </td>
+                `;
+                detalleElementos.appendChild(row);
+            });
+
+            // Mostrar el modal
+            const modal = document.getElementById('modalResultados');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        }
+
+        function cerrarModalResultados() {
+            const modal = document.getElementById('modalResultados');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+
+            // Refrescar tanto eventos como recursos desde los endpoints
+            if (calendar) {
+                calendar.refetchResources();  // Por si cambiaron estados de máquinas
+                calendar.refetchEvents();      // Para mostrar elementos redistribuidos
+                console.log('✅ Recursos y eventos refrescados después de redistribución');
+            }
+        }
+
+        function descargarReporte() {
+            if (!datosRedistribucion) return;
+
+            // Crear contenido CSV
+            let csv = 'ID,Marca,Diámetro,Peso (kg),Planilla,Máquina Anterior,Nueva Máquina\n';
+
+            datosRedistribucion.detalles.forEach(elemento => {
+                csv += `${elemento.elemento_id},"${elemento.marca}",${elemento.diametro},${elemento.peso},"${elemento.planilla}","${elemento.maquina_anterior}","${elemento.maquina_nueva}"\n`;
+            });
+
+            // Agregar resumen al final
+            csv += '\n\nRESUMEN POR MÁQUINA\n';
+            csv += 'Máquina,Cantidad,Peso Total (kg)\n';
+            datosRedistribucion.resumen.forEach(maquina => {
+                csv += `"${maquina.nombre}",${maquina.cantidad},${maquina.peso_total.toFixed(2)}\n`;
+            });
+
+            // Crear y descargar archivo
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            const url = URL.createObjectURL(blob);
+
+            const fecha = new Date().toISOString().split('T')[0];
+            link.setAttribute('href', url);
+            link.setAttribute('download', `redistribucion_${fecha}.csv`);
+            link.style.visibility = 'hidden';
+
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        // ============================================================
+
+        document.addEventListener('DOMContentLoaded', function() {
             // Iniciar polling al cargar
             console.log('📅 Calendario de producción inicializado');
             iniciarPolling();
