@@ -203,7 +203,7 @@
 
                                 <!-- Columna Mensaje -->
                                 <td class="px-4 py-3">
-                                    <div class="flex items-start space-x-2">
+                                    <div class="flex items-start justify-between space-x-2">
                                         <div class="flex-1 min-w-0">
                                             <p class="text-gray-800 line-clamp-2" title="{{ $alerta->mensaje_completo }}">
                                                 {{ $alerta->mensaje_corto }}
@@ -214,6 +214,14 @@
                                                 </span>
                                             @endif
                                         </div>
+                                        @if ($alerta->total_respuestas > 0)
+                                            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-blue-100 text-blue-800 border border-blue-200 whitespace-nowrap">
+                                                <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                                    <path fill-rule="evenodd" d="M18 10c0 3.866-3.582 7-8 7a8.841 8.841 0 01-4.083-.98L2 17l1.338-3.123C2.493 12.767 2 11.434 2 10c0-3.866 3.582-7 8-7s8 3.134 8 7zM7 9H5v2h2V9zm8 0h-2v2h2V9zM9 9h2v2H9V9z" clip-rule="evenodd"/>
+                                                </svg>
+                                                {{ $alerta->total_respuestas }}
+                                            </span>
+                                        @endif
                                     </div>
                                 </td>
 
@@ -330,14 +338,26 @@
                                 <p class="text-sm text-gray-800 line-clamp-3">
                                     {{ $alerta->mensaje_corto }}
                                 </p>
-                                @if (strlen($alerta->mensaje_completo) > strlen($alerta->mensaje_corto))
-                                    <button class="text-xs text-blue-600 font-medium mt-2 flex items-center">
-                                        <span>Ver mensaje completo</span>
-                                        <svg class="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
-                                        </svg>
-                                    </button>
-                                @endif
+
+                                <div class="flex items-center justify-between mt-2">
+                                    @if (strlen($alerta->mensaje_completo) > strlen($alerta->mensaje_corto))
+                                        <button class="text-xs text-blue-600 font-medium flex items-center">
+                                            <span>Ver mensaje completo</span>
+                                            <svg class="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                                            </svg>
+                                        </button>
+                                    @endif
+
+                                    @if ($alerta->total_respuestas > 0)
+                                        <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-800 border border-blue-200">
+                                            <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                                <path fill-rule="evenodd" d="M18 10c0 3.866-3.582 7-8 7a8.841 8.841 0 01-4.083-.98L2 17l1.338-3.123C2.493 12.767 2 11.434 2 10c0-3.866 3.582-7 8-7s8 3.134 8 7zM7 9H5v2h2V9zm8 0h-2v2h2V9zM9 9h2v2H9V9z" clip-rule="evenodd"/>
+                                            </svg>
+                                            {{ $alerta->total_respuestas }} {{ $alerta->total_respuestas == 1 ? 'respuesta' : 'respuestas' }}
+                                        </span>
+                                    @endif
+                                </div>
                             </div>
 
                             <!-- Footer -->
@@ -737,13 +757,16 @@
 
                 <!-- Hilo de conversación -->
                 <div id="hiloConversacion" class="mt-4 hidden">
-                    <h3 class="text-sm font-semibold text-gray-700 mb-2 flex items-center">
-                        <svg class="w-4 h-4 mr-2 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
-                            <path fill-rule="evenodd" d="M18 10c0 3.866-3.582 7-8 7a8.841 8.841 0 01-4.083-.98L2 17l1.338-3.123C2.493 12.767 2 11.434 2 10c0-3.866 3.582-7 8-7s8 3.134 8 7zM7 9H5v2h2V9zm8 0h-2v2h2V9zM9 9h2v2H9V9z" clip-rule="evenodd"/>
-                        </svg>
-                        Conversación anterior
-                    </h3>
-                    <div id="hiloContenido" class="space-y-2 max-h-60 overflow-y-auto bg-gray-50 rounded-lg p-3 border border-gray-200">
+                    <div class="bg-gradient-to-r from-blue-500 to-blue-600 rounded-t-lg px-4 py-2 flex items-center justify-between">
+                        <h3 class="text-sm font-bold text-white flex items-center">
+                            <svg class="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M18 10c0 3.866-3.582 7-8 7a8.841 8.841 0 01-4.083-.98L2 17l1.338-3.123C2.493 12.767 2 11.434 2 10c0-3.866 3.582-7 8-7s8 3.134 8 7zM7 9H5v2h2V9zm8 0h-2v2h2V9zM9 9h2v2H9V9z" clip-rule="evenodd"/>
+                            </svg>
+                            Historial de conversación
+                        </h3>
+                        <span id="contadorRespuestas" class="text-xs text-white bg-white bg-opacity-20 px-2 py-0.5 rounded-full font-medium"></span>
+                    </div>
+                    <div id="hiloContenido" class="space-y-2 max-h-96 overflow-y-auto bg-gradient-to-b from-gray-50 to-white rounded-b-lg p-4 border-x border-b border-gray-200">
                         <!-- Se llenará dinámicamente -->
                     </div>
                 </div>
@@ -1143,9 +1166,24 @@
             fetch(`/alertas/${alertaId}/hilo`)
                 .then(response => response.json())
                 .then(data => {
-                    if (data.success && data.hilo.respuestas && data.hilo.respuestas.length > 0) {
-                        mostrarHilo(data.hilo.respuestas);
-                        document.getElementById('hiloConversacion').classList.remove('hidden');
+                    if (data.success && data.hilo) {
+                        const hiloContenido = document.getElementById('hiloContenido');
+                        hiloContenido.innerHTML = '';
+
+                        // Si hay respuestas, mostrar todo el hilo (mensaje raíz + respuestas)
+                        if (data.hilo.respuestas && data.hilo.respuestas.length > 0) {
+                            // Contar total de respuestas (recursivo)
+                            const totalRespuestas = contarRespuestas(data.hilo.respuestas);
+                            document.getElementById('contadorRespuestas').textContent = `${totalRespuestas} ${totalRespuestas === 1 ? 'respuesta' : 'respuestas'}`;
+
+                            // Primero mostrar el mensaje raíz
+                            mostrarMensajeEnHilo(data.hilo, 0, true);
+                            // Luego mostrar las respuestas
+                            mostrarHilo(data.hilo.respuestas, 1);
+                            document.getElementById('hiloConversacion').classList.remove('hidden');
+                        } else {
+                            document.getElementById('hiloConversacion').classList.add('hidden');
+                        }
                     } else {
                         document.getElementById('hiloConversacion').classList.add('hidden');
                     }
@@ -1156,6 +1194,40 @@
                 });
         }
 
+        function contarRespuestas(respuestas) {
+            let total = respuestas.length;
+            respuestas.forEach(respuesta => {
+                if (respuesta.respuestas && respuesta.respuestas.length > 0) {
+                    total += contarRespuestas(respuesta.respuestas);
+                }
+            });
+            return total;
+        }
+
+        function mostrarMensajeEnHilo(mensaje, nivel, esRaiz = false) {
+            const hiloContenido = document.getElementById('hiloContenido');
+            const margenIzquierdo = nivel * 20;
+            const esPropio = mensaje.es_propio;
+            const colorBorde = esPropio ? 'border-blue-500' : 'border-green-500';
+            const colorFondo = esPropio ? 'bg-blue-50' : 'bg-green-50';
+            const etiquetaRaiz = esRaiz ? '<span class="ml-2 px-2 py-0.5 bg-gray-200 text-gray-700 text-xs rounded-full font-medium">Mensaje original</span>' : '';
+
+            const mensajeDiv = document.createElement('div');
+            mensajeDiv.className = `border-l-4 ${colorBorde} ${colorFondo} rounded-r-lg p-3 mb-2 shadow-sm`;
+            mensajeDiv.style.marginLeft = `${margenIzquierdo}px`;
+            mensajeDiv.innerHTML = `
+                <div class="flex items-start justify-between mb-1">
+                    <p class="text-xs font-bold ${esPropio ? 'text-blue-700' : 'text-green-700'}">
+                        ${mensaje.emisor}${etiquetaRaiz}
+                    </p>
+                    <span class="text-xs text-gray-500">${mensaje.created_at}</span>
+                </div>
+                <p class="text-sm text-gray-800 leading-relaxed whitespace-pre-wrap">${mensaje.mensaje}</p>
+            `;
+
+            hiloContenido.appendChild(mensajeDiv);
+        }
+
         function mostrarHilo(respuestas, nivel = 0) {
             const hiloContenido = document.getElementById('hiloContenido');
 
@@ -1164,19 +1236,23 @@
             }
 
             respuestas.forEach(respuesta => {
-                const margenIzquierdo = nivel * 16;
+                const margenIzquierdo = nivel * 20;
                 const esPropio = respuesta.es_propio;
                 const colorBorde = esPropio ? 'border-blue-500' : 'border-green-500';
                 const colorFondo = esPropio ? 'bg-blue-50' : 'bg-green-50';
+                const iconoRespuesta = nivel > 0 ? '<svg class="w-3 h-3 mr-1 inline" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M7.707 3.293a1 1 0 010 1.414L5.414 7H11a7 7 0 017 7v2a1 1 0 11-2 0v-2a5 5 0 00-5-5H5.414l2.293 2.293a1 1 0 11-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>' : '';
 
                 const respuestaDiv = document.createElement('div');
-                respuestaDiv.className = `border-l-2 ${colorBorde} ${colorFondo} rounded-r-lg p-2 text-sm`;
+                respuestaDiv.className = `border-l-4 ${colorBorde} ${colorFondo} rounded-r-lg p-3 mb-2 shadow-sm hover:shadow-md transition-shadow duration-200`;
                 respuestaDiv.style.marginLeft = `${margenIzquierdo}px`;
                 respuestaDiv.innerHTML = `
-                    <p class="text-xs text-gray-600 font-semibold mb-1">
-                        ${respuesta.emisor} <span class="text-gray-400">• ${respuesta.created_at}</span>
-                    </p>
-                    <p class="text-gray-800">${respuesta.mensaje}</p>
+                    <div class="flex items-start justify-between mb-1">
+                        <p class="text-xs font-bold ${esPropio ? 'text-blue-700' : 'text-green-700'}">
+                            ${iconoRespuesta}${respuesta.emisor}
+                        </p>
+                        <span class="text-xs text-gray-500">${respuesta.created_at}</span>
+                    </div>
+                    <p class="text-sm text-gray-800 leading-relaxed whitespace-pre-wrap">${respuesta.mensaje}</p>
                 `;
 
                 hiloContenido.appendChild(respuestaDiv);
