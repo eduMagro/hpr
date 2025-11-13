@@ -455,6 +455,10 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
     // API: Eliminar localización
     Route::delete('/localizaciones/{id}', [LocalizacionController::class, 'destroy'])
         ->name('localizaciones.destroy');
+
+
+    Route::post('/paquetes/desde-maquina', [PaqueteController::class, 'storeDesdeMaquina'])
+        ->name('paquetes.storeDesdeMaquina');
 });
 
 
