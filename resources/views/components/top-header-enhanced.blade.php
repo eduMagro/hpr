@@ -43,6 +43,7 @@
                    x-transition:leave-start="opacity-100 transform translate-y-0"
                    x-transition:leave-end="opacity-0 transform -translate-y-16"
                    href="{{ route('dashboard') }}"
+                   wire:navigate
                    class="flex items-center space-x-3 group relative z-50">
                     <x-application-logo class="block h-8 w-auto fill-current text-gray-800 dark:text-gray-200 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition" />
                 </a>
@@ -77,6 +78,7 @@
                         <div class="grid grid-cols-2 gap-2 p-3">
                             <!-- Nueva Planilla -->
                             <a href="{{ route('planillas.create') }}"
+                               wire:navigate
                                class="flex flex-col items-center p-3 rounded-lg hover:bg-gray-700 dark:hover:bg-gray-700 transition text-center group">
                                 <span class="text-2xl mb-1">📄</span>
                                 <span class="text-xs font-medium text-gray-300 dark:text-gray-300 group-hover:text-blue-600 dark:group-hover:text-blue-400">Nueva Planilla</span>
@@ -84,6 +86,7 @@
 
                             <!-- Nueva Entrada -->
                             <a href="{{ route('entradas.create') }}"
+                               wire:navigate
                                class="flex flex-col items-center p-3 rounded-lg hover:bg-gray-700 dark:hover:bg-gray-700 transition text-center group">
                                 <span class="text-2xl mb-1">⬇️</span>
                                 <span class="text-xs font-medium text-gray-300 dark:text-gray-300 group-hover:text-blue-600 dark:group-hover:text-blue-400">Nueva Entrada</span>
@@ -91,6 +94,7 @@
 
                             <!-- Nueva Salida -->
                             <a href="{{ route('salidas-ferralla.create') }}"
+                               wire:navigate
                                class="flex flex-col items-center p-3 rounded-lg hover:bg-gray-700 dark:hover:bg-gray-700 transition text-center group">
                                 <span class="text-2xl mb-1">➡️</span>
                                 <span class="text-xs font-medium text-gray-300 dark:text-gray-300 group-hover:text-blue-600 dark:group-hover:text-blue-400">Nueva Salida</span>
@@ -98,6 +102,7 @@
 
                             <!-- Nuevo Pedido -->
                             <a href="{{ route('pedidos.create') }}"
+                               wire:navigate
                                class="flex flex-col items-center p-3 rounded-lg hover:bg-gray-700 dark:hover:bg-gray-700 transition text-center group">
                                 <span class="text-2xl mb-1">🛒</span>
                                 <span class="text-xs font-medium text-gray-300 dark:text-gray-300 group-hover:text-blue-600 dark:group-hover:text-blue-400">Nuevo Pedido</span>
@@ -105,6 +110,7 @@
 
                             <!-- Nuevo Cliente -->
                             <a href="{{ route('clientes.create') }}"
+                               wire:navigate
                                class="flex flex-col items-center p-3 rounded-lg hover:bg-gray-700 dark:hover:bg-gray-700 transition text-center group">
                                 <span class="text-2xl mb-1">👥</span>
                                 <span class="text-xs font-medium text-gray-300 dark:text-gray-300 group-hover:text-blue-600 dark:group-hover:text-blue-400">Nuevo Cliente</span>
@@ -112,6 +118,7 @@
 
                             <!-- Estadísticas -->
                             <a href="{{ route('estadisticas.index') }}"
+                               wire:navigate
                                class="flex flex-col items-center p-3 rounded-lg hover:bg-gray-700 dark:hover:bg-gray-700 transition text-center group">
                                 <span class="text-2xl mb-1">📊</span>
                                 <span class="text-xs font-medium text-gray-300 dark:text-gray-300 group-hover:text-blue-600 dark:group-hover:text-blue-400">Estadísticas</span>
@@ -125,6 +132,7 @@
             <div class="flex items-center space-x-2 sm:space-x-4">
                 <!-- Notificaciones - Enlace directo a alertas -->
                 <a href="{{ route('alertas.index') }}"
+                   wire:navigate
                    class="relative p-2 text-gray-300 dark:text-gray-400 hover:bg-gray-700 dark:hover:bg-gray-700 rounded-lg transition"
                    title="Ver mensajes">
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -160,6 +168,7 @@
 
                         <div class="py-2">
                             <a href="{{ route('usuarios.show', auth()->id()) }}"
+                               wire:navigate
                                class="flex items-center space-x-3 px-4 py-2 text-sm text-gray-300 dark:text-gray-300 hover:bg-gray-700 dark:hover:bg-gray-700 transition">
                                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
@@ -168,6 +177,7 @@
                             </a>
 
                             <a href="{{ route('dashboard') }}"
+                               wire:navigate
                                class="flex items-center space-x-3 px-4 py-2 text-sm text-gray-300 dark:text-gray-300 hover:bg-gray-700 dark:hover:bg-gray-700 transition">
                                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path>
@@ -176,6 +186,7 @@
                             </a>
 
                             <a href="{{ route('ayuda.index') }}"
+                               wire:navigate
                                class="flex items-center space-x-3 px-4 py-2 text-sm text-gray-300 dark:text-gray-300 hover:bg-gray-700 dark:hover:bg-gray-700 transition">
                                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
@@ -204,34 +215,39 @@
 </nav>
 
 <!-- Script para actualizar el contador de alertas en la campanita -->
-<script>
-    document.addEventListener("DOMContentLoaded", function() {
-        function actualizarContadorCampanita() {
-            fetch("{{ route('alertas.verSinLeer') }}", {
-                    headers: {
-                        'Accept': 'application/json'
-                    },
-                    credentials: 'same-origin'
-                })
-                .then(response => response.json())
-                .then(data => {
-                    const badge = document.getElementById('alerta-count');
-                    if (badge) {
-                        if (data.cantidad > 0) {
-                            badge.textContent = data.cantidad;
-                            badge.classList.remove('hidden');
-                        } else {
-                            badge.classList.add('hidden');
-                        }
+<script data-navigate-once>
+    function actualizarContadorCampanita() {
+        fetch("{{ route('alertas.verSinLeer') }}", {
+                headers: {
+                    'Accept': 'application/json'
+                },
+                credentials: 'same-origin'
+            })
+            .then(response => response.json())
+            .then(data => {
+                const badge = document.getElementById('alerta-count');
+                if (badge) {
+                    if (data.cantidad > 0) {
+                        badge.textContent = data.cantidad;
+                        badge.classList.remove('hidden');
+                    } else {
+                        badge.classList.add('hidden');
                     }
-                })
-                .catch(error => console.error("Error al obtener alertas:", error));
-        }
+                }
+            })
+            .catch(error => console.error("Error al obtener alertas:", error));
+    }
 
+    document.addEventListener("DOMContentLoaded", function() {
         // Actualizar al cargar la página
         actualizarContadorCampanita();
 
         // Actualizar cada 30 segundos
         setInterval(actualizarContadorCampanita, 30000);
+    });
+
+    // También actualizar cuando Livewire navegue
+    document.addEventListener('livewire:navigated', () => {
+        actualizarContadorCampanita();
     });
 </script>

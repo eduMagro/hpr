@@ -233,6 +233,7 @@
                x-transition:leave-start="opacity-100 transform translate-y-0"
                x-transition:leave-end="opacity-0 transform -translate-y-16"
                href="{{ route('dashboard') }}"
+               wire:navigate
                class="flex items-center space-x-3 group relative z-50">
                 <x-application-logo
                     class="block h-8 w-auto fill-current text-gray-800 dark:text-gray-200 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition" />
@@ -311,6 +312,7 @@
                         <div
                             class="flex items-center group px-3 py-2 rounded-lg hover:bg-gray-700 transition">
                             <a :href="`{{ url('/') }}${getRouteUrl(fav.route)}`"
+                                wire:navigate
                                 class="flex items-center space-x-2 flex-1 min-w-0">
                                 <span x-text="fav.icon"></span>
                                 <div class="flex-1 min-w-0">
@@ -372,6 +374,7 @@
                     <template x-for="page in recentPages.slice(0, 5)"
                         :key="page.route">
                         <a :href="`{{ url('/') }}${getRouteUrl(page.route)}`"
+                            wire:navigate
                             class="flex items-center space-x-2 px-3 py-2 rounded-lg text-sm hover:bg-gray-700 transition group">
                             <span x-text="page.icon"></span>
                             <div class="flex-1 min-w-0">

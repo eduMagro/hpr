@@ -33,13 +33,12 @@
     <!-- ✅ Tailwind (si lo usas como principal) -->
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
 
-    <!-- ✅ Solo una versión de Alpine.js -->
-    <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+    <!-- Alpine.js ya está incluido en Livewire 3, NO cargar desde CDN -->
 
     <!-- ✅ Librerías que no bloquean renderizado -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js" defer></script>
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11" defer></script>
-    <script src="https://cdn.jsdelivr.net/npm/qrcodejs/qrcode.min.js" defer></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js" defer data-navigate-track="reload"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11" defer data-navigate-track="reload"></script>
+    <script src="https://cdn.jsdelivr.net/npm/qrcodejs/qrcode.min.js" defer data-navigate-track="reload"></script>
 
     <!-- ✅ FullCalendar (solo si es necesario en esta vista) -->
     @stack('calendar') {{-- así solo lo cargas si lo necesitas --}}
@@ -82,13 +81,17 @@
 
 <body class="font-sans antialiased transition-colors duration-200">
     <div class="flex h-screen bg-gray-100 dark:bg-gray-900 overflow-hidden">
-        <!-- Sidebar Menu Enhanced -->
-        <x-sidebar-menu-enhanced />
+        <!-- Sidebar Menu Enhanced - Persistente -->
+        @persist('sidebar')
+            <x-sidebar-menu-enhanced />
+        @endpersist
 
         <!-- Main Content Area -->
         <div class="flex-1 flex flex-col overflow-hidden">
-            <!-- Top Header Enhanced -->
-            <x-top-header-enhanced />
+            <!-- Top Header Enhanced - Persistente -->
+            @persist('header')
+                <x-top-header-enhanced />
+            @endpersist
 
             <!-- Alerts -->
             @include('layouts.alerts')
@@ -120,14 +123,20 @@
 
     <!-- Livewire Scripts -->
     @livewireScripts
-    <script src="https://cdn.tailwindcss.com"></script>
 
     <!-- Dark Mode Support Script -->
-    <script>
+    <script data-navigate-once>
         // Aplicar dark mode desde localStorage al cargar
         if (localStorage.getItem('dark_mode') === 'true') {
             document.documentElement.classList.add('dark');
         }
+
+        // Re-aplicar en cada navegación de Livewire
+        document.addEventListener('livewire:navigated', () => {
+            if (localStorage.getItem('dark_mode') === 'true') {
+                document.documentElement.classList.add('dark');
+            }
+        });
     </script>
 </body>
 
