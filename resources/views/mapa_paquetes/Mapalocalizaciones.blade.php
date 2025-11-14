@@ -557,6 +557,10 @@
         /* Cursor del mapa para indicar que se puede arrastrar */
         #escenario-cuadricula {
             cursor: grab;
+            user-select: none;
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
         }
 
         #escenario-cuadricula:active {
