@@ -457,8 +457,8 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
         ->name('localizaciones.destroy');
 
 
-    Route::post('/paquetes/desde-maquina', [PaqueteController::class, 'storeDesdeMaquina'])
-        ->name('paquetes.storeDesdeMaquina');
+    Route::post('/paquetes/desde-maquina', [PaqueteController::class, 'store'])
+        ->name('paquetes.store');
 });
 
 

@@ -425,7 +425,7 @@
 
                 try {
                     const resp = await fetch(
-                        "{{ route('paquetes.storeDesdeMaquina') }}", {
+                        "{{ route('paquetes.store') }}", {
                             method: 'POST',
                             headers: {
                                 'Content-Type': 'application/json',

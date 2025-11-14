@@ -15,27 +15,26 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
 use Illuminate\Support\Facades\DB;
 use App\Services\PlanillaColaService;
-use App\Services\LocalizacionPaqueteService;
 use Illuminate\Http\JsonResponse;
-use App\Services\LocalizacionPaquetesService;
+use App\Services\LocalizacionPaqueteService;
 
 class PaqueteController extends Controller
 {
 
     private function aplicarFiltros(Request $request, $query)
     {
-        /* â”€â”€ Filtro por ID â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+        /* ── Filtro por ID ─────────────────────────────── */
         if ($request->filled('id') && is_numeric($request->id)) {
             $query->where('id', (int) $request->id);
         }
 
-        /* â”€â”€ Filtro por cÃ³digo de planilla â”€â”€â”€â”€â”€â”€â”€â”€ */
+        /* ── Filtro por código de planilla ──────── */
         if ($request->filled('planilla')) {
             $input = trim($request->planilla);
 
             $query->whereHas('planilla', function ($q) use ($input) {
 
-                // Caso 1: formato completo tipo 2025-4512  â†’ se normaliza a 2025-004512
+                // Caso 1: formato completo tipo 2025-4512  → se normaliza a 2025-004512
                 if (preg_match('/^(\d{4})-(\d{1,6})$/', $input, $m)) {
                     $anio = $m[1];
                     $num  = str_pad($m[2], 6, '0', STR_PAD_LEFT);
@@ -44,7 +43,7 @@ class PaqueteController extends Controller
                     return;
                 }
 
-                // Caso 2: solo nÃºmero final (ej. "4512") â†’ busca cualquier cÃ³digo que lo contenga
+                // Caso 2: solo número final (ej. "4512") → busca cualquier código que lo contenga
                 if (preg_match('/^\d{1,6}$/', $input)) {
                     $q->where('planillas.codigo', 'like', "%{$input}%");
                     return;
@@ -57,7 +56,7 @@ class PaqueteController extends Controller
 
 
 
-        /* â”€â”€ Nave (obra) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+        /* ── Nave (obra) ───────────────────────────── */
         if ($request->filled('nave')) {
             $texto = $request->nave;
             $query->whereHas('nave', function ($q) use ($texto) {
@@ -65,19 +64,19 @@ class PaqueteController extends Controller
             });
         }
 
-        /* â”€â”€ UbicaciÃ³n â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+        /* ── Ubicación ─────────────────────────────────── */
         if ($request->filled('ubicacion')) {
             $query->whereHas('ubicacion', function ($q) use ($request) {
                 $q->where('nombre', 'like', '%' . $request->ubicacion . '%');
             });
         }
 
-        /* â”€â”€ Peso mÃ­nimo â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+        /* ── Peso mínimo ───────────────────────────────── */
         if ($request->filled('peso') && is_numeric($request->peso)) {
             $query->where('peso', '>=', (float) $request->peso);
         }
 
-        /* â”€â”€ Fechas â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+        /* ── Fechas ───────────────────────────────────── */
         if ($request->filled('created_at_from')) {
             $query->whereDate('created_at', $request->created_at_from);
         }
@@ -100,10 +99,10 @@ class PaqueteController extends Controller
         $icon = '';
         if ($isSorted) {
             $icon = $currentOrder === 'asc'
-                ? 'â–²' // flecha hacia arriba
-                : 'â–¼'; // flecha hacia abajo
+                ? '▲' // flecha hacia arriba
+                : '▼'; // flecha hacia abajo
         } else {
-            $icon = 'â‡…'; // sÃ­mbolo de orden genÃ©rico
+            $icon = '⇅'; // símbolo de orden genérico
         }
 
         $url = request()->fullUrlWithQuery(['sort' => $columna, 'order' => $nextOrder]);
@@ -120,7 +119,7 @@ class PaqueteController extends Controller
             'peso',
             'created_at',
             'fecha_limite_reparto',
-            'nave', // ðŸ‘ˆ aÃ±adimos para ordenar por obra
+            'nave', // 👈 añadimos para ordenar por obra
         ];
 
         $sort  = $request->input('sort', 'created_at');
@@ -130,7 +129,7 @@ class PaqueteController extends Controller
             $sort = 'created_at';
         }
 
-        // Caso especial: fecha lÃ­mite (en planillas)
+        // Caso especial: fecha límite (en planillas)
         if ($sort === 'fecha_limite_reparto') {
             return $query
                 ->leftJoin('planillas', 'paquetes.planilla_id', '=', 'planillas.id')
@@ -165,15 +164,15 @@ class PaqueteController extends Controller
         }
 
         if ($request->filled('ubicacion')) {
-            $filtros[] = 'UbicaciÃ³n: <strong>' . e($request->ubicacion) . '</strong>';
+            $filtros[] = 'Ubicación: <strong>' . e($request->ubicacion) . '</strong>';
         }
 
         if ($request->filled('peso')) {
-            $filtros[] = 'Peso â‰¥ <strong>' . e($request->peso) . ' kg</strong>';
+            $filtros[] = 'Peso ≥ <strong>' . e($request->peso) . ' kg</strong>';
         }
 
         if ($request->filled('created_at_from')) {
-            $filtros[] = 'Desde creaciÃ³n: <strong>' . e($request->created_at_from) . '</strong>';
+            $filtros[] = 'Desde creación: <strong>' . e($request->created_at_from) . '</strong>';
         }
 
         if ($request->filled('fecha_limite_reparto_from')) {
@@ -199,16 +198,16 @@ class PaqueteController extends Controller
         // Ordenamiento
         $query = $this->aplicarOrdenamiento($query, $request);
 
-        /* â”€â”€ PaginaciÃ³n (LengthAwarePaginator manual) â”€â”€ */
+        /* ── Paginación (LengthAwarePaginator manual) ── */
         $perPage      = 10;
         $currentPage  = $request->input('page', 1);
         $paquetesPage = $query->paginate($perPage)->appends($request->query());
 
-        /* â”€â”€ Para el JSON y scripts auxiliares (sin paginar) â”€â”€ */
+        /* ── Para el JSON y scripts auxiliares (sin paginar) ── */
         $paquetesAll = Paquete::with('etiquetas:id,paquete_id,etiqueta_sub_id,nombre,codigo,peso')
             ->select('id', 'codigo')
             ->latest()
-            ->take(100) // ðŸ”¸ solo los 100 Ãºltimos, ajusta segÃºn lo que necesites
+            ->take(100) // 🔸 solo los 100 últimos, ajusta según lo que necesites
             ->get();
 
         $paquetesConEtiquetas = $paquetesAll->mapWithKeys(
@@ -231,7 +230,7 @@ class PaqueteController extends Controller
         $elementosAgrupadosScript = Etiqueta::with(['elementos:id,etiqueta_id,dimensiones,barras,peso,diametro'])
             ->select('id', 'etiqueta_sub_id')
             ->latest()
-            ->take(100) // igual, solo los Ãºltimos
+            ->take(100) // igual, solo los últimos
             ->get()
             ->map(fn($et) => [
                 'etiqueta'  => ['id' => $et->id, 'etiqueta_sub_id' => $et->etiqueta_sub_id],
@@ -244,14 +243,14 @@ class PaqueteController extends Controller
                 ]),
             ]);
 
-        /* â”€â”€ Ordenables para la cabecera â”€â”€ */
+        /* ── Ordenables para la cabecera ── */
         $ordenables = [
             'id'                   => $this->getOrdenamiento('id', 'ID'),
             'planilla_id'          => $this->getOrdenamiento('planilla_id', 'Planilla'),
             'peso'                 => $this->getOrdenamiento('peso', 'Peso (Kg)'),
-            'created_at'           => $this->getOrdenamiento('created_at', 'Fecha CreaciÃ³n'),
-            'fecha_limite_reparto' => $this->getOrdenamiento('fecha_limite_reparto', 'Fecha LÃ­mite Reparto'),
-            'nave'                 => $this->getOrdenamiento('nave', 'Nave'), // ðŸ‘ˆ nuevo
+            'created_at'           => $this->getOrdenamiento('created_at', 'Fecha Creación'),
+            'fecha_limite_reparto' => $this->getOrdenamiento('fecha_limite_reparto', 'Fecha Límite Reparto'),
+            'nave'                 => $this->getOrdenamiento('nave', 'Nave'), // 👈 nuevo
         ];
 
 
@@ -265,20 +264,26 @@ class PaqueteController extends Controller
         ]);
     }
 
-    public function store(Request $request)
+    public function store(Request $request, LocalizacionPaqueteService $localizacionPaqueteService)
     {
-        // 1) ValidaciÃ³n
+        // 1) Validación de la petición
+        //    - items: array de cosas a paquetizar (etiquetas / elementos)
+        //    - items.*.id: identificador de la etiqueta_sub_id o del elemento
+        //    - items.*.type: 'etiqueta' o 'elemento'
+        //    - maquina_id: máquina desde la que se crea el paquete
         $request->validate([
-            'items' => 'required|array|min:1',
-            'items.*.id' => 'required|string',
-            'items.*.type' => 'required|in:etiqueta,elemento',
-            'maquina_id' => 'required|integer|exists:maquinas,id'
+            'items'             => 'required|array|min:1',
+            'items.*.id'        => 'required|string',
+            'items.*.type'      => 'required|in:etiqueta,elemento',
+            'maquina_id'        => 'required|integer|exists:maquinas,id',
         ]);
 
         try {
             DB::beginTransaction();
 
-            // 3) Separar items
+            // 3) Separar items entre etiquetas y elementos
+            //    - etiquetasSubIds: sub_id de las etiquetas (etiqueta_sub_id)
+            //    - elementosIds: IDs de los elementos seleccionados directamente
             $etiquetasSubIds = collect($request->items)
                 ->where('type', 'etiqueta')
                 ->pluck('id')
@@ -289,44 +294,47 @@ class PaqueteController extends Controller
                 ->pluck('id')
                 ->toArray();
 
+            // Obtener elementos a partir de las etiquetas + elementos directos
             $elementosDesdeEtiquetas = Elemento::whereIn('etiqueta_sub_id', $etiquetasSubIds)->get();
             $elementosDirectos       = Elemento::whereIn('id', $elementosIds)->get();
             $todosElementos          = $elementosDesdeEtiquetas->merge($elementosDirectos);
 
+            // Si no hay elementos, no se puede crear paquete
             if ($todosElementos->isEmpty()) {
                 DB::rollBack();
                 return response()->json([
                     'success' => false,
-                    'message' => 'No se encontraron datos vÃ¡lidos para crear el paquete.'
+                    'message' => 'No se encontraron datos válidos para crear el paquete.',
                 ], 400);
             }
 
-            // 4) MÃ¡quina y planilla
+            // 4) Máquina y planilla
+            //    - Se usa la máquina para:
+            //         * determinar ubicación (Ubicacion)
+            //         * pasar su ID al servicio de localización de paquetes
             $maquinaId     = $request->input('maquina_id');
             $maquina       = Maquina::findOrFail($maquinaId);
             $codigoMaquina = $maquina->codigo;
 
+            // La planilla se saca del primer elemento (todos deben ser compatibles)
             $planilla = $todosElementos->first()->planilla ?? null;
             if (!$planilla) {
                 DB::rollBack();
                 return response()->json([
                     'success' => false,
-                    'message' => 'No se encontrÃ³ una planilla vÃ¡lida para las etiquetas o los elementos.'
+                    'message' => 'No se encontró una planilla válida para las etiquetas o los elementos.',
                 ], 400);
             }
             $codigo_planilla = $planilla->codigo_limpio;
 
-            // 5) Peso total
-            $pesoTotal = $todosElementos->sum('peso');
-            if ($pesoTotal > 1300) {
-                DB::rollBack();
-                return response()->json([
-                    'success' => false,
-                    'message' => "El peso total del paquete ({$pesoTotal} kg) supera el lÃ­mite permitido de 1300 kg."
-                ], 400);
-            }
+            // 5) Calcular peso total del paquete (suma de peso de todos los elementos)
+            $pesoTotal = $todosElementos->sum(function ($elemento) {
+                return $elemento->peso ?? 0;
+            });
 
-            // 6) UbicaciÃ³n
+            // 6) Ubicación: según el nombre/código de la máquina
+            //    - Si contiene 'idea 5' en el nombre → Sector Final
+            //    - Si no → ubicación que contenga el código de la máquina
             if (stripos($maquina->nombre, 'idea 5') !== false) {
                 $ubicacion = Ubicacion::where('descripcion', 'LIKE', '%Sector Final%')->first();
             } else {
@@ -337,11 +345,11 @@ class PaqueteController extends Controller
                 DB::rollBack();
                 return response()->json([
                     'success' => false,
-                    'message' => "No se encontrÃ³ una ubicaciÃ³n con el nombre de la mÃ¡quina: {$codigoMaquina}."
+                    'message' => "No se encontró una ubicación con el nombre de la máquina: {$codigoMaquina}.",
                 ], 400);
             }
 
-            // 7) â¬…ï¸ Capturamos los paquetes ANTERIORES de esas subetiquetas (antes de reasignar)
+            // 7) Guardar los paquetes ANTERIORES de esas subetiquetas (para luego limpiar si quedan vacíos)
             $paquetesPrevios = DB::table('etiquetas')
                 ->whereIn('etiqueta_sub_id', $etiquetasSubIds)
                 ->whereNotNull('paquete_id')
@@ -350,19 +358,25 @@ class PaqueteController extends Controller
                 ->values()
                 ->all();
 
-            // 8) Crear paquete NUEVO
+            // 8) Crear paquete NUEVO (en la tabla paquetes)
             $codigo  = Paquete::generarCodigo();
-            $paquete = $this->crearPaquete($planilla->id, $ubicacion->id, $pesoTotal, $codigo, $maquina->obra_id);
+            $paquete = $this->crearPaquete(
+                $planilla->id,   // planilla_id
+                $ubicacion->id,  // ubicacion_id
+                $pesoTotal,      // peso total del paquete
+                $codigo,         // código generado
+                $maquina->obra_id // nave/obra a la que pertenece
+            );
 
             // 9) Reasignar etiquetas al NUEVO paquete
             $this->asignarEtiquetasAPaquete($etiquetasSubIds, $paquete->id);
 
-            // 10) Check de seguridad: Â¿el nuevo paquete quedÃ³ vacÃ­o?
+            // 10) Check de seguridad: ¿el nuevo paquete quedó vacío?
             $etiquetasAsignadasNuevo = DB::table('etiquetas')
                 ->where('paquete_id', $paquete->id)
                 ->count();
 
-            if ((int)$etiquetasAsignadasNuevo === 0) {
+            if ((int) $etiquetasAsignadasNuevo === 0) {
                 Log::info('Paquete nuevo eliminado por quedar sin etiquetas asignadas', [
                     'paquete_id'  => $paquete->id,
                     'planilla_id' => $planilla->id,
@@ -375,14 +389,27 @@ class PaqueteController extends Controller
 
                 return response()->json([
                     'success' => false,
-                    'message' => 'No se reasignÃ³ ninguna etiqueta al nuevo paquete.'
+                    'message' => 'No se reasignó ninguna etiqueta al nuevo paquete.',
                 ], 400);
             }
 
-            // 11) âœ… Borrar paquetes ANTERIORES que hayan quedado vacÃ­os tras la reasignaciÃ³n
+            // 10.1) 📍 Crear/actualizar la localización del paquete en el mapa
+            //       Aquí es donde entramos al servicio LocalizacionPaqueteService,
+            //       que:
+            //          - Busca la localización de la máquina en `localizaciones`
+            //          - Calcula el centro de esa máquina
+            //          - Calcula el tamaño del paquete según sus elementos
+            //          - Inserta/actualiza en `localizaciones_paquetes` una posición
+            //            centrada encima del div de la máquina.
+            $localizacionPaqueteService->asignarLocalizacionAutomatica(
+                $paquete,          // paquete recién creado
+                $maquina->id       // máquina desde la que se ha creado el paquete
+            );
+
+            // 11) Borrar paquetes ANTERIORES que hayan quedado vacíos tras la reasignación
             foreach ($paquetesPrevios as $paqueteAnteriorId) {
-                // por seguridad, evita tocar el reciÃ©n creado (no deberÃ­a estar en la lista)
-                if ((int)$paqueteAnteriorId === (int)$paquete->id) {
+                // Seguridad: no tocar el recién creado (no debería estar en la lista)
+                if ((int) $paqueteAnteriorId === (int) $paquete->id) {
                     continue;
                 }
 
@@ -390,9 +417,9 @@ class PaqueteController extends Controller
                     ->where('paquete_id', $paqueteAnteriorId)
                     ->count();
 
-                if ((int)$restantes === 0) {
+                if ((int) $restantes === 0) {
                     Paquete::where('id', $paqueteAnteriorId)->delete();
-                    Log::info('Paquete anterior eliminado por quedar vacÃ­o', [
+                    Log::info('Paquete anterior eliminado por quedar vacío', [
                         'paquete_id'  => $paqueteAnteriorId,
                         'nuevo_id'    => $paquete->id,
                         'planilla_id' => $planilla->id,
@@ -400,26 +427,11 @@ class PaqueteController extends Controller
                 }
             }
 
-            // 12) Retirar de la cola de ESTA mÃ¡quina si ya no quedan etiquetas en ESTA mÃ¡quina
+            // 12) Retirar de la cola de ESTA máquina si ya no quedan etiquetas pendientes en ella
             app(PlanillaColaService::class)
                 ->retirarSiPlanillaCompletamentePaquetizadaYCompletada($planilla, $maquina);
 
-            // // 13) Movimiento solo si tiene carro
-            // if ($maquina->tiene_carro) {
-            //     Movimiento::create([
-            //         'tipo'             => 'Bajada de paquete',
-            //         'paquete_id'       => $paquete->id,
-            //         'solicitado_por'   => auth()->id(),
-            //         'descripcion'      => "Se solicita bajar del carro el paquete {$paquete->codigo} de la mÃ¡quina {$maquina->nombre}",
-            //         'ubicacion_origen' => $ubicacion->id,
-            //         'maquina_origen'   => $maquina->id,
-            //         'estado'           => 'pendiente',
-            //         'prioridad'        => 3,
-            //         'fecha_solicitud'  => now(),
-            //     ]);
-            // }
-
-            // 14) SesiÃ³n de reempaquetados
+            // 14) Guardar en sesión los IDs de elementos reempaquetados (para otras vistas/lógica)
             session(['elementos_reempaquetados' => $todosElementos->pluck('id')->toArray()]);
 
             DB::commit();
@@ -437,84 +449,11 @@ class PaqueteController extends Controller
 
             return response()->json([
                 'success' => false,
-                'message' => 'Error en el servidor: ' . $e->getMessage()
+                'message' => 'Error en el servidor: ' . $e->getMessage(),
             ], 500);
         }
     }
 
-    public function storeDesdeMaquina(
-        Request $request,
-        LocalizacionPaquetesService $localizacionService
-    ) {
-        // Validamos que venga maquina_id y al menos una etiqueta
-        $data = $request->validate([
-            'maquina_id'    => ['required', 'integer', 'exists:maquinas,id'],
-            'etiquetas_ids' => ['required', 'array', 'min:1'],
-            'etiquetas_ids.*' => ['integer', 'exists:etiquetas,id'],
-        ]);
-
-        $maquinaId    = $data['maquina_id'];
-        $etiquetasIds = $data['etiquetas_ids'];
-
-        // Cargamos la máquina para poder usar sus relaciones/campos
-        $maquina = Maquina::findOrFail($maquinaId);
-
-        // Cogemos la primera etiqueta para heredar planilla, obra, etc. (ajústalo si usas otra lógica)
-        $primeraEtiqueta = Etiqueta::with('planilla')
-            ->findOrFail($etiquetasIds[0]);
-
-        // Usamos transacción por si algo falla en medio
-        $paquete = DB::transaction(function () use (
-            $maquina,
-            $primeraEtiqueta,
-            $etiquetasIds,
-            $localizacionService
-        ) {
-            // =========================
-            // 1) Crear el paquete
-            // =========================
-            $paquete = new Paquete();
-
-            // Código del paquete (ajusta a tu formato real)
-            $paquete->codigo      = 'PK-' . now()->format('Ymd-His');
-
-            // Si tus paquetes están asociados a obra/nave y planilla:
-            $paquete->nave_id     = $maquina->obra_id;                 // la nave de la máquina
-            $paquete->planilla_id = $primeraEtiqueta->planilla_id;     // planilla heredada de la etiqueta
-
-            // Otros campos que uses en tu tabla paquetes (estado, peso, etc.)
-            // $paquete->estado = 'pendiente';
-            // ...
-
-            $paquete->save();
-
-            // =========================
-            // 2) Asignar etiquetas al paquete
-            // =========================
-            Etiqueta::whereIn('id', $etiquetasIds)
-                ->update([
-                    'paquete_id' => $paquete->id,
-                ]);
-
-            // =========================
-            // 3) Crear la localización en el mapa
-            // =========================
-            // Aquí es donde se crea el registro en localizaciones_paquetes,
-            // centrado en la máquina correspondiente.
-            $localizacionService->asignarLocalizacionAutomatica(
-                $paquete,
-                $maquina->id
-            );
-
-            return $paquete;
-        });
-
-        // Respuesta para AJAX (puedes devolver lo que necesites)
-        return response()->json([
-            'ok'      => true,
-            'paquete' => $paquete,
-        ]);
-    }
 
 
     public function validarParaPaquete(Request $request, string $etiquetaSubId): JsonResponse
@@ -545,12 +484,12 @@ class PaqueteController extends Controller
 
         if ($enPaquete) {
             $valida = false;
-            $motivos[] = 'La etiqueta ya estÃ¡ en un paquete.';
+            $motivos[] = 'La etiqueta ya está en un paquete.';
         }
 
         if (!in_array($estado, $estadosOK, true)) {
             $valida = false;
-            $motivos[] = "El estado '{$estado}' no es vÃ¡lido para empaquetar.";
+            $motivos[] = "El estado '{$estado}' no es válido para empaquetar.";
         }
 
         if ($fabricados < $total) {
@@ -561,7 +500,7 @@ class PaqueteController extends Controller
         return response()->json([
             'success'       => $valida,
             'valida'        => $valida,
-            'message'       => $valida ? 'Etiqueta vÃ¡lida para empaquetar.' : implode(' ', $motivos),
+            'message'       => $valida ? 'Etiqueta válida para empaquetar.' : implode(' ', $motivos),
             'motivo'        => $valida ? null : implode(' ', $motivos),
             'estado_actual' => $etiqueta->estado,
             'paquete_actual' => $etiqueta->paquete_id,
@@ -619,15 +558,15 @@ class PaqueteController extends Controller
             $paquete = Paquete::findOrFail($id);
             \Log::info('Borrando paquete ' . ($paquete->codigo ?? ('ID ' . $paquete->id)) . ' por el usuario ' . (auth()->user()->nombre_completo ?? 'desconocido'));
 
-            // ðŸ”¸ Eliminar movimientos pendientes asociados al paquete
+            // 🔸 Eliminar movimientos pendientes asociados al paquete
             \App\Models\Movimiento::where('paquete_id', $paquete->id)
                 ->where('estado', 'pendiente')
                 ->delete();
 
-            // ðŸ”¸ Desasociar los elementos del paquete
+            // 🔸 Desasociar los elementos del paquete
             $paquete->elementos()->update(['paquete_id' => null]);
 
-            // ðŸ”¸ Eliminar el paquete
+            // 🔸 Eliminar el paquete
             $paquete->delete();
 
             DB::commit();
@@ -658,12 +597,12 @@ class PaqueteController extends Controller
             $validated
         );
 
-        return response()->json(['message' => 'LocalizaciÃ³n guardada correctamente']);
+        return response()->json(['message' => 'Localización guardada correctamente']);
     }
 
-    public function tamaÃ±o(Request $request)
+    public function tamaño(Request $request)
     {
-        // 1) ValidaciÃ³n
+        // 1) Validación
         $validated = $request->validate([
             'codigo' => 'required|string|max:100',
         ], [
@@ -686,7 +625,7 @@ class PaqueteController extends Controller
         }
 
         if (!$etiqueta || !$etiqueta->paquete_id) {
-            return response()->json(['error' => 'Etiqueta no asociada a ningÃºn paquete.'], 404);
+            return response()->json(['error' => 'Etiqueta no asociada a ningún paquete.'], 404);
         }
 
         // 4) Cargar paquete con todas sus etiquetas y elementos
@@ -695,10 +634,10 @@ class PaqueteController extends Controller
             return response()->json(['error' => 'Paquete no encontrado.'], 404);
         }
 
-        // 5) TamaÃ±o (usa accessor getTamaÃ±oAttribute o alias getTamanoAttribute)
-        $tamano = $paquete->tamaÃ±o ?? $paquete->tamano ?? ['ancho' => 1, 'longitud' => 0];
+        // 5) Tamaño (usa accessor getTamañoAttribute o alias getTamanoAttribute)
+        $tamano = $paquete->tamaño ?? $paquete->tamano ?? ['ancho' => 1, 'longitud' => 0];
 
-        // 6) MÃ©tricas adicionales
+        // 6) Métricas adicionales
         $etiquetasCount = $paquete->etiquetas->count();
         $elementosCount = $paquete->etiquetas->flatMap->elementos->count();
 
@@ -737,12 +676,12 @@ class PaqueteController extends Controller
         $x2 = max($data['x1'], $data['x2']);
         $y2 = max($data['y1'], $data['y2']);
 
-        // (Opcional) aquÃ­ puedes validar colisiones si procede
+        // (Opcional) aquí puedes validar colisiones si procede
 
         $loc = \App\Models\Localizacion::create([
             'nave_id' => $data['nave_id'],
             'tipo'    => $data['tipo'],        // 'paquete'
-            'nombre'  => $data['nombre'],      // cÃ³digo del paquete
+            'nombre'  => $data['nombre'],      // código del paquete
             'paquete_id' => $data['paquete_id'] ?? null,
             'x1' => $x1,
             'y1' => $y1,
@@ -756,15 +695,15 @@ class PaqueteController extends Controller
         ]);
     }
 
-    // Otros mÃ©todos del controlador... Creacion de paquetes a traves de maquinas.show
+    // Otros métodos del controlador... Creacion de paquetes a traves de maquinas.show
 
     // ================================================================
-    // MÃ‰TODOS ADICIONALES PARA PaqueteController.php
-    // AÃ±adir estos mÃ©todos al controlador existente
+    // MÉTODOS ADICIONALES PARA PaqueteController.php
+    // Añadir estos métodos al controlador existente
     // ================================================================
 
     /**
-     * Obtener paquetes de una planilla especÃ­fica con sus etiquetas
+     * Obtener paquetes de una planilla específica con sus etiquetas
      * 
      * GET /api/planillas/{planillaId}/paquetes
      */
@@ -788,7 +727,7 @@ class PaqueteController extends Controller
                     'codigo' => $paquete->codigo,
                     'peso' => number_format($paquete->peso, 2, '.', ''),
                     'cantidad_etiquetas' => $paquete->etiquetas->count(),
-                    'ubicacion' => optional($paquete->ubicacion)->nombre ?? 'Sin ubicaciÃ³n',
+                    'ubicacion' => optional($paquete->ubicacion)->nombre ?? 'Sin ubicación',
                     'created_at' => $paquete->created_at->format('d/m/Y H:i'),
                     'etiquetas' => $paquete->etiquetas->map(function ($etiqueta) {
                         return [
@@ -828,12 +767,12 @@ class PaqueteController extends Controller
     }
 
     /**
-     * AÃ±adir una etiqueta a un paquete existente
+     * Añadir una etiqueta a un paquete existente
      * 
-     * POST /api/paquetes/{paqueteId}/aÃ±adir-etiqueta
+     * POST /api/paquetes/{paqueteId}/añadir-etiqueta
      * Body: { "etiqueta_codigo": "2025-004512.1.1" }
      */
-    public function aÃ±adirEtiquetaAPaquete(Request $request, $paqueteId)
+    public function añadirEtiquetaAPaquete(Request $request, $paqueteId)
     {
         $request->validate([
             'etiqueta_codigo' => 'required|string'
@@ -863,20 +802,20 @@ class PaqueteController extends Controller
                 ], 400);
             }
 
-            // Validar que la etiqueta no estÃ© ya en otro paquete
+            // Validar que la etiqueta no esté ya en otro paquete
             if ($etiqueta->paquete_id && $etiqueta->paquete_id !== $paquete->id) {
                 $paqueteActual = Paquete::find($etiqueta->paquete_id);
                 return response()->json([
                     'success' => false,
-                    'message' => "La etiqueta ya estÃ¡ en el paquete {$paqueteActual->codigo}"
+                    'message' => "La etiqueta ya está en el paquete {$paqueteActual->codigo}"
                 ], 400);
             }
 
-            // Si ya estÃ¡ en este paquete, informar
+            // Si ya está en este paquete, informar
             if ($etiqueta->paquete_id === $paquete->id) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'La etiqueta ya estÃ¡ en este paquete'
+                    'message' => 'La etiqueta ya está en este paquete'
                 ], 400);
             }
 
@@ -884,7 +823,7 @@ class PaqueteController extends Controller
             if (in_array(strtolower($etiqueta->estado), ['pendiente'])) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'No se puede aÃ±adir una etiqueta completada a un paquete'
+                    'message' => 'No se puede añadir una etiqueta completada a un paquete'
                 ], 400);
             }
 
@@ -903,7 +842,7 @@ class PaqueteController extends Controller
                 'tipo' => 'Movimiento paquete',
                 'etiqueta_sub_id' => $etiqueta->etiqueta_sub_id,
                 'paquete_id' => $paquete->id,
-                'descripcion' => "Etiqueta {$codigoEtiqueta} aÃ±adida al paquete {$paquete->codigo}",
+                'descripcion' => "Etiqueta {$codigoEtiqueta} añadida al paquete {$paquete->codigo}",
                 'estado' => 'completado',
                 'fecha_solicitud' => now(),
                 'ejecutado_por' => auth()->id(),
@@ -913,7 +852,7 @@ class PaqueteController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => "Etiqueta aÃ±adida correctamente al paquete {$paquete->codigo}",
+                'message' => "Etiqueta añadida correctamente al paquete {$paquete->codigo}",
                 'paquete' => [
                     'id' => $paquete->id,
                     'codigo' => $paquete->codigo,
@@ -928,7 +867,7 @@ class PaqueteController extends Controller
             ], 404);
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error('Error al aÃ±adir etiqueta a paquete', [
+            Log::error('Error al añadir etiqueta a paquete', [
                 'paquete_id' => $paqueteId,
                 'etiqueta_codigo' => $request->etiqueta_codigo ?? null,
                 'error' => $e->getMessage()
@@ -936,7 +875,7 @@ class PaqueteController extends Controller
 
             return response()->json([
                 'success' => false,
-                'message' => 'Error al aÃ±adir la etiqueta: ' . $e->getMessage()
+                'message' => 'Error al añadir la etiqueta: ' . $e->getMessage()
             ], 500);
         }
     }
@@ -983,12 +922,12 @@ class PaqueteController extends Controller
             $paquete->peso = max(0, $paquete->peso - $pesoEtiqueta);
             $paquete->save();
 
-            // Verificar si el paquete quedÃ³ vacÃ­o
+            // Verificar si el paquete quedó vacío
             $etiquetasRestantes = Etiqueta::where('paquete_id', $paquete->id)->count();
 
             if ($etiquetasRestantes === 0) {
-                // Opcionalmente eliminar el paquete vacÃ­o
-                Log::warning("Paquete {$paquete->codigo} quedÃ³ sin etiquetas despuÃ©s de eliminar {$codigoEtiqueta}");
+                // Opcionalmente eliminar el paquete vacío
+                Log::warning("Paquete {$paquete->codigo} quedó sin etiquetas después de eliminar {$codigoEtiqueta}");
             }
 
             // Registrar movimiento
