@@ -2,8 +2,48 @@
     <x-slot name="title">Gestionar Salidas - {{ config('app.name') }}</x-slot>
     <x-menu.salidas />
 
-    <div class="container mx-auto p-6">
-        <h1 class="text-3xl font-bold mb-6 text-gray-900">Gestionar Salidas para Planillas</h1>
+    <div class="container mx-auto px-2 sm:px-4 md:px-6 py-6">
+        <h1 class="text-2xl sm:text-3xl font-bold mb-4 sm:mb-6 text-gray-900">Gestionar Salidas para Planillas</h1>
+
+        {{-- Resumen de Estados --}}
+        @php
+            $estadosCounts = $planillas->groupBy('estado')->map->count();
+            $estadosConfig = [
+                'pendiente' => ['label' => 'Pendiente', 'icon' => '⏳', 'color' => 'bg-yellow-100 text-yellow-800 border-yellow-200'],
+                'fabricando' => ['label' => 'Fabricando', 'icon' => '🏭', 'color' => 'bg-blue-100 text-blue-800 border-blue-200'],
+                'fabricada' => ['label' => 'Fabricada', 'icon' => '✅', 'color' => 'bg-green-100 text-green-800 border-green-200'],
+                'enviada' => ['label' => 'Enviada', 'icon' => '🚚', 'color' => 'bg-purple-100 text-purple-800 border-purple-200'],
+                'entregada' => ['label' => 'Entregada', 'icon' => '📦', 'color' => 'bg-teal-100 text-teal-800 border-teal-200'],
+            ];
+        @endphp
+
+        <div class="bg-white border border-gray-200 rounded-lg p-4 shadow-sm mb-6">
+            <h2 class="text-lg font-semibold text-gray-900 mb-3">Estados de Planillas</h2>
+            <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-3">
+                @foreach ($estadosConfig as $estado => $config)
+                    @php
+                        $count = $estadosCounts->get($estado, 0);
+                        $porcentaje = $planillas->count() > 0 ? round(($count / $planillas->count()) * 100) : 0;
+                    @endphp
+                    @if ($count > 0)
+                        <div class="border {{ $config['color'] }} rounded-lg p-3">
+                            <div class="flex items-center justify-between mb-2">
+                                <div class="flex items-center space-x-2">
+                                    <span class="text-lg">{{ $config['icon'] }}</span>
+                                    <span class="font-medium text-sm">{{ $config['label'] }}</span>
+                                </div>
+                                <span class="font-bold text-lg">{{ $count }}</span>
+                            </div>
+                            <div class="w-full bg-gray-200 rounded-full h-2 mb-1">
+                                <div class="h-2 rounded-full transition-all duration-300 {{ str_replace(['text-', 'border-'], ['bg-', 'bg-'], $config['color']) }}"
+                                     style="width: {{ $porcentaje }}%"></div>
+                            </div>
+                            <p class="text-xs text-gray-600 text-center">{{ $porcentaje }}%</p>
+                        </div>
+                    @endif
+                @endforeach
+            </div>
+        </div>
 
         {{-- Resumen de Planillas --}}
         <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
@@ -134,6 +174,10 @@
                                                 <span class="text-gray-500">{{ $paquete->planilla->codigo ?? 'N/A' }}</span>
                                                 <span class="text-gray-600">{{ number_format($paquete->peso, 2) }} kg</span>
                                             </div>
+                                            <div class="text-xs text-gray-500 mt-1 border-t border-gray-200 pt-1">
+                                                <div class="truncate" title="{{ $paquete->planilla->obra->obra ?? 'N/A' }}">🏗️ {{ $paquete->planilla->obra->obra ?? 'N/A' }}</div>
+                                                <div class="truncate" title="{{ $paquete->planilla->cliente->empresa ?? 'N/A' }}">👤 {{ $paquete->planilla->cliente->empresa ?? 'N/A' }}</div>
+                                            </div>
                                         </div>
                                     @endforeach
                                 </div>
@@ -176,6 +220,10 @@
                                             <span class="text-gray-500">{{ $paquete->planilla->codigo ?? 'N/A' }}</span>
                                             <span class="text-gray-600">{{ number_format($paquete->peso, 2) }} kg</span>
                                         </div>
+                                        <div class="text-xs text-gray-500 mt-1 border-t border-gray-200 pt-1">
+                                            <div class="truncate" title="{{ $paquete->planilla->obra->obra ?? 'N/A' }}">🏗️ {{ $paquete->planilla->obra->obra ?? 'N/A' }}</div>
+                                            <div class="truncate" title="{{ $paquete->planilla->cliente->empresa ?? 'N/A' }}">👤 {{ $paquete->planilla->cliente->empresa ?? 'N/A' }}</div>
+                                        </div>
                                     </div>
                                 @endforeach
                             </div>
@@ -216,7 +264,7 @@
             <h2 class="text-xl font-semibold mb-4 text-center">Elementos del paquete</h2>
 
             <div class="overflow-y-auto flex-1 min-h-0" style="max-height: 75vh;">
-                <canvas id="canvas-dibujo" width="800" height="600" class="border max-w-full h-auto"></canvas>
+                <div id="canvas-dibujo" class="border max-w-full h-auto"></div>
             </div>
         </div>
     </div>
@@ -235,26 +283,20 @@
             ],
         ];
 
-        // Función para mapear paquetes con elementos
+        // Función para mapear paquetes con elementos (igual que en PaquetesTable)
         $mapearPaqueteConElementos = function($paquete) {
-            $elementos = [];
+            $etiquetas = [];
             foreach ($paquete->etiquetas ?? [] as $etiqueta) {
+                $elementos = [];
                 foreach ($etiqueta->elementos ?? [] as $elemento) {
                     $elementos[] = [
                         'id' => $elemento->id,
-                        'x' => $elemento->coordenada_x,
-                        'y' => $elemento->coordenada_y,
-                        'diametro' => $elemento->diametro,
-                        'longitud' => $elemento->longitud,
-                        'forma' => $elemento->forma,
-                        'a' => $elemento->a,
-                        'b' => $elemento->b,
-                        'c' => $elemento->c,
-                        'd' => $elemento->d,
-                        'e' => $elemento->e,
-                        'r' => $elemento->r,
+                        'dimensiones' => $elemento->dimensiones, // STRING directo de la BD
                     ];
                 }
+                $etiquetas[] = [
+                    'elementos' => $elementos,
+                ];
             }
             return [
                 'id' => $paquete->id,
@@ -264,7 +306,7 @@
                 'obra' => $paquete->planilla->obra->obra ?? 'N/A',
                 'cliente' => $paquete->planilla->cliente->empresa ?? 'N/A',
                 'peso' => $paquete->peso,
-                'elementos' => $elementos,
+                'etiquetas' => $etiquetas,
             ];
         };
 
@@ -301,5 +343,5 @@
     </script>
 
     <script src="{{ asset('js/gestion-salidas.js') }}"></script>
-    <script src="{{ asset('js/elementosJs/figuraElemento.js') }}" defer></script>
+    <script src="{{ asset('js/elementosJs/figuraElemento.js') }}"></script>
 </x-app-layout>

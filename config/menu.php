@@ -90,6 +90,14 @@ return [
             'color' => 'purple',
             'submenu' => [
                 [
+                    'label' => 'Planificación Máquinas',
+                    'route' => 'produccion.verMaquinas',
+                    'icon' => '⚙️',
+                    'actions' => [
+                        ['label' => 'Ver planificación', 'route' => 'produccion.verMaquinas', 'permission' => 'ver'],
+                    ]
+                ],
+                [
                     'label' => 'Planificación Portes',
                     'route' => 'planificacion.index',
                     'icon' => '🚚',
@@ -111,14 +119,6 @@ return [
                     'icon' => '🏗️',
                     'actions' => [
                         ['label' => 'Ver asignaciones', 'route' => 'produccion.verTrabajadoresObra', 'permission' => 'ver'],
-                    ]
-                ],
-                [
-                    'label' => 'Máquinas',
-                    'route' => 'produccion.verMaquinas',
-                    'icon' => '⚙️',
-                    'actions' => [
-                        ['label' => 'Ver planificación', 'route' => 'produccion.verMaquinas', 'permission' => 'ver'],
                     ]
                 ],
             ]

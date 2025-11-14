@@ -258,6 +258,11 @@ document.addEventListener("DOMContentLoaded", () => {
             aplicarEstadoAProceso(id, data.estado);
         }
 
+        // ✅ Actualizar SVG con coladas si están disponibles
+        if (data.coladas_por_elemento && typeof window.actualizarSVGConColadas === "function") {
+            window.actualizarSVGConColadas(id, data.coladas_por_elemento);
+        }
+
         // Procesar según el estado
         switch ((data.estado || "").toLowerCase()) {
             case "cortando":

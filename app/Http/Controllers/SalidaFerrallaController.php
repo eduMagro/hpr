@@ -21,7 +21,7 @@ use App\Mail\SalidaCompletadaTrazabilidadEnviadaMailable;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\File;
-
+use App\Services\ActionLoggerService;
 
 use Illuminate\Support\Facades\Mail;
 
@@ -346,7 +346,7 @@ class SalidaFerrallaController extends Controller
         return redirect()->route('salidas-ferralla.gestionar-salidas', ['planillas' => $planillas]);
     }
 
-    public function store(Request $request)
+    public function store(Request $request, ActionLoggerService $logger)
     {
         // Log inicial para confirmar que el método se está ejecutando
         Log::info('🚀 Iniciando store de salida', [
@@ -496,6 +496,21 @@ class SalidaFerrallaController extends Controller
                 'num_paquetes' => count($request->paquete_ids),
                 'paquetes_ids' => $request->paquete_ids,
                 'combinaciones_cliente_obra' => count($pivotData),
+            ]);
+
+            // Obtener información de los paquetes para el log
+            $paquetes = Paquete::with('planilla.obra', 'planilla.cliente')->whereIn('id', $request->paquete_ids)->get();
+            $codigosPaquetes = $paquetes->pluck('codigo')->implode(', ');
+            $obras = $paquetes->pluck('planilla.obra.obra')->unique()->filter()->implode(', ');
+            $clientes = $paquetes->pluck('planilla.cliente.empresa')->unique()->filter()->implode(', ');
+
+            $logger->logGestionarSalidas('salida_creada', [
+                'codigo_salida' => $codigo_salida,
+                'fecha_salida' => Carbon::parse($fechaSalida)->format('Y-m-d H:i'),
+                'cantidad_paquetes' => count($request->paquete_ids),
+                'paquetes' => $codigosPaquetes ?: 'N/A',
+                'obras' => $obras ?: 'N/A',
+                'clientes' => $clientes ?: 'N/A',
             ]);
 
             return redirect()->route('planificacion.index')->with('success', 'Salida creada con éxito');
@@ -681,7 +696,7 @@ class SalidaFerrallaController extends Controller
         }
     }
 
-    public function guardarAsignacionesPaquetes(Request $request)
+    public function guardarAsignacionesPaquetes(Request $request, ActionLoggerService $logger)
     {
         try {
             Log::info('💾 Guardando asignaciones de paquetes', [
@@ -739,6 +754,15 @@ class SalidaFerrallaController extends Controller
                                 'salida_id' => $salida->id,
                                 'estado' => 'asignado_a_salida',
                             ]);
+
+                            // Log to CSV
+                            $logger->logGestionarSalidas('paquete_asignado_a_salida', [
+                                'paquete_codigo' => $paquete->codigo ?? 'N/A',
+                                'salida_codigo' => $salida->codigo ?? 'N/A',
+                                'planilla_codigo' => $paquete->planilla->codigo ?? 'N/A',
+                                'obra' => $paquete->planilla->obra->obra ?? 'N/A',
+                                'cliente' => $paquete->planilla->cliente->empresa ?? 'N/A',
+                            ]);
                         }
                     }
                 } else {
@@ -755,6 +779,14 @@ class SalidaFerrallaController extends Controller
                         Log::info("📦 Paquete desasociado de salida", [
                             'paquete_id' => $paquete->id,
                             'estado' => 'pendiente',
+                        ]);
+
+                        // Log to CSV
+                        $logger->logGestionarSalidas('paquete_removido_de_salida', [
+                            'paquete_codigo' => $paquete->codigo ?? 'N/A',
+                            'planilla_codigo' => $paquete->planilla->codigo ?? 'N/A',
+                            'obra' => $paquete->planilla->obra->obra ?? 'N/A',
+                            'cliente' => $paquete->planilla->cliente->empresa ?? 'N/A',
                         ]);
                     }
                 }
@@ -898,7 +930,7 @@ class SalidaFerrallaController extends Controller
     /**
      * Guarda los paquetes asignados a una salida específica
      */
-    public function guardarPaquetesSalida(Request $request)
+    public function guardarPaquetesSalida(Request $request, ActionLoggerService $logger)
     {
         try {
             Log::info('💾 Guardando paquetes de salida', [
@@ -983,6 +1015,30 @@ class SalidaFerrallaController extends Controller
                 'num_paquetes_eliminados' => count($paquetesEliminados),
             ]);
 
+            // Log changes to CSV
+            if (!empty($paquetesIds)) {
+                $paquetesAsignados = Paquete::with('planilla.obra', 'planilla.cliente')->whereIn('id', $paquetesIds)->get();
+                $codigosPaquetes = $paquetesAsignados->pluck('codigo')->implode(', ');
+
+                $logger->logGestionarSalidas('paquetes_salida_actualizados', [
+                    'salida_codigo' => $salida->codigo ?? 'N/A',
+                    'paquetes_asignados' => count($insertData),
+                    'paquetes_removidos' => count($paquetesEliminados),
+                    'codigos_paquetes_asignados' => $codigosPaquetes ?: 'N/A',
+                ]);
+            }
+
+            if (!empty($paquetesEliminados)) {
+                $paquetesRemovidosInfo = Paquete::with('planilla.obra', 'planilla.cliente')->whereIn('id', $paquetesEliminados)->get();
+                $codigosPaquetesRemovidos = $paquetesRemovidosInfo->pluck('codigo')->implode(', ');
+
+                $logger->logGestionarSalidas('paquetes_devueltos_a_disponibles', [
+                    'salida_codigo' => $salida->codigo ?? 'N/A',
+                    'cantidad_paquetes' => count($paquetesEliminados),
+                    'codigos_paquetes' => $codigosPaquetesRemovidos ?: 'N/A',
+                ]);
+            }
+
             return response()->json([
                 'success' => true,
                 'message' => 'Los paquetes de la salida se han actualizado correctamente',
@@ -1008,7 +1064,7 @@ class SalidaFerrallaController extends Controller
         }
     }
 
-    public function update(Request $request, $id)
+    public function update(Request $request, $id, ActionLoggerService $logger)
     {
         try {
             /** @var \App\Models\Salida $salida */
@@ -1158,6 +1214,16 @@ class SalidaFerrallaController extends Controller
                     ->where('obra_id', $obraId)
                     ->update([$field => $value]);
             }
+
+            // Log the update action
+            $logger->logGestionarSalidas('salida_actualizada', [
+                'codigo_salida' => $salida->codigo ?? 'N/A',
+                'codigo_sage' => $salida->codigo_sage ?? 'N/A',
+                'campo' => $field,
+                'valor_nuevo' => is_array($value) ? json_encode($value) : $value,
+                'cliente_id' => $clienteId ?? 'N/A',
+                'obra_id' => $obraId ?? 'N/A',
+            ]);
 
             return response()->json([
                 'success' => true,
@@ -1378,17 +1444,29 @@ class SalidaFerrallaController extends Controller
         return back()->with('success', 'Paquete quitado correctamente.');
     }
 
-    public function destroy($id)
+    public function destroy($id, ActionLoggerService $logger)
     {
         try {
             // Buscar la salida o lanzar excepción si no existe
             $salida = Salida::findOrFail($id);
+
+            // Store data for logging before deletion
+            $codigoSalida = $salida->codigo ?? 'N/A';
+            $codigoSage = $salida->codigo_sage ?? 'N/A';
+            $numPaquetes = $salida->paquetes->count();
 
             // Liberar los paquetes asignados (eliminar relaciones de la tabla pivot)
             $salida->paquetes()->detach();
 
             // Eliminar la salida
             $salida->delete();
+
+            // Log the deletion
+            $logger->logGestionarSalidas('salida_eliminada', [
+                'codigo_salida' => $codigoSalida,
+                'codigo_sage' => $codigoSage,
+                'paquetes_liberados' => $numPaquetes,
+            ]);
 
             // Si es petición AJAX, devolver JSON
             if (request()->expectsJson() || request()->ajax()) {

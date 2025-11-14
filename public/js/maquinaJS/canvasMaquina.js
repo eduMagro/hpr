@@ -775,19 +775,9 @@ function planMasonryOptimal(medidas, svgW, svgH, opts = {}) {
 }
 
 // =======================
-// Script principal
+// Función para renderizar un grupo SVG
 // =======================
-document.addEventListener("DOMContentLoaded", function () {
-    if (window.setDataSources) {
-        window.setDataSources({
-            sugerencias: window.SUGERENCIAS || {},
-            elementosAgrupados: window.elementosAgrupadosScript || [],
-        });
-    }
-    const grupos = window.elementosAgrupadosScript;
-    if (!grupos) return;
-
-    grupos.forEach(function (grupo, gidx) {
+function renderizarGrupoSVG(grupo, gidx) {
         const groupId =
             grupo && grupo.etiqueta && grupo.etiqueta.id != null
                 ? grupo.etiqueta.id
@@ -1397,7 +1387,69 @@ document.addEventListener("DOMContentLoaded", function () {
 
         contenedor.innerHTML = "";
         contenedor.appendChild(svg);
+}
+
+// =======================
+// Script principal
+// =======================
+document.addEventListener("DOMContentLoaded", function () {
+    if (window.setDataSources) {
+        window.setDataSources({
+            sugerencias: window.SUGERENCIAS || {},
+            elementosAgrupados: window.elementosAgrupadosScript || [],
+        });
+    }
+    const grupos = window.elementosAgrupadosScript;
+    if (!grupos) return;
+
+    grupos.forEach(function (grupo, gidx) {
+        renderizarGrupoSVG(grupo, gidx);
     });
+
+    // =======================
+    // Función global para actualizar SVG con coladas
+    // =======================
+    window.actualizarSVGConColadas = function(etiquetaSubId, coladasPorElemento) {
+        if (!window.elementosAgrupadosScript) return;
+
+        // Buscar el grupo de la etiqueta
+        const grupos = window.elementosAgrupadosScript;
+        const grupoIndex = grupos.findIndex(g =>
+            g.etiqueta && String(g.etiqueta.etiqueta_sub_id) === String(etiquetaSubId)
+        );
+
+        if (grupoIndex === -1) {
+            console.warn(`No se encontró grupo para etiqueta ${etiquetaSubId}`);
+            return;
+        }
+
+        const grupo = grupos[grupoIndex];
+
+        // Actualizar coladas en cada elemento según su ID
+        if (grupo.elementos && coladasPorElemento) {
+            grupo.elementos.forEach(elemento => {
+                const elementoId = String(elemento.id);
+                const coladas = coladasPorElemento[elementoId];
+
+                // Inicializar objeto coladas si no existe
+                if (!elemento.coladas) {
+                    elemento.coladas = { colada1: null, colada2: null, colada3: null };
+                }
+
+                // Asignar coladas específicas de este elemento
+                if (coladas && Array.isArray(coladas)) {
+                    elemento.coladas.colada1 = coladas[0] || null;
+                    elemento.coladas.colada2 = coladas[1] || null;
+                    elemento.coladas.colada3 = coladas[2] || null;
+                }
+            });
+        }
+
+        // Regenerar el SVG completo para este grupo
+        renderizarGrupoSVG(grupo, grupoIndex);
+
+        console.log(`✅ SVG actualizado con coladas para etiqueta ${etiquetaSubId}`, coladasPorElemento);
+    };
 });
 
 // =======================

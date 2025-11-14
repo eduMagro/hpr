@@ -1,7 +1,7 @@
 <x-app-layout>
     <x-slot name="title">Planificación Salidas</x-slot>
 
-    <div class="py-6 px-4">
+    <div class="px-4" id="planificacion-container">
         <div class="max-w-[1800px] mx-auto">
             <!-- Sección de Filtros y Resúmenes -->
             <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
@@ -20,8 +20,8 @@
                             <button type="button"
                                 class="bg-yellow-500 hover:bg-yellow-600 text-white px-3 py-2 rounded-md text-sm flex items-center justify-center transition"
                                 id="btn-reset-filtros" title="Restablecer filtros">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24"
-                                    stroke="currentColor" stroke-width="2">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none"
+                                    viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                                     <path stroke-linecap="round" stroke-linejoin="round"
                                         d="M4 4v5h.582M20 20v-5h-.581M4.582 9A7.5 7.5 0 0112 4.5a7.5 7.5 0 016.418 3.418M19.418 15A7.5 7.5 0 0112 19.5a7.5 7.5 0 01-6.418-3.418" />
                                 </svg>
@@ -36,12 +36,14 @@
                             <div class="flex items-center">
                                 <input type="checkbox" id="solo-salidas"
                                     class="rounded border-gray-300 text-green-600 focus:ring-green-500 h-4 w-4" />
-                                <label for="solo-salidas" class="ml-2 text-sm text-gray-700 cursor-pointer">Solo salidas</label>
+                                <label for="solo-salidas" class="ml-2 text-sm text-gray-700 cursor-pointer">Solo
+                                    salidas</label>
                             </div>
                             <div class="flex items-center">
                                 <input type="checkbox" id="solo-planillas"
                                     class="rounded border-gray-300 text-purple-600 focus:ring-purple-500 h-4 w-4" />
-                                <label for="solo-planillas" class="ml-2 text-sm text-gray-700 cursor-pointer">Solo planillas y resúmenes</label>
+                                <label for="solo-planillas" class="ml-2 text-sm text-gray-700 cursor-pointer">Solo
+                                    planillas y resúmenes</label>
                             </div>
                         </div>
                     </div>
@@ -76,8 +78,26 @@
             </div>
 
             <!-- Calendario -->
-            <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-                <div id="calendario" class="h-[80vh] w-full"></div>
+            <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4 relative">
+                <!-- Botón de pantalla completa en esquina superior derecha -->
+                <button onclick="toggleFullScreen()" id="fullscreen-btn"
+                    title="Pantalla completa"
+                    class="absolute top-4 right-4 z-10 p-2 bg-gray-900 hover:bg-gray-800 text-white rounded-lg transition-colors shadow-lg">
+                    <svg id="fullscreen-icon-expand" class="w-5 h-5" fill="none" stroke="currentColor"
+                        viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4">
+                        </path>
+                    </svg>
+                    <svg id="fullscreen-icon-collapse" class="w-5 h-5 hidden" fill="none" stroke="currentColor"
+                        viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M9 9V4.5M9 9H4.5M9 9L3.75 3.75M9 15v4.5M9 15H4.5M9 15l-5.25 5.25M15 9h4.5M15 9V4.5M15 9l5.25-5.25M15 15h4.5M15 15v4.5m0-4.5l5.25 5.25">
+                        </path>
+                    </svg>
+                </button>
+
+                <div id="calendario" class="h-[80vh] w-full overflow-hidden"></div>
             </div>
         </div>
     </div>
@@ -133,6 +153,77 @@
         // 3) Asegura que routes existe y añade solo la nueva clave
         window.AppSalidas.routes = window.AppSalidas.routes || {};
         window.AppSalidas.routes.codigoSage = @json(route('salidas.editarCodigoSage', ['salida' => '__ID__']));
+
+        // 4) Sistema de pantalla completa
+        let isFullScreen = false;
+
+        function toggleFullScreen() {
+            const container = document.getElementById('planificacion-container');
+            const sidebar = document.querySelector('[class*="sidebar"]') || document.querySelector('aside');
+            const header = document.querySelector('nav');
+            const breadcrumbs = document.querySelector('[class*="breadcrumb"]');
+            const expandIcon = document.getElementById('fullscreen-icon-expand');
+            const collapseIcon = document.getElementById('fullscreen-icon-collapse');
+            const fullscreenBtn = document.getElementById('fullscreen-btn');
+
+            if (!isFullScreen) {
+                // Entrar en pantalla completa
+                if (sidebar) sidebar.style.display = 'none';
+                if (header) header.style.display = 'none';
+                if (breadcrumbs) breadcrumbs.style.display = 'none';
+
+                container.classList.add('fixed', 'inset-0', 'z-50', 'bg-gray-50', 'overflow-auto');
+                container.classList.remove('px-4');
+                container.style.padding = '1rem';
+
+                expandIcon.classList.add('hidden');
+                collapseIcon.classList.remove('hidden');
+                fullscreenBtn.title = 'Salir de pantalla completa';
+
+                isFullScreen = true;
+
+                // Atajo de teclado ESC para salir
+                document.addEventListener('keydown', handleEscKey);
+            } else {
+                // Salir de pantalla completa
+                if (sidebar) sidebar.style.display = '';
+                if (header) header.style.display = '';
+                if (breadcrumbs) breadcrumbs.style.display = '';
+
+                container.classList.remove('fixed', 'inset-0', 'z-50', 'bg-gray-50', 'overflow-auto');
+                container.classList.add('px-4');
+                container.style.padding = '';
+
+                expandIcon.classList.remove('hidden');
+                collapseIcon.classList.add('hidden');
+                fullscreenBtn.title = 'Pantalla completa';
+
+                isFullScreen = false;
+
+                document.removeEventListener('keydown', handleEscKey);
+            }
+
+            // Re-renderizar el calendario para ajustar su tamaño
+            if (window.calendar) {
+                setTimeout(() => {
+                    window.calendar.updateSize();
+                }, 100);
+            }
+        }
+
+        function handleEscKey(e) {
+            if (e.key === 'Escape' && isFullScreen) {
+                toggleFullScreen();
+            }
+        }
+
+        // También permitir F11 como alternativa (opcional)
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'F11') {
+                e.preventDefault();
+                toggleFullScreen();
+            }
+        });
 
         // (opcional) deja activado el nuevo menú sin romper nada
         window.AppSalidas.useNewMenu = true;

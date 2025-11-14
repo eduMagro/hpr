@@ -1322,11 +1322,22 @@ class ProduccionController extends Controller
 
     public function porIds(Request $request)
     {
-        $ids = explode(',', $request->ids);
-
-        $elementos = Elemento::whereIn('id', $ids)
-            ->select('id', 'codigo', 'diametro', 'peso', 'dimensiones', 'maquina_id')
-            ->get();
+        // Si se proporciona planilla_id, obtener todos los elementos de la planilla
+        if ($request->has('planilla_id')) {
+            $elementos = Elemento::where('planilla_id', $request->planilla_id)
+                ->select('id', 'codigo', 'diametro', 'peso', 'dimensiones', 'maquina_id')
+                ->with('maquina:id,nombre')
+                ->orderBy('maquina_id')
+                ->get();
+        } else {
+            // Comportamiento original para compatibilidad
+            $ids = explode(',', $request->ids);
+            $elementos = Elemento::whereIn('id', $ids)
+                ->select('id', 'codigo', 'diametro', 'peso', 'dimensiones', 'maquina_id')
+                ->with('maquina:id,nombre')
+                ->orderBy('maquina_id')
+                ->get();
+        }
 
         return response()->json($elementos);
     }
@@ -1395,9 +1406,19 @@ class ProduccionController extends Controller
                 }
             }
 
-            $primeraId = $planillasOrdenadas[0] ?? null;
+            $primeraOrden = $planillasOrdenadas[0] ?? null;
+            $primeraId = is_array($primeraOrden) ? ($primeraOrden['planilla_id'] ?? null) : $primeraOrden;
 
-            foreach ($planillasOrdenadas as $planillaId) {
+            foreach ($planillasOrdenadas as $ordenData) {
+                // Soporte para ambos formatos: array con datos o solo ID
+                $planillaId = is_array($ordenData) ? ($ordenData['planilla_id'] ?? null) : $ordenData;
+                $posicion = is_array($ordenData) ? ($ordenData['posicion'] ?? null) : null;
+                $ordenId = is_array($ordenData) ? ($ordenData['id'] ?? null) : null;
+
+                if (!$planillaId) continue;
+
+                Log::info('Procesando orden', ['maquinaId' => $maquinaId, 'planillaId' => $planillaId, 'posicion' => $posicion, 'ordenId' => $ordenId]);
+
                 $clave = "{$planillaId}-{$maquinaId}";
 
                 try {
@@ -1487,8 +1508,14 @@ class ProduccionController extends Controller
                             $tituloEvento = '⚠️ ' . $tituloEvento . ' (SIN REVISAR)';
                         }
 
+                        // ID único que incluye la posición si existe
+                        $eventoId = 'planilla-' . $planilla->id . '-seg' . ($i + 1);
+                        if ($ordenId) {
+                            $eventoId .= '-orden' . $ordenId;
+                        }
+
                         $planillasEventos->push([
-                            'id'              => 'planilla-' . $planilla->id . '-seg' . ($i + 1),
+                            'id'              => $eventoId,
                             'title'           => $tituloEvento,
                             'codigo'          => $planilla->codigo_limpio ?? ('Planilla #' . $planilla->id),
                             'start'           => $tStart->toIso8601String(),
@@ -1655,7 +1682,11 @@ class ProduccionController extends Controller
             $ordenes = OrdenPlanilla::orderBy('posicion')
                 ->get()
                 ->groupBy('maquina_id')
-                ->map(fn($ordenesMaquina) => $ordenesMaquina->pluck('planilla_id')->all());
+                ->map(fn($ordenesMaquina) => $ordenesMaquina->map(fn($orden) => [
+                    'planilla_id' => $orden->planilla_id,
+                    'posicion' => $orden->posicion,
+                    'id' => $orden->id
+                ])->all());
 
             $eventos = $this->generarEventosMaquinas($planillasAgrupadas, $ordenes, $colasMaquinas);
 

@@ -368,7 +368,7 @@
     </div>
 
     {{-- Paginación --}}
-    ${{ $pedidos->links() }}
+    {{ $pedidos->links() }}
 </div>
 
 {{-- SCRIPTS JAVASCRIPT --}}

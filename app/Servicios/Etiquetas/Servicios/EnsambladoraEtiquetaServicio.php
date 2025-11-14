@@ -651,6 +651,7 @@ class EnsambladoraEtiquetaServicio extends ServicioEtiquetaBase implements Etiqu
                     } else {
                         $etiqueta->estado = 'fabricada';
                         $etiqueta->fecha_finalizacion = now();
+                        $this->actualizarPesoEtiqueta($etiqueta);
                     }
                     $etiqueta->save();
                 }
@@ -704,6 +705,7 @@ class EnsambladoraEtiquetaServicio extends ServicioEtiquetaBase implements Etiqu
                 DB::transaction(function () use ($etiqueta, $maquina, $planilla) {
                     $etiqueta->estado = 'fabricada';
                     $etiqueta->fecha_finalizacion = now();
+                    $this->actualizarPesoEtiqueta($etiqueta);
                     $etiqueta->save();
 
                     $dobladora = Maquina::where('tipo', 'dobladora_manual')

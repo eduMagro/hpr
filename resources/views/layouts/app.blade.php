@@ -92,7 +92,6 @@
 
             <!-- Alerts -->
             @include('layouts.alerts')
-            <x-notificacion-alerta />
 
             <!-- Page Content with Scroll -->
             <main class="flex-1 overflow-y-auto bg-gray-50 dark:bg-gray-900 transition-colors">

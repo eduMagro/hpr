@@ -569,11 +569,13 @@ document.addEventListener("DOMContentLoaded", function () {
     /* ******************************************************************
      * Función principal para dibujar la figura usando SVG
      ****************************************************************** */
-    function dibujarFigura(containerId, dimensionesStr, peso) {
+    function dibujarFigura(containerId, dimensionesStr, peso, diametro, barras) {
         console.log("🎨 dibujarFigura llamada:", {
             containerId,
             dimensionesStr,
             peso,
+            diametro,
+            barras,
         });
 
         let contenedor = document.getElementById(containerId);
@@ -603,7 +605,7 @@ document.addEventListener("DOMContentLoaded", function () {
             div.style.width = "100%"; // Igual que el canvas original
             div.style.height = computedStyles.height || alto + "px";
             div.style.display = "block";
-            div.style.margin = computedStyles.margin || "0 0 8px 0";
+            div.style.margin = "0";
             div.style.padding = "0";
             div.style.boxSizing = "border-box";
             div.style.overflow = "hidden";
@@ -710,17 +712,17 @@ document.addEventListener("DOMContentLoaded", function () {
         const wRot = medidaAjustada.wRot || 1;
         const hRot = medidaAjustada.hRot || 1;
 
-        // Usar márgenes más conservadores para asegurar que quepa
-        const margenSeguridad = 0.25; // 25% de margen de seguridad
+        // Usar márgenes reducidos para aprovechar mejor el espacio
+        const margenSeguridad = 0.15; // 15% de margen de seguridad (reducido de 25%)
         const availableWidth = ancho * (1 - margenSeguridad);
         const availableHeight = alto * (1 - margenSeguridad);
 
         // Calcular escala para que quepa completamente
         let scale = Math.min(availableWidth / wRot, availableHeight / hRot);
 
-        // Para contenedores pequeños, reducir aún más la escala
+        // Para contenedores pequeños, usar escala completa sin reducción adicional
         if (ancho < 300 || alto < 150) {
-            scale *= 0.8; // Reducir al 80% en contenedores pequeños
+            scale *= 0.95; // Reducir solo al 95% en contenedores pequeños (antes era 80%)
         }
 
         console.log(
@@ -862,20 +864,53 @@ document.addEventListener("DOMContentLoaded", function () {
             );
         }
 
-        // Mostrar el peso en la esquina inferior derecha si se proporciona
-        // Solo mostrar si el contenedor es lo suficientemente grande
-        if (peso && ancho > 200 && alto > 100) {
-            const pesoSize = ancho < 300 ? 10 : 14;
-            const pesoMarginX = ancho < 300 ? 10 : 50;
-            const pesoMarginY = alto < 150 ? 10 : 20;
+        // Mostrar información en la esquina superior izquierda
+        console.log('📝 Información a mostrar:', { peso, diametro, barras, ancho, alto });
+
+        // Siempre mostrar si hay información disponible
+        const infoSize = ancho < 300 ? 10 : 12;
+        const infoMarginX = 15;
+        let infoMarginY = 25;
+        const lineHeight = infoSize + 8;
+
+        // Mostrar peso
+        if (peso) {
             agregarTexto(
                 svg,
-                ancho - pesoMarginX,
-                alto - pesoMarginY,
-                peso,
-                "#FF0000",
-                pesoSize,
-                "end"
+                infoMarginX,
+                infoMarginY,
+                `Peso: ${peso} kg`,
+                "#333333",
+                infoSize,
+                "start"
+            );
+            infoMarginY += lineHeight;
+        }
+
+        // Mostrar diámetro
+        if (diametro) {
+            agregarTexto(
+                svg,
+                infoMarginX,
+                infoMarginY,
+                `Ø: ${diametro} mm`,
+                "#333333",
+                infoSize,
+                "start"
+            );
+            infoMarginY += lineHeight;
+        }
+
+        // Mostrar barras
+        if (barras) {
+            agregarTexto(
+                svg,
+                infoMarginX,
+                infoMarginY,
+                `Barras: ${barras}`,
+                "#333333",
+                infoSize,
+                "start"
             );
         }
 

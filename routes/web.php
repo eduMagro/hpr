@@ -223,6 +223,7 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
     // === MAQUINAS Y PRODUCCIÓN ===
     Route::resource('maquinas', MaquinaController::class);
     Route::post('/maquinas/{id}/cambiar-estado', [MaquinaController::class, 'cambiarEstado'])->name('maquinas.cambiarEstado');
+    Route::get('/maquinas/{id}/elementos-pendientes', [MaquinaController::class, 'elementosPendientes'])->name('maquinas.elementosPendientes');
     Route::post('/maquinas/{id}/redistribuir', [MaquinaController::class, 'redistribuir'])->name('maquinas.redistribuir');
     Route::post('/maquinas/sesion/guardar', [MaquinaController::class, 'guardarSesion'])->name('maquinas.sesion.guardar');
     Route::get('/maquinas/{id}/json', [MaquinaController::class, 'showJson'])->name('maquinas.json');

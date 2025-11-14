@@ -180,22 +180,28 @@ class PedidosTable extends Component
             });
         }
 
-        // Producto Base (tipo, diámetro, longitud) - desde líneas
+        // Producto Base (tipo, diámetro, longitud) - desde líneas -> productoBase
         if (!empty($this->producto_tipo)) {
             $query->whereHas('lineas', function ($q) {
-                $q->where('tipo', 'like', '%' . trim($this->producto_tipo) . '%');
+                $q->whereHas('productoBase', function ($pb) {
+                    $pb->where('tipo', 'like', '%' . trim($this->producto_tipo) . '%');
+                });
             });
         }
 
         if (!empty($this->producto_diametro)) {
             $query->whereHas('lineas', function ($q) {
-                $q->where('diametro', 'like', '%' . trim($this->producto_diametro) . '%');
+                $q->whereHas('productoBase', function ($pb) {
+                    $pb->where('diametro', 'like', '%' . trim($this->producto_diametro) . '%');
+                });
             });
         }
 
         if (!empty($this->producto_longitud)) {
             $query->whereHas('lineas', function ($q) {
-                $q->where('longitud', 'like', '%' . trim($this->producto_longitud) . '%');
+                $q->whereHas('productoBase', function ($pb) {
+                    $pb->where('longitud', 'like', '%' . trim($this->producto_longitud) . '%');
+                });
             });
         }
 

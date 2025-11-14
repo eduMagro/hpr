@@ -2,7 +2,7 @@
     <x-slot name="title">Planificación por Máquina</x-slot>
 
 
-    <div>
+    <div id="produccion-maquinas-container">
         @if (!empty($erroresPlanillas))
             <div class="mb-4 bg-yellow-100 text-yellow-800 p-4 rounded shadow">
                 <h3 class="font-semibold">Advertencias de planificación:</h3>
@@ -128,25 +128,57 @@
                 </div>
             </div>
             <!-- Por esta versión con transición -->
-            <div id="contenedor-calendario" class="bg-white shadow rounded-lg p-2 transition-all duration-300">
+            <div id="contenedor-calendario" class="bg-white shadow rounded-lg p-2 transition-all duration-300 relative">
+                <!-- Botón de pantalla completa en esquina superior derecha -->
+                <button onclick="toggleFullScreen()" id="fullscreen-btn"
+                    title="Pantalla completa (F11)"
+                    class="absolute top-4 right-4 z-10 px-3 py-2 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white rounded-lg transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105 flex items-center gap-2 group">
+                    <svg id="fullscreen-icon-expand" class="w-5 h-5 transition-transform group-hover:scale-110" fill="none" stroke="currentColor"
+                        viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4">
+                        </path>
+                    </svg>
+                    <svg id="fullscreen-icon-collapse" class="w-5 h-5 hidden transition-transform group-hover:scale-110" fill="none" stroke="currentColor"
+                        viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M9 9V4.5M9 9H4.5M9 9L3.75 3.75M9 15v4.5M9 15H4.5M9 15l-5.25 5.25M15 9h4.5M15 9V4.5M15 9l5.25-5.25M15 15h4.5M15 15v4.5m0-4.5l5.25 5.25">
+                        </path>
+                    </svg>
+                    <span id="fullscreen-text" class="text-sm font-medium hidden md:inline">Expandir</span>
+                </button>
+
                 <div id="calendario" class="w-full"></div>
             </div>
         </div>
 
         <!-- Panel lateral para elementos -->
         <div id="panel_elementos"
-            class="fixed top-0 right-0 h-full w-80 bg-white shadow-2xl transform translate-x-full transition-transform duration-300 z-50 flex flex-col">
+            class="fixed top-0 right-0 h-full w-80 bg-white shadow-2xl transform translate-x-full transition-all duration-300 ease-in-out z-50 flex flex-col">
 
-            <div class="bg-blue-600 text-white p-4 flex justify-between items-center">
-                <div>
-                    <h3 class="font-bold text-lg">Elementos</h3>
-                    <p class="text-sm opacity-90" id="panel_codigo"></p>
+            <div class="bg-gradient-to-r from-blue-600 to-blue-700 text-white p-4 shadow-md">
+                <div class="flex justify-between items-center mb-3">
+                    <div>
+                        <h3 class="font-bold text-lg flex items-center gap-2">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                            </svg>
+                            Elementos
+                        </h3>
+                        <p class="text-sm opacity-90" id="panel_codigo"></p>
+                    </div>
+                    <button id="cerrar_panel" class="hover:bg-white hover:bg-opacity-20 rounded-lg p-2 transition-all duration-200 transform hover:scale-110">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
                 </div>
-                <button id="cerrar_panel" class="hover:bg-blue-700 rounded p-1">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M6 18L18 6M6 6l12 12" />
+                <button id="btn_marcar_revisada" class="w-full bg-white hover:bg-gray-100 text-blue-700 font-semibold py-2 px-4 rounded-lg transition-all duration-200 flex items-center justify-center gap-2 shadow-md">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
+                    Marcar como revisada
                 </button>
             </div>
 
@@ -159,7 +191,7 @@
             </div>
         </div>
 
-        <div id="panel_overlay" class="fixed inset-0 bg-black bg-opacity-50 hidden z-40"
+        <div id="panel_overlay" class="fixed inset-0 bg-black bg-opacity-50 hidden transition-opacity duration-300 z-40"
             style="pointer-events: none;"></div>
 
         <!-- Indicador de posición al arrastrar -->
@@ -169,6 +201,21 @@
             <span id="numero_posicion">1</span>
         </div>
 
+
+        <!-- Modal para ver figura dibujada -->
+        <div id="modal-dibujo" class="hidden fixed inset-0 flex justify-center items-center z-[9999] bg-black bg-opacity-50">
+            <div class="bg-white rounded-lg p-5 w-3/4 max-w-4xl max-h-[90vh] overflow-auto relative shadow-lg border border-gray-300 m-4">
+                <button id="cerrar-modal" class="absolute top-3 right-3 text-gray-500 hover:text-gray-700 z-10">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+                <h3 class="text-lg font-semibold mb-4">Figura del Elemento</h3>
+                <div class="flex justify-center items-center">
+                    <canvas id="canvas-dibujo" width="800" height="600" class="border border-gray-300 max-w-full"></canvas>
+                </div>
+            </div>
+        </div>
 
         <!-- Scripts externos -->
         <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.css">
@@ -268,6 +315,35 @@
                     <button onclick="cerrarModalRedistribuir()"
                         class="bg-gray-300 hover:bg-gray-400 text-gray-700 px-4 py-2 rounded-lg transition-colors">
                         Cancelar
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal Confirmación Previa de Redistribución -->
+        <div id="modalConfirmacionRedistribucion"
+            class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50 overflow-y-auto">
+            <div class="bg-white rounded-lg shadow-xl w-full max-w-4xl mx-4 my-8 max-h-[90vh] flex flex-col">
+                <div class="bg-orange-600 text-white px-6 py-4 rounded-t-lg">
+                    <h3 class="text-lg font-semibold">Confirmar Redistribución</h3>
+                    <p id="mensajeConfirmacionRedistribucion" class="text-sm opacity-90"></p>
+                </div>
+
+                <!-- Lista de elementos a redistribuir -->
+                <div class="flex-1 overflow-y-auto p-6">
+                    <h4 class="font-semibold text-gray-800 mb-3">Elementos que serán redistribuidos:</h4>
+                    <div id="listaElementosRedistribuir" class="space-y-2"></div>
+                </div>
+
+                <!-- Botones de acción -->
+                <div class="bg-gray-50 px-6 py-4 rounded-b-lg flex justify-end gap-3 border-t border-gray-200">
+                    <button onclick="cerrarModalConfirmacionRedistribucion()"
+                        class="bg-gray-300 hover:bg-gray-400 text-gray-700 px-4 py-2 rounded-lg transition-colors">
+                        Cancelar
+                    </button>
+                    <button onclick="confirmarRedistribucion()"
+                        class="bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 rounded-lg transition-colors">
+                        Confirmar Redistribución
                     </button>
                 </div>
             </div>
@@ -383,6 +459,7 @@
             /* Contenedor calendario */
             #contenedor-calendario {
                 transition: all 0.3s ease;
+                min-height: 1200px;
             }
 
             #contenedor-calendario.con-panel-abierto {
@@ -464,6 +541,29 @@
                 font-size: 0.875rem;
             }
 
+            /* Secciones de máquina en el panel */
+            .seccion-maquina-header {
+                margin: 0 -16px 12px -16px;
+            }
+
+            .seccion-maquina-header:first-child {
+                margin-top: -16px;
+            }
+
+            .seccion-maquina-header > div {
+                position: sticky;
+                top: 0;
+                z-index: 5;
+                box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            }
+
+            .seccion-maquina-elementos {
+                display: flex;
+                flex-direction: column;
+                gap: 12px;
+                margin-bottom: 20px;
+            }
+
             /* Badge con contador de selección */
             .selection-badge {
                 position: fixed;
@@ -497,7 +597,22 @@
             }
 
             .fc-event {
-                min-width: 50px !important;
+                width: 100% !important;
+                max-width: 100% !important;
+                overflow: hidden !important;
+                box-sizing: border-box !important;
+            }
+
+            /* Asegurar que los eventos se ajusten al contenedor de la celda */
+            .fc-timegrid-event-harness {
+                left: 0 !important;
+                right: 0 !important;
+            }
+
+            .fc-timegrid-event {
+                left: 0 !important;
+                right: 0 !important;
+                width: 100% !important;
             }
 
             /* ===== EVENTOS SIN REVISAR ===== */
@@ -624,11 +739,11 @@
             }
 
             /* Filtros para resaltado de eventos */
-            /* Estilos para resaltado de eventos */
+            /* Estilos para resaltado de eventos - CON COLOR DE FONDO */
             .fc-event.evento-resaltado {
-                box-shadow: 0 0 0 3px #3b82f6, 0 0 12px rgba(59, 130, 246, 0.5) !important;
+                background-color: #3b82f6 !important;
                 z-index: 100 !important;
-                transform: scale(1.02);
+                transform: scale(1.05);
                 transition: all 0.2s ease;
             }
 
@@ -639,8 +754,8 @@
             }
 
             .fc-event.evento-resaltado:hover {
-                transform: scale(1.05);
-                box-shadow: 0 0 0 4px #2563eb, 0 0 16px rgba(37, 99, 235, 0.6) !important;
+                transform: scale(1.08);
+                background-color: #2563eb !important;
             }
 
             /* Animación de pulso para eventos resaltados */
@@ -648,16 +763,26 @@
 
                 0%,
                 100% {
-                    box-shadow: 0 0 0 3px #3b82f6, 0 0 12px rgba(59, 130, 246, 0.5);
+                    background-color: #3b82f6;
                 }
 
                 50% {
-                    box-shadow: 0 0 0 5px #3b82f6, 0 0 20px rgba(59, 130, 246, 0.7);
+                    background-color: #2563eb;
                 }
             }
 
             .fc-event.evento-resaltado.pulsando {
                 animation: pulso-resaltado 1.5s ease-in-out infinite;
+            }
+
+            /* ===== HEADER FIJO DEL CALENDARIO ===== */
+
+            /* Hacer sticky el header de recursos (columna izquierda) */
+            .fc-datagrid-header {
+                position: sticky !important;
+                top: 0 !important;
+                z-index: 3 !important;
+                background-color: white !important;
             }
 
             /* ===== HEADER FIJO DEL CALENDARIO ===== */
@@ -679,7 +804,7 @@
             }
 
             /* Para resourceTimeGrid: hacer sticky toda la sección del header */
-            .fc-resource-timeline .fc-scrollgrid-section-header>tr>* {
+            .fc-resource-timeline .fc-scrollgrid-section-header > tr > * {
                 position: sticky !important;
                 top: 0 !important;
                 z-index: 3 !important;
@@ -815,7 +940,7 @@
                             alert('Error al cargar los eventos. Revisa la consola.');
                         }
                     },
-                    height: 'auto',
+                    height: 900, // Altura fija para permitir scroll en la página
                     scrollTime: '06:00:00',
                     editable: true,
                     eventResizableFromStart: false,
@@ -987,17 +1112,15 @@
                                             throw new Error(data2.message || 'Error al mover elementos');
                                         }
 
-                                        // Actualizar calendario
-                                        actualizarEventosSinRecargar(data2.eventos, [dataMovimiento
-                                            .maquinaOriginal, maquinaDestinoId
-                                        ]);
-
                                         // Remover elementos del panel
                                         window.MultiSelectElementos.removerElementosDelPanel(dataMovimiento
                                             .elementosIds);
 
                                         // Remover el evento temporal que se creó
                                         info.event.remove();
+
+                                        // Recargar eventos desde el servidor
+                                        calendar.refetchEvents();
 
                                         const Toast = Swal.mixin({
                                             toast: true,
@@ -1038,17 +1161,15 @@
                                             throw new Error(data2.message || 'Error al mover elementos');
                                         }
 
-                                        // Actualizar calendario
-                                        actualizarEventosSinRecargar(data2.eventos, [dataMovimiento
-                                            .maquinaOriginal, maquinaDestinoId
-                                        ]);
-
                                         // Remover elementos del panel
                                         window.MultiSelectElementos.removerElementosDelPanel(dataMovimiento
                                             .elementosIds);
 
                                         // Remover el evento temporal que se creó
                                         info.event.remove();
+
+                                        // Recargar eventos desde el servidor
+                                        calendar.refetchEvents();
 
                                         const Toast = Swal.mixin({
                                             toast: true,
@@ -1075,17 +1196,15 @@
                                     throw new Error(data.message || 'Error al mover elementos');
                                 }
 
-                                // Actualizar calendario
-                                actualizarEventosSinRecargar(data.eventos, [dataMovimiento.maquinaOriginal,
-                                    maquinaDestinoId
-                                ]);
-
                                 // Remover elementos del panel
                                 window.MultiSelectElementos.removerElementosDelPanel(dataMovimiento
                                     .elementosIds);
 
                                 // Remover el evento temporal que se creó
                                 info.event.remove();
+
+                                // Recargar eventos desde el servidor
+                                calendar.refetchEvents();
 
                                 const Toast = Swal.mixin({
                                     toast: true,
@@ -1220,20 +1339,19 @@
                     },
                     eventClick: async function(info) {
                         const planillaId = info.event.id.split('-')[1];
-                        const elementosId = info.event.extendedProps.elementos_id;
                         const codigoPlanilla = info.event.extendedProps.codigo ?? info.event.title;
 
-                        if (!Array.isArray(elementosId) || elementosId.length === 0) {
+                        if (!planillaId) {
                             Swal.fire({
                                 icon: 'warning',
-                                title: 'Sin elementos',
-                                text: 'Este evento no tiene elementos asociados.',
+                                title: 'Sin planilla',
+                                text: 'No se pudo identificar la planilla.',
                             });
                             return;
                         }
 
                         try {
-                            const response = await fetch(`/elementos/por-ids?ids=${elementosId.join(',')}`);
+                            const response = await fetch(`/elementos/por-ids?planilla_id=${planillaId}`);
                             const elementos = await response.json();
                             mostrarPanelElementos(elementos, planillaId, codigoPlanilla);
                         } catch (error) {
@@ -1437,9 +1555,8 @@
                                         throw new Error(data2.message || 'Error al crear nueva posición');
                                     }
 
-                                    actualizarEventosSinRecargar(data2.eventos, [maquinaOrigenId,
-                                        maquinaDestinoId
-                                    ]);
+                                    // Recargar eventos desde el servidor
+                                    calendar.refetchEvents();
 
                                     Swal.mixin({
                                         toast: true,
@@ -1478,9 +1595,8 @@
                                             'Error al mover a posición existente');
                                     }
 
-                                    actualizarEventosSinRecargar(data2.eventos, [maquinaOrigenId,
-                                        maquinaDestinoId
-                                    ]);
+                                    // Recargar eventos desde el servidor
+                                    calendar.refetchEvents();
 
                                     Swal.mixin({
                                         toast: true,
@@ -1505,7 +1621,8 @@
                                 throw new Error(data.message || 'Error al reordenar');
                             }
 
-                            actualizarEventosSinRecargar(data.eventos, [maquinaOrigenId, maquinaDestinoId]);
+                            // Recargar eventos desde el servidor
+                            calendar.refetchEvents();
 
                             const Toast = Swal.mixin({
                                 toast: true,
@@ -1583,13 +1700,11 @@
                     const headerSection = document.querySelector('.fc-scrollgrid-section-header');
 
                     if (!headerSection) {
-                        console.log('❌ No se encontró el header');
                         return;
                     }
 
                     // Obtener la posición inicial del header
                     const headerInitialTop = headerSection.getBoundingClientRect().top + window.pageYOffset;
-                    console.log('📍 Posición inicial del header:', headerInitialTop);
 
                     // Escuchar scroll en la página (window)
                     window.addEventListener('scroll', function() {
@@ -1641,12 +1756,80 @@
                                 headerSection.style.width = '';
                             }
                         }
-                    }, {
-                        passive: true
-                    });
-
-                    console.log('✅ Listener de scroll en window agregado');
+                    }, { passive: true });
                 }, 500);
+
+                // 🎯 PANTALLA COMPLETA
+                let isFullScreen = false;
+
+                window.toggleFullScreen = function() {
+                    const container = document.getElementById('produccion-maquinas-container');
+                    const sidebar = document.querySelector('[class*="sidebar"]') || document.querySelector('aside');
+                    const header = document.querySelector('nav');
+                    const breadcrumbs = document.querySelector('[class*="breadcrumb"]');
+                    const expandIcon = document.getElementById('fullscreen-icon-expand');
+                    const collapseIcon = document.getElementById('fullscreen-icon-collapse');
+                    const fullscreenBtn = document.getElementById('fullscreen-btn');
+                    const fullscreenText = document.getElementById('fullscreen-text');
+
+                    if (!isFullScreen) {
+                        // Entrar en pantalla completa
+                        if (sidebar) sidebar.style.display = 'none';
+                        if (header) header.style.display = 'none';
+                        if (breadcrumbs) breadcrumbs.style.display = 'none';
+
+                        container.classList.add('fixed', 'inset-0', 'z-50', 'bg-gray-50', 'overflow-auto');
+                        container.style.padding = '1rem';
+
+                        expandIcon.classList.add('hidden');
+                        collapseIcon.classList.remove('hidden');
+                        fullscreenBtn.title = 'Salir de pantalla completa (ESC)';
+                        if (fullscreenText) fullscreenText.textContent = 'Contraer';
+
+                        isFullScreen = true;
+
+                        // Atajo de teclado ESC para salir
+                        document.addEventListener('keydown', handleEscKey);
+                    } else {
+                        // Salir de pantalla completa
+                        if (sidebar) sidebar.style.display = '';
+                        if (header) header.style.display = '';
+                        if (breadcrumbs) breadcrumbs.style.display = '';
+
+                        container.classList.remove('fixed', 'inset-0', 'z-50', 'bg-gray-50', 'overflow-auto');
+                        container.style.padding = '';
+
+                        expandIcon.classList.remove('hidden');
+                        collapseIcon.classList.add('hidden');
+                        fullscreenBtn.title = 'Pantalla completa (F11)';
+                        if (fullscreenText) fullscreenText.textContent = 'Expandir';
+
+                        isFullScreen = false;
+
+                        document.removeEventListener('keydown', handleEscKey);
+                    }
+
+                    // Re-renderizar el calendario para ajustar su tamaño
+                    if (window.calendar) {
+                        setTimeout(() => {
+                            window.calendar.updateSize();
+                        }, 100);
+                    }
+                }
+
+                function handleEscKey(e) {
+                    if (e.key === 'Escape' && isFullScreen) {
+                        toggleFullScreen();
+                    }
+                }
+
+                // También permitir F11 como alternativa
+                document.addEventListener('keydown', function(e) {
+                    if (e.key === 'F11') {
+                        e.preventDefault();
+                        toggleFullScreen();
+                    }
+                });
 
                 // 🎯 Listener para calcular posición al hacer drop de elementos externos
                 const calendarioEl = document.getElementById('calendario');
@@ -1764,6 +1947,9 @@
                     });
                 }
 
+                // Variable global para guardar el planillaId actual del panel
+                let planillaIdActualPanel = null;
+
                 // Función para mostrar panel de elementos
                 function mostrarPanelElementos(elementos, planillaId, codigo) {
                     const panel = document.getElementById('panel_elementos');
@@ -1771,51 +1957,88 @@
                     const lista = document.getElementById('panel_lista');
                     const contenedorCalendario = document.getElementById('contenedor-calendario');
 
+                    // Guardar el planillaId actual
+                    planillaIdActualPanel = planillaId;
+
                     document.getElementById('panel_codigo').textContent = codigo;
                     lista.innerHTML = '';
 
-                    elementos.forEach(elemento => {
-                        const div = document.createElement('div');
-                        div.className = 'elemento-drag fc-event';
-                        div.draggable = true;
-                        div.title = ''; // Evitar tooltip nativo del navegador
+                    // Agrupar elementos por maquina_id
+                    const elementosPorMaquina = elementos.reduce((acc, elemento) => {
+                        const maquinaId = elemento.maquina_id || 'sin_maquina';
+                        if (!acc[maquinaId]) {
+                            acc[maquinaId] = {
+                                nombre: elemento.maquina ? elemento.maquina.nombre : 'Sin asignar',
+                                elementos: []
+                            };
+                        }
+                        acc[maquinaId].elementos.push(elemento);
+                        return acc;
+                    }, {});
 
-                        div.dataset.elementoId = elemento.id;
-                        div.dataset.planillaId = planillaId;
-                        div.dataset.maquinaOriginal = elemento.maquina_id;
+                    // Crear secciones por máquina
+                    Object.entries(elementosPorMaquina).forEach(([maquinaId, grupo]) => {
+                        // Crear header de la sección
+                        const seccionHeader = document.createElement('div');
+                        seccionHeader.className = 'seccion-maquina-header';
+                        seccionHeader.innerHTML = `
+                            <div class="bg-blue-500 text-white px-4 py-2 rounded-md font-semibold text-sm mb-3">
+                                ${grupo.nombre} (${grupo.elementos.length})
+                            </div>
+                        `;
+                        lista.appendChild(seccionHeader);
 
-                        div.dataset.event = JSON.stringify({
-                            title: elemento.codigo,
-                            extendedProps: {
-                                elementoId: elemento.id,
-                                planillaId: planillaId,
-                                maquinaOriginal: elemento.maquina_id
-                            },
-                            duration: '01:00'
+                        // Crear contenedor de elementos de esta máquina
+                        const seccionElementos = document.createElement('div');
+                        seccionElementos.className = 'seccion-maquina-elementos mb-4';
+
+                        grupo.elementos.forEach(elemento => {
+                            const div = document.createElement('div');
+                            div.className = 'elemento-drag fc-event';
+                            div.draggable = true;
+                            div.title = ''; // Evitar tooltip nativo del navegador
+
+                            div.dataset.elementoId = elemento.id;
+                            div.dataset.planillaId = planillaId;
+                            div.dataset.maquinaOriginal = elemento.maquina_id;
+
+                            div.dataset.event = JSON.stringify({
+                                title: elemento.codigo,
+                                extendedProps: {
+                                    elementoId: elemento.id,
+                                    planillaId: planillaId,
+                                    maquinaOriginal: elemento.maquina_id
+                                },
+                                duration: '01:00'
+                            });
+
+                            const canvasId = `canvas-panel-${elemento.id}`;
+
+                            div.innerHTML = `
+                            <canvas id="${canvasId}" width="240" height="120" draggable="false"></canvas>
+                        `;
+
+                            seccionElementos.appendChild(div);
+
+                            // ✅ Evento de clic para selección múltiple
+                            div.addEventListener('click', function(e) {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                window.MultiSelectElementos.toggleSeleccion(div);
+                            });
+
+                            setTimeout(() => {
+                                window.dibujarFiguraElemento(
+                                    canvasId,
+                                    elemento.dimensiones,
+                                    elemento.peso,
+                                    elemento.diametro,
+                                    elemento.barras
+                                );
+                            }, 10);
                         });
 
-                        const canvasId = `canvas-panel-${elemento.id}`;
-
-                        div.innerHTML = `
-                        <canvas id="${canvasId}" width="240" height="120" draggable="false"></canvas>
-                        <div class="elemento-info-mini" draggable="false">
-                            <span draggable="false"><strong>⌀${elemento.diametro}mm</strong></span>
-                            <span draggable="false"><strong>${elemento.peso}kg</strong></span>
-                        </div>
-                    `;
-
-                        lista.appendChild(div);
-
-                        // ✅ Evento de clic para selección múltiple
-                        div.addEventListener('click', function(e) {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            window.MultiSelectElementos.toggleSeleccion(div);
-                        });
-
-                        setTimeout(() => {
-                            window.dibujarFiguraElemento(canvasId, elemento.dimensiones, elemento.peso);
-                        }, 10);
+                        lista.appendChild(seccionElementos);
                     });
 
                     // Configurar FullCalendar.Draggable con timeout para asegurar que se ejecuta
@@ -1866,10 +2089,6 @@
                     setTimeout(() => {
                         calendar.updateSize();
                     }, 300);
-                    // ✅ Redimensionar calendario después de la transición
-                    setTimeout(() => {
-                        calendar.updateSize();
-                    }, 300); // Espera a que termine la transición CSS
                 }
 
                 function cerrarPanel() {
@@ -1878,6 +2097,7 @@
                     document.body.classList.remove('panel-abierto');
                     document.getElementById('panel_elementos').classList.remove('abierto');
                     document.getElementById('panel_overlay').classList.add('hidden');
+                    document.getElementById('contenedor-calendario').classList.remove('con-panel-abierto');
 
                     setTimeout(() => {
                         calendar.updateSize();
@@ -1885,6 +2105,47 @@
                 }
 
                 document.getElementById('cerrar_panel').addEventListener('click', cerrarPanel);
+
+                // Evento para marcar planilla como revisada
+                document.getElementById('btn_marcar_revisada').addEventListener('click', async function() {
+                    if (!planillaIdActualPanel) {
+                        alert('No hay planilla seleccionada');
+                        return;
+                    }
+
+                    if (!confirm('¿Estás seguro de que quieres marcar esta planilla como revisada?')) {
+                        return;
+                    }
+
+                    try {
+                        const response = await fetch(`/planillas/${planillaIdActualPanel}/marcar-revisada`, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Accept': 'application/json',
+                                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                            }
+                        });
+
+                        const data = await response.json();
+
+                        if (data.success) {
+                            alert('Planilla marcada como revisada correctamente');
+                            cerrarPanel();
+
+                            // Recargar eventos del calendario
+                            if (window.calendar) {
+                                calendar.refetchEvents();
+                            }
+                        } else {
+                            alert('Error: ' + (data.mensaje || 'No se pudo marcar como revisada'));
+                        }
+                    } catch (error) {
+                        console.error('Error:', error);
+                        alert('Error al marcar como revisada: ' + error.message);
+                    }
+                });
+
                 // Overlay ya no captura clics (pointer-events: none) para permitir interacción con calendario
 
                 // Cerrar panel al hacer clic fuera del panel (en el área del calendario)
@@ -2825,12 +3086,181 @@
 
             let datosRedistribucion = null; // Para almacenar los datos para el reporte
 
+            let tipoRedistribucionSeleccionado = null;
+            let maquinaRedistribucionId = null; // ID de la máquina desde donde se redistribuye
+
             async function redistribuir(tipo) {
                 if (!maquinaActualId) return;
 
-                if (!confirm(
-                        `¿Estás seguro de redistribuir ${tipo === 'todos' ? 'TODOS los elementos' : 'los primeros elementos'} de esta máquina?`
-                    )) {
+                tipoRedistribucionSeleccionado = tipo;
+                maquinaRedistribucionId = maquinaActualId; // Guardar el ID
+
+                try {
+                    // Obtener los elementos que serán redistribuidos (sin ejecutar la redistribución)
+                    const response = await fetch(`/maquinas/${maquinaActualId}/elementos-pendientes?tipo=${tipo}`, {
+                        method: 'GET',
+                        headers: {
+                            'Accept': 'application/json',
+                        }
+                    });
+
+                    if (!response.ok) {
+                        throw new Error(`Error HTTP ${response.status}`);
+                    }
+
+                    const data = await response.json();
+
+                    if (data.success && data.elementos) {
+                        // Mostrar modal de confirmación con los elementos
+                        mostrarModalConfirmacionRedistribucion(data.elementos, tipo, data.maquina_origen, data.maquinas_disponibles);
+                        cerrarModalRedistribuir();
+                    } else {
+                        alert('No hay elementos para redistribuir');
+                    }
+                } catch (error) {
+                    console.error('Error completo:', error);
+                    alert('Error al obtener elementos: ' + error.message);
+                }
+            }
+
+            let maquinasDisponiblesGlobal = [];
+
+            function mostrarModalConfirmacionRedistribucion(elementos, tipo, maquinaOrigen, maquinasDisponibles) {
+                const modal = document.getElementById('modalConfirmacionRedistribucion');
+                const mensaje = document.getElementById('mensajeConfirmacionRedistribucion');
+                const lista = document.getElementById('listaElementosRedistribuir');
+
+                maquinasDisponiblesGlobal = maquinasDisponibles;
+
+                mensaje.textContent = `Se redistribuirán ${elementos.length} elemento(s) desde "${maquinaOrigen.nombre}" - ${tipo === 'todos' ? 'TODOS los pendientes' : 'Los primeros elementos'}`;
+
+                lista.innerHTML = '';
+                elementos.forEach((elemento, index) => {
+                    const div = document.createElement('div');
+                    div.className = 'bg-gray-50 border border-gray-200 rounded-lg p-3 hover:bg-gray-100 transition';
+
+                    // Escapar comillas simples en dimensiones para evitar errores JavaScript
+                    const dimensionesEscapadas = (elemento.dimensiones || '').replace(/'/g, "\\'");
+
+                    const canvasId = `canvas-elemento-${elemento.id}`;
+
+                    div.innerHTML = `
+                        <div class="flex gap-4">
+                            <div class="flex-shrink-0" style="width: 200px;">
+                                <div id="${canvasId}" style="width: 200px; height: 120px; border: 1px solid #e5e7eb; border-radius: 4px; background: white;"></div>
+                            </div>
+                            <div class="flex-1">
+                                <div class="flex items-center gap-3 mb-2">
+                                    <span class="font-mono text-sm font-semibold text-gray-700">${elemento.codigo}</span>
+                                    <span class="text-xs text-gray-500">${elemento.dimensiones || 'Sin dimensiones'}</span>
+                                </div>
+                                <div class="flex items-center gap-2 mb-2">
+                                    <span class="text-xs text-gray-600 font-medium">Desde:</span>
+                                    <span class="text-xs bg-red-100 text-red-700 px-2 py-1 rounded">${maquinaOrigen.nombre}</span>
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                                    </svg>
+                                    <span class="text-xs text-gray-600 font-medium">Hacia:</span>
+                                    <select
+                                        class="text-xs border border-gray-300 rounded px-2 py-1 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                        data-elemento-id="${elemento.id}"
+                                        onchange="actualizarMaquinaDestino(${elemento.id}, this.value)">
+                                        <option value="">Automático (${elemento.maquina_destino_nombre})</option>
+                                        ${maquinasDisponibles.map(m => `<option value="${m.id}" ${m.id === elemento.maquina_destino_id ? 'selected' : ''}>${m.nombre}</option>`).join('')}
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+
+                    lista.appendChild(div);
+
+                    // Dibujar la figura en el canvas después de añadir al DOM
+                    setTimeout(() => {
+                        if (typeof window.dibujarFiguraElemento === 'function') {
+                            window.dibujarFiguraElemento(
+                                canvasId,
+                                elemento.dimensiones || '',
+                                elemento.peso,
+                                elemento.diametro,
+                                elemento.barras
+                            );
+                        }
+                    }, 50);
+                });
+
+                modal.classList.remove('hidden');
+                modal.classList.add('flex');
+            }
+
+            // Almacenar las máquinas destino seleccionadas
+            let maquinasDestinoSeleccionadas = {};
+
+            function actualizarMaquinaDestino(elementoId, maquinaId) {
+                if (maquinaId) {
+                    maquinasDestinoSeleccionadas[elementoId] = parseInt(maquinaId);
+                } else {
+                    delete maquinasDestinoSeleccionadas[elementoId];
+                }
+            }
+
+            function verFiguraElementoRedistribucion(id, codigo, dimensiones, peso, diametro, barras) {
+                console.log('Abriendo figura para elemento:', { id, codigo, dimensiones, peso, diametro, barras });
+
+                // Asegurar que el modal de dibujo esté visible
+                const modalDibujo = document.getElementById('modal-dibujo');
+                if (modalDibujo) {
+                    modalDibujo.classList.remove('hidden');
+                    modalDibujo.classList.add('flex');
+                }
+
+                // Actualizar el título del modal
+                const titulo = modalDibujo.querySelector('h3');
+                if (titulo) {
+                    titulo.textContent = `Figura del Elemento - ${codigo}`;
+                }
+
+                // Actualizar datos globales del elemento
+                window.elementoData = {
+                    id: id,
+                    dimensiones: dimensiones || '',
+                    peso: peso || '',
+                    diametro: diametro || '',
+                    barras: barras || ''
+                };
+
+                // Dibujar la figura directamente
+                if (typeof window.dibujarFiguraElemento === 'function') {
+                    window.dibujarFiguraElemento('canvas-dibujo', dimensiones || '', peso || '', diametro || '', barras || '');
+                } else {
+                    console.error('La función dibujarFiguraElemento no está disponible');
+                }
+            }
+
+            // Mantener la función de limpieza del botón temporal si se usaba
+            function limpiarBotonTemporal(btnTemp) {
+                setTimeout(() => {
+                    if (btnTemp && btnTemp.parentNode) {
+                        btnTemp.remove();
+                    }
+                }, 100);
+            }
+
+            function cerrarModalConfirmacionRedistribucion() {
+                const modal = document.getElementById('modalConfirmacionRedistribucion');
+                modal.classList.add('hidden');
+                modal.classList.remove('flex');
+                tipoRedistribucionSeleccionado = null;
+                maquinaRedistribucionId = null;
+                maquinasDestinoSeleccionadas = {};
+            }
+
+            async function confirmarRedistribucion() {
+                console.log('🔄 confirmarRedistribucion llamada', { maquinaRedistribucionId, tipoRedistribucionSeleccionado, maquinasDestinoSeleccionadas });
+
+                if (!maquinaRedistribucionId || !tipoRedistribucionSeleccionado) {
+                    console.error('Faltan datos:', { maquinaRedistribucionId, tipoRedistribucionSeleccionado });
+                    alert('Error: Faltan datos necesarios para la redistribución');
                     return;
                 }
 
@@ -2842,7 +3272,9 @@
                         return;
                     }
 
-                    const response = await fetch(`/maquinas/${maquinaActualId}/redistribuir`, {
+                    console.log('Enviando petición de redistribución...');
+
+                    const response = await fetch(`/maquinas/${maquinaRedistribucionId}/redistribuir`, {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
@@ -2850,9 +3282,12 @@
                             'X-CSRF-TOKEN': csrfToken.content
                         },
                         body: JSON.stringify({
-                            tipo: tipo
+                            tipo: tipoRedistribucionSeleccionado,
+                            maquinas_destino: maquinasDestinoSeleccionadas
                         })
                     });
+
+                    console.log('Respuesta recibida:', response.status);
 
                     if (!response.ok) {
                         const errorText = await response.text();
@@ -2861,9 +3296,16 @@
                     }
 
                     const data = await response.json();
+                    console.log('Datos de respuesta:', data);
 
                     if (data.success) {
-                        cerrarModalRedistribuir();
+                        cerrarModalConfirmacionRedistribucion();
+
+                        // Recargar eventos del calendario
+                        if (window.calendar) {
+                            calendar.refetchEvents();
+                        }
+
                         // Guardar datos para el reporte
                         datosRedistribucion = data;
                         // Mostrar modal de resultados
@@ -2875,6 +3317,19 @@
                     console.error('Error completo:', error);
                     alert('Error al comunicarse con el servidor: ' + error.message);
                 }
+            }
+
+            function verFiguraElemento(id, codigo, dimensiones, peso) {
+                // Usar el sistema existente de modal de dibujo
+                const evento = new CustomEvent('abrirModalDibujo', {
+                    detail: {
+                        id: id,
+                        codigo: codigo,
+                        dimensiones: dimensiones,
+                        peso: peso
+                    }
+                });
+                document.dispatchEvent(evento);
             }
 
             function mostrarResultados(data) {

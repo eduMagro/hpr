@@ -14,6 +14,7 @@ use Carbon\Carbon;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use App\Services\AlertaService;
+use App\Services\ActionLoggerService;
 use App\Models\Departamento;
 
 class PlanificacionController extends Controller
@@ -500,15 +501,24 @@ class PlanificacionController extends Controller
         return $resources->values();
     }
 
-    public function guardarComentario(Request $request, $id)
+    public function guardarComentario(Request $request, $id, ActionLoggerService $logger)
     {
         $request->validate([
             'comentario' => 'nullable|string|max:1000'
         ]);
 
         $salida = Salida::findOrFail($id);
+        $comentarioAnterior = $salida->comentario;
         $salida->comentario = $request->comentario;
         $salida->save();
+
+        $logger->logPlanificacion('comentario_guardado', [
+            'salida_codigo' => $salida->codigo ?? 'N/A',
+            'codigo_sage' => $salida->codigo_sage ?? 'N/A',
+            'fecha_salida' => $salida->fecha_salida ? Carbon::parse($salida->fecha_salida)->format('Y-m-d H:i') : 'N/A',
+            'tenia_comentario' => !empty($comentarioAnterior),
+            'tiene_comentario' => !empty($salida->comentario),
+        ]);
 
         return response()->json([
             'success' => true,
@@ -518,7 +528,7 @@ class PlanificacionController extends Controller
         ]);
     }
 
-    public function update(Request $request, $id)
+    public function update(Request $request, $id, ActionLoggerService $logger)
     {
         $request->validate([
             'fecha' => 'required|date',
@@ -534,8 +544,16 @@ class PlanificacionController extends Controller
             ]);
 
             $salida = Salida::findOrFail($id);
+            $fechaAnterior = $salida->fecha_salida;
             $salida->fecha_salida = $fecha;
             $salida->save();
+
+            $logger->logPlanificacion('fecha_salida_actualizada', [
+                'salida_codigo' => $salida->codigo ?? 'N/A',
+                'codigo_sage' => $salida->codigo_sage ?? 'N/A',
+                'fecha_anterior' => $fechaAnterior ? Carbon::parse($fechaAnterior)->format('Y-m-d H:i') : 'N/A',
+                'fecha_nueva' => $fecha->format('Y-m-d H:i'),
+            ]);
 
             // ✅ Solo enviar alerta si la salida tiene código SAGE
             if (!is_null($salida->codigo_sage)) {
@@ -570,13 +588,31 @@ class PlanificacionController extends Controller
 
             if (is_array($request->planillas_ids) && count($request->planillas_ids) > 0) {
                 // 🔥 Actualizar varias planillas
+                $planillas = Planilla::whereIn('id', $request->planillas_ids)->get();
+                $codigos = $planillas->pluck('codigo')->implode(', ');
+
                 Planilla::whereIn('id', $request->planillas_ids)
                     ->update(['fecha_estimada_entrega' => $fecha]);
+
+                $logger->logPlanificacion('fecha_planillas_actualizada', [
+                    'cantidad_planillas' => count($request->planillas_ids),
+                    'codigos_planillas' => $codigos,
+                    'fecha_nueva' => $fecha->format('Y-m-d H:i'),
+                ]);
             } else {
                 // Por compatibilidad, si solo hay un ID (antiguo método)
                 $planilla = Planilla::findOrFail($id);
+                $fechaAnterior = $planilla->fecha_estimada_entrega;
                 $planilla->fecha_estimada_entrega = $fecha;
                 $planilla->save();
+
+                $logger->logPlanificacion('fecha_planilla_actualizada', [
+                    'codigo_planilla' => $planilla->codigo ?? 'N/A',
+                    'obra' => $planilla->obra->obra ?? 'N/A',
+                    'cliente' => $planilla->cliente->empresa ?? 'N/A',
+                    'fecha_anterior' => $fechaAnterior ? Carbon::parse($fechaAnterior)->format('Y-m-d H:i') : 'N/A',
+                    'fecha_nueva' => $fecha->format('Y-m-d H:i'),
+                ]);
             }
 
             return response()->json(['success' => true, 'modelo' => 'planilla']);

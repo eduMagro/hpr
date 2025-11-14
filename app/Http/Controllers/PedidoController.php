@@ -173,16 +173,18 @@ class PedidoController extends Controller
             $diametro  = $request->filled('producto_diametro')  ? mb_strtolower(trim($request->producto_diametro), 'UTF-8') : null;
             $longitud  = $request->filled('producto_longitud')  ? mb_strtolower(trim($request->producto_longitud), 'UTF-8') : null;
 
-            $query->whereHas('pedidoProductos.productoBase', function ($q) use ($tipo, $diametro, $longitud) {
-                if ($tipo !== null) {
-                    $q->whereRaw('LOWER(tipo) LIKE ?', ['%' . $tipo . '%']);
-                }
-                if ($diametro !== null) {
-                    $q->whereRaw('LOWER(diametro) LIKE ?', ['%' . $diametro . '%']);
-                }
-                if ($longitud !== null) {
-                    $q->whereRaw('LOWER(longitud) LIKE ?', ['%' . $longitud . '%']);
-                }
+            $query->whereHas('pedidoProductos', function ($q) use ($tipo, $diametro, $longitud) {
+                $q->whereHas('productoBase', function ($pb) use ($tipo, $diametro, $longitud) {
+                    if ($tipo !== null) {
+                        $pb->whereRaw('LOWER(tipo) LIKE ?', ['%' . $tipo . '%']);
+                    }
+                    if ($diametro !== null) {
+                        $pb->whereRaw('LOWER(diametro) LIKE ?', ['%' . $diametro . '%']);
+                    }
+                    if ($longitud !== null) {
+                        $pb->whereRaw('LOWER(longitud) LIKE ?', ['%' . $longitud . '%']);
+                    }
+                });
             });
         }
 

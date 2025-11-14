@@ -1,10 +1,10 @@
 @props(['user', 'resumen'])
 
-<div class="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 py-4 sm:py-6 lg:py-8">
+<div class="bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 py-4 sm:py-6 lg:py-8" x-data="{ mostrarDetalles: false }">
     <div class="max-w-7xl mx-auto px-3 sm:px-4 lg:px-6">
 
         {{-- Header con banner degradado --}}
-        <div class="bg-gray-900 dark:bg-gray-950 rounded-xl sm:rounded-2xl shadow-2xl mb-4 sm:mb-6 overflow-hidden">
+        <div class="bg-gray-900 dark:bg-gray-950 rounded-xl sm:rounded-2xl shadow-2xl mb-12 overflow-visible relative">
             <div class="relative bg-gradient-to-br from-gray-800/50 to-gray-900/50 backdrop-blur-sm">
                 <div class="absolute inset-0 bg-black/10"></div>
                 <div class="relative p-4 sm:p-6 md:p-8">
@@ -55,9 +55,28 @@
                     </div>
                 </div>
             </div>
+
+            {{-- Botón toggle para mostrar/ocultar detalles --}}
+            <div class="relative">
+                <button @click="mostrarDetalles = !mostrarDetalles"
+                    class="absolute left-1/2 -translate-x-1/2 -bottom-4 z-10 group bg-white hover:bg-gray-50 rounded-full shadow-sm hover:shadow-md transition-all duration-300 transform hover:scale-110 active:scale-95 px-3 py-1.5 flex items-center gap-1 border border-gray-200">
+                    <span class="text-[10px] font-medium text-gray-600" x-text="mostrarDetalles ? 'Ocultar' : 'Ver más'"></span>
+                    <svg class="w-2.5 h-2.5 text-gray-500 transition-transform duration-300" :class="{ 'rotate-180': mostrarDetalles }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                    </svg>
+                </button>
+            </div>
         </div>
 
         {{-- Grid de contenido --}}
+        <div x-show="mostrarDetalles"
+             x-transition:enter="transition ease-out duration-300"
+             x-transition:enter-start="opacity-0 transform -translate-y-4"
+             x-transition:enter-end="opacity-100 transform translate-y-0"
+             x-transition:leave="transition ease-in duration-200"
+             x-transition:leave-start="opacity-100 transform translate-y-0"
+             x-transition:leave-end="opacity-0 transform -translate-y-4"
+             class="mt-8">
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
 
             {{-- Columna izquierda: Información personal --}}
@@ -387,4 +406,6 @@
             </div>
 
         </div>
+        </div>
     </div>
+</div>

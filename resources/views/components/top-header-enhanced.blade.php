@@ -97,66 +97,23 @@
 
             <!-- Right Side - User Actions -->
             <div class="flex items-center space-x-2 sm:space-x-4">
-                <!-- Notificaciones -->
-                <div class="relative" x-data="{ open: false }">
-                    <button @click="open = !open"
-                            @click.away="open = false"
-                            class="relative p-2 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition">
-                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path>
-                        </svg>
-                        <!-- Badge de notificaciones -->
-                        <span class="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
-                    </button>
-
-                    <!-- Dropdown Notificaciones -->
-                    <div x-show="open"
-                         x-transition
-                         x-cloak
-                         class="absolute right-0 mt-2 w-80 bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 z-50">
-                        <div class="px-4 py-3 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
-                            <h3 class="text-sm font-semibold text-gray-900 dark:text-white">Notificaciones</h3>
-                            <a href="{{ route('alertas.index') }}" class="text-xs text-blue-600 dark:text-blue-400 hover:underline">Ver todas</a>
-                        </div>
-
-                        <div class="max-h-96 overflow-y-auto">
-                            <!-- Ejemplo de notificaciones -->
-                            <a href="#" class="block px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-700 transition border-b border-gray-100 dark:border-gray-700">
-                                <div class="flex items-start space-x-3">
-                                    <span class="text-2xl">📦</span>
-                                    <div class="flex-1 min-w-0">
-                                        <p class="text-sm font-medium text-gray-900 dark:text-white">Nuevo paquete creado</p>
-                                        <p class="text-xs text-gray-500 dark:text-gray-400 truncate">Paquete #1234 ha sido agregado</p>
-                                        <p class="text-xs text-gray-400 dark:text-gray-500 mt-1">Hace 5 minutos</p>
-                                    </div>
-                                    <span class="w-2 h-2 bg-blue-500 rounded-full flex-shrink-0 mt-1.5"></span>
-                                </div>
-                            </a>
-
-                            <a href="#" class="block px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-700 transition border-b border-gray-100 dark:border-gray-700">
-                                <div class="flex items-start space-x-3">
-                                    <span class="text-2xl">✅</span>
-                                    <div class="flex-1 min-w-0">
-                                        <p class="text-sm font-medium text-gray-900 dark:text-white">Pedido completado</p>
-                                        <p class="text-xs text-gray-500 dark:text-gray-400 truncate">Pedido #456 entregado</p>
-                                        <p class="text-xs text-gray-400 dark:text-gray-500 mt-1">Hace 1 hora</p>
-                                    </div>
-                                </div>
-                            </a>
-
-                            <div class="px-4 py-3 text-center text-xs text-gray-500 dark:text-gray-400">
-                                <p>No hay más notificaciones</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+                <!-- Notificaciones - Enlace directo a alertas -->
+                <a href="{{ route('alertas.index') }}"
+                   class="relative p-2 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition"
+                   title="Ver mensajes">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path>
+                    </svg>
+                    <!-- Badge de notificaciones (se oculta automáticamente cuando no hay mensajes) -->
+                    <span id="alerta-count" class="absolute top-1 right-1 hidden bg-red-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center"></span>
+                </a>
 
                 <!-- User Dropdown -->
                 <div class="relative" x-data="{ open: false }">
                     <button @click="open = !open"
                             @click.away="open = false"
                             class="flex items-center space-x-2 px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition">
-                        <div class="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white font-bold text-sm">
+                        <div class="w-8 h-8 bg-gray-900 dark:bg-gray-950 rounded-full flex items-center justify-center text-white font-bold text-sm">
                             {{ strtoupper(substr(Auth::user()->nombre_completo, 0, 1)) }}
                         </div>
                         <span class="hidden sm:block">{{ Auth::user()->nombre_completo }}</span>
@@ -219,3 +176,36 @@
         </div>
     </div>
 </nav>
+
+<!-- Script para actualizar el contador de alertas en la campanita -->
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        function actualizarContadorCampanita() {
+            fetch("{{ route('alertas.verSinLeer') }}", {
+                    headers: {
+                        'Accept': 'application/json'
+                    },
+                    credentials: 'same-origin'
+                })
+                .then(response => response.json())
+                .then(data => {
+                    const badge = document.getElementById('alerta-count');
+                    if (badge) {
+                        if (data.cantidad > 0) {
+                            badge.textContent = data.cantidad;
+                            badge.classList.remove('hidden');
+                        } else {
+                            badge.classList.add('hidden');
+                        }
+                    }
+                })
+                .catch(error => console.error("Error al obtener alertas:", error));
+        }
+
+        // Actualizar al cargar la página
+        actualizarContadorCampanita();
+
+        // Actualizar cada 30 segundos
+        setInterval(actualizarContadorCampanita, 30000);
+    });
+</script>

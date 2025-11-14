@@ -101,6 +101,21 @@
         return this.favorites.some(f => f.route === route);
     },
 
+    getRouteUrl(routeName) {
+        // Convertir nombre de ruta a URL
+        // Ejemplo: 'pedidos.index' -> '/pedidos'
+        //          'obras.edit' -> '/obras/edit'
+        const parts = routeName.split('.');
+
+        // Si termina en .index, solo usar la primera parte
+        if (parts[parts.length - 1] === 'index') {
+            return '/' + parts.slice(0, -1).join('/');
+        }
+
+        // Para otras rutas, convertir los puntos en barras
+        return '/' + parts.join('/');
+    },
+
     addToRecent(route, label, section, icon) {
         // Evitar duplicados
         this.recentPages = this.recentPages.filter(p => p.route !== route);
@@ -242,7 +257,7 @@ class="flex h-screen">
                     </template>
                     <template x-for="fav in favorites" :key="fav.route">
                         <div class="flex items-center group px-3 py-2 rounded-lg hover:bg-gray-700 transition">
-                            <a :href="`{{ url('/') }}/${fav.route.replace('.', '/')}`"
+                            <a :href="`{{ url('/') }}${getRouteUrl(fav.route)}`"
                                class="flex items-center space-x-2 flex-1 min-w-0">
                                 <span x-text="fav.icon"></span>
                                 <div class="flex-1 min-w-0">
@@ -288,7 +303,7 @@ class="flex h-screen">
                         <p class="text-xs text-gray-500 italic px-3 py-2">Sin historial</p>
                     </template>
                     <template x-for="page in recentPages.slice(0, 5)" :key="page.route">
-                        <a :href="`{{ url('/') }}/${page.route.replace('.', '/')}`"
+                        <a :href="`{{ url('/') }}${getRouteUrl(page.route)}`"
                            class="flex items-center space-x-2 px-3 py-2 rounded-lg text-sm hover:bg-gray-700 transition group">
                             <span x-text="page.icon"></span>
                             <div class="flex-1 min-w-0">

@@ -200,6 +200,9 @@ class AlertaController extends Controller
         $perPage = $request->input('per_page', 10); // valor por defecto 10
         $perPageTodas = $request->input('per_page_todas', 20); // por defecto 20
 
+        // Obtener registros de lectura primero
+        $leidas = AlertaLeida::where('user_id', $user->id)->get()->keyBy('alerta_id');
+
         // SOLO traer mensajes RAÍZ (hilos completos, no respuestas individuales)
         $alertas = Alerta::whereNull('parent_id') // Solo mensajes raíz
             ->where(function($query) use ($user) {
@@ -215,7 +218,7 @@ class AlertaController extends Controller
 
 
         // Clasificar cada alerta y añadir mensajes
-        $alertas->getCollection()->transform(function ($alerta) use ($user, $categoriaNombre) {
+        $alertas->getCollection()->transform(function ($alerta) use ($user, $categoriaNombre, $leidas) {
             $esEmisor = $alerta->user_id_1 === $user->id;
 
             $esParaUsuario   = $alerta->destinatario_id === $user->id;
@@ -235,10 +238,18 @@ class AlertaController extends Controller
             $alerta->ultima_actividad = $ultimaRespuesta ? $ultimaRespuesta->created_at : $alerta->created_at;
             $alerta->total_respuestas = $alerta->respuestas_count;
 
+            // Detectar si hay respuestas nuevas sin marcarlo como no leído
+            $registroLeida = $leidas->get($alerta->id);
+            $alerta->tiene_respuestas_nuevas = false;
+
+            if ($registroLeida && $registroLeida->leida_en) {
+                // Si el mensaje fue actualizado después de ser leído, hay respuestas nuevas
+                $alerta->tiene_respuestas_nuevas = $alerta->updated_at > $registroLeida->leida_en;
+            }
+
             return $alerta;
         });
 
-        $leidas = AlertaLeida::where('user_id', $user->id)->get()->keyBy('alerta_id');
         $alertasLeidas = $leidas->mapWithKeys(fn($r) => [$r->alerta_id => $r->leida_en])->all();
 $tiposAlerta = Alerta::distinct()->pluck('tipo')->filter()->values();
 
@@ -300,13 +311,41 @@ $ordenablesAlertas = [];
         $ids = $request->input('alerta_ids', []);
 
         if (!empty($ids)) {
-            AlertaLeida::where('user_id', $userId)
-                ->whereNull('leida_en')
-                ->whereIn('alerta_id', $ids)
-                ->update(['leida_en' => now()]);
+            foreach ($ids as $alertaId) {
+                // Obtener el mensaje raíz
+                $alerta = Alerta::find($alertaId);
+                if ($alerta) {
+                    $mensajeRaiz = $alerta->mensajeRaiz();
+
+                    // Marcar como leído el mensaje raíz para este usuario
+                    AlertaLeida::where('user_id', $userId)
+                        ->where('alerta_id', $mensajeRaiz->id)
+                        ->update(['leida_en' => now()]);
+
+                    // También marcar todas las respuestas del hilo como leídas
+                    $this->marcarRespuestasComoLeidas($mensajeRaiz, $userId);
+                }
+            }
         }
 
         return response()->json(['success' => true]);
+    }
+
+    /**
+     * Marcar recursivamente todas las respuestas como leídas
+     */
+    private function marcarRespuestasComoLeidas($mensaje, $userId)
+    {
+        foreach ($mensaje->respuestas as $respuesta) {
+            AlertaLeida::where('user_id', $userId)
+                ->where('alerta_id', $respuesta->id)
+                ->update(['leida_en' => now()]);
+
+            // Recursivamente marcar las respuestas de esta respuesta
+            if ($respuesta->respuestas->count() > 0) {
+                $this->marcarRespuestasComoLeidas($respuesta, $userId);
+            }
+        }
     }
 
     public function sinLeer()
@@ -430,6 +469,10 @@ $ordenablesAlertas = [];
                             'leida_en'  => null,
                         ]);
                     }
+
+                    // Actualizar el updated_at del mensaje raíz para indicar nueva actividad
+                    $mensajeRaiz = $mensajePadre->mensajeRaiz();
+                    $mensajeRaiz->touch(); // Esto actualiza el updated_at sin modificar leida_en
 
                     // Siempre devolver JSON para respuestas (peticiones AJAX)
                     return response()->json(['success' => true, 'message' => 'Respuesta enviada correctamente']);

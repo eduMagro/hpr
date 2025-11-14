@@ -1109,7 +1109,7 @@ class AsignacionTurnoController extends Controller
         if ($existeOtra) {
             return response()->json([
                 'success' => false,
-                'message' => '❌ Ya existe otra asignación para este usuario en esa fecha.'
+                'message' => 'Ya existe otra asignación para este usuario en esa fecha.'
             ]);
         }
 

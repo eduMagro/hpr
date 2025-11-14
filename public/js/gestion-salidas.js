@@ -325,72 +325,65 @@ async function guardarAsignaciones() {
 
 /* ===================== Mostrar dibujo del paquete ===================== */
 function mostrarDibujo(paqueteId) {
-    const paquete = window.paquetes.find((p) => p.id == paqueteId);
-    console.log('🔍 Buscando paquete:', paqueteId, 'Encontrado:', paquete);
+    const modal = document.getElementById('modal-dibujo');
+    const canvasContainer = document.getElementById('canvas-dibujo');
 
-    if (!paquete) {
-        console.warn('No se encontró el paquete.');
+    if (!modal || !canvasContainer) {
+        console.error('Modal o canvas no encontrado');
         return;
     }
 
-    // Obtener los elementos del paquete
-    const elementos = paquete.elementos || [];
-    console.log('📦 Elementos del paquete:', elementos);
+    const paquete = window.paquetes.find(p => p.id == paqueteId);
+
+    if (!paquete) {
+        console.warn('No se encontró el paquete');
+        return;
+    }
+
+    // Obtener elementos del paquete (igual que en PaquetesTable)
+    const elementos = [];
+    if (paquete.etiquetas && paquete.etiquetas.length > 0) {
+        paquete.etiquetas.forEach(etiqueta => {
+            if (etiqueta.elementos && etiqueta.elementos.length > 0) {
+                etiqueta.elementos.forEach(elemento => {
+                    elementos.push({
+                        id: elemento.id,
+                        dimensiones: elemento.dimensiones
+                    });
+                });
+            }
+        });
+    }
 
     if (elementos.length === 0) {
         Swal.fire('⚠️', 'Este paquete no tiene elementos para dibujar.', 'warning');
         return;
     }
 
-    // Obtener el modal y el contenedor del canvas
-    const modal = document.getElementById('modal-dibujo');
-    const canvasContainer = document.getElementById('canvas-dibujo').parentElement;
+    // Limpiar contenedor
+    canvasContainer.innerHTML = '';
 
-    // Limpiar el contenedor
-    const oldCanvas = document.getElementById('canvas-dibujo');
-    if (oldCanvas) {
-        oldCanvas.remove();
-    }
-
-    // Crear un contenedor para todos los elementos
-    const elementosContainer = document.createElement('div');
-    elementosContainer.id = 'canvas-dibujo';
-    elementosContainer.style.width = '100%';
-    elementosContainer.style.display = 'flex';
-    elementosContainer.style.flexDirection = 'column';
-    elementosContainer.style.gap = '20px';
-
-    // Dibujar cada elemento en su propio contenedor
-    elementos.forEach((elemento, index) => {
+    // Crear contenedores para cada elemento
+    elementos.forEach((elemento) => {
         const elementoDiv = document.createElement('div');
         elementoDiv.id = `elemento-${elemento.id}`;
         elementoDiv.style.width = '100%';
-        elementoDiv.style.height = '200px'; // Altura fija en vez de minHeight
+        elementoDiv.style.height = '200px';
         elementoDiv.style.border = '1px solid #e5e7eb';
         elementoDiv.style.borderRadius = '4px';
         elementoDiv.style.background = 'white';
         elementoDiv.style.position = 'relative';
-
-        elementosContainer.appendChild(elementoDiv);
+        elementoDiv.style.marginBottom = '10px';
+        canvasContainer.appendChild(elementoDiv);
     });
 
-    // Agregar al DOM primero
-    canvasContainer.appendChild(elementosContainer);
-
-    // Mostrar el modal PRIMERO para que los elementos tengan dimensiones reales
+    // Mostrar modal
     modal.classList.remove('hidden');
 
-    // Usar requestAnimationFrame para asegurar que el navegador renderizó el modal
+    // Dibujar elementos
     requestAnimationFrame(() => {
         requestAnimationFrame(() => {
             elementos.forEach((elemento) => {
-                console.log(`🎨 Dibujando elemento ${elemento.id}`);
-                const contenedor = document.getElementById(`elemento-${elemento.id}`);
-                if (contenedor) {
-                    const rect = contenedor.getBoundingClientRect();
-                    console.log(`📐 Dimensiones del contenedor ${elemento.id}:`, rect.width, 'x', rect.height);
-                }
-
                 if (typeof window.dibujarFiguraElemento === 'function') {
                     window.dibujarFiguraElemento(`elemento-${elemento.id}`, elemento.dimensiones, null);
                 } else {
@@ -403,6 +396,25 @@ function mostrarDibujo(paqueteId) {
 
 // Exportar función globalmente
 window.mostrarDibujo = mostrarDibujo;
+
+// Event listener para cerrar modal
+document.addEventListener('DOMContentLoaded', function() {
+    const cerrarModal = document.getElementById('cerrar-modal');
+    const modal = document.getElementById('modal-dibujo');
+
+    if (cerrarModal && modal) {
+        cerrarModal.addEventListener('click', function() {
+            modal.classList.add('hidden');
+        });
+
+        // Cerrar al hacer clic fuera del modal
+        modal.addEventListener('click', function(e) {
+            if (e.target === modal) {
+                modal.classList.add('hidden');
+            }
+        });
+    }
+});
 
 /* ===================== Eliminar salida ===================== */
 async function eliminarSalida(salidaId) {
@@ -553,12 +565,10 @@ function renderizarPaquetesDisponibles(paquetes) {
                 <span class="text-gray-500">${paquete.planilla_codigo || 'N/A'}</span>
                 <span class="text-gray-600">${parseFloat(paquete.peso).toFixed(2)} kg</span>
             </div>
-            ${window.AppGestionSalidas.mostrarTodosPaquetes ? `
-                <div class="text-xs text-gray-500 mt-1 border-t border-gray-200 pt-1">
-                    <div class="truncate" title="${paquete.obra}">🏗️ ${paquete.obra}</div>
-                    <div class="truncate" title="${paquete.cliente}">👤 ${paquete.cliente}</div>
-                </div>
-            ` : ''}
+            <div class="text-xs text-gray-500 mt-1 border-t border-gray-200 pt-1">
+                <div class="truncate" title="${paquete.obra}">🏗️ ${paquete.obra}</div>
+                <div class="truncate" title="${paquete.cliente}">👤 ${paquete.cliente}</div>
+            </div>
         `;
 
         container.appendChild(paqueteDiv);

@@ -411,6 +411,11 @@ class PaqueteController extends Controller
             $motivos[] = "Hay elementos pendientes ({$fabricados}/{$total}).";
         }
 
+        $pesoEtiqueta = $etiqueta->peso ?? 0;
+
+        // Log para debug
+        \Log::info("validarParaPaquete - Etiqueta: {$etiquetaSubId}, Peso: {$pesoEtiqueta}");
+
         return response()->json([
             'success'       => $valida,
             'valida'        => $valida,
@@ -420,7 +425,7 @@ class PaqueteController extends Controller
             'paquete_actual' => $etiqueta->paquete_id,
             'id'            => $etiqueta->etiqueta_sub_id,
             'nombre'        => $etiqueta->nombre,
-            'peso_etiqueta' => $etiqueta->peso ?? 0,
+            'peso_etiqueta' => $pesoEtiqueta,
             'estado'        => $etiqueta->estado,
         ]);
     }
