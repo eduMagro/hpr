@@ -173,24 +173,6 @@ class Paquete extends Model
     }
 
     /**
-     * Accessor: Obtiene el ID de la salida principal del paquete.
-     * Retorna null si no tiene salida asignada.
-     */
-    public function getSalidaIdAttribute()
-    {
-        // Primero intentar obtener desde la relación si ya está cargada
-        if ($this->relationLoaded('salida')) {
-            $salida = $this->salida->first();
-            return $salida ? $salida->id : null;
-        }
-
-        // Si no está cargada, hacer una consulta directa
-        return \DB::table('salidas_paquetes')
-            ->where('paquete_id', $this->id)
-            ->value('salida_id');
-    }
-
-    /**
      * Calcula el tamaño del paquete basándose en las longitudes máximas
      * de cada elemento (extraídas del campo dimensiones de cada elemento).
      * El ancho es fijo: 1 metro.
