@@ -165,7 +165,7 @@
     </div>
 
     {{-- Context Menu para paquetes --}}
-    <div id="context-menu-paquete" class="hidden fixed bg-white border border-gray-300 rounded-lg shadow-lg py-1 z-[9999]" style="min-width: 150px;">
+    <div id="context-menu-paquete" class="hidden fixed bg-white border border-gray-300 rounded-lg shadow-lg py-1" style="min-width: 150px; z-index: 9999;">
         <button id="context-menu-ver-elementos" class="w-full px-4 py-2 text-left hover:bg-blue-50 text-sm text-gray-700 flex items-center gap-2">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
@@ -176,7 +176,7 @@
     </div>
 
     {{-- Modal para mostrar elementos del paquete --}}
-    <div id="modal-elementos-paquete" class="hidden fixed inset-0 bg-black bg-opacity-50 z-[10000] flex items-center justify-center p-4">
+    <div id="modal-elementos-paquete" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4" style="z-index: 99999;">
         <div class="bg-white rounded-lg shadow-xl w-full max-w-6xl max-h-[90vh] overflow-hidden flex flex-col">
             <!-- Header del modal -->
             <div class="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
@@ -418,15 +418,21 @@
                 const btnVerElementos = document.getElementById('context-menu-ver-elementos');
                 let paqueteIdActual = null;
 
+                console.log('Context menu element:', contextMenu);
+                console.log('Paquetes encontrados:', document.querySelectorAll('.paquete-item').length);
+
                 // Agregar context menu a los paquetes de la lista
                 document.querySelectorAll('.paquete-item').forEach(item => {
                     item.addEventListener('contextmenu', (e) => {
                         e.preventDefault();
-                        paqueteIdActual = item.dataset.paqueteId;
+                        e.stopPropagation();
 
-                        // Posicionar context menu
-                        contextMenu.style.left = e.pageX + 'px';
-                        contextMenu.style.top = e.pageY + 'px';
+                        paqueteIdActual = item.dataset.paqueteId;
+                        console.log('Context menu activado para paquete:', paqueteIdActual);
+
+                        // Posicionar context menu (usar clientX/clientY en lugar de pageX/pageY)
+                        contextMenu.style.left = e.clientX + 'px';
+                        contextMenu.style.top = e.clientY + 'px';
                         contextMenu.classList.remove('hidden');
                     });
                 });
