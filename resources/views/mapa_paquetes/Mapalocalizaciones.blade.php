@@ -71,21 +71,18 @@
                         placeholder="Buscar por código..."
                         class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
 
-                    <select id="filter-obra"
+                    <select id="filter-obra-paquetes"
                         class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white">
                         <option value="">Todas las obras</option>
-                        @foreach($obras as $obra)
-                            <option value="{{ $obra->id }}" {{ $obra->id == $obraActualId ? 'selected' : '' }}>
-                                {{ $obra->obra }}
-                            </option>
-                        @endforeach
                     </select>
+
                 </div>
 
                 <div class="flex-1 overflow-y-auto p-3" id="lista-paquetes">
                     @forelse($paquetesConLocalizacion as $paquete)
                         <div class="paquete-item bg-gray-50 rounded-lg p-3 mb-2 border border-gray-200 hover:border-blue-400 hover:shadow-md transition cursor-pointer"
                             data-paquete-id="{{ $paquete['id'] }}"
+                            data-obra="{{ $paquete['obra'] }}"
                             data-x1="{{ $paquete['x1'] }}"
                             data-y1="{{ $paquete['y1'] }}"
                             data-x2="{{ $paquete['x2'] }}"
@@ -104,18 +101,9 @@
                                         class="font-semibold">{{ number_format($paquete['peso'], 2) }}
                                         kg</span>
                                 </div>
-                                <div><span class="text-gray-500">Tipo:</span>
-                                    <span
-                                        class="font-semibold capitalize">{{ $paquete['tipo_contenido'] }}</span>
-                                </div>
                                 <div class="col-span-2">
-                                    <span
-                                        class="text-gray-500">Ubicación:</span>
-                                    <span
-                                        class="font-semibold">({{ $paquete['x1'] }},{{ $paquete['y1'] }})
-                                        →
-                                        ({{ $paquete['x2'] }},{{ $paquete['y2'] }})
-                                    </span>
+                                    <span class="text-gray-500">Obra:</span>
+                                    <span class="font-semibold">{{ $paquete['obra'] }}</span>
                                 </div>
                             </div>
                             <div class="mt-2 flex items-center gap-2">
@@ -336,6 +324,49 @@
                                 item.style.display = text.includes(
                                     query) ? 'block' : 'none';
                             });
+                    });
+                }
+
+                // =====================
+                // FILTRO DE OBRAS PAQUETES (JS - sin recargar página)
+                // =====================
+                const filterObraPaquetes = document.getElementById('filter-obra-paquetes');
+
+                if (filterObraPaquetes) {
+                    // Poblar el select con obras únicas de los paquetes
+                    const paqueteItems = document.querySelectorAll('.paquete-item');
+                    const obrasUnicas = new Set();
+
+                    paqueteItems.forEach(item => {
+                        const obra = item.dataset.obra;
+                        if (obra && obra !== '-') {
+                            obrasUnicas.add(obra);
+                        }
+                    });
+
+                    // Ordenar obras alfabéticamente y agregar opciones al select
+                    Array.from(obrasUnicas).sort().forEach(obra => {
+                        const option = document.createElement('option');
+                        option.value = obra;
+                        option.textContent = obra;
+                        filterObraPaquetes.appendChild(option);
+                    });
+
+                    // Listener para filtrar paquetes por obra
+                    filterObraPaquetes.addEventListener('change', (e) => {
+                        const obraSeleccionada = e.target.value;
+
+                        paqueteItems.forEach(item => {
+                            const obraItem = item.dataset.obra;
+
+                            if (obraSeleccionada === '') {
+                                // Mostrar todos
+                                item.style.display = 'block';
+                            } else {
+                                // Mostrar solo los que coinciden
+                                item.style.display = (obraItem === obraSeleccionada) ? 'block' : 'none';
+                            }
+                        });
                     });
                 }
             });

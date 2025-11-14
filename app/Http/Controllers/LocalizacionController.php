@@ -904,7 +904,7 @@ class LocalizacionController extends Controller
             $paquetesConLocalizacion = Paquete::with([
                 'localizacionPaquete', // coordenadas x1,y1,x2,y2
                 'etiquetas.elementos', // para calcular tipo de contenido
-                'planilla'             // info adicional si la necesitas
+                'planilla.obra'        // info adicional: planilla y su obra
             ])
             ->where('nave_id', $obraActiva->id)
             ->whereHas('localizacionPaquete') // solo paquetes con localización
@@ -923,6 +923,7 @@ class LocalizacionController extends Controller
                     'tipo_contenido'    => $paquete->getTipoContenido(), // 'barras', 'estribos', 'mixto'
                     'cantidad_elementos' => $paquete->etiquetas->sum(fn($e) => $e->elementos->count()),
                     'planilla'          => $paquete->planilla?->codigo,
+                    'obra'              => $paquete->planilla?->obra?->obra ?? '-',
                 ];
             });
         }

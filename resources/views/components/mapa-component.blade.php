@@ -1777,13 +1777,6 @@
                         paquete.style.width = `${newWidthPx}px`;
                         paquete.style.height = `${newHeightPx}px`;
 
-                        // Actualizar data-attributes originales si existen
-                        if (paquete.dataset.origWidth && paquete.dataset.origHeight) {
-                            const tempOrig = paquete.dataset.origWidth;
-                            paquete.dataset.origWidth = paquete.dataset.origHeight;
-                            paquete.dataset.origHeight = tempOrig;
-                        }
-
                         console.log('Rotación:', {
                             antes: { widthCeldas, heightCeldas, widthPx, heightPx },
                             despues: { newWidthCeldas, newHeightCeldas, newWidthPx, newHeightPx }
