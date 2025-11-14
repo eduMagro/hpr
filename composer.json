@@ -15,7 +15,7 @@
         "laravel-lang/common": "^6.7",
         "laravel/framework": "^11.31",
         "laravel/tinker": "^2.9",
-        "livewire/livewire": "^3.6",
+        "livewire/livewire": "*",
         "maatwebsite/excel": "^3.1",
         "openai-php/laravel": "^0.11.0",
         "phpmailer/phpmailer": "^6.10",

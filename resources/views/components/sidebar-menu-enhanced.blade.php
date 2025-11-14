@@ -203,7 +203,7 @@
     }
 }"
     @dark-mode-changed.window="darkMode = $event.detail; applyDarkMode()"
-    :class="darkMode ? 'dark' : ''" class="flex h-screen z-0">
+    :class="darkMode ? 'dark' : ''" class="flex h-screen">
 
     <!-- Overlay para móvil -->
     <div x-show="open"
@@ -212,18 +212,17 @@
         x-transition:leave="transition-opacity ease-linear duration-300"
         x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0"
         @click="open = false"
-        class="fixed inset-0 bg-black bg-opacity-50 z-20 md:hidden" x-cloak>
+        class="fixed inset-0 bg-black bg-opacity-50 z-[9998] md:hidden" x-cloak>
     </div>
 
     <!-- Sidebar -->
     <div x-cloak x-show="true"
         :class="open ? 'w-64 translate-x-0' : 'w-16 -translate-x-full md:translate-x-0'"
-        class="bg-gray-900 dark:bg-gray-950 text-white flex-shrink-0 flex flex-col fixed md:static inset-y-0 left-0 z-30 md:z-auto"
+        class="bg-gray-900 dark:bg-gray-950 text-white flex-shrink-0 flex flex-col fixed md:static inset-y-0 left-0 z-[9999] md:z-auto"
         style="transition: width 0.3s ease-in-out, transform 0.3s ease-in-out;">
 
         <!-- Header del Sidebar -->
-        <div class="px-4 h-14 flex items-center border-b border-gray-800 border-r-0 overflow-hidden"
-            :class="open ? 'justify-end' : 'justify-between'">
+        <div class="px-4 h-14 flex items-center justify-around border-b border-gray-800 border-r-0 overflow-hidden">
 
             <!-- Logo del Sidebar (visible cuando sidebar está abierto) -->
             <a x-show="open && !isToggling"
@@ -526,7 +525,7 @@
         x-transition:leave-start="opacity-100"
         x-transition:leave-end="opacity-0" @click.self="searchOpen = false"
         x-cloak
-        class="fixed inset-0 z-50 flex items-start justify-center pt-20 px-4 bg-black bg-opacity-60 backdrop-blur-sm">
+        class="fixed inset-0 z-[10000] flex items-start justify-center pt-20 px-4 bg-black bg-opacity-60 backdrop-blur-sm">
 
         <div @click.away="searchOpen = false"
             class="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-2xl overflow-hidden">
