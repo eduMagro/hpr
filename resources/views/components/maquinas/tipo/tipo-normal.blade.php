@@ -426,44 +426,77 @@
             const parser = new DOMParser();
             const doc = parser.parseFromString(html, 'text/html');
 
-            // Obtener el nuevo contenedor de materia prima
-            const nuevoContainer = doc.getElementById('materia-prima-container');
+            // Dibujamos la etiqueta en la lista visual
+            const li = document.createElement('li');
+            li.textContent = `Etiqueta ${etiquetaId}`;
+            li.dataset.etiquetaId = etiquetaId;
+            itemsList.appendChild(li);
 
-            if (nuevoContainer && container) {
-                // Guardar scroll position
-                const scrollPosition = container.scrollTop;
-
-                // Actualizar contenido
-                container.innerHTML = nuevoContainer.innerHTML;
-
-                // Restaurar scroll position
-                container.scrollTop = scrollPosition;
-
-                console.log('✅ Materia prima actualizada');
-            }
-        })
-        .catch(error => {
-            console.error('❌ Error al actualizar materia prima:', error);
+            inputQr.value = '';
         });
-    }
 
-    // Iniciar auto-refresh cuando el documento esté listo
-    document.addEventListener('DOMContentLoaded', function() {
-        // Primera actualización después de 10 segundos
-        setTimeout(() => {
-            refreshMateriaPrima();
+        /**
+         * Enviar petición para crear el paquete desde la máquina actual.
+         * Envía:
+         *  - maquina_id
+         *  - etiquetas_ids[]
+         */
+        btnCrear.addEventListener('click', async () => {
+            if (!maquinaId) {
+                alert(
+                    'No se ha podido determinar la máquina actual.');
+                return;
+            }
 
-            // Luego actualizar cada 10 segundos
-            materiaPrimaRefreshInterval = setInterval(refreshMateriaPrima, 10000);
-        }, 10000);
+            if (etiquetasSeleccionadas.size === 0) {
+                alert(
+                    'Añade al menos una etiqueta al carro antes de crear el paquete.');
+                return;
+            }
 
-        console.log('🔄 Auto-refresh de materia prima iniciado (cada 10s)');
-    });
+            const etiquetasIds = Array.from(
+                etiquetasSeleccionadas);
 
-    // Limpiar interval cuando se abandona la página
-    window.addEventListener('beforeunload', function() {
-        if (materiaPrimaRefreshInterval) {
-            clearInterval(materiaPrimaRefreshInterval);
-        }
+            try {
+                const resp = await fetch(
+                    "{{ route('paquetes.store') }}", {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': document
+                                .querySelector(
+                                    'meta[name=\"csrf-token\"]'
+                                    ).getAttribute(
+                                    'content'),
+                            'Accept': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            maquina_id: maquinaId,
+                            etiquetas_ids: etiquetasIds,
+                        }),
+                    });
+
+                if (!resp.ok) {
+                    throw new Error(
+                        'Error al crear el paquete');
+                }
+
+                const data = await resp.json();
+
+                // Aquí el paquete ya tiene localización en el mapa
+                // (se ha creado el registro en localizaciones_paquetes)
+                // Podrías mostrar un Swal bonito:
+                // Swal.fire({ icon: 'success', title: 'Paquete creado', text: 'ID: ' + data.paquete.id });
+
+                // Limpiamos el carro
+                etiquetasSeleccionadas.clear();
+                itemsList.innerHTML = '';
+
+            } catch (e) {
+                console.error(e);
+                alert(
+                    'Ha ocurrido un error al crear el paquete.');
+            }
+        });
     });
 </script>
