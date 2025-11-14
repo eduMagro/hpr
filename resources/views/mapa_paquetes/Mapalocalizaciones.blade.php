@@ -89,7 +89,8 @@
                                 <div><span class="text-gray-500">Peso:</span>
                                     <span
                                         class="font-semibold">{{ number_format($paquete['peso'], 2) }}
-                                        kg</span></div>
+                                        kg</span>
+                                </div>
                                 <div><span class="text-gray-500">Tipo:</span>
                                     <span
                                         class="font-semibold capitalize">{{ $paquete['tipo_contenido'] }}</span>
@@ -100,7 +101,8 @@
                                     <span
                                         class="font-semibold">({{ $paquete['x1'] }},{{ $paquete['y1'] }})
                                         →
-                                        ({{ $paquete['x2'] }},{{ $paquete['y2'] }})</span>
+                                        ({{ $paquete['x2'] }},{{ $paquete['y2'] }})
+                                    </span>
                                 </div>
                             </div>
                             <div class="mt-2 flex items-center gap-2">
@@ -165,7 +167,9 @@
     @push('scripts')
         <script>
             document.addEventListener('DOMContentLoaded', function() {
+                // Obtenemos el canvas del mapa (el div con data-mapa-canvas)
                 const canvas = document.querySelector('[data-mapa-canvas]');
+                // La instancia JS del mapa la expone el componente en canvas.mapaInstance
                 const mapaInstance = canvas?.mapaInstance;
 
                 if (!mapaInstance) {
@@ -173,54 +177,210 @@
                     return;
                 }
 
+                // ==========================
+                // ESTADO INICIAL DEL MAPA
+                // ==========================
+                // Al principio queremos que no aparezca ningún paquete dibujado en el mapa.
+                // Sólo se verán los que el usuario vaya "activando" desde la lista lateral.
                 document.querySelectorAll('.paquete-item').forEach(item => {
+                    const id = parseInt(item.dataset.paqueteId);
+
+                    if (!Number.isNaN(id) && typeof mapaInstance
+                        .hidePaquete === 'function') {
+                        mapaInstance.hidePaquete(id);
+                    }
+                });
+
+                // =========================================
+                // GESTIÓN DE CLIC/HOVER EN LOS PAQUETES
+                // =========================================
+                document.querySelectorAll('.paquete-item').forEach(item => {
+
+                    // CLIC: alterna el paquete como activo/inactivo
                     item.addEventListener('click', function() {
                         const id = parseInt(this.dataset
                             .paqueteId);
+                        if (Number.isNaN(id)) return;
 
-                        document.querySelectorAll(
-                            '.paquete-item').forEach(i => {
-                            i.classList.remove(
+                        // ¿Este paquete ya estaba seleccionado en el menú?
+                        const isSelected = this.classList
+                            .contains('border-blue-500');
+
+                        if (isSelected) {
+                            // Caso 1: Ya estaba seleccionado → ahora se desactiva
+
+                            // 1) Quitar estilos de selección en el menú
+                            this.classList.remove(
                                 'border-blue-500',
                                 'bg-blue-50');
-                        });
 
-                        this.classList.add('border-blue-500',
-                            'bg-blue-50');
+                            // 2) Ocultar el paquete del mapa
+                            if (typeof mapaInstance
+                                .hidePaquete === 'function') {
+                                mapaInstance.hidePaquete(id);
+                            }
 
-                        mapaInstance.setHighlight(id);
-                        mapaInstance.focusPaquete(
-                            parseInt(this.dataset.x1),
-                            parseInt(this.dataset.y1),
-                        );
+                            // 3) Si estaba resaltado, limpiamos el highlight
+                            if (typeof mapaInstance
+                                .clearHighlight === 'function'
+                            ) {
+                                mapaInstance.clearHighlight();
+                            }
+                        } else {
+                            // Caso 2: No estaba seleccionado → ahora se activa
+
+                            // 1) Marcar visualmente el paquete como seleccionado en la lista
+                            this.classList.add(
+                                'border-blue-500',
+                                'bg-blue-50');
+
+                            // 2) Mostrar el paquete en el mapa
+                            if (typeof mapaInstance
+                                .showPaquete === 'function') {
+                                mapaInstance.showPaquete(id);
+                            }
+
+                            // 3) Resaltar y centrar la "cámara" en su posición real
+                            const x1 = parseInt(this.dataset
+                                .x1);
+                            const y1 = parseInt(this.dataset
+                                .y1);
+
+                            if (typeof mapaInstance
+                                .setHighlight === 'function') {
+                                mapaInstance.setHighlight(id);
+                            }
+
+                            if (!Number.isNaN(x1) && !Number
+                                .isNaN(y1) &&
+                                typeof mapaInstance
+                                .focusPaquete === 'function') {
+                                mapaInstance.focusPaquete(x1,
+                                    y1);
+                            }
+                        }
                     });
 
+                    // HOVER: sólo cambiamos el highlight si el paquete está activo en el mapa
                     item.addEventListener('mouseenter', function() {
                         const id = parseInt(this.dataset
                             .paqueteId);
-                        mapaInstance.setHighlight(id);
+                        if (Number.isNaN(id)) return;
+
+                        // Si el paquete está seleccionado en el menú, reforzamos su highlight al pasar el ratón
+                        if (this.classList.contains(
+                                'border-blue-500') &&
+                            typeof mapaInstance.setHighlight ===
+                            'function') {
+
+                            mapaInstance.setHighlight(id);
+                        }
                     });
 
                     item.addEventListener('mouseleave', function() {
+                        // Si NO está seleccionado de forma permanente, limpiamos el highlight
                         if (!this.classList.contains(
-                                'border-blue-500')) {
+                                'border-blue-500') &&
+                            typeof mapaInstance
+                            .clearHighlight === 'function') {
+
                             mapaInstance.clearHighlight();
                         }
                     });
                 });
 
-                document.getElementById('search-paquetes')?.addEventListener(
-                    'input', (e) => {
+                // =====================
+                // BUSCADOR DE PAQUETES
+                // =====================
+                const searchInput = document.getElementById('search-paquetes');
+
+                if (searchInput) {
+                    searchInput.addEventListener('input', (e) => {
                         const query = e.target.value.toLowerCase();
-                        document.querySelectorAll('.paquete-item').forEach(
-                            item => {
+
+                        document.querySelectorAll('.paquete-item')
+                            .forEach(item => {
                                 const text = item.textContent
                                     .toLowerCase();
+                                // Mostramos/ocultamos el item de la lista según coincida con la búsqueda
                                 item.style.display = text.includes(
                                     query) ? 'block' : 'none';
                             });
                     });
+                }
             });
         </script>
     @endpush
+
+    <style>
+        /* Label del paquete (identificador), sólo visible en modo edición */
+        .paquete-label {
+            position: absolute;
+            top: -1.5rem;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 0.15rem 0.4rem;
+            font-size: 0.70rem;
+            font-weight: 600;
+            background: rgba(15, 23, 42, 0.92);
+            color: #fff;
+            border-radius: 9999px;
+            white-space: nowrap;
+            pointer-events: none;
+        }
+
+        /* Toolbar flotante dentro del paquete */
+        .paquete-toolbar {
+            position: absolute;
+            inset-inline-end: 0.15rem;
+            inset-block-start: 0.15rem;
+            display: flex;
+            gap: 0.15rem;
+            align-items: center;
+            z-index: 20;
+        }
+
+        .paquete-toolbar button {
+            width: 20px;
+            height: 20px;
+            border-radius: 9999px;
+            border: none;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(15, 23, 42, 0.9);
+            cursor: pointer;
+            padding: 0;
+        }
+
+        .paquete-toolbar button svg {
+            width: 12px;
+            height: 12px;
+            stroke: #fff;
+            stroke-width: 2;
+        }
+
+        .paquete-toolbar button span {
+            font-size: 0.7rem;
+            color: #fff;
+            line-height: 1;
+        }
+
+        /* Modo edición: resaltamos el borde del paquete */
+        .loc-paquete--editing {
+            outline: 2px dashed #0ea5e9;
+            outline-offset: 2px;
+        }
+
+        /* Orientación por clases (ajusta a tu gusto) */
+        .loc-paquete--orient-I {
+            /* por ejemplo, más alto que ancho */
+        }
+
+        .loc-paquete--orient-_ {
+            /* por ejemplo, más ancho que alto */
+        }
+    </style>
+
+
 </x-app-layout>
