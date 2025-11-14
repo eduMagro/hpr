@@ -1508,11 +1508,13 @@ class ProduccionController extends Controller
                             $tituloEvento = '⚠️ ' . $tituloEvento . ' (SIN REVISAR)';
                         }
 
-                        // ID único que incluye la posición si existe
-                        $eventoId = 'planilla-' . $planilla->id . '-seg' . ($i + 1);
-                        if ($ordenId) {
-                            $eventoId .= '-orden' . $ordenId;
+                        // ID único que incluye el ordenId para diferenciar múltiples apariciones
+                        $eventoId = 'planilla-' . $planilla->id . '-maq' . $maquinaId . '-seg' . ($i + 1);
+                        if (isset($ordenId) && $ordenId !== null) {
+                            $eventoId .= '-ord' . $ordenId;
                         }
+
+                        Log::info('Creando evento', ['eventoId' => $eventoId, 'planillaId' => $planilla->id, 'posicion' => $posicion, 'start' => $tStart->toDateTimeString(), 'end' => $tEnd->toDateTimeString()]);
 
                         $planillasEventos->push([
                             'id'              => $eventoId,

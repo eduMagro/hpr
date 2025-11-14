@@ -631,10 +631,13 @@ class PaqueteController extends Controller
         try {
             $planilla = \App\Models\Planilla::findOrFail($planillaId);
 
-            // Obtener paquetes de esta planilla con sus etiquetas
+            // Obtener paquetes de esta planilla con sus etiquetas y elementos
             $paquetes = Paquete::with(['etiquetas' => function ($query) {
                 $query->select('id', 'etiqueta_sub_id', 'paquete_id', 'peso', 'estado')
-                    ->withCount('elementos');
+                    ->withCount('elementos')
+                    ->with(['elementos' => function ($q) {
+                        $q->select('id', 'codigo', 'dimensiones', 'etiqueta_id');
+                    }]);
             }, 'ubicacion:id,nombre'])
                 ->where('planilla_id', $planillaId)
                 ->orderBy('created_at', 'desc')
@@ -654,6 +657,13 @@ class PaqueteController extends Controller
                             'peso' => number_format($etiqueta->peso ?? 0, 2, '.', ''),
                             'estado' => $etiqueta->estado,
                             'elementos_count' => $etiqueta->elementos_count ?? 0,
+                            'elementos' => $etiqueta->elementos->map(function ($elemento) {
+                                return [
+                                    'id' => $elemento->id,
+                                    'codigo' => $elemento->codigo,
+                                    'dimensiones' => $elemento->dimensiones,
+                                ];
+                            })->values()->all()
                         ];
                     })->values()->all()
                 ];

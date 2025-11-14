@@ -122,11 +122,12 @@
             });
         });
         document.addEventListener('click', function(e) {
-            if (e.target.classList.contains('btn-eliminar')) {
+            const btnEliminar = e.target.closest('.btn-eliminar');
+            if (btnEliminar) {
                 e.stopPropagation(); // 🔴 Detiene el eventClick de FullCalendar
                 e.preventDefault();
 
-                const idEvento = e.target.dataset.id.replace('turno-', '');
+                const idEvento = btnEliminar.dataset.id.replace('turno-', '');
 
                 Swal.fire({
                     title: '¿Eliminar asignación de obra?',
@@ -434,7 +435,7 @@
                         html: `
             <div class="relative px-2 py-1 text-xs font-semibold group">
                 <button title="Eliminar"
-                      class="absolute -top-1 -right-1 bg-red-500 hover:bg-red-600 text-white rounded-full w-5 h-5 flex items-center justify-center shadow-md transition-all duration-200 opacity-0 group-hover:opacity-100 btn-eliminar transform hover:scale-110"
+                      class="absolute -top-1 -right-1 bg-red-500 hover:bg-red-600 text-white rounded-full w-5 h-5 flex items-center justify-center shadow-md transition-all duration-200 opacity-70 group-hover:opacity-100 btn-eliminar transform hover:scale-110"
                       data-id="${id}">
                     <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M6 18L18 6M6 6l12 12"></path>
@@ -563,10 +564,15 @@
         .btn-eliminar {
             z-index: 10;
             pointer-events: auto;
+            cursor: pointer;
         }
 
         .btn-eliminar:hover {
             box-shadow: 0 4px 6px rgba(239, 68, 68, 0.4);
+        }
+
+        .btn-eliminar * {
+            pointer-events: none;
         }
 
         .tippy-box[data-theme~='transparent-avatar'] {

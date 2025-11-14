@@ -53,13 +53,29 @@
                         </p>
                         <p class="text-xs text-gray-500" x-text="paquete.ubicacion"></p>
                     </div>
-                    <button @click="expandirPaquete(paquete.id)" class="text-gray-600 hover:text-blue-600 transition">
-                        <svg class="w-5 h-5 transform transition-transform"
-                            :class="{ 'rotate-180': paqueteExpandido === paquete.id }" fill="none"
-                            stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-                        </svg>
-                    </button>
+                    <div class="flex items-center gap-2">
+                        {{-- Botón Ver elementos del paquete --}}
+                        <button @click="verElementosPaquete(paquete.id)"
+                            class="w-6 h-6 bg-blue-100 text-blue-600 rounded hover:bg-blue-200 flex items-center justify-center transition"
+                            title="Ver elementos del paquete">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24"
+                                stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                <path stroke-linecap="round" stroke-linejoin="round"
+                                    d="M2.458 12C3.732 7.943 7.523 5 12 5s8.268 2.943 9.542 7c-1.274 4.057-5.065 7-9.542 7s-8.268-2.943-9.542-7z" />
+                            </svg>
+                        </button>
+                        {{-- Botón Expandir --}}
+                        <button @click="expandirPaquete(paquete.id)"
+                            class="text-gray-600 hover:text-blue-600 transition">
+                            <svg class="w-5 h-5 transform transition-transform"
+                                :class="{ 'rotate-180': paqueteExpandido === paquete.id }" fill="none"
+                                stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M19 9l-7 7-7-7" />
+                            </svg>
+                        </button>
+                    </div>
                 </div>
 
                 {{-- Etiquetas del paquete (expandible) --}}
@@ -120,7 +136,48 @@
         <p class="font-semibold">No hay paquetes para esta planilla</p>
         <p class="text-sm mt-1">Los paquetes creados aparecerán aquí</p>
     </div>
+
+    {{-- Modal para visualizar elementos del paquete --}}
+    <div id="modal-elementos-paquete"
+        class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center p-4">
+        <div
+            class="bg-white p-4 sm:p-6 rounded-lg w-full sm:w-[800px] md:w-[900px] lg:w-[1000px] max-w-[95vw] max-h-[90vh] flex flex-col shadow-lg relative">
+            <button id="cerrar-modal-elementos"
+                class="absolute top-2 right-2 text-red-600 hover:bg-red-100 w-8 h-8 flex items-center justify-center rounded">
+                ✖
+            </button>
+
+            <h2 class="text-xl font-semibold mb-4 text-center">Elementos del paquete <span
+                    id="modal-paquete-codigo"></span></h2>
+
+            <div class="overflow-y-auto flex-1 min-h-0" style="max-height: 75vh;">
+                <div id="canvas-elementos-paquete" class="border max-w-full h-auto"></div>
+            </div>
+        </div>
+    </div>
 </div>
+
+<style>
+    /* Ocultar botones dentro del modal de elementos del paquete */
+    #modal-elementos-paquete .btn-fabricar,
+    #modal-elementos-paquete .btn-agregar-carro,
+    #modal-elementos-paquete button[onclick*="imprimirEtiquetas"],
+    #modal-elementos-paquete select[id*="modo-impresion"],
+    #modal-elementos-paquete .no-print {
+        display: none !important;
+    }
+
+    /* Asegurar que solo se muestren los SVG limpios */
+    #modal-elementos-paquete .modal-elemento-view {
+        position: relative;
+    }
+
+    #modal-elementos-paquete .modal-elemento-view button,
+    #modal-elementos-paquete .modal-elemento-view select,
+    #modal-elementos-paquete .modal-elemento-view .absolute {
+        display: none !important;
+    }
+</style>
 
 {{-- ================================================================
     SCRIPT ALPINE.JS
@@ -297,7 +354,117 @@
                     console.error('Error:', error);
                     await Swal.fire('Error', error.message, 'error');
                 }
+            },
+
+            async verElementosPaquete(paqueteId) {
+                const paquete = this.paquetes.find(p => p.id === paqueteId);
+                if (!paquete) {
+                    await Swal.fire('Error', 'Paquete no encontrado', 'error');
+                    return;
+                }
+
+                // Obtener elementos del paquete
+                const elementos = [];
+                if (paquete.etiquetas && paquete.etiquetas.length > 0) {
+                    for (const etiqueta of paquete.etiquetas) {
+                        if (etiqueta.elementos && etiqueta.elementos.length > 0) {
+                            etiqueta.elementos.forEach(elemento => {
+                                elementos.push({
+                                    id: elemento.id,
+                                    codigo: elemento.codigo || 'Sin código',
+                                    dimensiones: elemento.dimensiones
+                                });
+                            });
+                        }
+                    }
+                }
+
+                if (elementos.length === 0) {
+                    await Swal.fire('Sin elementos', 'Este paquete no tiene elementos para mostrar', 'info');
+                    return;
+                }
+
+                // Abrir modal
+                const modal = document.getElementById('modal-elementos-paquete');
+                const canvasContainer = document.getElementById('canvas-elementos-paquete');
+                const codigoSpan = document.getElementById('modal-paquete-codigo');
+
+                if (!modal || !canvasContainer || !codigoSpan) return;
+
+                codigoSpan.textContent = paquete.codigo;
+                canvasContainer.innerHTML = '';
+
+                // Crear contenedores para cada elemento
+                elementos.forEach((elemento) => {
+                    const elementoDiv = document.createElement('div');
+                    elementoDiv.className = 'mb-4 p-3 border border-gray-200 rounded-lg bg-gray-50 modal-elemento-view';
+
+                    // Título del elemento
+                    const titulo = document.createElement('h3');
+                    titulo.className = 'text-sm font-semibold text-gray-800 mb-2';
+                    titulo.textContent = `Elemento: ${elemento.codigo}`;
+                    elementoDiv.appendChild(titulo);
+
+                    // Contenedor SVG
+                    const svgDiv = document.createElement('div');
+                    svgDiv.id = `elemento-${elemento.id}`;
+                    svgDiv.className = 'elemento-svg-container';
+                    svgDiv.style.width = '100%';
+                    svgDiv.style.height = '200px';
+                    svgDiv.style.border = '1px solid #e5e7eb';
+                    svgDiv.style.borderRadius = '4px';
+                    svgDiv.style.background = 'white';
+                    svgDiv.style.position = 'relative';
+                    elementoDiv.appendChild(svgDiv);
+
+                    canvasContainer.appendChild(elementoDiv);
+                });
+
+                modal.classList.remove('hidden');
+
+                // Dibujar elementos
+                requestAnimationFrame(() => {
+                    requestAnimationFrame(() => {
+                        elementos.forEach((elemento) => {
+                            if (typeof window.dibujarFiguraElemento === 'function') {
+                                window.dibujarFiguraElemento(`elemento-${elemento.id}`,
+                                    elemento.dimensiones, null);
+                            }
+                        });
+                    });
+                });
             }
         }
     }
+
+    // Cerrar modal de elementos
+    document.addEventListener('DOMContentLoaded', () => {
+        const modal = document.getElementById('modal-elementos-paquete');
+        const btnCerrar = document.getElementById('cerrar-modal-elementos');
+
+        if (btnCerrar && modal) {
+            btnCerrar.addEventListener('click', () => {
+                modal.classList.add('hidden');
+            });
+
+            // Cerrar al hacer clic fuera del contenido
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) {
+                    modal.classList.add('hidden');
+                }
+            });
+
+            // Cerrar con tecla ESC
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape' && !modal.classList.contains('hidden')) {
+                    modal.classList.add('hidden');
+                }
+            });
+        }
+    });
 </script>
+
+{{-- Cargar script de dibujo de figuras si no está ya cargado --}}
+@once
+    <script src="{{ asset('js/elementosJs/figuraElemento.js') }}" defer></script>
+@endonce

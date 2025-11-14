@@ -133,28 +133,37 @@
         data-estado="{{ $estado }}">
 
         <!-- Botones -->
-        <div class="relative">
-            <div class="absolute top-2 right-20 flex items-center gap-2 no-print">
-                <select id="modo-impresion-{{ $etiqueta->id }}" class="border border-gray-300 rounded px-2 py-1 text-sm">
-                    <option value="a6">A6</option>
-                    <option value="a4">A4</option>
-                </select>
+        <div class="absolute top-2 right-2 flex items-center gap-2 no-print z-10">
+            <!-- Selector de modo de impresión -->
+            <select id="modo-impresion-{{ $etiqueta->id }}"
+                class="border border-gray-300 rounded px-2 py-1 text-sm bg-white shadow-sm hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                <option value="a6">A6</option>
+                <option value="a4">A4</option>
+            </select>
 
-                <button type="button" class="bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700"
-                    onclick="const modo = document.getElementById('modo-impresion-{{ $etiqueta->id }}').value;
-                 imprimirEtiquetas(['{{ $etiqueta->etiqueta_sub_id }}'], modo)">
-                    🖨️
-                </button>
-            </div>
-
-
+            <!-- Botón Imprimir -->
             <button type="button"
-                class="absolute top-2 right-14 no-print btn-agregar-carro bg-green-600 text-white px-3 py-1 rounded hover:bg-green-700"
-                data-etiqueta-id="{{ $etiqueta->etiqueta_sub_id }}" title="Añadir al carro">🛒</button>
+                class="bg-blue-600 text-white px-3 py-1 rounded shadow-sm hover:bg-blue-700 hover:shadow-md transition-all duration-200 flex items-center gap-1"
+                onclick="const modo = document.getElementById('modo-impresion-{{ $etiqueta->id }}').value; imprimirEtiquetas(['{{ $etiqueta->etiqueta_sub_id }}'], modo)"
+                title="Imprimir etiqueta">
+                <span class="text-lg">🖨️</span>
+            </button>
 
+            <!-- Botón Añadir al carro -->
             <button type="button"
-                class="absolute top-2 right-7 no-print btn-fabricar bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700"
-                data-etiqueta-id="{{ $etiqueta->etiqueta_sub_id }}" title="Fabricar esta etiqueta">⚙️</button>
+                class="btn-agregar-carro bg-green-600 text-white px-3 py-1 rounded shadow-sm hover:bg-green-700 hover:shadow-md transition-all duration-200 flex items-center gap-1"
+                data-etiqueta-id="{{ $etiqueta->etiqueta_sub_id }}"
+                title="Añadir al carro">
+                <span class="text-lg">🛒</span>
+            </button>
+
+            <!-- Botón Fabricar -->
+            <button type="button"
+                class="btn-fabricar bg-purple-600 text-white px-3 py-1 rounded shadow-sm hover:bg-purple-700 hover:shadow-md transition-all duration-200 flex items-center gap-1"
+                data-etiqueta-id="{{ $etiqueta->etiqueta_sub_id }}"
+                title="Fabricar esta etiqueta">
+                <span class="text-lg">⚙️</span>
+            </button>
         </div>
 
         <!-- Contenido -->
