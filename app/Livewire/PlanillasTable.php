@@ -14,61 +14,64 @@ class PlanillasTable extends Component
 {
     use WithPagination;
 
+    protected $paginationTheme = 'tailwind';
+
     // Filtros - usando #[Url] para mantenerlos en la URL
-    #[Url]
+    #[Url(keep: true)]
     public $codigo = '';
 
-    #[Url]
+    #[Url(keep: true)]
     public $codigo_cliente = '';
 
-    #[Url]
+    #[Url(keep: true)]
     public $cliente = '';
 
-    #[Url]
+    #[Url(keep: true)]
     public $cod_obra = '';
 
-    #[Url]
+    #[Url(keep: true)]
     public $nom_obra = '';
 
-    #[Url]
+    #[Url(keep: true)]
     public $seccion = '';
 
-    #[Url]
+    #[Url(keep: true)]
     public $descripcion = '';
 
-    #[Url]
+    #[Url(keep: true)]
     public $ensamblado = '';
 
-    #[Url]
+    #[Url(keep: true)]
     public $comentario = '';
 
-    #[Url]
+    #[Url(keep: true)]
     public $estado = '';
 
-    #[Url]
+    #[Url(keep: true)]
     public $fecha_inicio = '';
 
-    #[Url]
+    #[Url(keep: true)]
     public $fecha_finalizacion = '';
 
-    #[Url]
+    #[Url(keep: true)]
     public $fecha_importacion = '';
 
-    #[Url]
+    #[Url(keep: true)]
     public $fecha_estimada_entrega = '';
 
-    #[Url]
+    #[Url(keep: true)]
     public $usuario = '';
 
-    #[Url]
+    #[Url(keep: true)]
     public $revisada = '';
 
-    #[Url]
+    #[Url(keep: true)]
     public $sort = 'created_at';
 
-    #[Url]
+    #[Url(keep: true)]
     public $order = 'desc';
 
+    #[Url(keep: true)]
     public $perPage = 10;
 
     // Cuando cambia cualquier filtro, resetear a la página 1
@@ -369,7 +372,16 @@ class PlanillasTable extends Component
         $user = auth()->user();
         $esAdmin = $user->esAdminDepartamento() || $user->esProduccionDepartamento();
 
-        $query = Planilla::with(['user', 'elementos', 'cliente', 'obra', 'revisor']);
+        $query = Planilla::with([
+            'user',
+            'cliente',
+            'obra',
+            'revisor'
+        ])->withSum([
+            'elementos as suma_peso_completados' => function ($query) {
+                $query->where('estado', 'fabricado');
+            }
+        ], 'peso');
 
         // Filtro "solo mis planillas" salvo admins
         if (!$esAdmin) {
@@ -381,13 +393,6 @@ class PlanillasTable extends Component
 
         $totalPesoFiltrado = (clone $query)->sum('peso_total');
         $planillas = $query->paginate($this->perPage);
-
-        // Cargar suma de pesos fabricados
-        $planillas->loadSum([
-            'elementos as suma_peso_completados' => function ($query) {
-                $query->where('estado', 'fabricado');
-            }
-        ], 'peso');
 
         // Contador de planillas sin revisar
         $planillasSinRevisar = Planilla::where('revisada', false)

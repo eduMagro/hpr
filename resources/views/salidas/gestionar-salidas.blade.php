@@ -86,15 +86,28 @@
                                     </div>
                                     <div class="text-xs text-gray-600 space-y-1">
                                         @php
-                                            // Obtener obras y clientes únicos de los paquetes de esta salida
-                                            $obras = $salida->paquetes->pluck('planilla.obra.obra')->unique()->filter();
-                                            $clientes = $salida->paquetes->pluck('planilla.cliente.empresa')->unique()->filter();
+                                            // Recopilar obras y clientes desde dos fuentes:
+                                            // 1. Desde salidaClientes (relación directa)
+                                            $obrasDesdeRelacion = $salida->salidaClientes->pluck('obra.obra')->filter();
+                                            $clientesDesdeRelacion = $salida->salidaClientes->pluck('cliente.empresa')->filter();
+
+                                            // 2. Desde paquetes asignados
+                                            $obrasDesPaquetes = $salida->paquetes->pluck('planilla.obra.obra')->filter();
+                                            $clientesDesdePaquetes = $salida->paquetes->pluck('planilla.cliente.empresa')->filter();
+
+                                            // Combinar ambas fuentes y eliminar duplicados
+                                            $obras = $obrasDesdeRelacion->concat($obrasDesPaquetes)->unique()->filter();
+                                            $clientes = $clientesDesdeRelacion->concat($clientesDesdePaquetes)->unique()->filter();
                                         @endphp
                                         @if($obras->isNotEmpty())
                                             <p class="truncate" title="{{ $obras->implode(', ') }}">🏗️ {{ $obras->implode(', ') }}</p>
+                                        @else
+                                            <p class="text-gray-400 italic text-xs">Sin obra asignada</p>
                                         @endif
                                         @if($clientes->isNotEmpty())
                                             <p class="truncate" title="{{ $clientes->implode(', ') }}">👤 {{ $clientes->implode(', ') }}</p>
+                                        @else
+                                            <p class="text-gray-400 italic text-xs">Sin cliente asignado</p>
                                         @endif
                                         <p>{{ $salida->empresaTransporte->nombre ?? 'Sin empresa' }}</p>
                                         <p>{{ $salida->camion->modelo ?? 'Sin camión' }}</p>

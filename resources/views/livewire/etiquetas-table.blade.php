@@ -409,7 +409,7 @@
         </div>
 
         <!-- Paginación Livewire -->
-        <x-tabla.paginacion-livewire :paginador="$etiquetas" />
+        ${{ $etiquetas->links() }}
 
         <!-- Modal para mostrar etiqueta -->
         <div id="modalEtiqueta"

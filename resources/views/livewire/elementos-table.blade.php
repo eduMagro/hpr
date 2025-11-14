@@ -512,7 +512,7 @@
         </div>
 
         <!-- Paginación Livewire -->
-        <x-tabla.paginacion-livewire :paginador="$elementos" />
+        ${{ $elementos->links() }}
 
         <!-- Modal de dibujo -->
         <div id="modal-dibujo" class="hidden fixed inset-0 flex justify-end items-center pr-96 pointer-events-none"

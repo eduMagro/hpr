@@ -2,7 +2,7 @@
     <x-slot name="title">Planificación por Máquina</x-slot>
 
 
-    <div class="py-6">
+    <div>
         @if (!empty($erroresPlanillas))
             <div class="mb-4 bg-yellow-100 text-yellow-800 p-4 rounded shadow">
                 <h3 class="font-semibold">Advertencias de planificación:</h3>

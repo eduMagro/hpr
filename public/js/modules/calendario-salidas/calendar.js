@@ -412,21 +412,32 @@ export function crearCalendario() {
 
                 // aplica solo si hay algún filtro
                 if (fCod || fNom) {
-                    const cod = (info.event.extendedProps?.cod_obra || "")
-                        .toString()
-                        .toLowerCase();
-                    // usa extendedProps.nombre_obra; si no llega, cae a title
-                    const nom = (
-                        info.event.extendedProps?.nombre_obra ||
-                        info.event.title ||
-                        ""
-                    )
-                        .toString()
-                        .toLowerCase();
+                    let coincide = false;
 
-                    const coincide =
-                        (fCod && cod.includes(fCod)) ||
-                        (fNom && nom.includes(fNom));
+                    // Para eventos de salida con múltiples obras
+                    if (p.tipo === "salida" && p.obras && Array.isArray(p.obras)) {
+                        coincide = p.obras.some(obra => {
+                            const cod = (obra.codigo || "").toString().toLowerCase();
+                            const nom = (obra.nombre || "").toString().toLowerCase();
+                            return (fCod && cod.includes(fCod)) || (fNom && nom.includes(fNom));
+                        });
+                    } else {
+                        // Para eventos de planilla u otros con un solo cod_obra/nombre_obra
+                        const cod = (info.event.extendedProps?.cod_obra || "")
+                            .toString()
+                            .toLowerCase();
+                        const nom = (
+                            info.event.extendedProps?.nombre_obra ||
+                            info.event.title ||
+                            ""
+                        )
+                            .toString()
+                            .toLowerCase();
+
+                        coincide =
+                            (fCod && cod.includes(fCod)) ||
+                            (fNom && nom.includes(fNom));
+                    }
 
                     if (coincide) {
                         info.el.classList.add("evento-filtrado");

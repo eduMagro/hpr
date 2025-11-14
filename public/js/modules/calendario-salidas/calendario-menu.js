@@ -204,6 +204,21 @@ function construirInterfazGestionPaquetesSalida(
         0
     );
 
+    // Construir información de obras y clientes
+    let obrasClientesInfo = "";
+    if (salida.salida_clientes && salida.salida_clientes.length > 0) {
+        obrasClientesInfo = `<div class="col-span-2"><strong>Obras/Clientes:</strong><br>`;
+        salida.salida_clientes.forEach(sc => {
+            const obraNombre = sc.obra?.obra || "Obra desconocida";
+            const obraCodigo = sc.obra?.cod_obra ? `(${sc.obra.cod_obra})` : "";
+            const clienteNombre = sc.cliente?.empresa || sc.obra?.cliente?.empresa || "";
+            obrasClientesInfo += `<span class="text-xs">• ${obraNombre} ${obraCodigo}`;
+            if (clienteNombre) obrasClientesInfo += ` - ${clienteNombre}`;
+            obrasClientesInfo += `</span><br>`;
+        });
+        obrasClientesInfo += `</div>`;
+    }
+
     // Información de la salida
     const infoSalida = `
         <div class="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
@@ -214,6 +229,7 @@ function construirInterfazGestionPaquetesSalida(
                 <div><strong>Estado:</strong> ${salida.estado || "pendiente"}</div>
                 <div><strong>Empresa transporte:</strong> ${salida.empresa_transporte?.nombre || "Sin asignar"}</div>
                 <div><strong>Camión:</strong> ${salida.camion?.modelo || "Sin asignar"}</div>
+                ${obrasClientesInfo}
             </div>
         </div>
     `;
@@ -869,9 +885,30 @@ export function attachEventoContextMenu(info, calendar) {
         const p = ev.extendedProps || {};
         const tipo = p.tipo || "planilla";
 
+        // Construir header con información adicional para salidas
+        let headerInfo = "";
+        if (tipo === "salida") {
+            // Mostrar clientes
+            if (p.clientes && Array.isArray(p.clientes) && p.clientes.length > 0) {
+                const clientesTexto = p.clientes.map(c => c.nombre).filter(Boolean).join(", ");
+                if (clientesTexto) {
+                    headerInfo += `<br><span style="font-weight:400;color:#4b5563;font-size:11px">👤 ${clientesTexto}</span>`;
+                }
+            }
+            // Mostrar obras
+            if (p.obras && Array.isArray(p.obras) && p.obras.length > 0) {
+                headerInfo += `<br><span style="font-weight:400;color:#4b5563;font-size:11px">🏗️ `;
+                headerInfo += p.obras.map(o => {
+                    const codigo = o.codigo ? `(${o.codigo})` : '';
+                    return `${o.nombre} ${codigo}`;
+                }).join(', ');
+                headerInfo += `</span>`;
+            }
+        }
+
         const headerHtml = `
       <div style="padding:10px 12px; font-weight:600;">
-        ${ev.title ?? "Evento"}<br>
+        ${ev.title ?? "Evento"}${headerInfo}<br>
         <span style="font-weight:400;color:#6b7280;font-size:12px">
           ${new Date(ev.start).toLocaleString()} — ${new Date(
             ev.end
@@ -897,8 +934,8 @@ export function attachEventoContextMenu(info, calendar) {
                 },
             ];
         } else if (tipo === "salida") {
-            // El ID del evento viene en formato "salida_id-obra_id", extraer solo el salida_id
-            const salidaId = typeof ev.id === 'string' ? ev.id.split('-')[0] : ev.id;
+            // El ID del evento ahora es directamente el salida_id
+            const salidaId = p.salida_id || ev.id;
 
             items = [
                 {
@@ -915,7 +952,7 @@ export function attachEventoContextMenu(info, calendar) {
                     label: "Asignar código SAGE",
                     icon: "🏷️",
                     onClick: () =>
-                        asignarCodigoSalida(salidaId, p.codigo || "", calendar),
+                        asignarCodigoSalida(salidaId, p.codigo_sage || "", calendar),
                 },
                 {
                     label: "Agregar comentario",

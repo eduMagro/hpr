@@ -267,7 +267,7 @@
         </div>
 
         <!-- Paginación Livewire -->
-        <x-tabla.paginacion-livewire :paginador="$paquetes" />
+        ${{ $paquetes->links() }}
     </div>
 
     {{-- Modal para visualizar elementos del paquete --}}

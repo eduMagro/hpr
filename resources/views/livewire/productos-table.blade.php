@@ -208,7 +208,7 @@
     </div>
 
     {{-- Paginación --}}
-    <x-tabla.paginacion-livewire :paginador="$productos" />
+    {{ $productos->links() }}
 
     {{-- Script para botón consumir con SweetAlert --}}
     <script>

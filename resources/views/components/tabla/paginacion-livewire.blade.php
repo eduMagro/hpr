@@ -16,7 +16,7 @@
 </div>
 
 {{-- Texto resumen e información de paginación --}}
-@if($paginador && ($paginador->hasPages() || $paginador->total() > 0))
+@if($paginador && $paginador->total() > 0)
     <div class="mt-6 space-y-3 text-center">
 
         {{-- Texto resumen --}}
@@ -33,17 +33,18 @@
         {{-- Paginación solo si hay más de una página --}}
         @if($paginador->hasPages())
             <div class="flex justify-center">
-                <div class="inline-flex flex-wrap gap-1 bg-white px-2 py-1 mb-6 rounded-md shadow-sm">
+                <nav class="inline-flex flex-wrap gap-1 bg-white px-2 py-1 mb-6 rounded-md shadow-sm">
                     {{-- Botón anterior --}}
                     @if ($paginador->onFirstPage())
                         <span class="px-3 py-1 text-xs text-gray-400 cursor-not-allowed">
-                            &lt;&lt;
+                            &laquo;
                         </span>
                     @else
-                        <button wire:click="previousPage('{{ $paginador->getPageName() }}')"
+                        <button type="button"
+                                wire:click="previousPage"
                                 wire:loading.attr="disabled"
                                 class="px-3 py-1 text-xs text-blue-600 hover:bg-blue-100 rounded transition disabled:opacity-50">
-                            &lt;&lt;
+                            &laquo;
                         </button>
                     @endif
 
@@ -51,18 +52,18 @@
                     @php
                         $current = $paginador->currentPage();
                         $last = $paginador->lastPage();
-                        $range = 2; // número de páginas antes y después del actual
+                        $range = 2;
                         $pages = [];
 
-                        // Páginas siempre visibles
+                        // Siempre mostrar la primera página
                         $pages[] = 1;
 
-                        for ($i = $current - $range; $i <= $current + $range; $i++) {
-                            if ($i > 1 && $i < $last) {
-                                $pages[] = $i;
-                            }
+                        // Páginas alrededor de la actual
+                        for ($i = max(2, $current - $range); $i <= min($last - 1, $current + $range); $i++) {
+                            $pages[] = $i;
                         }
 
+                        // Siempre mostrar la última página
                         if ($last > 1) {
                             $pages[] = $last;
                         }
@@ -73,16 +74,19 @@
 
                     @php $prevPage = 0; @endphp
                     @foreach ($pages as $page)
-                        @if ($prevPage && $page > $prevPage + 1)
-                            <span class="px-2 text-xs text-gray-400">…</span>
+                        {{-- Mostrar puntos suspensivos si hay un salto --}}
+                        @if ($prevPage > 0 && $page > $prevPage + 1)
+                            <span class="px-2 text-xs text-gray-400 select-none">&hellip;</span>
                         @endif
 
+                        {{-- Página actual --}}
                         @if ($page == $current)
                             <span class="px-3 py-1 text-xs font-bold bg-blue-600 text-white rounded shadow border border-blue-700">
                                 {{ $page }}
                             </span>
                         @else
-                            <button wire:click="gotoPage({{ $page }}, '{{ $paginador->getPageName() }}')"
+                            <button type="button"
+                                    wire:click="gotoPage({{ $page }})"
                                     wire:loading.attr="disabled"
                                     class="px-3 py-1 text-xs text-blue-600 hover:bg-blue-100 rounded transition disabled:opacity-50">
                                 {{ $page }}
@@ -94,15 +98,16 @@
 
                     {{-- Botón siguiente --}}
                     @if ($paginador->hasMorePages())
-                        <button wire:click="nextPage('{{ $paginador->getPageName() }}')"
+                        <button type="button"
+                                wire:click="nextPage"
                                 wire:loading.attr="disabled"
                                 class="px-3 py-1 text-xs text-blue-600 hover:bg-blue-100 rounded transition disabled:opacity-50">
-                            &gt;&gt;
+                            &raquo;
                         </button>
                     @else
-                        <span class="px-3 py-1 text-xs text-gray-400 cursor-not-allowed">&gt;&gt;</span>
+                        <span class="px-3 py-1 text-xs text-gray-400 cursor-not-allowed">&raquo;</span>
                     @endif
-                </div>
+                </nav>
             </div>
         @endif
     </div>

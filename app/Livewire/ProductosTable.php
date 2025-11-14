@@ -11,49 +11,52 @@ class ProductosTable extends Component
 {
     use WithPagination;
 
+    protected $paginationTheme = 'tailwind';
+
     // Filtros - usando #[Url] para mantenerlos en la URL
-    #[Url]
+    #[Url(keep: true)]
     public $id = '';
 
-    #[Url]
+    #[Url(keep: true)]
     public $albaran = '';
 
-    #[Url]
+    #[Url(keep: true)]
     public $codigo = '';
 
-    #[Url]
+    #[Url(keep: true)]
     public $nave_id = '';
 
-    #[Url]
+    #[Url(keep: true)]
     public $fabricante = '';
 
-    #[Url]
+    #[Url(keep: true)]
     public $tipo = '';
 
-    #[Url]
+    #[Url(keep: true)]
     public $diametro = '';
 
-    #[Url]
+    #[Url(keep: true)]
     public $longitud = '';
 
-    #[Url]
+    #[Url(keep: true)]
     public $n_colada = '';
 
-    #[Url]
+    #[Url(keep: true)]
     public $n_paquete = '';
 
-    #[Url]
+    #[Url(keep: true)]
     public $estado = '';
 
-    #[Url]
+    #[Url(keep: true)]
     public $ubicacion = '';
 
-    #[Url]
+    #[Url(keep: true)]
     public $sort = 'created_at';
 
-    #[Url]
+    #[Url(keep: true)]
     public $order = 'desc';
 
+    #[Url(keep: true)]
     public $perPage = 15;
 
     // Cuando cambia cualquier filtro, resetear a la página 1

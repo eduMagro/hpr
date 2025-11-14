@@ -216,62 +216,104 @@ class PlanificacionController extends Controller
     private function getEventosSalidas(Carbon $startDate, Carbon $endDate, string $viewType = '')
     {
         $salidas = Salida::with([
-            // añade cod_obra aquí 👇
-            'salidaClientes.obra:id,obra,cod_obra',
+            'salidaClientes.obra:id,obra,cod_obra,cliente_id',
+            'salidaClientes.obra.cliente:id,empresa',
             'salidaClientes.cliente:id,empresa',
+            'paquetes.planilla.obra:id,obra,cod_obra,cliente_id',
+            'paquetes.planilla.obra.cliente:id,empresa',
             'paquetes.planilla.user',
             'empresaTransporte:id,nombre',
-            'camion:id,modelo', // si usas $salida->camion->modelo
+            'camion:id,modelo',
         ])
             ->whereBetween('fecha_salida', [$startDate, $endDate])
             ->get();
 
-        return $salidas->flatMap(function ($salida) use ($viewType) {
+        return $salidas->map(function ($salida) use ($viewType) {
             $empresa    = optional($salida->empresaTransporte)->nombre;
             $camion     = optional($salida->camion)->modelo;
             $pesoTotal  = round($salida->paquetes->sum(fn($p) => optional($p->planilla)->peso_total ?? 0), 0);
             $fechaInicio = Carbon::parse($salida->fecha_salida);
             $fechaFin   = $fechaInicio->copy()->addHours(3);
             $color      = $salida->estado === 'completada' ? '#4CAF50' : '#3B82F6';
+            $codigoSage = $salida->codigo_sage ? " - {$salida->codigo_sage}" : '';
 
-            // Si la salida tiene salidaClientes, generar un evento por cada uno
+            // Recopilar todas las obras y clientes únicos de esta salida
+            $obrasClientes = collect();
+
+            // 1. Desde salidaClientes (relación directa)
             if ($salida->salidaClientes->isNotEmpty()) {
-                return $salida->salidaClientes->map(function ($relacion) use ($salida, $empresa, $camion, $pesoTotal, $fechaInicio, $fechaFin, $color, $viewType) {
-                    $obra = $relacion->obra;
-                    $codigoSage = $salida->codigo_sage ? " - {$salida->codigo_sage}" : '';
+                foreach ($salida->salidaClientes as $relacion) {
+                    // Priorizar cliente de la relación, sino el de la obra
+                    $clienteNombre = optional($relacion->cliente)->empresa
+                        ?? optional($relacion->obra->cliente)->empresa
+                        ?? 'Cliente desconocido';
+                    $clienteId = $relacion->cliente_id
+                        ?? optional($relacion->obra)->cliente_id;
 
-                    $evento = [
-                        'title'        => "{$salida->codigo_salida}{$codigoSage} - {$obra->obra} - {$pesoTotal} kg",
-                        'id'           => $salida->id . '-' . $obra->id,
-                        'start'        => $fechaInicio->toDateTimeString(),
-                        'end'          => $fechaFin->toDateTimeString(),
-                        'tipo'         => 'salida',
-                        'backgroundColor' => $color,
-                        'borderColor'     => $color,
-                        'extendedProps' => [
-                            'tipo'         => 'salida',
-                            'cod_obra'     => $obra->cod_obra,
-                            'nombre_obra'  => $obra->obra,
-                            'empresa'      => $empresa,
-                            'camion'       => $camion,
-                            'comentario'   => $salida->comentario,
-                        ],
-                    ];
-
-                    // Solo agregar resourceId si no es vista timeGridDay
-                    if ($viewType !== 'timeGridDay') {
-                        $evento['resourceId'] = (string) $obra->id;
-                    }
-
-                    return $evento;
-                });
+                    $obrasClientes->push([
+                        'obra_id' => $relacion->obra_id,
+                        'obra' => optional($relacion->obra)->obra ?? 'Obra desconocida',
+                        'cod_obra' => optional($relacion->obra)->cod_obra ?? '',
+                        'cliente' => $clienteNombre,
+                        'cliente_id' => $clienteId,
+                    ]);
+                }
             }
 
-            // Si la salida NO tiene salidaClientes, generar un evento sin obra específica
-            $codigoSage = $salida->codigo_sage ? " - {$salida->codigo_sage}" : '';
+            // 2. Desde paquetes (pueden tener obras diferentes)
+            if ($salida->paquetes->isNotEmpty()) {
+                foreach ($salida->paquetes as $paquete) {
+                    if ($paquete->planilla && $paquete->planilla->obra) {
+                        $obra = $paquete->planilla->obra;
+                        // Solo agregar si no existe ya
+                        if (!$obrasClientes->where('obra_id', $obra->id)->count()) {
+                            $obrasClientes->push([
+                                'obra_id' => $obra->id,
+                                'obra' => $obra->obra,
+                                'cod_obra' => $obra->cod_obra ?? '',
+                                'cliente' => optional($obra->cliente)->empresa ?? 'Cliente desconocido',
+                                'cliente_id' => optional($obra->cliente)->id,
+                            ]);
+                        }
+                    }
+                }
+            }
+
+            // Eliminar duplicados por obra_id
+            $obrasClientes = $obrasClientes->unique('obra_id')->values();
+
+            // Construir el título con todas las obras y clientes
+            $titulo = "{$salida->codigo_salida}{$codigoSage}";
+
+            if ($obrasClientes->isNotEmpty()) {
+                // Formatear obras y clientes
+                $obrasTexto = $obrasClientes->map(function($oc) {
+                    $codObra = $oc['cod_obra'] ? "({$oc['cod_obra']})" : '';
+                    return "{$oc['obra']} {$codObra}";
+                })->join(', ');
+
+                $clientesUnicos = $obrasClientes->pluck('cliente')->filter()->unique()->values();
+                $clientesTexto = $clientesUnicos->join(', ');
+
+                if ($clientesTexto) {
+                    $titulo .= " - {$clientesTexto}";
+                }
+                $titulo .= " - {$obrasTexto}";
+            } else {
+                $titulo .= " - Sin obra/cliente asignado";
+            }
+
+            $titulo .= " - {$pesoTotal} kg";
+
+            // Determinar resourceId (usar la primera obra, o _sin_obra_)
+            $resourceId = '_sin_obra_';
+            if ($obrasClientes->isNotEmpty()) {
+                $resourceId = (string) $obrasClientes->first()['obra_id'];
+            }
+
             $evento = [
-                'title'        => "{$salida->codigo_salida}{$codigoSage} - Sin obra asignada - {$pesoTotal} kg",
-                'id'           => $salida->id . '-sin-obra',
+                'title'        => $titulo,
+                'id'           => (string) $salida->id,
                 'start'        => $fechaInicio->toDateTimeString(),
                 'end'          => $fechaFin->toDateTimeString(),
                 'tipo'         => 'salida',
@@ -279,21 +321,31 @@ class PlanificacionController extends Controller
                 'borderColor'     => $color,
                 'extendedProps' => [
                     'tipo'         => 'salida',
-                    'cod_obra'     => '',
-                    'nombre_obra'  => 'Sin obra asignada',
+                    'salida_id'    => $salida->id,
+                    'codigo_salida' => $salida->codigo_salida,
+                    'codigo_sage'  => $salida->codigo_sage,
+                    'obras'        => $obrasClientes->map(fn($oc) => [
+                        'id' => $oc['obra_id'],
+                        'nombre' => $oc['obra'],
+                        'codigo' => $oc['cod_obra'],
+                    ])->toArray(),
+                    'clientes'     => $obrasClientes->map(fn($oc) => [
+                        'id' => $oc['cliente_id'],
+                        'nombre' => $oc['cliente'],
+                    ])->unique('id')->filter(fn($c) => $c['nombre'])->values()->toArray(),
                     'empresa'      => $empresa,
                     'camion'       => $camion,
                     'comentario'   => $salida->comentario ?? '',
-                    'salida_id'    => $salida->id,
+                    'peso_total'   => $pesoTotal,
                 ],
             ];
 
-            // Agregar resourceId especial para vistas basadas en recursos
+            // Solo agregar resourceId si no es vista timeGridDay
             if ($viewType !== 'timeGridDay') {
-                $evento['resourceId'] = '_sin_obra_';
+                $evento['resourceId'] = $resourceId;
             }
 
-            return collect([$evento]);
+            return $evento;
         });
     }
 

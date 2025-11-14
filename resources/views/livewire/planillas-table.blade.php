@@ -1,23 +1,6 @@
 <div>
     <div class="w-full px-6 py-4">
 
-        <div class="flex flex-wrap items-center gap-x-4 gap-y-2 mb-4">
-            {{-- Botón Importar planillas (mantenido como está) --}}
-            <button type="button" id="btn-abrir-import"
-                class="px-4 py-2 rounded bg-blue-600 hover:bg-blue-700 text-white font-bold">
-                Importar planillas
-            </button>
-
-            {{-- Botón Completar todas --}}
-            <form action="{{ route('planillas.completarTodas') }}" method="POST"
-                onsubmit="return confirm('¿Completar todas las planillas pendientes?');">
-                @csrf
-                <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
-                    Completar todas las planillas
-                </button>
-            </form>
-        </div>
-
         <!-- Badge de planillas sin revisar -->
         @if ($planillasSinRevisar > 0)
             <div class="mb-4 bg-yellow-100 border-l-4 border-yellow-500 p-4 rounded-r-lg shadow">
@@ -370,7 +353,7 @@
         @endif
 
         <!-- Paginación Livewire -->
-        <x-tabla.paginacion-livewire :paginador="$planillas" />
+        {{ $planillas->links() }}
     </div>
 
     {{-- Modal Reimportar Planilla --}}

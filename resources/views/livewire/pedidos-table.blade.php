@@ -368,7 +368,7 @@
     </div>
 
     {{-- Paginación --}}
-    <x-tabla.paginacion-livewire :paginador="$pedidos" />
+    ${{ $pedidos->links() }}
 </div>
 
 {{-- SCRIPTS JAVASCRIPT --}}

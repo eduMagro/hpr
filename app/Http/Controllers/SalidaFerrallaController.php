@@ -1454,7 +1454,17 @@ class SalidaFerrallaController extends Controller
         ]);
 
         // Buscar SOLO salidas con estado pendiente para estas obras/clientes
-        $salidasExistentes = Salida::with(['paquetes.planilla', 'paquetes.etiquetas.elementos', 'empresaTransporte', 'camion', 'obras', 'clientes'])
+        $salidasExistentes = Salida::with([
+                'paquetes.planilla.obra',
+                'paquetes.planilla.cliente',
+                'paquetes.etiquetas.elementos',
+                'empresaTransporte',
+                'camion',
+                'obras',
+                'clientes',
+                'salidaClientes.obra',
+                'salidaClientes.cliente'
+            ])
             ->where('estado', 'pendiente')
             ->where(function($query) use ($obrasIds, $clientesIds) {
                 // Salidas con obras específicas
@@ -1537,8 +1547,19 @@ class SalidaFerrallaController extends Controller
 
             // Obtener información de las planillas para construir el código de salida
             $planillas = Planilla::with('obra.cliente')->whereIn('id', $planillasIds)->get();
-            $obra = $planillas->first()->obra ?? null;
-            $codigoObra = $obra ? $obra->cod_obra : 'OBRA';
+
+            // Recopilar todas las obras y clientes únicos de las planillas
+            $obrasClientesUnicos = collect();
+            foreach ($planillas as $planilla) {
+                if ($planilla->obra_id) {
+                    $obrasClientesUnicos->push([
+                        'obra_id' => $planilla->obra_id,
+                        'cliente_id' => $planilla->cliente_id ?? $planilla->obra->cliente_id ?? null,
+                    ]);
+                }
+            }
+            // Eliminar duplicados por obra_id
+            $obrasClientesUnicos = $obrasClientesUnicos->unique('obra_id');
 
             $salidasCreadas = [];
 
@@ -1571,13 +1592,12 @@ class SalidaFerrallaController extends Controller
                     'estado' => 'pendiente',
                 ]);
 
-                // Asociar la salida con las obras de las planillas
-                // Esto permite filtrar salidas por obra después
-                if ($obra && $obra->id) {
+                // Asociar la salida con TODAS las obras y clientes de las planillas
+                foreach ($obrasClientesUnicos as $oc) {
                     SalidaCliente::create([
                         'salida_id' => $salida->id,
-                        'cliente_id' => $obra->cliente_id ?? null,
-                        'obra_id' => $obra->id,
+                        'cliente_id' => $oc['cliente_id'],
+                        'obra_id' => $oc['obra_id'],
                     ]);
                 }
 
