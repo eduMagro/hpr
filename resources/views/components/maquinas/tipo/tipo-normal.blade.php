@@ -798,12 +798,6 @@
                 return;
             }
 
-            if (etiquetasSeleccionadas.size === 0) {
-                alert(
-                    'Añade al menos una etiqueta al carro antes de crear el paquete.');
-                return;
-            }
-
             const etiquetasIds = Array.from(
                 etiquetasSeleccionadas);
 
