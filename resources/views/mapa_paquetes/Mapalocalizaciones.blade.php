@@ -164,6 +164,43 @@
         </div>
     </div>
 
+    {{-- Context Menu para paquetes --}}
+    <div id="context-menu-paquete" class="hidden fixed bg-white border border-gray-300 rounded-lg shadow-lg py-1 z-[9999]" style="min-width: 150px;">
+        <button id="context-menu-ver-elementos" class="w-full px-4 py-2 text-left hover:bg-blue-50 text-sm text-gray-700 flex items-center gap-2">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+            </svg>
+            Ver elementos
+        </button>
+    </div>
+
+    {{-- Modal para mostrar elementos del paquete --}}
+    <div id="modal-elementos-paquete" class="hidden fixed inset-0 bg-black bg-opacity-50 z-[10000] flex items-center justify-center p-4">
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-6xl max-h-[90vh] overflow-hidden flex flex-col">
+            <!-- Header del modal -->
+            <div class="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
+                <h2 class="text-xl font-bold text-gray-800">Elementos del Paquete <span id="modal-paquete-codigo"></span></h2>
+                <button id="cerrar-modal-elementos" class="text-gray-500 hover:text-gray-700">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            </div>
+
+            <!-- Contenido del modal -->
+            <div id="modal-elementos-contenido" class="flex-1 overflow-y-auto p-6">
+                <div class="text-center text-gray-500">
+                    <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
+                    <p class="mt-2">Cargando elementos...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {{-- Script para dibujar figuras SVG de elementos --}}
+    <script src="{{ asset('js/elementosJs/figuraElemento.js') }}" defer></script>
+
     {{-- Script para integrar el panel lateral con el componente del mapa --}}
     @push('scripts')
         <script>
@@ -369,6 +406,113 @@
                         });
                     });
                 }
+
+                // =====================
+                // CONTEXT MENU Y MODAL DE ELEMENTOS
+                // =====================
+                const contextMenu = document.getElementById('context-menu-paquete');
+                const modal = document.getElementById('modal-elementos-paquete');
+                const modalContenido = document.getElementById('modal-elementos-contenido');
+                const modalCodigo = document.getElementById('modal-paquete-codigo');
+                const btnCerrarModal = document.getElementById('cerrar-modal-elementos');
+                const btnVerElementos = document.getElementById('context-menu-ver-elementos');
+                let paqueteIdActual = null;
+
+                // Agregar context menu a los paquetes de la lista
+                document.querySelectorAll('.paquete-item').forEach(item => {
+                    item.addEventListener('contextmenu', (e) => {
+                        e.preventDefault();
+                        paqueteIdActual = item.dataset.paqueteId;
+
+                        // Posicionar context menu
+                        contextMenu.style.left = e.pageX + 'px';
+                        contextMenu.style.top = e.pageY + 'px';
+                        contextMenu.classList.remove('hidden');
+                    });
+                });
+
+                // Ocultar context menu al hacer click fuera
+                document.addEventListener('click', (e) => {
+                    if (!contextMenu.contains(e.target)) {
+                        contextMenu.classList.add('hidden');
+                    }
+                });
+
+                // Botón "Ver elementos" del context menu
+                btnVerElementos.addEventListener('click', () => {
+                    contextMenu.classList.add('hidden');
+                    if (paqueteIdActual) {
+                        abrirModalElementos(paqueteIdActual);
+                    }
+                });
+
+                // Abrir modal y cargar elementos
+                async function abrirModalElementos(paqueteId) {
+                    modal.classList.remove('hidden');
+                    modalContenido.innerHTML = '<div class="text-center text-gray-500"><div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div><p class="mt-2">Cargando elementos...</p></div>';
+
+                    try {
+                        const response = await fetch(`/paquetes/${paqueteId}/elementos`);
+                        const data = await response.json();
+
+                        if (data.success) {
+                            modalCodigo.textContent = data.paquete.codigo;
+                            renderizarElementos(data.elementos);
+                        } else {
+                            modalContenido.innerHTML = '<div class="text-center text-red-500"><p>Error al cargar elementos: ' + (data.message || 'Error desconocido') + '</p></div>';
+                        }
+                    } catch (error) {
+                        console.error('Error al cargar elementos:', error);
+                        modalContenido.innerHTML = '<div class="text-center text-red-500"><p>Error al cargar elementos del paquete</p></div>';
+                    }
+                }
+
+                // Renderizar elementos en grid (4 por fila)
+                function renderizarElementos(elementos) {
+                    if (!elementos || elementos.length === 0) {
+                        modalContenido.innerHTML = '<div class="text-center text-gray-500"><p>Este paquete no tiene elementos</p></div>';
+                        return;
+                    }
+
+                    modalContenido.innerHTML = '<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4" id="grid-elementos"></div>';
+                    const grid = document.getElementById('grid-elementos');
+
+                    elementos.forEach((elemento, index) => {
+                        const elementoDiv = document.createElement('div');
+                        elementoDiv.className = 'border border-gray-300 rounded-lg p-3 bg-white shadow-sm';
+                        elementoDiv.innerHTML = `
+                            <h3 class="text-sm font-semibold text-gray-700 mb-2 truncate" title="${elemento.codigo}">${elemento.codigo}</h3>
+                            <div id="svg-elemento-${elemento.id}" class="w-full" style="height: 150px; border: 1px solid #e5e7eb; border-radius: 4px; background: white;"></div>
+                        `;
+                        grid.appendChild(elementoDiv);
+
+                        // Dibujar el elemento usando la función del script figuraElemento.js
+                        // Esperar a que el elemento esté en el DOM
+                        setTimeout(() => {
+                            if (typeof window.dibujarFiguraElemento === 'function') {
+                                window.dibujarFiguraElemento(
+                                    'svg-elemento-' + elemento.id,
+                                    elemento.dimensiones,
+                                    elemento.peso_kg,
+                                    elemento.diametro,
+                                    elemento.barras
+                                );
+                            }
+                        }, 50 * index); // Pequeño delay escalonado para mejor rendimiento
+                    });
+                }
+
+                // Cerrar modal
+                btnCerrarModal.addEventListener('click', () => {
+                    modal.classList.add('hidden');
+                });
+
+                // Cerrar modal al hacer click fuera
+                modal.addEventListener('click', (e) => {
+                    if (e.target === modal) {
+                        modal.classList.add('hidden');
+                    }
+                });
             });
         </script>
     @endpush

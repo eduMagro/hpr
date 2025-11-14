@@ -275,6 +275,10 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
 
     Route::resource('paquetes', PaqueteController::class);
 
+    // API: Obtener elementos de un paquete
+    Route::get('/paquetes/{paqueteId}/elementos', [PaqueteController::class, 'getElementos'])
+        ->name('paquetes.getElementos');
+
     // 🔥 RUTA MIGRADA A LIVEWIRE - index ahora usa Livewire (sin recargar página)
     Route::get('/etiquetas', App\Livewire\EtiquetasTable::class)->name('etiquetas.index');
 

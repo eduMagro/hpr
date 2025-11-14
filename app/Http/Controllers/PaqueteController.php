@@ -916,4 +916,50 @@ class PaqueteController extends Controller
             ], 500);
         }
     }
+
+    /**
+     * Obtiene todos los elementos de un paquete con sus etiquetas
+     * Para mostrar en el modal de "Ver elementos"
+     */
+    public function getElementos($paqueteId)
+    {
+        try {
+            $paquete = \App\Models\Paquete::with([
+                'etiquetas.elementos' => function($query) {
+                    $query->orderBy('id');
+                }
+            ])->findOrFail($paqueteId);
+
+            $elementos = [];
+
+            foreach ($paquete->etiquetas as $etiqueta) {
+                foreach ($etiqueta->elementos as $elemento) {
+                    $elementos[] = [
+                        'id' => $elemento->id,
+                        'codigo' => $elemento->codigo,
+                        'dimensiones' => $elemento->dimensiones,
+                        'peso_kg' => $elemento->peso_kg,
+                        'diametro' => $elemento->diametro,
+                        'barras' => $elemento->barras,
+                        'etiqueta_codigo' => $etiqueta->codigo,
+                    ];
+                }
+            }
+
+            return response()->json([
+                'success' => true,
+                'paquete' => [
+                    'id' => $paquete->id,
+                    'codigo' => $paquete->codigo,
+                ],
+                'elementos' => $elementos,
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al obtener elementos: ' . $e->getMessage()
+            ], 500);
+        }
+    }
 }
