@@ -1,8 +1,8 @@
 <x-app-layout>
     <x-slot name="title">{{ $maquina->nombre }} - {{ config('app.name') }}</x-slot>
     <x-slot name="header">
-        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between">
-            <h2 class="font-semibold text-xl text-gray-800 leading-tight mb-2 sm:mb-0">
+        <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+            <h2 class="font-semibold text-xl text-gray-800 leading-tight">
                 <strong>{{ $maquina->nombre }}</strong>,
                 {{ $usuario1->name }}
                 @if ($usuario2)
@@ -10,30 +10,127 @@
                 @endif
             </h2>
 
-            @if ($turnoHoy)
-                <form method="POST" action="{{ route('turno.cambiarMaquina') }}" class="flex items-center gap-2">
-                    @csrf
-                    <input type="hidden" name="asignacion_id" value="{{ $turnoHoy->id }}">
-
-                    <select name="nueva_maquina_id" class="border rounded px-2 py-1 text-sm">
-                        @foreach ($maquinas as $m)
-                            <option value="{{ $m->id }}" {{ $m->id == $turnoHoy->maquina_id ? 'selected' : '' }}>
-                                {{ $m->nombre }}
-                            </option>
+            <div class="flex flex-wrap items-center gap-4">
+                @if ($maquina->tipo !== 'grua' && $maquina->tipo !== 'dobladora_manual' && $maquina->tipo !== 'cortadora_manual')
+                    {{-- Selectores de posiciones de planillas --}}
+                    <form method="GET" id="form-posiciones-planillas-header" class="flex items-center gap-2 bg-white rounded-md px-3 py-1.5 border border-gray-300 shadow-sm">
+                        @foreach (request()->except(['posicion_1', 'posicion_2']) as $k => $v)
+                            <input type="hidden" name="{{ $k }}" value="{{ $v }}">
                         @endforeach
-                    </select>
 
-                    <button type="submit"
-                        class="bg-yellow-500 hover:bg-yellow-600 text-white px-3 py-1 rounded text-sm">
-                        Cambiar máquina
-                    </button>
-                </form>
-            @endif
+                        <label class="text-sm font-medium text-gray-700 whitespace-nowrap">
+                            📋 Planillas:
+                        </label>
+
+                        <select name="posicion_1"
+                            class="border border-gray-300 rounded-md px-2 py-1 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none transition"
+                            onchange="this.form.submit()">
+                            <option value="">-- Pos. 1 --</option>
+                            @foreach ($posicionesDisponibles as $pos)
+                                <option value="{{ $pos }}" {{ $posicion1 == $pos ? 'selected' : '' }}>
+                                    Pos. {{ $pos }}
+                                </option>
+                            @endforeach
+                        </select>
+
+                        <span class="text-gray-400">+</span>
+
+                        <select name="posicion_2"
+                            class="border border-gray-300 rounded-md px-2 py-1 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none transition"
+                            onchange="this.form.submit()">
+                            <option value="">-- Pos. 2 --</option>
+                            @foreach ($posicionesDisponibles as $pos)
+                                <option value="{{ $pos }}" {{ $posicion2 == $pos ? 'selected' : '' }}>
+                                    Pos. {{ $pos }}
+                                </option>
+                            @endforeach
+                        </select>
+                    </form>
+
+                    {{-- Controles de vista para máquinas tipo normal --}}
+                    <div class="flex items-center gap-2" x-data="{
+                        showLeft: JSON.parse(localStorage.getItem('showLeft') ?? 'false'),
+                        showRight: JSON.parse(localStorage.getItem('showRight') ?? 'false'),
+                        toggleLeft() {
+                            this.showLeft = !this.showLeft;
+                            localStorage.setItem('showLeft', JSON.stringify(this.showLeft));
+                            window.dispatchEvent(new CustomEvent('toggleLeft'));
+                        },
+                        solo() {
+                            this.showLeft = false;
+                            this.showRight = false;
+                            localStorage.setItem('showLeft', 'false');
+                            localStorage.setItem('showRight', 'false');
+                            window.dispatchEvent(new CustomEvent('solo'));
+                        },
+                        toggleRight() {
+                            this.showRight = !this.showRight;
+                            localStorage.setItem('showRight', JSON.stringify(this.showRight));
+                            window.dispatchEvent(new CustomEvent('toggleRight'));
+                        }
+                    }">
+                        <button @click="toggleLeft()"
+                            class="px-3 py-1.5 rounded-md text-sm font-medium border transition-all duration-200"
+                            :class="showLeft ? 'bg-white border-gray-300 text-gray-700 shadow-sm' : 'bg-blue-500 border-blue-600 text-white hover:bg-blue-600'"
+                            title="Mostrar/Ocultar materia prima">
+                            <span class="flex items-center gap-1">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 19l-7-7 7-7m8 14l-7-7 7-7"/>
+                                </svg>
+                                <span x-text="showLeft ? 'Ocultar' : 'Materia'"></span>
+                            </span>
+                        </button>
+
+                        <button @click="solo()"
+                            class="px-3 py-1.5 rounded-md text-sm font-medium bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 transition-all duration-200 shadow-sm"
+                            title="Ver solo planillas">
+                            <span class="flex items-center gap-1">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
+                                </svg>
+                                Solo Planillas
+                            </span>
+                        </button>
+
+                        <button @click="toggleRight()"
+                            class="px-3 py-1.5 rounded-md text-sm font-medium border transition-all duration-200"
+                            :class="showRight ? 'bg-white border-gray-300 text-gray-700 shadow-sm' : 'bg-blue-500 border-blue-600 text-white hover:bg-blue-600'"
+                            title="Mostrar/Ocultar paquetes">
+                            <span class="flex items-center gap-1">
+                                <span x-text="showRight ? 'Ocultar' : 'Paquetes'"></span>
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 5l7 7-7 7M5 5l7 7-7 7"/>
+                                </svg>
+                            </span>
+                        </button>
+                    </div>
+                @endif
+
+                @if ($turnoHoy)
+                    <form method="POST" action="{{ route('turno.cambiarMaquina') }}" class="flex items-center gap-2">
+                        @csrf
+                        <input type="hidden" name="asignacion_id" value="{{ $turnoHoy->id }}">
+
+                        <select name="nueva_maquina_id" class="border rounded px-2 py-1 text-sm">
+                            @foreach ($maquinas as $m)
+                                <option value="{{ $m->id }}" {{ $m->id == $turnoHoy->maquina_id ? 'selected' : '' }}>
+                                    {{ $m->nombre }}
+                                </option>
+                            @endforeach
+                        </select>
+
+                        <button type="submit"
+                            class="bg-yellow-500 hover:bg-yellow-600 text-white px-3 py-1 rounded text-sm">
+                            Cambiar máquina
+                        </button>
+                    </form>
+                @endif
+            </div>
         </div>
 
     </x-slot>
 
-    <div class="w-full sm:px-4 py-6">
+    <div class="w-full sm:px-4">
         <!-- Grid principal -->
         <div class="w-full">
             @if ($maquina->tipo === 'grua')
@@ -95,6 +192,37 @@
                 }
             }, {
                 capture: true
+            });
+
+            // Validación de posiciones de planillas en el header
+            document.addEventListener('DOMContentLoaded', function() {
+                const form = document.getElementById('form-posiciones-planillas-header');
+                if (!form) return;
+
+                const select1 = form.querySelector('select[name="posicion_1"]');
+                const select2 = form.querySelector('select[name="posicion_2"]');
+                if (!select1 || !select2) return;
+
+                function validar() {
+                    const pos1 = select1.value;
+                    const pos2 = select2.value;
+
+                    if (pos1 && pos2 && pos1 === pos2) {
+                        select2.value = '';
+                        Swal.fire({
+                            icon: 'warning',
+                            title: 'Posiciones duplicadas',
+                            text: 'No puedes seleccionar la misma posición dos veces',
+                            confirmButtonColor: '#3085d6',
+                        });
+                        return false;
+                    }
+                    return true;
+                }
+
+                select1.addEventListener('change', validar);
+                select2.addEventListener('change', validar);
+                form.addEventListener('submit', (e) => !validar() && e.preventDefault());
             });
         </script>
 

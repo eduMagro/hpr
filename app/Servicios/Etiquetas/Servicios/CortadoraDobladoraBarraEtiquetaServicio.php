@@ -376,6 +376,7 @@ class CortadoraDobladoraBarraEtiquetaServicio extends ServicioEtiquetaBase imple
 
                 $etiqueta->estado = 'fabricada';
                 $etiqueta->fecha_finalizacion = now();
+                $this->actualizarPesoEtiqueta($etiqueta);
 
                 $etiqueta->save();
             }
@@ -424,6 +425,7 @@ class CortadoraDobladoraBarraEtiquetaServicio extends ServicioEtiquetaBase imple
             DB::transaction(function () use ($etiqueta, $maquina) {
                 $etiqueta->estado = 'fabricada';
                 $etiqueta->fecha_finalizacion = now();
+                $this->actualizarPesoEtiqueta($etiqueta);
                 $etiqueta->save();
 
                 $dobladora = Maquina::where('tipo', 'dobladora_manual')

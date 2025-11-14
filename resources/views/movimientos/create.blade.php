@@ -1,7 +1,16 @@
 <x-app-layout>
     <x-slot name="title">Planillas - {{ config('app.name') }}</x-slot>
     @if (auth()->user()->rol !== 'operario')
-        <x-menu.movimientos />
+        @php
+            $menu = \App\Services\MenuService::getContextMenu('movimientos');
+        @endphp
+        <x-navigation.context-menu
+            :items="$menu['items']"
+            :colorBase="$menu['config']['colorBase']"
+            :style="$menu['config']['style']"
+            :mobileLabel="$menu['config']['mobileLabel']"
+            checkRole="no-operario"
+        />
     @endif
     <div class="max-w-3xl mx-auto mt-10">
         <div class="bg-white rounded-lg shadow-lg overflow-hidden">

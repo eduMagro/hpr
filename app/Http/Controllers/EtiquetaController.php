@@ -1291,10 +1291,56 @@ class EtiquetaController extends Controller
             $resultado = $servicio->actualizar($dto);
             $etiqueta = $resultado->etiqueta;
 
+            // Extraer coladas únicas de los productos afectados
+            $coladas = collect($resultado->productosAfectados)
+                ->pluck('n_colada')
+                ->filter()
+                ->unique()
+                ->values()
+                ->toArray();
+
+            // Recargar elementos con productos para obtener las coladas por elemento
+            $etiqueta->load(['elementos.producto', 'elementos.producto2', 'elementos.producto3']);
+
+            // Construir mapeo de coladas por elemento
+            $coladasPorElemento = [];
+            foreach ($etiqueta->elementos as $elemento) {
+                $coladasElemento = [];
+
+                if ($elemento->producto && $elemento->producto->n_colada) {
+                    $coladasElemento[] = $elemento->producto->n_colada;
+                }
+                if ($elemento->producto2 && $elemento->producto2->n_colada) {
+                    $coladasElemento[] = $elemento->producto2->n_colada;
+                }
+                if ($elemento->producto3 && $elemento->producto3->n_colada) {
+                    $coladasElemento[] = $elemento->producto3->n_colada;
+                }
+
+                if (!empty($coladasElemento)) {
+                    $coladasPorElemento[$elemento->id] = array_values(array_unique($coladasElemento));
+                }
+            }
+
+            // Log de actualización con coladas
+            if (in_array($etiqueta->estado, ['fabricada', 'completada']) && !empty($coladas)) {
+                $logger = app(\App\Services\ActionLoggerService::class);
+                $logger->logMaquinas('etiqueta_fabricada', [
+                    'etiqueta_sub_id' => $etiqueta->etiqueta_sub_id,
+                    'estado' => $etiqueta->estado,
+                    'coladas' => implode(', ', $coladas),
+                    'peso' => $etiqueta->peso,
+                    'maquina_id' => $maquina->id,
+                    'maquina_nombre' => $maquina->nombre,
+                ]);
+            }
+
             return response()->json([
                 'success' => true,
                 'estado' => $etiqueta->estado,
                 'productos_afectados' => $resultado->productosAfectados,
+                'coladas' => $coladas,
+                'coladas_por_elemento' => $coladasPorElemento,
                 'warnings' => $resultado->warnings,
                 'fecha_inicio' => optional($etiqueta->fecha_inicio)->format('d-m-Y H:i:s'),
                 'fecha_finalizacion' => optional($etiqueta->fecha_finalizacion)->format('d-m-Y H:i:s'),

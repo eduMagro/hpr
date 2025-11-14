@@ -1,5 +1,6 @@
 <x-app-layout>
     <x-slot name="title">Centro de Ayuda</x-slot>
+
     <x-slot name="header">
         <h2 class="text-xl font-semibold text-gray-800">📘 Centro de Ayuda</h2>
     </x-slot>

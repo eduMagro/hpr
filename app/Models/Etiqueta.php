@@ -4,16 +4,12 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Facades\Log;
 
-/**
- * Modelo Etiqueta
- * 
- * Representa una etiqueta de identificación para un conjunto de elementos
- * Las etiquetas agrupan elementos (barras/estribos) que pertenecen a un mismo lote
- */
 class Etiqueta extends Model
 {
-    use HasFactory;
+    use HasFactory, SoftDeletes;
 
     protected $table = 'etiquetas';
 

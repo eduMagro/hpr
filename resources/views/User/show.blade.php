@@ -28,31 +28,32 @@
 
 
 <x-app-layout>
-    <x-slot name="title">Detalles de {{ $user->name }}</x-slot>
-    <x-menu.usuarios :totalSolicitudesPendientes="$totalSolicitudesPendientes ?? 0" />
+    <x-slot name="title">{{ $user->nombre_completo }}</x-slot>
 
-    {{-- Botones de fichaje: solo operarios --}}
-    @if (!$esOficina)
-        <div class="flex justify-between items-center w-full gap-4 p-4">
-            <button onclick="registrarFichaje('entrada')"
-                class="w-full py-2 px-4 bg-green-600 text-white rounded-md btn-cargando">
-                <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
-                <span class="texto">Entrada</span>
-            </button>
-
-            <button onclick="registrarFichaje('salida')"
-                class="w-full py-2 px-4 bg-red-600 text-white rounded-md btn-cargando">
-                <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
-                <span class="texto">Salida</span>
-            </button>
-        </div>
-    @endif
-
-    <div class="container mx-auto md:px-4 py-6">
+    <div class="container mx-auto px-4 py-6">
         <x-ficha-trabajador :user="$user" :resumen="$resumen" />
+    </div>
 
-        <div class="bg-white py-2 rounded-lg shadow-lg">
-            {{-- OJO: JSON en atributo, siempre entre comillas --}}
+    <div class="w-full py-6">
+        {{-- Botones de fichaje: solo operarios --}}
+        @if (!$esOficina)
+            <div class="mb-6 flex justify-center items-center gap-4 px-4">
+                <button onclick="registrarFichaje('entrada')"
+                    class="py-3 px-8 bg-green-600 hover:bg-green-700 text-white text-lg font-semibold rounded-lg shadow-lg transition duration-200 btn-cargando">
+                    <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                    <span class="texto">Entrada</span>
+                </button>
+
+                <button onclick="registrarFichaje('salida')"
+                    class="py-3 px-8 bg-red-600 hover:bg-red-700 text-white text-lg font-semibold rounded-lg shadow-lg transition duration-200 btn-cargando">
+                    <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                    <span class="texto">Salida</span>
+                </button>
+            </div>
+        @endif
+
+        {{-- Calendario de turnos --}}
+        <div class="bg-white py-4">
             <div id="calendario" class="fc-calendario" data-config='@json($config, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT)'></div>
         </div>
     </div>

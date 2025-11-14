@@ -1,6 +1,6 @@
 <x-app-layout>
     <x-slot name="title">Calendario de Vacaciones</x-slot>
-    <x-menu.usuarios :totalSolicitudesPendientes="$totalSolicitudesPendientes ?? 0" />
+
     <div class="w-full max-w-7xl mx-auto py-6 space-y-12" id="contenedorCalendarios">
 
         {{-- Maquinistas --}}
@@ -58,7 +58,16 @@
     <script src="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/locales/es.js"></script>
 
     <script>
-        document.addEventListener('DOMContentLoaded', function() {
+        function inicializarCalendarios() {
+            // Destruir calendarios existentes si los hay
+            const contenedores = ['calendario-maquinistas', 'calendario-ferrallas', 'calendario-oficina'];
+            contenedores.forEach(id => {
+                const el = document.getElementById(id);
+                if (el && el._calendar) {
+                    el._calendar.destroy();
+                }
+            });
+
             const token = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
 
             const configComun = {
@@ -74,7 +83,10 @@
             };
 
             function crearCalendario(idElemento, eventos) {
-                return new FullCalendar.Calendar(document.getElementById(idElemento), {
+                const el = document.getElementById(idElemento);
+                if (!el) return null;
+
+                const calendar = new FullCalendar.Calendar(el, {
                     ...configComun,
                     events: eventos,
 
@@ -161,16 +173,26 @@
                         });
                     }
                 });
+
+                // Guardar referencia para poder destruirlo después
+                el._calendar = calendar;
+                return calendar;
             }
 
             const calendarioMaquinistas = crearCalendario('calendario-maquinistas', @json($eventosMaquinistas));
             const calendarioFerrallas = crearCalendario('calendario-ferrallas', @json($eventosFerrallas));
             const calendarioOficina = crearCalendario('calendario-oficina', @json($eventosOficina));
 
-            calendarioMaquinistas.render();
-            calendarioFerrallas.render();
-            calendarioOficina.render();
-        });
+            if (calendarioMaquinistas) calendarioMaquinistas.render();
+            if (calendarioFerrallas) calendarioFerrallas.render();
+            if (calendarioOficina) calendarioOficina.render();
+        }
+
+        // Ejecutar en carga inicial
+        document.addEventListener('DOMContentLoaded', inicializarCalendarios);
+
+        // Ejecutar después de navegación SPA con Livewire
+        document.addEventListener('livewire:navigated', inicializarCalendarios);
     </script>
 
 

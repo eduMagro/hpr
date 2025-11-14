@@ -102,14 +102,28 @@ class PlanillaImportService
 
         $this->codigoService->resetearContadorBatch();
 
-        if ($importId) ImportProgress::setDone($importId, 'Importación finalizada.');
-        return ImportResult::success(
+        $importResult = ImportResult::success(
             $resultado['exitosas'],
             $resultado['fallidas'],
             $resultado['advertencias'],
             $resultado['estadisticas'],
             $nombreArchivo
         );
+
+        // Guardar resultado completo en el progreso para que el frontend lo muestre
+        if ($importId) {
+            ImportProgress::setDone($importId, 'Importación finalizada.', [
+                'resultado' => [
+                    'planillas_creadas' => count($resultado['exitosas']),
+                    'elementos_creados' => $resultado['estadisticas']['elementos'] ?? 0,
+                ],
+                'advertencias' => $resultado['advertencias'],
+                'mensaje_completo' => $importResult->mensaje(),
+                'tiene_advertencias' => $importResult->tieneAdvertencias(),
+            ]);
+        }
+
+        return $importResult;
     }
 
     /**
@@ -539,7 +553,7 @@ class PlanillaImportService
                         $estadisticas['ordenes_creadas']   += $ordenesCreadas;
                         $estadisticas['tiempo_total']      += (microtime(true) - $inicioPlanilla);
 
-                        // 👈 progreso por filas (avanza en bloque por planilla)
+                        // progreso por filas (avanza en bloque por planilla)
                         if ($importId && $filasDeEstaPlanilla > 0) {
                             ImportProgress::advance($importId, $filasDeEstaPlanilla, "Procesada {$codigoPlanilla}");
                         }

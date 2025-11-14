@@ -1,6 +1,5 @@
     <x-app-layout>
         <x-slot name="title">Etiquetas - {{ config('app.name') }}</x-slot>
-        <x-menu.planillas />
         <div class="w-full p-4 sm:p-2">
             <!-- Tabla con formularios de búsqueda -->
             <x-tabla.filtros-aplicados :filtros="$filtrosActivos" />

@@ -53,6 +53,51 @@ use Illuminate\Support\Facades\Log;
 
 Route::get('/', [PageController::class, 'index'])->middleware(['auth', 'verified'])->name('dashboard');
 
+// Rutas de secciones principales
+Route::get('/produccion', [PageController::class, 'produccion'])->middleware(['auth', 'verified'])->name('secciones.produccion');
+Route::get('/seccion-planificacion', [PageController::class, 'planificacionSeccion'])->middleware(['auth', 'verified'])->name('secciones.planificacion');
+Route::get('/logistica', [PageController::class, 'logistica'])->middleware(['auth', 'verified'])->name('secciones.logistica');
+Route::get('/recursos-humanos', [PageController::class, 'recursosHumanos'])->middleware(['auth', 'verified'])->name('secciones.recursos-humanos');
+Route::get('/comercial', [PageController::class, 'comercial'])->middleware(['auth', 'verified'])->name('secciones.comercial');
+Route::get('/sistema', [PageController::class, 'sistema'])->middleware(['auth', 'verified'])->name('secciones.sistema');
+
+// Rutas antiguas redirigidas (compatibilidad)
+Route::get('/inventario', function() {
+    return redirect()->route('secciones.produccion');
+})->middleware(['auth', 'verified'])->name('secciones.inventario');
+
+Route::get('/compras', function() {
+    return redirect()->route('secciones.logistica');
+})->middleware(['auth', 'verified'])->name('secciones.compras');
+
+// Ruta del Asistente Virtual
+use App\Http\Controllers\AsistenteVirtualController;
+
+Route::get('/asistente', [AsistenteVirtualController::class, 'index'])
+    ->middleware(['auth', 'puede.asistente'])
+    ->name('asistente.index');
+
+// Administración de permisos del Asistente (solo admins)
+Route::get('/asistente/permisos', [AsistenteVirtualController::class, 'administrarPermisos'])
+    ->middleware(['auth'])
+    ->name('asistente.permisos');
+
+// API del Asistente Virtual
+// Rate limiting: 60 requests por minuto general, 15 para envío de mensajes
+Route::middleware(['auth', 'puede.asistente', 'throttle:60,1'])
+    ->prefix('api/asistente')->group(function () {
+        Route::get('/conversaciones', [AsistenteVirtualController::class, 'obtenerConversaciones']);
+        Route::post('/conversaciones', [AsistenteVirtualController::class, 'crearConversacion']);
+        Route::get('/conversaciones/{conversacionId}/mensajes', [AsistenteVirtualController::class, 'obtenerMensajes']);
+        Route::delete('/conversaciones/{conversacionId}', [AsistenteVirtualController::class, 'eliminarConversacion']);
+        Route::get('/sugerencias', [AsistenteVirtualController::class, 'obtenerSugerencias']);
+        Route::post('/permisos/{userId}', [AsistenteVirtualController::class, 'actualizarPermisos']);
+
+        // Ruta de envío de mensajes con rate limiting más estricto
+        Route::post('/mensaje', [AsistenteVirtualController::class, 'enviarMensaje'])
+            ->middleware('throttle:15,1'); // Solo 15 mensajes por minuto
+    });
+
 Route::middleware(['auth', 'acceso.seccion'])->group(function () {
     // === PERFIL DE USUARIO ===
     Route::get('/users/{id}/edit', [ProfileController::class, 'edit'])->name('profile.edit');
@@ -125,7 +170,10 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
     Route::post('/localizaciones/store-paquete', [LocalizacionController::class, 'storePaquete'])->name('localizaciones.storePaquete');
     // === USUARIOS Y VACACIONES ===
 
-    Route::resource('users', ProfileController::class);
+    Route::resource('users', ProfileController::class)->except(['create', 'store']);
+    Route::get('/users/create', function () {
+        return redirect()->route('register');
+    })->name('users.create');
     Route::put('/actualizar-usuario/{id}', [ProfileController::class, 'actualizarUsuario'])->name('usuarios.updateActualizar');
     Route::get('/users/{user}/resumen-asistencia', [ProfileController::class, 'resumenAsistencia'])->name('users.verResumen-asistencia');
     Route::get('/users/{user}/eventos-turnos', [ProfileController::class, 'eventosTurnos'])->name('users.verEventos-turnos');
@@ -175,6 +223,8 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
     // === MAQUINAS Y PRODUCCIÓN ===
     Route::resource('maquinas', MaquinaController::class);
     Route::post('/maquinas/{id}/cambiar-estado', [MaquinaController::class, 'cambiarEstado'])->name('maquinas.cambiarEstado');
+    Route::get('/maquinas/{id}/elementos-pendientes', [MaquinaController::class, 'elementosPendientes'])->name('maquinas.elementosPendientes');
+    Route::post('/maquinas/{id}/redistribuir', [MaquinaController::class, 'redistribuir'])->name('maquinas.redistribuir');
     Route::post('/maquinas/sesion/guardar', [MaquinaController::class, 'guardarSesion'])->name('maquinas.sesion.guardar');
     Route::get('/maquinas/{id}/json', [MaquinaController::class, 'showJson'])->name('maquinas.json');
     Route::post('/turnos/cambiar-maquina', [Maquinacontroller::class, 'cambiarMaquina'])->name('turno.cambiarMaquina');
@@ -185,6 +235,11 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
     Route::get('/produccion/trabajadores', [ProduccionController::class, 'trabajadores'])->name('produccion.verTrabajadores');
     Route::get('/produccion/trabajadores-obra', [ProduccionController::class, 'trabajadoresObra'])->name('produccion.verTrabajadoresObra');
     Route::get('/produccion/maquinas', [ProduccionController::class, 'maquinas'])->name('produccion.verMaquinas');
+    Route::get('/produccion/cargas-maquinas', [ProduccionController::class, 'cargasMaquinas'])->name('produccion.cargasMaquinas');
+
+    // Endpoints dinámicos para el calendario de máquinas
+    Route::get('/api/produccion/maquinas/recursos', [ProduccionController::class, 'obtenerRecursos'])->name('api.produccion.recursos');
+    Route::get('/api/produccion/maquinas/eventos', [ProduccionController::class, 'obtenerEventos'])->name('api.produccion.eventos');
     //MSR20 BVBS
     Route::get('/maquinas/{maquina}/exportar-bvbs', [MaquinaController::class, 'exportarBVBS'])
         ->name('maquinas.exportar-bvbs');
@@ -209,6 +264,8 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
     // ruta para renderizar una etiqueta en HTML
     Route::post('/etiquetas/render', [EtiquetaController::class, 'render'])
         ->name('etiquetas.render');
+
+    Route::get('/elementos/por-ids', [ProduccionController::class, 'porIds'])->name('elementos.verPorIds');
     Route::get(
         '/etiquetas/{etiquetaSubId}/validar-para-paquete',
         [PaqueteController::class, 'validarParaPaquete']
@@ -217,14 +274,22 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
     // === tratamos PAQUETES en maquinas.show ===
 
     Route::resource('paquetes', PaqueteController::class);
-    Route::resource('etiquetas', EtiquetaController::class);
-    Route::resource('elementos', ElementoController::class);
 
+    // 🔥 RUTA MIGRADA A LIVEWIRE - index ahora usa Livewire (sin recargar página)
+    Route::get('/etiquetas', App\Livewire\EtiquetasTable::class)->name('etiquetas.index');
+
+    // Resto de rutas del resource (show, create, edit, update, destroy)
+    Route::resource('etiquetas', EtiquetaController::class)->except(['index']);
+
+    // 🔥 RUTA MIGRADA A LIVEWIRE - index ahora usa Livewire (sin recargar página)
+    Route::get('/elementos', App\Livewire\ElementosTable::class)->name('elementos.index');
+
+    // Resto de rutas del resource (show, create, edit, update, destroy)
+    Route::resource('elementos', ElementoController::class);
 
     // RUTAS PROVISIONALES
     Route::post('/etiquetas/fabricar-lote', [EtiquetaController::class, 'fabricarLote'])->name('maquinas.fabricarLote');
     Route::post('/etiquetas/completar-lote', [EtiquetaController::class, 'completarLote'])->name('maquinas.completarLote');
-
 
     Route::get('/planillas/informacion', [PlanillaController::class, 'informacionMasiva'])->name('planillas.editarInformacionMasiva');
 
@@ -233,12 +298,13 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
         ->name('paquetes.tamaño');
 
     // === PLANILLAS Y PLANIFICACIÓN ===
+    Route::post('/planillas/{planilla}/marcar-revisada', [PlanillaController::class, 'marcarRevisada'])->name('planillas.marcarRevisada');
     Route::resource('planillas', PlanillaController::class);
     Route::post('planillas/import', [PlanillaController::class, 'import'])->name('planillas.crearImport');
     Route::post('/planillas/reordenar', [ProduccionController::class, 'reordenarPlanillas'])->name('planillas.editarReordenar');
     Route::resource('planificacion', PlanificacionController::class)->only(['index', 'store', 'update', 'destroy']);
 
-    Route::put('/planificacion/comentario/{id}', [PlanificacionController::class, 'editarGuardarComentario']);
+    Route::put('/planificacion/comentario/{id}', [PlanificacionController::class, 'guardarComentario']);
     Route::post('/planillas/{planilla}/reimportar', [PlanillaController::class, 'reimportar'])->name('planillas.crearReimportar');
     Route::post('/planillas/completar', [PlanillaController::class, 'completar'])->name('planillas.completar');
     Route::get('/planificacion/index', [PlanificacionController::class, 'index'])->name('planificacion.index');
@@ -257,13 +323,20 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
     Route::post('/update-field', [EmpresaTransporteController::class, 'updateField'])->name('empresas-transporte.editarField');
 
     // === SALIDAS FERRALLA ===
+    // Rutas específicas ANTES del resource (para evitar conflictos)
+    Route::get('/salidas-ferralla/gestionar-salidas', [SalidaFerrallaController::class, 'gestionarSalidas'])->name('salidas-ferralla.gestionar-salidas');
+    Route::get('/salidas/export/{mes}', [SalidaFerrallaController::class, 'export'])->name('salidas.export');
+
     Route::resource('salidas-ferralla', SalidaFerrallaController::class);
     Route::delete('/salidas/{salida}/quitar-paquete/{paquete}', [SalidaFerrallaController::class, 'quitarPaquete'])->name('salidas.editarQuitarPaquete');
     Route::put('/salidas/{salida}/actualizar-estado', [SalidaFerrallaController::class, 'editarActualizarEstado']);
     Route::post('/actualizar-fecha-salida', [SalidaFerrallaController::class, 'actualizarFechaSalida']);
     Route::post('/escaneo', [SalidaFerrallaController::class, 'marcarSubido'])->name('escaneo.marcarSubido');
-    Route::get('/salidas/export/{mes}', [SalidaFerrallaController::class, 'export'])->name('salidas.export');
     Route::post('/planificacion/crear-salida-desde-calendario', [SalidaFerrallaController::class, 'crearSalidaDesdeCalendario'])->name('planificacion.crearSalidaDesdeCalendario');
+    Route::post('/planificacion/guardar-asignaciones-paquetes', [SalidaFerrallaController::class, 'guardarAsignacionesPaquetes'])->name('planificacion.guardarAsignacionesPaquetes');
+    Route::get('/planificacion/informacion-paquetes-salida', [SalidaFerrallaController::class, 'informacionPaquetesSalida'])->name('planificacion.informacionPaquetesSalida');
+    Route::post('/planificacion/guardar-paquetes-salida', [SalidaFerrallaController::class, 'guardarPaquetesSalida'])->name('planificacion.guardarPaquetesSalida');
+    Route::post('/salidas/crear-salidas-vacias-masivo', [SalidaFerrallaController::class, 'crearSalidasVaciasMasivo'])->name('salidas.crearSalidasVaciasMasivo');
     Route::put('/salidas/completar-desde-movimiento/{movimientoId}', [SalidaFerrallaController::class, 'completarDesdeMovimiento']);
     Route::put('/salidas/{salida}/codigo-sage', [SalidaFerrallaController::class, 'actualizarCodigoSage'])->name('salidas.editarCodigoSage');
 
@@ -329,9 +402,6 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
     Route::get('/clientes-almacen/buscar', [ClienteAlmacenController::class, 'buscar'])
         ->name('clientes-almacen.verBuscar');
 
-
-
-
     // === OBRAS ===
     Route::resource('obras', ObraController::class);
     Route::post('/obras/actualizar-tipo', [ObraController::class, 'updateTipo'])->name('obras.updateTipo');
@@ -349,7 +419,7 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
     Route::get('/simulacion-inversa', [NominaController::class, 'formularioInverso'])->name('nomina.inversa');
     Route::post('/simulacion-inversa', [NominaController::class, 'simularDesdeNeto'])->name('nomina.inversa.calcular');
     Route::post('/nominas/dividir', [NominaController::class, 'dividirNominas'])->name('nominas.dividir');
-    Route::get('/mis-nominas/descargar', [NominaController::class, 'descargarNominasMes'])->name('nominas.crearDescargarMes');
+    Route::post('/mis-nominas/enviar', [NominaController::class, 'descargarNominasMes'])->name('nominas.crearDescargarMes');
 
     // === ALERTAS Y ESTADISTICAS ===
     Route::prefix('estadisticas')->group(function () {
@@ -361,7 +431,7 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
 
     Route::resource('alertas', AlertaController::class)->only(['index', 'store', 'update', 'destroy'])->names('alertas');
     Route::post('/alertas/marcar-leidas', [AlertaController::class, 'marcarLeidas'])->name('alertas.verMarcarLeidas');
-
+    Route::get('/alertas/{id}/hilo', [AlertaController::class, 'obtenerHilo'])->name('alertas.verHilo');
     Route::get('/alertas/sin-leer', [AlertaController::class, 'sinLeer'])->name('alertas.verSinLeer');
     Route::get('/estadisticas', [EstadisticasController::class, 'index'])->name('estadisticas.index');
 
@@ -399,6 +469,10 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
     // === ORDENES PLANILLAS ===
     Route::get('/produccion/OrdenesPlanillas', [App\Http\Controllers\ProduccionController::class, 'verOrdenesPlanillas'])
         ->name('produccion.verOrdenesPlanillas');
+
+    // 🔄 Endpoint para actualizaciones en tiempo real
+    Route::get('/produccion/maquinas/actualizaciones', [App\Http\Controllers\ProduccionController::class, 'obtenerActualizaciones'])
+        ->name('produccion.actualizaciones');
 
     // obtener elementos con js
     Route::get('/api/elementos', [ElementoController::class, 'filtrar']);

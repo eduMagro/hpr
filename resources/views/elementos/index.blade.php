@@ -1,6 +1,5 @@
 <x-app-layout>
     <x-slot name="title">Elementos - {{ config('app.name') }}</x-slot>
-    <x-menu.planillas />
     @php
         $filtrosActivos = [];
 
@@ -98,6 +97,51 @@
     <div class="w-full p-4 sm:p-2">
         <x-tabla.filtros-aplicados :filtros="$filtrosActivos" />
 
+        <!-- Banner de revisión de planilla -->
+        @if ($planilla && !$planilla->revisada)
+            <div class="mb-4 bg-red-100 border-l-4 border-red-500 p-4 rounded-r-lg shadow">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-3">
+                        <span class="text-3xl">⚠️</span>
+                        <div>
+                            <h3 class="text-lg font-bold text-red-800">
+                                Planilla {{ $planilla->codigo }} SIN REVISAR
+                            </h3>
+                            <p class="text-sm text-red-700">
+                                Esta planilla aparece en <strong>GRIS</strong> en el calendario. Revisa las máquinas
+                                asignadas y marca como revisada cuando esté correcta.
+                            </p>
+                        </div>
+                    </div>
+                    <form action="{{ route('planillas.marcarRevisada', $planilla->id) }}" method="POST"
+                        onsubmit="return confirm('¿Marcar esta planilla como revisada?\n\nAparecerá en color normal en el calendario de producción.');">
+                        @csrf
+                        <button type="submit"
+                            class="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded transition-colors whitespace-nowrap">
+                            ✅ Marcar como revisada
+                        </button>
+                    </form>
+                </div>
+            </div>
+        @endif
+
+        @if ($planilla && $planilla->revisada)
+            <div class="mb-4 bg-green-100 border-l-4 border-green-500 p-4 rounded-r-lg shadow">
+                <div class="flex items-center gap-3">
+                    <span class="text-3xl">✅</span>
+                    <div>
+                        <h3 class="text-lg font-bold text-green-800">
+                            Planilla {{ $planilla->codigo }} REVISADA
+                        </h3>
+                        <p class="text-sm text-green-700">
+                            Revisada por <strong>{{ $planilla->revisor->name ?? 'N/A' }}</strong>
+                            el {{ $planilla->revisada_at?->format('d/m/Y H:i') ?? 'N/A' }}
+                        </p>
+                    </div>
+                </div>
+            </div>
+        @endif
+
         <!-- Tabla de elementos con scroll horizontal -->
         <div class="w-full overflow-x-auto bg-white shadow-lg rounded-lg">
             <table class="w-full min-w-[1000px] border border-gray-300 rounded-lg">
@@ -109,6 +153,8 @@
                         <th class="p-2 border">{!! $ordenables['etiqueta'] !!}</th>
                         <th class="p-2 border">{!! $ordenables['subetiqueta'] !!}</th>
                         <th class="p-2 border">Dimensiones</th>
+                        <th class="p-2 border">{!! $ordenables['diametro'] !!}</th>
+                        <th class="p-2 border">Barras</th>
                         <th class="p-2 border">{!! $ordenables['maquina'] !!}</th>
                         <th class="p-2 border">{!! $ordenables['maquina_2'] !!}</th>
                         <th class="p-2 border">{!! $ordenables['maquina3'] !!}</th>
@@ -117,7 +163,6 @@
                         <th class="p-2 border">{!! $ordenables['producto3'] !!}</th>
                         <th class="p-2 border">{!! $ordenables['figura'] !!}</th>
                         <th class="p-2 border">{!! $ordenables['peso'] !!}</th>
-                        <th class="p-2 border">{!! $ordenables['diametro'] !!}</th>
                         <th class="p-2 border">{!! $ordenables['longitud'] !!}</th>
                         <th class="p-2 border">{!! $ordenables['estado'] !!}</th>
                         <th class="p-2 border">Acciones</th>
@@ -125,7 +170,7 @@
 
                     <tr class="text-center text-xs uppercase">
                         <form method="GET" action="{{ route('elementos.index') }}">
-                            @foreach (['id', 'codigo', 'codigo_planilla', 'etiqueta', 'subetiqueta', 'dimensiones', 'maquina', 'maquina_2', 'maquina3', 'producto1', 'producto2', 'producto3', 'figura', 'peso', 'diametro', 'longitud'] as $campo)
+                            @foreach (['id', 'codigo', 'codigo_planilla', 'etiqueta', 'subetiqueta', 'dimensiones', 'diametro', 'barras', 'maquina', 'maquina_2', 'maquina3', 'producto1', 'producto2', 'producto3', 'figura', 'peso', 'longitud'] as $campo)
                                 <th class="p-1 border">
                                     <x-tabla.input name="{{ $campo }}" value="{{ request($campo) }}" />
                                 </th>
@@ -232,17 +277,51 @@
 
                             </td>
 
+                            <!-- DIAMETRO_MM -->
+                            <td class="px-1 py-3 text-center border">
+                                <template x-if="!editando">
+                                    <span x-text="elemento.diametro_mm"></span>
+                                </template>
+                                <input x-show="editando" type="number" x-model="elemento.diametro"
+                                    class="form-control form-control-sm">
+                            </td>
+
+                            <!-- BARRAS -->
+                            <td class="px-1 py-3 text-center border">
+                                <template x-if="!editando">
+                                    <span x-text="elemento.barras"></span>
+                                </template>
+                                <input x-show="editando" type="number" x-model="elemento.barras"
+                                    class="form-control form-control-sm">
+                            </td>
+
                             <!-- MAQUINA 1 -->
                             <td class="px-1 py-3 text-center border">
-                                <select class="text-xs border rounded px-1 py-0.5" data-id="{{ $elemento->id }}"
-                                    data-field="maquina_id" onchange="actualizarCampoElemento(this)">
-                                    <option value="">N/A</option>
-                                    @foreach ($maquinas->whereIn('tipo', ['cortadora_dobladora', 'estribadora', 'cortadora manual']) as $maquina)
-                                        <option value="{{ $maquina->id }}" @selected($elemento->maquina_id === $maquina->id)>
-                                            {{ $maquina->nombre }}
-                                        </option>
-                                    @endforeach
-                                </select>
+                                <div class="flex items-center justify-center gap-1">
+                                    <select class="text-xs border rounded px-1 py-0.5 flex-1"
+                                        data-id="{{ $elemento->id }}" data-field="maquina_id"
+                                        onchange="actualizarCampoElemento(this)">
+                                        <option value="">N/A</option>
+                                        @foreach ($maquinas->whereIn('tipo', ['cortadora_dobladora', 'estribadora', 'cortadora manual']) as $maquina)
+                                            <option value="{{ $maquina->id }}" @selected($elemento->maquina_id === $maquina->id)>
+                                                {{ $maquina->nombre }}
+                                            </option>
+                                        @endforeach
+                                    </select>
+                                    <a href="#"
+                                        class="w-6 h-6 bg-blue-100 text-blue-600 rounded hover:bg-blue-200 flex items-center justify-center abrir-modal-dibujo flex-shrink-0"
+                                        data-id="{{ $elemento->id }}" data-codigo="{{ $elemento->codigo }}"
+                                        data-dimensiones="{{ $elemento->dimensiones }}"
+                                        data-peso="{{ $elemento->peso_kg }}" title="Ver figura del elemento">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none"
+                                            viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                            <path stroke-linecap="round" stroke-linejoin="round"
+                                                d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                            <path stroke-linecap="round" stroke-linejoin="round"
+                                                d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                        </svg>
+                                    </a>
+                                </div>
                             </td>
 
                             <!-- MAQUINA 2 -->
@@ -323,14 +402,6 @@
                                     class="form-control form-control-sm">
 
                             </td>
-                            <!-- DIAMETRO_MM -->
-                            <td class="px-1 py-3 text-center border">
-                                <template x-if="!editando">
-                                    <span x-text="elemento.diametro_mm"></span>
-                                </template>
-                                <input x-show="editando" type="number" x-model="elemento.diametro"
-                                    class="form-control form-control-sm">
-                            </td>
                             <!-- LONGITUD_M -->
                             <td class="px-1 py-3 text-center border">
                                 <template x-if="!editando">
@@ -363,23 +434,7 @@
                                     <template x-if="!editando">
                                         <div class="flex items-center space-x-2">
                                             <x-tabla.boton-editar @click="editando = true" x-show="!editando" />
-                                            <a href="#"
-                                                class="w-6 h-6 bg-blue-100 text-blue-600 rounded hover:bg-blue-200 flex items-center justify-center abrir-modal-dibujo"
-                                                data-id="{{ $elemento->id }}" data-codigo="{{ $elemento->codigo }}"
-                                                data-dimensiones="{{ $elemento->dimensiones }}"
-                                                data-peso="{{ $elemento->peso_kg }}">
-                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4"
-                                                    fill="none" viewBox="0 0 24 24" stroke="currentColor"
-                                                    stroke-width="2">
-                                                    <path stroke-linecap="round" stroke-linejoin="round"
-                                                        d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                                    <path stroke-linecap="round" stroke-linejoin="round"
-                                                        d="M2.458 12C3.732 7.943 7.523 5 12 5s8.268 2.943 9.542 7c-1.274 4.057-5.065 7-9.542 7s-8.268-2.943-9.542-7z" />
-                                                </svg>
-                                            </a>
-
                                             <x-tabla.boton-eliminar :action="route('elementos.destroy', $elemento->id)" />
-
                                         </div>
                                     </template>
                                 </div>
@@ -410,7 +465,7 @@
 
         <x-tabla.paginacion :paginador="$elementos" />
         <!-- Modal -->
-        <div id="modal-dibujo" class="hidden fixed inset-0 flex justify-center items-center pointer-events-none">
+        <div id="modal-dibujo" class="hidden fixed inset-0 flex justify-end items-center pr-96 pointer-events-none">
             <div
                 class="bg-white rounded-lg p-5 w-3/4 max-w-lg relative pointer-events-auto shadow-lg border border-gray-300">
                 <button id="cerrar-modal" class="absolute top-2 right-2 text-red-600 hover:bg-red-100">✖</button>
@@ -504,7 +559,15 @@
             const canvas = document.getElementById("canvas-dibujo");
             const cerrar = document.getElementById("cerrar-modal");
 
+            let timeoutCerrar = null;
+
             function abrirModal(ojo) {
+                // Cancelar cualquier cierre pendiente
+                if (timeoutCerrar) {
+                    clearTimeout(timeoutCerrar);
+                    timeoutCerrar = null;
+                }
+
                 const id = ojo.dataset.id;
                 const codigo = ojo.dataset.codigo;
                 const dimensiones = ojo.dataset.dimensiones;
@@ -519,8 +582,6 @@
                     peso
                 };
 
-
-
                 modal.classList.remove("hidden");
                 // ⚠️ Forzar redibujado
                 if (typeof window.dibujarFiguraElemento === 'function') {
@@ -529,7 +590,18 @@
             }
 
             function cerrarModal() {
-                modal.classList.add("hidden");
+                // Retrasar el cierre para evitar parpadeos
+                timeoutCerrar = setTimeout(() => {
+                    modal.classList.add("hidden");
+                }, 100);
+            }
+
+            function mantenerModalAbierto() {
+                // Cancelar el cierre si el cursor está sobre el modal
+                if (timeoutCerrar) {
+                    clearTimeout(timeoutCerrar);
+                    timeoutCerrar = null;
+                }
             }
 
             document.querySelectorAll(".abrir-modal-dibujo").forEach(ojo => {
@@ -538,7 +610,21 @@
                 ojo.addEventListener("click", e => e.preventDefault());
             });
 
-            if (cerrar) cerrar.addEventListener("click", cerrarModal);
+            // Mantener el modal abierto cuando el cursor está sobre él
+            if (modal) {
+                modal.addEventListener("mouseenter", mantenerModalAbierto);
+                modal.addEventListener("mouseleave", cerrarModal);
+            }
+
+            if (cerrar) {
+                cerrar.addEventListener("click", () => {
+                    if (timeoutCerrar) {
+                        clearTimeout(timeoutCerrar);
+                        timeoutCerrar = null;
+                    }
+                    modal.classList.add("hidden");
+                });
+            }
         });
     </script>
     <script>

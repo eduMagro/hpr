@@ -4,10 +4,11 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Alerta extends Model
 {
-    use HasFactory;
+    use HasFactory, SoftDeletes;
 
     protected $table = 'alertas'; // Nombre de la tabla
 
@@ -19,6 +20,7 @@ class Alerta extends Model
         'destinatario_id',
         'mensaje',
         'tipo',
+        'parent_id',
         'created_at',
         'updated_at'
     ];
@@ -50,6 +52,49 @@ class Alerta extends Model
     public function leidas()
     {
         return $this->hasMany(AlertaLeida::class, 'alerta_id');
+    }
+
+    /**
+     * Relación con el mensaje padre (para hilos de conversación)
+     */
+    public function padre()
+    {
+        return $this->belongsTo(Alerta::class, 'parent_id');
+    }
+
+    /**
+     * Relación con las respuestas (para hilos de conversación)
+     */
+    public function respuestas()
+    {
+        return $this->hasMany(Alerta::class, 'parent_id')->orderBy('created_at', 'asc');
+    }
+
+    /**
+     * Obtener el mensaje raíz de un hilo
+     */
+    public function mensajeRaiz()
+    {
+        if ($this->parent_id) {
+            return $this->padre->mensajeRaiz();
+        }
+        return $this;
+    }
+
+    /**
+     * Verificar si es un mensaje raíz (no tiene padre)
+     */
+    public function esMensajeRaiz()
+    {
+        return is_null($this->parent_id);
+    }
+
+    /**
+     * Obtener todas las respuestas del hilo (recursivo)
+     */
+    public function todasLasRespuestas()
+    {
+        return $this->respuestas()->with('respuestas')->get();
     }
 
     /**

@@ -33,13 +33,19 @@ class ImportProgress
         });
     }
 
-    public static function setDone(string $id, ?string $message = 'Completado.'): void
+    public static function setDone(string $id, ?string $message = 'Completado.', ?array $extraData = null): void
     {
         $data = Cache::get(self::key($id), []);
         $data['status']  = 'done';
         $data['percent'] = 100;
         $data['message'] = $message ?? $data['message'] ?? '';
         $data['updated'] = now()->toIso8601String();
+
+        // Agregar datos adicionales si existen
+        if ($extraData !== null) {
+            $data = array_merge($data, $extraData);
+        }
+
         Cache::put(self::key($id), $data, now()->addHours(2));
     }
 

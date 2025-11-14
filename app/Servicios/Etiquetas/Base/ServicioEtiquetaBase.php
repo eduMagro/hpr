@@ -38,6 +38,14 @@ abstract class ServicioEtiquetaBase
         }, 1); // nivel de intento mínimo
     }
 
+    /** Actualiza el peso total de la etiqueta sumando sus elementos */
+    protected function actualizarPesoEtiqueta(Etiqueta $etiqueta): void
+    {
+        $pesoTotal = $etiqueta->elementos()->sum('peso');
+        $etiqueta->peso = $pesoTotal;
+        // No hace save aquí, se espera que el llamador lo haga
+    }
+
     /** Agrupa pesos por diámetro a partir de una colección de elementos */
     protected function agruparPesosPorDiametro($elementos): array
     {
@@ -162,11 +170,16 @@ abstract class ServicioEtiquetaBase
         if ($etiqueta->estado !== 'completada') {
             $etiqueta->estado = 'completada';
             $etiqueta->fecha_finalizacion = now();
+
+            // Actualizar peso total de la etiqueta
+            $this->actualizarPesoEtiqueta($etiqueta);
+
             $etiqueta->save();
 
             Log::info('Etiqueta marcada como completada', [
                 'etiqueta_sub_id' => $etiqueta->etiqueta_sub_id,
                 'planilla_id'     => $etiqueta->planilla_id,
+                'peso_total'      => $etiqueta->peso,
             ]);
             return true;
         }
@@ -275,6 +288,7 @@ abstract class ServicioEtiquetaBase
                     'id'           => $producto->id,
                     'peso_stock'   => $producto->peso_stock,
                     'peso_inicial' => $pesoInicial,
+                    'n_colada'     => $producto->n_colada,
                 ];
                 $consumos[$diametro][] = [
                     'producto_id' => $producto->id,
@@ -329,6 +343,10 @@ abstract class ServicioEtiquetaBase
             }
             $elemento->save();
         }
+
+        // ACTUALIZAR PESO TOTAL DE LA ETIQUETA SIEMPRE
+        $this->actualizarPesoEtiqueta($etiqueta);
+        $etiqueta->save();
 
         //COMPLETAMOS ETIQUETA SI CORRESPONDE
         $this->completarEtiquetaSiCorresponde($etiqueta);

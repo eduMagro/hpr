@@ -61,17 +61,50 @@ class SeccionController extends Controller
      * Update the specified resource in storage.
      */
 
-    public function update(Request $request, Seccion $seccion)
+    public function update(Request $request, Seccion $seccione)
     {
         try {
+            \Log::info('📝 Update recibido para sección', [
+                'seccion_id' => $seccione->id,
+                'request_data' => $request->all(),
+                'has_mostrar' => $request->has('mostrar_en_dashboard'),
+                'has_nombre' => $request->has('nombre'),
+            ]);
+
+            // Si solo se envía mostrar_en_dashboard (desde el checkbox)
+            if ($request->has('mostrar_en_dashboard') && !$request->has('nombre')) {
+                $valorAntes = $seccione->mostrar_en_dashboard;
+                $valorNuevo = $request->boolean('mostrar_en_dashboard');
+
+                $seccione->update([
+                    'mostrar_en_dashboard' => $valorNuevo,
+                ]);
+
+                \Log::info('✅ Dashboard actualizado', [
+                    'seccion_id' => $seccione->id,
+                    'valor_antes' => $valorAntes,
+                    'valor_nuevo' => $valorNuevo,
+                    'guardado_en_bd' => $seccione->fresh()->mostrar_en_dashboard
+                ]);
+
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Dashboard actualizado correctamente.',
+                    'data' => [
+                        'seccion_id' => $seccione->id,
+                        'mostrar_en_dashboard' => $seccione->fresh()->mostrar_en_dashboard
+                    ]
+                ]);
+            }
+
+            // Actualización completa (desde doble click)
             $validated = $request->validate([
                 'nombre' => 'required|string|max:255',
                 'ruta'   => 'nullable|string|max:255',
                 'icono'  => 'nullable|string|max:255',
             ]);
 
-            // ⚠️ Aquí se actualiza con los campos validados + este booleano forzado
-            $seccion->update(array_merge($validated, [
+            $seccione->update(array_merge($validated, [
                 'mostrar_en_dashboard' => $request->boolean('mostrar_en_dashboard'),
             ]));
 

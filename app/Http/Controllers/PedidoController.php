@@ -173,16 +173,18 @@ class PedidoController extends Controller
             $diametro  = $request->filled('producto_diametro')  ? mb_strtolower(trim($request->producto_diametro), 'UTF-8') : null;
             $longitud  = $request->filled('producto_longitud')  ? mb_strtolower(trim($request->producto_longitud), 'UTF-8') : null;
 
-            $query->whereHas('pedidoProductos.productoBase', function ($q) use ($tipo, $diametro, $longitud) {
-                if ($tipo !== null) {
-                    $q->whereRaw('LOWER(tipo) LIKE ?', ['%' . $tipo . '%']);
-                }
-                if ($diametro !== null) {
-                    $q->whereRaw('LOWER(diametro) LIKE ?', ['%' . $diametro . '%']);
-                }
-                if ($longitud !== null) {
-                    $q->whereRaw('LOWER(longitud) LIKE ?', ['%' . $longitud . '%']);
-                }
+            $query->whereHas('pedidoProductos', function ($q) use ($tipo, $diametro, $longitud) {
+                $q->whereHas('productoBase', function ($pb) use ($tipo, $diametro, $longitud) {
+                    if ($tipo !== null) {
+                        $pb->whereRaw('LOWER(tipo) LIKE ?', ['%' . $tipo . '%']);
+                    }
+                    if ($diametro !== null) {
+                        $pb->whereRaw('LOWER(diametro) LIKE ?', ['%' . $diametro . '%']);
+                    }
+                    if ($longitud !== null) {
+                        $pb->whereRaw('LOWER(longitud) LIKE ?', ['%' . $longitud . '%']);
+                    }
+                });
             });
         }
 
@@ -1110,7 +1112,8 @@ class PedidoController extends Controller
     public function actualizarLinea(Request $request, Pedido $pedido)
     {
         try {
-            $validated = $request->validate([
+            // Usar Validator manual para mejor control de errores
+            $validator = \Validator::make($request->all(), [
                 'linea_id' => 'required|exists:pedido_productos,id',
                 // Validación de lugar
                 'obra_id' => 'nullable|exists:obras,id',
@@ -1119,6 +1122,15 @@ class PedidoController extends Controller
                 'producto_base_id' => 'required|exists:productos_base,id',
             ]);
 
+            if ($validator->fails()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Error de validación',
+                    'errors' => $validator->errors()
+                ], 422);
+            }
+
+            $validated = $validator->validated();
             $linea = PedidoProducto::findOrFail($validated['linea_id']);
 
             // Verificar que la línea pertenece al pedido
@@ -1127,6 +1139,14 @@ class PedidoController extends Controller
                     'success' => false,
                     'message' => 'La línea no pertenece a este pedido'
                 ], 403);
+            }
+
+            // Validar que se haya seleccionado al menos una opción de obra
+            if (empty($validated['obra_id']) && empty($validated['obra_manual'])) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Debes seleccionar un lugar de entrega'
+                ], 422);
             }
 
             // Actualizar AMBOS: lugar de entrega Y producto
@@ -1142,6 +1162,11 @@ class PedidoController extends Controller
                 'success' => true,
                 'message' => 'Línea actualizada correctamente'
             ]);
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'La línea solicitada no existe'
+            ], 404);
         } catch (\Exception $e) {
             Log::error('Error al actualizar línea: ' . $e->getMessage());
 

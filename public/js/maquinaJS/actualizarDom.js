@@ -184,12 +184,7 @@
             card.style.background = config.bgColor;
         }
 
-        // 7. Añadir información del paquete si aplica
-        if (datosExtra.codigo_paquete) {
-            agregarInfoPaquete(elemento, datosExtra.codigo_paquete);
-        }
-
-        // 8. Gestionar botones según el estado
+        // 7. Gestionar botones según el estado
         gestionarBotones(elemento, estadoNormalizado);
 
         // 9. Aplicar animación
@@ -208,36 +203,6 @@
 
         console.log(`✅ Etiqueta ${etiquetaId} actualizada a ${nuevoEstado}`);
         return true;
-    }
-
-    // ========================================================================
-    // AGREGAR INFORMACIÓN DEL PAQUETE
-    // ========================================================================
-    function agregarInfoPaquete(elemento, codigoPaquete) {
-        // Buscar el h3 donde está el peso
-        const h3 = elemento.querySelector("h3");
-        if (!h3) return;
-
-        // Verificar si ya existe la info del paquete
-        let paqueteInfo = elemento.querySelector(".paquete-info");
-
-        if (!paqueteInfo) {
-            paqueteInfo = document.createElement("div");
-            paqueteInfo.className =
-                "paquete-info text-sm font-semibold mt-2 text-purple-700 no-print";
-            paqueteInfo.style.cssText =
-                "display: flex; align-items: center; gap: 0.25rem; color: #7c3aed; font-size: 0.875rem;";
-
-            // Insertar después del h3
-            h3.parentNode.insertBefore(paqueteInfo, h3.nextSibling);
-        }
-
-        paqueteInfo.innerHTML = `
-            <svg style="width: 1rem; height: 1rem;" fill="currentColor" viewBox="0 0 20 20">
-                <path d="M3 4a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1V4zM3 10a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H4a1 1 0 01-1-1v-6zM14 9a1 1 0 00-1 1v6a1 1 0 001 1h2a1 1 0 001-1v-6a1 1 0 00-1-1h-2z"/>
-            </svg>
-            <span>Paquete: ${codigoPaquete}</span>
-        `;
     }
 
     // ========================================================================

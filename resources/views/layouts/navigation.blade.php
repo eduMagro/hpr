@@ -1,7 +1,7 @@
-<nav x-data="{ open: false }" class="bg-white border-b border-gray-100 z-50 max-h-[60px] relative">
+<nav x-data="{ open: false }" class="bg-white border-b border-gray-200 shadow-sm flex-shrink-0">
     <!-- Primary Navigation Menu -->
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div class="flex justify-between h-16">
+    <div class="w-full px-4 sm:px-6 lg:px-8">
+        <div class="flex justify-between h-14">
             <div class="flex">
                 <!-- Logo -->
                 <div class="shrink-0 flex items-center">
@@ -16,7 +16,12 @@
                 <x-dropdown align="right" width="48">
                     <x-slot name="trigger">
                         <button
-                            class="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-gray-500 bg-white hover:text-gray-700 focus:outline-none transition ease-in-out duration-150">
+                            class="inline-flex items-center gap-2 px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-gray-500 bg-white hover:text-gray-700 focus:outline-none transition ease-in-out duration-150">
+                            {{-- Círculo con inicial --}}
+                            <div class="w-8 h-8 rounded-full bg-gray-900 dark:bg-gray-950 flex items-center justify-center text-white font-semibold text-sm">
+                                {{ strtoupper(substr(Auth::user()->nombre_completo, 0, 1)) }}
+                            </div>
+
                             <div>{{ Auth::user()->nombre_completo }}</div>
 
                             <div class="ms-1">

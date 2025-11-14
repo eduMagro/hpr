@@ -1,6 +1,5 @@
 <x-app-layout>
     <x-slot name="title">Planificación por Obra</x-slot>
-    <x-menu.usuarios :totalSolicitudesPendientes="$totalSolicitudesPendientes ?? 0" />
 
     <div id="lista-trabajadores" class="p-4 bg-white border rounded shadow w-full mt-4">
         {{-- hpr servicios --}}
@@ -123,11 +122,12 @@
             });
         });
         document.addEventListener('click', function(e) {
-            if (e.target.classList.contains('btn-eliminar')) {
+            const btnEliminar = e.target.closest('.btn-eliminar');
+            if (btnEliminar) {
                 e.stopPropagation(); // 🔴 Detiene el eventClick de FullCalendar
                 e.preventDefault();
 
-                const idEvento = e.target.dataset.id.replace('turno-', '');
+                const idEvento = btnEliminar.dataset.id.replace('turno-', '');
 
                 Swal.fire({
                     title: '¿Eliminar asignación de obra?',
@@ -220,62 +220,51 @@
                 selectMirror: true,
                 select: function(info) {
                     const seleccionados = [...document.querySelectorAll('.fc-event.seleccionado')];
+
                     if (seleccionados.length === 0) {
                         Swal.fire('❌ Debes seleccionar primero uno o más trabajadores.');
                         return;
                     }
 
-                    // Obtener rango de fechas (incluyendo el último día real)
+                    // Rango de fechas
                     const fechaInicio = info.startStr;
                     const fechaFinObj = new Date(info.end);
-                    fechaFinObj.setDate(fechaFinObj.getDate()); // incluye el último día
+                    fechaFinObj.setDate(fechaFinObj.getDate());
                     const fechaFin = fechaFinObj.toISOString().split('T')[0];
 
-                    // Obtener ID de la obra seleccionada (resource)
+                    // Obra seleccionada
                     const obraId = info.resource?.id;
-                    const obraNombre = info.resource?.title;
 
-                    const mensajeFecha = fechaInicio === fechaFin ?
-                        `<p>${fechaInicio}</p>` :
-                        `<p>Desde: ${fechaInicio}</p><p>Hasta: ${fechaFin}</p>`;
+                    // IDs de trabajadores
+                    const userIds = seleccionados.map(e => e.dataset.id);
 
-                    Swal.fire({
-                        title: "¿Asignar a obra seleccionada?",
-                        html: `
-            ${mensajeFecha}
-            <p><strong>${seleccionados.length}</strong> trabajadores</p>
-            <p>Obra: <strong>${obraNombre}</strong></p>
-        `,
-                        showCancelButton: true,
-                        confirmButtonText: "Asignar",
-                        cancelButtonText: "Cancelar",
-                        preConfirm: () => {
-                            const userIds = seleccionados.map(e => e.dataset.id);
-                            return fetch(
-                                '{{ route('asignaciones-turnos.asignarObraMultiple') }}', {
-                                    method: 'POST',
-                                    headers: {
-                                        'Content-Type': 'application/json',
-                                        'X-CSRF-TOKEN': '{{ csrf_token() }}',
-                                    },
-                                    body: JSON.stringify({
-                                        user_ids: userIds,
-                                        obra_id: obraId,
-                                        fecha_inicio: fechaInicio,
-                                        fecha_fin: fechaFin
-                                    })
-                                }).then(res => res.json());
-                        }
-                    }).then(res => {
-                        if (res.isConfirmed && res.value?.success) {
-                            // 🔹 Deseleccionar todos los trabajadores
-                            document.querySelectorAll('.fc-event.seleccionado').forEach(el => {
-                                el.classList.remove('seleccionado', 'bg-yellow-300');
-                            });
+                    // 🔥 Llamada directa al endpoint (sin confirmación)
+                    fetch('{{ route('asignaciones-turnos.asignarObraMultiple') }}', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                            },
+                            body: JSON.stringify({
+                                user_ids: userIds,
+                                obra_id: obraId,
+                                fecha_inicio: fechaInicio,
+                                fecha_fin: fechaFin
+                            })
+                        })
+                        .then(r => r.json())
+                        .then(data => {
+                            if (data.success) {
+                                // Deseleccionar todos los trabajadores
+                                document.querySelectorAll('.fc-event.seleccionado').forEach(el => {
+                                    el.classList.remove('seleccionado', 'bg-yellow-300');
+                                });
 
-                            calendarioObras.refetchEvents();
-                        }
-                    });
+                                calendarioObras.refetchEvents();
+                            } else {
+                                Swal.fire('❌ Error al asignar');
+                            }
+                        });
                 },
                 events: {
                     url: '{{ route('asignaciones-turnos.verEventosObra') }}',
@@ -445,9 +434,13 @@
                     return {
                         html: `
             <div class="relative px-2 py-1 text-xs font-semibold group">
-                <span title="Eliminar" 
-                      class="absolute top-0 right-0 text-red-600 hover:text-red-800 text-sm cursor-pointer btn-eliminar" 
-                      data-id="${id}">X</span>
+                <button title="Eliminar"
+                      class="absolute -top-1 -right-1 bg-red-500 hover:bg-red-600 text-white rounded-full w-5 h-5 flex items-center justify-center shadow-md transition-all duration-200 opacity-70 group-hover:opacity-100 btn-eliminar transform hover:scale-110"
+                      data-id="${id}">
+                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
                 <div>${arg.event.title}</div>
                 ${estadoTexto}
             </div>
@@ -569,12 +562,17 @@
         }
 
         .btn-eliminar {
-            color: red;
-            border-radius: 9999px;
-            background-color: white;
-            font-size: 14px;
-            padding: 0 6px;
-            line-height: 1;
+            z-index: 10;
+            pointer-events: auto;
+            cursor: pointer;
+        }
+
+        .btn-eliminar:hover {
+            box-shadow: 0 4px 6px rgba(239, 68, 68, 0.4);
+        }
+
+        .btn-eliminar * {
+            pointer-events: none;
         }
 
         .tippy-box[data-theme~='transparent-avatar'] {

@@ -4,10 +4,11 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Entrada extends Model
 {
-    use HasFactory;
+    use HasFactory, SoftDeletes;
 
     // El nombre de la tabla asociada
     protected $table = "entradas";

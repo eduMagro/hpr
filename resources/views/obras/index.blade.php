@@ -1,5 +1,6 @@
 <x-app-layout>
     <x-slot name="title">Obras - {{ config('app.name') }}</x-slot>
+
     <x-slot name="header">
         <h2 class="text-lg font-semibold text-gray-800">
             {{ __('Lista de Obras') }}

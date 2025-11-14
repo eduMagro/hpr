@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 /**
  * Modelo Paquete
@@ -11,7 +12,7 @@ use Illuminate\Database\Eloquent\Model;
  */
 class Paquete extends Model
 {
-    use HasFactory;
+    use HasFactory, SoftDeletes;
 
     protected $table = 'paquetes';
 
@@ -21,7 +22,7 @@ class Paquete extends Model
         'planilla_id',
         'ubicacion_id',
         'peso',
-        'subido',
+        'estado',
     ];
 
     // ==================== MÉTODOS ESTÁTICOS ====================
@@ -120,6 +121,16 @@ class Paquete extends Model
      * Relación: Un paquete puede estar en muchas salidas
      * (Acceso directo a la tabla pivote)
      */
+
+    /**
+     * Relación: Obtiene la salida principal del paquete (la primera asociada).
+     * Útil para cuando el paquete tiene una única salida o queremos la principal.
+     */
+    public function salida()
+    {
+        return $this->belongsToMany(Salida::class, 'salidas_paquetes', 'paquete_id', 'salida_id')->limit(1);
+    }
+
     public function salidasPaquetes()
     {
         return $this->hasMany(SalidaPaquete::class, 'paquete_id');
@@ -141,6 +152,42 @@ class Paquete extends Model
             ];
         }
         return null;
+    }
+
+    /**
+     * Accessor: Obtiene el ID de la salida principal del paquete.
+     * Retorna null si no tiene salida asignada.
+     */
+    public function getSalidaIdAttribute()
+    {
+        // Primero intentar obtener desde la relación si ya está cargada
+        if ($this->relationLoaded('salida')) {
+            $salida = $this->salida->first();
+            return $salida ? $salida->id : null;
+        }
+
+        // Si no está cargada, hacer una consulta directa
+        return \DB::table('salidas_paquetes')
+            ->where('paquete_id', $this->id)
+            ->value('salida_id');
+    }
+
+    /**
+     * Accessor: Obtiene el ID de la salida principal del paquete.
+     * Retorna null si no tiene salida asignada.
+     */
+    public function getSalidaIdAttribute()
+    {
+        // Primero intentar obtener desde la relación si ya está cargada
+        if ($this->relationLoaded('salida')) {
+            $salida = $this->salida->first();
+            return $salida ? $salida->id : null;
+        }
+
+        // Si no está cargada, hacer una consulta directa
+        return \DB::table('salidas_paquetes')
+            ->where('paquete_id', $this->id)
+            ->value('salida_id');
     }
 
     /**

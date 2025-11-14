@@ -40,6 +40,14 @@
             }
 
             const data = await response.json();
+
+            // Log para debug - respuesta del endpoint
+            console.log("🔍 validarEtiqueta response:", {
+                status: response.status,
+                data: data,
+                peso_etiqueta: data.peso_etiqueta,
+            });
+
             if (!response.ok) {
                 throw new Error(
                     data?.message || data?.motivo || "Error al validar"
@@ -60,10 +68,21 @@
         const id = data.id || codigo;
         if (items.some((i) => i.id === id)) return false;
 
+        const peso = parseFloat(data.peso_etiqueta) || 0;
+
+        // Log para debug
+        console.log("🔍 agregarItemEtiqueta:", {
+            codigo,
+            id,
+            peso_etiqueta_recibido: data.peso_etiqueta,
+            peso_parseado: peso,
+            data_completa: data,
+        });
+
         const newItem = {
             id,
             type: "etiqueta",
-            peso: parseFloat(data.peso_etiqueta) || 0, // ✅ USA data.peso_etiqueta
+            peso: peso, // ✅ USA data.peso_etiqueta
             estado: data.estado || "desconocido",
             nombre: data.nombre || "Sin nombre",
         };
@@ -410,6 +429,61 @@
         if (btnCrear) {
             btnCrear.addEventListener("click", crearPaquete);
         }
+
+        // Event listener para botones de agregar al carro
+        document.addEventListener("click", async function (e) {
+            if (
+                e.target.classList.contains("btn-agregar-carro") ||
+                e.target.closest(".btn-agregar-carro")
+            ) {
+                const btn = e.target.classList.contains("btn-agregar-carro")
+                    ? e.target
+                    : e.target.closest(".btn-agregar-carro");
+
+                const etiquetaId = btn.dataset.etiquetaId;
+
+                if (!etiquetaId) {
+                    console.error("No se encontró etiqueta_id en el botón");
+                    return;
+                }
+
+                console.log("🛒 Añadiendo etiqueta al carro:", etiquetaId);
+
+                try {
+                    // Validar etiqueta
+                    const data = await validarEtiqueta(etiquetaId);
+
+                    if (!data.valida) {
+                        await Swal.fire({
+                            icon: "warning",
+                            title: "Etiqueta no válida",
+                            text: data.motivo || "Motivo no especificado",
+                        });
+                        return;
+                    }
+
+                    // Agregar al carro
+                    const ok = agregarItemEtiqueta(etiquetaId, data);
+
+                    if (ok) {
+                        // Éxito
+                    } else {
+                        await Swal.fire({
+                            icon: "info",
+                            title: "Etiqueta duplicada",
+                            text: "Ya está en el carro",
+                        });
+                    }
+                } catch (error) {
+                    console.error("Error al añadir al carro:", error);
+                    await Swal.fire({
+                        icon: "error",
+                        title: "Error",
+                        text: error.message || "No se pudo añadir al carro",
+                    });
+                }
+            }
+        });
 
         console.log("✅ TrabajoPaquete inicializado");
     }

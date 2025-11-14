@@ -4,10 +4,11 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Movimiento extends Model
 {
-    use HasFactory;
+    use HasFactory, SoftDeletes;
 
     protected $table = 'movimientos';
 
@@ -61,6 +62,12 @@ class Movimiento extends Model
     public function pedidoProducto()
     {
         return $this->belongsTo(PedidoProducto::class, 'pedido_producto_id');
+    }
+
+    // Alias para snake_case
+    public function pedido_producto()
+    {
+        return $this->pedidoProducto();
     }
 
     public function salida()

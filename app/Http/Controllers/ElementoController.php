@@ -37,7 +37,9 @@ class ElementoController extends Controller
             'id' => 'id',
             'figura' => 'figura',
             'etiqueta_sub_id' => 'etiqueta_sub_id',
-            'dimensiones' => 'dimensiones'
+            'dimensiones' => 'dimensiones',
+            'planilla_id' => 'planilla_id',
+            'barras' => 'barras'
 
         ];
 
@@ -264,7 +266,13 @@ class ElementoController extends Controller
             'estado' => $this->getOrdenamiento('estado', 'Estado'),
         ];
 
-        return view('elementos.index', compact('elementos', 'maquinas', 'ordenables', 'totalPesoFiltrado'));
+        // ⚠️ Detectar si se está viendo elementos de una planilla específica
+        $planilla = null;
+        if ($request->has('planilla_id')) {
+            $planilla = Planilla::find($request->planilla_id);
+        }
+
+        return view('elementos.index', compact('elementos', 'maquinas', 'ordenables', 'totalPesoFiltrado', 'planilla'));
     }
     public function actualizarMaquina(Request $request, Elemento $elemento)
     {
@@ -364,42 +372,32 @@ class ElementoController extends Controller
             // ================== FIN sub-etiquetas y pesos ==================
 
             // 3️⃣ Asegurar entrada en orden_planillas para la NUEVA máquina real
-            $yaExiste = OrdenPlanilla::where('planilla_id', $planillaId)
+            $ordenPlanilla = OrdenPlanilla::where('planilla_id', $planillaId)
                 ->where('maquina_id', $nuevaMaquinaReal)
-                ->exists();
+                ->lockForUpdate()
+                ->first();
 
-            if (!$yaExiste) {
-                // Posición base: media de posiciones existentes de la planilla (si no hay → 1)
-                $posiciones = OrdenPlanilla::where('planilla_id', $planillaId)->pluck('posicion');
-                $nuevaPos = $posiciones->isNotEmpty() ? intval(round($posiciones->avg())) : 1;
+            if (!$ordenPlanilla) {
+                // Obtener la máxima posición actual en la máquina destino con bloqueo
+                // para prevenir race conditions en operaciones concurrentes
+                $maxPosicion = OrdenPlanilla::where('maquina_id', $nuevaMaquinaReal)
+                    ->lockForUpdate()
+                    ->max('posicion');
 
-                // Saltar posiciones con planilla en estado "fabricando" dentro de la máquina destino
-                $posFinal = $nuevaPos;
-                $ocupada = OrdenPlanilla::with('planilla')
-                    ->where('maquina_id', $nuevaMaquinaReal)
-                    ->where('posicion', $posFinal)
-                    ->first();
+                // La nueva posición será al final de la cola
+                $nuevaPos = ($maxPosicion !== null) ? intval($maxPosicion) + 1 : 1;
 
-                while ($ocupada && $ocupada->planilla && $ocupada->planilla->estado === 'fabricando') {
-                    $posFinal++;
-                    $ocupada = OrdenPlanilla::with('planilla')
-                        ->where('maquina_id', $nuevaMaquinaReal)
-                        ->where('posicion', $posFinal)
-                        ->first();
-                }
-
-                // Desplazar posiciones a partir de posFinal en la máquina destino
-                OrdenPlanilla::where('maquina_id', $nuevaMaquinaReal)
-                    ->where('posicion', '>=', $posFinal)
-                    ->increment('posicion');
-
-                // Crear entrada
-                OrdenPlanilla::create([
+                // Crear entrada directamente en la última posición
+                $ordenPlanilla = OrdenPlanilla::create([
                     'planilla_id' => $planillaId,
                     'maquina_id'  => $nuevaMaquinaReal,
-                    'posicion'    => $posFinal,
+                    'posicion'    => $nuevaPos,
                 ]);
             }
+
+            // 🔗 Actualizar orden_planilla_id del elemento
+            $elemento->orden_planilla_id = $ordenPlanilla->id;
+            $elemento->save();
 
             // 4️⃣ Limpiar orden_planillas si la máquina ORIGINAL quedó vacía
             $quedanElementos = Elemento::where('planilla_id', $planillaId)
@@ -1003,6 +1001,24 @@ class ElementoController extends Controller
 
             $elemento = Elemento::findOrFail($id);
 
+            // ⚠️ VALIDACIÓN: Solo permitir fabricar si la planilla está revisada
+            if (array_key_exists('estado', $validated)) {
+                $nuevoEstado = $validated['estado'];
+                $estadosProduccion = ['fabricando', 'fabricado'];
+
+                if (in_array($nuevoEstado, $estadosProduccion)) {
+                    $planilla = $elemento->planilla;
+
+                    if (!$planilla || !$planilla->revisada) {
+                        return response()->json([
+                            'error' => '⚠️ No se puede fabricar esta planilla porque aún no ha sido revisada',
+                            'planilla_codigo' => $planilla ? $planilla->codigo : 'N/A',
+                            'revisada' => false
+                        ], 403);
+                    }
+                }
+            }
+
             // 🚚 Si cambió la máquina, recalcular etiqueta_sub_id
             if (
                 array_key_exists('maquina_id', $validated)
@@ -1039,6 +1055,9 @@ class ElementoController extends Controller
             if ($elemento->isDirty()) {
                 if ($elemento->isDirty('estado')) {
                     Log::debug("⚠️ Estado sí cambió: {$elemento->getOriginal('estado')} → {$elemento->estado}");
+
+                    // 🔧 Actualizar fechas en etiqueta cuando cambia el estado
+                    $this->actualizarFechasEtiqueta($elemento);
                 }
                 $elemento->save();
             }
@@ -1050,20 +1069,24 @@ class ElementoController extends Controller
                 $nuevaMaquinaId = $validated['maquina_id'];
                 $maquinaAnteriorId = $elemento->getOriginal('maquina_id');
 
-                // 1. Insertar en nueva máquina si no existe
-                $existe = OrdenPlanilla::where('planilla_id', $planillaId)
+                // 1. Obtener o crear OrdenPlanilla en nueva máquina
+                $ordenPlanilla = OrdenPlanilla::where('planilla_id', $planillaId)
                     ->where('maquina_id', $nuevaMaquinaId)
-                    ->exists();
+                    ->first();
 
-                if (!$existe) {
+                if (!$ordenPlanilla) {
                     $ultimaPosicion = OrdenPlanilla::where('maquina_id', $nuevaMaquinaId)->max('posicion') ?? 0;
 
-                    OrdenPlanilla::create([
+                    $ordenPlanilla = OrdenPlanilla::create([
                         'planilla_id' => $planillaId,
                         'maquina_id' => $nuevaMaquinaId,
                         'posicion' => $ultimaPosicion + 1,
                     ]);
                 }
+
+                // 🔗 Actualizar orden_planilla_id del elemento
+                $elemento->orden_planilla_id = $ordenPlanilla->id;
+                $elemento->save();
 
                 // 2. Eliminar de la máquina anterior si ya no hay elementos
                 $quedan = \App\Models\Elemento::where('planilla_id', $planillaId)
@@ -1127,5 +1150,65 @@ class ElementoController extends Controller
             ->get();
 
         return response()->json($resultado);
+    }
+
+    /**
+     * 🔧 Actualiza las fechas en la etiqueta cuando cambia el estado del elemento
+     */
+    private function actualizarFechasEtiqueta(Elemento $elemento)
+    {
+        $etiqueta = $elemento->etiquetaRelacion;
+        if (!$etiqueta) {
+            return; // No hay etiqueta asociada
+        }
+
+        $tipoMaquina = optional($elemento->maquina)->tipo;
+        $ahora = now();
+
+        // Según el estado y tipo de máquina, actualizar los campos correspondientes
+        switch ($elemento->estado) {
+            case 'fabricando':
+                // Registrar inicio de fabricación
+                if ($tipoMaquina === 'ensambladora') {
+                    if (!$etiqueta->fecha_inicio_ensamblado) {
+                        $etiqueta->fecha_inicio_ensamblado = $ahora;
+                    }
+                } elseif ($tipoMaquina === 'soldadora') {
+                    if (!$etiqueta->fecha_inicio_soldadura) {
+                        $etiqueta->fecha_inicio_soldadura = $ahora;
+                    }
+                } else {
+                    // dobladora/cortadora
+                    if (!$etiqueta->fecha_inicio) {
+                        $etiqueta->fecha_inicio = $ahora;
+                    }
+                }
+                break;
+
+            case 'fabricado':
+                // Registrar fin de fabricación
+                if ($tipoMaquina === 'ensambladora') {
+                    $etiqueta->fecha_finalizacion_ensamblado = $ahora;
+                } elseif ($tipoMaquina === 'soldadora') {
+                    $etiqueta->fecha_finalizacion_soldadura = $ahora;
+                } else {
+                    // dobladora/cortadora
+                    $etiqueta->fecha_finalizacion = $ahora;
+                }
+                break;
+        }
+
+        $etiqueta->save();
+        Log::info("🔧 Fechas de etiqueta actualizadas", [
+            'etiqueta_id' => $etiqueta->id,
+            'elemento_id' => $elemento->id,
+            'tipo_maquina' => $tipoMaquina,
+            'estado' => $elemento->estado
+        ]);
+    }
+
+    public function show(Elemento $elemento)
+    {
+        //
     }
 }

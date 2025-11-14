@@ -3,10 +3,12 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Carbon;
 
 class Pedido extends Model
 {
+    use SoftDeletes;
     protected $table = 'pedidos';
 
     protected $fillable = [
@@ -106,6 +108,16 @@ class Pedido extends Model
     public function pedidoProductos()
     {
         return $this->hasMany(PedidoProducto::class);
+    }
+
+    public function lineas()
+    {
+        return $this->hasMany(PedidoProducto::class);
+    }
+
+    public function createdBy()
+    {
+        return $this->belongsTo(User::class, 'created_by');
     }
 
     public function getFechaPedidoFormateadaAttribute()

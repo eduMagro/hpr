@@ -21,13 +21,6 @@
         margin: 0.5rem 0;
     }
 
-    .etiqueta-id-web-only {
-        text-align: left;
-        margin-bottom: 2px;
-        font-size: 0.75rem;
-        color: #4b5563;
-    }
-
     /* === Etiqueta base (pantalla e impresión) === */
     /* Tamaño real para impresión */
     .etiqueta-card {
@@ -52,7 +45,7 @@
 
     }
 
-    /* QR */
+    /* QR Box */
     .qr-box {
         position: absolute;
         top: 3mm;
@@ -60,11 +53,38 @@
         border: 0.2mm solid #000;
         padding: 1mm;
         background: #fff;
+        width: 18mm; /* 16mm del QR + 2mm de padding */
+        display: flex;
+        flex-direction: column;
+        align-items: center;
     }
 
     .qr-box img {
         width: 16mm;
         height: 16mm;
+        display: block;
+    }
+
+    .qr-label {
+        width: 16mm;
+        font-size: 8pt;
+        color: #000;
+        text-align: center;
+        margin-top: 0.5mm;
+        font-weight: bold;
+        line-height: 1;
+        word-wrap: break-word;
+        overflow-wrap: break-word;
+    }
+
+    /* Asegurar que el label del QR se imprima */
+    @media print {
+        .qr-label {
+            display: block !important;
+            font-size: 8pt !important;
+            font-weight: bold !important;
+            line-height: 1 !important;
+        }
     }
 
     /* === Ajustes de pantalla === */
@@ -77,6 +97,10 @@
             /* alto proporcional */
             margin: 1rem;
             box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+        }
+
+        .qr-label {
+            font-size: 6px !important;
         }
     }
 
@@ -92,10 +116,6 @@
         .no-print {
             display: none !important;
         }
-
-        .etiqueta-id-web-only {
-            display: none !important;
-        }
     }
 
     /* Bloquea selección accidental en móviles */
@@ -109,32 +129,41 @@
 </style>
 
 <div class="etiqueta-wrapper">
-    <div class="etiqueta-id-web-only">
-        {{ $etiqueta->etiqueta_sub_id }}
-    </div>
-
     <div class="etiqueta-card proceso estado-{{ $estado }}" id="etiqueta-{{ $safeSubId }}"
         data-estado="{{ $estado }}">
 
         <!-- Botones -->
-        <div class="relative">
-            <div class="absolute top-2 right-20 flex items-center gap-2 no-print">
-                <select id="modo-impresion-{{ $etiqueta->id }}" class="border border-gray-300 rounded px-2 py-1 text-sm">
-                    <option value="a6">A6</option>
-                    <option value="a4">A4</option>
-                </select>
+        <div class="absolute top-2 right-2 flex items-center gap-2 no-print z-10">
+            <!-- Selector de modo de impresión -->
+            <select id="modo-impresion-{{ $etiqueta->id }}"
+                class="border border-gray-300 rounded px-2 py-1 text-sm bg-white shadow-sm hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                <option value="a6">A6</option>
+                <option value="a4">A4</option>
+            </select>
 
-                <button type="button" class="bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700"
-                    onclick="const modo = document.getElementById('modo-impresion-{{ $etiqueta->id }}').value;
-                 imprimirEtiquetas(['{{ $etiqueta->etiqueta_sub_id }}'], modo)">
-                    🖨️
-                </button>
-            </div>
-
-
+            <!-- Botón Imprimir -->
             <button type="button"
-                class="absolute top-2 right-7 no-print btn-fabricar bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700"
-                data-etiqueta-id="{{ $etiqueta->etiqueta_sub_id }}" title="Fabricar esta etiqueta">⚙️</button>
+                class="bg-blue-600 text-white px-3 py-1 rounded shadow-sm hover:bg-blue-700 hover:shadow-md transition-all duration-200 flex items-center gap-1"
+                onclick="const modo = document.getElementById('modo-impresion-{{ $etiqueta->id }}').value; imprimirEtiquetas(['{{ $etiqueta->etiqueta_sub_id }}'], modo)"
+                title="Imprimir etiqueta">
+                <span class="text-lg">🖨️</span>
+            </button>
+
+            <!-- Botón Añadir al carro -->
+            <button type="button"
+                class="btn-agregar-carro bg-green-600 text-white px-3 py-1 rounded shadow-sm hover:bg-green-700 hover:shadow-md transition-all duration-200 flex items-center gap-1"
+                data-etiqueta-id="{{ $etiqueta->etiqueta_sub_id }}"
+                title="Añadir al carro">
+                <span class="text-lg">🛒</span>
+            </button>
+
+            <!-- Botón Fabricar -->
+            <button type="button"
+                class="btn-fabricar bg-purple-600 text-white px-3 py-1 rounded shadow-sm hover:bg-purple-700 hover:shadow-md transition-all duration-200 flex items-center gap-1"
+                data-etiqueta-id="{{ $etiqueta->etiqueta_sub_id }}"
+                title="Fabricar esta etiqueta">
+                <span class="text-lg">⚙️</span>
+            </button>
         </div>
 
         <!-- Contenido -->
@@ -232,9 +261,23 @@
 
                     if (qrNode) {
                         qrNode.classList.add('qr-print');
+
+                        // Crear box del QR
                         const qrBox = document.createElement('div');
                         qrBox.className = 'qr-box';
                         qrBox.appendChild(qrNode);
+
+                        // Crear label debajo del QR (dentro del box)
+                        const qrLabel = document.createElement('div');
+                        qrLabel.className = 'qr-label';
+                        qrLabel.textContent = String(rawId);
+                        qrLabel.style.fontSize = '8pt';
+                        qrLabel.style.marginTop = '0.5mm';
+                        qrLabel.style.lineHeight = '1';
+                        qrLabel.style.textAlign = 'center';
+                        qrLabel.style.fontWeight = 'bold';
+                        qrBox.appendChild(qrLabel);
+
                         clone.insertBefore(qrBox, clone.firstChild);
                     }
                     tempQR.remove();

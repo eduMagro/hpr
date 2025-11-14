@@ -189,79 +189,8 @@ class PaqueteController extends Controller
 
     public function index(Request $request)
     {
-        // Base query + relaciones
-        $query = Paquete::with(['planilla', 'ubicacion', 'etiquetas.elementos']);
-
-        // Filtros
-        $query = $this->aplicarFiltros($request, $query);
-
-        // Ordenamiento
-        $query = $this->aplicarOrdenamiento($query, $request);
-
-        /* ── Paginación (LengthAwarePaginator manual) ── */
-        $perPage      = 10;
-        $currentPage  = $request->input('page', 1);
-        $paquetesPage = $query->paginate($perPage)->appends($request->query());
-
-        /* ── Para el JSON y scripts auxiliares (sin paginar) ── */
-        $paquetesAll = Paquete::with('etiquetas:id,paquete_id,etiqueta_sub_id,nombre,codigo,peso')
-            ->select('id', 'codigo')
-            ->latest()
-            ->take(100) // 🔸 solo los 100 últimos, ajusta según lo que necesites
-            ->get();
-
-        $paquetesConEtiquetas = $paquetesAll->mapWithKeys(
-            fn($p) =>
-            [$p->codigo => $p->etiquetas->pluck('etiqueta_sub_id')]
-        );
-
-        $paquetesJson = $paquetesAll->map(fn($p) => [
-            'id'     => $p->id,
-            'codigo' => $p->codigo,
-            'etiquetas' => $p->etiquetas->map(fn($e) => [
-                'id'             => $e->id,
-                'etiqueta_sub_id' => $e->etiqueta_sub_id,
-                'nombre'         => $e->nombre,
-                'codigo'         => $e->codigo,
-                'peso_kg'        => $e->peso_kg,
-            ]),
-        ]);
-
-        $elementosAgrupadosScript = Etiqueta::with(['elementos:id,etiqueta_id,dimensiones,barras,peso,diametro'])
-            ->select('id', 'etiqueta_sub_id')
-            ->latest()
-            ->take(100) // igual, solo los últimos
-            ->get()
-            ->map(fn($et) => [
-                'etiqueta'  => ['id' => $et->id, 'etiqueta_sub_id' => $et->etiqueta_sub_id],
-                'elementos' => $et->elementos->map(fn($e) => [
-                    'id'         => $e->id,
-                    'dimensiones' => $e->dimensiones,
-                    'barras'     => $e->barras,
-                    'peso'       => $e->peso_kg,
-                    'diametro'   => $e->diametro,
-                ]),
-            ]);
-
-        /* ── Ordenables para la cabecera ── */
-        $ordenables = [
-            'id'                   => $this->getOrdenamiento('id', 'ID'),
-            'planilla_id'          => $this->getOrdenamiento('planilla_id', 'Planilla'),
-            'peso'                 => $this->getOrdenamiento('peso', 'Peso (Kg)'),
-            'created_at'           => $this->getOrdenamiento('created_at', 'Fecha Creación'),
-            'fecha_limite_reparto' => $this->getOrdenamiento('fecha_limite_reparto', 'Fecha Límite Reparto'),
-            'nave'                 => $this->getOrdenamiento('nave', 'Nave'), // 👈 nuevo
-        ];
-
-
-        return view('paquetes.index', [
-            'paquetes'                => $paquetesPage,
-            'paquetesJson'            => $paquetesJson,
-            'ordenables'              => $ordenables,
-            'filtrosActivos'          => $this->filtrosActivos($request),
-            'paquetesConEtiquetas'    => $paquetesConEtiquetas,
-            'elementosAgrupadosScript' => $elementosAgrupadosScript,
-        ]);
+        // Retornar vista Livewire
+        return view('paquetes.index');
     }
 
     public function store(Request $request, LocalizacionPaqueteService $localizacionPaqueteService)
@@ -497,6 +426,11 @@ class PaqueteController extends Controller
             $motivos[] = "Hay elementos pendientes ({$fabricados}/{$total}).";
         }
 
+        $pesoEtiqueta = $etiqueta->peso ?? 0;
+
+        // Log para debug
+        \Log::info("validarParaPaquete - Etiqueta: {$etiquetaSubId}, Peso: {$pesoEtiqueta}");
+
         return response()->json([
             'success'       => $valida,
             'valida'        => $valida,
@@ -506,7 +440,7 @@ class PaqueteController extends Controller
             'paquete_actual' => $etiqueta->paquete_id,
             'id'            => $etiqueta->etiqueta_sub_id,
             'nombre'        => $etiqueta->nombre,
-            'peso_etiqueta' => $etiqueta->peso ?? 0,
+            'peso_etiqueta' => $pesoEtiqueta,
             'estado'        => $etiqueta->estado,
         ]);
     }
@@ -712,10 +646,13 @@ class PaqueteController extends Controller
         try {
             $planilla = \App\Models\Planilla::findOrFail($planillaId);
 
-            // Obtener paquetes de esta planilla con sus etiquetas
+            // Obtener paquetes de esta planilla con sus etiquetas y elementos
             $paquetes = Paquete::with(['etiquetas' => function ($query) {
                 $query->select('id', 'etiqueta_sub_id', 'paquete_id', 'peso', 'estado')
-                    ->withCount('elementos');
+                    ->withCount('elementos')
+                    ->with(['elementos' => function ($q) {
+                        $q->select('id', 'codigo', 'dimensiones', 'etiqueta_id');
+                    }]);
             }, 'ubicacion:id,nombre'])
                 ->where('planilla_id', $planillaId)
                 ->orderBy('created_at', 'desc')
@@ -735,6 +672,13 @@ class PaqueteController extends Controller
                             'peso' => number_format($etiqueta->peso ?? 0, 2, '.', ''),
                             'estado' => $etiqueta->estado,
                             'elementos_count' => $etiqueta->elementos_count ?? 0,
+                            'elementos' => $etiqueta->elementos->map(function ($elemento) {
+                                return [
+                                    'id' => $elemento->id,
+                                    'codigo' => $elemento->codigo,
+                                    'dimensiones' => $elemento->dimensiones,
+                                ];
+                            })->values()->all()
                         ];
                     })->values()->all()
                 ];

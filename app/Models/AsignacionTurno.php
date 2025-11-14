@@ -4,10 +4,11 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class AsignacionTurno extends Model
 {
-    use HasFactory;
+    use HasFactory, SoftDeletes;
 
     protected $table = 'asignaciones_turnos'; // Asegúrate de que coincide con la tabla en la BD
     protected $fillable = ['user_id', 'obra_id', 'turno_id', 'estado', 'maquina_id', 'entrada', 'salida', 'fecha'];

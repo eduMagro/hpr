@@ -28,7 +28,9 @@ use Illuminate\Support\Collection;
 use App\Services\SugeridorProductoBaseService;
 use Illuminate\Support\Facades\Log;
 use App\Services\ProgressBVBSService;
+use App\Services\AsignarMaquinaService;
 use App\Services\PlanillaColaService;
+use App\Services\ActionLoggerService;
 
 class MaquinaController extends Controller
 {
@@ -173,18 +175,52 @@ class MaquinaController extends Controller
 
         // 3) Elementos de la máquina (primera o segunda)
         if ($this->esSegundaMaquina($maquina)) {
-            $elementosMaquina = Elemento::with(['planilla', 'etiquetaRelacion', 'subetiquetas', 'maquina', 'maquina_2'])
+            $elementosMaquina = Elemento::with(['planilla', 'etiquetaRelacion', 'subetiquetas', 'maquina', 'maquina_2', 'producto', 'producto2', 'producto3'])
                 ->where('maquina_id_2', $maquina->id)
                 ->get();
         } else {
-            $elementosMaquina = Elemento::with(['planilla', 'etiquetaRelacion', 'subetiquetas', 'maquina'])
+            $elementosMaquina = Elemento::with(['planilla', 'etiquetaRelacion', 'subetiquetas', 'maquina', 'producto', 'producto2', 'producto3'])
                 ->where('maquina_id', $maquina->id)
                 ->get();
         }
 
-        // 4) Cola de planillas
-        $posicion1 = request()->input('posicion_1', 1); // Por defecto posición 1
-        $posicion2 = request()->input('posicion_2', null); // Por defecto null (no mostrar segunda)
+        // 4) Cola de planillas con lógica de salto de planillas sin revisar
+        $posicion1Request = request()->input('posicion_1', 1);
+        $posicion2Request = request()->input('posicion_2', null);
+
+        // ⚠️ LÓGICA DE SALTO: Buscar primera planilla revisada
+        $ordenesPlanillas = OrdenPlanilla::where('maquina_id', $maquina->id)
+            ->with('planilla')
+            ->orderBy('posicion', 'asc')
+            ->get();
+
+        // Encontrar la primera posición con planilla revisada
+        $posicion1 = null;
+        $posicion2 = null;
+
+        foreach ($ordenesPlanillas as $orden) {
+            if ($orden->planilla && $orden->planilla->revisada) {
+                if (is_null($posicion1)) {
+                    $posicion1 = $orden->posicion;
+                } elseif (is_null($posicion2)) {
+                    $posicion2 = $orden->posicion;
+                    break; // Ya tenemos las dos posiciones
+                }
+            }
+        }
+
+        // Si el usuario especificó posiciones manualmente, respetarlas
+        if ($posicion1Request) {
+            $posicion1 = $posicion1Request;
+        }
+        if ($posicion2Request) {
+            $posicion2 = $posicion2Request;
+        }
+
+        // Si no hay posición 1 válida, usar la primera disponible (aunque no esté revisada)
+        if (is_null($posicion1) && $ordenesPlanillas->isNotEmpty()) {
+            $posicion1 = $ordenesPlanillas->first()->posicion;
+        }
 
         // Filtrar posiciones válidas (mayores a 0)
         $posiciones = collect([$posicion1, $posicion2])
@@ -193,7 +229,7 @@ class MaquinaController extends Controller
             ->unique()
             ->values();
 
-        // 4) Cola de planillas con posiciones específicas
+        // Cola de planillas con posiciones específicas
         [$planillasActivas, $elementosFiltrados, $ordenManual, $posicionesDisponibles] =
             $this->aplicarColaPlanillasPorPosicion($maquina, $elementosMaquina, $posiciones);
 
@@ -812,7 +848,7 @@ class MaquinaController extends Controller
     }
 
     // Método para guardar la ubicación en la base de datos
-    public function store(Request $request)
+    public function store(Request $request, ActionLoggerService $logger)
     {
         DB::beginTransaction();  // Usamos una transacción para asegurar la integridad de los datos.
         try {
@@ -859,7 +895,7 @@ class MaquinaController extends Controller
             ]);
 
             // Crear la nueva máquina en la base de datos
-            Maquina::create([
+            $maquina = Maquina::create([
                 'codigo'       => $request->codigo,
                 'nombre'       => $request->nombre,
                 'tipo'         => $request->tipo,
@@ -872,6 +908,14 @@ class MaquinaController extends Controller
                 'largo_m'      => $request->largo_m,
             ]);
 
+            $obra = $request->obra_id ? Obra::find($request->obra_id) : null;
+
+            $logger->logMaquinas('maquina_creada', [
+                'codigo' => $request->codigo,
+                'nombre' => $request->nombre,
+                'tipo' => $request->tipo ?? 'N/A',
+                'obra' => $obra ? $obra->obra : 'N/A',
+            ]);
 
             DB::commit();  // Confirmamos la transacción
 
@@ -915,7 +959,7 @@ class MaquinaController extends Controller
             ->with('success', 'Máquina actualizada correctamente.');
     }
 
-    public function cambiarEstado(Request $request, $id)
+    public function cambiarEstado(Request $request, $id, ActionLoggerService $logger)
     {
         // Validar el estado recibido (puede ser nulo o string corto)
         $request->validate([
@@ -924,8 +968,16 @@ class MaquinaController extends Controller
 
         // Buscar la máquina y actualizar estado
         $maquina = Maquina::findOrFail($id);
+        $estadoAnterior = $maquina->estado;
         $maquina->estado = $request->input('estado', 'activa');
         $maquina->save();
+
+        $logger->logMaquinas('estado_cambiado', [
+            'codigo' => $maquina->codigo,
+            'nombre' => $maquina->nombre,
+            'estado_anterior' => $estadoAnterior ?? 'N/A',
+            'estado_nuevo' => $maquina->estado,
+        ]);
 
         // 🧠 Detectar si se espera una respuesta JSON (Ajax, fetch, etc.)
         if ($request->expectsJson()) {
@@ -951,7 +1003,7 @@ class MaquinaController extends Controller
         return view('maquinas.edit', compact('maquina'));
     }
 
-    public function update(Request $request, $id)
+    public function update(Request $request, $id, ActionLoggerService $logger)
     {
         // Validar los datos del formulario
         $validatedData = $request->validate([
@@ -1000,6 +1052,16 @@ class MaquinaController extends Controller
             $maquina = Maquina::findOrFail($id);
             $maquina->update($validatedData);
 
+            $obra = $validatedData['obra_id'] ? Obra::find($validatedData['obra_id']) : null;
+
+            $logger->logMaquinas('maquina_actualizada', [
+                'codigo' => $validatedData['codigo'],
+                'nombre' => $validatedData['nombre'],
+                'tipo' => $validatedData['tipo'] ?? 'N/A',
+                'estado' => $validatedData['estado'] ?? 'N/A',
+                'obra' => $obra ? $obra->obra : 'N/A',
+            ]);
+
             DB::commit();
 
             return redirect()
@@ -1040,7 +1102,7 @@ class MaquinaController extends Controller
     }
 
 
-    public function destroy($id)
+    public function destroy($id, ActionLoggerService $logger)
     {
         if (auth()->user()->rol !== 'oficina') {
             return redirect()->route('maquinas.index')->with('abort', 'No tienes los permisos necesarios.');
@@ -1050,8 +1112,19 @@ class MaquinaController extends Controller
             // Buscar la maquina a eliminar
             $maquina = Maquina::findOrFail($id);
 
+            // Store data for logging before deletion
+            $codigo = $maquina->codigo;
+            $nombre = $maquina->nombre;
+            $tipo = $maquina->tipo ?? 'N/A';
+
             // Eliminar la entrada
             $maquina->delete();
+
+            $logger->logMaquinas('maquina_eliminada', [
+                'codigo' => $codigo,
+                'nombre' => $nombre,
+                'tipo' => $tipo,
+            ]);
 
             DB::commit();  // Confirmamos la transacción
             return redirect()->route('maquinas.index')->with('success', 'Máquina eliminada correctamente.');
@@ -1127,5 +1200,244 @@ class MaquinaController extends Controller
                 'Cache-Control' => 'no-store, no-cache, must-revalidate',
             ]
         );
+    }
+
+    /**
+     * Redistribuye los elementos pendientes de una máquina en otras máquinas disponibles
+     *
+     * @param Request $request
+     * @param int $id ID de la máquina
+     * @return \Illuminate\Http\JsonResponse
+     */
+    /**
+     * Obtener elementos pendientes de una máquina (para previsualizar antes de redistribuir).
+     */
+    public function elementosPendientes(Request $request, $id)
+    {
+        $tipo = $request->query('tipo', 'todos');
+
+        try {
+            $maquinaOrigen = Maquina::findOrFail($id);
+
+            // Obtener elementos pendientes de esta máquina con su planilla
+            $elementosQuery = Elemento::with(['planilla'])
+                ->where('maquina_id', $id)
+                ->where('estado', 'pendiente')
+                ->orderBy('created_at', 'asc');
+
+            // Si es "primeros", limitamos a un número razonable
+            if ($tipo === 'primeros') {
+                $elementosQuery->limit(50);
+            }
+
+            $elementos = $elementosQuery->get();
+
+            // Obtener todas las máquinas disponibles (excluyendo la actual)
+            $maquinasDisponibles = Maquina::where('id', '!=', $id)
+                ->where('estado', '!=', 'fuera_servicio')
+                ->select('id', 'nombre', 'tipo')
+                ->orderBy('nombre')
+                ->get();
+
+            // Calcular a qué máquina iría cada elemento automáticamente
+            // Usando una transacción para simular sin persistir cambios
+            $elementosConDestino = [];
+
+            DB::transaction(function () use ($elementos, $id, &$elementosConDestino) {
+                $asignarMaquinaService = new \App\Services\AsignarMaquinaService();
+
+                // Guardar IDs originales
+                $elementosIds = $elementos->pluck('id')->toArray();
+                $maquinasOriginales = Elemento::whereIn('id', $elementosIds)->pluck('maquina_id', 'id')->toArray();
+
+                // Quitar asignación de máquina temporalmente
+                Elemento::whereIn('id', $elementosIds)->update(['maquina_id' => null]);
+
+                // Agrupar por planilla y redistribuir
+                $elementosPorPlanilla = $elementos->groupBy('planilla_id');
+
+                foreach ($elementosPorPlanilla as $planillaId => $grupoElementos) {
+                    try {
+                        $asignarMaquinaService->repartirPlanilla($planillaId);
+                    } catch (\Exception $e) {
+                        Log::warning("Error simulando redistribución de planilla {$planillaId}: " . $e->getMessage());
+                    }
+                }
+
+                // Obtener las nuevas asignaciones calculadas
+                $elementosActualizados = Elemento::whereIn('id', $elementosIds)
+                    ->with('maquina')
+                    ->get()
+                    ->keyBy('id');
+
+                // Construir array con destinos
+                foreach ($elementos as $elemento) {
+                    $elementoActualizado = $elementosActualizados->get($elemento->id);
+                    $maquinaDestino = $elementoActualizado && $elementoActualizado->maquina
+                        ? $elementoActualizado->maquina
+                        : null;
+
+                    $elementosConDestino[] = [
+                        'id' => $elemento->id,
+                        'codigo' => $elemento->codigo,
+                        'dimensiones' => $elemento->dimensiones,
+                        'diametro' => $elemento->diametro,
+                        'peso' => $elemento->peso,
+                        'barras' => $elemento->barras,
+                        'figura' => $elemento->figura,
+                        'maquina_destino_id' => $maquinaDestino ? $maquinaDestino->id : null,
+                        'maquina_destino_nombre' => $maquinaDestino ? $maquinaDestino->nombre : 'Sin asignar'
+                    ];
+                }
+
+                // IMPORTANTE: hacer rollback para que no se guarden los cambios
+                DB::rollBack();
+            });
+
+            return response()->json([
+                'success' => true,
+                'elementos' => $elementosConDestino,
+                'total' => count($elementosConDestino),
+                'maquina_origen' => [
+                    'id' => $maquinaOrigen->id,
+                    'nombre' => $maquinaOrigen->nombre
+                ],
+                'maquinas_disponibles' => $maquinasDisponibles
+            ]);
+        } catch (\Exception $e) {
+            Log::error("Error al obtener elementos pendientes de máquina {$id}: " . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'mensaje' => 'Error al obtener elementos: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    public function redistribuir(Request $request, $id)
+    {
+        $request->validate([
+            'tipo' => 'required|in:primeros,todos',
+        ]);
+
+        $maquina = Maquina::findOrFail($id);
+        $tipo = $request->input('tipo');
+
+        try {
+            // Obtener elementos pendientes de esta máquina
+            $elementosQuery = Elemento::with(['planilla'])
+                ->where('maquina_id', $id)
+                ->where('estado', 'pendiente')
+                ->orderBy('created_at', 'asc'); // Ordenar por fecha de creación
+
+            // Si es "primeros", limitamos a un número razonable (por ejemplo, los primeros 50)
+            if ($tipo === 'primeros') {
+                $elementosQuery->limit(50);
+            }
+
+            $elementos = $elementosQuery->get();
+
+            if ($elementos->isEmpty()) {
+                return response()->json([
+                    'success' => false,
+                    'mensaje' => 'No hay elementos pendientes para redistribuir en esta máquina.',
+                ]);
+            }
+
+            // Guardar información original de cada elemento
+            $detallesOriginales = [];
+            foreach ($elementos as $elemento) {
+                $detallesOriginales[$elemento->id] = [
+                    'id' => $elemento->id,
+                    'marca' => $elemento->marca,
+                    'diametro' => $elemento->diametro,
+                    'peso' => $elemento->peso,
+                    'planilla_codigo' => $elemento->planilla ? $elemento->planilla->codigo : 'N/A',
+                    'maquina_anterior' => $maquina->nombre,
+                ];
+            }
+
+            // Quitar la asignación de máquina a estos elementos
+            $elementosIds = $elementos->pluck('id')->toArray();
+            Elemento::whereIn('id', $elementosIds)->update(['maquina_id' => null]);
+
+            // Agrupar elementos por planilla
+            $elementosPorPlanilla = $elementos->groupBy('planilla_id');
+
+            $asignarMaquinaService = new AsignarMaquinaService();
+            $redistribuidos = 0;
+
+            // Redistribuir cada grupo de elementos usando el servicio de asignación
+            foreach ($elementosPorPlanilla as $planillaId => $grupoElementos) {
+                try {
+                    // Repartir la planilla completa (solo reasignará los elementos sin máquina)
+                    $asignarMaquinaService->repartirPlanilla($planillaId);
+                    $redistribuidos += $grupoElementos->count();
+                } catch (\Exception $e) {
+                    Log::error("Error redistribuyendo planilla {$planillaId}: " . $e->getMessage());
+                }
+            }
+
+            // Obtener las nuevas asignaciones
+            $elementosActualizados = Elemento::with(['maquina'])
+                ->whereIn('id', $elementosIds)
+                ->get()
+                ->keyBy('id');
+
+            // Crear el detalle de la redistribución
+            $detalles = [];
+            $resumen = [];
+
+            foreach ($detallesOriginales as $elementoId => $original) {
+                $elementoActualizado = $elementosActualizados->get($elementoId);
+                $nuevaMaquina = $elementoActualizado && $elementoActualizado->maquina
+                    ? $elementoActualizado->maquina->nombre
+                    : 'Sin asignar';
+
+                $detalles[] = [
+                    'elemento_id' => $elementoId,
+                    'marca' => $original['marca'],
+                    'diametro' => $original['diametro'],
+                    'peso' => $original['peso'],
+                    'planilla' => $original['planilla_codigo'],
+                    'maquina_anterior' => $original['maquina_anterior'],
+                    'maquina_nueva' => $nuevaMaquina,
+                ];
+
+                // Crear resumen por máquina
+                if (!isset($resumen[$nuevaMaquina])) {
+                    $resumen[$nuevaMaquina] = [
+                        'nombre' => $nuevaMaquina,
+                        'cantidad' => 0,
+                        'peso_total' => 0,
+                    ];
+                }
+                $resumen[$nuevaMaquina]['cantidad']++;
+                $resumen[$nuevaMaquina]['peso_total'] += (float)$original['peso'];
+            }
+
+            // Convertir resumen a array de valores
+            $resumen = array_values($resumen);
+
+            $mensaje = $tipo === 'todos'
+                ? "Se redistribuyeron {$redistribuidos} elementos de toda la cola de trabajo."
+                : "Se redistribuyeron los primeros {$redistribuidos} elementos de la cola.";
+
+            Log::info("Máquina {$maquina->id} ({$maquina->nombre}): {$mensaje}");
+
+            return response()->json([
+                'success' => true,
+                'mensaje' => $mensaje,
+                'redistribuidos' => $redistribuidos,
+                'detalles' => $detalles,
+                'resumen' => $resumen,
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error("Error en redistribuir máquina {$id}: " . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'mensaje' => 'Error al redistribuir elementos: ' . $e->getMessage(),
+            ], 500);
+        }
     }
 }

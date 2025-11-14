@@ -1,5 +1,6 @@
 <x-app-layout>
     <x-slot name="title">Salidas - {{ config('app.name') }}</x-slot>
+
     <x-menu.salidas.salidas />
     <x-menu.salidas.salidas2 />
 

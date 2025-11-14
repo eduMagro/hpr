@@ -14,6 +14,7 @@ use Carbon\Carbon;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use App\Services\AlertaService;
+use App\Services\ActionLoggerService;
 use App\Models\Departamento;
 
 class PlanificacionController extends Controller
@@ -22,11 +23,11 @@ class PlanificacionController extends Controller
     {
         [$startDate, $endDate] = $this->getDateRange($request);
 
-        $viewType = $request->input('viewType', 'resourceTimelineDay');
+        $viewType = $request->input('viewType', 'resourceTimeGridDay');
 
         // Eventos
-        $salidasEventos = $this->getEventosSalidas($startDate, $endDate);
-        $planillasEventos = $this->getEventosPlanillas($startDate, $endDate);
+        $salidasEventos = $this->getEventosSalidas($startDate, $endDate, $viewType);
+        $planillasEventos = $this->getEventosPlanillas($startDate, $endDate, $viewType);
         $resumenEventos = $this->getEventosResumen($planillasEventos['planillas'], $viewType);
         $eventos = collect()
             ->concat($planillasEventos['eventos'])
@@ -48,7 +49,7 @@ class PlanificacionController extends Controller
             ->values();
 
         // Resources
-        $resources = $this->getResources($eventos);
+        $resources = $this->getResources($eventos, $viewType);
         if ($request->input('tipo') === 'resources') {
             return response()->json($resources); // ✅ usa la variable correcta
         }
@@ -88,13 +89,13 @@ class PlanificacionController extends Controller
         $viewType = $request->input('viewType');
 
         // Vista día
-        if ($viewType === 'resourceTimelineDay' && $start) {
+        if (in_array($viewType, ['resourceTimeGridDay', 'timeGridDay', 'resourceTimelineDay']) && $start) {
             $fecha = Carbon::parse($start)->startOfDay();
             return [$fecha, $fecha->copy()->endOfDay()];
         }
 
         // Vista semana
-        if ($viewType === 'resourceTimelineWeek' && $start && $end) {
+        if (in_array($viewType, ['resourceTimeGridWeek', 'resourceTimelineWeek']) && $start && $end) {
             return [
                 Carbon::parse($start)->startOfDay(),
                 Carbon::parse($end)->subSecond()
@@ -163,22 +164,44 @@ class PlanificacionController extends Controller
                 'diametroMedio' => $grupo->flatMap->elementos->pluck('diametro')->filter()->avg(),
             ])->values();
 
-        $resumenEventosDia = $resumenPorDia->map(function ($r) {
-            $titulo = "📦 " . number_format($r['pesoTotal'], 0, ',', '.') . " kg | 📏 " . number_format($r['longitudTotal'], 0, ',', '.') . " m";
-            if ($r['diametroMedio'] !== null) {
-                $titulo .= " | ⌀ " . number_format($r['diametroMedio'], 2, '.', '') . " mm";
-            }
-            return [
+        $resumenEventosDia = $resumenPorDia->map(function ($r) use ($viewType) {
+            $titulo = "📊 Resumen del día";
+
+            // Usar formato de fecha consistente sin conversión de zona horaria
+            $fechaStr = $r['fecha']->format('Y-m-d');
+
+            $evento = [
                 'title' => $titulo,
-                'start' => $r['fecha']->startOfDay()->toIso8601String(),
-                'end' => $r['fecha']->endOfDay()->toIso8601String(),
-                'resourceId' => 'resumen-dia',
-                'allDay' => true,
-                'backgroundColor' => '#fbbf24',
-                'borderColor' => '#92400e',
-                'textColor' => '#000',
-                'tipo' => 'resumen-dia',
+                'start' => $fechaStr,
+                'backgroundColor' => '#fef3c7',
+                'borderColor' => '#fbbf24',
+                'textColor' => '#92400e',
+                'classNames' => ['evento-resumen-diario'],
+                'extendedProps' => [
+                    'tipo' => 'resumen-dia',
+                    'pesoTotal' => $r['pesoTotal'],
+                    'longitudTotal' => $r['longitudTotal'],
+                    'diametroMedio' => $r['diametroMedio'],
+                    'fecha' => $fechaStr,
+                ],
             ];
+
+            // Configuración según vista
+            if ($viewType === 'dayGridMonth') {
+                // Vista mensual: evento normal visible
+                $evento['allDay'] = true;
+                $evento['display'] = 'auto';
+            } elseif ($viewType === 'resourceTimelineWeek') {
+                // Vista semanal: evento normal visible con resourceId para todas las obras
+                $evento['display'] = 'auto';
+                $evento['resourceId'] = '_resumen_'; // ID especial para que aparezca en todas las filas
+            } else {
+                // Vista diaria: evento background (datos disponibles pero no visible como evento)
+                $evento['allDay'] = true;
+                $evento['display'] = 'background';
+            }
+
+            return $evento;
         });
 
         // ------------------- SELECCIÓN SEGÚN VISTA -------------------
@@ -191,49 +214,139 @@ class PlanificacionController extends Controller
         return $eventosResumen;
     }
 
-    private function getEventosSalidas(Carbon $startDate, Carbon $endDate)
+    private function getEventosSalidas(Carbon $startDate, Carbon $endDate, string $viewType = '')
     {
         $salidas = Salida::with([
-            // añade cod_obra aquí 👇
-            'salidaClientes.obra:id,obra,cod_obra',
+            'salidaClientes.obra:id,obra,cod_obra,cliente_id',
+            'salidaClientes.obra.cliente:id,empresa',
             'salidaClientes.cliente:id,empresa',
+            'paquetes.planilla.obra:id,obra,cod_obra,cliente_id',
+            'paquetes.planilla.obra.cliente:id,empresa',
             'paquetes.planilla.user',
             'empresaTransporte:id,nombre',
-            'camion:id,modelo', // si usas $salida->camion->modelo
+            'camion:id,modelo',
         ])
             ->whereBetween('fecha_salida', [$startDate, $endDate])
             ->get();
 
-        return $salidas->flatMap(function ($salida) {
+        return $salidas->map(function ($salida) use ($viewType) {
             $empresa    = optional($salida->empresaTransporte)->nombre;
             $camion     = optional($salida->camion)->modelo;
             $pesoTotal  = round($salida->paquetes->sum(fn($p) => optional($p->planilla)->peso_total ?? 0), 0);
             $fechaInicio = Carbon::parse($salida->fecha_salida);
             $fechaFin   = $fechaInicio->copy()->addHours(3);
             $color      = $salida->estado === 'completada' ? '#4CAF50' : '#3B82F6';
+            $codigoSage = $salida->codigo_sage ? " - {$salida->codigo_sage}" : '';
 
-            return $salida->salidaClientes->map(function ($relacion) use ($salida, $empresa, $camion, $pesoTotal, $fechaInicio, $fechaFin, $color) {
-                $obra = $relacion->obra;
+            // Recopilar todas las obras y clientes únicos de esta salida
+            $obrasClientes = collect();
 
-                return [
-                    'title'        => "{$salida->codigo_salida} - {$salida->codigo_sage} - {$obra->obra} - {$pesoTotal} kg",
-                    'id'           => $salida->id . '-' . $obra->id,
-                    'start'        => $fechaInicio->toDateTimeString(),
-                    'end'          => $fechaFin->toDateTimeString(),
-                    'resourceId'   => (string) $obra->id,
+            // 1. Desde salidaClientes (relación directa)
+            if ($salida->salidaClientes->isNotEmpty()) {
+                foreach ($salida->salidaClientes as $relacion) {
+                    // Priorizar cliente de la relación, sino el de la obra
+                    $clienteNombre = optional($relacion->cliente)->empresa
+                        ?? optional($relacion->obra->cliente)->empresa
+                        ?? 'Cliente desconocido';
+                    $clienteId = $relacion->cliente_id
+                        ?? optional($relacion->obra)->cliente_id;
+
+                    $obrasClientes->push([
+                        'obra_id' => $relacion->obra_id,
+                        'obra' => optional($relacion->obra)->obra ?? 'Obra desconocida',
+                        'cod_obra' => optional($relacion->obra)->cod_obra ?? '',
+                        'cliente' => $clienteNombre,
+                        'cliente_id' => $clienteId,
+                    ]);
+                }
+            }
+
+            // 2. Desde paquetes (pueden tener obras diferentes)
+            if ($salida->paquetes->isNotEmpty()) {
+                foreach ($salida->paquetes as $paquete) {
+                    if ($paquete->planilla && $paquete->planilla->obra) {
+                        $obra = $paquete->planilla->obra;
+                        // Solo agregar si no existe ya
+                        if (!$obrasClientes->where('obra_id', $obra->id)->count()) {
+                            $obrasClientes->push([
+                                'obra_id' => $obra->id,
+                                'obra' => $obra->obra,
+                                'cod_obra' => $obra->cod_obra ?? '',
+                                'cliente' => optional($obra->cliente)->empresa ?? 'Cliente desconocido',
+                                'cliente_id' => optional($obra->cliente)->id,
+                            ]);
+                        }
+                    }
+                }
+            }
+
+            // Eliminar duplicados por obra_id
+            $obrasClientes = $obrasClientes->unique('obra_id')->values();
+
+            // Construir el título con todas las obras y clientes
+            $titulo = "{$salida->codigo_salida}{$codigoSage}";
+
+            if ($obrasClientes->isNotEmpty()) {
+                // Formatear obras y clientes
+                $obrasTexto = $obrasClientes->map(function($oc) {
+                    $codObra = $oc['cod_obra'] ? "({$oc['cod_obra']})" : '';
+                    return "{$oc['obra']} {$codObra}";
+                })->join(', ');
+
+                $clientesUnicos = $obrasClientes->pluck('cliente')->filter()->unique()->values();
+                $clientesTexto = $clientesUnicos->join(', ');
+
+                if ($clientesTexto) {
+                    $titulo .= " - {$clientesTexto}";
+                }
+                $titulo .= " - {$obrasTexto}";
+            } else {
+                $titulo .= " - Sin obra/cliente asignado";
+            }
+
+            $titulo .= " - {$pesoTotal} kg";
+
+            // Determinar resourceId (usar la primera obra, o _sin_obra_)
+            $resourceId = '_sin_obra_';
+            if ($obrasClientes->isNotEmpty()) {
+                $resourceId = (string) $obrasClientes->first()['obra_id'];
+            }
+
+            $evento = [
+                'title'        => $titulo,
+                'id'           => (string) $salida->id,
+                'start'        => $fechaInicio->toDateTimeString(),
+                'end'          => $fechaFin->toDateTimeString(),
+                'tipo'         => 'salida',
+                'backgroundColor' => $color,
+                'borderColor'     => $color,
+                'extendedProps' => [
                     'tipo'         => 'salida',
-                    'backgroundColor' => $color,
-                    'borderColor'     => $color,
-                    'extendedProps' => [
-                        'tipo'         => 'salida',
-                        'cod_obra'     => $obra->cod_obra,   // <- ahora sí existe
-                        'nombre_obra'  => $obra->obra,       // <- para buscar por nombre
-                        'empresa'      => $empresa,
-                        'camion'       => $camion,
-                        'comentario'   => $salida->comentario,
-                    ],
-                ];
-            });
+                    'salida_id'    => $salida->id,
+                    'codigo_salida' => $salida->codigo_salida,
+                    'codigo_sage'  => $salida->codigo_sage,
+                    'obras'        => $obrasClientes->map(fn($oc) => [
+                        'id' => $oc['obra_id'],
+                        'nombre' => $oc['obra'],
+                        'codigo' => $oc['cod_obra'],
+                    ])->toArray(),
+                    'clientes'     => $obrasClientes->map(fn($oc) => [
+                        'id' => $oc['cliente_id'],
+                        'nombre' => $oc['cliente'],
+                    ])->unique('id')->filter(fn($c) => $c['nombre'])->values()->toArray(),
+                    'empresa'      => $empresa,
+                    'camion'       => $camion,
+                    'comentario'   => $salida->comentario ?? '',
+                    'peso_total'   => $pesoTotal,
+                ],
+            ];
+
+            // Solo agregar resourceId si no es vista timeGridDay
+            if ($viewType !== 'timeGridDay') {
+                $evento['resourceId'] = $resourceId;
+            }
+
+            return $evento;
         });
     }
 
@@ -243,7 +356,7 @@ class PlanificacionController extends Controller
      * @param Carbon $endDate
      * @return array
      */
-    private function getEventosPlanillas(Carbon $startDate, Carbon $endDate): array
+    private function getEventosPlanillas(Carbon $startDate, Carbon $endDate, string $viewType = ''): array
     {
         // 🔹 Traer planillas sin salidas en el rango
         $planillas = Planilla::with('obra', 'elementos')
@@ -254,7 +367,7 @@ class PlanificacionController extends Controller
         // 🔹 Agrupar por obra y día
         $eventos = $planillas->groupBy(function ($p) {
             return $p->obra_id . '|' . Carbon::parse($p->getRawOriginal('fecha_estimada_entrega'))->toDateString();
-        })->map(function ($grupo) {
+        })->map(function ($grupo) use ($viewType) {
             $obraId = $grupo->first()->obra_id;
             $obra = $grupo->first()->obra;
             $nombreObra = optional($obra)->obra ?? 'Obra desconocida';
@@ -298,14 +411,11 @@ class PlanificacionController extends Controller
                 $q->whereIn('paquete_id', $paqueteIds);
             })->get();
 
-            return [
+            $evento = [
                 'title' => $codObra . ' - ' . $nombreObra,
                 'id' => 'planillas-' . $obraId . '-' . md5($fechaInicio),
-                // 'start' => $fechaInicio->toIso8601String(),
-                // 'end' => $fechaInicio->copy()->addHours(2)->toIso8601String(),
-                'start' => $fechaInicio->toDateString(), // 👈 solo la fecha
-                'end' => $fechaInicio->copy()->addDay()->toDateString(), // 👈 fecha siguiente
-                'allDay' => true, // 👈 esto es CLAVE para dayGridMonth
+                'start' => $fechaInicio->toIso8601String(),
+                'end' => $fechaInicio->copy()->addHours(2)->toIso8601String(),
                 'backgroundColor' => $color,
                 'borderColor' => $color,
                 'tipo' => 'planilla',
@@ -325,6 +435,13 @@ class PlanificacionController extends Controller
                     'salidas_codigos' => $salidaRelacionada->pluck('codigo_salida')->toArray(),
                 ],
             ];
+
+            // Solo agregar resourceId si no es vista timeGridDay
+            if ($viewType !== 'timeGridDay') {
+                $evento['resourceId'] = (string) $obraId;
+            }
+
+            return $evento;
         })->sortBy([
             fn($e) => (int) preg_replace('/\D/', '', $e['extendedProps']['cod_obra'] ?? '0'),
             fn($e) => $e['start'],
@@ -337,45 +454,81 @@ class PlanificacionController extends Controller
         ];
     }
 
-    private function getResources($eventos)
+    private function getResources($eventos, $viewType = '')
     {
-
         $resourceIds = $eventos->pluck('resourceId')->filter()->unique()->values();
         $obras = Obra::with('cliente')->whereIn('id', $resourceIds)->orderBy('obra')->get();
 
-        $resources = $obras->map(fn($obra) => [
+        $resources = collect();
+
+        // Agregar recurso especial para resúmenes en vista semanal
+        if ($viewType === 'resourceTimelineWeek') {
+            $resources->push([
+                'id' => '_resumen_',
+                'title' => '📊 Resumen Diario',
+                'cliente' => '',
+                'cod_obra' => '',
+                'orderIndex' => 0, // Aparece primero
+            ]);
+        }
+
+        // Agregar recurso especial para salidas sin obra asignada
+        $tieneSalidasSinObra = $eventos->contains(function($evento) {
+            return isset($evento['resourceId']) && $evento['resourceId'] === '_sin_obra_';
+        });
+
+        if ($tieneSalidasSinObra) {
+            $resources->push([
+                'id' => '_sin_obra_',
+                'title' => '🚚 Salidas sin Obra',
+                'cliente' => '',
+                'cod_obra' => '',
+                'orderIndex' => 0.5, // Aparece después del resumen pero antes de las obras
+            ]);
+        }
+
+        // Agregar recursos de obras
+        $obrasResources = $obras->map(fn($obra) => [
             'id' => (string) $obra->id,
             'title' => $obra->obra,
             'cliente' => optional($obra->cliente)->empresa,
             'cod_obra' => $obra->cod_obra,
-            'orderIndex' => 2,
-        ])->values();
-
-        $resources->prepend([
-            'id' => 'resumen-dia',
-            'title' => '📊 Resumen Diario',
-            'cliente' => '',
-            'cod_obra' => '',
             'orderIndex' => 1,
         ]);
 
-        return $resources;
+        $resources = $resources->concat($obrasResources);
+
+        return $resources->values();
     }
 
-    public function guardarComentario(Request $request, $id)
+    public function guardarComentario(Request $request, $id, ActionLoggerService $logger)
     {
         $request->validate([
             'comentario' => 'nullable|string|max:1000'
         ]);
 
         $salida = Salida::findOrFail($id);
+        $comentarioAnterior = $salida->comentario;
         $salida->comentario = $request->comentario;
         $salida->save();
 
-        return response()->json(['success' => true]);
+        $logger->logPlanificacion('comentario_guardado', [
+            'salida_codigo' => $salida->codigo ?? 'N/A',
+            'codigo_sage' => $salida->codigo_sage ?? 'N/A',
+            'fecha_salida' => $salida->fecha_salida ? Carbon::parse($salida->fecha_salida)->format('Y-m-d H:i') : 'N/A',
+            'tenia_comentario' => !empty($comentarioAnterior),
+            'tiene_comentario' => !empty($salida->comentario),
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Comentario guardado correctamente',
+            'comentario' => $salida->comentario,
+            'salida_id' => $salida->id
+        ]);
     }
 
-    public function update(Request $request, $id)
+    public function update(Request $request, $id, ActionLoggerService $logger)
     {
         $request->validate([
             'fecha' => 'required|date',
@@ -391,8 +544,16 @@ class PlanificacionController extends Controller
             ]);
 
             $salida = Salida::findOrFail($id);
+            $fechaAnterior = $salida->fecha_salida;
             $salida->fecha_salida = $fecha;
             $salida->save();
+
+            $logger->logPlanificacion('fecha_salida_actualizada', [
+                'salida_codigo' => $salida->codigo ?? 'N/A',
+                'codigo_sage' => $salida->codigo_sage ?? 'N/A',
+                'fecha_anterior' => $fechaAnterior ? Carbon::parse($fechaAnterior)->format('Y-m-d H:i') : 'N/A',
+                'fecha_nueva' => $fecha->format('Y-m-d H:i'),
+            ]);
 
             // ✅ Solo enviar alerta si la salida tiene código SAGE
             if (!is_null($salida->codigo_sage)) {
@@ -427,13 +588,31 @@ class PlanificacionController extends Controller
 
             if (is_array($request->planillas_ids) && count($request->planillas_ids) > 0) {
                 // 🔥 Actualizar varias planillas
+                $planillas = Planilla::whereIn('id', $request->planillas_ids)->get();
+                $codigos = $planillas->pluck('codigo')->implode(', ');
+
                 Planilla::whereIn('id', $request->planillas_ids)
                     ->update(['fecha_estimada_entrega' => $fecha]);
+
+                $logger->logPlanificacion('fecha_planillas_actualizada', [
+                    'cantidad_planillas' => count($request->planillas_ids),
+                    'codigos_planillas' => $codigos,
+                    'fecha_nueva' => $fecha->format('Y-m-d H:i'),
+                ]);
             } else {
                 // Por compatibilidad, si solo hay un ID (antiguo método)
                 $planilla = Planilla::findOrFail($id);
+                $fechaAnterior = $planilla->fecha_estimada_entrega;
                 $planilla->fecha_estimada_entrega = $fecha;
                 $planilla->save();
+
+                $logger->logPlanificacion('fecha_planilla_actualizada', [
+                    'codigo_planilla' => $planilla->codigo ?? 'N/A',
+                    'obra' => $planilla->obra->obra ?? 'N/A',
+                    'cliente' => $planilla->cliente->empresa ?? 'N/A',
+                    'fecha_anterior' => $fechaAnterior ? Carbon::parse($fechaAnterior)->format('Y-m-d H:i') : 'N/A',
+                    'fecha_nueva' => $fecha->format('Y-m-d H:i'),
+                ]);
             }
 
             return response()->json(['success' => true, 'modelo' => 'planilla']);

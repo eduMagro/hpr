@@ -25,8 +25,13 @@ class RegisteredUserController extends Controller
      */
     public function create()
     {
-        if (auth()->user()->rol !== 'oficina') {
-            return redirect()->route('users.index')->with('abort', 'No tienes los permisos necesarios.');
+        // 🔒 Solo el departamento de programador puede registrar usuarios
+        $perteneceAProgramador = auth()->user()->departamentos()
+            ->whereRaw("LOWER(nombre) = ?", ['programador'])
+            ->exists();
+
+        if (!$perteneceAProgramador) {
+            return redirect()->route('users.index')->with('abort', 'No tienes los permisos necesarios. Solo el departamento de programador puede registrar usuarios.');
         }
         $categorias = Categoria::orderBy('nombre')->get(); // Puedes añadir select('id', 'nombre') si quieres optimizar
         $empresas = Empresa::orderBy('nombre')->get(); // Puedes añadir select('id', 'nombre') si quieres optimizar
@@ -41,6 +46,15 @@ class RegisteredUserController extends Controller
      */
     public function store(Request $request): RedirectResponse
     {
+        // 🔒 Solo el departamento de programador puede registrar usuarios
+        $perteneceAProgramador = auth()->user()->departamentos()
+            ->whereRaw("LOWER(nombre) = ?", ['programador'])
+            ->exists();
+
+        if (!$perteneceAProgramador) {
+            return redirect()->route('users.index')->with('error', 'No tienes los permisos necesarios. Solo el departamento de programador puede registrar usuarios.');
+        }
+
         // 🔧 Preprocesamiento de los campos
         $request->merge([
             'email' => strtolower($request->email),

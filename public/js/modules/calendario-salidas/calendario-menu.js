@@ -112,11 +112,280 @@ function extraerPlanillasIds(event) {
     return m ? [Number(m[1])] : [];
 }
 
-/* ===================== Crear salida ===================== */
-async function crearSalida(planillasIds, calendar) {
+/* ===================== Gestionar paquetes de una salida ===================== */
+async function gestionarPaquetesSalida(salidaId, calendar) {
+    try {
+        closeMenu();
+    } catch (_) {}
+
+    if (!salidaId) {
+        return Swal.fire("⚠️", "ID de salida inválido.", "warning");
+    }
+
+    try {
+        // Obtener información de la salida y sus paquetes
+        const infoRes = await fetch(
+            `${window.AppSalidas?.routes?.informacionPaquetesSalida}?salida_id=${salidaId}`,
+            {
+                headers: { Accept: "application/json" },
+            }
+        );
+
+        if (!infoRes.ok) {
+            throw new Error("Error al cargar información de la salida");
+        }
+
+        const { salida, paquetesAsignados, paquetesDisponibles } = await infoRes.json();
+
+        // Construir y mostrar interfaz
+        mostrarInterfazGestionPaquetesSalida(
+            salida,
+            paquetesAsignados,
+            paquetesDisponibles,
+            calendar
+        );
+    } catch (err) {
+        console.error(err);
+        Swal.fire(
+            "❌",
+            "Error al cargar la información de la salida",
+            "error"
+        );
+    }
+}
+
+/* ===================== Mostrar interfaz gestión paquetes salida ===================== */
+function mostrarInterfazGestionPaquetesSalida(
+    salida,
+    paquetesAsignados,
+    paquetesDisponibles,
+    calendar
+) {
+    const html = construirInterfazGestionPaquetesSalida(
+        salida,
+        paquetesAsignados,
+        paquetesDisponibles
+    );
+
+    Swal.fire({
+        title: `📦 Gestionar Paquetes - Salida ${salida.codigo_salida || salida.id}`,
+        html,
+        width: Math.min(window.innerWidth * 0.95, 1200),
+        showConfirmButton: true,
+        showCancelButton: true,
+        confirmButtonText: "💾 Guardar Cambios",
+        cancelButtonText: "Cancelar",
+        focusConfirm: false,
+        customClass: {
+            popup: "w-full max-w-screen-xl",
+        },
+        didOpen: () => {
+            inicializarDragAndDropSalida();
+        },
+        preConfirm: () => {
+            return recolectarPaquetesSalida();
+        },
+    }).then(async (result) => {
+        if (result.isConfirmed && result.value) {
+            await guardarPaquetesSalida(salida.id, result.value, calendar);
+        }
+    });
+}
+
+/* ===================== Construir HTML interfaz gestión paquetes salida ===================== */
+function construirInterfazGestionPaquetesSalida(
+    salida,
+    paquetesAsignados,
+    paquetesDisponibles
+) {
+    // Calcular totales de la salida
+    const totalKgAsignados = paquetesAsignados.reduce(
+        (sum, p) => sum + (parseFloat(p.peso) || 0),
+        0
+    );
+
+    // Construir información de obras y clientes
+    let obrasClientesInfo = "";
+    if (salida.salida_clientes && salida.salida_clientes.length > 0) {
+        obrasClientesInfo = `<div class="col-span-2"><strong>Obras/Clientes:</strong><br>`;
+        salida.salida_clientes.forEach(sc => {
+            const obraNombre = sc.obra?.obra || "Obra desconocida";
+            const obraCodigo = sc.obra?.cod_obra ? `(${sc.obra.cod_obra})` : "";
+            const clienteNombre = sc.cliente?.empresa || sc.obra?.cliente?.empresa || "";
+            obrasClientesInfo += `<span class="text-xs">• ${obraNombre} ${obraCodigo}`;
+            if (clienteNombre) obrasClientesInfo += ` - ${clienteNombre}`;
+            obrasClientesInfo += `</span><br>`;
+        });
+        obrasClientesInfo += `</div>`;
+    }
+
+    // Información de la salida
+    const infoSalida = `
+        <div class="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
+            <div class="grid grid-cols-2 gap-2 text-sm">
+                <div><strong>Código:</strong> ${salida.codigo_salida || "N/A"}</div>
+                <div><strong>Código SAGE:</strong> ${salida.codigo_sage || "Sin asignar"}</div>
+                <div><strong>Fecha salida:</strong> ${new Date(salida.fecha_salida).toLocaleString("es-ES")}</div>
+                <div><strong>Estado:</strong> ${salida.estado || "pendiente"}</div>
+                <div><strong>Empresa transporte:</strong> ${salida.empresa_transporte?.nombre || "Sin asignar"}</div>
+                <div><strong>Camión:</strong> ${salida.camion?.modelo || "Sin asignar"}</div>
+                ${obrasClientesInfo}
+            </div>
+        </div>
+    `;
+
+    return `
+        <div class="text-left">
+            ${infoSalida}
+
+            <p class="text-sm text-gray-600 mb-4">
+                Arrastra paquetes entre las zonas para asignarlos o quitarlos de esta salida.
+            </p>
+
+            <div class="grid grid-cols-2 gap-4">
+                <!-- Paquetes asignados a esta salida -->
+                <div class="bg-green-50 border-2 border-green-200 rounded-lg p-3">
+                    <div class="font-semibold text-green-900 mb-2 flex items-center justify-between">
+                        <span>📦 Paquetes en esta salida</span>
+                        <span class="text-xs bg-green-200 px-2 py-1 rounded" id="peso-asignados">${totalKgAsignados.toFixed(2)} kg</span>
+                    </div>
+                    <div
+                        class="paquetes-zona-salida drop-zone"
+                        data-zona="asignados"
+                        style="min-height: 400px; border: 2px dashed #10b981; border-radius: 8px; padding: 8px;"
+                    >
+                        ${construirPaquetesHTMLSalida(paquetesAsignados)}
+                    </div>
+                </div>
+
+                <!-- Paquetes disponibles -->
+                <div class="bg-gray-50 border-2 border-gray-300 rounded-lg p-3">
+                    <div class="font-semibold text-gray-900 mb-2">📋 Paquetes Disponibles</div>
+                    <div
+                        class="paquetes-zona-salida drop-zone"
+                        data-zona="disponibles"
+                        style="min-height: 400px; border: 2px dashed #6b7280; border-radius: 8px; padding: 8px;"
+                    >
+                        ${construirPaquetesHTMLSalida(paquetesDisponibles)}
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+/* ===================== Construir HTML paquetes salida ===================== */
+function construirPaquetesHTMLSalida(paquetes) {
+    if (!paquetes || paquetes.length === 0) {
+        return '<div class="text-gray-400 text-sm text-center py-4">Sin paquetes</div>';
+    }
+
+    return paquetes
+        .map(
+            (paquete) => `
+        <div
+            class="paquete-item-salida bg-white border border-gray-300 rounded p-2 mb-2 cursor-move hover:shadow-md transition-shadow"
+            draggable="true"
+            data-paquete-id="${paquete.id}"
+        >
+            <div class="flex items-center justify-between text-xs">
+                <span class="font-medium">📦 Paquete #${paquete.id}</span>
+                <span class="text-gray-600">${parseFloat(paquete.peso || 0).toFixed(2)} kg</span>
+            </div>
+            <div class="text-xs text-gray-500 mt-1">
+                <div>Planilla: ${paquete.planilla?.codigo || paquete.planilla_id}</div>
+                <div>Obra: ${paquete.planilla?.obra?.obra || "N/A"}</div>
+                ${paquete.planilla?.obra?.cod_obra ? `<div>Código: ${paquete.planilla.obra.cod_obra}</div>` : ""}
+            </div>
+        </div>
+    `
+        )
+        .join("");
+}
+
+/* ===================== Inicializar drag and drop salida ===================== */
+function inicializarDragAndDropSalida() {
+    let draggedElement = null;
+
+    // Eventos de drag para los paquetes
+    document.querySelectorAll(".paquete-item-salida").forEach((item) => {
+        item.addEventListener("dragstart", (e) => {
+            draggedElement = item;
+            item.style.opacity = "0.5";
+        });
+
+        item.addEventListener("dragend", (e) => {
+            item.style.opacity = "1";
+            draggedElement = null;
+        });
+    });
+
+    // Eventos de drop para las zonas
+    document.querySelectorAll(".drop-zone").forEach((zone) => {
+        zone.addEventListener("dragover", (e) => {
+            e.preventDefault();
+            const zonaType = zone.dataset.zona;
+            zone.style.backgroundColor = zonaType === "asignados" ? "#d1fae5" : "#e0f2fe";
+        });
+
+        zone.addEventListener("dragleave", (e) => {
+            zone.style.backgroundColor = "";
+        });
+
+        zone.addEventListener("drop", (e) => {
+            e.preventDefault();
+            zone.style.backgroundColor = "";
+
+            if (draggedElement) {
+                // Remover placeholder si existe
+                const placeholder = zone.querySelector(".text-gray-400");
+                if (placeholder) placeholder.remove();
+
+                // Agregar elemento a la nueva zona
+                zone.appendChild(draggedElement);
+
+                // Actualizar totales
+                actualizarTotalesSalida();
+            }
+        });
+    });
+}
+
+/* ===================== Actualizar totales salida ===================== */
+function actualizarTotalesSalida() {
+    const zonaAsignados = document.querySelector('[data-zona="asignados"]');
+    const paquetes = zonaAsignados?.querySelectorAll(".paquete-item-salida");
+
+    let totalKg = 0;
+    paquetes?.forEach((p) => {
+        const pesoText = p.querySelector(".text-gray-600")?.textContent;
+        const peso = parseFloat(pesoText) || 0;
+        totalKg += peso;
+    });
+
+    const badge = document.getElementById("peso-asignados");
+    if (badge) {
+        badge.textContent = `${totalKg.toFixed(2)} kg`;
+    }
+}
+
+/* ===================== Recolectar paquetes salida ===================== */
+function recolectarPaquetesSalida() {
+    const zonaAsignados = document.querySelector('[data-zona="asignados"]');
+    const paquetesAsignados = Array.from(
+        zonaAsignados?.querySelectorAll(".paquete-item-salida") || []
+    ).map((item) => parseInt(item.dataset.paqueteId));
+
+    return {
+        paquetes_ids: paquetesAsignados,
+    };
+}
+
+/* ===================== Guardar paquetes salida ===================== */
+async function guardarPaquetesSalida(salidaId, data, calendar) {
     try {
         const res = await fetch(
-            window.AppSalidas?.routes?.crearSalidaDesdeCalendario,
+            window.AppSalidas?.routes?.guardarPaquetesSalida,
             {
                 method: "POST",
                 headers: {
@@ -124,69 +393,51 @@ async function crearSalida(planillasIds, calendar) {
                     "X-CSRF-TOKEN": window.AppSalidas?.csrf,
                 },
                 body: JSON.stringify({
-                    planillas_ids: planillasIds,
-                    camion_id: null, // 🚚 Sin camión asignado
+                    salida_id: salidaId,
+                    paquetes_ids: data.paquetes_ids,
                 }),
             }
         );
 
-        const data = await res.json();
-        await Swal.fire(
-            data.success ? "✅" : "⚠️",
-            data.message ||
-                (data.success
-                    ? "Salida creada sin camión"
-                    : "No se pudo crear la salida"),
-            data.success ? "success" : "warning"
-        );
+        const responseData = await res.json();
 
-        if (data.success && calendar) {
-            calendar.refetchEvents();
-            calendar.refetchResources?.();
+        if (responseData.success) {
+            await Swal.fire({
+                icon: "success",
+                title: "✅ Cambios Guardados",
+                text: "Los paquetes de la salida se han actualizado correctamente.",
+                timer: 2000,
+            });
+
+            if (calendar) {
+                calendar.refetchEvents();
+                calendar.refetchResources?.();
+            }
+        } else {
+            await Swal.fire(
+                "⚠️",
+                responseData.message || "No se pudieron guardar los cambios",
+                "warning"
+            );
         }
     } catch (err) {
         console.error(err);
-        Swal.fire("❌", "Hubo un problema al crear la salida.", "error");
+        Swal.fire("❌", "Error al guardar los paquetes", "error");
     }
 }
 
 /* ===================== Comentar salida ===================== */
 async function comentarSalida(salidaId, comentarioActual, calendar) {
-    const { value, isConfirmed } = await Swal.fire({
-        title: "✏️ Agregar comentario",
-        input: "textarea",
-        inputValue: comentarioActual || "",
-        inputPlaceholder: "Escribe aquí…",
-        showCancelButton: true,
-        confirmButtonText: "💾 Guardar",
-    });
-    if (!isConfirmed) return;
-
-    const url = (window.AppSalidas?.routes?.comentario || "").replace(
-        "__ID__",
-        salidaId
-    );
+    // Cerrar el menú contextual si está abierto
     try {
-        const res = await fetch(url, {
-            method: "PUT",
-            headers: {
-                "Content-Type": "application/json",
-                "X-CSRF-TOKEN": window.AppSalidas?.csrf,
-            },
-            body: JSON.stringify({ comentario: value }),
-        });
-        const data = await res.json();
-        await Swal.fire(
-            data.success ? "" : "⚠️",
-            data.message ||
-                (data.success ? "Comentario guardado" : "No se pudo guardar"),
-            data.success ? "success" : "warning"
-        );
-        if (data.success && calendar) calendar.refetchEvents();
-    } catch (err) {
-        console.error(err);
-        Swal.fire("", "Ocurrió un error al guardar", "error");
-    }
+        closeMenu();
+    } catch (_) {}
+
+    // Disparar evento de Livewire para abrir el modal
+    window.Livewire.dispatch('abrirComentario', { salidaId });
+
+    // Guardar referencia al calendario para actualización posterior
+    window._calendarRef = calendar;
 }
 
 /* ===================== Asignar código SAGE ===================== */
@@ -634,9 +885,30 @@ export function attachEventoContextMenu(info, calendar) {
         const p = ev.extendedProps || {};
         const tipo = p.tipo || "planilla";
 
+        // Construir header con información adicional para salidas
+        let headerInfo = "";
+        if (tipo === "salida") {
+            // Mostrar clientes
+            if (p.clientes && Array.isArray(p.clientes) && p.clientes.length > 0) {
+                const clientesTexto = p.clientes.map(c => c.nombre).filter(Boolean).join(", ");
+                if (clientesTexto) {
+                    headerInfo += `<br><span style="font-weight:400;color:#4b5563;font-size:11px">👤 ${clientesTexto}</span>`;
+                }
+            }
+            // Mostrar obras
+            if (p.obras && Array.isArray(p.obras) && p.obras.length > 0) {
+                headerInfo += `<br><span style="font-weight:400;color:#4b5563;font-size:11px">🏗️ `;
+                headerInfo += p.obras.map(o => {
+                    const codigo = o.codigo ? `(${o.codigo})` : '';
+                    return `${o.nombre} ${codigo}`;
+                }).join(', ');
+                headerInfo += `</span>`;
+            }
+        }
+
         const headerHtml = `
       <div style="padding:10px 12px; font-weight:600;">
-        ${ev.title ?? "Evento"}<br>
+        ${ev.title ?? "Evento"}${headerInfo}<br>
         <span style="font-weight:400;color:#6b7280;font-size:12px">
           ${new Date(ev.start).toLocaleString()} — ${new Date(
             ev.end
@@ -651,14 +923,9 @@ export function attachEventoContextMenu(info, calendar) {
             const planillasIds = extraerPlanillasIds(ev);
             items = [
                 {
-                    label: "Crear salida",
-                    icon: "🚚",
-                    onClick: () => crearSalida(planillasIds, calendar),
-                },
-                {
-                    label: "Ver Planillas de Agrupación",
-                    icon: "🧾",
-                    onClick: () => salidasCreate(planillasIds, calendar),
+                    label: "Gestionar Salidas y Paquetes",
+                    icon: "📦",
+                    onClick: () => window.location.href = `/salidas-ferralla/gestionar-salidas?planillas=${planillasIds.join(",")}`,
                 },
                 {
                     label: "Cambiar fechas de entrega",
@@ -667,23 +934,31 @@ export function attachEventoContextMenu(info, calendar) {
                 },
             ];
         } else if (tipo === "salida") {
+            // El ID del evento ahora es directamente el salida_id
+            const salidaId = p.salida_id || ev.id;
+
             items = [
                 {
                     label: "Abrir salida",
                     icon: "🧾",
-                    onClick: () => window.open(`/salidas/${ev.id}`, "_blank"),
+                    onClick: () => window.open(`/salidas-ferralla/${salidaId}`, "_blank"),
+                },
+                {
+                    label: "Gestionar paquetes",
+                    icon: "📦",
+                    onClick: () => gestionarPaquetesSalida(salidaId, calendar),
                 },
                 {
                     label: "Asignar código SAGE",
                     icon: "🏷️",
                     onClick: () =>
-                        asignarCodigoSalida(ev.id, p.codigo || "", calendar),
+                        asignarCodigoSalida(salidaId, p.codigo_sage || "", calendar),
                 },
                 {
                     label: "Agregar comentario",
                     icon: "✍️",
                     onClick: () =>
-                        comentarSalida(ev.id, p.comentario || "", calendar),
+                        comentarSalida(salidaId, p.comentario || "", calendar),
                 },
             ];
         } else {
@@ -805,3 +1080,42 @@ function hacerDraggableSwal(handleSelector = ".swal2-title", remember = false) {
 
     handle.addEventListener("pointerdown", onPointerDown);
 }
+
+/* ===================== Livewire Event Listeners ===================== */
+// Escuchar el evento comentarioGuardado de Livewire
+document.addEventListener('DOMContentLoaded', function() {
+    window.addEventListener('comentarioGuardado', (event) => {
+        const { salidaId, comentario } = event.detail;
+
+        // Obtener referencia al calendario
+        const calendar = window._calendarRef;
+
+        if (calendar) {
+            // Actualizar solo el evento específico sin recargar todo el calendario
+            const calendarEvent = calendar.getEventById(`salida-${salidaId}`);
+
+            if (calendarEvent) {
+                // Actualizar las propiedades extendidas del evento
+                calendarEvent.setExtendedProp('comentario', comentario);
+
+                // Si el evento tiene un tooltip, actualizarlo
+                if (calendarEvent._def && calendarEvent._def.extendedProps) {
+                    calendarEvent._def.extendedProps.comentario = comentario;
+                }
+            }
+
+            // Mostrar notificación de éxito
+            if (typeof Swal !== 'undefined') {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Comentario guardado',
+                    text: 'El comentario se ha guardado correctamente',
+                    timer: 2000,
+                    showConfirmButton: false,
+                    toast: true,
+                    position: 'top-end'
+                });
+            }
+        }
+    });
+});

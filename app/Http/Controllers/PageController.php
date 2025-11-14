@@ -63,16 +63,28 @@ class PageController extends Controller
             return view('dashboard', compact('items', 'esOperario', 'esTransportista', 'esOficina'));
         }
 
-        // 🔧 Caso 5: HPR / HPR Servicios + Operario → visibilidad en dashboard
+        // 🔧 Caso 5: HPR / HPR Servicios + Operario → secciones del departamento "Operarios"
         if (in_array($empresaId, [$empresaHPRId, $empresaServiciosId]) && $esOperario) {
-            $prefijosOperarioDashboard = config('acceso.prefijos_operario_dashboard', []);
-            $items = $this->mapSecciones(
-                $secciones->filter(
-                    fn($s) => collect($prefijosOperarioDashboard)->contains(
-                        fn($prefijo) => $s->ruta === $prefijo || str_starts_with($s->ruta, $prefijo)
+            // Buscar el departamento "Operarios" dinámicamente
+            $departamentoOperarios = \App\Models\Departamento::whereRaw("LOWER(nombre) = ?", ['operarios'])->first();
+
+            if ($departamentoOperarios) {
+                // Obtener las secciones asignadas al departamento "Operarios"
+                $seccionesOperarios = $departamentoOperarios->secciones()->pluck('secciones.id')->toArray();
+                $items = $this->mapSecciones(
+                    $secciones->filter(fn($s) => in_array($s->id, $seccionesOperarios))
+                );
+            } else {
+                // Fallback: usar configuración antigua si no existe el departamento
+                $prefijosOperarioDashboard = config('acceso.prefijos_operario_dashboard', []);
+                $items = $this->mapSecciones(
+                    $secciones->filter(
+                        fn($s) => collect($prefijosOperarioDashboard)->contains(
+                            fn($prefijo) => $s->ruta === $prefijo || str_starts_with($s->ruta, $prefijo)
+                        )
                     )
-                )
-            );
+                );
+            }
 
             return view('dashboard', compact('items', 'esOperario', 'esTransportista', 'esOficina'));
         }
@@ -135,5 +147,69 @@ class PageController extends Controller
             ->exists();
 
         return $tienePermisoPorDept;
+    }
+
+    /**
+     * Sección de Producción
+     */
+    public function produccion()
+    {
+        return view('secciones.produccion');
+    }
+
+    /**
+     * Sección de Inventario
+     */
+    public function inventario()
+    {
+        return view('secciones.inventario');
+    }
+
+    /**
+     * Sección de Comercial
+     */
+    public function comercial()
+    {
+        return view('secciones.comercial');
+    }
+
+    /**
+     * Sección de Compras
+     */
+    public function compras()
+    {
+        return view('secciones.compras');
+    }
+
+    /**
+     * Sección de Recursos Humanos
+     */
+    public function recursosHumanos()
+    {
+        return view('secciones.recursos-humanos');
+    }
+
+    /**
+     * Sección de Sistema
+     */
+    public function sistema()
+    {
+        return view('secciones.sistema');
+    }
+
+    /**
+     * Sección de Planificación
+     */
+    public function planificacionSeccion()
+    {
+        return view('secciones.planificacion');
+    }
+
+    /**
+     * Sección de Logística
+     */
+    public function logistica()
+    {
+        return view('secciones.logistica');
     }
 }

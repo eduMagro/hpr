@@ -176,6 +176,11 @@ class PlanillaController extends Controller
             $sortBy = 'fecha_estimada_entrega'; // Fallback seguro
         }
 
+        // Mapear fecha_importacion a created_at (la columna real en la BD)
+        if ($sortBy === 'fecha_importacion') {
+            $sortBy = 'created_at';
+        }
+
         $order = strtolower($order) === 'asc' ? 'asc' : 'desc';
 
         return $query->orderBy($sortBy, $order);
@@ -333,76 +338,31 @@ class PlanillaController extends Controller
     //------------------------------------------------------------------------------------ INDEX()
     public function index(Request $request)
     {
+        // Retornar vista Livewire
+        return view('planillas.index');
+    }
 
-        $user = auth()->user();
-        $esAdmin = $user->esAdminDepartamento()
-            || $user->esProduccionDepartamento(); // ⬅️ nuevo helper
+    /**
+     * Marca una planilla como revisada
+     */
+    public function marcarRevisada(Request $request, Planilla $planilla)
+    {
+        $planilla->update([
+            'revisada' => true,
+            'revisada_por_id' => auth()->id(),
+            'revisada_at' => now(),
+        ]);
 
-        try {
-            // 1️⃣ Iniciar la consulta base con relaciones
-            $query = Planilla::with(['user', 'elementos', 'cliente', 'obra', 'revisor']);
-            // Filtro “solo mis planillas” salvo admins
-            if (! $esAdmin) {
-                $query->where('users_id', $user->id);    // Ajusta el nombre de columna
-            }
-
-            $query = $this->aplicarFiltros($query, $request);
-            $query = $this->aplicarOrdenamiento($query, $request);
-
-
-            $totalPesoFiltrado = (clone $query)->sum('peso_total');
-            // 3️⃣ Definir columnas ordenables para la vista (cabecera de la tabla)
-            $ordenables = [
-                'codigo' => $this->getOrdenamiento('codigo', 'Código'),
-                'codigo_cliente' => $this->getOrdenamiento('codigo_cliente', 'Código Cliente'),
-                'cliente' => $this->getOrdenamiento('cliente', 'Cliente'),
-                'cod_obra' => $this->getOrdenamiento('cod_obra', 'Código Obra'),
-                'nom_obra' => $this->getOrdenamiento('nom_obra', 'Obra'),
-                'seccion' => $this->getOrdenamiento('seccion', 'Sección'),
-                'descripcion' => $this->getOrdenamiento('descripcion', 'Descripción'),
-                'ensamblado' => $this->getOrdenamiento('ensamblado', 'Ensamblado'),
-                'comentario' => $this->getOrdenamiento('comentario', 'Comentario'),
-                'peso_fabricado' => $this->getOrdenamiento('peso_fabricado', 'Peso Fabricado'),
-                'peso_total' => $this->getOrdenamiento('peso_total', 'Peso Total'),
-                'estado' => $this->getOrdenamiento('estado', 'Estado'),
-                'fecha_inicio' => $this->getOrdenamiento('fecha_inicio', 'Fecha Inicio'),
-                'fecha_finalizacion' => $this->getOrdenamiento('fecha_finalizacion', 'Fecha Finalización'),
-                'fecha_importacion' => $this->getOrdenamiento('fecha_importacion', 'Fecha Importación'),
-                'fecha_estimada_entrega' => $this->getOrdenamiento('fecha_estimada_entrega', 'Fecha Entrega'), // <- ✅ corregido
-                'nombre_completo' => $this->getOrdenamiento('nombre_completo', 'Usuario'),
-                'revisada' => $this->getOrdenamiento('revisada', 'Revisada'),
-            ];
-
-
-            // 6️⃣ Aplicar paginación y mantener filtros al cambiar de página
-            $perPage = $request->input('per_page', 10);
-            $planillas = $query->paginate($perPage)->appends($request->except('page'));
-
-            // 7️⃣ Cargar suma de pesos fabricados por planilla
-            $planillas->loadSum([
-                'elementos as suma_peso_completados' => function ($query) {
-                    $query->where('estado', 'fabricado');
-                }
-            ], 'peso');
-
-            // 🔟 Obtener texto de filtros aplicados para mostrar en la vista
-            $filtrosActivos = $this->filtrosActivos($request);
-            // En tu controlador
-            $clientes = Cliente::select('id', 'codigo', 'empresa')->get();
-            $obras = Obra::select('id', 'cod_obra', 'obra')->get();
-            // ✅ Retornar la vista con todos los datos necesarios
-            return view('planillas.index', compact(
-                'planillas',
-                'clientes',
-                'obras',
-                'ordenables',
-                'filtrosActivos',
-                'totalPesoFiltrado',
-            ));
-        } catch (Exception $e) {
-            // ⚠️ Si algo falla, redirigir con mensaje de error
-            return redirect()->back()->with('error', 'Ocurrió un error: ' . $e->getMessage());
+        if ($request->expectsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Planilla marcada como revisada correctamente',
+                'revisada_por' => auth()->user()->name,
+                'revisada_at' => now()->format('d/m/Y H:i'),
+            ]);
         }
+
+        return redirect()->back()->with('success', 'Planilla marcada como revisada correctamente');
     }
 
     //------------------------------------------------------------------------------------ SHOW()
@@ -567,16 +527,76 @@ class PlanillaController extends Controller
             $resultado = $importService->importar($file, fechaAprobacion: $fechaAprobacion, importId: $importId);
 
             if ($request->ajax()) {
-                return response()->json([
+                // Preparar respuesta detallada con información de errores
+                $responseData = [
                     'success' => $resultado->esExitoso(),
                     'message' => $resultado->mensaje(),
-                ], $resultado->esExitoso() ? 200 : 422);
+                    'errors' => [],
+                    'warnings' => [],
+                    'statistics' => [
+                        'exitosas' => 0,
+                        'fallidas' => 0,
+                        'elementos_creados' => 0,
+                        'etiquetas_creadas' => 0,
+                    ],
+                    'nombre_archivo' => $nombreArchivo
+                ];
+
+                // Usar los métodos getter de ImportResult
+                $exitosas = $resultado->exitosas();
+                $fallidas = $resultado->fallidas();
+                $advertencias = $resultado->advertencias();
+                $estadisticas = $resultado->estadisticas();
+
+                // Si hubo fallos, incluir detalles completos
+                if (!empty($fallidas)) {
+                    $responseData['errors'] = array_map(function ($fallida) {
+                        return [
+                            'codigo' => is_array($fallida) ? ($fallida['codigo'] ?? 'Desconocido') : 'Desconocido',
+                            'error' => is_array($fallida) ? ($fallida['error'] ?? 'Error no especificado') : $fallida
+                        ];
+                    }, $fallidas);
+                }
+
+                // Incluir advertencias si las hay
+                if (!empty($advertencias)) {
+                    $responseData['warnings'] = $advertencias;
+                }
+
+                // Incluir estadísticas
+                $responseData['statistics'] = [
+                    'exitosas' => is_array($exitosas) ? count($exitosas) : 0,
+                    'fallidas' => is_array($fallidas) ? count($fallidas) : 0,
+                    'elementos_creados' => isset($estadisticas['elementos_creados']) ? $estadisticas['elementos_creados'] : 0,
+                    'etiquetas_creadas' => isset($estadisticas['etiquetas_creadas']) ? $estadisticas['etiquetas_creadas'] : 0,
+                ];
+
+                // Log para debug
+                Log::info('Import response data:', [
+                    'statistics' => $responseData['statistics'],
+                    'exitosas_array' => $exitosas,
+                    'estadisticas_raw' => $estadisticas
+                ]);
+
+                return response()->json($responseData, $resultado->esExitoso() ? 200 : 422);
             }
 
             // (opcional) camino de fallback para navegadores sin fetch
-            return $resultado->esExitoso()
-                ? redirect()->route('planillas.index')->with('success', $resultado->mensaje())
-                : back()->with('error', $resultado->mensaje())->with('nombre_archivo', $nombreArchivo);
+            if ($resultado->esExitoso()) {
+                $redirect = redirect()
+                    ->route('planillas.index')
+                    ->with('success', $resultado->mensaje())
+                    ->with('import_report', true)
+                    ->with('nombre_archivo', $nombreArchivo);
+
+                if ($resultado->tieneAdvertencias()) {
+                    $redirect->with('tiene_advertencias', true);
+                }
+
+                return $redirect;
+            }
+
+            return back()->with('error', $resultado->mensaje())->with('nombre_archivo', $nombreArchivo);
         } catch (\Throwable $e) {
             // ¡Muy útil en dev para ver el motivo del 500!
             ImportProgress::setError($request->input('import_id', 'n/a'), $e->getMessage());
@@ -585,6 +605,7 @@ class PlanillaController extends Controller
                 return response()->json([
                     'success' => false,
                     'message' => $e->getMessage(), // en prod puedes poner mensaje genérico
+                    'errors' => [['codigo' => 'SISTEMA', 'error' => $e->getMessage()]]
                 ], 500);
             }
 

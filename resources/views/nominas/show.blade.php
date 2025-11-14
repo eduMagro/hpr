@@ -11,7 +11,7 @@
                 {{ __('Tabla Nóminas') }}
             </a>
             <span class="mx-2">/</span>
-            {{ __('Nómina de ') }} <a href="{{ route('users.index', ['id' => $nomina->empleado_id ?? '#']) }}"
+            {{ __('Nómina de ') }} <a href="{{ route('users.show', $nomina->empleado_id ?? '#') }}"
                 class="text-blue-500 hover:underline">
                 {{ $nomina->empleado->name }}
             </a>
