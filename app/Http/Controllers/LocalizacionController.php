@@ -911,7 +911,7 @@ class LocalizacionController extends Controller
             ->get()
             ->map(function ($paquete) {
                 $loc = $paquete->localizacionPaquete;
-                
+
                 return [
                     'id'                => (int) $paquete->id,
                     'codigo'            => (string) $paquete->codigo,
@@ -972,5 +972,57 @@ class LocalizacionController extends Controller
             'paquetesConLocalizacion'   => $paquetesConLocalizacion,
             'ctx'                       => $ctx,
         ]);
+    }
+
+    //------------------------------------------------------------------------------------ UPDATE PAQUETE POSICION()
+    /**
+     * Actualiza la posición de un paquete en el mapa (arrastrar y soltar)
+     */
+    public function updatePaquetePosicion(Request $request, $paqueteId)
+    {
+        try {
+            // Validar los datos recibidos
+            $validated = $request->validate([
+                'x1' => 'required|integer|min:1',
+                'y1' => 'required|integer|min:1',
+                'x2' => 'required|integer|min:1',
+                'y2' => 'required|integer|min:1',
+            ]);
+
+            // Buscar la localización del paquete
+            $localizacionPaquete = LocalizacionPaquete::where('paquete_id', $paqueteId)->firstOrFail();
+
+            // Actualizar las coordenadas
+            $localizacionPaquete->update([
+                'x1' => $validated['x1'],
+                'y1' => $validated['y1'],
+                'x2' => $validated['x2'],
+                'y2' => $validated['y2'],
+            ]);
+
+            Log::info("✅ Paquete {$paqueteId} movido a ({$validated['x1']},{$validated['y1']}) - ({$validated['x2']},{$validated['y2']})");
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Posición del paquete actualizada correctamente',
+                'localizacion' => $localizacionPaquete
+            ]);
+
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Datos inválidos',
+                'errors' => $e->errors()
+            ], 422);
+
+        } catch (\Exception $e) {
+            Log::error("❌ Error actualizando posición del paquete {$paqueteId}: " . $e->getMessage());
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al actualizar la posición del paquete',
+                'error' => $e->getMessage()
+            ], 500);
+        }
     }
 }

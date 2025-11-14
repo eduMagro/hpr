@@ -526,6 +526,10 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
     Route::put('/localizaciones/{id}', [LocalizacionController::class, 'update'])
         ->name('localizaciones.update');
 
+    // API: Actualizar posición de paquete en el mapa
+    Route::put('/localizaciones/paquete/{paqueteId}', [LocalizacionController::class, 'updatePaquetePosicion'])
+        ->name('localizaciones.updatePaquetePosicion');
+
     // API: Eliminar localización
     Route::delete('/localizaciones/{id}', [LocalizacionController::class, 'destroy'])
         ->name('localizaciones.destroy');

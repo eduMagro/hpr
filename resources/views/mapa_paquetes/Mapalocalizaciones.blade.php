@@ -43,18 +43,21 @@
         </div>
 
         {{-- === GRID principal: Mapa + Panel lateral === --}}
-        <div class="flex gap-4 w-full h-[calc(100vh-190px)]">
+        <div class="flex gap-4 w-full" style="height: calc(100vh - 200px); max-height: calc(100vh - 200px);">
 
             {{-- COMPONENTE DE MAPA (nuevo) --}}
-            <x-mapa-component :ctx="$ctx" :localizaciones-zonas="$localizacionesZonas"
-                :localizaciones-maquinas="$localizacionesMaquinas" :paquetes-con-localizacion="$paquetesConLocalizacion" :dimensiones="$dimensiones"
-                :obra-actual-id="$obraActualId" :show-controls="false" :mostrarObra="false"
-                :show-scan-result="false" :ruta-paquete="route('paquetes.tamaño')" :ruta-guardar="route('localizaciones.storePaquete')"
-                height="" class='w-full h-full border-2 overflow-hidden' />
+            <div class="flex-1 overflow-hidden">
+                <x-mapa-component :ctx="$ctx" :localizaciones-zonas="$localizacionesZonas"
+                    :localizaciones-maquinas="$localizacionesMaquinas" :paquetes-con-localizacion="$paquetesConLocalizacion" :dimensiones="$dimensiones"
+                    :obra-actual-id="$obraActualId" :show-controls="false" :mostrarObra="false"
+                    :show-scan-result="false" :ruta-paquete="route('paquetes.tamaño')" :ruta-guardar="route('localizaciones.storePaquete')"
+                    :enable-drag-paquetes="true"
+                    height="100%" class='w-full h-full border-2 rounded-lg' />
+            </div>
 
             {{-- PANEL LATERAL: Lista de paquetes (igual que lo tenías) --}}
             <div
-                class="bg-white rounded-lg shadow-sm overflow-hidden flex flex-col w-full max-w-xl">
+                class="bg-white rounded-lg shadow-sm overflow-hidden flex flex-col w-full max-w-xl flex-shrink-0">
                 <div
                     class="bg-gradient-to-r from-blue-600 to-blue-700 text-white p-4">
                     <h2 class="text-lg font-bold">Paquetes Ubicados</h2>
@@ -63,10 +66,20 @@
                     </p>
                 </div>
 
-                <div class="p-3 border-b border-gray-200">
+                <div class="p-3 border-b border-gray-200 space-y-2">
                     <input type="text" id="search-paquetes"
-                        placeholder="Buscar por código o ubicación..."
+                        placeholder="Buscar por código..."
                         class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+
+                    <select id="filter-obra"
+                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white">
+                        <option value="">Todas las obras</option>
+                        @foreach($obras as $obra)
+                            <option value="{{ $obra->id }}" {{ $obra->id == $obraActualId ? 'selected' : '' }}>
+                                {{ $obra->obra }}
+                            </option>
+                        @endforeach
+                    </select>
                 </div>
 
                 <div class="flex-1 overflow-y-auto p-3" id="lista-paquetes">
@@ -290,6 +303,23 @@
                 });
 
                 // =====================
+                // FILTRO DE OBRAS
+                // =====================
+                const filterObra = document.getElementById('filter-obra');
+                if (filterObra) {
+                    filterObra.addEventListener('change', (e) => {
+                        const obraId = e.target.value;
+                        const url = new URL(window.location.href);
+                        if (obraId) {
+                            url.searchParams.set('obra', obraId);
+                        } else {
+                            url.searchParams.delete('obra');
+                        }
+                        window.location.href = url.toString();
+                    });
+                }
+
+                // =====================
                 // BUSCADOR DE PAQUETES
                 // =====================
                 const searchInput = document.getElementById('search-paquetes');
@@ -313,63 +343,161 @@
     @endpush
 
     <style>
-        /* Label del paquete (identificador), sólo visible en modo edición */
-        .paquete-label {
-            position: absolute;
-            top: -1.5rem;
-            left: 50%;
-            transform: translateX(-50%);
-            padding: 0.15rem 0.4rem;
-            font-size: 0.70rem;
-            font-weight: 600;
-            background: rgba(15, 23, 42, 0.92);
-            color: #fff;
-            border-radius: 9999px;
-            white-space: nowrap;
-            pointer-events: none;
-        }
+        /* Label del paquete - YA NO SE USA (quitado por petición del usuario) */
 
-        /* Toolbar flotante dentro del paquete */
+        /* Toolbar flotante debajo del paquete */
         .paquete-toolbar {
             position: absolute;
-            inset-inline-end: 0.15rem;
-            inset-block-start: 0.15rem;
+            top: calc(100% + 30px);
+            left: 50%;
+            transform: translateX(-50%);
             display: flex;
-            gap: 0.15rem;
+            flex-direction: row;
+            gap: 1rem;
             align-items: center;
-            z-index: 20;
+            justify-content: center;
+            z-index: 25;
+            background: rgba(15, 23, 42, 0.85);
+            padding: 0.35rem 0.5rem;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+            backdrop-filter: blur(8px);
         }
 
+        /* Botones de la toolbar */
         .paquete-toolbar button {
-            width: 20px;
-            height: 20px;
+            width: 18px;
+            height: 18px;
             border-radius: 9999px;
-            border: none;
+            border: 1.5px solid rgba(255, 255, 255, 0.2);
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            background: rgba(15, 23, 42, 0.9);
+            background: rgba(15, 23, 42, 0.95);
             cursor: pointer;
             padding: 0;
+            transition: all 0.2s ease;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+        }
+
+        /* Tablets y móviles */
+        @media (max-width: 768px) {
+            .paquete-toolbar button {
+                width: 22px;
+                height: 22px;
+            }
+
+            .paquete-toolbar {
+                gap: 1.25rem;
+                padding: 0.5rem 0.75rem;
+            }
+        }
+
+        .paquete-toolbar button:hover {
+            transform: scale(1.2);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+        }
+
+        .paquete-toolbar button:active {
+            transform: scale(1.05);
+        }
+
+        .paquete-toolbar button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: scale(1);
         }
 
         .paquete-toolbar button svg {
-            width: 12px;
-            height: 12px;
+            width: 10px;
+            height: 10px;
             stroke: #fff;
-            stroke-width: 2;
+            stroke-width: 2.5;
+        }
+
+        @media (max-width: 768px) {
+            .paquete-toolbar button svg {
+                width: 12px;
+                height: 12px;
+            }
         }
 
         .paquete-toolbar button span {
-            font-size: 0.7rem;
+            font-size: 0.6rem;
             color: #fff;
             line-height: 1;
+        }
+
+        /* Toolbar preview (botón de lápiz) - debajo del paquete igual que los otros */
+        .paquete-toolbar--preview {
+            position: absolute;
+            top: calc(100% + 30px);
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(15, 23, 42, 0.85);
+            padding: 0.35rem 0.5rem;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+            backdrop-filter: blur(8px);
+        }
+
+        /* Color amarillo/naranja para el botón de lápiz */
+        .paquete-toolbar--preview button {
+            background: rgba(251, 146, 60, 0.95) !important;
+            border-color: rgba(251, 146, 60, 0.3) !important;
+        }
+
+        .paquete-toolbar--preview button:hover {
+            background: rgba(251, 146, 60, 1) !important;
+            border-color: rgba(251, 146, 60, 0.5) !important;
+        }
+
+        /* Botones con colores específicos para modo edición */
+        /* Botón 1: Confirmar (verde) */
+        .paquete-toolbar--edit button:nth-child(1) {
+            background: rgba(34, 197, 94, 0.95);
+            border-color: rgba(34, 197, 94, 0.3);
+        }
+
+        .paquete-toolbar--edit button:nth-child(1):hover {
+            background: rgba(34, 197, 94, 1);
+            border-color: rgba(34, 197, 94, 0.5);
+        }
+
+        /* Botón 2: Cancelar (rojo) */
+        .paquete-toolbar--edit button:nth-child(2) {
+            background: rgba(239, 68, 68, 0.95);
+            border-color: rgba(239, 68, 68, 0.3);
+        }
+
+        .paquete-toolbar--edit button:nth-child(2):hover {
+            background: rgba(239, 68, 68, 1);
+            border-color: rgba(239, 68, 68, 0.5);
+        }
+
+        /* Botón 3: Rotar (azul) */
+        .paquete-toolbar--edit button:nth-child(3) {
+            background: rgba(59, 130, 246, 0.95);
+            border-color: rgba(59, 130, 246, 0.3);
+        }
+
+        .paquete-toolbar--edit button:nth-child(3):hover {
+            background: rgba(59, 130, 246, 1);
+            border-color: rgba(59, 130, 246, 0.5);
         }
 
         /* Modo edición: resaltamos el borde del paquete */
         .loc-paquete--editing {
             outline: 2px dashed #0ea5e9;
             outline-offset: 2px;
+            cursor: move !important;
+            z-index: 10;
+        }
+
+        /* Paquete al hacer hover (no en modo edición) */
+        .loc-paquete:not(.loc-paquete--editing):hover {
+            cursor: pointer;
+            opacity: 0.9;
         }
 
         /* Orientación por clases (ajusta a tu gusto) */
@@ -379,6 +507,100 @@
 
         .loc-paquete--orient-_ {
             /* por ejemplo, más ancho que alto */
+        }
+
+        /* Animación de spinner */
+        @keyframes spin {
+            from {
+                transform: rotate(0deg);
+            }
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .animate-spin {
+            animation: spin 1s linear infinite;
+        }
+
+        /* Cursor del mapa para indicar que se puede arrastrar */
+        #escenario-cuadricula {
+            cursor: grab;
+        }
+
+        #escenario-cuadricula:active {
+            cursor: grabbing;
+        }
+
+        /* Botones de Zoom - Fixed al contenedor del mapa */
+        #escenario-cuadricula {
+            position: relative;
+        }
+
+        .zoom-controls {
+            position: fixed;
+            display: flex;
+            flex-direction: row;
+            gap: 0;
+            z-index: 50;
+        }
+
+        .zoom-btn {
+            width: 18px;
+            height: 18px;
+            border: 1px solid rgba(156, 163, 175, 0.4);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(75, 85, 99, 0.9);
+            cursor: pointer;
+            padding: 0;
+            transition: all 0.2s ease;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+        }
+
+        .zoom-btn:hover {
+            background: rgba(107, 114, 128, 0.95);
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+        }
+
+        .zoom-btn:active {
+            transform: scale(0.95);
+        }
+
+        .zoom-btn svg {
+            width: 11px;
+            height: 11px;
+            stroke: #fff;
+        }
+
+        /* Botón izquierdo (zoom in) - Redondeado a la izquierda */
+        .zoom-btn-in {
+            border-radius: 4px 0 0 4px;
+            border-right: none;
+        }
+
+        /* Botón derecho (zoom out) - Redondeado a la derecha */
+        .zoom-btn-out {
+            border-radius: 0 4px 4px 0;
+        }
+
+        /* Responsive para móvil */
+        @media (max-width: 768px) {
+            .zoom-controls {
+                top: 0.5rem;
+                left: 0.5rem;
+            }
+
+            .zoom-btn {
+                width: 22px;
+                height: 22px;
+            }
+
+            .zoom-btn svg {
+                width: 13px;
+                height: 13px;
+            }
         }
     </style>
 

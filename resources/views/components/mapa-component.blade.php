@@ -12,6 +12,7 @@
     'showScanResult' => false, // panel de resultado del escaneo
     'mostrarObra' => false,
     'height' => '',
+    'enableDragPaquetes' => false, // habilitar arrastre de paquetes
 
     // Rutas para AJAX
     'rutaPaquete' => null, // route('paquetes.tamaño')
@@ -148,14 +149,30 @@
                         data-x1="{{ $paquete['x1'] }}"
                         data-y1="{{ $paquete['y1'] }}"
                         data-x2="{{ $paquete['x2'] }}"
-                        data-y2="{{ $paquete['y2'] }}" {{-- identificativo del paquete para mostrarlo sólo en edición --}}
+                        data-y2="{{ $paquete['y2'] }}"
                         data-identificador="{{ $paquete['codigo'] ?? $paquete['id'] }}"
                         {{-- orientación inicial: I = vertical, _ = horizontal --}}
                         data-orientacion="{{ $paquete['orientacion'] ?? 'I' }}">
-                        <span class="loc-label">{{ $paquete['codigo'] }}</span>
+                        {{-- Label quitado por petición del usuario --}}
                     </div>
                 @endforeach
 
+            </div>
+
+            {{-- Botones de Zoom --}}
+            <div id="zoom-controls" class="zoom-controls">
+                <button id="zoom-in-btn" type="button" title="Acercar zoom" class="zoom-btn zoom-btn-in">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                        <circle cx="11" cy="11" r="8"/>
+                        <path d="M11 8v6M8 11h6M21 21l-4.35-4.35"/>
+                    </svg>
+                </button>
+                <button id="zoom-out-btn" type="button" title="Alejar zoom" class="zoom-btn zoom-btn-out">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                        <circle cx="11" cy="11" r="8"/>
+                        <path d="M8 11h6M21 21l-4.35-4.35"/>
+                    </svg>
+                </button>
             </div>
 
         </div>
@@ -264,6 +281,35 @@
             function renderExistentes() {
                 const celdaPx = getCeldaPx();
                 grid.querySelectorAll('.loc-existente').forEach(el => {
+                    // No reposicionar paquetes que están en modo edición
+                    if (el.classList.contains('loc-paquete--editing')) {
+                        // Solo actualizar el tamaño basado en celdas, no la posición
+                        // Mantener left y top intactos
+                        const currentLeft = parseFloat(el.style.left) || 0;
+                        const currentTop = parseFloat(el.style.top) || 0;
+
+                        // Recalcular width y height si es necesario
+                        const {
+                            w,
+                            h
+                        } = realToViewRect(
+                            +el.dataset.x1, +el.dataset.y1,
+                            +el.dataset.x2, +el.dataset.y2
+                        );
+
+                        // Mantener la posición actual pero ajustar dimensiones proporcionalmente
+                        const oldCeldaPx = parseFloat(el.dataset.currentCeldaPx) || celdaPx;
+                        const scaleFactor = celdaPx / oldCeldaPx;
+
+                        el.style.left = (currentLeft * scaleFactor) + 'px';
+                        el.style.top = (currentTop * scaleFactor) + 'px';
+                        el.style.width = (parseFloat(el.style.width) * scaleFactor) + 'px';
+                        el.style.height = (parseFloat(el.style.height) * scaleFactor) + 'px';
+
+                        el.dataset.currentCeldaPx = celdaPx;
+                        return;
+                    }
+
                     const {
                         x,
                         y,
@@ -277,6 +323,7 @@
                     el.style.top = ((y - 1) * celdaPx) + 'px';
                     el.style.width = (w * celdaPx) + 'px';
                     el.style.height = (h * celdaPx) + 'px';
+                    el.dataset.currentCeldaPx = celdaPx;
                 });
             }
 
@@ -377,6 +424,121 @@
             }, {
                 passive: false // Necesario para poder usar event.preventDefault()
             });
+
+            // ==============================
+            //  Botones de Zoom (+/-)
+            // ==============================
+            const zoomInBtn = document.getElementById('zoom-in-btn');
+            const zoomOutBtn = document.getElementById('zoom-out-btn');
+
+            if (zoomInBtn) {
+                zoomInBtn.addEventListener('click', () => {
+                    // Acercar zoom
+                    zoomFactor *= (1 + ZOOM_STEP);
+                    if (zoomFactor > ZOOM_MAX) zoomFactor = ZOOM_MAX;
+                    ajustarTamCelda();
+                });
+            }
+
+            if (zoomOutBtn) {
+                zoomOutBtn.addEventListener('click', () => {
+                    // Alejar zoom
+                    zoomFactor *= (1 - ZOOM_STEP);
+                    if (zoomFactor < ZOOM_MIN) zoomFactor = ZOOM_MIN;
+                    ajustarTamCelda();
+                });
+            }
+
+            // Posicionar botones de zoom fixed respecto al mapa
+            function posicionarBotonesZoom() {
+                const zoomControls = document.getElementById('zoom-controls');
+                if (zoomControls && escenario) {
+                    const rect = escenario.getBoundingClientRect();
+                    zoomControls.style.top = `${rect.top + 8}px`;
+                    zoomControls.style.left = `${rect.left + 8}px`;
+                }
+            }
+
+            posicionarBotonesZoom();
+            window.addEventListener('resize', posicionarBotonesZoom);
+            window.addEventListener('scroll', posicionarBotonesZoom);
+
+            // ==============================
+            //  Pan/Drag para mover el mapa
+            // ==============================
+            let isPanning = false;
+            let panStartX = 0;
+            let panStartY = 0;
+            let panStartScrollLeft = 0;
+            let panStartScrollTop = 0;
+
+            escenario.addEventListener('mousedown', (e) => {
+                // No activar pan si se hace clic en un elemento interactivo
+                if (e.target.closest('.loc-existente') || e.target.closest('button')) {
+                    return;
+                }
+
+                isPanning = true;
+                panStartX = e.clientX;
+                panStartY = e.clientY;
+                panStartScrollLeft = escenario.scrollLeft;
+                panStartScrollTop = escenario.scrollTop;
+                escenario.style.cursor = 'grabbing';
+                e.preventDefault();
+            });
+
+            escenario.addEventListener('mousemove', (e) => {
+                if (!isPanning) return;
+
+                const deltaX = e.clientX - panStartX;
+                const deltaY = e.clientY - panStartY;
+
+                escenario.scrollLeft = panStartScrollLeft - deltaX;
+                escenario.scrollTop = panStartScrollTop - deltaY;
+            });
+
+            escenario.addEventListener('mouseup', () => {
+                if (isPanning) {
+                    isPanning = false;
+                    escenario.style.cursor = '';
+                }
+            });
+
+            escenario.addEventListener('mouseleave', () => {
+                if (isPanning) {
+                    isPanning = false;
+                    escenario.style.cursor = '';
+                }
+            });
+
+            // Touch support para móviles
+            let touchStartX = 0;
+            let touchStartY = 0;
+            let touchStartScrollLeft = 0;
+            let touchStartScrollTop = 0;
+
+            escenario.addEventListener('touchstart', (e) => {
+                if (e.target.closest('.loc-existente') || e.target.closest('button')) {
+                    return;
+                }
+
+                if (e.touches.length === 1) {
+                    touchStartX = e.touches[0].clientX;
+                    touchStartY = e.touches[0].clientY;
+                    touchStartScrollLeft = escenario.scrollLeft;
+                    touchStartScrollTop = escenario.scrollTop;
+                }
+            }, { passive: true });
+
+            escenario.addEventListener('touchmove', (e) => {
+                if (e.touches.length === 1) {
+                    const deltaX = e.touches[0].clientX - touchStartX;
+                    const deltaY = e.touches[0].clientY - touchStartY;
+
+                    escenario.scrollLeft = touchStartScrollLeft - deltaX;
+                    escenario.scrollTop = touchStartScrollTop - deltaY;
+                }
+            }, { passive: true });
 
 
             // ----------------- API para el panel lateral -----------------
@@ -1012,15 +1174,124 @@
                     </svg>
                 `;
 
-                btnConfirmar.addEventListener('click', (ev) => {
+                btnConfirmar.addEventListener('click', async (ev) => {
                     ev.stopPropagation();
-                    // Aquí confirmamos visualmente la posición
-                    // (si quieres guardar en backend, aquí puedes disparar un fetch/AJAX)
-                    // Borramos posición original porque ahora la nueva es la "buena"
-                    paquete.dataset.origLeft = paquete.style.left;
-                    paquete.dataset.origTop = paquete.style.top;
 
-                    salirDeEdicion(paquete, false);
+                    // Obtener el ID del paquete
+                    const paqueteId = paquete.dataset.paqueteId;
+                    if (!paqueteId) {
+                        alert('Error: No se encontró el ID del paquete');
+                        return;
+                    }
+
+                    // Convertir píxeles a coordenadas de celdas
+                    const celdaPx = getCeldaPx();
+                    const left = parseFloat(paquete.style.left) || 0;
+                    const top = parseFloat(paquete.style.top) || 0;
+                    const width = parseFloat(paquete.style.width) || celdaPx;
+                    const height = parseFloat(paquete.style.height) || celdaPx;
+
+                    // Coordenadas en la vista (1-indexed)
+                    const x1v = Math.round(left / celdaPx) + 1;
+                    const y1v = Math.round(top / celdaPx) + 1;
+                    const x2v = Math.round((left + width) / celdaPx);
+                    const y2v = Math.round((top + height) / celdaPx);
+
+                    // Convertir coordenadas de vista a coordenadas reales
+                    const p1 = mapViewToReal(x1v, y1v);
+                    const p2 = mapViewToReal(x2v, y2v);
+
+                    const x1r = Math.min(p1.x, p2.x);
+                    const y1r = Math.min(p1.y, p2.y);
+                    const x2r = Math.max(p1.x, p2.x);
+                    const y2r = Math.max(p1.y, p2.y);
+
+                    console.log('Guardando paquete:', {
+                        paqueteId,
+                        left,
+                        top,
+                        width,
+                        height,
+                        celdaPx,
+                        vista: {
+                            x1v,
+                            y1v,
+                            x2v,
+                            y2v
+                        },
+                        real: {
+                            x1r,
+                            y1r,
+                            x2r,
+                            y2r
+                        }
+                    });
+
+                    // Mostrar loading en el botón
+                    btnConfirmar.disabled = true;
+                    btnConfirmar.innerHTML = `
+                        <svg viewBox="0 0 24 24" fill="none" class="animate-spin">
+                            <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none" opacity="0.25"/>
+                            <path d="M12 2a10 10 0 0 1 10 10" stroke="currentColor" stroke-width="4" fill="none"/>
+                        </svg>
+                    `;
+
+                    try {
+                        // Enviar petición al servidor
+                        const response = await fetch(
+                            `/localizaciones/paquete/${paqueteId}`, {
+                                method: 'PUT',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'X-CSRF-TOKEN': document.querySelector(
+                                            'meta[name="csrf-token"]')
+                                        ?.content || '',
+                                    'Accept': 'application/json'
+                                },
+                                body: JSON.stringify({
+                                    x1: x1r,
+                                    y1: y1r,
+                                    x2: x2r,
+                                    y2: y2r
+                                })
+                            });
+
+                        const data = await response.json();
+
+                        if (!response.ok) {
+                            throw new Error(data.message ||
+                                'Error al guardar la posición');
+                        }
+
+                        // Actualizar los data attributes del paquete
+                        paquete.dataset.x1 = x1r;
+                        paquete.dataset.y1 = y1r;
+                        paquete.dataset.x2 = x2r;
+                        paquete.dataset.y2 = y2r;
+
+                        // Guardar la nueva posición como "original"
+                        paquete.dataset.origLeft = paquete.style.left;
+                        paquete.dataset.origTop = paquete.style.top;
+
+                        // Mostrar mensaje de éxito
+                        alert('✅ Posición guardada correctamente');
+
+                        // Salir del modo edición
+                        salirDeEdicion(paquete, false);
+
+                    } catch (error) {
+                        console.error('Error al guardar posición:', error);
+                        alert('❌ Error al guardar la posición: ' + error
+                            .message);
+
+                        // Restaurar el botón
+                        btnConfirmar.disabled = false;
+                        btnConfirmar.innerHTML = `
+                            <svg viewBox="0 0 24 24" fill="none">
+                                <path d="M5 13l4 4L19 7" />
+                            </svg>
+                        `;
+                    }
                 });
 
                 // 2) Botón cancelar (✖)
@@ -1222,6 +1493,395 @@
 
             // Llamamos a la inicialización de interacción de paquetes
             initPaqueteInteracciones();
+        </script>
+    @endif
+
+    {{-- Script de edición de paquetes (separado para poder usarlo sin showControls) --}}
+    @if ($enableDragPaquetes)
+        <script>
+            (() => {
+                const escenario = document.getElementById('escenario-cuadricula');
+                const grid = document.getElementById('cuadricula');
+
+                if (!escenario || !grid) return;
+
+                const ctx = @json($ctx);
+                const isVertical = !!ctx.estaGirado;
+                const W = ctx.columnasReales;
+                const H = ctx.filasReales;
+
+                function getCeldaPx() {
+                    const v = getComputedStyle(grid).getPropertyValue('--tam-celda').trim();
+                    const n = parseInt(v, 10);
+                    return Number.isFinite(n) && n > 0 ? n : 8;
+                }
+
+                function mapViewToReal(xv, yv) {
+                    if (isVertical) {
+                        return { x: xv, y: (H - yv + 1) };
+                    }
+                    return { x: yv, y: xv };
+                }
+
+                // ================================
+                //  MODO EDICIÓN DE PAQUETES
+                // ================================
+                let paqueteEnEdicion = null;
+                let dragState = null;
+
+                /**
+                 * Inicializa la interacción de clic/edición en todos los paquetes del mapa.
+                 */
+                function initPaqueteInteracciones() {
+                    const paquetes = grid.querySelectorAll('.loc-paquete');
+
+                    paquetes.forEach(paquete => {
+                        if (getComputedStyle(paquete).position === 'static') {
+                            paquete.style.position = 'absolute';
+                        }
+
+                        paquete.addEventListener('click', function(ev) {
+                            if (ev.target.closest('.paquete-toolbar')) {
+                                return;
+                            }
+
+                            if (this.classList.contains('loc-paquete--editing')) {
+                                return;
+                            }
+
+                            const yaTieneToolbarPreview = this.querySelector('.paquete-toolbar--preview');
+                            if (!yaTieneToolbarPreview) {
+                                crearToolbarPreview(this);
+                            }
+                        });
+                    });
+                }
+
+                function crearToolbarPreview(paquete) {
+                    if (paqueteEnEdicion && paqueteEnEdicion !== paquete) {
+                        salirDeEdicion(paqueteEnEdicion, true);
+                    }
+
+                    const toolbar = document.createElement('div');
+                    toolbar.className = 'paquete-toolbar paquete-toolbar--preview';
+
+                    const btnEditar = document.createElement('button');
+                    btnEditar.type = 'button';
+                    btnEditar.title = 'Mover paquete';
+
+                    btnEditar.innerHTML = `
+                        <svg viewBox="0 0 24 24" fill="none">
+                            <path d="M4 20h4l10.5-10.5-4-4L4 16v4z" stroke="currentColor" stroke-width="2"/>
+                            <path d="M14.5 5.5l4 4" stroke="currentColor" stroke-width="2"/>
+                        </svg>
+                    `;
+
+                    btnEditar.addEventListener('click', (ev) => {
+                        ev.stopPropagation();
+                        entrarEnEdicion(paquete);
+                    });
+
+                    toolbar.appendChild(btnEditar);
+                    paquete.appendChild(toolbar);
+                }
+
+                function entrarEnEdicion(paquete) {
+                    if (paqueteEnEdicion && paqueteEnEdicion !== paquete) {
+                        salirDeEdicion(paqueteEnEdicion, true);
+                    }
+
+                    paqueteEnEdicion = paquete;
+
+                    const previewToolbar = paquete.querySelector('.paquete-toolbar--preview');
+                    if (previewToolbar) {
+                        previewToolbar.remove();
+                    }
+
+                    paquete.classList.add('loc-paquete--editing');
+
+                    if (!paquete.dataset.origLeft) {
+                        paquete.dataset.origLeft = paquete.style.left || '0px';
+                        paquete.dataset.origTop = paquete.style.top || '0px';
+                        paquete.dataset.origWidth = paquete.style.width || '';
+                        paquete.dataset.origHeight = paquete.style.height || '';
+                    }
+
+                    // Label deshabilitado por petición del usuario
+                    // let label = paquete.querySelector('.paquete-label');
+                    // if (!label) {
+                    //     label = document.createElement('div');
+                    //     label.className = 'paquete-label';
+                    //     label.textContent = paquete.dataset.identificador || ('Paquete #' + (paquete.dataset.paqueteId ?? '?'));
+                    //     paquete.appendChild(label);
+                    // }
+
+                    const toolbar = document.createElement('div');
+                    toolbar.className = 'paquete-toolbar paquete-toolbar--edit';
+
+                    // Botón confirmar
+                    const btnConfirmar = document.createElement('button');
+                    btnConfirmar.type = 'button';
+                    btnConfirmar.title = 'Guardar nueva posición';
+                    btnConfirmar.innerHTML = `
+                        <svg viewBox="0 0 24 24" fill="none">
+                            <path d="M5 13l4 4L19 7" stroke="currentColor" stroke-width="2"/>
+                        </svg>
+                    `;
+
+                    btnConfirmar.addEventListener('click', async (ev) => {
+                        ev.stopPropagation();
+
+                        const paqueteId = paquete.dataset.paqueteId;
+                        if (!paqueteId) {
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Error',
+                                text: 'No se encontró el ID del paquete',
+                                confirmButtonColor: '#3b82f6'
+                            });
+                            return;
+                        }
+
+                        const celdaPx = getCeldaPx();
+                        const left = parseFloat(paquete.style.left) || 0;
+                        const top = parseFloat(paquete.style.top) || 0;
+                        const width = parseFloat(paquete.style.width) || celdaPx;
+                        const height = parseFloat(paquete.style.height) || celdaPx;
+
+                        const x1v = Math.round(left / celdaPx) + 1;
+                        const y1v = Math.round(top / celdaPx) + 1;
+                        const x2v = Math.round((left + width) / celdaPx);
+                        const y2v = Math.round((top + height) / celdaPx);
+
+                        const p1 = mapViewToReal(x1v, y1v);
+                        const p2 = mapViewToReal(x2v, y2v);
+
+                        const x1r = Math.min(p1.x, p2.x);
+                        const y1r = Math.min(p1.y, p2.y);
+                        const x2r = Math.max(p1.x, p2.x);
+                        const y2r = Math.max(p1.y, p2.y);
+
+                        btnConfirmar.disabled = true;
+                        btnConfirmar.innerHTML = `
+                            <svg viewBox="0 0 24 24" fill="none" class="animate-spin">
+                                <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none" opacity="0.25"/>
+                                <path d="M12 2a10 10 0 0 1 10 10" stroke="currentColor" stroke-width="4" fill="none"/>
+                            </svg>
+                        `;
+
+                        try {
+                            const response = await fetch(`/localizaciones/paquete/${paqueteId}`, {
+                                method: 'PUT',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '',
+                                    'Accept': 'application/json'
+                                },
+                                body: JSON.stringify({ x1: x1r, y1: y1r, x2: x2r, y2: y2r })
+                            });
+
+                            const data = await response.json();
+
+                            if (!response.ok) {
+                                throw new Error(data.message || 'Error al guardar la posición');
+                            }
+
+                            paquete.dataset.x1 = x1r;
+                            paquete.dataset.y1 = y1r;
+                            paquete.dataset.x2 = x2r;
+                            paquete.dataset.y2 = y2r;
+                            paquete.dataset.origLeft = paquete.style.left;
+                            paquete.dataset.origTop = paquete.style.top;
+
+                            Swal.fire({
+                                icon: 'success',
+                                title: '¡Guardado!',
+                                text: 'La posición del paquete se guardó correctamente',
+                                timer: 2000,
+                                showConfirmButton: false,
+                                toast: true,
+                                position: 'top-end'
+                            });
+                            salirDeEdicion(paquete, false);
+
+                        } catch (error) {
+                            console.error('Error al guardar posición:', error);
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Error al guardar',
+                                text: error.message || 'No se pudo guardar la posición del paquete',
+                                confirmButtonColor: '#ef4444'
+                            });
+
+                            btnConfirmar.disabled = false;
+                            btnConfirmar.innerHTML = `
+                                <svg viewBox="0 0 24 24" fill="none">
+                                    <path d="M5 13l4 4L19 7" stroke="currentColor" stroke-width="2"/>
+                                </svg>
+                            `;
+                        }
+                    });
+
+                    // Botón cancelar
+                    const btnCancelar = document.createElement('button');
+                    btnCancelar.type = 'button';
+                    btnCancelar.title = 'Cancelar cambios';
+                    btnCancelar.innerHTML = `
+                        <svg viewBox="0 0 24 24" fill="none">
+                            <path d="M6 6l12 12" stroke="currentColor" stroke-width="2"/>
+                            <path d="M18 6L6 18" stroke="currentColor" stroke-width="2"/>
+                        </svg>
+                    `;
+
+                    btnCancelar.addEventListener('click', (ev) => {
+                        ev.stopPropagation();
+                        paquete.style.left = paquete.dataset.origLeft || '0px';
+                        paquete.style.top = paquete.dataset.origTop || '0px';
+                        paquete.style.width = paquete.dataset.origWidth || '';
+                        paquete.style.height = paquete.dataset.origHeight || '';
+                        salirDeEdicion(paquete, true);
+                    });
+
+                    // Botón rotar
+                    const btnRotar = document.createElement('button');
+                    btnRotar.type = 'button';
+                    btnRotar.title = 'Rotar paquete 90°';
+                    btnRotar.innerHTML = `
+                        <svg viewBox="0 0 24 24" fill="none">
+                            <path d="M21 12a9 9 0 0 1-9 9m9-9a9 9 0 0 0-9-9m9 9h-4m-5 9a9 9 0 0 1-9-9m9 9v-4m-9-5a9 9 0 0 1 9-9m-9 9h4m5-9v4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                        </svg>
+                    `;
+
+                    btnRotar.addEventListener('click', (ev) => {
+                        ev.stopPropagation();
+
+                        const celdaPx = getCeldaPx();
+
+                        // Obtener dimensiones actuales en píxeles
+                        const widthPx = parseFloat(paquete.style.width) || 0;
+                        const heightPx = parseFloat(paquete.style.height) || 0;
+
+                        // Convertir a celdas (redondeando)
+                        const widthCeldas = Math.round(widthPx / celdaPx);
+                        const heightCeldas = Math.round(heightPx / celdaPx);
+
+                        // Intercambiar celdas
+                        const newWidthCeldas = heightCeldas;
+                        const newHeightCeldas = widthCeldas;
+
+                        // Convertir de vuelta a píxeles
+                        const newWidthPx = newWidthCeldas * celdaPx;
+                        const newHeightPx = newHeightCeldas * celdaPx;
+
+                        // Aplicar nuevas dimensiones
+                        paquete.style.width = `${newWidthPx}px`;
+                        paquete.style.height = `${newHeightPx}px`;
+
+                        // Actualizar data-attributes originales si existen
+                        if (paquete.dataset.origWidth && paquete.dataset.origHeight) {
+                            const tempOrig = paquete.dataset.origWidth;
+                            paquete.dataset.origWidth = paquete.dataset.origHeight;
+                            paquete.dataset.origHeight = tempOrig;
+                        }
+
+                        console.log('Rotación:', {
+                            antes: { widthCeldas, heightCeldas, widthPx, heightPx },
+                            despues: { newWidthCeldas, newHeightCeldas, newWidthPx, newHeightPx }
+                        });
+                    });
+
+                    toolbar.appendChild(btnConfirmar);
+                    toolbar.appendChild(btnCancelar);
+                    toolbar.appendChild(btnRotar);
+                    paquete.appendChild(toolbar);
+
+                    activarDragEnPaquete(paquete);
+                }
+
+                function salirDeEdicion(paquete, cancelar = false) {
+                    const label = paquete.querySelector('.paquete-label');
+                    if (label) label.remove();
+
+                    const toolbarEdit = paquete.querySelector('.paquete-toolbar--edit');
+                    if (toolbarEdit) toolbarEdit.remove();
+
+                    paquete.classList.remove('loc-paquete--editing');
+                    desactivarDragEnPaquete(paquete);
+
+                    const preview = paquete.querySelector('.paquete-toolbar--preview');
+                    if (preview) preview.remove();
+
+                    if (paqueteEnEdicion === paquete) {
+                        paqueteEnEdicion = null;
+                    }
+                }
+
+                function activarDragEnPaquete(paquete) {
+                    if (!paquete.classList.contains('loc-paquete--editing')) return;
+
+                    const onMouseDown = (ev) => {
+                        if (ev.target.closest('.paquete-toolbar')) return;
+                        ev.preventDefault();
+
+                        const gridRect = grid.getBoundingClientRect();
+                        const pkgRect = paquete.getBoundingClientRect();
+                        const offsetX = ev.clientX - pkgRect.left;
+                        const offsetY = ev.clientY - pkgRect.top;
+
+                        dragState = { offsetX, offsetY, gridRect };
+
+                        document.addEventListener('mousemove', onMouseMove);
+                        document.addEventListener('mouseup', onMouseUp);
+                    };
+
+                    const onMouseMove = (ev) => {
+                        if (!dragState) return;
+
+                        const xDentroGrid = ev.clientX - dragState.gridRect.left;
+                        const yDentroGrid = ev.clientY - dragState.gridRect.top;
+
+                        let nuevoLeft = xDentroGrid - dragState.offsetX;
+                        let nuevoTop = yDentroGrid - dragState.offsetY;
+
+                        nuevoLeft = Math.max(0, Math.min(nuevoLeft, dragState.gridRect.width - paquete.offsetWidth));
+                        nuevoTop = Math.max(0, Math.min(nuevoTop, dragState.gridRect.height - paquete.offsetHeight));
+
+                        paquete.style.left = `${nuevoLeft}px`;
+                        paquete.style.top = `${nuevoTop}px`;
+                    };
+
+                    const onMouseUp = () => {
+                        dragState = null;
+                        document.removeEventListener('mousemove', onMouseMove);
+                        document.removeEventListener('mouseup', onMouseUp);
+                    };
+
+                    paquete._onMouseDownEditar = onMouseDown;
+                    paquete._onMouseMoveEditar = onMouseMove;
+                    paquete._onMouseUpEditar = onMouseUp;
+
+                    paquete.addEventListener('mousedown', onMouseDown);
+                }
+
+                function desactivarDragEnPaquete(paquete) {
+                    if (paquete._onMouseDownEditar) {
+                        paquete.removeEventListener('mousedown', paquete._onMouseDownEditar);
+                        delete paquete._onMouseDownEditar;
+                    }
+                    if (paquete._onMouseMoveEditar) {
+                        document.removeEventListener('mousemove', paquete._onMouseMoveEditar);
+                        delete paquete._onMouseMoveEditar;
+                    }
+                    if (paquete._onMouseUpEditar) {
+                        document.removeEventListener('mouseup', paquete._onMouseUpEditar);
+                        delete paquete._onMouseUpEditar;
+                    }
+                    dragState = null;
+                }
+
+                // Inicializar la funcionalidad de drag
+                initPaqueteInteracciones();
+            })();
         </script>
     @endif
 @endpush
