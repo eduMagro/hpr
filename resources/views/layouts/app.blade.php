@@ -6,6 +6,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <meta name="google" content="notranslate">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
 
 
 
@@ -35,10 +38,10 @@
 
     <!-- Alpine.js ya está incluido en Livewire 3, NO cargar desde CDN -->
 
-    <!-- ✅ Librerías que no bloquean renderizado -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js" defer data-navigate-track="reload"></script>
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11" defer data-navigate-track="reload"></script>
-    <script src="https://cdn.jsdelivr.net/npm/qrcodejs/qrcode.min.js" defer data-navigate-track="reload"></script>
+    <!-- ✅ Librerías que no bloquean renderizado - Versionadas para evitar problemas de caché -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" defer data-navigate-track="reload"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.14.5/dist/sweetalert2.all.min.js" defer data-navigate-track="reload"></script>
+    <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js" defer data-navigate-track="reload"></script>
 
     <!-- ✅ FullCalendar (solo si es necesario en esta vista) -->
     @stack('calendar') {{-- así solo lo cargas si lo necesitas --}}

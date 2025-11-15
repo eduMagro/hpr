@@ -1,16 +1,6 @@
 <x-app-layout>
     <x-slot name="title">Entradas - {{ config('app.name') }}</x-slot>
 
-    @php
-        $menu = \App\Services\MenuService::getContextMenu('entradas');
-    @endphp
-    <x-navigation.context-menu
-        :items="$menu['items']"
-        :colorBase="$menu['config']['colorBase']"
-        :style="$menu['config']['style']"
-        :mobileLabel="$menu['config']['mobileLabel']"
-    />
-
     <div class="w-full p-4 sm:p-4">
         <x-tabla.filtros-aplicados :filtros="$filtrosActivos" />
         <div class="bg-white shadow rounded-lg overflow-x-auto">
