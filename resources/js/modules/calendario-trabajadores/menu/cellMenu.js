@@ -1,5 +1,7 @@
 import { openActionsMenu } from "../menu/baseMenu.js";
 import { crearFestivo } from "../dialogs/festivo.js";
+import { generarTurnosDialog } from "../dialogs/generarTurnos.js";
+import { DATA } from "../config.js";
 
 /** Copia eventos (no festivos) de un día a otro, manteniendo horas y recurso */
 async function copiarRegistrosDia({ fromISO, toISO, calendar }) {
@@ -94,7 +96,7 @@ async function copiarRegistrosDia({ fromISO, toISO, calendar }) {
     // o bien exponer un endpoint tipo POST /asignaciones-turno/copiar-dia { from, to }
 }
 
-export function openCellMenu(x, y, { fechaISO }, calendar, maquinas) {
+export function openCellMenu(x, y, { fechaISO, resourceId }, calendar, maquinas) {
     // helpers para fechas vecinas
     const prevISO = new Date(fechaISO);
     prevISO.setDate(prevISO.getDate() - 1);
@@ -103,9 +105,12 @@ export function openCellMenu(x, y, { fechaISO }, calendar, maquinas) {
     const prevStr = prevISO.toISOString().slice(0, 10);
     const nextStr = nextISO.toISOString().slice(0, 10);
 
-    openActionsMenu(x, y, {
-        headerHtml: `<div>Acciones para <b>${fechaISO}</b></div>`,
-        items: [
+    // Obtener el nombre de la máquina si tenemos resourceId
+    const maquinaNombre = resourceId
+        ? maquinas.find((m) => String(m.id) === String(resourceId))?.title || `Máquina ${resourceId}`
+        : "Seleccione una máquina";
+
+    const items = [
             {
                 icon: "📅",
                 label: "Crear festivo este día",
@@ -168,6 +173,62 @@ export function openCellMenu(x, y, { fechaISO }, calendar, maquinas) {
                         calendar,
                     }),
             },
-        ],
+            {
+                icon: "🔧",
+                label: resourceId
+                    ? `Generar turnos para ${maquinaNombre}`
+                    : "Generar turnos (seleccione una máquina)",
+                disabled: !resourceId,
+                onClick: async () => {
+                    if (!resourceId) {
+                        Swal.fire({
+                            icon: "warning",
+                            title: "Máquina no seleccionada",
+                            text: "Haz clic derecho sobre una máquina específica para generar turnos.",
+                        });
+                        return;
+                    }
+
+                    // Obtener trabajadores desde la configuración
+                    const { eventos } = DATA();
+
+                    // Extraer lista única de trabajadores desde los eventos
+                    const trabajadoresMap = new Map();
+                    eventos.forEach((ev) => {
+                        if (ev.extendedProps?.user_id && !ev.extendedProps?.es_festivo) {
+                            const userId = ev.extendedProps.user_id;
+                            if (!trabajadoresMap.has(userId)) {
+                                trabajadoresMap.set(userId, {
+                                    id: userId,
+                                    nombre_completo: ev.title,
+                                    maquina_id: ev.extendedProps.maquina_id || null,
+                                    turno: ev.extendedProps.turno || null,
+                                    categoria: {
+                                        nombre: ev.extendedProps.categoria_nombre || null,
+                                    },
+                                });
+                            }
+                        }
+                    });
+
+                    const trabajadores = Array.from(trabajadoresMap.values());
+
+                    const resultado = await generarTurnosDialog(
+                        fechaISO,
+                        resourceId,
+                        trabajadores
+                    );
+
+                    if (resultado) {
+                        // Refrescar el calendario para mostrar los nuevos turnos
+                        calendar.refetchEvents();
+                    }
+                },
+            },
+        ];
+
+    openActionsMenu(x, y, {
+        headerHtml: `<div>Acciones para <b>${fechaISO}</b></div>`,
+        items,
     });
 }

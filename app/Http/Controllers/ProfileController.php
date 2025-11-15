@@ -1150,4 +1150,126 @@ class ProfileController extends Controller
     {
         return response()->json($this->getResumenAsistencia($user));
     }
+
+    public function generarTurnosCalendario(Request $request)
+    {
+        $validated = $request->validate([
+            'user_id' => 'required|exists:users,id',
+            'maquina_id' => 'required|exists:maquinas,id',
+            'fecha_inicio' => 'required|date',
+            'alcance' => 'required|in:un_dia,resto_año',
+            'turno_inicio' => 'nullable|in:mañana,tarde',
+        ]);
+
+        $user = User::findOrFail($validated['user_id']);
+
+        // IDs de turnos
+        $turnoMañanaId = Turno::where('nombre', 'mañana')->value('id');
+        $turnoTardeId  = Turno::where('nombre', 'tarde')->value('id');
+        $turnoNocheId  = Turno::where('nombre', 'noche')->value('id');
+
+        // Determinar rango de fechas
+        $inicio = Carbon::parse($validated['fecha_inicio'])->startOfDay();
+        if ($validated['alcance'] === 'un_dia') {
+            $fin = $inicio->copy();
+        } else {
+            $fin = Carbon::parse($validated['fecha_inicio'])->endOfYear();
+        }
+
+        // Obtener festivos del rango
+        $festivosArray = Festivo::whereDate('fecha', '>=', $inicio->toDateString())
+            ->whereDate('fecha', '<=', $fin->toDateString())
+            ->pluck('fecha')
+            ->map(fn($f) => Carbon::parse($f)->toDateString())
+            ->all();
+
+        // Obtener días de vacaciones
+        $diasVacaciones = AsignacionTurno::where('user_id', $user->id)
+            ->where('estado', 'vacaciones')
+            ->pluck('fecha')
+            ->map(fn($f) => Carbon::parse($f)->toDateString())
+            ->all();
+
+        // Determinar turno inicial
+        if ($user->turno == 'diurno') {
+            $turnoInicial = $validated['turno_inicio'] ?? 'mañana';
+            if (!in_array($turnoInicial, ['mañana', 'tarde'])) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Debe seleccionar un turno válido para comenzar (mañana o tarde).'
+                ], 400);
+            }
+            $turnoAsignado = $turnoInicial === 'mañana' ? $turnoMañanaId : $turnoTardeId;
+        } elseif ($user->turno == 'nocturno') {
+            $turnoAsignado = $turnoNocheId;
+        } elseif ($user->turno == 'mañana') {
+            $turnoAsignado = $turnoMañanaId;
+        } else {
+            return response()->json([
+                'success' => false,
+                'message' => 'El usuario no tiene un turno asignado.'
+            ], 400);
+        }
+
+        $turnosCreados = 0;
+
+        for ($fecha = $inicio->copy(); $fecha->lte($fin); $fecha->addDay()) {
+            $fechaStr  = $fecha->toDateString();
+            $esViernes = $fecha->dayOfWeek === Carbon::FRIDAY;
+
+            // Saltar sábados, domingos, festivos y vacaciones
+            $esNoLaborable =
+                in_array($fecha->dayOfWeek, [Carbon::SATURDAY, Carbon::SUNDAY])
+                || in_array($fechaStr, $festivosArray, true)
+                || in_array($fechaStr, $diasVacaciones, true);
+
+            if ($esNoLaborable) {
+                // Mantener la rotación de viernes aunque se salte el día
+                if ($user->turno === 'diurno' && $esViernes) {
+                    $turnoAsignado = ($turnoAsignado === $turnoMañanaId) ? $turnoTardeId : $turnoMañanaId;
+                }
+                continue;
+            }
+
+            $asignacion = AsignacionTurno::where('user_id', $user->id)
+                ->whereDate('fecha', $fechaStr)
+                ->first();
+
+            // No sobrescribir si ese día se marcó con turno 'festivo'
+            if ($asignacion && optional($asignacion->turno)->nombre === 'festivo') {
+                if ($user->turno === 'diurno' && $esViernes) {
+                    $turnoAsignado = ($turnoAsignado === $turnoMañanaId) ? $turnoTardeId : $turnoMañanaId;
+                }
+                continue;
+            }
+
+            if ($asignacion) {
+                $asignacion->update([
+                    'turno_id'   => $turnoAsignado,
+                    'maquina_id' => $validated['maquina_id'],
+                ]);
+            } else {
+                AsignacionTurno::create([
+                    'user_id'    => $user->id,
+                    'fecha'      => $fechaStr,
+                    'turno_id'   => $turnoAsignado,
+                    'maquina_id' => $validated['maquina_id'],
+                    'estado'     => 'activo',
+                ]);
+            }
+
+            $turnosCreados++;
+
+            // Rotación de viernes (para diurno)
+            if ($user->turno === 'diurno' && $esViernes) {
+                $turnoAsignado = ($turnoAsignado === $turnoMañanaId) ? $turnoTardeId : $turnoMañanaId;
+            }
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Turnos generados correctamente',
+            'turnos_creados' => $turnosCreados,
+        ]);
+    }
 }

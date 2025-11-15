@@ -51,7 +51,9 @@ export function openActionsMenu(x, y, { headerHtml = "", items = [] }) {
               (it, i) => `
         <button class="ctx-menu-item${
             it.danger ? " ctx-menu-danger" : ""
-        }" data-idx="${i}">
+        }${
+            it.disabled ? " ctx-menu-disabled" : ""
+        }" data-idx="${i}" ${it.disabled ? 'disabled' : ''}>
           ${it.icon ? `<span class="ctx-menu-icon">${it.icon}</span>` : ""}
           <span class="ctx-menu-label">${it.label}</span>
         </button>
@@ -63,11 +65,16 @@ export function openActionsMenu(x, y, { headerHtml = "", items = [] }) {
     const el = openMenuAt(x, y, html);
 
     el.querySelectorAll(".ctx-menu-item").forEach((btn) => {
+        const idx = parseInt(btn.dataset.idx, 10);
+        const item = items[idx];
+
         btn.addEventListener("click", async (e) => {
             e.preventDefault();
             e.stopPropagation();
 
-            const action = it.onClick; // guarda la acción
+            if (item.disabled) return; // No ejecutar si está deshabilitado
+
+            const action = item.onClick; // guarda la acción
             closeMenu(); // 🔒 ciérralo primero, siempre
 
             try {
@@ -80,7 +87,9 @@ export function openActionsMenu(x, y, { headerHtml = "", items = [] }) {
             "mouseup",
             (e) => {
                 e.stopPropagation();
-                closeMenu();
+                if (!item.disabled) {
+                    closeMenu();
+                }
             },
             { once: true }
         );

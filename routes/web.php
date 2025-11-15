@@ -208,6 +208,7 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
         return back()->with('success', 'Turnos generados correctamente.');
     })->name('generar-turnos');
     Route::post('/profile/generar-turnos/{user}', [ProfileController::class, 'generarTurnos'])->name('profile.generar.turnos');
+    Route::post('/profile/generar-turnos-calendario', [ProfileController::class, 'generarTurnosCalendario'])->name('profile.generar.turnos.calendario');
     Route::post('/festivos/editar', [VacacionesController::class, 'moverFestivo'])->name('festivos.mover');
     Route::put('/festivos/{festivo}/fecha', [FestivoController::class, 'actualizarFecha'])->name('festivos.actualizarFecha');
     Route::delete('/festivos/{festivo}', [FestivoController::class, 'destroy'])->name('festivos.eliminar');

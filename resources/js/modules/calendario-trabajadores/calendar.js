@@ -14,6 +14,9 @@ export function initCalendar(domEl) {
     const VISTA_KEY = "vistaObras";
     const FECHA_KEY = "fechaObras";
 
+    // Variable global para controlar si estamos arrastrando
+    let isDragging = false;
+
     const calendar = new FullCalendar.Calendar(domEl, {
         schedulerLicenseKey: "CC-Attribution-NonCommercial-NoDerivatives",
         locale: "es",
@@ -96,6 +99,38 @@ export function initCalendar(domEl) {
         events: eventos,
         resourceAreaColumns: [{ field: "title", headerContent: "Máquinas" }],
 
+        eventDragStart: (info) => {
+            // Marcar que estamos arrastrando
+            isDragging = true;
+
+            // Destruir tooltip del elemento que se está arrastrando
+            const el = info.el;
+            if (el._tippy) {
+                el._tippy.destroy();
+            }
+
+            // Deshabilitar todos los tooltips existentes
+            document.querySelectorAll('.fc-event').forEach(eventEl => {
+                if (eventEl._tippy) {
+                    eventEl._tippy.disable();
+                }
+            });
+        },
+
+        eventDragStop: (info) => {
+            // Marcar que terminamos de arrastrar
+            isDragging = false;
+
+            // Habilitar todos los tooltips después de un pequeño delay
+            setTimeout(() => {
+                document.querySelectorAll('.fc-event').forEach(eventEl => {
+                    if (eventEl._tippy) {
+                        eventEl._tippy.enable();
+                    }
+                });
+            }, 100);
+        },
+
         eventDrop: async (info) => {
             const e = info.event;
             const props = e.extendedProps || {};
@@ -160,6 +195,9 @@ export function initCalendar(domEl) {
                 }
                 if (typeof data.nuevo_obra_id !== "undefined")
                     e.setExtendedProp("obra_id", data.nuevo_obra_id);
+
+                // Forzar re-renderizado del evento para recrear el tooltip
+                calendar.refetchEvents();
             } catch (err) {
                 console.error(err);
                 Swal.fire(
@@ -174,9 +212,14 @@ export function initCalendar(domEl) {
             const e = info.event;
             const props = e.extendedProps || {};
 
+            // Destruir tooltip anterior si existe
+            if (info.el._tippy) {
+                info.el._tippy.destroy();
+            }
+
             if (props.foto && !props.es_festivo) {
                 const content = `<img src="${props.foto}" class="w-18 h-18 rounded-full object-cover ring-2 ring-blue-400 shadow-lg">`;
-                tippy(info.el, {
+                const tippyInstance = tippy(info.el, {
                     content,
                     allowHTML: true,
                     placement: "top",
@@ -185,7 +228,18 @@ export function initCalendar(domEl) {
                     arrow: false,
                     delay: [100, 0],
                     offset: [0, 10],
+                    // No mostrar tooltip si estamos arrastrando
+                    onShow() {
+                        if (isDragging) {
+                            return false;
+                        }
+                    },
                 });
+
+                // Si estamos arrastrando, deshabilitar inmediatamente
+                if (isDragging && tippyInstance) {
+                    tippyInstance.disable();
+                }
             }
 
             info.el.addEventListener("contextmenu", (ev) => {
@@ -253,10 +307,38 @@ export function initCalendar(domEl) {
             if (!dateEl) return;
             let fechaISO = dateEl.getAttribute("data-date") || "";
             if (fechaISO.length >= 10) fechaISO = fechaISO.slice(0, 10);
+
+            // Obtener el resourceId desde el elemento - intentar varios métodos
+            let resourceId = null;
+
+            // Método 1: Atributo data-resource-id
+            const resourceEl = ev.target.closest("[data-resource-id]");
+            if (resourceEl) {
+                resourceId = resourceEl.getAttribute("data-resource-id");
+            }
+
+            // Método 2: Buscar en la fila del timeline
+            if (!resourceId) {
+                const timelineRow = ev.target.closest("tr[data-resource-id]");
+                if (timelineRow) {
+                    resourceId = timelineRow.getAttribute("data-resource-id");
+                }
+            }
+
+            // Método 3: Buscar clase fc-timeline-lane
+            if (!resourceId) {
+                const lane = ev.target.closest(".fc-timeline-lane");
+                if (lane && lane.dataset.resourceId) {
+                    resourceId = lane.dataset.resourceId;
+                }
+            }
+
+            console.log("ResourceId detectado:", resourceId, "Fecha:", fechaISO);
+
             openCellMenu(
                 ev.clientX,
                 ev.clientY,
-                { fechaISO },
+                { fechaISO, resourceId },
                 calendar,
                 maquinas
             );

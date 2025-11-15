@@ -191,17 +191,20 @@ class MaquinaController extends Controller
             ->orderBy('posicion', 'asc')
             ->get();
 
-        // Encontrar las primeras dos posiciones con planillas revisadas
-        $posicion1 = null;
-        $posicion2 = null;
+        // Obtener posiciones del request o calcular automáticamente
+        $posicion1 = request('posicion_1');
+        $posicion2 = request('posicion_2');
 
-        foreach ($ordenesPlanillas as $orden) {
-            if ($orden->planilla && $orden->planilla->revisada) {
-                if (is_null($posicion1)) {
-                    $posicion1 = $orden->posicion;
-                } elseif (is_null($posicion2)) {
-                    $posicion2 = $orden->posicion;
-                    break; // Ya tenemos las dos posiciones
+        // Si no hay posiciones en el request, buscar las primeras dos posiciones con planillas revisadas
+        if (is_null($posicion1) && is_null($posicion2)) {
+            foreach ($ordenesPlanillas as $orden) {
+                if ($orden->planilla && $orden->planilla->revisada) {
+                    if (is_null($posicion1)) {
+                        $posicion1 = $orden->posicion;
+                    } elseif (is_null($posicion2)) {
+                        $posicion2 = $orden->posicion;
+                        break; // Ya tenemos las dos posiciones
+                    }
                 }
             }
         }

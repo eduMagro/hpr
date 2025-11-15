@@ -46,13 +46,13 @@
          GRID PRINCIPAL (3 COLUMNAS ADAPTATIVAS)
          ============================================================ -->
     <div class="max-w-screen-2xl mx-auto px-4">
-        <div class="grid grid-cols-12 gap-2">
+        <div id="grid-maquina" class="grid grid-cols-12 gap-2" style="opacity: 0; visibility: hidden; transition: opacity 0.3s ease-in, visibility 0s 0.3s;">
 
             <!-- ============================================================
                  COLUMNA IZQUIERDA - MATERIA PRIMA
                  ============================================================ -->
             <div x-show="showLeft" x-cloak
-                class="col-span-12 lg:col-span-3 bg-white border border-gray-200 shadow-lg rounded-lg self-start lg:sticky lg:top-2 overflow-hidden">
+                class="col-span-12 lg:col-span-2 bg-white border border-gray-200 shadow-lg rounded-lg self-start lg:sticky lg:top-2 overflow-hidden">
 
                 <div class="p-2 overflow-y-auto" style="max-height: calc(100vh - 60px);">
                     @foreach ($productosBaseCompatibles as $productoBase)
@@ -178,8 +178,8 @@
                  ============================================================ -->
             <div class="bg-white border border-gray-200 shadow-lg rounded-lg overflow-hidden"
                 :class="{
-                    'col-span-12 lg:col-span-6': showLeft && showRight,
-                    'col-span-12 lg:col-span-9': (showLeft && !showRight) || (!showLeft && showRight),
+                    'col-span-12 lg:col-span-8': showLeft && showRight,
+                    'col-span-12 lg:col-span-10': (showLeft && !showRight) || (!showLeft && showRight),
                     'col-span-12': !showLeft && !showRight
                 }">
 
@@ -203,7 +203,7 @@
                 </div>
 
                 <div class="flex items-center justify-center" style="min-height: calc(100vh - 70px);">
-                    <div class="grid grid-cols-1 gap-2 {{ count($planillasActivas) >= 2 ? 'md:grid-cols-2' : '' }} w-full">
+                    <div class="grid grid-cols-1 gap-2 {{ count($planillasActivas) >= 2 ? 'md:grid-cols-2 dos-planillas' : 'una-planilla' }} w-full">
                         @forelse($planillasActivas as $planilla)
                             @php
                                 $grupoPlanilla = $elementosPorPlanilla->get($planilla->id, collect());
@@ -261,55 +261,7 @@
                  COLUMNA DERECHA - GESTIÓN DE PAQUETES
                  ============================================================ -->
             <div x-show="showRight" x-cloak
-                class="col-span-12 lg:col-span-3 bg-white border border-gray-200 shadow-lg rounded-lg self-start lg:sticky lg:top-2 overflow-hidden">
-
-                {{-- Controles superiores --}}
-                <div class="p-3 bg-gray-50 border-b border-gray-200 space-y-3">
-                    {{-- Título de la máquina --}}
-                    <div class="text-center">
-                        <h2 class="font-semibold text-lg text-gray-800">
-                            <strong>{{ $maquina->nombre }}</strong>
-                        </h2>
-                    </div>
-
-                    {{-- Controles de vista --}}
-                    <div class="flex flex-col gap-2">
-                        <button @click="toggleLeft()"
-                            class="w-full px-3 py-2 rounded-md text-sm font-medium border transition-all duration-200"
-                            :class="showLeft ? 'bg-white border-gray-300 text-gray-700 shadow-sm' : 'bg-blue-500 border-blue-600 text-white hover:bg-blue-600'"
-                            title="Mostrar/Ocultar materia prima">
-                            <span class="flex items-center justify-center gap-1">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 19l-7-7 7-7m8 14l-7-7 7-7"/>
-                                </svg>
-                                <span x-text="showLeft ? 'Ocultar Materia Prima' : 'Mostrar Materia Prima'"></span>
-                            </span>
-                        </button>
-
-                        <button @click="solo()"
-                            class="w-full px-3 py-2 rounded-md text-sm font-medium bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 transition-all duration-200 shadow-sm"
-                            title="Ver solo planillas">
-                            <span class="flex items-center justify-center gap-1">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
-                                </svg>
-                                Solo Planillas
-                            </span>
-                        </button>
-
-                        <button @click="toggleRight()"
-                            class="w-full px-3 py-2 rounded-md text-sm font-medium border transition-all duration-200"
-                            :class="showRight ? 'bg-white border-gray-300 text-gray-700 shadow-sm' : 'bg-blue-500 border-blue-600 text-white hover:bg-blue-600'"
-                            title="Mostrar/Ocultar paquetes">
-                            <span class="flex items-center justify-center gap-1">
-                                <span x-text="showRight ? 'Ocultar Paquetes' : 'Mostrar Paquetes'"></span>
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 5l7 7-7 7M5 5l7 7-7 7"/>
-                                </svg>
-                            </span>
-                        </button>
-                    </div>
-                </div>
+                class="col-span-12 lg:col-span-2 bg-white border border-gray-200 shadow-lg rounded-lg self-start lg:sticky lg:top-2 overflow-hidden">
 
                 <div x-data="{ tabActivo: 'crear' }" class="w-full">
                     {{-- Tabs Header --}}
@@ -375,6 +327,11 @@
                     </div>
                 </div>
             </div>
+
+            {{-- Variables globales para JavaScript (dentro del grid para AJAX) --}}
+            <script>
+                window.elementosAgrupadosScript = @json($elementosAgrupadosScript ?? null);
+            </script>
 
         </div>
     </div>

@@ -108,6 +108,35 @@
         .qr-label {
             font-size: 6px !important;
         }
+
+        /* Escalar etiquetas cuando hay 2 planillas visibles */
+        .dos-planillas .etiqueta-card {
+            width: 500px;
+            height: 282px;
+            margin: 0 0.5rem 0.5rem 0.5rem;
+        }
+
+        /* Ajustar tamaño de fuentes en modo 2 planillas */
+        .dos-planillas .etiqueta-card h2 {
+            font-size: 0.95rem;
+            line-height: 1.2;
+        }
+
+        .dos-planillas .etiqueta-card h3 {
+            font-size: 0.95rem;
+            line-height: 1.2;
+        }
+
+        /* Ajustar botones en modo 2 planillas */
+        .dos-planillas .etiqueta-card button {
+            padding: 0.4rem 0.6rem;
+            font-size: 0.8rem;
+        }
+
+        .dos-planillas .etiqueta-card select {
+            padding: 0.4rem 0.5rem;
+            font-size: 0.8rem;
+        }
     }
 
     /* Impresión: usa medidas exactas en mm */

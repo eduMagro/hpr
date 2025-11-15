@@ -1246,7 +1246,7 @@ class ProduccionController extends Controller
             ->orderBy('tipo')
             ->get();
 
-        $elementos = Elemento::with(['planilla', 'planilla.obra', 'maquina'])
+        $elementos = Elemento::with(['planilla', 'planilla.obra', 'maquina', 'subetiquetas'])
             ->whereHas('planilla', fn($q) => $q->whereIn('estado', ['pendiente', 'fabricando']))
             ->where(fn($q) => $q->whereNull('estado')->orWhere('estado', '<>', 'fabricado'))
             ->where(function ($q) use ($maquinaIds) {
@@ -1417,8 +1417,6 @@ class ProduccionController extends Controller
 
                 if (!$planillaId) continue;
 
-                Log::info('Procesando orden', ['maquinaId' => $maquinaId, 'planillaId' => $planillaId, 'posicion' => $posicion, 'ordenId' => $ordenId]);
-
                 $clave = "{$planillaId}-{$maquinaId}";
 
                 try {
@@ -1436,85 +1434,116 @@ class ProduccionController extends Controller
                         continue;
                     }
 
-                    $grupoCount       = $grupo instanceof Collection ? $grupo->count() : (is_countable($grupo) ? count($grupo) : 0);
-
-                    // 🆕 Calcular duración basada en los tiempos reales de fabricación de los elementos de ESTA máquina
-                    $duracionSegundosReal = 0;
+                    // Sub-agrupar elementos por orden_planilla_id para crear eventos independientes
+                    $subGrupos = collect();
                     if ($grupo instanceof Collection) {
-                        $duracionSegundosReal = $grupo->sum(function($elemento) {
-                            return (float)($elemento->tiempo_fabricacion ?? 1200); // Default 20 min si no tiene
+                        $subGrupos = $grupo->groupBy(function($elem) {
+                            return $elem->orden_planilla_id ?? 'sin_orden';
                         });
                     }
-                    $duracionSegundos = max($duracionSegundosReal, 3600); // mínimo 1 hora
 
-                    // ⚠️ LÓGICA CORREGIDA:
-                    // - Si está FABRICANDO y tiene fecha_inicio → usar esa fecha y calcular duración hasta now()
-                    // - Si está PENDIENTE → el INICIO se actualiza a now() si ya pasó
-                    if ($planilla->estado === 'fabricando' && $planilla->fecha_inicio) {
-                        $fechaInicio = toCarbon($planilla->fecha_inicio);
-                        // Para fabricando, la duración es desde fecha_inicio hasta now()
-                        $duracionSegundos = max($fechaInicio->diffInSeconds(Carbon::now()), 3600);
-                    } else {
-                        // Para planillas pendientes, si la cola ya pasó, usar now()
-                        $fechaInicio = $inicioCola->gt(Carbon::now()) ? $inicioCola->copy() : Carbon::now();
+                    // Si no hay orden_planilla_id, tratar todo el grupo como un solo evento
+                    if ($subGrupos->isEmpty()) {
+                        $subGrupos = collect(['unico' => $grupo]);
                     }
 
-                    $tramos = $this->generarTramosLaborales($fechaInicio, $duracionSegundos, $festivosSet);
+                    // Procesar cada sub-grupo como un evento independiente
+                    foreach ($subGrupos as $ordenKey => $subGrupo) {
+                        $grupoCount = $subGrupo->count();
 
-                    if (empty($tramos)) {
-                        Log::warning('EVT H1: sin tramos', ['planillaId' => $planillaId, 'maquinaId' => $maquinaId]);
-                        continue;
-                    }
+                        // Separar elementos por estado dentro de este sub-grupo
+                        $elementosPendientes = collect();
+                        $elementosFabricandoOCompletados = collect();
 
-                    $ultimoTramo  = end($tramos);
-                    $fechaFinReal = $ultimoTramo['end'] instanceof Carbon
-                        ? $ultimoTramo['end']->copy()
-                        : Carbon::parse($ultimoTramo['end']);
-
-                    // Progreso
-                    $progreso = null;
-
-                    if ($primeraId !== null && $primeraId === $planilla->id) {
-
-                        if ($grupo instanceof Collection) {
-                            $completados = $grupo->where('estado', 'fabricado')->count();
-                            $total       = $grupo->count();
-                        } else {
-                            $completados = 0;
-                            $total       = $grupoCount; // ya calculado antes
+                        foreach ($subGrupo as $elem) {
+                            if ($elem->estado === 'pendiente') {
+                                $elementosPendientes->push($elem);
+                            } else {
+                                $elementosFabricandoOCompletados->push($elem);
+                            }
                         }
-                        $progreso = $total > 0 ? round(($completados / $total) * 100) : 0;
-                    }
 
-                    $appTz = config('app.timezone') ?: 'Europe/Madrid';
+                        // Calcular duración: tiempo_fabricacion del elemento + 20 min de amarrado por elemento
+                        $duracionSegundos = $subGrupo->sum(function($elemento) {
+                            $tiempoFabricacion = (float)($elemento->tiempo_fabricacion ?? 1200);
+                            $tiempoAmarrado = 1200; // 20 minutos por elemento
+                            return $tiempoFabricacion + $tiempoAmarrado;
+                        });
+                        $duracionSegundos = max($duracionSegundos, 3600); // mínimo 1 hora
 
-                    /* ...dentro del bucle de planillas... */
+                        // Buscar la fecha_inicio más antigua de las etiquetas fabricando/completadas
+                        $fechaInicioMasAntigua = null;
+                        if ($elementosFabricandoOCompletados->isNotEmpty()) {
+                            $fechasInicio = collect();
+                            foreach ($elementosFabricandoOCompletados as $elem) {
+                                $etiqueta = $elem->subetiquetas->first();
+                                if ($etiqueta && !empty($etiqueta->fecha_inicio)) {
+                                    $fechasInicio->push(toCarbon($etiqueta->fecha_inicio));
+                                }
+                            }
+                            $fechaInicioMasAntigua = $fechasInicio->min();
+                        }
 
-                    // Fin real ya lo tienes:
-                    $fechaFinReal = ($ultimoTramo['end'] instanceof Carbon ? $ultimoTramo['end'] : Carbon::parse($ultimoTramo['end']))
-                        ->copy()->setTimezone($appTz);
+                        // Determinar fecha de inicio y duración
+                        if ($fechaInicioMasAntigua) {
+                            // Si hay algún elemento fabricando/completado, usar su fecha de inicio
+                            $fechaInicio = $fechaInicioMasAntigua;
 
-                    Log::info('🔍 Fin programado calculado', [
-                        'planillaId' => $planillaId,
-                        'maquinaId' => $maquinaId,
-                        'elementos' => $grupo->pluck('codigo')->toArray(),
-                        'duracionSegundos' => $duracionSegundos,
-                        'finProgramado' => $fechaFinReal->format('d/m/Y H:i'),
-                    ]);
+                            // Duración = now() + tiempo de elementos pendientes + amarrado
+                            $duracionPendientes = $elementosPendientes->sum(function($elemento) {
+                                $tiempoFabricacion = (float)($elemento->tiempo_fabricacion ?? 1200);
+                                $tiempoAmarrado = 1200;
+                                return $tiempoFabricacion + $tiempoAmarrado;
+                            });
 
-                    // Fecha de entrega (ahora robusta)
-                    $fechaEntrega = $this->parseFechaEntregaFlexible($planilla->fecha_estimada_entrega, $appTz);
+                            // El evento se alarga hasta now() + tiempo pendiente
+                            $tiempoTranscurrido = $fechaInicio->diffInSeconds(Carbon::now());
+                            $duracionSegundos = $tiempoTranscurrido + $duracionPendientes;
+                            $duracionSegundos = max($duracionSegundos, 3600);
+                        } else {
+                            // Para sub-grupos completamente pendientes
+                            $fechaInicio = $inicioCola->gt(Carbon::now()) ? $inicioCola->copy() : Carbon::now();
+                        }
 
-                    // ⚠️ SISTEMA DE REVISIÓN: Si no está revisada → GRIS
-                    if (!$planilla->revisada) {
-                        $backgroundColor = '#9e9e9e'; // Gris para planillas sin revisar
-                    } else {
-                        // Semáforo (rojo si fin real supera entrega)
-                        $backgroundColor = ($fechaEntrega && $fechaFinReal->gt($fechaEntrega)) ? '#ef4444' : '#22c55e';
-                    }
+                        $tramos = $this->generarTramosLaborales($fechaInicio, $duracionSegundos, $festivosSet);
 
-                    // Eventos por tramo
-                    foreach ($tramos as $i => $t) {
+                        if (empty($tramos)) {
+                            Log::warning('EVT H1: sin tramos', ['planillaId' => $planillaId, 'maquinaId' => $maquinaId, 'ordenKey' => $ordenKey]);
+                            continue;
+                        }
+
+                        $ultimoTramo  = end($tramos);
+                        $fechaFinReal = $ultimoTramo['end'] instanceof Carbon
+                            ? $ultimoTramo['end']->copy()
+                            : Carbon::parse($ultimoTramo['end']);
+
+                        // Progreso (calculado por sub-grupo)
+                        $progreso = null;
+                        if ($primeraId !== null && $primeraId === $planilla->id) {
+                            $completados = $subGrupo->where('estado', 'fabricado')->count();
+                            $total = $subGrupo->count();
+                            $progreso = $total > 0 ? round(($completados / $total) * 100) : 0;
+                        }
+
+                        $appTz = config('app.timezone') ?: 'Europe/Madrid';
+
+                        // Fin real ya lo tienes:
+                        $fechaFinReal = ($ultimoTramo['end'] instanceof Carbon ? $ultimoTramo['end'] : Carbon::parse($ultimoTramo['end']))
+                            ->copy()->setTimezone($appTz);
+
+                        // Fecha de entrega (ahora robusta)
+                        $fechaEntrega = $this->parseFechaEntregaFlexible($planilla->fecha_estimada_entrega, $appTz);
+
+                        // ⚠️ SISTEMA DE REVISIÓN: Si no está revisada → GRIS
+                        if (!$planilla->revisada) {
+                            $backgroundColor = '#9e9e9e'; // Gris para planillas sin revisar
+                        } else {
+                            // Semáforo (rojo si fin real supera entrega)
+                            $backgroundColor = ($fechaEntrega && $fechaFinReal->gt($fechaEntrega)) ? '#ef4444' : '#22c55e';
+                        }
+
+                        // Eventos por tramo
+                        foreach ($tramos as $i => $t) {
                         $tStart = $t['start'] instanceof Carbon ? $t['start'] : Carbon::parse($t['start']);
                         $tEnd   = $t['end']   instanceof Carbon ? $t['end']   : Carbon::parse($t['end']);
 
@@ -1524,45 +1553,45 @@ class ProduccionController extends Controller
                             $tituloEvento = '⚠️ ' . $tituloEvento . ' (SIN REVISAR)';
                         }
 
-                        // ID único que incluye el ordenId para diferenciar múltiples apariciones
-                        $eventoId = 'planilla-' . $planilla->id . '-maq' . $maquinaId . '-seg' . ($i + 1);
-                        if (isset($ordenId) && $ordenId !== null) {
-                            $eventoId .= '-ord' . $ordenId;
-                        }
+                            // ID único que incluye el ordenKey y segmento
+                            $eventoId = 'planilla-' . $planilla->id . '-maq' . $maquinaId . '-orden' . $ordenKey . '-seg' . ($i + 1);
+                            if (isset($ordenId) && $ordenId !== null) {
+                                $eventoId .= '-ord' . $ordenId;
+                            }
 
-                        Log::info('Creando evento', ['eventoId' => $eventoId, 'planillaId' => $planilla->id, 'posicion' => $posicion, 'start' => $tStart->toDateTimeString(), 'end' => $tEnd->toDateTimeString()]);
+                            $planillasEventos->push([
+                                'id'              => $eventoId,
+                                'title'           => $tituloEvento,
+                                'codigo'          => $planilla->codigo_limpio ?? ('Planilla #' . $planilla->id),
+                                'start'           => $tStart->toIso8601String(),
+                                'end'             => $tEnd->toIso8601String(),
+                                'resourceId'      => $maquinaId,
+                                'backgroundColor' => $backgroundColor,
+                                'borderColor'     => !$planilla->revisada ? '#757575' : null,
+                                'classNames'      => !$planilla->revisada ? ['evento-sin-revisar'] : ['evento-revisado'],
+                                'extendedProps' => [
+                                    'obra'           => optional($planilla->obra)->obra ?? '—',
+                                    'cod_obra'       => optional($planilla->obra)->cod_obra ?? '—',
+                                    'cliente'        => optional($planilla->obra->cliente)->empresa ?? '—',
+                                    'cod_cliente'    => optional($planilla->obra->cliente)->codigo ?? '—',
+                                    'codigo_planilla' => $planilla->codigo_limpio ?? ('Planilla #' . $planilla->id),
+                                    'estado'         => $planilla->estado,
+                                    'duracion_horas' => round($duracionSegundos / 3600, 2),
+                                    'progreso'       => $progreso,
+                                    'fecha_entrega'  => $fechaEntrega?->format('d/m/Y H:i') ?? '—',
+                                    'fin_programado' => $fechaFinReal->format('d/m/Y H:i'),
+                                    'codigos_elementos' => $subGrupo->pluck('codigo')->values(),
+                                    'elementos_id'      => $subGrupo->pluck('id')->values(),
+                                    'revisada'          => $planilla->revisada,
+                                    'revisada_por'      => optional($planilla->revisor)->name,
+                                    'revisada_at'       => $planilla->revisada_at?->format('d/m/Y H:i'),
+                                ],
+                            ]);
+                        } // fin foreach tramos
 
-                        $planillasEventos->push([
-                            'id'              => $eventoId,
-                            'title'           => $tituloEvento,
-                            'codigo'          => $planilla->codigo_limpio ?? ('Planilla #' . $planilla->id),
-                            'start'           => $tStart->toIso8601String(),
-                            'end'             => $tEnd->toIso8601String(),
-                            'resourceId'      => $maquinaId,
-                            'backgroundColor' => $backgroundColor,
-                            'borderColor'     => !$planilla->revisada ? '#757575' : null, // Borde gris oscuro si no revisada
-                            'classNames'      => !$planilla->revisada ? ['evento-sin-revisar'] : ['evento-revisado'],
-                            'extendedProps' => [
-                                'obra'           => optional($planilla->obra)->obra ?? '—',
-                                'cod_obra'       => optional($planilla->obra)->cod_obra ?? '—',
-                                'cliente'        => optional($planilla->obra->cliente)->empresa ?? '—',
-                                'cod_cliente'    => optional($planilla->obra->cliente)->codigo ?? '—',
-                                'codigo_planilla' => $planilla->codigo_limpio ?? ('Planilla #' . $planilla->id),
-                                'estado'         => $planilla->estado,
-                                'duracion_horas' => round($duracionSegundos / 3600, 2),
-                                'progreso'       => $progreso,
-                                'fecha_entrega'  => $fechaEntrega?->format('d/m/Y H:i') ?? '—',
-                                'fin_programado' => $fechaFinReal->format('d/m/Y H:i'),
-                                'codigos_elementos' => $grupo->pluck('codigo')->values(),
-                                'elementos_id'      => $grupo->pluck('id')->values(),
-                                'revisada'          => $planilla->revisada, // Agregar info de revisión
-                                'revisada_por'      => optional($planilla->revisor)->name,
-                                'revisada_at'       => $planilla->revisada_at?->format('d/m/Y H:i'),
-                            ],
-
-                        ]);
-                        // dd($planillasAgrupadas);
-                    }
+                        // Actualizar inicioCola para el siguiente sub-grupo
+                        $inicioCola = $fechaFinReal->copy();
+                    } // fin foreach subGrupos
 
                     // Avanza cola
                     $inicioCola = $fechaFinReal->copy();

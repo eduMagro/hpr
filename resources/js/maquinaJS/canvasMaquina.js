@@ -777,7 +777,7 @@ function planMasonryOptimal(medidas, svgW, svgH, opts = {}) {
 // =======================
 // Función para renderizar un grupo SVG
 // =======================
-function renderizarGrupoSVG(grupo, gidx) {
+window.renderizarGrupoSVG = function renderizarGrupoSVG(grupo, gidx) {
         const groupId =
             grupo && grupo.etiqueta && grupo.etiqueta.id != null
                 ? grupo.etiqueta.id
@@ -1402,12 +1402,6 @@ document.addEventListener("DOMContentLoaded", function () {
     const grupos = window.elementosAgrupadosScript;
     if (!grupos) return;
 
-    // Ocultar todas las etiquetas antes de renderizar
-    document.querySelectorAll('.proceso').forEach(el => {
-        el.style.opacity = '0';
-        el.style.transition = 'opacity 0.3s ease-in';
-    });
-
     // Renderizar todos los SVG
     grupos.forEach(function (grupo, gidx) {
         renderizarGrupoSVG(grupo, gidx);
@@ -1415,11 +1409,22 @@ document.addEventListener("DOMContentLoaded", function () {
 
     // Mostrar todas las etiquetas con una animación suave después del renderizado
     requestAnimationFrame(() => {
-        setTimeout(() => {
-            document.querySelectorAll('.proceso').forEach(el => {
-                el.style.opacity = '1';
-            });
-        }, 100);
+        requestAnimationFrame(() => {
+            setTimeout(() => {
+                // 1. Mostrar el grid principal completo
+                const gridMaquina = document.getElementById('grid-maquina');
+                if (gridMaquina) {
+                    gridMaquina.style.opacity = '1';
+                    gridMaquina.style.visibility = 'visible';
+                    gridMaquina.style.transition = 'opacity 0.3s ease-in, visibility 0s 0s';
+                }
+
+                // 2. Mostrar las etiquetas
+                document.querySelectorAll('.proceso').forEach(el => {
+                    el.style.opacity = '1';
+                });
+            }, 150);
+        });
     });
 
     // =======================
@@ -1471,7 +1476,7 @@ document.addEventListener("DOMContentLoaded", function () {
 // =======================
 // Modal dividir elemento
 // =======================
-function abrirModalDividirElemento(elementoId) {
+window.abrirModalDividirElemento = function abrirModalDividirElemento(elementoId) {
     const modal = document.getElementById("modalDividirElemento");
     const input = document.getElementById("dividir_elemento_id");
     const form = document.getElementById("formDividirElemento");
@@ -1481,7 +1486,7 @@ function abrirModalDividirElemento(elementoId) {
         form.setAttribute("action", window.rutaDividirElemento);
     modal.classList.remove("hidden");
 }
-async function enviarDivision() {
+window.enviarDivision = async function enviarDivision() {
     const form = document.getElementById("formDividirElemento");
     const url = form.getAttribute("action") || window.rutaDividirElemento;
     const fd = new FormData(form);
