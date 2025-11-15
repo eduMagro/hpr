@@ -148,7 +148,7 @@
                     <span id="fullscreen-text" class="text-sm font-medium hidden md:inline">Expandir</span>
                 </button>
 
-                <div id="calendario" class="w-full"></div>
+                <div id="calendario" data-calendar-type="maquinas" class="w-full"></div>
             </div>
         </div>
 
@@ -836,8 +836,8 @@
                 line-height: 48px;
             }
         </style>
-        <script>
-            document.addEventListener('DOMContentLoaded', function() {
+        <script data-navigate-once>
+            function inicializarCalendarioMaquinas() {
                 const maquinas = @json($resources);
                 const planillas = @json($planillasEventos);
                 const cargaTurnoResumen = @json($cargaTurnoResumen);
@@ -859,7 +859,7 @@
 
                 // 🎯 Listener GLOBAL de mousemove para el indicador
                 document.addEventListener('mousemove', function(e) {
-                    if (mostrarIndicador) {
+                    if (mostrarIndicador && indicadorPosicion) {
                         indicadorPosicion.style.left = (e.clientX + 20) + 'px';
                         indicadorPosicion.style.top = (e.clientY - 20) + 'px';
                         indicadorPosicion.style.display = 'block';
@@ -959,8 +959,10 @@
                         try {
                             // Ocultar indicador al soltar
                             mostrarIndicador = false;
-                            indicadorPosicion.classList.add('hidden');
-                            indicadorPosicion.style.display = 'none';
+                            if (indicadorPosicion) {
+                                indicadorPosicion.classList.add('hidden');
+                                indicadorPosicion.style.display = 'none';
+                            }
 
                             const elementoDiv = document.querySelector(
                                 `.elemento-drag[data-elemento-id="${info.event.extendedProps.elementoId}"]`
@@ -1415,7 +1417,9 @@
                                 }
                                 posicion = i + 2;
                             }
-                            numeroPosicion.textContent = posicion;
+                            if (numeroPosicion) {
+                                numeroPosicion.textContent = posicion;
+                            }
                         }
                     },
 
@@ -1442,7 +1446,9 @@
                                     posicionDestino = i + 2;
                                 }
 
-                                numeroPosicion.textContent = posicionDestino;
+                                if (numeroPosicion) {
+                                    numeroPosicion.textContent = posicionDestino;
+                                }
                             }
                         }
                         return true; // Permitir el drop
@@ -1452,8 +1458,10 @@
                         eventoArrastrandose = null;
                         mostrarIndicador = false;
                         tooltipsDeshabilitados = false;
-                        indicadorPosicion.classList.add('hidden');
-                        indicadorPosicion.style.display = 'none';
+                        if (indicadorPosicion) {
+                            indicadorPosicion.classList.add('hidden');
+                            indicadorPosicion.style.display = 'none';
+                        }
 
                         // Limpiar tooltips duplicados que puedan haberse creado
                         document.querySelectorAll('.fc-tooltip').forEach(t => t.remove());
@@ -1761,7 +1769,7 @@
                 }, 500);
 
                 // 🎯 PANTALLA COMPLETA
-                let isFullScreen = false;
+                window.isFullScreen = window.isFullScreen || false;
 
                 window.toggleFullScreen = function() {
                     const container = document.getElementById('produccion-maquinas-container');
@@ -1772,6 +1780,12 @@
                     const collapseIcon = document.getElementById('fullscreen-icon-collapse');
                     const fullscreenBtn = document.getElementById('fullscreen-btn');
                     const fullscreenText = document.getElementById('fullscreen-text');
+
+                    // Verificar que existen los elementos necesarios
+                    if (!container || !expandIcon || !collapseIcon || !fullscreenBtn) {
+                        console.warn('Elementos de fullscreen no encontrados');
+                        return;
+                    }
 
                     if (!isFullScreen) {
                         // Entrar en pantalla completa
@@ -1787,7 +1801,7 @@
                         fullscreenBtn.title = 'Salir de pantalla completa (ESC)';
                         if (fullscreenText) fullscreenText.textContent = 'Contraer';
 
-                        isFullScreen = true;
+                        window.isFullScreen = true;
 
                         // Atajo de teclado ESC para salir
                         document.addEventListener('keydown', handleEscKey);
@@ -1805,7 +1819,7 @@
                         fullscreenBtn.title = 'Pantalla completa (F11)';
                         if (fullscreenText) fullscreenText.textContent = 'Expandir';
 
-                        isFullScreen = false;
+                        window.isFullScreen = false;
 
                         document.removeEventListener('keydown', handleEscKey);
                     }
@@ -1863,7 +1877,9 @@
                     }
 
                     if (!resourceId) {
-                        numeroPosicion.textContent = '?';
+                        if (numeroPosicion) {
+                            numeroPosicion.textContent = '?';
+                        }
                         return;
                     }
 
@@ -1912,7 +1928,9 @@
                         posicionCalculada = 1;
                     }
 
-                    numeroPosicion.textContent = posicionCalculada;
+                    if (numeroPosicion) {
+                        numeroPosicion.textContent = posicionCalculada;
+                    }
                 });
 
                 // Función para actualizar eventos sin recargar
@@ -1957,11 +1975,18 @@
                     const overlay = document.getElementById('panel_overlay');
                     const lista = document.getElementById('panel_lista');
                     const contenedorCalendario = document.getElementById('contenedor-calendario');
+                    const panelCodigo = document.getElementById('panel_codigo');
+
+                    // Verificar que existen los elementos necesarios
+                    if (!panel || !overlay || !lista || !contenedorCalendario) {
+                        console.warn('Elementos del panel no encontrados');
+                        return;
+                    }
 
                     // Guardar el planillaId actual
                     planillaIdActualPanel = planillaId;
 
-                    document.getElementById('panel_codigo').textContent = codigo;
+                    if (panelCodigo) panelCodigo.textContent = codigo;
                     lista.innerHTML = '';
 
                     // Agrupar elementos por maquina_id
@@ -2059,7 +2084,9 @@
                                     elementoArrastrandose = target;
                                     mostrarIndicador = true;
                                     tooltipsDeshabilitados = true;
-                                    numeroPosicion.textContent = '?';
+                                    if (numeroPosicion) {
+                                        numeroPosicion.textContent = '?';
+                                    }
                                     document.querySelectorAll('.fc-tooltip').forEach(t => t
                                         .style.display = 'none');
                                 }, 50);
@@ -2072,8 +2099,10 @@
                                     elementoArrastrandose = null;
                                     mostrarIndicador = false;
                                     tooltipsDeshabilitados = false;
-                                    indicadorPosicion.classList.add('hidden');
-                                    indicadorPosicion.style.display = 'none';
+                                    if (indicadorPosicion) {
+                                        indicadorPosicion.classList.add('hidden');
+                                        indicadorPosicion.style.display = 'none';
+                                    }
                                     document.querySelectorAll('.fc-tooltip').forEach(t => t
                                         .remove());
                                 }, 100);
@@ -2096,22 +2125,32 @@
                     // Limpiar selección múltiple
                     window.MultiSelectElementos.limpiarSelecciones();
                     document.body.classList.remove('panel-abierto');
-                    document.getElementById('panel_elementos').classList.remove('abierto');
-                    document.getElementById('panel_overlay').classList.add('hidden');
-                    document.getElementById('contenedor-calendario').classList.remove('con-panel-abierto');
+
+                    const panelElementos = document.getElementById('panel_elementos');
+                    const panelOverlay = document.getElementById('panel_overlay');
+                    const contenedorCalendario = document.getElementById('contenedor-calendario');
+
+                    if (panelElementos) panelElementos.classList.remove('abierto');
+                    if (panelOverlay) panelOverlay.classList.add('hidden');
+                    if (contenedorCalendario) contenedorCalendario.classList.remove('con-panel-abierto');
 
                     setTimeout(() => {
-                        calendar.updateSize();
+                        if (calendar) calendar.updateSize();
                     }, 300);
                 }
 
-                document.getElementById('cerrar_panel').addEventListener('click', cerrarPanel);
+                const cerrarPanelBtn = document.getElementById('cerrar_panel');
+                if (cerrarPanelBtn) {
+                    cerrarPanelBtn.addEventListener('click', cerrarPanel);
+                }
 
                 // Evento para marcar planilla como revisada
-                document.getElementById('btn_marcar_revisada').addEventListener('click', async function() {
-                    if (!planillaIdActualPanel) {
-                        alert('No hay planilla seleccionada');
-                        return;
+                const btnMarcarRevisada = document.getElementById('btn_marcar_revisada');
+                if (btnMarcarRevisada) {
+                    btnMarcarRevisada.addEventListener('click', async function() {
+                        if (!planillaIdActualPanel) {
+                            alert('No hay planilla seleccionada');
+                            return;
                     }
 
                     if (!confirm('¿Estás seguro de que quieres marcar esta planilla como revisada?')) {
@@ -2145,7 +2184,8 @@
                         console.error('Error:', error);
                         alert('Error al marcar como revisada: ' + error.message);
                     }
-                });
+                    });
+                }
 
                 // Overlay ya no captura clics (pointer-events: none) para permitir interacción con calendario
 
@@ -2682,10 +2722,8 @@
                     calendarioVisible = !document.hidden;
 
                     if (calendarioVisible) {
-                        console.log('🟢 Pestaña visible - Iniciando polling');
                         iniciarPolling();
                     } else {
-                        console.log('🔴 Pestaña oculta - Pausando polling');
                         detenerPolling();
                     }
                 });
@@ -2693,13 +2731,10 @@
                 function iniciarPolling() {
                     if (intervaloPolling) return; // Ya está activo
 
-                    console.log('🚀 Sistema de polling iniciado (cada 5 segundos)');
-
                     intervaloPolling = setInterval(async () => {
                         try {
                             const url =
                                 `/produccion/maquinas/actualizaciones?timestamp=${encodeURIComponent(ultimoTimestamp)}`;
-                            console.log('📡 Solicitando actualizaciones:', url);
 
                             const response = await fetch(url, {
                                 method: 'GET',
@@ -2710,12 +2745,6 @@
                                 credentials: 'same-origin'
                             });
 
-                            console.log('📥 Respuesta recibida:', {
-                                status: response.status,
-                                statusText: response.statusText,
-                                ok: response.ok
-                            });
-
                             if (!response.ok) {
                                 console.error(`❌ Error HTTP: ${response.status} ${response.statusText}`);
                                 const text = await response.text();
@@ -2724,18 +2753,14 @@
                             }
 
                             const data = await response.json();
-                            console.log('📦 Datos recibidos:', data);
 
                             if (data.success && data.actualizaciones && data.actualizaciones.length > 0) {
-                                console.log(`🔄 ${data.total} actualización(es) recibida(s)`);
                                 aplicarActualizaciones(data.actualizaciones);
                                 ultimoTimestamp = data.timestamp;
                                 actualizacionesRecibidas += data.total;
 
                                 // Notificación visual
                                 mostrarNotificacion(`${data.total} planilla(s) actualizada(s)`, 'info');
-                            } else {
-                                console.log('✅ No hay actualizaciones nuevas');
                             }
                         } catch (error) {
                             console.error('❌ Error al obtener actualizaciones:', error);
@@ -2864,10 +2889,59 @@
                     // No necesitamos hacer nada especial aquí
                 }
 
+                // Iniciar polling al cargar el calendario
+                console.log('📅 Calendario de producción inicializado');
+                iniciarPolling();
+
+                // Debug: Mostrar estadísticas cada minuto
+                setInterval(() => {
+                    console.log(`📊 Estadísticas de polling: ${actualizacionesRecibidas} actualizaciones recibidas`);
+                }, 60000);
+            }
+
+            // Inicializar en carga inicial
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', inicializarCalendarioMaquinas);
+            } else {
+                inicializarCalendarioMaquinas();
+            }
+
+            // Reinicializar en navegación Livewire
+            document.addEventListener('livewire:navigated', function() {
+                // Solo inicializar si estamos en la página de máquinas
+                const calendarioEl = document.getElementById('calendario');
+                if (calendarioEl && calendarioEl.dataset.calendarType === 'maquinas') {
+                    console.log('🔄 Reinicializando calendario de máquinas después de navegación');
+
+                    // Destruir calendario anterior si existe
+                    if (window.calendar) {
+                        try {
+                            window.calendar.destroy();
+                            window.calendar = null;
+                        } catch (e) {
+                            console.warn('Error al destruir calendario anterior:', e);
+                        }
+                    }
+
+                    inicializarCalendarioMaquinas();
+                }
+            });
+
+            // Limpiar al salir de la página
+            document.addEventListener('livewire:navigating', function() {
+                if (window.calendar) {
+                    try {
+                        console.log('🧹 Limpiando calendario de máquinas');
+                        window.calendar.destroy();
+                        window.calendar = null;
+                    } catch (e) {
+                        console.warn('Error al limpiar calendario:', e);
+                    }
+                }
             });
 
             // ============================================================
-            // FUNCIONES GLOBALES (fuera de DOMContentLoaded)
+            // FUNCIONES GLOBALES (fuera de inicializarCalendarioMaquinas)
             // ============================================================
 
             // Función para mostrar notificaciones toast
@@ -2909,12 +2983,12 @@
                 }, 3000);
             }
 
-            let maquinaActualId = null;
+            window.window.maquinaActualId = window.maquinaActualId || null;
 
             // Modal Estado
             function abrirModalEstado(maquinaId) {
                 console.log('🔵 abrirModalEstado llamado con ID:', maquinaId, 'tipo:', typeof maquinaId);
-                maquinaActualId = maquinaId;
+                window.maquinaActualId = maquinaId;
                 console.log('🔵 maquinaActualId establecido en:', maquinaActualId);
 
                 // Obtener el título del enlace usando el data-maquina-id
@@ -2932,7 +3006,7 @@
                 const modal = document.getElementById('modalEstado');
                 modal.classList.add('hidden');
                 modal.classList.remove('flex');
-                maquinaActualId = null;
+                window.maquinaActualId = null;
             }
 
             async function cambiarEstado(nuevoEstado) {
@@ -2985,7 +3059,7 @@
             // Modal Redistribuir
             function abrirModalRedistribuir(maquinaId) {
                 console.log('🟠 abrirModalRedistribuir llamado con ID:', maquinaId);
-                maquinaActualId = maquinaId;
+                window.maquinaActualId = maquinaId;
 
                 // Obtener el título del enlace usando el data-maquina-id
                 const link = document.querySelector(`a.maquina-nombre[data-maquina-id="${maquinaId}"]`);
@@ -3001,14 +3075,14 @@
                 const modal = document.getElementById('modalRedistribuir');
                 modal.classList.add('hidden');
                 modal.classList.remove('flex');
-                maquinaActualId = null;
+                window.maquinaActualId = null;
             }
 
             // Funciones para selector de máquina desde botones superiores
-            let accionSeleccionada = null; // 'estado' o 'redistribuir'
+            window.accionSeleccionada = window.accionSeleccionada || null; // 'estado' o 'redistribuir'
 
             function mostrarSelectorMaquinaEstado() {
-                accionSeleccionada = 'estado';
+                window.accionSeleccionada = 'estado';
                 const header = document.getElementById('selectorHeader');
                 const titulo = document.getElementById('selectorTitulo');
                 header.className = 'bg-blue-600 text-white px-6 py-4 rounded-t-lg';
@@ -3017,7 +3091,7 @@
             }
 
             function mostrarSelectorMaquinaRedistribuir() {
-                accionSeleccionada = 'redistribuir';
+                window.accionSeleccionada = 'redistribuir';
                 const header = document.getElementById('selectorHeader');
                 const titulo = document.getElementById('selectorTitulo');
                 header.className = 'bg-orange-600 text-white px-6 py-4 rounded-t-lg';
@@ -3044,7 +3118,7 @@
                         'p-4 border-2 border-gray-300 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition-all text-left flex items-center gap-3 group';
                     boton.onclick = () => seleccionarMaquina(maquinaId);
 
-                    const colorIcon = accionSeleccionada === 'estado' ? 'text-blue-600' : 'text-orange-600';
+                    const colorIcon = window.accionSeleccionada === 'estado' ? 'text-blue-600' : 'text-orange-600';
 
                     boton.innerHTML = `
                     <div class="${colorIcon} group-hover:scale-110 transition-transform">
@@ -3072,29 +3146,29 @@
                 const modal = document.getElementById('modalSelectorMaquina');
                 modal.classList.add('hidden');
                 modal.classList.remove('flex');
-                accionSeleccionada = null;
+                window.accionSeleccionada = null;
             }
 
             function seleccionarMaquina(maquinaId) {
                 cerrarModalSelectorMaquina();
 
-                if (accionSeleccionada === 'estado') {
+                if (window.accionSeleccionada === 'estado') {
                     abrirModalEstado(maquinaId);
-                } else if (accionSeleccionada === 'redistribuir') {
+                } else if (window.accionSeleccionada === 'redistribuir') {
                     abrirModalRedistribuir(maquinaId);
                 }
             }
 
-            let datosRedistribucion = null; // Para almacenar los datos para el reporte
+            window.datosRedistribucion = window.datosRedistribucion || null; // Para almacenar los datos para el reporte
 
-            let tipoRedistribucionSeleccionado = null;
-            let maquinaRedistribucionId = null; // ID de la máquina desde donde se redistribuye
+            window.tipoRedistribucionSeleccionado = window.tipoRedistribucionSeleccionado || null;
+            window.maquinaRedistribucionId = window.maquinaRedistribucionId || null; // ID de la máquina desde donde se redistribuye
 
             async function redistribuir(tipo) {
                 if (!maquinaActualId) return;
 
-                tipoRedistribucionSeleccionado = tipo;
-                maquinaRedistribucionId = maquinaActualId; // Guardar el ID
+                window.tipoRedistribucionSeleccionado = tipo;
+                window.maquinaRedistribucionId = maquinaActualId; // Guardar el ID
 
                 try {
                     // Obtener los elementos que serán redistribuidos (sin ejecutar la redistribución)
@@ -3124,14 +3198,14 @@
                 }
             }
 
-            let maquinasDisponiblesGlobal = [];
+            window.maquinasDisponiblesGlobal = window.maquinasDisponiblesGlobal || [];
 
             function mostrarModalConfirmacionRedistribucion(elementos, tipo, maquinaOrigen, maquinasDisponibles) {
                 const modal = document.getElementById('modalConfirmacionRedistribucion');
                 const mensaje = document.getElementById('mensajeConfirmacionRedistribucion');
                 const lista = document.getElementById('listaElementosRedistribuir');
 
-                maquinasDisponiblesGlobal = maquinasDisponibles;
+                window.maquinasDisponiblesGlobal = maquinasDisponibles;
 
                 mensaje.textContent = `Se redistribuirán ${elementos.length} elemento(s) desde "${maquinaOrigen.nombre}" - ${tipo === 'todos' ? 'TODOS los pendientes' : 'Los primeros elementos'}`;
 
@@ -3195,13 +3269,13 @@
             }
 
             // Almacenar las máquinas destino seleccionadas
-            let maquinasDestinoSeleccionadas = {};
+            window.maquinasDestinoSeleccionadas = window.maquinasDestinoSeleccionadas || {};
 
             function actualizarMaquinaDestino(elementoId, maquinaId) {
                 if (maquinaId) {
-                    maquinasDestinoSeleccionadas[elementoId] = parseInt(maquinaId);
+                    window.maquinasDestinoSeleccionadas[elementoId] = parseInt(maquinaId);
                 } else {
-                    delete maquinasDestinoSeleccionadas[elementoId];
+                    delete window.maquinasDestinoSeleccionadas[elementoId];
                 }
             }
 
@@ -3251,16 +3325,16 @@
                 const modal = document.getElementById('modalConfirmacionRedistribucion');
                 modal.classList.add('hidden');
                 modal.classList.remove('flex');
-                tipoRedistribucionSeleccionado = null;
-                maquinaRedistribucionId = null;
-                maquinasDestinoSeleccionadas = {};
+                window.tipoRedistribucionSeleccionado = null;
+                window.maquinaRedistribucionId = null;
+                window.maquinasDestinoSeleccionadas = {};
             }
 
             async function confirmarRedistribucion() {
-                console.log('🔄 confirmarRedistribucion llamada', { maquinaRedistribucionId, tipoRedistribucionSeleccionado, maquinasDestinoSeleccionadas });
+                console.log('🔄 confirmarRedistribucion llamada', { maquinaRedistribucionId: window.maquinaRedistribucionId, tipoRedistribucionSeleccionado: window.tipoRedistribucionSeleccionado, maquinasDestinoSeleccionadas: window.maquinasDestinoSeleccionadas });
 
-                if (!maquinaRedistribucionId || !tipoRedistribucionSeleccionado) {
-                    console.error('Faltan datos:', { maquinaRedistribucionId, tipoRedistribucionSeleccionado });
+                if (!window.maquinaRedistribucionId || !window.tipoRedistribucionSeleccionado) {
+                    console.error('Faltan datos:', { maquinaRedistribucionId: window.maquinaRedistribucionId, tipoRedistribucionSeleccionado: window.tipoRedistribucionSeleccionado });
                     alert('Error: Faltan datos necesarios para la redistribución');
                     return;
                 }
@@ -3275,7 +3349,7 @@
 
                     console.log('Enviando petición de redistribución...');
 
-                    const response = await fetch(`/maquinas/${maquinaRedistribucionId}/redistribuir`, {
+                    const response = await fetch(`/maquinas/${window.maquinaRedistribucionId}/redistribuir`, {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
@@ -3283,8 +3357,8 @@
                             'X-CSRF-TOKEN': csrfToken.content
                         },
                         body: JSON.stringify({
-                            tipo: tipoRedistribucionSeleccionado,
-                            maquinas_destino: maquinasDestinoSeleccionadas
+                            tipo: window.tipoRedistribucionSeleccionado,
+                            maquinas_destino: window.maquinasDestinoSeleccionadas
                         })
                     });
 
@@ -3308,7 +3382,7 @@
                         }
 
                         // Guardar datos para el reporte
-                        datosRedistribucion = data;
+                        window.datosRedistribucion = data;
                         // Mostrar modal de resultados
                         mostrarResultados(data);
                     } else {
@@ -3397,12 +3471,12 @@
             }
 
             function descargarReporte() {
-                if (!datosRedistribucion) return;
+                if (!window.datosRedistribucion) return;
 
                 // Crear contenido CSV
                 let csv = 'ID,Marca,Diámetro,Peso (kg),Planilla,Máquina Anterior,Nueva Máquina\n';
 
-                datosRedistribucion.detalles.forEach(elemento => {
+                window.datosRedistribucion.detalles.forEach(elemento => {
                     csv +=
                         `${elemento.elemento_id},"${elemento.marca}",${elemento.diametro},${elemento.peso},"${elemento.planilla}","${elemento.maquina_anterior}","${elemento.maquina_nueva}"\n`;
                 });
@@ -3410,7 +3484,7 @@
                 // Agregar resumen al final
                 csv += '\n\nRESUMEN POR MÁQUINA\n';
                 csv += 'Máquina,Cantidad,Peso Total (kg)\n';
-                datosRedistribucion.resumen.forEach(maquina => {
+                window.datosRedistribucion.resumen.forEach(maquina => {
                     csv += `"${maquina.nombre}",${maquina.cantidad},${maquina.peso_total.toFixed(2)}\n`;
                 });
 
@@ -3433,17 +3507,5 @@
 
             // ============================================================
 
-            document.addEventListener('DOMContentLoaded', function() {
-                // Iniciar polling al cargar
-                console.log('📅 Calendario de producción inicializado');
-                iniciarPolling();
-
-                // Debug: Mostrar estadísticas cada minuto
-                setInterval(() => {
-                    console.log(
-                        `📊 Estadísticas de polling: ${actualizacionesRecibidas} actualizaciones recibidas`);
-                }, 60000);
-
-            });
         </script>
 </x-app-layout>

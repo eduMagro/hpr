@@ -94,7 +94,7 @@ return [
                     'route' => 'produccion.verMaquinas',
                     'icon' => '⚙️',
                     'actions' => [
-                        ['label' => 'Ver planificación', 'route' => 'produccion.verMaquinas', 'permission' => 'ver'],
+                        ['label' => 'Ver planificación', 'route' => 'produccion.maquinas', 'permission' => 'ver'],
                     ]
                 ],
                 [

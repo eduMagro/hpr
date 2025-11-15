@@ -29,7 +29,34 @@
 <!-- Indicador de carga para wire:navigate -->
 <div wire:loading class="fixed top-0 left-0 right-0 h-1 bg-blue-500 z-50 animate-pulse"></div>
 
-<nav class="hidden md:flex items-center space-x-2 text-sm text-gray-600 mb-6">
+<nav class="hidden md:flex items-center space-x-2 text-sm text-gray-600 mb-6"
+     x-data="{
+         currentPath: window.location.pathname,
+
+         init() {
+             // Actualizar cuando Livewire navega
+             document.addEventListener('livewire:navigated', () => {
+                 this.currentPath = window.location.pathname;
+             });
+         },
+
+         isRouteActive(routeUrl) {
+             const url = new URL(routeUrl, window.location.origin);
+             return this.currentPath === url.pathname;
+         },
+
+         routeStartsWith(routeUrl) {
+             const url = new URL(routeUrl, window.location.origin);
+             const basePath = url.pathname.replace('/index', '');
+
+             // Evitar falsos positivos: solo considerar activo si la ruta coincide exactamente
+             // o si es una subruta con separador (ej: /trabajadores/edit pero no /trabajadores-obra)
+             if (this.currentPath === basePath) return true;
+             if (this.currentPath.startsWith(basePath + '/')) return true;
+
+             return false;
+         }
+     }">
     @foreach($breadcrumbs as $index => $crumb)
         @if($index > 0)
             <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -53,7 +80,10 @@
                         @endif
                         <a href="{{ route($tab['route']) }}"
                            wire:navigate
-                           class="px-3 py-1 rounded whitespace-nowrap {{ $currentRoute === $tab['route'] || str_starts_with($currentRoute, str_replace('.index', '', $tab['route'])) ? 'bg-blue-100 text-blue-700 font-semibold' : 'text-gray-600 hover:text-blue-600 hover:bg-blue-50' }} transition">
+                           :class="isRouteActive('{{ route($tab['route']) }}') || routeStartsWith('{{ route($tab['route']) }}')
+                               ? 'bg-blue-100 text-blue-700 font-semibold'
+                               : 'text-gray-600 hover:text-blue-600 hover:bg-blue-50'"
+                           class="px-3 py-1 rounded whitespace-nowrap transition">
                             {{ $tab['icon'] ?? '' }} {{ $tab['label'] }}
                         </a>
                     @endforeach

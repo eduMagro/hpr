@@ -1,10 +1,10 @@
 <x-app-layout>
     <x-slot name="title">Planificación Producción</x-slot>
 
-    <div class="py-6">
+    <div class="py-6" id="calendario-trabajadores-container">
         <!-- Contenedor del Calendario -->
         <div class="w-full bg-white">
-            <div id="calendario" class="h-[80vh] w-full"></div>
+            <div id="calendario" data-calendar-type="trabajadores" class="h-[80vh] w-full"></div>
         </div>
     </div>
 
@@ -118,5 +118,6 @@
         }
     </style>
 
-    <script type="module" src="{{ asset('js/modules/calendario-trabajadores/index.js') }}"></script>
+    {{-- Usar Vite en lugar de asset() para cache busting --}}
+    @vite(['resources/js/modules/calendario-trabajadores/index.js'])
 </x-app-layout>

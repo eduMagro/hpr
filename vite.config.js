@@ -4,7 +4,35 @@ import laravel from 'laravel-vite-plugin';
 export default defineConfig({
     plugins: [
         laravel({
-            input: ['resources/css/app.css', 'resources/js/app.js'],
+            input: [
+                // Core app files
+                'resources/css/app.css',
+                'resources/js/app.js',
+
+                // Utils
+                'resources/js/utils/livewire-helper.js',
+
+                // Global styles
+                'resources/css/styles.css',
+
+                // Module-specific entries
+                'resources/js/modules/calendario-salidas/index.js',
+                'resources/js/modules/calendario-trabajadores/index.js',
+                'resources/css/estilosCalendarioSalidas.css',
+
+                // Localizaciones
+                'resources/css/localizaciones/styleLocIndex.css',
+                'resources/css/localizaciones/styleLocCreate.css',
+                'resources/css/ubicaciones/mapaUbis.css',
+                'resources/css/mapaLocalizaciones.css',
+
+                // Feature-specific bundles
+                'resources/js/maquinaJS/maquina-bundle.js',
+                'resources/js/elementosJs/elementos-bundle.js',
+                'resources/js/paquetesJs/paquetes-bundle.js',
+                'resources/js/salidasJs/salidas-bundle.js',
+                'resources/js/qr/qr-bundle.js',
+            ],
             refresh: true,
         }),
     ],

@@ -1,0 +1,57 @@
+ /* Contenedor de cada sector */
+ .sector-card {
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    overflow: hidden;
+    margin-bottom: 20px;
+    background-color: #f9f9f9;
+}
+
+/* Título del sector */
+.sector-header {
+    background-color: #007bff;
+    color: white;
+    padding: 10px;
+    text-align: center;
+    font-size: 1.2rem;
+    margin: 0;
+}
+
+/* Contenedor en grid para las ubicaciones */
+.mapa-sector {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+    /* Columnas automáticas */
+    gap: 10px;
+    padding: 15px;
+    justify-items: center;
+}
+
+/* Estilos de cada ubicación */
+.ubicacion {
+    background-color: #e3f2fd;
+    border: 1px solid #007bff;
+    padding: 15px;
+    text-align: center;
+    font-weight: bold;
+    border-radius: 5px;
+    min-width: 100px;
+    min-height: 80px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+}
+
+/* Efecto hover */
+.ubicacion:hover {
+    background-color: #90caf9;
+    cursor: pointer;
+}
+
+/* Ajuste de tamaño para pantallas pequeñas */
+@media (max-width: 768px) {
+    .mapa-sector {
+        grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
+    }
+}

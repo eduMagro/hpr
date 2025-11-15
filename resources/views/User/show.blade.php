@@ -97,7 +97,7 @@
         }
     </style>
 
-    {{-- Asegúrate de que la ruta coincide con el fichero real --}}
+    {{-- Usar script desde public (no migrado a Vite aún) --}}
     <script src="{{ asset('js/calendario/calendario.js') }}"></script>
 
     <script>

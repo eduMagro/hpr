@@ -1,0 +1,290 @@
+:root {
+    --tam-celda: 20px;
+    /* el JS lo ajusta */
+    --grosor-linea: 1px;
+}
+
+/* ============ CONTENEDOR ============ */
+#escenario-cuadricula {
+    position: relative;
+    width: 100%;
+    min-height: 100vh;
+    min-height: 100dvh;
+    background: #fff;
+    border-top: 1px solid #e5e7eb;
+}
+
+/* HORIZONTAL: scroll X/Y permitido, anclado arriba-izquierda */
+#escenario-cuadricula.orient-horizontal {
+    overflow: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+    display: block;
+}
+
+/* VERTICAL: ocupa ancho, centra horizontalmente, solo scroll vertical */
+#escenario-cuadricula.orient-vertical {
+    overflow-y: auto;
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
+    display: flex;
+    justify-content: center;
+    /* centra la cuadrícula a lo ancho */
+    align-items: flex-start;
+    /* comienza arriba para poder hacer scroll hacia abajo */
+}
+
+/* ============ CUADRÍCULA ============ */
+#cuadricula {
+    position: relative;
+    width: calc(var(--cols) * var(--tam-celda));
+    height: calc(var(--rows) * var(--tam-celda));
+    border: 1px solid #e5e7eb;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04),
+        0 8px 24px rgba(149, 157, 165, 0.15);
+    background-image: linear-gradient(to right,
+            #f1f5f9 var(--grosor-linea),
+            transparent var(--grosor-linea)),
+        linear-gradient(to bottom,
+            #f1f5f9 var(--grosor-linea),
+            transparent var(--grosor-linea));
+    background-size: var(--tam-celda) var(--tam-celda),
+        var(--tam-celda) var(--tam-celda);
+    background-position: 0 0, 0 0;
+    margin: 10px;
+}
+
+/* Info top-right */
+#info-cuadricula,
+.info-cuadricula {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    z-index: 5;
+    pointer-events: none;
+    user-select: none;
+    font-size: 12px;
+    color: #fff;
+    background: rgba(17, 24, 39, 0.7);
+    padding: 4px 8px;
+    border-radius: 6px;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+}
+
+.loc-existente .loc-label {
+    pointer-events: none;
+}
+
+.loc-existente {
+    position: absolute;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    line-height: 1;
+    text-align: center;
+    overflow: visible;
+    padding: 2px 6px 2px 6px;
+    /* deja hueco a la etiqueta */
+    border-radius: 2px;
+    color: #1e3a8a;
+    /* azul oscuro */
+    background-color: rgba(59, 130, 246, 0.25);
+    /* azul semitransparente */
+    border: 1px solid rgba(59, 130, 246, 0.5);
+    backdrop-filter: blur(2px);
+    /* z-index base para todas las localizaciones */
+    z-index: 10;
+}
+
+.loc-existente .loc-label {
+    font-size: 11px;
+    color: #111827;
+    pointer-events: none;
+    /* la etiqueta no intercepta clics */
+}
+
+.loc-existente .loc-delete {
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    width: 18px;
+    height: 18px;
+    line-height: 16px;
+    text-align: center;
+    border-radius: 9999px;
+    border: 1px solid #ef4444;
+    background: #fff;
+    color: #ef4444;
+    font-weight: 700;
+    font-size: 12px;
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity 0.15s ease-in-out, transform 0.1s;
+}
+
+.loc-existente:hover .loc-delete {
+    opacity: 1;
+}
+
+.loc-existente .loc-delete:active {
+    transform: scale(0.95);
+}
+
+/* MÁQUINA - z-index bajo para que los paquetes aparezcan encima */
+.loc-maquina {
+    background: rgba(34, 197, 94, 0.15);
+    /* verde suave */
+    border: 1px solid #22c55e;
+    z-index: 5;
+    /* Más bajo que el z-index base (10) para quedar detrás */
+}
+
+/* PAQUETES - z-index alto para que aparezcan sobre las máquinas */
+.loc-paquete {
+    z-index: 20;
+    /* Más alto que máquinas (5) y que el base (10) */
+    cursor: pointer;
+    /* Indicar que es interactivo */
+}
+
+/* Variantes de paquetes según tipo de contenido */
+.loc-paquete.tipo-mixto {
+    background: rgba(59, 130, 246, 0.3);
+    /* azul más intenso */
+    border: 2px solid #3b82f6;
+}
+
+.loc-paquete.tipo-barras {
+    background: rgba(168, 85, 247, 0.3);
+    /* púrpura */
+    border: 2px solid #a855f7;
+}
+
+.loc-paquete.tipo-perfiles {
+    background: rgba(236, 72, 153, 0.3);
+    /* rosa */
+    border: 2px solid #ec4899;
+}
+
+/* ZONAS - z-index bajo para que queden en el fondo */
+.loc-zona.tipo-transitable {
+    background: rgba(107, 114, 128, 0.15);
+    /* gris */
+    border: 1px dashed #6b7280;
+    z-index: 1;
+    /* Más bajo que máquinas y paquetes */
+}
+
+.loc-zona.tipo-almacenamiento {
+    background: rgba(245, 158, 11, 0.15);
+    /* ámbar */
+    border: 1px solid #f59e0b;
+    z-index: 1;
+    /* Igual que otras zonas, en el fondo */
+}
+
+.loc-zona.tipo-carga_descarga {
+    background: rgba(59, 130, 246, 0.15);
+    /* azul */
+    border: 1px solid #3b82f6;
+    z-index: 1;
+    /* Igual que otras zonas, en el fondo */
+}
+
+/* Ghost del paquete */
+#paquete-ghost {
+    position: absolute;
+    pointer-events: auto;
+    border: 2px dashed #2563eb;
+    /* azul */
+    background: rgba(37, 99, 235, 0.08);
+    border-radius: 4px;
+    box-sizing: border-box;
+    cursor: grab;
+    z-index: 40;
+}
+
+#paquete-ghost.dragging {
+    cursor: grabbing;
+    opacity: 0.9;
+}
+
+#paquete-ghost .ghost-label {
+    position: absolute;
+    bottom: 2px;
+    right: 4px;
+    font-size: 10px;
+    color: #1f2937;
+    background: rgba(255, 255, 255, 0.7);
+    padding: 0 4px;
+    border-radius: 3px;
+}
+
+#ghost-actions {
+    position: absolute;
+    transform: translateY(-100%);
+    display: none;
+    gap: 8px;
+    z-index: 50;
+}
+
+.ghost-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 10px;
+    font-size: 12px;
+    line-height: 1;
+    border-radius: 8px;
+    border: 1.5px solid transparent;
+    background: #fff;
+    cursor: pointer;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+    transition: background 0.12s ease, transform 0.12s ease,
+        box-shadow 0.12s ease;
+}
+
+.ghost-btn:hover {
+    background: #f9fafb;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+}
+
+.ghost-btn:active {
+    transform: translateY(0);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+}
+
+.ghost-btn .icon {
+    width: 16px;
+    height: 16px;
+}
+
+/* variantes */
+.ghost-btn.cancel {
+    border-color: #ef4444;
+    color: #b91c1c;
+}
+
+.ghost-btn.cancel:hover {
+    background: #fee2e2;
+}
+
+.ghost-btn.confirm {
+    border-color: #22c55e;
+    color: #15803d;
+}
+
+.ghost-btn.confirm:hover {
+    background: #dcfce7;
+}
+
+.ghost-btn.rotate {
+    border-color: #3b82f6;
+    color: #1d4ed8;
+}
+
+.ghost-btn.rotate:hover {
+    background: #dbeafe;
+}

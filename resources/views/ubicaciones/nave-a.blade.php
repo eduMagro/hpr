@@ -121,7 +121,8 @@
 
     <!-- SCRIPT PARA IMPRIMIR QR -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-    <script src="{{ asset('js/qr/ubicacionesQr.js') }}"></script>
-    <!-- Custom CSS -->
-    <link rel="stylesheet" href="{{ asset('css/ubicaciones/mapaUbis.css') }}">
+    <!-- Vite: qr-bundle -->
+    @vite(['resources/js/qr/qr-bundle.js', 'resources/css/ubicaciones/mapaUbis.css'])
+    <!-- <script src="{{ asset('js/qr/ubicacionesQr.js') }}"></script>
+    <link rel="stylesheet" href="{{ asset('css/ubicaciones/mapaUbis.css') }}"> -->
 </x-app-layout>

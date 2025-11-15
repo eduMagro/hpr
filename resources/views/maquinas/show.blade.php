@@ -34,11 +34,6 @@
         <!-- SCRIPT PARA IMPRIMIR QR -->
         <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 
-        <script src="{{ asset('js/maquinaJS/sl28/cortes.js') }}"></script>
-        <script src="{{ asset('js/maquinaJS/actualizarDom.js') }}"></script>
-        <script src="{{ asset('js/maquinaJS/trabajoEtiqueta.js') }}"></script>
-        <script src="{{ asset('js/maquinaJS/trabajoPaquete.js') }}"></script>
-        <script src="{{ asset('js/imprimirQrS.js') }}"></script>
         <script>
             window.SUGERENCIAS = @json($sugerenciasPorElemento ?? []);
             window.elementosAgrupadosScript = @json($elementosAgrupadosScript ?? null);
@@ -51,7 +46,9 @@
             console.log('etiquetasData', window.etiquetasData);
         </script>
 
-        <script src="{{ asset('js/maquinaJS/canvasMaquina.js') }}"></script>
+        <!-- ✅ Vite: Bundle de máquinas -->
+        @vite(['resources/js/maquinaJS/maquina-bundle.js'])
+        <script src="{{ asset('js/maquinaJS/sl28/cortes.js') }}"></script>
         <script src="{{ asset('js/maquinaJS/crearPaquetes.js') }}" defer></script>
         {{-- Al final del archivo Blade --}}
 

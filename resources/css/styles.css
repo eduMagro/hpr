@@ -1,0 +1,203 @@
+.icon-container {
+    display: grid;
+    grid-template-columns: repeat(
+        auto-fill,
+        minmax(200px, 1fr)
+    ); /* Cambié a auto-fill para llenar la fila */
+    gap: 20px;
+    justify-items: center;
+    padding: 20px;
+}
+
+.icon-card {
+    text-align: center;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    padding: 15px;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.icon-card:hover {
+    transform: scale(1.05);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.icon-card img {
+    max-width: 100%;
+    height: auto;
+    display: block;
+    margin-bottom: 10px;
+}
+
+.icon-card span {
+    font-size: 16px;
+    color: #333;
+    display: block;
+    margin-top: 5px;
+}
+
+/*CUADROS PESO STOCK*/
+.cuadro {
+    width: 100px;
+    height: 100px;
+    position: relative;
+    background-color: #ddd;
+}
+.cuadro .verde {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: green;
+    transition: opacity 0.3s;
+}
+
+/* ESTILOS ALERT PERSONALIZADOS */
+.overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+}
+
+.dialog {
+    background: white;
+    padding: 20px;
+    border-radius: 8px;
+    text-align: center;
+    width: 300px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.dialog button {
+    margin: 10px;
+    padding: 10px 20px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.dialog .accept {
+    background: #4caf50;
+    color: white;
+}
+
+.dialog .cancel {
+    background: #f44336;
+    color: white;
+}
+/* Ocultar el spinner por defecto */
+.btn-cargando .spinner-border {
+    display: none;
+}
+
+/* Mostrar el spinner cuando el botón de submit tiene el foco */
+.btn-cargando:focus .spinner-border {
+    display: inline-block;
+}
+
+/* CALENDARIO */
+#calendario {
+    max-width: 100%;
+    overflow-x: auto;
+    padding: 20px;
+}
+
+/* 📌 Reducir el tamaño de los botones en pantallas pequeñas */
+@media (max-width: 600px) {
+    #contenedorCalendario {
+        padding: 0;
+        margin: 0;
+    }
+    #calendario {
+        padding: 0;
+        margin: 0;
+    }
+
+    .fc-button {
+        font-size: 12px !important;
+        /* Reducir el tamaño del texto */
+        padding: 4px 6px !important;
+        /* Reducir el padding del botón */
+        height: 26px !important;
+        /* Ajustar la altura */
+        min-width: 50px !important;
+        /* Ajustar el ancho mínimo */
+        padding: 4px !important;
+    }
+
+    .fc-toolbar-title {
+        font-size: 14px !important;
+        /* Reducir el tamaño del título */
+        padding: 4px !important;
+    }
+}
+/* Responsive tweaks */
+@media (max-width: 1024px) {
+    .icon-container {
+        grid-template-columns: repeat(
+            auto-fill,
+            minmax(180px, 1fr)
+        ); /* Menor tamaño de columna en pantallas medianas */
+    }
+
+    .icon-card {
+        padding: 12px;
+    }
+
+    .icon-card span {
+        font-size: 14px;
+    }
+}
+
+@media (max-width: 768px) {
+    .icon-container {
+        grid-template-columns: repeat(
+            auto-fill,
+            minmax(150px, 1fr)
+        ); /* Ajuste para pantallas pequeñas */
+    }
+
+    .icon-card {
+        padding: 10px;
+    }
+
+    .icon-card span {
+        font-size: 13px;
+    }
+
+    #contenedorCalendario {
+        padding: 0 !important;
+        margin: auto !important;
+        width: 100% !important;
+    }
+    #calendario {
+        padding: 0 !important;
+        margin: 0 !important;
+        width: 100%;
+    }
+}
+
+@media (max-width: 480px) {
+    .icon-container {
+        grid-template-columns: repeat(
+            auto-fill,
+            minmax(120px, 1fr)
+        ); /* Ajuste en pantallas más pequeñas */
+    }
+
+    .icon-card {
+        padding: 8px;
+    }
+
+    .icon-card span {
+        font-size: 12px;
+    }
+}

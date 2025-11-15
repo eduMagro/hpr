@@ -6,9 +6,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <meta name="google" content="notranslate">
-    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-    <meta http-equiv="Pragma" content="no-cache">
-    <meta http-equiv="Expires" content="0">
 
 
 
@@ -27,11 +24,8 @@
     <link rel="icon" type="image/png" sizes="512x512" href="{{ asset('imagenes/ico/android-chrome-512x512.png') }}">
     <meta name="theme-color" content="#ffffff">
 
-    <!-- ✅ Tu CSS (precarga y minificación) -->
-    <link rel="preload" href="{{ asset('css/styles.css') }}" as="style" onload="this.rel='stylesheet'">
-    <noscript>
-        <link rel="stylesheet" href="{{ asset('css/styles.css') }}">
-    </noscript>
+    <!-- ✅ Vite Assets - Cache busting automático -->
+    @vite(['resources/css/app.css', 'resources/js/app.js', 'resources/css/styles.css'])
 
     <!-- ✅ Tailwind (si lo usas como principal) -->
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
@@ -39,9 +33,9 @@
     <!-- Alpine.js ya está incluido en Livewire 3, NO cargar desde CDN -->
 
     <!-- ✅ Librerías que no bloquean renderizado - Versionadas para evitar problemas de caché -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" defer data-navigate-track="reload"></script>
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.14.5/dist/sweetalert2.all.min.js" defer data-navigate-track="reload"></script>
-    <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js" defer data-navigate-track="reload"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" defer></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.14.5/dist/sweetalert2.all.min.js" defer></script>
+    <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js" defer></script>
 
     <!-- ✅ FullCalendar (solo si es necesario en esta vista) -->
     @stack('calendar') {{-- así solo lo cargas si lo necesitas --}}
@@ -54,8 +48,7 @@
         [x-cloak] {
             display: none !important;
         }
-    </style>
-    <style>
+
         /* Escala global solo en pantallas grandes */
         @media (min-width: 768px) {
             html {
@@ -78,8 +71,6 @@
             text-rendering: optimizeLegibility;
         }
     </style>
-
-    @livewireStyles
 </head>
 
 <body class="font-sans antialiased transition-colors duration-200">

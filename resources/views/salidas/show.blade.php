@@ -83,5 +83,7 @@
         window.paquetes = @json($paquetes);
     </script>
 
-    <script src="{{ asset('js/paquetesJs/figurasPaquete.js') }}" defer></script>
+    <!-- Vite: paquetes-bundle -->
+    @vite(['resources/js/paquetesJs/paquetes-bundle.js'])
+    <!-- <script src="{{ asset('js/paquetesJs/figurasPaquete.js') }}" defer></script> -->
 </x-app-layout>

@@ -114,7 +114,7 @@
     <script src="https://unpkg.com/@popperjs/core@2"></script>
     <script src="https://unpkg.com/tippy.js@6"></script>
 
-    <script>
+    <script data-navigate-once>
         document.querySelectorAll('.fc-event').forEach(eventEl => {
             eventEl.addEventListener('click', () => {
                 eventEl.classList.toggle('bg-yellow-300'); // cambia visualmente
@@ -148,7 +148,7 @@
                             .then(res => res.json())
                             .then(data => {
                                 if (data.success) {
-                                    const evento = calendarioObras.getEventById('turno-' + idEvento);
+                                    const evento = window.calendarioObras.getEventById('turno-' + idEvento);
                                     if (evento) evento.remove();
                                 } else {
                                     Swal.fire('❌ Error', data.message, 'error');
@@ -163,16 +163,17 @@
             }
         });
 
-        let calendarioObras;
+        window.calendarioObras = window.calendarioObras || null;
 
-        const resources = @json($resources);
+        // Guardar resources globalmente para que esté disponible en reinicializaciones
+        window.obrasResources = window.obrasResources || @json($resources);
 
         function inicializarCalendarioObras() {
-            if (calendarioObras) {
-                calendarioObras.destroy();
+            if (window.calendarioObras) {
+                window.calendarioObras.destroy();
             }
 
-            calendarioObras = new FullCalendar.Calendar(document.getElementById('calendario-obras'), {
+            window.calendarioObras = new FullCalendar.Calendar(document.getElementById('calendario-obras'), {
                 schedulerLicenseKey: 'CC-Attribution-NonCommercial-NoDerivatives',
                 locale: 'es',
                 initialView: localStorage.getItem('vistaObras') || 'resourceTimelineWeek',
@@ -191,7 +192,7 @@
                 },
                 editable: true,
                 resourceAreaHeaderContent: 'Obras Activas',
-                resources: resources,
+                resources: window.obrasResources,
                 resourceAreaColumns: [{
                         field: 'codigo', // este campo debe existir en tu array `resources`
                         headerContent: 'Código',
@@ -260,7 +261,7 @@
                                     el.classList.remove('seleccionado', 'bg-yellow-300');
                                 });
 
-                                calendarioObras.refetchEvents();
+                                window.calendarioObras.refetchEvents();
                             } else {
                                 Swal.fire('❌ Error al asignar');
                             }
@@ -296,7 +297,7 @@
                     console.log('Obra ID enviado:', obraId); // ✅ ahora sí es el correcto
 
                     // Evento provisional
-                    const eventoTemporal = calendarioObras.addEvent({
+                    const eventoTemporal = window.calendarioObras.addEvent({
                         id: 'temp-' + Date.now() + '-' + userId,
                         title: info.draggedEl.dataset.title,
                         start: fecha + 'T06:00:00',
@@ -324,14 +325,14 @@
                         .then(res => res.json())
                         .then(data => {
                             if (data.success) {
-                                calendarioObras.getEvents().forEach(ev => {
+                                window.calendarioObras.getEvents().forEach(ev => {
                                     if (ev.extendedProps.user_id == data.user.id && ev.startStr
                                         .startsWith(data.fecha)) {
                                         ev.remove();
                                     }
                                 });
 
-                                calendarioObras.addEvent({
+                                window.calendarioObras.addEvent({
                                     id: 'turno-' + data.asignacion.id,
                                     title: data.user.nombre_completo,
                                     start: data.fecha + 'T06:00:00',
@@ -510,49 +511,91 @@
                 }
             });
 
-            calendarioObras.render();
+            window.calendarioObras.render();
 
         }
 
-        document.addEventListener('DOMContentLoaded', inicializarCalendarioObras);
-        document.getElementById('btnRepetirSemana').addEventListener('click', function() {
-            const fechaInicio = this.dataset.fecha;
+        // Inicializar en carga inicial
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', inicializarCalendarioObras);
+        } else {
+            inicializarCalendarioObras();
+        }
 
-            Swal.fire({
-                title: '¿Repetir semana anterior?',
-                text: 'Se copiarán todas las asignaciones de la semana pasada a la actual.',
-                icon: 'question',
-                showCancelButton: true,
-                confirmButtonText: 'Sí, repetir',
-                cancelButtonText: 'Cancelar'
-            }).then((result) => {
-                if (result.isConfirmed) {
-                    fetch('{{ route('asignaciones-turnos.repetirSemana') }}', {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                                'X-CSRF-TOKEN': '{{ csrf_token() }}'
-                            },
-                            body: JSON.stringify({
-                                fecha_actual: fechaInicio
-                            })
-                        })
-                        .then(res => res.json())
-                        .then(data => {
-                            if (data.success) {
-                                Swal.fire('✅ Semana copiada correctamente');
-                                calendarioObras.refetchEvents();
-                            } else {
-                                Swal.fire('❌ Error', data.message, 'error');
-                            }
-                        })
-                        .catch(error => {
-                            console.error(error);
-                            Swal.fire('❌ Error', 'No se pudo completar la solicitud.', 'error');
-                        });
+        // Reinicializar en navegación Livewire
+        document.addEventListener('livewire:navigated', function() {
+            const calendarioEl = document.getElementById('calendario-obras');
+            if (calendarioEl) {
+                console.log('🔄 Reinicializando calendario de trabajadores por obra');
+
+                // Destruir calendario anterior si existe
+                if (window.calendarioObras) {
+                    try {
+                        window.calendarioObras.destroy();
+                        window.calendarioObras = null;
+                    } catch (e) {
+                        console.warn('Error al destruir calendario anterior:', e);
+                    }
                 }
-            });
+
+                inicializarCalendarioObras();
+            }
         });
+
+        // Limpiar al salir de la página
+        document.addEventListener('livewire:navigating', function() {
+            if (window.calendarioObras) {
+                try {
+                    console.log('🧹 Limpiando calendario de trabajadores por obra');
+                    window.calendarioObras.destroy();
+                    window.calendarioObras = null;
+                } catch (e) {
+                    console.warn('Error al limpiar calendario:', e);
+                }
+            }
+        });
+
+        const btnRepetirSemana = document.getElementById('btnRepetirSemana');
+        if (btnRepetirSemana) {
+            btnRepetirSemana.addEventListener('click', function() {
+                const fechaInicio = this.dataset.fecha;
+
+                Swal.fire({
+                    title: '¿Repetir semana anterior?',
+                    text: 'Se copiarán todas las asignaciones de la semana pasada a la actual.',
+                    icon: 'question',
+                    showCancelButton: true,
+                    confirmButtonText: 'Sí, repetir',
+                    cancelButtonText: 'Cancelar'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        fetch('{{ route('asignaciones-turnos.repetirSemana') }}', {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                                },
+                                body: JSON.stringify({
+                                    fecha_actual: fechaInicio
+                                })
+                            })
+                            .then(res => res.json())
+                            .then(data => {
+                                if (data.success) {
+                                    Swal.fire('✅ Semana copiada correctamente');
+                                    window.calendarioObras.refetchEvents();
+                                } else {
+                                    Swal.fire('❌ Error', data.message, 'error');
+                                }
+                            })
+                            .catch(error => {
+                                console.error(error);
+                                Swal.fire('❌ Error', 'No se pudo completar la solicitud.', 'error');
+                            });
+                    }
+                });
+            });
+        }
     </script>
     <style>
         .fc-event.seleccionado {

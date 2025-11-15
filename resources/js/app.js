@@ -1,7 +1,5 @@
 import "./bootstrap";
 // import "./calendario-trabajadores/index.js";
-import Alpine from "alpinejs";
 
-window.Alpine = Alpine;
-
-Alpine.start();
+// Alpine.js ya está incluido en Livewire 3 - NO inicializar aquí
+// Si necesitas extender Alpine, usa document.addEventListener('livewire:init', ...)

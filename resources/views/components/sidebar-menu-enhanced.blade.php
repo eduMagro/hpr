@@ -8,6 +8,7 @@
 <div x-data="{
     open: window.innerWidth >= 768 ? (localStorage.getItem('sidebar_open') !== 'false') : false,
     activeSection: null,
+    currentPath: window.location.pathname,
     searchOpen: false,
     searchQuery: '',
     searchResults: [],
@@ -25,19 +26,8 @@
             localStorage.setItem('sidebar_open', 'false');
         }
 
-        // Detectar sección activa
-        @foreach($menuItems as $index => $section)
-        @if(isset($section['submenu']))
-        @foreach($section['submenu'] as $item)
-        @if(
-            $currentRoute === $item['route'] ||
-                str_starts_with($currentRoute, explode('.', $item['route'])[0]))
-        this.activeSection = '{{ $section['id'] }}';
-        this.addToRecent('{{ $item['route'] }}', '{{ $item['label'] }}', '{{ $section['label'] }}', '{{ $item['icon'] }}');
-        @endif
-        @endforeach
-        @endif
-        @endforeach
+        // Detectar sección activa inicial
+        this.updateActiveSection();
 
         // Escuchar evento del botón hamburguesa
         window.addEventListener('toggle-sidebar', () => {
@@ -84,6 +74,41 @@
 
         // Aplicar modo oscuro
         this.applyDarkMode();
+
+        // Actualizar sección activa cuando Livewire navega
+        document.addEventListener('livewire:navigated', () => {
+            // Pequeño delay para asegurar que la URL se actualizó
+            setTimeout(() => {
+                this.updateActiveSection();
+            }, 50);
+        });
+    },
+
+    updateActiveSection() {
+        // Actualizar la ruta actual
+        this.currentPath = window.location.pathname;
+
+        // Resetear sección activa
+        this.activeSection = null;
+
+        // Detectar sección activa basándose en la ruta
+        @foreach($menuItems as $index => $section)
+        @if(isset($section['submenu']))
+        @foreach($section['submenu'] as $item)
+        if (this.isRouteActive('{{ route($item['route']) }}')) {
+            this.activeSection = '{{ $section['id'] }}';
+            // Agregar a recientes cuando navegamos
+            this.addToRecent('{{ $item['route'] }}', '{{ $item['label'] }}', '{{ $section['label'] }}', '{{ $item['icon'] }}');
+        }
+        @endforeach
+        @endif
+        @endforeach
+
+    },
+
+    isRouteActive(routeUrl) {
+        const url = new URL(routeUrl, window.location.origin);
+        return window.location.pathname === url.pathname;
     },
 
     toggleSidebar() {
@@ -438,11 +463,10 @@
                                     <a href="{{ route($item['route']) }}"
                                         wire:navigate
                                         @click="if (window.innerWidth < 768) { open = false; localStorage.setItem('sidebar_open', 'false'); }"
-                                        class="flex-1 flex items-center justify-between px-3 py-2 rounded-lg text-sm transition
-                                              {{ $currentRoute === $item['route'] ||
-                                              str_starts_with($currentRoute, explode('.', $item['route'])[0])
-                                                  ? 'bg-' . $section['color'] . '-500 text-white font-medium'
-                                                  : 'text-gray-400 hover:text-white hover:bg-gray-800' }}">
+                                        :class="isRouteActive('{{ route($item['route']) }}')
+                                            ? 'bg-{{ $section['color'] }}-500 text-white font-medium'
+                                            : 'text-gray-400 hover:text-white hover:bg-gray-800'"
+                                        class="flex-1 flex items-center justify-between px-3 py-2 rounded-lg text-sm transition">
                                         <div
                                             class="flex items-center space-x-2">
                                             <span>{{ $item['icon'] }}</span>

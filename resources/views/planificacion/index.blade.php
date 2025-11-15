@@ -97,7 +97,7 @@
                     </svg>
                 </button>
 
-                <div id="calendario" class="h-[80vh] w-full overflow-hidden"></div>
+                <div id="calendario" data-calendar-type="salidas" class="h-[80vh] w-full overflow-hidden"></div>
             </div>
         </div>
     </div>
@@ -136,14 +136,12 @@
     <script src="https://unpkg.com/@popperjs/core@2"></script>
     <script src="https://unpkg.com/tippy.js@6"></script>
     <link rel="stylesheet" href="https://unpkg.com/tippy.js@6/themes/light.css" />
-    <!-- Primero los helpers -->
-    <script src="{{ asset('js/utils/global-fechas.js') }}"></script>
 
-    <!-- Después el calendario que los usa -->
-    <script src="{{ asset('js/modules/calendario-salidas/calendario-menu.js') }}"></script>
+    <!-- ✅ Vite: Estilos y módulo principal del calendario (incluye calendario-menu.js) -->
+    @vite(['resources/css/estilosCalendarioSalidas.css', 'resources/js/modules/calendario-salidas/index.js'])
 
     {{-- Tu config global ANTES de @vite --}}
-    <script>
+    <script data-navigate-once>
         // 1) Asegura el objeto global sin pisarlo
         window.AppSalidas = window.AppSalidas || {};
 
@@ -155,7 +153,7 @@
         window.AppSalidas.routes.codigoSage = @json(route('salidas.editarCodigoSage', ['salida' => '__ID__']));
 
         // 4) Sistema de pantalla completa
-        let isFullScreen = false;
+        window.isFullScreen = window.isFullScreen || false;
 
         function toggleFullScreen() {
             const container = document.getElementById('planificacion-container');
@@ -180,7 +178,7 @@
                 collapseIcon.classList.remove('hidden');
                 fullscreenBtn.title = 'Salir de pantalla completa';
 
-                isFullScreen = true;
+                window.isFullScreen = true;
 
                 // Atajo de teclado ESC para salir
                 document.addEventListener('keydown', handleEscKey);
@@ -198,7 +196,7 @@
                 collapseIcon.classList.add('hidden');
                 fullscreenBtn.title = 'Pantalla completa';
 
-                isFullScreen = false;
+                window.isFullScreen = false;
 
                 document.removeEventListener('keydown', handleEscKey);
             }
@@ -212,7 +210,7 @@
         }
 
         function handleEscKey(e) {
-            if (e.key === 'Escape' && isFullScreen) {
+            if (e.key === 'Escape' && window.isFullScreen) {
                 toggleFullScreen();
             }
         }
@@ -228,8 +226,6 @@
         // (opcional) deja activado el nuevo menú sin romper nada
         window.AppSalidas.useNewMenu = true;
     </script>
-    <link rel="stylesheet" href="{{ asset('css/estilosCalendarioSalidas.css') }}">
-    <script type="module" src="{{ asset('js/modules/calendario-salidas/index.js') }}"></script>
 
     <!-- Componente Livewire para comentarios -->
     @livewire('planificacion.comentario-salida')

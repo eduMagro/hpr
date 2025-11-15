@@ -542,8 +542,10 @@
 
     {{-- Scripts JavaScript --}}
     @push('scripts')
-        <script src="{{ asset('js/elementosJs/guardarCambios.js') }}" defer></script>
-        <script src="{{ asset('js/elementosJs/figuraElemento.js') }}" defer></script>
+        <!-- Vite: elementos-bundle -->
+        @vite(['resources/js/elementosJs/elementos-bundle.js'])
+        <!-- <script src="{{ asset('js/elementosJs/guardarCambios.js') }}" defer></script>
+        <script src="{{ asset('js/elementosJs/figuraElemento.js') }}" defer></script> -->
         <script>
             function actualizarCampoElemento(input) {
                 const id = input.dataset.id;

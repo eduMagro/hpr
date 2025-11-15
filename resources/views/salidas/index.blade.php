@@ -348,8 +348,10 @@
         @endif
     </div>
     <!-- Scripts -->
-    <script src="{{ asset('js/salidasJs/salida.js') }}" defer></script>
-    <script src="{{ asset('js/paquetesJs/figurasPaquete.js') }}" defer></script>
+    <!-- Vite: salidas-bundle y paquetes-bundle -->
+    @vite(['resources/js/salidasJs/salidas-bundle.js', 'resources/js/paquetesJs/paquetes-bundle.js'])
+    <!-- <script src="{{ asset('js/salidasJs/salida.js') }}" defer></script>
+    <script src="{{ asset('js/paquetesJs/figurasPaquete.js') }}" defer></script> -->
     <script>
         window.paquetes = @json($paquetes);
 
