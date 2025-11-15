@@ -180,7 +180,10 @@ export function openCellMenu(x, y, { fechaISO, resourceId }, calendar, maquinas)
                     : "Generar turnos (seleccione una máquina)",
                 disabled: !resourceId,
                 onClick: async () => {
+                    console.log("[menu] Click en generar turnos, resourceId:", resourceId);
+
                     if (!resourceId) {
+                        console.log("[menu] No hay resourceId, mostrando advertencia");
                         Swal.fire({
                             icon: "warning",
                             title: "Máquina no seleccionada",
@@ -189,39 +192,61 @@ export function openCellMenu(x, y, { fechaISO, resourceId }, calendar, maquinas)
                         return;
                     }
 
-                    // Obtener trabajadores desde la configuración
-                    const { eventos } = DATA();
-
-                    // Extraer lista única de trabajadores desde los eventos
-                    const trabajadoresMap = new Map();
-                    eventos.forEach((ev) => {
-                        if (ev.extendedProps?.user_id && !ev.extendedProps?.es_festivo) {
-                            const userId = ev.extendedProps.user_id;
-                            if (!trabajadoresMap.has(userId)) {
-                                trabajadoresMap.set(userId, {
-                                    id: userId,
-                                    nombre_completo: ev.title,
-                                    maquina_id: ev.extendedProps.maquina_id || null,
-                                    turno: ev.extendedProps.turno || null,
-                                    categoria: {
-                                        nombre: ev.extendedProps.categoria_nombre || null,
-                                    },
-                                });
-                            }
-                        }
-                    });
-
-                    const trabajadores = Array.from(trabajadoresMap.values());
+                    console.log("[menu] Llamando a generarTurnosDialog...");
 
                     const resultado = await generarTurnosDialog(
                         fechaISO,
                         resourceId,
-                        trabajadores
+                        maquinaNombre
                     );
 
-                    if (resultado) {
-                        // Refrescar el calendario para mostrar los nuevos turnos
-                        calendar.refetchEvents();
+                    console.log("[menu] Resultado del diálogo:", resultado);
+
+                    if (resultado && resultado.eventos) {
+                        console.log("[menu] Procesando eventos:", resultado.eventos.length);
+
+                        // Primero, eliminar eventos antiguos del trabajador en las fechas afectadas
+                        const userId = resultado.eventos[0]?.user_id;
+                        if (userId) {
+                            const eventosExistentes = calendar.getEvents();
+                            const fechasNuevas = resultado.eventos.map(e => e.start);
+
+                            eventosExistentes.forEach(evento => {
+                                const eventoUserId = evento.extendedProps?.user_id;
+                                const eventoFecha = evento.startStr?.slice(0, 10) || evento.start?.toISOString().slice(0, 10);
+
+                                // Eliminar si es del mismo usuario y está en las fechas que estamos actualizando
+                                if (eventoUserId === userId && fechasNuevas.includes(eventoFecha) && !evento.extendedProps?.es_festivo) {
+                                    console.log("[menu] Eliminando evento antiguo:", evento.id);
+                                    evento.remove();
+                                }
+                            });
+                        }
+
+                        // Agregar los nuevos eventos
+                        resultado.eventos.forEach(evento => {
+                            calendar.addEvent({
+                                id: evento.id,
+                                title: evento.title,
+                                start: evento.start,
+                                resourceId: evento.resourceId,
+                                allDay: true,
+                                backgroundColor: evento.backgroundColor,
+                                borderColor: evento.borderColor,
+                                textColor: evento.textColor || '#000000',
+                                extendedProps: {
+                                    user_id: evento.user_id,
+                                    categoria_nombre: evento.categoria_nombre,
+                                    turno: evento.turno,
+                                    entrada: evento.entrada,
+                                    salida: evento.salida,
+                                    foto: evento.foto,
+                                    es_festivo: false,
+                                }
+                            });
+                        });
+
+                        console.log("[menu] Eventos actualizados correctamente");
                     }
                 },
             },

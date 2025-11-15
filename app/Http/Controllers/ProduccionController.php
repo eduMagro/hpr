@@ -118,7 +118,7 @@ class ProduccionController extends Controller
         ]);
         log::info('maquinas', $maquinas->toArray());
         $trabajadores = User::with([
-            'asignacionesTurnos.turno:id,hora_entrada,hora_salida',
+            'asignacionesTurnos.turno:id,hora_inicio,hora_fin',
             'asignacionesTurnos.obra.cliente',
             'categoria',
             'maquina'
@@ -155,8 +155,8 @@ class ProduccionController extends Controller
                 if ($fechaTurno->between($fechaHoy, $fechaLimite)) {
                     $turno = $asignacionTurno->turno;
 
-                    $horaEntrada = $turno?->hora_entrada ?? '08:00:00';
-                    $horaSalida = $turno?->hora_salida ?? '16:00:00';
+                    $horaEntrada = $turno?->hora_inicio ?? '08:00:00';
+                    $horaSalida = $turno?->hora_fin ?? '16:00:00';
 
                     if ($horaEntrada === '22:00:00' && $horaSalida === '06:00:00') {
                         $start = $asignacionTurno->fecha . 'T00:00:00';
@@ -496,9 +496,22 @@ class ProduccionController extends Controller
                 ->orderByDesc('fecha_inicio')
                 ->first();
 
-            $colasMaquinas[$m->id] = optional($ultimaPlanillaFabricando)->fecha_inicio
+            $fechaInicioCola = optional($ultimaPlanillaFabricando)->fecha_inicio
                 ? toCarbon($ultimaPlanillaFabricando->fecha_inicio)
                 : Carbon::now();
+
+            // Validar que la fecha no esté demasiado lejos en el futuro
+            $maxFecha = Carbon::now()->addYear();
+            if ($fechaInicioCola->gt($maxFecha)) {
+                Log::warning('COLA MAQUINA: fecha_inicio demasiado lejana, usando now()', [
+                    'maquina_id' => $m->id,
+                    'fecha_inicio' => $fechaInicioCola->toIso8601String(),
+                    'planilla_id' => optional($ultimaPlanillaFabricando)->id,
+                ]);
+                $fechaInicioCola = Carbon::now();
+            }
+
+            $colasMaquinas[$m->id] = $fechaInicioCola;
         }
 
         // 🔹 4. Obtener ordenes desde la tabla orden_planillas (SIN reordenar)
@@ -546,7 +559,7 @@ class ProduccionController extends Controller
         }
 
         $fechaInicioCalendario = $fechaCarbon?->toDateString() ?? now()->toDateString();
-        $turnosLista = Turno::orderBy('hora_entrada')->pluck('nombre'); // ej.: mañana, tarde, noche
+        $turnosLista = Turno::orderBy('orden')->orderBy('hora_inicio')->get(); // Turnos completos con estado activo
 
         $initialDate = $this->calcularInitialDate();
 
@@ -692,9 +705,22 @@ class ProduccionController extends Controller
                 ->orderByDesc('fecha_inicio')
                 ->first();
 
-            $colasMaquinas[$m->id] = optional($ultimaPlanillaFabricando)->fecha_inicio
+            $fechaInicioCola = optional($ultimaPlanillaFabricando)->fecha_inicio
                 ? toCarbon($ultimaPlanillaFabricando->fecha_inicio)
                 : Carbon::now();
+
+            // Validar que la fecha no esté demasiado lejos en el futuro
+            $maxFecha = Carbon::now()->addYear();
+            if ($fechaInicioCola->gt($maxFecha)) {
+                Log::warning('COLA MAQUINA: fecha_inicio demasiado lejana, usando now()', [
+                    'maquina_id' => $m->id,
+                    'fecha_inicio' => $fechaInicioCola->toIso8601String(),
+                    'planilla_id' => optional($ultimaPlanillaFabricando)->id,
+                ]);
+                $fechaInicioCola = Carbon::now();
+            }
+
+            $colasMaquinas[$m->id] = $fechaInicioCola;
         }
 
         // 4. Obtener ordenes desde la tabla orden_planillas
@@ -798,7 +824,7 @@ class ProduccionController extends Controller
      */
     private function calcularPlanificadoYRealPorTurno($maquinas, ?string $fechaInicio = null, ?string $fechaFin = null, ?string $turnoFiltro = null): array
     {
-        $turnosDefinidos = Turno::all(); // nombre, hora_entrada, hora_salida (HH:MM)
+        $turnosDefinidos = Turno::all(); // nombre, hora_inicio, hora_fin (HH:MM)
 
         $resolverMaquinaElemento = function (Elemento $e) {
             $tipo = optional($e->maquina)->tipo;
@@ -810,8 +836,8 @@ class ProduccionController extends Controller
         };
 
         $estaEnTurno = function (string $horaHHmm, $turno) {
-            $ini = $turno->hora_entrada; // 'HH:MM'
-            $fin = $turno->hora_salida;  // 'HH:MM'
+            $ini = $turno->hora_inicio; // 'HH:MM'
+            $fin = $turno->hora_fin;  // 'HH:MM'
             if ($fin >= $ini) {
                 return ($horaHHmm >= $ini && $horaHHmm < $fin);
             }
@@ -844,7 +870,7 @@ class ProduccionController extends Controller
             $turnoTmp = $turnosDefinidos->first(fn($t) => $estaEnTurno($horaPlan, $t));
             $fechaPlan = $finPlanificado->toDateString();
 
-            if ($turnoTmp && $turnoTmp->hora_salida < $turnoTmp->hora_entrada && $horaPlan < $turnoTmp->hora_salida) {
+            if ($turnoTmp && $turnoTmp->hora_fin < $turnoTmp->hora_inicio && $horaPlan < $turnoTmp->hora_fin) {
                 $fechaPlan = \Carbon\Carbon::parse($fechaPlan)->subDay()->toDateString();
             }
 
@@ -866,7 +892,7 @@ class ProduccionController extends Controller
                 $fechaReal = $finRealC->toDateString();
 
                 $turnoTmp = $turnosDefinidos->first(fn($t) => $estaEnTurno($horaReal, $t));
-                if ($turnoTmp && $turnoTmp->hora_salida < $turnoTmp->hora_entrada && $horaReal < $turnoTmp->hora_salida) {
+                if ($turnoTmp && $turnoTmp->hora_fin < $turnoTmp->hora_inicio && $horaReal < $turnoTmp->hora_fin) {
                     $fechaReal = \Carbon\Carbon::parse($fechaReal)->subDay()->toDateString();
                 }
 
@@ -911,31 +937,156 @@ class ProduccionController extends Controller
         return isset($festivosSet[$dia->toDateString()]) || $dia->isWeekend();
     }
 
-    /** 00:00 del siguiente día laborable a partir de $dt. */
+    /** Siguiente momento laborable a partir de $dt */
     private function siguienteLaborableInicio(Carbon $dt, array $festivosSet): Carbon
     {
-        $x = $dt->copy()->startOfDay();
-        while ($this->esNoLaborable($x, $festivosSet)) {
-            $x->addDay();
+        $x = $dt->copy();
+        $maxIter = 365;
+        $iter = 0;
+
+        while ($iter < $maxIter) {
+            // Caso especial: domingo - puede tener turnos nocturnos que empiezan ese día
+            if ($x->dayOfWeek === Carbon::SUNDAY) {
+                $segmentosDomingo = $this->obtenerSegmentosLaborablesDia($x);
+
+                // Buscar si hay algún segmento que empiece el domingo (ej: turno noche 22:00)
+                foreach ($segmentosDomingo as $seg) {
+                    // Si el segmento empieza el domingo y el cursor está antes
+                    if ($seg['inicio']->dayOfWeek === Carbon::SUNDAY && $x->lt($seg['fin'])) {
+                        return $x->lt($seg['inicio']) ? $seg['inicio'] : $x;
+                    }
+                }
+            }
+
+            // Si es día laborable (no festivo, no fin de semana)
+            if (!$this->esNoLaborable($x, $festivosSet)) {
+                // Obtener segmentos del día
+                $segmentos = $this->obtenerSegmentosLaborablesDia($x);
+
+                if (!empty($segmentos)) {
+                    // Si el cursor está antes del primer segmento, ir al primer segmento
+                    $primerSegmento = $segmentos[0];
+                    if ($x->lt($primerSegmento['inicio'])) {
+                        return $primerSegmento['inicio'];
+                    }
+
+                    // Buscar un segmento donde el cursor esté antes o dentro
+                    foreach ($segmentos as $seg) {
+                        if ($x->lt($seg['fin'])) {
+                            return $x->lt($seg['inicio']) ? $seg['inicio'] : $x;
+                        }
+                    }
+
+                    // Si llegamos aquí, el cursor está después de todos los segmentos del día
+                    // Avanzar al siguiente día
+                } else {
+                    // No hay segmentos (no hay turnos activos), retornar el día a las 00:00
+                    return $x->startOfDay();
+                }
+            }
+
+            // Avanzar al siguiente día a las 00:00
+            $x->addDay()->startOfDay();
+            $iter++;
         }
+
+        // Fallback
         return $x;
     }
 
+    // Cache de turnos activos para evitar queries repetidas
+    private $turnosActivosCache = null;
+
     /**
-     * Divide una duración (segundos) en tramos [start,end) exclusivamente en días laborables.
-     * Si el inicio cae en no laborable, arranca en el siguiente laborable 00:00.
-     * Consume hasta 24h del día laborable y continúa en el siguiente laborable.
+     * Obtener turnos activos (con cache)
+     */
+    private function obtenerTurnosActivos()
+    {
+        if ($this->turnosActivosCache === null) {
+            $this->turnosActivosCache = Turno::activos()->ordenados()->get();
+        }
+        return $this->turnosActivosCache;
+    }
+
+    /**
+     * Obtener segmentos laborables del día basados en turnos activos
+     */
+    private function obtenerSegmentosLaborablesDia(Carbon $dia): array
+    {
+        $turnosActivos = $this->obtenerTurnosActivos();
+        $segmentos = [];
+        $esDomingo = $dia->dayOfWeek === Carbon::SUNDAY;
+        $esSabado = $dia->dayOfWeek === Carbon::SATURDAY;
+
+        foreach ($turnosActivos as $turno) {
+            if (!$turno->hora_inicio || !$turno->hora_fin) {
+                continue;
+            }
+
+            // Para domingo: solo turnos que empiezan el domingo (offset_inicio < 0)
+            // esto significa turnos nocturnos que técnicamente son del lunes
+            if ($esDomingo && $turno->offset_dias_inicio >= 0) {
+                continue; // Saltar turnos normales (mañana, tarde) del domingo
+            }
+
+            // Para sábado: no generar ningún segmento
+            if ($esSabado) {
+                continue;
+            }
+
+            $horaInicio = \Carbon\Carbon::parse($turno->hora_inicio);
+            $horaFin = \Carbon\Carbon::parse($turno->hora_fin);
+
+            $inicio = $dia->copy()->setTime($horaInicio->hour, $horaInicio->minute, 0);
+            $fin = $dia->copy()->setTime($horaFin->hour, $horaFin->minute, 0);
+
+            // Si el turno termina al día siguiente (offset_dias_fin = 1)
+            if ($turno->offset_dias_fin == 1) {
+                $fin->addDay();
+            }
+
+            // Si fin es antes que inicio, significa que cruza medianoche
+            if ($fin->lte($inicio)) {
+                $fin->addDay();
+            }
+
+            $segmentos[] = ['inicio' => $inicio, 'fin' => $fin];
+        }
+
+        return $segmentos;
+    }
+
+    /**
+     * Divide una duración (segundos) en tramos [start,end) usando turnos activos.
+     * Si el inicio cae en no laborable, arranca en el siguiente laborable.
+     * Consume solo las horas de los turnos activos.
      */
     private function generarTramosLaborales(Carbon $inicio, int $durSeg, array $festivosSet): array
     {
-
-
         $tramos   = [];
         $restante = max(0, (int) $durSeg);
 
-        // Si el inicio cae en no laborable -> al siguiente laborable 00:00
-        if ($this->esNoLaborable($inicio, $festivosSet)) {
-            $inicio = $this->siguienteLaborableInicio($inicio, $festivosSet);
+        // Verificar si el inicio está fuera de horario laborable
+        $segmentosInicio = $this->obtenerSegmentosLaborablesDia($inicio);
+        $dentroDeSegmento = false;
+
+        foreach ($segmentosInicio as $seg) {
+            if ($inicio->gte($seg['inicio']) && $inicio->lt($seg['fin'])) {
+                $dentroDeSegmento = true;
+                break;
+            }
+        }
+
+        // Si el inicio NO está dentro de un segmento laborable, mover al siguiente
+        if (!$dentroDeSegmento) {
+            // Si es fin de semana/festivo O fuera de horario de turnos
+            if ($this->esNoLaborable($inicio, $festivosSet) || empty($segmentosInicio)) {
+                $inicio = $this->siguienteLaborableInicio($inicio, $festivosSet);
+            } else {
+                // Está en día laborable pero fuera de horario de turnos
+                // Buscar el próximo segmento del mismo día o siguiente
+                $inicio = $this->siguienteLaborableInicio($inicio, $festivosSet);
+            }
         }
 
         $cursor  = $inicio->copy();
@@ -951,49 +1102,107 @@ class ProduccionController extends Controller
                 break;
             }
 
-            // Saltar no laborables completos
-            if ($this->esNoLaborable($cursor, $festivosSet)) {
-                $cursor = $this->siguienteLaborableInicio($cursor, $festivosSet);
+            // Obtener segmentos laborables del día basados en turnos activos
+            $segmentos = $this->obtenerSegmentosLaborablesDia($cursor);
 
+            // Saltar no laborables completos SOLO si no tienen segmentos
+            // (Esto permite que domingo tenga segmentos nocturnos)
+            if ($this->esNoLaborable($cursor, $festivosSet) && empty($segmentos)) {
+                $cursor = $this->siguienteLaborableInicio($cursor, $festivosSet);
                 continue;
             }
 
-            // Límite exclusivo del día = 00:00 del día siguiente
-            $limiteDia = $cursor->copy()->startOfDay()->addDay();
+            if (empty($segmentos)) {
+                // Si no hay segmentos (no hay turnos con horarios definidos), usar 24h
+                $limiteDia = $cursor->copy()->startOfDay()->addDay();
+                $tsLimite  = (int) $limiteDia->getTimestamp();
+                $tsCursor  = (int) $cursor->getTimestamp();
+                $capacidad = max(0, $tsLimite - $tsCursor);
+                $consume   = min($restante, $capacidad);
 
-            // Capacidad del día (en segundos) usando timestamps (evita rarezas DST)
-            $tsCursor   = (int) $cursor->getTimestamp();
-            $tsLimite   = (int) $limiteDia->getTimestamp();
-            $capacidad  = $tsLimite - $tsCursor; // >= 0
+                if ($consume > 0) {
+                    $start = $cursor->copy();
+                    $end   = $cursor->copy()->addSeconds($consume);
+                    $tramos[] = ['start' => $start, 'end' => $end];
 
-            if ($capacidad <= 0) {
-                // avanzar primero al límite del día y luego al próximo laborable
-                if ($tsCursor < $tsLimite) {
-                    $cursor = $limiteDia->copy();
+                    $restante -= $consume;
+                    $cursor    = $end->copy(); // Hacer copia para evitar referencias compartidas
                 }
-                $cursor = $this->siguienteLaborableInicio($cursor, $festivosSet);
-                Log::warning('TRAMOS T3: capacidad <= 0, salto a próximo laborable', ['cursor' => $cursor->toIso8601String()]);
-                continue;
-            }
 
-            $consume = min($restante, $capacidad);
+                // Si queda trabajo y llegamos al final del día → siguiente laborable
+                if ($restante > 0 && (int)$cursor->getTimestamp() >= $tsLimite) {
+                    $cursor = $this->siguienteLaborableInicio($cursor, $festivosSet);
+                }
 
-            // tramo
-            $start = $cursor->copy();
-            $end   = $cursor->copy()->addSeconds($consume);
-            $tramos[] = ['start' => $start, 'end' => $end];
+                // Protección adicional: si el cursor no avanzó, forzar avance
+                if ($consume == 0) {
+                    $cursor->addDay()->startOfDay();
+                }
+            } else {
+                // Hay turnos activos - consumir solo durante los segmentos laborables
+                $consumidoEnEsteDia = false;
 
-            // avanzar
-            $restante -= $consume;
-            $cursor    = $end;
+                foreach ($segmentos as $segmento) {
+                    $inicioSeg = $segmento['inicio'];
+                    $finSeg = $segmento['fin'];
 
-            // si queda trabajo y estamos en/tras el límite del día → próximo laborable
-            $tsCursor = (int) $cursor->getTimestamp();
-            if ($restante > 0 && $tsCursor >= $tsLimite) {
-                $cursor = $this->siguienteLaborableInicio($cursor, $festivosSet);
+                    // Si el cursor está después de este segmento, continuar con el siguiente
+                    if ($cursor->gte($finSeg)) {
+                        continue;
+                    }
+
+                    // Si el cursor está antes del segmento, moverlo al inicio
+                    if ($cursor->lt($inicioSeg)) {
+                        $cursor = $inicioSeg->copy();
+                    }
+
+                    // Calcular cuánto podemos consumir de este segmento
+                    $capacidadSeg = max(0, $cursor->diffInSeconds($finSeg, false));
+                    $consume = min($restante, $capacidadSeg);
+
+                    if ($consume > 0) {
+                        $start = $cursor->copy();
+                        $end = $cursor->copy()->addSeconds($consume);
+                        $tramos[] = ['start' => $start, 'end' => $end];
+
+                        $restante -= $consume;
+                        $cursor = $end->copy(); // Hacer copia para evitar referencias compartidas
+                        $consumidoEnEsteDia = true;
+                    }
+
+                    // Si no queda más tiempo, salir
+                    if ($restante <= 0) {
+                        break;
+                    }
+                }
+
+                // Si aún queda tiempo después de procesar todos los segmentos del día
+                if ($restante > 0) {
+                    // Avanzar al día siguiente
+                    $cursor->addDay()->startOfDay();
+
+                    // Saltar días no laborables (pero verificar si tienen segmentos antes)
+                    $diasSaltados = 0;
+                    while ($diasSaltados < 365) {
+                        $segmentosDelDia = $this->obtenerSegmentosLaborablesDia($cursor);
+
+                        // Si no es laborable Y no tiene segmentos, saltar
+                        if ($this->esNoLaborable($cursor, $festivosSet) && empty($segmentosDelDia)) {
+                            $cursor->addDay();
+                            $diasSaltados++;
+                        } else {
+                            // Es laborable o tiene segmentos (ej: domingo con turno noche)
+                            break;
+                        }
+                    }
+
+                    if ($diasSaltados >= 365) {
+                        Log::error('TRAMOS: bucle infinito detectado buscando día laborable');
+                        break;
+                    }
+                }
             }
         }
-
 
         return $tramos;
     }
@@ -1286,9 +1495,22 @@ class ProduccionController extends Controller
                 ->orderByDesc('fecha_inicio')
                 ->first();
 
-            $colasMaquinas[$m->id] = optional($ultimaPlanillaFabricando)->fecha_inicio
+            $fechaInicioCola = optional($ultimaPlanillaFabricando)->fecha_inicio
                 ? toCarbon($ultimaPlanillaFabricando->fecha_inicio)
                 : now();
+
+            // Validar que la fecha no esté demasiado lejos en el futuro
+            $maxFecha = Carbon::now()->addYear();
+            if ($fechaInicioCola->gt($maxFecha)) {
+                Log::warning('COLA MAQUINA: fecha_inicio demasiado lejana, usando now()', [
+                    'maquina_id' => $m->id,
+                    'fecha_inicio' => $fechaInicioCola->toIso8601String(),
+                    'planilla_id' => optional($ultimaPlanillaFabricando)->id,
+                ]);
+                $fechaInicioCola = Carbon::now();
+            }
+
+            $colasMaquinas[$m->id] = $fechaInicioCola;
         }
 
         $ordenes = OrdenPlanilla::whereIn('maquina_id', $maquinaIds)
@@ -1404,6 +1626,16 @@ class ProduccionController extends Controller
                 } catch (\Throwable $e) {
                     $inicioCola = Carbon::now();
                 }
+            }
+
+            // Safeguard: validar que inicioCola no esté demasiado lejos en el futuro
+            $maxFecha = Carbon::now()->addYear();
+            if ($inicioCola->gt($maxFecha)) {
+                Log::error('EVT: inicioCola inesperadamente lejana (debería haberse validado antes)', [
+                    'maquinaId' => $maquinaId,
+                    'inicioCola' => $inicioCola->toIso8601String(),
+                ]);
+                $inicioCola = Carbon::now();
             }
 
             $primeraOrden = $planillasOrdenadas[0] ?? null;
@@ -1593,8 +1825,10 @@ class ProduccionController extends Controller
                         $inicioCola = $fechaFinReal->copy();
                     } // fin foreach subGrupos
 
-                    // Avanza cola
-                    $inicioCola = $fechaFinReal->copy();
+                    // Avanza cola (solo si fechaFinReal está definida)
+                    if (isset($fechaFinReal)) {
+                        $inicioCola = $fechaFinReal->copy();
+                    }
                 } catch (\Throwable $e) {
                     Log::error('EVT X: excepción en bucle planilla', [
                         'clave' => $clave,
@@ -1721,9 +1955,22 @@ class ProduccionController extends Controller
                     ->orderByDesc('fecha_inicio')
                     ->first();
 
-                $colasMaquinas[$m->id] = optional($ultimaPlanillaFabricando)->fecha_inicio
+                $fechaInicioCola = optional($ultimaPlanillaFabricando)->fecha_inicio
                     ? toCarbon($ultimaPlanillaFabricando->fecha_inicio)
                     : now();
+
+                // Validar que la fecha no esté demasiado lejos en el futuro
+                $maxFecha = Carbon::now()->addYear();
+                if ($fechaInicioCola->gt($maxFecha)) {
+                    Log::warning('COLA MAQUINA: fecha_inicio demasiado lejana, usando now()', [
+                        'maquina_id' => $m->id,
+                        'fecha_inicio' => $fechaInicioCola->toIso8601String(),
+                        'planilla_id' => optional($ultimaPlanillaFabricando)->id,
+                    ]);
+                    $fechaInicioCola = Carbon::now();
+                }
+
+                $colasMaquinas[$m->id] = $fechaInicioCola;
             }
 
             $ordenes = OrdenPlanilla::orderBy('posicion')
@@ -1795,8 +2042,8 @@ class ProduccionController extends Controller
                 $turno = $asignacion->turno;
                 if (!$turno) continue;
 
-                $horaEntrada = $turno->hora_entrada ?? '08:00:00';
-                $horaSalida  = $turno->hora_salida ?? '16:00:00';
+                $horaEntrada = $turno->hora_inicio ?? '08:00:00';
+                $horaSalida  = $turno->hora_fin ?? '16:00:00';
 
                 $color = $colorPorEstado($asignacion->estado);
 
@@ -1831,8 +2078,8 @@ class ProduccionController extends Controller
                 $turno = $asignacion->turno;
                 if (!$turno || !$asignacion->obra_id) continue; // ⚠️ Solo si tiene obra
 
-                $horaEntrada = $turno->hora_entrada ?? '08:00:00';
-                $horaSalida  = $turno->hora_salida ?? '16:00:00';
+                $horaEntrada = $turno->hora_inicio ?? '08:00:00';
+                $horaSalida  = $turno->hora_fin ?? '16:00:00';
 
                 $color = $colorPorEstado($asignacion->estado);
 
@@ -1885,7 +2132,7 @@ class ProduccionController extends Controller
         // ID de la empresa "HPR Servicios en Obra S.L."
         $empresaServiciosId = Empresa::where('nombre', 'HPR Servicios en Obra S.L.')->value('id');
 
-        $asignaciones = AsignacionTurno::with(['user.categoria', 'user.maquina', 'obra'])
+        $asignaciones = AsignacionTurno::with(['user.categoria', 'user.maquina', 'obra', 'turno'])
             ->whereBetween('fecha', [$inicio, $fin])
             ->get();
 
@@ -1914,6 +2161,7 @@ class ProduccionController extends Controller
                     'extendedProps' => [
                         'user_id' => $asignacion->user_id,
                         'estado'  => $asignacion->estado,
+                        'turno'   => $asignacion->turno?->nombre,
                     ],
                     'backgroundColor' => $color,
                     'borderColor'     => $color,

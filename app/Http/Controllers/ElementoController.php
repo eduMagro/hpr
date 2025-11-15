@@ -631,8 +631,8 @@ class ElementoController extends Controller
         $maquinaDestino = Maquina::find($maquinaId);
 
         // Buscar turno actual
-        $turno = Turno::where('hora_entrada', '<=', $horaActual)
-            ->where('hora_salida', '>=', $horaActual)
+        $turno = Turno::where('hora_inicio', '<=', $horaActual)
+            ->where('hora_fin', '>=', $horaActual)
             ->first();
 
         if (!$turno) {

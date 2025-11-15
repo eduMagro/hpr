@@ -1,0 +1,113 @@
+/* === Tamaños responsivos de etiquetas según columnas visibles === */
+
+@media screen {
+    /* TAMAÑO NORMAL: 1 planilla o 2 planillas sin columnas laterales */
+    .etiqueta-card {
+        transition: all 0.2s ease;
+    }
+
+    /* === TAMAÑO MEDIO: 2 planillas SIN columnas laterales === */
+    .dos-planillas .etiqueta-card {
+        width: 500px !important;
+        height: 282px !important;
+        margin: 0 0.6rem 0.6rem 0.6rem !important;
+        padding: 3mm !important;
+    }
+
+    .dos-planillas .etiqueta-card h2 {
+        font-size: 0.9rem !important;
+        line-height: 1.2 !important;
+    }
+
+    .dos-planillas .etiqueta-card h3 {
+        font-size: 0.9rem !important;
+        line-height: 1.2 !important;
+    }
+
+    .dos-planillas .etiqueta-card button {
+        padding: 0.35rem 0.55rem !important;
+        font-size: 0.8rem !important;
+    }
+
+    .dos-planillas .etiqueta-card select {
+        padding: 0.35rem 0.5rem !important;
+        font-size: 0.8rem !important;
+    }
+
+    /* === TAMAÑO COMPACTO: 2 planillas + 1 columna lateral === */
+    .columnas-laterales-visibles.dos-planillas .etiqueta-card {
+        width: 400px !important;
+        height: 225px !important;
+        margin: 0 0.4rem 0.5rem 0.4rem !important;
+        padding: 2.5mm !important;
+    }
+
+    .columnas-laterales-visibles.dos-planillas .etiqueta-card h2 {
+        font-size: 0.82rem !important;
+        line-height: 1.15 !important;
+    }
+
+    .columnas-laterales-visibles.dos-planillas .etiqueta-card h3 {
+        font-size: 0.82rem !important;
+        line-height: 1.15 !important;
+    }
+
+    .columnas-laterales-visibles.dos-planillas .etiqueta-card button {
+        padding: 0.3rem 0.5rem !important;
+        font-size: 0.75rem !important;
+    }
+
+    .columnas-laterales-visibles.dos-planillas .etiqueta-card select {
+        padding: 0.3rem 0.4rem !important;
+        font-size: 0.75rem !important;
+    }
+
+    .columnas-laterales-visibles.dos-planillas .etiqueta-card .absolute.top-2.right-2 {
+        gap: 0.3rem !important;
+        top: 0.4rem !important;
+        right: 0.4rem !important;
+    }
+
+    /* === TAMAÑO MUY COMPACTO: 2 planillas + AMBAS columnas laterales === */
+    .ambas-columnas.dos-planillas .etiqueta-card {
+        width: 340px !important;
+        height: 191px !important;
+        margin: 0 0.3rem 0.4rem 0.3rem !important;
+        padding: 2mm !important;
+    }
+
+    .ambas-columnas.dos-planillas .etiqueta-card h2 {
+        font-size: 0.72rem !important;
+        line-height: 1.1 !important;
+    }
+
+    .ambas-columnas.dos-planillas .etiqueta-card h3 {
+        font-size: 0.72rem !important;
+        line-height: 1.1 !important;
+    }
+
+    .ambas-columnas.dos-planillas .etiqueta-card button {
+        padding: 0.25rem 0.4rem !important;
+        font-size: 0.68rem !important;
+    }
+
+    .ambas-columnas.dos-planillas .etiqueta-card select {
+        padding: 0.25rem 0.35rem !important;
+        font-size: 0.68rem !important;
+    }
+
+    .ambas-columnas.dos-planillas .etiqueta-card .absolute.top-2.right-2 {
+        gap: 0.25rem !important;
+        top: 0.3rem !important;
+        right: 0.3rem !important;
+    }
+
+    .ambas-columnas.dos-planillas .qr-box {
+        width: 15mm !important;
+    }
+
+    .ambas-columnas.dos-planillas .qr-box img {
+        width: 13mm !important;
+        height: 13mm !important;
+    }
+}

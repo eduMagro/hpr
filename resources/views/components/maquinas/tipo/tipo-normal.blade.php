@@ -46,7 +46,8 @@
          GRID PRINCIPAL (3 COLUMNAS ADAPTATIVAS)
          ============================================================ -->
     <div class="max-w-screen-2xl mx-auto px-4">
-        <div id="grid-maquina" class="grid grid-cols-12 gap-2" style="opacity: 0; visibility: hidden; transition: opacity 0.3s ease-in, visibility 0s 0.3s;">
+        <div id="grid-maquina" class="grid grid-cols-12 gap-2 {{ count($planillasActivas) >= 2 ? 'dos-planillas' : 'una-planilla' }}"
+             style="opacity: 0; visibility: hidden; transition: opacity 0.3s ease-in, visibility 0s 0.3s;">
 
             <!-- ============================================================
                  COLUMNA IZQUIERDA - MATERIA PRIMA
@@ -203,7 +204,7 @@
                 </div>
 
                 <div class="flex items-center justify-center" style="min-height: calc(100vh - 70px);">
-                    <div class="grid grid-cols-1 gap-2 {{ count($planillasActivas) >= 2 ? 'md:grid-cols-2 dos-planillas' : 'una-planilla' }} w-full">
+                    <div class="grid grid-cols-1 gap-2 {{ count($planillasActivas) >= 2 ? 'md:grid-cols-2' : '' }} w-full">
                         @forelse($planillasActivas as $planilla)
                             @php
                                 $grupoPlanilla = $elementosPorPlanilla->get($planilla->id, collect());

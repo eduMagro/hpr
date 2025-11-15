@@ -14,6 +14,7 @@ export default defineConfig({
 
                 // Global styles
                 'resources/css/styles.css',
+                'resources/css/etiquetas-responsive.css',
 
                 // Module-specific entries
                 'resources/js/modules/calendario-salidas/index.js',
@@ -33,7 +34,7 @@ export default defineConfig({
                 'resources/js/salidasJs/salidas-bundle.js',
                 'resources/js/qr/qr-bundle.js',
             ],
-            refresh: true,
+            refresh: false,
         }),
     ],
     build: {

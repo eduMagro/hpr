@@ -4,24 +4,48 @@ import { R } from "../config.js";
  * Abre el diálogo para generar turnos desde el calendario
  * @param {string} fechaISO - Fecha ISO seleccionada
  * @param {number} maquinaId - ID de la máquina/recurso desde el calendario
- * @param {Array} trabajadores - Lista de trabajadores disponibles
+ * @param {string} maquinaNombre - Nombre de la máquina
  * @returns {Promise<object|null>} - Retorna el resultado o null si se canceló
  */
-export async function generarTurnosDialog(fechaISO, maquinaId, trabajadores) {
-    // Filtrar trabajadores que coincidan con la máquina seleccionada
-    const trabajadoresFiltrados = trabajadores.filter(
-        (t) => t.maquina_id === parseInt(maquinaId)
-    );
+export async function generarTurnosDialog(fechaISO, maquinaId, maquinaNombre) {
+    // Obtener todos los trabajadores con rol operario y sus asignaciones
+    let todosOperarios = [];
+    let operariosSinTurno = [];
+    let operariosMaquina = [];
 
-    // Crear opciones para el select de trabajadores
-    const trabajadoresOptions = trabajadoresFiltrados.length > 0
-        ? trabajadoresFiltrados
-              .map(
-                  (t) =>
-                      `<option value="${t.id}">${t.nombre_completo} - ${t.categoria?.nombre || "Sin categoría"}</option>`
-              )
-              .join("")
-        : '<option value="" disabled>No hay trabajadores para esta máquina</option>';
+    try {
+        const response = await fetch(`/api/usuarios/operarios-agrupados?fecha=${fechaISO}&maquina_id=${maquinaId}`, {
+            headers: {
+                'X-CSRF-TOKEN': window.AppPlanif.csrf,
+                'Accept': 'application/json',
+            }
+        });
+
+        if (response.ok) {
+            const data = await response.json();
+            todosOperarios = data.todos || [];
+            operariosSinTurno = data.sin_turno || [];
+            operariosMaquina = data.de_maquina || [];
+        } else {
+            console.error('Error al obtener operarios:', response.status);
+        }
+    } catch (error) {
+        console.error('Error al obtener operarios:', error);
+    }
+
+    // Función para generar opciones de select
+    const generarOpciones = (lista, mensajeVacio = 'No hay trabajadores') => {
+        if (lista.length === 0) {
+            return `<option value="" disabled>${mensajeVacio}</option>`;
+        }
+        return lista.map(t =>
+            `<option value="${t.id}">${t.name} ${t.primer_apellido || ''} ${t.segundo_apellido || ''}</option>`
+        ).join('');
+    };
+
+    const opcionesSinTurno = generarOpciones(operariosSinTurno, 'No hay operarios sin turno este día');
+    const opcionesTodosOperarios = generarOpciones(todosOperarios, 'No hay operarios disponibles');
+    const opcionesMaquina = generarOpciones(operariosMaquina, 'No hay operarios asignados a esta máquina');
 
     const { value: formValues } = await Swal.fire({
         title: "🔧 Generar Turnos",
@@ -30,19 +54,41 @@ export async function generarTurnosDialog(fechaISO, maquinaId, trabajadores) {
                 <div class="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
                     <p class="text-sm text-blue-800">
                         <strong>Fecha inicio:</strong> ${fechaISO}<br>
-                        <strong>Máquina:</strong> ID ${maquinaId}
+                        <strong>Máquina:</strong> ${maquinaNombre}
                     </p>
                 </div>
 
                 <div class="mb-4">
                     <label class="block text-sm font-semibold text-gray-700 mb-2">
-                        Trabajador <span class="text-red-500">*</span>
+                        Sin turno asignado este día <span class="text-green-600">(${operariosSinTurno.length})</span>
                     </label>
-                    <select id="swal-trabajador" class="swal2-input w-full" required>
-                        <option value="" disabled selected>Selecciona un trabajador</option>
-                        ${trabajadoresOptions}
+                    <select id="swal-trabajador-sin-turno" class="swal2-input w-full">
+                        <option value="" selected>Seleccionar...</option>
+                        ${opcionesSinTurno}
                     </select>
                 </div>
+
+                <div class="mb-4">
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">
+                        Asignados a ${maquinaNombre} <span class="text-blue-600">(${operariosMaquina.length})</span>
+                    </label>
+                    <select id="swal-trabajador-maquina" class="swal2-input w-full">
+                        <option value="" selected>Seleccionar...</option>
+                        ${opcionesMaquina}
+                    </select>
+                </div>
+
+                <div class="mb-4">
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">
+                        Todos los operarios <span class="text-gray-600">(${todosOperarios.length})</span>
+                    </label>
+                    <select id="swal-trabajador-todos" class="swal2-input w-full">
+                        <option value="" selected>Seleccionar...</option>
+                        ${opcionesTodosOperarios}
+                    </select>
+                </div>
+
+                <input type="hidden" id="swal-trabajador" value="" />
 
                 <div class="mb-4">
                     <label class="block text-sm font-semibold text-gray-700 mb-2">
@@ -80,19 +126,44 @@ export async function generarTurnosDialog(fechaISO, maquinaId, trabajadores) {
         cancelButtonColor: "#6b7280",
         width: "600px",
         didOpen: () => {
-            const trabajadorSelect = document.getElementById("swal-trabajador");
+            const trabajadorInput = document.getElementById("swal-trabajador");
             const turnoContainer = document.getElementById("turno-inicio-container");
+            const selectSinTurno = document.getElementById("swal-trabajador-sin-turno");
+            const selectMaquina = document.getElementById("swal-trabajador-maquina");
+            const selectTodos = document.getElementById("swal-trabajador-todos");
 
-            // Mostrar selector de turno inicial si el trabajador es diurno
-            trabajadorSelect.addEventListener("change", () => {
-                const trabajadorId = parseInt(trabajadorSelect.value);
-                const trabajador = trabajadoresFiltrados.find((t) => t.id === trabajadorId);
+            // Combinar todos los operarios para búsqueda de turno
+            const todosParaBusqueda = [...operariosSinTurno, ...operariosMaquina, ...todosOperarios];
 
+            // Función para actualizar el trabajador seleccionado
+            function actualizarTrabajador(trabajadorId, selectActivo) {
+                trabajadorInput.value = trabajadorId;
+
+                // Limpiar otros selects
+                if (selectActivo !== selectSinTurno) selectSinTurno.value = "";
+                if (selectActivo !== selectMaquina) selectMaquina.value = "";
+                if (selectActivo !== selectTodos) selectTodos.value = "";
+
+                // Buscar trabajador para verificar si es diurno
+                const trabajador = todosParaBusqueda.find(t => t.id === parseInt(trabajadorId));
                 if (trabajador && trabajador.turno === "diurno") {
                     turnoContainer.style.display = "block";
                 } else {
                     turnoContainer.style.display = "none";
                 }
+            }
+
+            // Event listeners para cada select
+            selectSinTurno.addEventListener("change", (e) => {
+                if (e.target.value) actualizarTrabajador(e.target.value, selectSinTurno);
+            });
+
+            selectMaquina.addEventListener("change", (e) => {
+                if (e.target.value) actualizarTrabajador(e.target.value, selectMaquina);
+            });
+
+            selectTodos.addEventListener("change", (e) => {
+                if (e.target.value) actualizarTrabajador(e.target.value, selectTodos);
             });
         },
         preConfirm: () => {
@@ -117,7 +188,9 @@ export async function generarTurnosDialog(fechaISO, maquinaId, trabajadores) {
 
     // Llamar al backend para generar turnos
     try {
-        const trabajador = trabajadoresFiltrados.find(
+        // Buscar el trabajador en todas las listas
+        const todosParaBusqueda = [...operariosSinTurno, ...operariosMaquina, ...todosOperarios];
+        const trabajador = todosParaBusqueda.find(
             (t) => t.id === parseInt(formValues.trabajador_id)
         );
 
@@ -144,21 +217,11 @@ export async function generarTurnosDialog(fechaISO, maquinaId, trabajadores) {
             throw new Error(data.message || `Error HTTP ${response.status}`);
         }
 
-        await Swal.fire({
-            icon: "success",
-            title: "¡Turnos generados!",
-            html: `
-                <p>Se han generado los turnos para:</p>
-                <p class="font-semibold mt-2">${trabajador.nombre_completo}</p>
-                <p class="text-sm text-gray-600 mt-1">
-                    ${data.turnos_creados || 0} turnos creados
-                </p>
-            `,
-            timer: 3000,
-            showConfirmButton: false,
-        });
-
-        return data;
+        // Retornar los datos incluyendo los eventos para agregarlos al calendario
+        return {
+            ...data,
+            eventos: data.eventos || []
+        };
     } catch (error) {
         console.error("Error al generar turnos:", error);
         await Swal.fire({

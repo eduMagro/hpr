@@ -24,7 +24,7 @@
     /* === Prevenir FOUC (Flash of Unstyled Content) === */
     .proceso {
         opacity: 0;
-        transition: opacity 0.3s ease-in;
+        transition: opacity 0.15s ease-in;
     }
 
     /* === Etiqueta base (pantalla e impresión) === */
@@ -103,40 +103,16 @@
             /* alto proporcional */
             margin: 0 1rem 1rem 1rem;
             box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+            /* Transición más rápida y eficiente - solo transform para mejor rendimiento */
+            transform-origin: top left;
+            will-change: transform;
         }
 
         .qr-label {
             font-size: 6px !important;
         }
 
-        /* Escalar etiquetas cuando hay 2 planillas visibles */
-        .dos-planillas .etiqueta-card {
-            width: 500px;
-            height: 282px;
-            margin: 0 0.5rem 0.5rem 0.5rem;
-        }
-
-        /* Ajustar tamaño de fuentes en modo 2 planillas */
-        .dos-planillas .etiqueta-card h2 {
-            font-size: 0.95rem;
-            line-height: 1.2;
-        }
-
-        .dos-planillas .etiqueta-card h3 {
-            font-size: 0.95rem;
-            line-height: 1.2;
-        }
-
-        /* Ajustar botones en modo 2 planillas */
-        .dos-planillas .etiqueta-card button {
-            padding: 0.4rem 0.6rem;
-            font-size: 0.8rem;
-        }
-
-        .dos-planillas .etiqueta-card select {
-            padding: 0.4rem 0.5rem;
-            font-size: 0.8rem;
-        }
+        /* Los estilos responsivos están en resources/css/etiquetas-responsive.css */
     }
 
     /* Impresión: usa medidas exactas en mm */
@@ -224,7 +200,10 @@
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script>
-    const domSafe = (v) => String(v).replace(/[^A-Za-z0-9_-]/g, '-');
+    // Declarar domSafe solo una vez globalmente
+    if (!window.domSafe) {
+        window.domSafe = (v) => String(v).replace(/[^A-Za-z0-9_-]/g, '-');
+    }
 
     async function imprimirEtiquetas(ids, modo = 'a4') {
 
@@ -232,7 +211,7 @@
         const etiquetasHtml = [];
 
         for (const rawId of ids) {
-            const safeId = domSafe(rawId);
+            const safeId = window.domSafe(rawId);
             let contenedor = document.getElementById(`etiqueta-${safeId}`) ||
                 document.getElementById(`etiqueta-${rawId}`);
             if (!contenedor) continue;

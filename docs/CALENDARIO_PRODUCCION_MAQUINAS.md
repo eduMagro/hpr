@@ -165,24 +165,139 @@ Etiqueta
    f. Generar evento(s) en calendario
 ```
 
-### 6. Tramos Laborales
+### 6. Sistema de Turnos Configurables
 
-La función `generarTramosLaborales()` divide un evento en múltiples tramos si cruza:
+El calendario respeta los **turnos configurables** definidos en la base de datos. Los turnos activos determinan los horarios laborables.
 
-- Horarios no laborales
-- Fines de semana
-- Festivos
+#### Características de los Turnos:
 
-**Ejemplo:**
+- **Turnos activos**: Solo se trabaja durante los turnos marcados como `activo = 1`
+- **Horarios configurables**: Cada turno tiene `hora_inicio` y `hora_fin`
+- **Offsets de días**: Los turnos pueden cruzar medianoche usando `offset_dias_inicio` y `offset_dias_fin`
+- **Control en tiempo real**: Se pueden activar/desactivar turnos desde el calendario sin refrescar la página
+
+#### Ejemplo de Turnos:
+
 ```
-Evento de 10 horas iniciando viernes 17:00:
+Turno Mañana:   06:00 - 14:00  (offset_inicio: 0, offset_fin: 0)
+Turno Tarde:    14:00 - 22:00  (offset_inicio: 0, offset_fin: 0)
+Turno Noche:    22:00 - 06:00  (offset_inicio: -1, offset_fin: 0)
+```
+
+**El turno noche tiene `offset_inicio = -1` porque técnicamente pertenece al día siguiente**
+
+#### Lógica de Fin de Semana:
+
+El sistema implementa lógica especial para los fines de semana:
+
+**Viernes:**
+- ✅ Se trabaja en todos los turnos activos
+- ✅ El último evento del viernes termina al fin del último turno (ej: 22:00)
+
+**Sábado:**
+- ❌ Completamente no laborable
+- ❌ No se generan segmentos para ningún turno
+
+**Domingo:**
+- ✅ Solo es laborable desde las **22:00** (inicio del turno noche del lunes)
+- ❌ Los turnos mañana y tarde NO se ejecutan el domingo
+- ✅ El turno noche (22:00-06:00) SÍ se ejecuta porque tiene `offset_dias_inicio = -1`
+
+**Ejemplo de flujo de fin de semana:**
+```
+Viernes 20:00 → Evento trabaja hasta 22:00 (fin turno tarde)
+Sábado        → Completamente no laborable (se salta)
+Domingo 00:00 → No laborable hasta las 22:00
+Domingo 22:00 → ✅ Comienza turno noche del lunes
+Lunes 06:00   → Continúa con turno mañana
+```
+
+### 7. Tramos Laborales
+
+La función `generarTramosLaborales()` divide un evento en múltiples tramos respetando:
+
+- ✅ **Horarios de turnos activos**: Solo consume tiempo durante turnos con `activo = 1`
+- ✅ **Continuidad dentro del turno**: Si un evento termina a las 10:00 (dentro del turno mañana), el siguiente empieza a las 10:00
+- ✅ **Saltos fuera de turno**: Si un evento termina fuera de horario de turnos, el siguiente espera al próximo turno
+- ✅ **Fines de semana**: Respeta la lógica especial de fin de semana
+- ✅ **Festivos**: Salta días festivos definidos en la base de datos
+
+**Ejemplo con solo turno mañana activo (06:00-14:00):**
+```
+Evento de 10h iniciando lunes 08:00:
 ┌────────────┐              ┌────────────┐
-│ Viernes    │              │ Lunes      │
-│ 17:00-19:00│              │ 08:00-16:00│
-│ (2 horas)  │              │ (8 horas)  │
+│ Lunes      │              │ Martes     │
+│ 08:00-14:00│              │ 06:00-10:00│
+│ (6 horas)  │              │ (4 horas)  │
 └────────────┘              └────────────┘
     Tramo 1                     Tramo 2
+
+Lunes 14:00-Martes 06:00 → No laborable (fuera de turno)
 ```
+
+**Ejemplo con 3 turnos activos (mañana, tarde, noche):**
+```
+Evento de 20h iniciando lunes 10:00:
+┌────────────┬────────────┬────────────┐  ┌────────────┐
+│ Lunes      │ Lunes      │ Lunes      │  │ Martes     │
+│ 10:00-14:00│ 14:00-22:00│ 22:00-06:00│  │ 06:00-10:00│
+│ (4h)       │ (8h)       │ (8h)       │  │ (4h)       │
+└────────────┴────────────┴────────────┘  └────────────┘
+   Tramo 1      Tramo 2      Tramo 3         Tramo 4
+
+NO hay espacios sin trabajar - los eventos son continuos
+```
+
+**Ejemplo cruzando fin de semana:**
+```
+Evento iniciando viernes 18:00 con 12h de duración:
+┌────────────┐              ┌────────────┐  ┌────────────┐
+│ Viernes    │              │ Domingo    │  │ Lunes      │
+│ 18:00-22:00│              │ 22:00-06:00│  │ 06:00-10:00│
+│ (4 horas)  │              │ (8 horas)  │  │ (4 horas)  │
+└────────────┘              └────────────┘  └────────────┘
+   Tramo 1                     Tramo 2         Tramo 3
+
+Viernes 22:00 → Fin del turno tarde
+Sábado → Se salta completamente
+Domingo 00:00-21:59 → No laborable
+Domingo 22:00 → Comienza turno noche del lunes ✅
+```
+
+#### Control de Turnos en Tiempo Real
+
+El calendario incluye un panel de control de turnos que permite:
+
+- ✅ Ver todos los turnos configurados con sus horarios
+- ✅ Activar/desactivar turnos con un click
+- ✅ Ver feedback visual inmediato del estado
+- ✅ Re-renderizar eventos automáticamente sin refrescar la página
+
+**Acceso:** Panel de filtros → Sección "⏰ Turnos Activos"
+
+#### Bug Corregido: Referencias Compartidas de Carbon
+
+**Problema anterior:**
+Cuando un evento terminaba, las fechas se modificaban incorrectamente debido a referencias compartidas de objetos Carbon en PHP.
+
+**Síntoma:**
+- Con solo turno mañana (06:00-14:00) activo
+- Evento que debería terminar a las 14:00
+- Aparecía terminando a medianoche (00:00)
+
+**Causa:**
+```php
+// Incorrecto - comparte referencia
+$cursor = $end;
+```
+
+**Solución:**
+```php
+// Correcto - crea nueva copia
+$cursor = $end->copy();
+```
+
+**Ubicación del fix:** `ProduccionController.php` líneas 1129 y 1169
 
 ### 7. Visualización en Calendario
 

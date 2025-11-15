@@ -271,6 +271,15 @@ return [
             'color' => 'gray',
             'submenu' => [
                 [
+                    'label' => 'Turnos',
+                    'route' => 'turnos.index',
+                    'icon' => '🕐',
+                    'actions' => [
+                        ['label' => 'Ver todos', 'route' => 'turnos.index', 'permission' => 'ver'],
+                        ['label' => 'Nuevo turno', 'route' => 'turnos.create', 'permission' => 'crear'],
+                    ]
+                ],
+                [
                     'label' => 'Alertas',
                     'route' => 'alertas.index',
                     'icon' => '🔔',

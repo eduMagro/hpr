@@ -11,10 +11,48 @@ class Turno extends Model
     use HasFactory, SoftDeletes;
 
     protected $table = 'turnos';
-    protected $fillable = ['nombre', 'hora_entrada', 'entrada_offset', 'hora_salida', 'salida_offset',];
+
+    protected $fillable = [
+        'nombre',
+        'hora_inicio',
+        'hora_fin',
+        'offset_dias_inicio',
+        'offset_dias_fin',
+        'activo',
+        'orden',
+        'color',
+        // Campos legacy (mantener compatibilidad)
+        'hora_entrada',
+        'entrada_offset',
+        'hora_salida',
+        'salida_offset',
+    ];
+
+    protected $casts = [
+        'activo' => 'boolean',
+        'orden' => 'integer',
+        'offset_dias_inicio' => 'integer',
+        'offset_dias_fin' => 'integer',
+    ];
 
     public function asignaciones()
     {
         return $this->hasMany(AsignacionTurno::class, 'turno_id');
+    }
+
+    /**
+     * Scope para obtener solo turnos activos
+     */
+    public function scopeActivos($query)
+    {
+        return $query->where('activo', true);
+    }
+
+    /**
+     * Scope para ordenar turnos
+     */
+    public function scopeOrdenados($query)
+    {
+        return $query->orderBy('orden')->orderBy('hora_inicio');
     }
 }

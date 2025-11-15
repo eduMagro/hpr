@@ -297,43 +297,66 @@ export function initCalendar(domEl) {
 
     calendar.render();
 
+    console.log("[cal] Configurando event listener para contextmenu...");
+
     const root = calendar.el;
-    if (!root._ctxMenuBound) {
-        root._ctxMenuBound = true;
-        root.addEventListener("contextmenu", (ev) => {
-            if (ev.target.closest(".fc-event")) return;
+    console.log("[cal] Elemento raíz del calendario:", root);
+
+    // Siempre agregar el event listener (el destroy debería limpiar el elemento)
+    console.log("[cal] Agregando event listener de contextmenu al calendario");
+
+    root.addEventListener("contextmenu", (ev) => {
+            console.log("[cal] ¡Contextmenu disparado!", ev.target);
+
+            if (ev.target.closest(".fc-event")) {
+                console.log("[cal] Es un evento, ignorando");
+                return;
+            }
+
             ev.preventDefault();
-            const dateEl = ev.target.closest("[data-date]");
-            if (!dateEl) return;
-            let fechaISO = dateEl.getAttribute("data-date") || "";
-            if (fechaISO.length >= 10) fechaISO = fechaISO.slice(0, 10);
 
-            // Obtener el resourceId desde el elemento - intentar varios métodos
+            // Método alternativo: encontrar el recurso por posición vertical
             let resourceId = null;
+            let fechaISO = null;
 
-            // Método 1: Atributo data-resource-id
-            const resourceEl = ev.target.closest("[data-resource-id]");
-            if (resourceEl) {
-                resourceId = resourceEl.getAttribute("data-resource-id");
+            // Primero intentar obtener la fecha del elemento clickeado
+            const dateEl = ev.target.closest("[data-date]");
+            if (dateEl) {
+                fechaISO = dateEl.getAttribute("data-date") || "";
+                if (fechaISO.length >= 10) fechaISO = fechaISO.slice(0, 10);
             }
 
-            // Método 2: Buscar en la fila del timeline
-            if (!resourceId) {
-                const timelineRow = ev.target.closest("tr[data-resource-id]");
-                if (timelineRow) {
-                    resourceId = timelineRow.getAttribute("data-resource-id");
+            if (!fechaISO) {
+                console.log("[cal] No se pudo determinar la fecha");
+                return;
+            }
+
+            console.log("[cal] Fecha encontrada:", fechaISO);
+            console.log("[cal] Elemento clickeado:", ev.target);
+            console.log("[cal] Elemento con data-date:", dateEl);
+
+            // Intentar obtener el recurso desde la posición Y del click
+            // Buscar todas las filas de recursos en el área izquierda
+            const resourceLanes = root.querySelectorAll('.fc-timeline-lane[data-resource-id]');
+            console.log("[cal] Filas de recursos encontradas:", resourceLanes.length);
+
+            if (resourceLanes.length > 0) {
+                const clickY = ev.clientY;
+                console.log("[cal] Posición Y del click:", clickY);
+
+                for (const lane of resourceLanes) {
+                    const rect = lane.getBoundingClientRect();
+                    console.log("[cal] Examinando lane con resource-id:", lane.dataset.resourceId, "top:", rect.top, "bottom:", rect.bottom);
+
+                    if (clickY >= rect.top && clickY <= rect.bottom) {
+                        resourceId = lane.dataset.resourceId;
+                        console.log("[cal] ¡ResourceId encontrado por posición Y!:", resourceId);
+                        break;
+                    }
                 }
             }
 
-            // Método 3: Buscar clase fc-timeline-lane
-            if (!resourceId) {
-                const lane = ev.target.closest(".fc-timeline-lane");
-                if (lane && lane.dataset.resourceId) {
-                    resourceId = lane.dataset.resourceId;
-                }
-            }
-
-            console.log("ResourceId detectado:", resourceId, "Fecha:", fechaISO);
+            console.log("[cal] ResourceId final detectado:", resourceId, "Fecha:", fechaISO);
 
             openCellMenu(
                 ev.clientX,
@@ -343,7 +366,8 @@ export function initCalendar(domEl) {
                 maquinas
             );
         });
-    }
+
+    console.log("[cal] Event listener de contextmenu agregado correctamente");
 
     return calendar;
 }

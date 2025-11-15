@@ -241,8 +241,8 @@ class AsignacionTurnoController extends Controller
         $diasSinFichaje = 0;
 
         foreach ($asignacionesFiltradas as $asignacion) {
-            $esperadaEntrada = $asignacion->turno->hora_entrada ?? null;
-            $esperadaSalida = $asignacion->turno->hora_salida ?? null;
+            $esperadaEntrada = $asignacion->turno->hora_inicio ?? null;
+            $esperadaSalida = $asignacion->turno->hora_fin ?? null;
 
             $realEntrada = $asignacion->entrada;
             $realSalida = $asignacion->salida;
@@ -299,7 +299,7 @@ class AsignacionTurnoController extends Controller
             $diasAdelantado = 0;
 
             foreach ($asignacionesUsuario as $asignacion) {
-                $esperadaEntrada = $asignacion->turno->hora_entrada ?? null;
+                $esperadaEntrada = $asignacion->turno->hora_inicio ?? null;
                 $realEntrada = $asignacion->entrada;
 
                 if ($esperadaEntrada && $realEntrada) {

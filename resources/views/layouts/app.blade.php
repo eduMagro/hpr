@@ -25,7 +25,7 @@
     <meta name="theme-color" content="#ffffff">
 
     <!-- ✅ Vite Assets - Cache busting automático -->
-    @vite(['resources/css/app.css', 'resources/js/app.js', 'resources/css/styles.css'])
+    @vite(['resources/css/app.css', 'resources/js/app.js', 'resources/css/styles.css', 'resources/css/etiquetas-responsive.css'])
 
     <!-- ✅ Tailwind (si lo usas como principal) -->
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
@@ -207,19 +207,24 @@
 
         // Configurar la barra de progreso de Livewire Navigate
         document.addEventListener('livewire:init', () => {
-            // Configurar Navigate para esperar a que el DOM esté completamente cargado
-            Livewire.navigate.config({
-                showProgressBar: true,
-                progressBarDuration: 1000, // Duración mínima de la barra en ms
-                progressBarColor: '#3b82f6',
-            });
+            // Verificar que Livewire y navigate existan
+            if (typeof Livewire !== 'undefined' && Livewire.navigate && typeof Livewire.navigate.config === 'function') {
+                // Configurar Navigate para esperar a que el DOM esté completamente cargado
+                Livewire.navigate.config({
+                    showProgressBar: true,
+                    progressBarDuration: 1000, // Duración mínima de la barra en ms
+                    progressBarColor: '#3b82f6',
+                });
+            }
 
-            Livewire.hook('navigate', ({url, history}) => {
-                // Scroll to top on navigation
-                setTimeout(() => {
-                    window.scrollTo({ top: 0, behavior: 'instant' });
-                }, 0);
-            });
+            if (typeof Livewire !== 'undefined' && typeof Livewire.hook === 'function') {
+                Livewire.hook('navigate', ({url, history}) => {
+                    // Scroll to top on navigation
+                    setTimeout(() => {
+                        window.scrollTo({ top: 0, behavior: 'instant' });
+                    }, 0);
+                });
+            }
         });
 
         // Control del overlay de navegación

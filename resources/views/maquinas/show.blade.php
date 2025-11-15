@@ -90,28 +90,21 @@
                                         // Después de la animación, reemplazar el contenido
                                         setTimeout(() => {
                                             gridActual.innerHTML = nuevoGrid.innerHTML;
-                                            console.log('📦 Contenido reemplazado via AJAX');
 
                                             // Actualizar variables globales
                                             const scripts = doc.querySelectorAll('script');
-                                            console.log('📜 Scripts encontrados:', scripts.length);
-
                                             scripts.forEach(script => {
                                                 const content = script.textContent || script.innerText;
                                                 if (content.includes('window.elementosAgrupadosScript') ||
                                                     content.includes('window.etiquetasData') ||
                                                     content.includes('window.pesosElementos') ||
                                                     content.includes('window.SUGERENCIAS')) {
-                                                    console.log('⚙️ Ejecutando script con variables globales');
                                                     eval(content);
                                                 }
                                             });
 
-                                            console.log('📊 elementosAgrupadosScript:', window.elementosAgrupadosScript);
-
                                             // Actualizar data sources si existe la función
                                             if (window.setDataSources && window.elementosAgrupadosScript) {
-                                                console.log('🔄 Actualizando data sources');
                                                 window.setDataSources({
                                                     sugerencias: window.SUGERENCIAS || {},
                                                     elementosAgrupados: window.elementosAgrupadosScript || []
@@ -120,34 +113,41 @@
 
                                             // Re-renderizar SVGs
                                             if (window.elementosAgrupadosScript && window.renderizarGrupoSVG) {
-                                                console.log('🎨 Iniciando renderizado de', window.elementosAgrupadosScript.length, 'grupos');
                                                 window.elementosAgrupadosScript.forEach((grupo, gidx) => {
-                                                    console.log('🖼️ Renderizando grupo', gidx, grupo);
                                                     window.renderizarGrupoSVG(grupo, gidx);
-                                                });
-                                                console.log('✅ Renderizado completado');
-                                            } else {
-                                                console.error('❌ No se puede renderizar:', {
-                                                    elementosAgrupadosScript: !!window.elementosAgrupadosScript,
-                                                    renderizarGrupoSVG: !!window.renderizarGrupoSVG
                                                 });
                                             }
 
-                                            // Mostrar el grid con animación
+                                            // Mostrar el grid con animación optimizada
                                             requestAnimationFrame(() => {
-                                                requestAnimationFrame(() => {
-                                                    setTimeout(() => {
-                                                        gridActual.style.opacity = '1';
-                                                        gridActual.style.visibility = 'visible';
+                                                gridActual.style.opacity = '1';
+                                                gridActual.style.visibility = 'visible';
 
-                                                        // Mostrar etiquetas
-                                                        document.querySelectorAll('.proceso').forEach(el => {
-                                                            el.style.opacity = '1';
-                                                        });
-                                                    }, 150);
+                                                // Mostrar etiquetas
+                                                document.querySelectorAll('.proceso').forEach(el => {
+                                                    el.style.opacity = '1';
                                                 });
+
+                                                // Re-aplicar clases de columnas después de AJAX
+                                                if (window.updateGridClasses) {
+                                                    // Detectar cuántas planillas hay activas contando secciones
+                                                    const numPlanillas = gridActual.querySelectorAll('.planilla-section, section.bg-gradient-to-br').length;
+
+                                                    // Actualizar clase dos-planillas / una-planilla
+                                                    if (numPlanillas >= 2) {
+                                                        gridActual.classList.remove('una-planilla');
+                                                        gridActual.classList.add('dos-planillas');
+                                                    } else {
+                                                        gridActual.classList.remove('dos-planillas');
+                                                        gridActual.classList.add('una-planilla');
+                                                    }
+
+                                                    const showLeft = JSON.parse(localStorage.getItem('showLeft') ?? 'false');
+                                                    const showRight = JSON.parse(localStorage.getItem('showRight') ?? 'true');
+                                                    window.updateGridClasses(showLeft, showRight);
+                                                }
                                             });
-                                        }, 300);
+                                        }, 100);
                                     }
                                 }
                             })
@@ -301,7 +301,7 @@
         <!-- ✅ Vite: Bundle de máquinas -->
         @vite(['resources/js/maquinaJS/maquina-bundle.js'])
         <script src="{{ asset('js/maquinaJS/sl28/cortes.js') }}"></script>
-        <script src="{{ asset('js/maquinaJS/crearPaquetes.js') }}" defer></script>
+        {{-- <script src="{{ asset('js/maquinaJS/crearPaquetes.js') }}" defer></script> --}}
         {{-- Al final del archivo Blade --}}
 
         <script>

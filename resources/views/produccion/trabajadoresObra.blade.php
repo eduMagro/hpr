@@ -9,7 +9,8 @@
                 @foreach ($trabajadoresServicios as $t)
                     <div class="fc-event px-3 py-2 text-xs bg-blue-100 rounded cursor-pointer text-center shadow"
                         data-id="{{ $t->id }}" data-title="{{ $t->nombre_completo }}"
-                        data-categoria="{{ $t->categoria?->nombre }}" data-especialidad="{{ $t->maquina?->nombre }}">
+                        data-categoria="{{ $t->categoria?->nombre }}" data-especialidad="{{ $t->maquina?->nombre }}"
+                        data-dias-asignados="0">
                         @if($t->ruta_imagen)
                             <img src="{{ $t->ruta_imagen }}"
                                 class="w-10 h-10 rounded-full object-cover mx-auto mb-1 ring-2 ring-blue-300">
@@ -38,7 +39,8 @@
                 @foreach ($trabajadoresHpr as $t)
                     <div class="fc-event px-3 py-2 text-xs bg-blue-100 rounded cursor-pointer text-center shadow"
                         data-id="{{ $t->id }}" data-title="{{ $t->nombre_completo }}"
-                        data-categoria="{{ $t->categoria?->nombre }}" data-especialidad="{{ $t->maquina?->nombre }}">
+                        data-categoria="{{ $t->categoria?->nombre }}" data-especialidad="{{ $t->maquina?->nombre }}"
+                        data-dias-asignados="0">
                         @if($t->ruta_imagen)
                             <img src="{{ $t->ruta_imagen }}"
                                 class="w-10 h-10 rounded-full object-cover mx-auto mb-1 ring-2 ring-blue-300">
@@ -131,19 +133,40 @@
     <script src="https://unpkg.com/tippy.js@6"></script>
 
     <script data-navigate-once>
-        document.querySelectorAll('.fc-event').forEach(eventEl => {
-            eventEl.addEventListener('click', () => {
-                eventEl.classList.toggle('bg-yellow-300'); // cambia visualmente
-                eventEl.classList.toggle('seleccionado'); // añade clase de control
+        // Inicializar event listeners para selección de fichas de trabajadores
+        function inicializarFichasTrabajadores() {
+            document.querySelectorAll('#external-events-servicios .fc-event, #external-events-hpr .fc-event').forEach(eventEl => {
+                // Remover listeners anteriores si existen
+                eventEl.replaceWith(eventEl.cloneNode(true));
             });
-        });
+
+            // Agregar listeners a las fichas
+            document.querySelectorAll('#external-events-servicios .fc-event, #external-events-hpr .fc-event').forEach(eventEl => {
+                eventEl.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    eventEl.classList.toggle('bg-yellow-300');
+                    eventEl.classList.toggle('seleccionado');
+                });
+            });
+        }
+
         document.addEventListener('click', function(e) {
+            // Log de todos los clicks para debug
+            if (e.target.classList.contains('btn-eliminar') || e.target.closest('.btn-eliminar')) {
+                console.log('[DEBUG] Click en o cerca de btn-eliminar', e.target);
+            }
+
             const btnEliminar = e.target.closest('.btn-eliminar');
             if (btnEliminar) {
+                console.log('[BTN ELIMINAR] Click detectado en botón');
                 e.stopPropagation(); // 🔴 Detiene el eventClick de FullCalendar
                 e.preventDefault();
 
-                const idEvento = btnEliminar.dataset.id.replace('turno-', '');
+                const idCompleto = btnEliminar.dataset.id;
+                console.log('[BTN ELIMINAR] ID completo:', idCompleto);
+
+                const idEvento = idCompleto.replace('turno-', '');
+                console.log('[BTN ELIMINAR] ID sin prefijo:', idEvento);
 
                 Swal.fire({
                     title: '¿Eliminar asignación de obra?',
@@ -166,6 +189,9 @@
                                 if (data.success) {
                                     const evento = window.calendarioObras.getEventById('turno-' + idEvento);
                                     if (evento) evento.remove();
+
+                                    // Actualizar estado de fichas
+                                    setTimeout(() => actualizarEstadoFichasTrabajadores(), 100);
                                 } else {
                                     Swal.fire('❌ Error', data.message, 'error');
                                 }
@@ -183,6 +209,171 @@
 
         // Guardar resources globalmente para que esté disponible en reinicializaciones
         window.obrasResources = window.obrasResources || @json($resources);
+
+        /**
+         * Actualiza el estado de las fichas de trabajadores según sus asignaciones en la semana actual
+         */
+        function actualizarEstadoFichasTrabajadores() {
+            const cal = window.calendarioObras;
+            if (!cal) {
+                return;
+            }
+
+            // Obtener rango de la semana visible
+            const currentView = cal.view;
+            const currentStart = new Date(currentView.currentStart);
+            const currentEnd = new Date(currentView.currentEnd);
+
+            // Calcular todos los días de la semana visible (lunes a domingo = 7 días)
+            const diasSemana = [];
+
+            if (currentView.type === 'resourceTimelineDay') {
+                // Vista día: solo ese día
+                const d = new Date(currentStart);
+                diasSemana.push(d.toISOString().split('T')[0]);
+            } else {
+                // Vista semana: queremos lunes a domingo (7 días completos)
+                // Usar una función que no tenga problemas de zona horaria
+
+                const formatLocalDate = (date) => {
+                    const year = date.getFullYear();
+                    const month = String(date.getMonth() + 1).padStart(2, '0');
+                    const day = String(date.getDate()).padStart(2, '0');
+                    return `${year}-${month}-${day}`;
+                };
+
+                const start = new Date(currentStart);
+                const dayOfWeek = start.getDay(); // 0=Dom, 1=Lun, 2=Mar, etc.
+
+                // Calcular offset para llegar al lunes de esta semana
+                let offsetToMonday = 0;
+                if (dayOfWeek === 0) {
+                    // Domingo: avanzar 1 día al lunes siguiente
+                    offsetToMonday = 1;
+                } else if (dayOfWeek > 1) {
+                    // Martes-Sábado: retroceder al lunes de esta semana
+                    offsetToMonday = -(dayOfWeek - 1);
+                }
+                // Si es lunes (1), offset = 0
+
+                // Crear fecha del lunes
+                const lunes = new Date(start);
+                lunes.setDate(lunes.getDate() + offsetToMonday);
+
+                // Generar los 7 días (Lun-Dom) usando hora local
+                for (let i = 0; i < 7; i++) {
+                    const dia = new Date(lunes);
+                    dia.setDate(dia.getDate() + i);
+                    diasSemana.push(formatLocalDate(dia));
+                }
+            }
+
+            const totalDiasSemana = diasSemana.length;
+
+            console.log('[SEMANA] Rango calculado:', diasSemana[0], 'a', diasSemana[diasSemana.length - 1]);
+
+            // Obtener todos los eventos del calendario
+            const eventos = cal.getEvents();
+
+            // Contar días asignados por trabajador
+            const diasPorTrabajador = {};
+            const eventosUsuario84 = [];
+
+            eventos.forEach(evento => {
+                const userId = String(evento.extendedProps?.user_id); // Convertir a string
+                const fechaEvento = evento.startStr.split('T')[0];
+
+                // Ignorar eventos provisionales, temporales o festivos
+                const esProvisional = evento.extendedProps?.provisional;
+                const esFestivo = evento.extendedProps?.es_festivo;
+                const esTemporal = evento.id?.toString().startsWith('temp-');
+                const turnoNombre = evento.extendedProps?.turno?.toLowerCase();
+
+                // Solo contabilizar eventos cuyo turno sea "montaje"
+                const esTurnoMontaje = turnoNombre && turnoNombre === 'montaje';
+
+                // Determinar si debe ignorarse
+                let debeIgnorar = false;
+                let motivo = '';
+
+                if (esProvisional) {
+                    debeIgnorar = true;
+                    motivo = 'provisional';
+                } else if (esFestivo) {
+                    debeIgnorar = true;
+                    motivo = 'festivo';
+                } else if (esTemporal) {
+                    debeIgnorar = true;
+                    motivo = 'temporal';
+                } else if (!esTurnoMontaje) {
+                    debeIgnorar = true;
+                    motivo = 'turno: ' + (turnoNombre || 'sin turno') + ' (solo se contabiliza montaje)';
+                }
+
+                if (debeIgnorar) {
+                    console.log('[IGNORADO] Evento no contabilizado:', {
+                        id: evento.id,
+                        titulo: evento.title,
+                        fecha: fechaEvento,
+                        turno: turnoNombre || 'sin turno',
+                        motivo: motivo
+                    });
+                    return;
+                }
+
+                // Guardar eventos del usuario 84 para debug
+                if (userId === '84') {
+                    eventosUsuario84.push({
+                        id: evento.id,
+                        fecha: fechaEvento,
+                        titulo: evento.title,
+                        provisional: evento.extendedProps?.provisional,
+                        estaEnSemana: diasSemana.includes(fechaEvento)
+                    });
+                }
+
+                if (userId && userId !== 'undefined' && diasSemana.includes(fechaEvento)) {
+                    if (!diasPorTrabajador[userId]) {
+                        diasPorTrabajador[userId] = new Set();
+                    }
+                    diasPorTrabajador[userId].add(fechaEvento);
+
+                    // Log de eventos contabilizados
+                    console.log('[CONTABILIZADO] Usuario:', userId, 'Fecha:', fechaEvento, 'ID:', evento.id, 'Título:', evento.title);
+                }
+            });
+
+            // Log detallado del usuario 84
+            if (eventosUsuario84.length > 0) {
+                console.log('[USUARIO 84] Total eventos encontrados:', eventosUsuario84.length);
+                console.log('[USUARIO 84] Eventos:', eventosUsuario84);
+                console.log('[USUARIO 84] Días contados:', diasPorTrabajador['84']?.size || 0);
+                console.log('[USUARIO 84] Fechas únicas:', Array.from(diasPorTrabajador['84'] || []));
+            }
+
+            // Actualizar fichas de trabajadores
+            const fichas = document.querySelectorAll('.fc-event[data-id]');
+
+            fichas.forEach(ficha => {
+                const userId = String(ficha.dataset.id); // Asegurar que sea string para comparación
+                const diasAsignados = diasPorTrabajador[userId]?.size || 0;
+
+                // Actualizar atributo data para el contador
+                ficha.setAttribute('data-dias-asignados', diasAsignados);
+
+                // Si tiene 7 días completos, mostrar en gris
+                if (diasAsignados >= 7) {
+                    ficha.classList.remove('bg-blue-100');
+                    ficha.classList.add('ficha-completa', 'bg-gray-300');
+                } else {
+                    ficha.classList.remove('ficha-completa', 'bg-gray-300');
+                    ficha.classList.add('bg-blue-100');
+                }
+
+                // Actualizar tooltip
+                ficha.title = `${diasAsignados}/7 días asignados esta semana`;
+            });
+        }
 
         function inicializarCalendarioObras() {
             if (window.calendarioObras) {
@@ -232,6 +423,9 @@
                     } else {
                         btn.classList.add('hidden');
                     }
+
+                    // Actualizar estado de fichas cuando cambie la fecha/vista
+                    setTimeout(() => actualizarEstadoFichasTrabajadores(), 100);
                 },
                 selectable: true,
                 selectMirror: true,
@@ -278,6 +472,9 @@
                                 });
 
                                 window.calendarioObras.refetchEvents();
+
+                                // Actualizar estado de fichas
+                                setTimeout(() => actualizarEstadoFichasTrabajadores(), 200);
                             } else {
                                 Swal.fire('❌ Error al asignar');
                             }
@@ -290,15 +487,38 @@
                         Swal.fire('Error al cargar eventos');
                     }
                 },
+                eventSourceSuccess: function(content, xhr) {
+                    // Se ejecuta después de cargar TODOS los eventos
+                    setTimeout(() => actualizarEstadoFichasTrabajadores(), 300);
+                },
                 eventClick(info) {
-                    if (info.jsEvent.target.closest('.btn-eliminar')) return;
+                    // Si es click en botón eliminar, no hacer nada aquí
+                    if (info.jsEvent && info.jsEvent.target.closest('.btn-eliminar')) {
+                        console.log('[EVENT CLICK] Ignorando, es botón eliminar');
+                        return;
+                    }
+
+                    // Detener propagación para evitar eventos globales
+                    if (info.jsEvent) {
+                        info.jsEvent.stopPropagation();
+                        info.jsEvent.preventDefault();
+                    }
 
                     const userId = info.event.extendedProps?.user_id;
-                    if (userId) {
-                        window.location.href = "{{ route('users.show', ':id') }}".replace(':id', userId);
-                    } else {
-                        console.warn('🛑 user_id no definido en el evento:', info.event);
+
+                    // Validación estricta del userId
+                    if (!userId || userId === 'undefined' || userId === 'null' || userId === null) {
+                        console.warn('[EVENT CLICK] No se puede navegar: user_id inválido o vacío', {
+                            userId: userId,
+                            extendedProps: info.event.extendedProps,
+                            eventId: info.event.id
+                        });
+                        return;
                     }
+
+                    const url = "{{ route('users.show', ':id') }}".replace(':id', userId);
+                    console.log('[EVENT CLICK] Navegando a:', url);
+                    window.location.href = url;
                 },
                 eventReceive(info) {
                     // Evitar que FullCalendar agregue el evento automáticamente
@@ -363,6 +583,9 @@
                                 });
 
                                 eventoTemporal.remove();
+
+                                // Actualizar estado de fichas
+                                setTimeout(() => actualizarEstadoFichasTrabajadores(), 100);
                             } else {
                                 Swal.fire({
                                     icon: 'error',
@@ -427,6 +650,8 @@
                                         if (data.success) {
                                             info.event.remove();
 
+                                            // Actualizar estado de fichas
+                                            setTimeout(() => actualizarEstadoFichasTrabajadores(), 100);
                                         } else {
                                             Swal.fire('❌ Error', data.message, 'error');
                                         }
@@ -529,11 +754,27 @@
 
             window.calendarioObras.render();
 
+            // Inicializar todas las fichas con contador 0/5
+            document.querySelectorAll('.fc-event[data-id]').forEach(ficha => {
+                if (!ficha.hasAttribute('data-dias-asignados')) {
+                    ficha.setAttribute('data-dias-asignados', '0');
+                }
+            });
+
+            // Inicializar listeners de fichas
+            inicializarFichasTrabajadores();
+
+            // Actualizar fichas después de renderizar el calendario
+            setTimeout(() => {
+                actualizarEstadoFichasTrabajadores();
+            }, 500);
         }
 
         // Inicializar en carga inicial
         if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', inicializarCalendarioObras);
+            document.addEventListener('DOMContentLoaded', () => {
+                inicializarCalendarioObras();
+            });
         } else {
             inicializarCalendarioObras();
         }
@@ -600,6 +841,9 @@
                                 if (data.success) {
                                     Swal.fire('✅ Semana copiada correctamente');
                                     window.calendarioObras.refetchEvents();
+
+                                    // Actualizar estado de fichas
+                                    setTimeout(() => actualizarEstadoFichasTrabajadores(), 200);
                                 } else {
                                     Swal.fire('❌ Error', data.message, 'error');
                                 }
@@ -618,6 +862,44 @@
             outline: 3px solid #facc15;
             background-color: #fde68a !important;
             transform: scale(1.05);
+        }
+
+        /* Asegurar posición relativa en las fichas */
+        #external-events-servicios .fc-event,
+        #external-events-hpr .fc-event {
+            position: relative !important;
+        }
+
+        /* Mostrar contador de días en todas las fichas */
+        #external-events-servicios .fc-event[data-dias-asignados]::after,
+        #external-events-hpr .fc-event[data-dias-asignados]::after {
+            content: attr(data-dias-asignados) '/7' !important;
+            position: absolute !important;
+            top: 2px !important;
+            right: 2px !important;
+            background: #3b82f6 !important;
+            color: white !important;
+            font-size: 10px !important;
+            padding: 2px 6px !important;
+            border-radius: 4px !important;
+            font-weight: bold !important;
+            z-index: 100 !important;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.3) !important;
+            line-height: 1.2 !important;
+            display: block !important;
+            pointer-events: none !important;
+        }
+
+        /* Fichas con semana completa (5/5) en verde */
+        #external-events-servicios .fc-event.ficha-completa::after,
+        #external-events-hpr .fc-event.ficha-completa::after {
+            background: #10b981 !important;
+        }
+
+        /* Fichas con semana completa en gris */
+        #external-events-servicios .fc-event.ficha-completa,
+        #external-events-hpr .fc-event.ficha-completa {
+            opacity: 0.7 !important;
         }
 
         .btn-eliminar {

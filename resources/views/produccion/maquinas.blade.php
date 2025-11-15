@@ -119,6 +119,35 @@
                             </div>
                         </div>
 
+                        <!-- Control de Turnos -->
+                        <div class="mt-3 pt-3 border-t border-gray-200">
+                            <div class="flex items-center justify-between mb-2">
+                                <label class="block text-gray-700 font-semibold text-xs">⏰ Turnos Activos</label>
+                                <span class="text-xs text-gray-500">Haz clic para activar/desactivar</span>
+                            </div>
+                            <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2">
+                                @foreach($turnosLista as $turno)
+                                    <button
+                                        type="button"
+                                        data-turno-id="{{ $turno->id }}"
+                                        data-turno-nombre="{{ $turno->nombre }}"
+                                        class="turno-toggle-btn px-3 py-2 rounded-lg text-xs font-medium transition-all duration-200 border-2 {{ $turno->activo ? 'bg-green-500 text-white border-green-600 hover:bg-green-600' : 'bg-gray-200 text-gray-600 border-gray-300 hover:bg-gray-300' }}"
+                                        onclick="toggleTurno({{ $turno->id }}, '{{ $turno->nombre }}')"
+                                        title="{{ $turno->activo ? 'Desactivar' : 'Activar' }} turno {{ $turno->nombre }}">
+                                        <div class="flex items-center justify-center gap-1">
+                                            <span class="turno-icon">{{ $turno->activo ? '✓' : '✕' }}</span>
+                                            <span class="turno-nombre">{{ ucfirst($turno->nombre) }}</span>
+                                        </div>
+                                        @if($turno->hora_inicio && $turno->hora_fin)
+                                            <div class="text-[10px] opacity-75 mt-0.5">
+                                                {{ substr($turno->hora_inicio, 0, 5) }}-{{ substr($turno->hora_fin, 0, 5) }}
+                                            </div>
+                                        @endif
+                                    </button>
+                                @endforeach
+                            </div>
+                        </div>
+
                         <!-- Indicador de resultados -->
                         <div id="filtrosActivos" class="mt-2 text-xs text-blue-700 hidden">
                             <span class="font-semibold">📊</span>
@@ -658,15 +687,15 @@
             /* ===== ETIQUETAS DE TIEMPO - HORAS NORMALES ===== */
             .slot-label-wrapper {
                 position: relative;
-                padding: 4px 6px;
-                min-height: 40px;
+                padding: 1px 3px;
+                min-height: 22px;
                 display: flex;
                 flex-direction: column;
                 justify-content: center;
             }
 
             .hora-text {
-                font-size: 13px;
+                font-size: 9px;
                 font-weight: 600;
                 color: #1f2937;
                 text-align: center;
@@ -675,55 +704,53 @@
             /* ===== ETIQUETAS DE TURNOS CON FECHA ===== */
             .turno-con-fecha {
                 position: relative;
-                padding: 8px 6px;
-                min-height: 65px;
+                padding: 3px 2px;
+                min-height: 40px;
                 display: flex;
                 flex-direction: column;
                 justify-content: center;
                 align-items: center;
                 background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
-                margin: -4px -6px;
-                border-radius: 6px;
-                box-shadow: 0 3px 6px rgba(0, 0, 0, 0.2);
+                margin: -1px -3px;
+                border-radius: 3px;
+                box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
             }
 
             /* Fecha dentro del turno */
             .fecha-turno {
                 color: white;
-                font-size: 10px;
+                font-size: 7px;
                 font-weight: 700;
                 text-align: center;
-                margin-bottom: 4px;
-                letter-spacing: 0.5px;
-                line-height: 1.2;
+                margin-bottom: 1px;
+                letter-spacing: 0.2px;
+                line-height: 1;
             }
 
             /* Hora dentro del turno */
             .turno-con-fecha .hora-text {
                 color: white;
-                font-size: 15px;
+                font-size: 10px;
                 font-weight: 700;
-                margin-bottom: 4px;
+                margin-bottom: 1px;
             }
 
             /* Etiqueta del tipo de turno */
             .turno-label {
                 display: inline-block;
-                font-size: 10px;
+                font-size: 7px;
                 font-weight: bold;
                 color: white;
-                padding: 4px 8px;
+                padding: 1px 3px;
                 background: rgba(255, 255, 255, 0.25);
-                border-radius: 4px;
+                border-radius: 2px;
                 text-align: center;
                 white-space: nowrap;
             }
 
             /* ===== LÍNEAS SEPARADORAS ===== */
-            /* Línea fuerte para inicio de turnos */
-            .fc-timegrid-slot[data-time="06:00:00"],
-            .fc-timegrid-slot[data-time="14:00:00"],
-            .fc-timegrid-slot[data-time="22:00:00"] {
+            /* Línea fuerte para inicio de turnos (aplicada dinámicamente) */
+            .fc-timegrid-slot.turno-inicio {
                 border-top: 4px solid #3b82f6 !important;
             }
 
@@ -843,6 +870,7 @@
                 const cargaTurnoResumen = @json($cargaTurnoResumen);
                 const planDetallado = @json($planDetallado);
                 const realDetallado = @json($realDetallado);
+                const turnosActivos = @json($turnosLista);
 
                 // Variable global para el calendario
                 let calendar;
@@ -1289,25 +1317,43 @@
                         const timeText =
                             `${horaDelDia.toString().padStart(2, '0')}:${minutos.toString().padStart(2, '0')}`;
 
-                        // Determinar si este slot corresponde a un inicio de turno
+                        // Determinar si este slot corresponde a un inicio de turno basado en turnos activos
                         let esTurno = false;
                         let nombreTurno = '';
                         let fechaMostrar = new Date(fechaReal);
+                        let turnoEncontrado = null;
 
-                        if (horaDelDia === 7 && minutos === 0) {
-                            // Turno Mañana (muestra la fecha del mismo día)
-                            esTurno = true;
-                            nombreTurno = '☀️ Mañana';
-                        } else if (horaDelDia === 15 && minutos === 0) {
-                            // Turno Tarde (muestra la fecha del mismo día)
-                            esTurno = true;
-                            nombreTurno = '🌤️ Tarde';
-                        } else if (horaDelDia === 23 && minutos === 0) {
-                            // Turno Noche (muestra la fecha del día siguiente porque trabaja de noche)
-                            esTurno = true;
-                            nombreTurno = '🌙 Noche';
-                            fechaMostrar = new Date(fechaReal.getTime());
-                            fechaMostrar.setDate(fechaMostrar.getDate() + 1);
+                        // Buscar si esta hora corresponde al inicio de algún turno activo
+                        for (const turno of turnosActivos) {
+                            if (!turno.activo || !turno.hora_inicio) continue;
+
+                            const [horaInicio, minInicio] = turno.hora_inicio.split(':').map(Number);
+
+                            if (horaDelDia === horaInicio && minutos === minInicio) {
+                                esTurno = true;
+                                turnoEncontrado = turno;
+
+                                // Determinar emoji según el nombre del turno
+                                let emoji = '⏰';
+                                const nombreLower = turno.nombre.toLowerCase();
+                                if (nombreLower.includes('mañana') || nombreLower.includes('manana')) {
+                                    emoji = '☀️';
+                                } else if (nombreLower.includes('tarde')) {
+                                    emoji = '🌤️';
+                                } else if (nombreLower.includes('noche')) {
+                                    emoji = '🌙';
+                                }
+
+                                nombreTurno = `${emoji} ${turno.nombre}`;
+
+                                // Si el turno tiene offset negativo, mostrar fecha del día siguiente
+                                if (turno.offset_dias_inicio < 0) {
+                                    fechaMostrar = new Date(fechaReal.getTime());
+                                    fechaMostrar.setDate(fechaMostrar.getDate() + 1);
+                                }
+
+                                break;
+                            }
                         }
 
                         let contenido = '';
@@ -1708,6 +1754,39 @@
                 });
                 calendar.render();
                 window.calendar = calendar;
+
+                // 🎯 Aplicar líneas separadoras de turnos dinámicamente
+                window.aplicarLineasTurnos = function() {
+                    // Limpiar líneas anteriores
+                    document.querySelectorAll('.fc-timegrid-slot.turno-inicio').forEach(el => {
+                        el.classList.remove('turno-inicio');
+                    });
+
+                    // Aplicar líneas para cada turno activo
+                    turnosActivos.forEach(turno => {
+                        if (!turno.activo || !turno.hora_inicio) return;
+
+                        const horaInicio = turno.hora_inicio.substring(0, 5); // "06:00" de "06:00:00"
+                        const selector = `.fc-timegrid-slot[data-time="${horaInicio}:00"]`;
+                        const slots = document.querySelectorAll(selector);
+
+                        slots.forEach(slot => {
+                            slot.classList.add('turno-inicio');
+                        });
+                    });
+                }
+
+                // Aplicar inicialmente
+                setTimeout(() => {
+                    window.aplicarLineasTurnos();
+                }, 100);
+
+                // Re-aplicar cuando cambie la vista
+                calendar.on('datesSet', function() {
+                    setTimeout(() => {
+                        window.aplicarLineasTurnos();
+                    }, 100);
+                });
 
                 // 🎯 STICKY HEADER: Hacer que el header se quede fijo al hacer scroll en la PÁGINA
                 setTimeout(() => {
@@ -3510,6 +3589,124 @@
                 document.body.appendChild(link);
                 link.click();
                 document.body.removeChild(link);
+            }
+
+            // ============================================================
+            // GESTIÓN DE TURNOS
+            // ============================================================
+
+            async function toggleTurno(turnoId, turnoNombre) {
+                const btn = document.querySelector(`button[data-turno-id="${turnoId}"]`);
+                const icon = btn.querySelector('.turno-icon');
+                const currentActivo = btn.classList.contains('bg-green-500');
+
+                try {
+                    // Mostrar estado de carga
+                    btn.disabled = true;
+                    btn.style.opacity = '0.6';
+                    icon.textContent = '⏳';
+
+                    // Hacer el toggle
+                    const response = await fetch(`/turnos/${turnoId}/toggle`, {
+                        method: 'PATCH',
+                        headers: {
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                            'Content-Type': 'application/json',
+                            'Accept': 'application/json'
+                        }
+                    });
+
+                    if (!response.ok) {
+                        throw new Error('Error al cambiar estado del turno');
+                    }
+
+                    const data = await response.json();
+                    const nuevoActivo = data.turno.activo;
+
+                    // Actualizar el estado en el array turnosActivos
+                    const turnoEnArray = turnosActivos.find(t => t.id === turnoId);
+                    if (turnoEnArray) {
+                        turnoEnArray.activo = nuevoActivo;
+                    }
+
+                    // Actualizar UI del botón
+                    if (nuevoActivo) {
+                        btn.classList.remove('bg-gray-200', 'text-gray-600', 'border-gray-300', 'hover:bg-gray-300');
+                        btn.classList.add('bg-green-500', 'text-white', 'border-green-600', 'hover:bg-green-600');
+                        icon.textContent = '✓';
+                        btn.title = `Desactivar turno ${turnoNombre}`;
+                    } else {
+                        btn.classList.remove('bg-green-500', 'text-white', 'border-green-600', 'hover:bg-green-600');
+                        btn.classList.add('bg-gray-200', 'text-gray-600', 'border-gray-300', 'hover:bg-gray-300');
+                        icon.textContent = '✕';
+                        btn.title = `Activar turno ${turnoNombre}`;
+                    }
+
+                    // Mostrar mensaje
+                    const mensaje = nuevoActivo
+                        ? `✅ Turno "${turnoNombre}" activado`
+                        : `⏸️ Turno "${turnoNombre}" desactivado`;
+
+                    // Crear toast notification
+                    const toast = document.createElement('div');
+                    toast.className = 'fixed top-20 right-4 z-50 px-4 py-3 rounded-lg shadow-lg transition-all duration-300 ' +
+                        (nuevoActivo ? 'bg-green-100 text-green-800 border border-green-300' : 'bg-gray-100 text-gray-800 border border-gray-300');
+                    toast.innerHTML = `
+                        <div class="flex items-center gap-2">
+                            <span class="text-xl">${nuevoActivo ? '✅' : '⏸️'}</span>
+                            <div>
+                                <div class="font-semibold text-sm">${mensaje}</div>
+                                <div class="text-xs opacity-75">Recargando eventos...</div>
+                            </div>
+                        </div>
+                    `;
+                    document.body.appendChild(toast);
+
+                    // Re-renderizar eventos sin refrescar la página
+                    if (calendar) {
+                        console.log('🔄 Recargando eventos tras cambio de turno...');
+                        await calendar.refetchEvents();
+                        console.log('✅ Eventos recargados');
+
+                        // Re-aplicar líneas de turnos
+                        if (window.aplicarLineasTurnos) {
+                            setTimeout(() => window.aplicarLineasTurnos(), 100);
+                        }
+
+                        // Actualizar mensaje del toast
+                        toast.querySelector('.text-xs').textContent = '¡Listo!';
+                    }
+
+                    // Eliminar toast después de 3 segundos
+                    setTimeout(() => {
+                        toast.style.opacity = '0';
+                        setTimeout(() => toast.remove(), 300);
+                    }, 3000);
+
+                } catch (error) {
+                    console.error('Error al cambiar turno:', error);
+
+                    // Mostrar error
+                    const errorToast = document.createElement('div');
+                    errorToast.className = 'fixed top-20 right-4 z-50 px-4 py-3 rounded-lg shadow-lg bg-red-100 text-red-800 border border-red-300';
+                    errorToast.innerHTML = `
+                        <div class="flex items-center gap-2">
+                            <span class="text-xl">❌</span>
+                            <div class="font-semibold text-sm">Error al cambiar turno</div>
+                        </div>
+                    `;
+                    document.body.appendChild(errorToast);
+                    setTimeout(() => {
+                        errorToast.style.opacity = '0';
+                        setTimeout(() => errorToast.remove(), 300);
+                    }, 3000);
+
+                    // Revertir icono
+                    icon.textContent = currentActivo ? '✓' : '✕';
+                } finally {
+                    btn.disabled = false;
+                    btn.style.opacity = '1';
+                }
             }
 
             // ============================================================

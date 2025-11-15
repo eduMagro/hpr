@@ -1407,23 +1407,19 @@ document.addEventListener("DOMContentLoaded", function () {
         renderizarGrupoSVG(grupo, gidx);
     });
 
-    // Mostrar todas las etiquetas con una animación suave después del renderizado
+    // Mostrar todas las etiquetas con una animación optimizada
     requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-            setTimeout(() => {
-                // 1. Mostrar el grid principal completo
-                const gridMaquina = document.getElementById('grid-maquina');
-                if (gridMaquina) {
-                    gridMaquina.style.opacity = '1';
-                    gridMaquina.style.visibility = 'visible';
-                    gridMaquina.style.transition = 'opacity 0.3s ease-in, visibility 0s 0s';
-                }
+        // 1. Mostrar el grid principal completo
+        const gridMaquina = document.getElementById('grid-maquina');
+        if (gridMaquina) {
+            gridMaquina.style.opacity = '1';
+            gridMaquina.style.visibility = 'visible';
+            gridMaquina.style.transition = 'opacity 0.2s ease-in, visibility 0s 0s';
+        }
 
-                // 2. Mostrar las etiquetas
-                document.querySelectorAll('.proceso').forEach(el => {
-                    el.style.opacity = '1';
-                });
-            }, 150);
+        // 2. Mostrar las etiquetas
+        document.querySelectorAll('.proceso').forEach(el => {
+            el.style.opacity = '1';
         });
     });
 

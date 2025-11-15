@@ -4,3 +4,4 @@ import './actualizarDom.js';
 import './trabajoEtiqueta.js';
 import './trabajoPaquete.js';
 import './eliminarPaquete.js';
+import './gridClasses.js';

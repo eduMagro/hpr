@@ -1151,6 +1151,51 @@ class ProfileController extends Controller
         return response()->json($this->getResumenAsistencia($user));
     }
 
+    public function getOperarios()
+    {
+        $operarios = User::where('rol', 'operario')
+            ->where('estado', 'activo')
+            ->select('id', 'name', 'primer_apellido', 'segundo_apellido', 'turno')
+            ->orderBy('name')
+            ->get();
+
+        return response()->json($operarios);
+    }
+
+    public function getOperariosAgrupados(Request $request)
+    {
+        $fecha = $request->input('fecha');
+        $maquinaId = $request->input('maquina_id');
+
+        // Todos los operarios activos
+        $todosOperarios = User::where('rol', 'operario')
+            ->where('estado', 'activo')
+            ->select('id', 'name', 'primer_apellido', 'segundo_apellido', 'turno', 'maquina_id')
+            ->orderBy('name')
+            ->get();
+
+        // IDs de operarios que ya tienen turno asignado ese día
+        $operariosConTurno = AsignacionTurno::whereDate('fecha', $fecha)
+            ->pluck('user_id')
+            ->toArray();
+
+        // Filtrar operarios sin turno ese día
+        $operariosSinTurno = $todosOperarios->filter(function($operario) use ($operariosConTurno) {
+            return !in_array($operario->id, $operariosConTurno);
+        })->values();
+
+        // Filtrar operarios de la máquina específica
+        $operariosMaquina = $todosOperarios->filter(function($operario) use ($maquinaId) {
+            return $operario->maquina_id == $maquinaId;
+        })->values();
+
+        return response()->json([
+            'sin_turno' => $operariosSinTurno,
+            'de_maquina' => $operariosMaquina,
+            'todos' => $todosOperarios,
+        ]);
+    }
+
     public function generarTurnosCalendario(Request $request)
     {
         $validated = $request->validate([
@@ -1161,7 +1206,19 @@ class ProfileController extends Controller
             'turno_inicio' => 'nullable|in:mañana,tarde',
         ]);
 
-        $user = User::findOrFail($validated['user_id']);
+        $user = User::with(['categoria'])->findOrFail($validated['user_id']);
+
+        // Obtener la máquina y su obra_id
+        $maquina = Maquina::findOrFail($validated['maquina_id']);
+        $obraId = $maquina->obra_id;
+
+        // Obtener colores basados en obra_id (mismo sistema que actualizarPuesto)
+        $coloresEventos = [
+            1 => ['bg' => '#93C5FD', 'border' => '#60A5FA'], // azul claro
+            2 => ['bg' => '#6EE7B7', 'border' => '#34D399'], // verde claro
+            3 => ['bg' => '#FDBA74', 'border' => '#F59E0B'], // naranja claro
+        ];
+        $colorEvento = $coloresEventos[$obraId] ?? ['bg' => '#3b82f6', 'border' => '#3b82f6'];
 
         // IDs de turnos
         $turnoMañanaId = Turno::where('nombre', 'mañana')->value('id');
@@ -1212,6 +1269,7 @@ class ProfileController extends Controller
         }
 
         $turnosCreados = 0;
+        $eventosCreados = [];
 
         for ($fecha = $inicio->copy(); $fecha->lte($fin); $fecha->addDay()) {
             $fechaStr  = $fecha->toDateString();
@@ -1247,16 +1305,37 @@ class ProfileController extends Controller
                 $asignacion->update([
                     'turno_id'   => $turnoAsignado,
                     'maquina_id' => $validated['maquina_id'],
+                    'obra_id'    => $obraId,
                 ]);
+                $asignacionActualizada = $asignacion->fresh(['turno', 'obra']);
             } else {
-                AsignacionTurno::create([
+                $asignacionActualizada = AsignacionTurno::create([
                     'user_id'    => $user->id,
                     'fecha'      => $fechaStr,
                     'turno_id'   => $turnoAsignado,
                     'maquina_id' => $validated['maquina_id'],
+                    'obra_id'    => $obraId,
                     'estado'     => 'activo',
                 ]);
+                $asignacionActualizada->load(['turno', 'obra']);
             }
+
+            // Agregar evento creado a la lista
+            $eventosCreados[] = [
+                'id' => 'turno-' . $asignacionActualizada->id,
+                'title' => $user->name . ' ' . ($user->primer_apellido ?? ''),
+                'start' => $fechaStr,
+                'resourceId' => $validated['maquina_id'],
+                'backgroundColor' => $colorEvento['bg'],
+                'borderColor' => $colorEvento['border'],
+                'textColor' => '#000000',
+                'user_id' => $user->id,
+                'categoria_nombre' => $user->categoria->nombre ?? null,
+                'turno' => $asignacionActualizada->turno->nombre ?? null,
+                'entrada' => $asignacionActualizada->entrada,
+                'salida' => $asignacionActualizada->salida,
+                'foto' => $user->ruta_imagen,
+            ];
 
             $turnosCreados++;
 
@@ -1270,6 +1349,7 @@ class ProfileController extends Controller
             'success' => true,
             'message' => 'Turnos generados correctamente',
             'turnos_creados' => $turnosCreados,
+            'eventos' => $eventosCreados,
         ]);
     }
 }

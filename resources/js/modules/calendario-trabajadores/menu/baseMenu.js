@@ -15,8 +15,6 @@ export function openMenuAt(x, y, html) {
     el.className = "fc-contextmenu";
     Object.assign(el.style, {
         position: "fixed",
-        top: y + "px",
-        left: x + "px",
         zIndex: 9999,
         minWidth: "240px",
         background: "#fff",
@@ -25,9 +23,45 @@ export function openMenuAt(x, y, html) {
             "0 10px 15px -3px rgba(0,0,0,.1), 0 4px 6px -2px rgba(0,0,0,.05)",
         borderRadius: "8px",
         overflow: "hidden",
+        visibility: "hidden", // Ocultar temporalmente para medir
     });
     el.innerHTML = html;
     document.body.appendChild(el);
+
+    // Medir el menú
+    const menuRect = el.getBoundingClientRect();
+    const viewportHeight = window.innerHeight;
+    const viewportWidth = window.innerWidth;
+
+    // Determinar posición vertical (arriba o abajo)
+    let finalY = y;
+    if (y + menuRect.height > viewportHeight) {
+        // No cabe abajo, colocar arriba
+        finalY = y - menuRect.height;
+        // Si tampoco cabe arriba, ajustar al borde superior
+        if (finalY < 0) {
+            finalY = Math.max(0, viewportHeight - menuRect.height);
+        }
+    }
+
+    // Determinar posición horizontal
+    let finalX = x;
+    if (x + menuRect.width > viewportWidth) {
+        // No cabe a la derecha, colocar a la izquierda
+        finalX = x - menuRect.width;
+        // Si tampoco cabe a la izquierda, ajustar al borde derecho
+        if (finalX < 0) {
+            finalX = Math.max(0, viewportWidth - menuRect.width);
+        }
+    }
+
+    // Aplicar posición final y mostrar
+    Object.assign(el.style, {
+        top: finalY + "px",
+        left: finalX + "px",
+        visibility: "visible",
+    });
+
     current = el;
 
     setTimeout(() => {
@@ -72,27 +106,25 @@ export function openActionsMenu(x, y, { headerHtml = "", items = [] }) {
             e.preventDefault();
             e.stopPropagation();
 
-            if (item.disabled) return; // No ejecutar si está deshabilitado
+            console.log("[baseMenu] Click en item:", item.label, "disabled:", item.disabled);
 
-            const action = item.onClick; // guarda la acción
-            closeMenu(); // 🔒 ciérralo primero, siempre
+            if (item.disabled) {
+                console.log("[baseMenu] Item deshabilitado, ignorando");
+                return;
+            }
+
+            const action = item.onClick;
+            console.log("[baseMenu] Ejecutando acción...");
+
+            closeMenu(); // Cerrar el menú primero
 
             try {
-                await action?.(); // luego ejecuta lo que toque
+                await action?.(); // Ejecutar la acción
+                console.log("[baseMenu] Acción completada");
             } catch (err) {
-                console.error(err);
+                console.error("[baseMenu] Error en acción:", err);
             }
         });
-        btn.addEventListener(
-            "mouseup",
-            (e) => {
-                e.stopPropagation();
-                if (!item.disabled) {
-                    closeMenu();
-                }
-            },
-            { once: true }
-        );
     });
     return el;
 }
