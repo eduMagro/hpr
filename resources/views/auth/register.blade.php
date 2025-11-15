@@ -2,16 +2,11 @@
     <x-slot name="title">Crear Usuario - {{ config('app.name') }}</x-slot>
     <div class="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 py-8 px-4 sm:px-6 lg:px-8">
         <div class="max-w-6xl mx-auto">
-            <!-- Header -->
-            <div class="text-center mb-8">
-                <h1 class="text-3xl font-bold text-gray-900 mb-2">Crear Nuevo Usuario</h1>
-                <p class="text-gray-600">Complete el formulario con los datos del usuario</p>
-            </div>
-
             <!-- Form Card -->
             <div class="bg-white shadow-2xl rounded-3xl overflow-hidden border border-gray-100">
-                <div class="bg-gradient-to-r from-blue-600 to-blue-700 px-8 py-6">
-                    <h2 class="text-xl font-semibold text-white">Información del Usuario</h2>
+                <div class="bg-gradient-to-r from-blue-600 to-blue-700 px-8 py-8">
+                    <h1 class="text-3xl font-bold text-white mb-2">Crear Nuevo Usuario</h1>
+                    <p class="text-blue-100">Complete el formulario con los datos del usuario</p>
                 </div>
 
                 <div class="p-8 sm:p-10">
