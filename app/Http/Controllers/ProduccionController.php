@@ -1325,7 +1325,7 @@ class ProduccionController extends Controller
         // Si se proporciona planilla_id, obtener todos los elementos de la planilla
         if ($request->has('planilla_id')) {
             $elementos = Elemento::where('planilla_id', $request->planilla_id)
-                ->select('id', 'codigo', 'diametro', 'peso', 'dimensiones', 'maquina_id')
+                ->select('id', 'codigo', 'diametro', 'peso', 'dimensiones', 'maquina_id', 'barras')
                 ->with('maquina:id,nombre')
                 ->orderBy('maquina_id')
                 ->get();
@@ -1333,7 +1333,7 @@ class ProduccionController extends Controller
             // Comportamiento original para compatibilidad
             $ids = explode(',', $request->ids);
             $elementos = Elemento::whereIn('id', $ids)
-                ->select('id', 'codigo', 'diametro', 'peso', 'dimensiones', 'maquina_id')
+                ->select('id', 'codigo', 'diametro', 'peso', 'dimensiones', 'maquina_id', 'barras')
                 ->with('maquina:id,nombre')
                 ->orderBy('maquina_id')
                 ->get();

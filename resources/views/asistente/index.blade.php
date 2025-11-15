@@ -148,27 +148,25 @@
     <div class="py-0 md:py-4" :data-theme="tema">
         <div class="max-w-7xl mx-auto px-0 md:px-4 lg:px-8">
             <!-- Header mejorado con gradiente - SOLO DESKTOP -->
-            <div class="header-desktop mb-4 flex justify-between items-center p-6 rounded-xl bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 text-white shadow-xl relative overflow-hidden">
-                <!-- Efecto de brillo de fondo -->
-                <div class="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent animate-pulse"></div>
+            <div class="header-desktop mb-4 flex justify-between items-center p-6 rounded-xl bg-gray-900 text-white shadow-xl relative overflow-hidden border border-gray-800">
 
                 <div class="relative z-10">
                     <h1 class="text-4xl font-bold flex items-center gap-3">
-                        <span class="text-5xl animate-bounce">⚡</span>
+                        <img src="{{ asset('imagenes/iconos/asistente-sin-fondo.png') }}" alt="Ferrallin" class="w-16 h-16 object-contain">
                         <div>
                             <span class="block">FERRALLIN</span>
-                            <span class="text-xl font-normal text-blue-100">Asistente Virtual Inteligente</span>
+                            <span class="text-xl font-normal text-gray-300">Asistente Virtual Inteligente</span>
                         </div>
                     </h1>
-                    <p class="text-blue-100 mt-3 text-lg flex items-center gap-2">
-                        <span class="w-3 h-3 bg-green-400 rounded-full animate-pulse shadow-lg shadow-green-400/50"></span>
+                    <p class="text-gray-300 mt-3 text-lg flex items-center gap-2">
+                        <span class="w-3 h-3 bg-green-400 rounded-full animate-pulse"></span>
                         Potenciado por OpenAI GPT-4 • Listo para ayudarte
                     </p>
                 </div>
                 <div class="flex gap-3">
                     @if(Auth::user()->esAdminDepartamento())
                     <a href="{{ route('asistente.permisos') }}"
-                       class="bg-white/20 hover:bg-white/30 backdrop-blur-sm text-white font-semibold py-3 px-5 rounded-xl transition duration-200 flex items-center gap-2 border border-white/30">
+                       class="bg-gray-800 hover:bg-gray-700 text-white font-semibold py-3 px-5 rounded-xl transition duration-200 flex items-center gap-2 border border-gray-700">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
                         </svg>
@@ -205,14 +203,14 @@
                     <div :class="[
                         'sidebar-mobile-panel md:relative md:translate-x-0 transition-transform duration-300',
                         'w-80 md:w-80 border-r flex flex-col',
-                        tema === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-gradient-to-b from-gray-50 to-white border-gray-200',
+                        tema === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-gray-50 border-gray-200',
                         sidebarAbierto ? 'translate-x-0' : '-translate-x-full'
                     ]">
                         <!-- Header sidebar con tema toggle -->
                         <div :class="['p-3 md:p-4 border-b', tema === 'dark' ? 'border-gray-700' : 'border-gray-200']">
                             <div class="flex gap-2 mb-3">
                                 <button @click="crearNuevaConversacion"
-                                        class="flex-1 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold py-2.5 md:py-3 px-3 md:px-4 rounded-xl transition duration-200 flex items-center justify-center shadow-lg hover:shadow-xl transform hover:scale-105 text-sm md:text-base mobile-touch-target">
+                                        class="flex-1 bg-gray-800 hover:bg-gray-700 text-white font-semibold py-2.5 md:py-3 px-3 md:px-4 rounded-xl transition duration-200 flex items-center justify-center shadow-lg hover:shadow-xl text-sm md:text-base mobile-touch-target">
                                     <svg class="w-4 h-4 md:w-5 md:h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
                                     </svg>
@@ -291,14 +289,14 @@
 
                                 <!-- Avatar de Ferrallin -->
                                 <div class="relative flex-shrink-0">
-                                    <div class="w-10 h-10 md:w-14 md:h-14 rounded-full bg-gradient-to-br from-blue-500 via-purple-600 to-pink-500 flex items-center justify-center text-white font-bold text-xl md:text-2xl shadow-lg animate-pulse">
-                                        ⚡
+                                    <div class="w-10 h-10 md:w-14 md:h-14 rounded-full bg-gray-800 flex items-center justify-center shadow-lg overflow-hidden">
+                                        <img src="{{ asset('imagenes/iconos/asistente-sin-fondo.png') }}" alt="Ferrallin" class="w-8 h-8 md:w-12 md:h-12 object-contain">
                                     </div>
                                     <span class="absolute bottom-0 right-0 w-3 h-3 md:w-4 md:h-4 bg-green-500 border-2 border-white rounded-full"></span>
                                 </div>
                                 <div class="min-w-0 flex-1">
                                     <h2 :class="['text-base md:text-xl font-bold flex items-center gap-1 md:gap-2', tema === 'dark' ? 'text-white' : 'text-gray-900']">
-                                        <span class="bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent truncate">FERRALLIN</span>
+                                        <span class="truncate">FERRALLIN</span>
                                         <span :class="['text-xs md:text-sm font-normal hidden sm:inline', tema === 'dark' ? 'text-gray-400' : 'text-gray-500']">
                                             @{{ conversacionActual ? '• Chat Activo' : '• Esperando' }}
                                         </span>
@@ -323,13 +321,13 @@
 
                         <!-- Mensajes RESPONSIVE -->
                         <div ref="mensajesContainer" :class="['flex-1 overflow-y-auto p-3 md:p-6 space-y-4 md:space-y-6 custom-scrollbar',
-                                                              tema === 'dark' ? 'bg-gray-900' : 'bg-gradient-to-br from-gray-50 via-blue-50/30 to-purple-50/30']">
+                                                              tema === 'dark' ? 'bg-gray-900' : 'bg-gray-50']">
                             <div v-if="!conversacionActual" class="h-full flex flex-col items-center justify-center px-4">
-                                <div class="w-24 h-24 md:w-32 md:h-32 rounded-full bg-gradient-to-br from-blue-500 via-purple-600 to-pink-500 flex items-center justify-center text-white font-bold text-4xl md:text-6xl shadow-2xl shadow-purple-500/50 animate-pulse mb-4 md:mb-6">
-                                    ⚡
+                                <div class="w-24 h-24 md:w-32 md:h-32 rounded-full bg-gray-800 flex items-center justify-center shadow-2xl mb-4 md:mb-6 overflow-hidden">
+                                    <img src="{{ asset('imagenes/iconos/asistente-sin-fondo.png') }}" alt="Ferrallin" class="w-20 h-20 md:w-28 md:h-28 object-contain">
                                 </div>
                                 <h3 :class="['text-xl md:text-3xl font-bold mb-2 text-center', tema === 'dark' ? 'text-white' : 'text-gray-800']">
-                                    ¡Hola! Soy <span class="bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">FERRALLIN</span>
+                                    ¡Hola! Soy <span>FERRALLIN</span>
                                 </h3>
                                 <p :class="['text-sm md:text-lg mb-4 md:mb-6 text-center max-w-md', tema === 'dark' ? 'text-gray-400' : 'text-gray-600']">
                                     Tu asistente virtual inteligente. Crea una nueva conversación para comenzar
@@ -348,11 +346,11 @@
                                     <p class="text-sm">Cargando mensajes...</p>
                                 </div>
                                 <div v-else-if="mensajes.length === 0" class="h-full flex flex-col items-center justify-center -mt-4 px-4">
-                                    <div class="w-20 h-20 md:w-24 md:h-24 rounded-full bg-gradient-to-br from-blue-500 via-purple-600 to-pink-500 flex items-center justify-center text-white font-bold text-3xl md:text-5xl shadow-2xl shadow-purple-500/50 animate-pulse mb-4 md:mb-6">
-                                        ⚡
+                                    <div class="w-20 h-20 md:w-24 md:h-24 rounded-full bg-gray-800 flex items-center justify-center shadow-2xl mb-4 md:mb-6 overflow-hidden">
+                                        <img src="{{ asset('imagenes/iconos/asistente-sin-fondo.png') }}" alt="Ferrallin" class="w-16 h-16 md:w-20 md:h-20 object-contain">
                                     </div>
                                     <h3 :class="['text-lg md:text-2xl font-bold mb-2 text-center', tema === 'dark' ? 'text-white' : 'text-gray-800']">
-                                        ¡Hola! Soy <span class="bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">FERRALLIN</span>
+                                        ¡Hola! Soy <span>FERRALLIN</span>
                                     </h3>
                                     <p :class="['text-sm md:text-lg mb-4 md:mb-6 text-center max-w-md', tema === 'dark' ? 'text-gray-400' : 'text-gray-600']">
                                         Puedo ayudarte a consultar y gestionar información del sistema. Aquí tienes algunas ideas:
@@ -376,12 +374,12 @@
                                         <!-- Avatar -->
                                         <div class="flex-shrink-0">
                                             <div v-if="mensaje.role === 'user'"
-                                                 class="w-8 h-8 md:w-10 md:h-10 rounded-full bg-gradient-to-br from-green-400 to-blue-500 flex items-center justify-center text-white font-bold shadow-lg text-sm md:text-base">
+                                                 class="w-8 h-8 md:w-10 md:h-10 rounded-full bg-gray-700 flex items-center justify-center text-white font-bold shadow-lg text-sm md:text-base">
                                                 👤
                                             </div>
                                             <div v-else
-                                                 class="w-8 h-8 md:w-10 md:h-10 rounded-full bg-gradient-to-br from-blue-500 via-purple-600 to-pink-500 flex items-center justify-center text-white font-bold text-base md:text-xl shadow-lg shadow-purple-500/50 animate-pulse">
-                                                ⚡
+                                                 class="w-8 h-8 md:w-10 md:h-10 rounded-full bg-gray-800 flex items-center justify-center shadow-lg overflow-hidden">
+                                                <img src="{{ asset('imagenes/iconos/asistente-sin-fondo.png') }}" alt="Ferrallin" class="w-6 h-6 md:w-8 md:h-8 object-contain">
                                             </div>
                                         </div>
 
@@ -389,7 +387,7 @@
                                         <div class="flex-1 min-w-0 max-w-full md:max-w-3xl">
                                             <div :class="['rounded-2xl p-3 md:p-5 shadow-lg backdrop-blur-sm transition-all duration-200 hover:shadow-xl',
                                                          mensaje.role === 'user'
-                                                            ? 'bg-gradient-to-br from-blue-600 to-purple-600 text-white'
+                                                            ? 'bg-gray-700 text-white'
                                                             : (tema === 'dark' ? 'bg-gray-800 text-gray-100 border border-gray-700' : 'bg-white text-gray-900')]">
 
                                                 <!-- Contenido principal con markdown -->
@@ -445,17 +443,17 @@
                                 <!-- Indicador de escritura -->
                                 <div v-if="escribiendo" class="flex gap-2 md:gap-3">
                                     <div class="flex-shrink-0">
-                                        <div class="w-8 h-8 md:w-10 md:h-10 rounded-full bg-gradient-to-br from-blue-500 via-purple-600 to-pink-500 flex items-center justify-center text-white font-bold text-base md:text-xl shadow-lg shadow-purple-500/50 animate-pulse">
-                                            ⚡
+                                        <div class="w-8 h-8 md:w-10 md:h-10 rounded-full bg-gray-800 flex items-center justify-center shadow-lg overflow-hidden">
+                                            <img src="{{ asset('imagenes/iconos/asistente-sin-fondo.png') }}" alt="Ferrallin" class="w-6 h-6 md:w-8 md:h-8 object-contain">
                                         </div>
                                     </div>
                                     <div :class="['rounded-2xl p-3 md:p-5 shadow-lg backdrop-blur-sm',
                                                  tema === 'dark' ? 'bg-gray-800 border border-gray-700' : 'bg-white']">
                                         <div class="flex items-center gap-2 md:gap-3">
                                             <div class="flex space-x-1 md:space-x-2">
-                                                <div class="w-2 h-2 md:w-3 md:h-3 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full animate-bounce"></div>
-                                                <div class="w-2 h-2 md:w-3 md:h-3 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full animate-bounce" style="animation-delay: 0.2s"></div>
-                                                <div class="w-2 h-2 md:w-3 md:h-3 bg-gradient-to-r from-pink-500 to-blue-500 rounded-full animate-bounce" style="animation-delay: 0.4s"></div>
+                                                <div class="w-2 h-2 md:w-3 md:h-3 bg-gray-600 rounded-full animate-bounce"></div>
+                                                <div class="w-2 h-2 md:w-3 md:h-3 bg-gray-600 rounded-full animate-bounce" style="animation-delay: 0.2s"></div>
+                                                <div class="w-2 h-2 md:w-3 md:h-3 bg-gray-600 rounded-full animate-bounce" style="animation-delay: 0.4s"></div>
                                             </div>
                                             <span :class="['text-xs md:text-sm font-medium', tema === 'dark' ? 'text-gray-300' : 'text-gray-600']">
                                                 <strong>Ferrallin</strong> está analizando...
@@ -485,7 +483,7 @@
                                     </div>
                                     <button @click="enviarMensaje"
                                             :disabled="!mensajeNuevo.trim() || enviando"
-                                            class="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-bold px-4 md:px-6 rounded-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl transform hover:scale-105 disabled:transform-none flex items-center justify-center mobile-touch-target">
+                                            class="bg-gray-800 hover:bg-gray-700 text-white font-bold px-4 md:px-6 rounded-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl flex items-center justify-center mobile-touch-target">
                                         <svg v-if="!enviando" class="w-5 h-5 md:w-6 md:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/>
                                         </svg>
@@ -549,8 +547,13 @@
                 await this.cargarConversaciones()
                 await this.cargarSugerencias()
 
-                // Crear automáticamente una nueva conversación al entrar
-                await this.crearNuevaConversacion()
+                // Si ya hay conversaciones, seleccionar la más reciente
+                // Si no hay, crear una nueva
+                if (this.conversaciones.length > 0) {
+                    await this.seleccionarConversacion(this.conversaciones[0].id)
+                } else {
+                    await this.crearNuevaConversacion()
+                }
 
                 // Agregar atajos de teclado
                 document.addEventListener('keydown', this.manejarAtajos)

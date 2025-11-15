@@ -185,16 +185,13 @@ class MaquinaController extends Controller
         }
 
         // 4) Cola de planillas con lógica de salto de planillas sin revisar
-        $posicion1Request = request()->input('posicion_1', 1);
-        $posicion2Request = request()->input('posicion_2', null);
-
-        // ⚠️ LÓGICA DE SALTO: Buscar primera planilla revisada
+        // ⚠️ LÓGICA ESTRICTA: Solo planillas revisadas entran en planificación
         $ordenesPlanillas = OrdenPlanilla::where('maquina_id', $maquina->id)
             ->with('planilla')
             ->orderBy('posicion', 'asc')
             ->get();
 
-        // Encontrar la primera posición con planilla revisada
+        // Encontrar las primeras dos posiciones con planillas revisadas
         $posicion1 = null;
         $posicion2 = null;
 
@@ -207,19 +204,6 @@ class MaquinaController extends Controller
                     break; // Ya tenemos las dos posiciones
                 }
             }
-        }
-
-        // Si el usuario especificó posiciones manualmente, respetarlas
-        if ($posicion1Request) {
-            $posicion1 = $posicion1Request;
-        }
-        if ($posicion2Request) {
-            $posicion2 = $posicion2Request;
-        }
-
-        // Si no hay posición 1 válida, usar la primera disponible (aunque no esté revisada)
-        if (is_null($posicion1) && $ordenesPlanillas->isNotEmpty()) {
-            $posicion1 = $ordenesPlanillas->first()->posicion;
         }
 
         // Filtrar posiciones válidas (mayores a 0)

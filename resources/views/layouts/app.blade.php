@@ -82,11 +82,11 @@
 
 <body class="font-sans antialiased transition-colors duration-200">
     <div class="flex h-screen bg-gray-100 dark:bg-gray-900 overflow-hidden">
-        <!-- Sidebar Menu Enhanced -->
+        <!-- Sidebar Menu Enhanced (solo para rol oficina) -->
         <x-sidebar-menu-enhanced />
 
         <!-- Main Content Area -->
-        <div class="flex-1 flex flex-col overflow-hidden">
+        <div class="flex-1 flex flex-col overflow-hidden @if(!auth()->user()->esOficina()) w-full @endif">
             <!-- Top Header Enhanced -->
             <x-top-header-enhanced />
 

@@ -139,18 +139,21 @@
 
     {{-- Modal para visualizar elementos del paquete --}}
     <div id="modal-elementos-paquete"
-        class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center p-4">
+        class="hidden fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center p-4"
+        style="z-index: 99999 !important;">
         <div
-            class="bg-white p-4 sm:p-6 rounded-lg w-full sm:w-[800px] md:w-[900px] lg:w-[1000px] max-w-[95vw] max-h-[90vh] flex flex-col shadow-lg relative">
+            class="bg-white p-4 sm:p-6 rounded-lg w-full sm:w-[800px] md:w-[900px] lg:w-[1000px] max-w-[95vw] max-h-[90vh] flex flex-col shadow-lg relative"
+            style="z-index: 100000 !important;">
             <button id="cerrar-modal-elementos"
-                class="absolute top-2 right-2 text-red-600 hover:bg-red-100 w-8 h-8 flex items-center justify-center rounded">
+                class="absolute top-2 right-2 text-red-600 hover:bg-red-100 w-8 h-8 flex items-center justify-center rounded"
+                style="z-index: 100001 !important;">
                 ✖
             </button>
 
             <h2 class="text-xl font-semibold mb-4 text-center">Elementos del paquete <span
                     id="modal-paquete-codigo"></span></h2>
 
-            <div class="overflow-y-auto flex-1 min-h-0" style="max-height: 75vh;">
+            <div class="overflow-y-auto flex-1 min-h-0" style="max-height: 75vh; position: relative; z-index: 100000;">
                 <div id="canvas-elementos-paquete" class="border max-w-full h-auto"></div>
             </div>
         </div>
@@ -390,6 +393,11 @@
                 const codigoSpan = document.getElementById('modal-paquete-codigo');
 
                 if (!modal || !canvasContainer || !codigoSpan) return;
+
+                // Mover el modal al body para evitar problemas de z-index
+                if (modal.parentElement !== document.body) {
+                    document.body.appendChild(modal);
+                }
 
                 codigoSpan.textContent = paquete.codigo;
                 canvasContainer.innerHTML = '';

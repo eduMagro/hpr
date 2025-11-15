@@ -25,8 +25,8 @@
     /* Tamaño real para impresión */
     .etiqueta-card {
         position: relative;
-        width: 105mm;
-        height: 59.4mm;
+        width: 126mm;
+        height: 71mm;
         box-sizing: border-box;
         border: 0.2mm solid #000;
         overflow: hidden;
@@ -91,11 +91,11 @@
     /* Pantalla: escala mayor sin romper proporción */
     @media screen {
         .etiqueta-card {
-            width: 525px;
-            /* ancho grande en pantalla (~5 veces más que 105mm) */
-            height: 297px;
+            width: 630px;
+            /* ancho grande en pantalla (~5 veces más que 126mm) */
+            height: 355px;
             /* alto proporcional */
-            margin: 1rem;
+            margin: 0 1rem 1rem 1rem;
             box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
         }
 

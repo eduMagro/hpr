@@ -4,6 +4,7 @@
     $currentRoute = request()->route()->getName();
 @endphp
 
+@if(auth()->user()->esOficina())
 <div x-data="{
     open: window.innerWidth >= 768 ? (localStorage.getItem('sidebar_open') !== 'false') : false,
     activeSection: null,
@@ -485,6 +486,7 @@ class="flex h-screen">
         </div>
     </div>
 </div>
+@endif
 
 <style>
     /* Scrollbar personalizado */

@@ -873,6 +873,7 @@
                     schedulerLicenseKey: 'CC-Attribution-NonCommercial-NoDerivatives',
                     initialView: 'resourceTimeGrid7Days',
                     nextDayThreshold: '00:00:00',
+                    allDaySlot: false,
                     resourceLabelContent: function(arg) {
                         return {
                             html: `
@@ -913,12 +914,12 @@
                                 days: 1
                             },
                             slotMinTime: '00:00:00',
-                            slotMaxTime: '168:00:00',
+                            slotMaxTime: '360:00:00',
                             slotDuration: '01:00:00',
                             dayHeaderContent: function(arg) {
                                 return '';
                             },
-                            buttonText: '7 días'
+                            buttonText: '15 días'
                         }
                     },
                     locale: 'es',

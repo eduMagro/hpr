@@ -27,6 +27,70 @@
                 </div>
 
             </div>
+
+            @if(Auth::user()->esOficina() || Auth::user()->esAdminDepartamento())
+                <!-- Asistente Virtual Ferrallin -->
+                <div class="mt-8 bg-white overflow-hidden shadow-sm sm:rounded-lg">
+                    <div class="p-4 border-b border-gray-800 bg-gray-900">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center gap-3">
+                                <div class="w-12 h-12 rounded-full bg-gray-800 flex items-center justify-center shadow-lg overflow-hidden">
+                                    <img src="{{ asset('imagenes/iconos/asistente-sin-fondo.png') }}" alt="Ferrallin" class="w-10 h-10 object-contain">
+                                </div>
+                                <div>
+                                    <h2 class="text-xl font-bold text-white">FERRALLIN</h2>
+                                    <p class="text-sm text-gray-300 flex items-center gap-2">
+                                        <span class="w-2 h-2 bg-green-400 rounded-full animate-pulse"></span>
+                                        Asistente Virtual Inteligente
+                                    </p>
+                                </div>
+                            </div>
+                            <a href="{{ route('asistente.index') }}"
+                               class="bg-gray-800 hover:bg-gray-700 text-white font-semibold py-2 px-4 rounded-lg transition duration-200 flex items-center gap-2 border border-gray-700">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/>
+                                </svg>
+                                Abrir Chat
+                            </a>
+                        </div>
+                    </div>
+                    <div class="p-6 bg-gray-50">
+                        <p class="text-gray-700 mb-4">
+                            Ferrallin es tu asistente virtual potenciado por inteligencia artificial. Puede ayudarte con consultas sobre el sistema, gestión de información y mucho más.
+                        </p>
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                            <div class="bg-white p-3 rounded-lg border border-gray-200 shadow-sm hover:shadow-md transition">
+                                <div class="flex items-start gap-2">
+                                    <span class="text-2xl">🔍</span>
+                                    <div>
+                                        <h4 class="font-semibold text-gray-800 text-sm">Consultas SQL</h4>
+                                        <p class="text-xs text-gray-600">Realiza búsquedas en la base de datos</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="bg-white p-3 rounded-lg border border-gray-200 shadow-sm hover:shadow-md transition">
+                                <div class="flex items-start gap-2">
+                                    <span class="text-2xl">💡</span>
+                                    <div>
+                                        <h4 class="font-semibold text-gray-800 text-sm">Información</h4>
+                                        <p class="text-xs text-gray-600">Obtén datos del sistema al instante</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="bg-white p-3 rounded-lg border border-gray-200 shadow-sm hover:shadow-md transition">
+                                <div class="flex items-start gap-2">
+                                    <span class="text-2xl">⚙️</span>
+                                    <div>
+                                        <h4 class="font-semibold text-gray-800 text-sm">Gestión</h4>
+                                        <p class="text-xs text-gray-600">Ayuda con tareas administrativas</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            @endif
+
             <div class="mt-8 text-center">
                 <a href="#" onclick="document.getElementById('modal-politicas').classList.remove('hidden')"
                     class="text-sm text-blue-600 hover:underline">

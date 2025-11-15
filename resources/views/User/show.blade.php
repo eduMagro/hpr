@@ -30,14 +30,10 @@
 <x-app-layout>
     <x-slot name="title">{{ $user->nombre_completo }}</x-slot>
 
-    <div class="container mx-auto px-4 py-6">
-        <x-ficha-trabajador :user="$user" :resumen="$resumen" />
-    </div>
-
-    <div class="w-full py-6">
-        {{-- Botones de fichaje: solo operarios --}}
-        @if (!$esOficina)
-            <div class="mb-6 flex justify-center items-center gap-4 px-4">
+    {{-- Botones de fichaje: solo operarios --}}
+    @if (!$esOficina)
+        <div class="container mx-auto px-4 pt-6 pb-4">
+            <div class="flex justify-center items-center gap-4">
                 <button onclick="registrarFichaje('entrada')"
                     class="py-3 px-8 bg-green-600 hover:bg-green-700 text-white text-lg font-semibold rounded-lg shadow-lg transition duration-200 btn-cargando">
                     <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
@@ -50,7 +46,14 @@
                     <span class="texto">Salida</span>
                 </button>
             </div>
-        @endif
+        </div>
+    @endif
+
+    <div class="container mx-auto px-4 py-6">
+        <x-ficha-trabajador :user="$user" :resumen="$resumen" />
+    </div>
+
+    <div class="w-full py-6">
 
         {{-- Calendario de turnos --}}
         <div class="bg-white py-4">

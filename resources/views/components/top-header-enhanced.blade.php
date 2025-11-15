@@ -1,8 +1,7 @@
 <nav x-data="{
     open: false,
     notificationsOpen: false,
-    userMenuOpen: false,
-    quickActionsOpen: false
+    userMenuOpen: false
 }" x-cloak class="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 shadow-sm flex-shrink-0 transition-colors">
     <!-- Primary Navigation Menu -->
     <div class="w-full px-4 sm:px-6 lg:px-8">
@@ -22,78 +21,6 @@
                 </a>
             </div>
 
-            <!-- Center - Quick Actions -->
-            <div class="hidden lg:flex items-center space-x-2">
-                <!-- Acciones Rápidas Dropdown -->
-                <div class="relative" x-data="{ open: false }">
-                    <button @click="open = !open"
-                            @click.away="open = false"
-                            class="flex items-center space-x-2 px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
-                        </svg>
-                        <span>Acciones Rápidas</span>
-                        <svg class="w-4 h-4" :class="open ? 'rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
-                        </svg>
-                    </button>
-
-                    <!-- Dropdown Content -->
-                    <div x-show="open"
-                         x-transition
-                         x-cloak
-                         class="absolute left-0 mt-2 w-80 bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 py-2 z-50">
-                        <div class="px-4 py-2 border-b border-gray-200 dark:border-gray-700">
-                            <h3 class="text-sm font-semibold text-gray-900 dark:text-white">Acciones Rápidas</h3>
-                            <p class="text-xs text-gray-500 dark:text-gray-400">Accede rápidamente a funciones comunes</p>
-                        </div>
-
-                        <div class="grid grid-cols-2 gap-2 p-3">
-                            <!-- Nueva Planilla -->
-                            <a href="{{ route('planillas.create') }}"
-                               class="flex flex-col items-center p-3 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition text-center group">
-                                <span class="text-2xl mb-1">📄</span>
-                                <span class="text-xs font-medium text-gray-700 dark:text-gray-300 group-hover:text-blue-600 dark:group-hover:text-blue-400">Nueva Planilla</span>
-                            </a>
-
-                            <!-- Nueva Entrada -->
-                            <a href="{{ route('entradas.create') }}"
-                               class="flex flex-col items-center p-3 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition text-center group">
-                                <span class="text-2xl mb-1">⬇️</span>
-                                <span class="text-xs font-medium text-gray-700 dark:text-gray-300 group-hover:text-blue-600 dark:group-hover:text-blue-400">Nueva Entrada</span>
-                            </a>
-
-                            <!-- Nueva Salida -->
-                            <a href="{{ route('salidas-ferralla.create') }}"
-                               class="flex flex-col items-center p-3 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition text-center group">
-                                <span class="text-2xl mb-1">➡️</span>
-                                <span class="text-xs font-medium text-gray-700 dark:text-gray-300 group-hover:text-blue-600 dark:group-hover:text-blue-400">Nueva Salida</span>
-                            </a>
-
-                            <!-- Nuevo Pedido -->
-                            <a href="{{ route('pedidos.create') }}"
-                               class="flex flex-col items-center p-3 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition text-center group">
-                                <span class="text-2xl mb-1">🛒</span>
-                                <span class="text-xs font-medium text-gray-700 dark:text-gray-300 group-hover:text-blue-600 dark:group-hover:text-blue-400">Nuevo Pedido</span>
-                            </a>
-
-                            <!-- Nuevo Cliente -->
-                            <a href="{{ route('clientes.create') }}"
-                               class="flex flex-col items-center p-3 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition text-center group">
-                                <span class="text-2xl mb-1">👥</span>
-                                <span class="text-xs font-medium text-gray-700 dark:text-gray-300 group-hover:text-blue-600 dark:group-hover:text-blue-400">Nuevo Cliente</span>
-                            </a>
-
-                            <!-- Estadísticas -->
-                            <a href="{{ route('estadisticas.index') }}"
-                               class="flex flex-col items-center p-3 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition text-center group">
-                                <span class="text-2xl mb-1">📊</span>
-                                <span class="text-xs font-medium text-gray-700 dark:text-gray-300 group-hover:text-blue-600 dark:group-hover:text-blue-400">Estadísticas</span>
-                            </a>
-                        </div>
-                    </div>
-                </div>
-            </div>
 
             <!-- Right Side - User Actions -->
             <div class="flex items-center space-x-2 sm:space-x-4">

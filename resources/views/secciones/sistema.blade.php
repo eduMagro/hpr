@@ -53,6 +53,26 @@
                     </div>
                 </a>
 
+                <a href="{{ route('asistente.index') }}" class="bg-white rounded-lg shadow-md hover:shadow-xl transition-all duration-300 overflow-hidden group">
+                    <div class="bg-gradient-to-br from-gray-800 to-gray-900 p-6 text-center">
+                        <span class="text-6xl">⚡</span>
+                    </div>
+                    <div class="p-4 text-center">
+                        <h3 class="font-bold text-gray-800 group-hover:text-gray-700 transition">FERRALLIN</h3>
+                        <p class="text-xs text-gray-500 mt-1">Asistente virtual IA</p>
+                    </div>
+                </a>
+
+                <a href="{{ route('departamentos.index') }}" class="bg-white rounded-lg shadow-md hover:shadow-xl transition-all duration-300 overflow-hidden group">
+                    <div class="bg-gradient-to-br from-gray-600 to-gray-700 p-6 text-center">
+                        <span class="text-6xl">🔐</span>
+                    </div>
+                    <div class="p-4 text-center">
+                        <h3 class="font-bold text-gray-800 group-hover:text-gray-700 transition">Permisos</h3>
+                        <p class="text-xs text-gray-500 mt-1">Gestión de departamentos</p>
+                    </div>
+                </a>
+
             </div>
         </div>
     </div>

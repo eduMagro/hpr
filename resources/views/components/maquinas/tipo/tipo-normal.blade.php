@@ -6,7 +6,27 @@
 
 <div x-data="{
     showLeft: JSON.parse(localStorage.getItem('showLeft') ?? 'false'),
-    showRight: JSON.parse(localStorage.getItem('showRight') ?? 'false'),
+    showRight: JSON.parse(localStorage.getItem('showRight') ?? 'true'),
+
+    toggleLeft() {
+        this.showLeft = !this.showLeft;
+        localStorage.setItem('showLeft', JSON.stringify(this.showLeft));
+        window.dispatchEvent(new CustomEvent('toggleLeft'));
+    },
+
+    solo() {
+        this.showLeft = false;
+        this.showRight = false;
+        localStorage.setItem('showLeft', 'false');
+        localStorage.setItem('showRight', 'false');
+        window.dispatchEvent(new CustomEvent('solo'));
+    },
+
+    toggleRight() {
+        this.showRight = !this.showRight;
+        localStorage.setItem('showRight', JSON.stringify(this.showRight));
+        window.dispatchEvent(new CustomEvent('toggleRight'));
+    },
 
     init() {
         window.addEventListener('toggleLeft', () => {
@@ -17,7 +37,7 @@
             this.showRight = false;
         });
         window.addEventListener('toggleRight', () => {
-            this.showRight = JSON.parse(localStorage.getItem('showRight') ?? 'false');
+            this.showRight = JSON.parse(localStorage.getItem('showRight') ?? 'true');
         });
     }
 }" class="w-full">
@@ -194,7 +214,7 @@
                             @endphp
 
                             <section class="bg-gradient-to-br from-gray-50 to-white rounded-lg border-2 border-gray-200 shadow-md overflow-hidden">
-                                <div class="space-y-2 overflow-y-auto flex flex-col items-center justify-center" style="max-height: calc(100vh - 70px);">
+                                <div class="space-y-2 overflow-y-auto flex flex-col items-center justify-start pt-4" style="max-height: calc(100vh - 70px);">
                                     @forelse ($elementosAgrupados as $etiquetaSubId => $elementos)
                                         @php
                                             $firstElement = $elementos->first();
@@ -240,6 +260,54 @@
                  ============================================================ -->
             <div x-show="showRight" x-cloak
                 class="col-span-12 lg:col-span-3 bg-white border border-gray-200 shadow-lg rounded-lg self-start lg:sticky lg:top-2 overflow-hidden">
+
+                {{-- Controles superiores --}}
+                <div class="p-3 bg-gray-50 border-b border-gray-200 space-y-3">
+                    {{-- Título de la máquina --}}
+                    <div class="text-center">
+                        <h2 class="font-semibold text-lg text-gray-800">
+                            <strong>{{ $maquina->nombre }}</strong>
+                        </h2>
+                    </div>
+
+                    {{-- Controles de vista --}}
+                    <div class="flex flex-col gap-2">
+                        <button @click="toggleLeft()"
+                            class="w-full px-3 py-2 rounded-md text-sm font-medium border transition-all duration-200"
+                            :class="showLeft ? 'bg-white border-gray-300 text-gray-700 shadow-sm' : 'bg-blue-500 border-blue-600 text-white hover:bg-blue-600'"
+                            title="Mostrar/Ocultar materia prima">
+                            <span class="flex items-center justify-center gap-1">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 19l-7-7 7-7m8 14l-7-7 7-7"/>
+                                </svg>
+                                <span x-text="showLeft ? 'Ocultar Materia Prima' : 'Mostrar Materia Prima'"></span>
+                            </span>
+                        </button>
+
+                        <button @click="solo()"
+                            class="w-full px-3 py-2 rounded-md text-sm font-medium bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 transition-all duration-200 shadow-sm"
+                            title="Ver solo planillas">
+                            <span class="flex items-center justify-center gap-1">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
+                                </svg>
+                                Solo Planillas
+                            </span>
+                        </button>
+
+                        <button @click="toggleRight()"
+                            class="w-full px-3 py-2 rounded-md text-sm font-medium border transition-all duration-200"
+                            :class="showRight ? 'bg-white border-gray-300 text-gray-700 shadow-sm' : 'bg-blue-500 border-blue-600 text-white hover:bg-blue-600'"
+                            title="Mostrar/Ocultar paquetes">
+                            <span class="flex items-center justify-center gap-1">
+                                <span x-text="showRight ? 'Ocultar Paquetes' : 'Mostrar Paquetes'"></span>
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 5l7 7-7 7M5 5l7 7-7 7"/>
+                                </svg>
+                            </span>
+                        </button>
+                    </div>
+                </div>
 
                 <div x-data="{ tabActivo: 'crear' }" class="w-full">
                     {{-- Tabs Header --}}
