@@ -1437,7 +1437,15 @@ class ProduccionController extends Controller
                     }
 
                     $grupoCount       = $grupo instanceof Collection ? $grupo->count() : (is_countable($grupo) ? count($grupo) : 0);
-                    $duracionSegundos = max($grupoCount * 20 * 60, 3600); // mínimo 1 hora
+
+                    // 🆕 Calcular duración basada en los tiempos reales de fabricación de los elementos de ESTA máquina
+                    $duracionSegundosReal = 0;
+                    if ($grupo instanceof Collection) {
+                        $duracionSegundosReal = $grupo->sum(function($elemento) {
+                            return (float)($elemento->tiempo_fabricacion ?? 1200); // Default 20 min si no tiene
+                        });
+                    }
+                    $duracionSegundos = max($duracionSegundosReal, 3600); // mínimo 1 hora
 
                     // ⚠️ LÓGICA CORREGIDA:
                     // - Si está FABRICANDO y tiene fecha_inicio → usar esa fecha y calcular duración hasta now()
@@ -1485,6 +1493,14 @@ class ProduccionController extends Controller
                     // Fin real ya lo tienes:
                     $fechaFinReal = ($ultimoTramo['end'] instanceof Carbon ? $ultimoTramo['end'] : Carbon::parse($ultimoTramo['end']))
                         ->copy()->setTimezone($appTz);
+
+                    Log::info('🔍 Fin programado calculado', [
+                        'planillaId' => $planillaId,
+                        'maquinaId' => $maquinaId,
+                        'elementos' => $grupo->pluck('codigo')->toArray(),
+                        'duracionSegundos' => $duracionSegundos,
+                        'finProgramado' => $fechaFinReal->format('d/m/Y H:i'),
+                    ]);
 
                     // Fecha de entrega (ahora robusta)
                     $fechaEntrega = $this->parseFechaEntregaFlexible($planilla->fecha_estimada_entrega, $appTz);

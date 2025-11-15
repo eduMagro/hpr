@@ -21,6 +21,12 @@
         margin: 0.5rem 0;
     }
 
+    /* === Prevenir FOUC (Flash of Unstyled Content) === */
+    .proceso {
+        opacity: 0;
+        transition: opacity 0.3s ease-in;
+    }
+
     /* === Etiqueta base (pantalla e impresión) === */
     /* Tamaño real para impresión */
     .etiqueta-card {

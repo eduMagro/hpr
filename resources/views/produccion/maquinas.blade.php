@@ -1670,11 +1670,18 @@
                                 `<br><span class="text-green-400">✅ Revisada por ${props.revisada_por || 'N/A'}</span>`;
                         }
 
+                        // Debug: mostrar elementos de este evento
+                        const elementosDebug = props.codigos_elementos ? props.codigos_elementos.join(', ') : 'N/A';
+                        const maquinaId = info.event.getResources()[0]?.id || 'N/A';
+
                         tooltip.innerHTML = `
                         <div class="bg-gray-900 text-white text-xs rounded px-2 py-1 shadow-md max-w-xs">
                             <strong>${info.event.title}</strong><br>
                             Obra: ${props.obra}<br>
                             Estado producción: ${props.estado}<br>
+                            Máquina: <span class="text-blue-300">${maquinaId}</span><br>
+                            Elementos: <span class="text-purple-300">${elementosDebug}</span><br>
+                            Duración: <span class="text-cyan-300">${props.duracion_horas || 0} hrs</span><br>
                             Fin programado: <span class="text-yellow-300">${props.fin_programado}</span><br>
                             Fecha estimada entrega: <span class="text-green-300">${props.fecha_entrega}</span>${estadoRevision}
                         </div>`;

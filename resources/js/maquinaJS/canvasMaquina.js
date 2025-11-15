@@ -812,7 +812,7 @@ function renderizarGrupoSVG(grupo, gidx) {
                 }
             }
 
-            // âœ… NUEVO: Construir texto de coladas
+            // ✅ NUEVO: Construir texto de coladas
             const coladas = [];
             if (elemento.coladas?.colada1)
                 coladas.push(elemento.coladas.colada1);
@@ -826,7 +826,7 @@ function renderizarGrupoSVG(grupo, gidx) {
 
             return {
                 letter: indexToLetters(idx),
-                text: `Ø${diametro} x${barras}${textColadas}`, // âœ… AÃ±adimos las coladas aquÃ­
+                text: `Ø${diametro} x${barras}${textColadas}`,
             };
         });
         drawLegendBottomLeft(svg, legendEntries, ancho, alto); // ← primero, para evitar solapes con todo lo demás
@@ -1402,8 +1402,24 @@ document.addEventListener("DOMContentLoaded", function () {
     const grupos = window.elementosAgrupadosScript;
     if (!grupos) return;
 
+    // Ocultar todas las etiquetas antes de renderizar
+    document.querySelectorAll('.proceso').forEach(el => {
+        el.style.opacity = '0';
+        el.style.transition = 'opacity 0.3s ease-in';
+    });
+
+    // Renderizar todos los SVG
     grupos.forEach(function (grupo, gidx) {
         renderizarGrupoSVG(grupo, gidx);
+    });
+
+    // Mostrar todas las etiquetas con una animación suave después del renderizado
+    requestAnimationFrame(() => {
+        setTimeout(() => {
+            document.querySelectorAll('.proceso').forEach(el => {
+                el.style.opacity = '1';
+            });
+        }, 100);
     });
 
     // =======================
