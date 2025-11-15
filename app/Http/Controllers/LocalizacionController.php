@@ -810,4 +810,220 @@ class LocalizacionController extends Controller
             ], 500);
         }
     }
+
+    //------------------------------------------------------------------------------------ MAPA LOCALIZACIONES()
+    /**
+     * Vista del mapa de localizaciones mostrando los PAQUETES ubicados
+     * Similar a index() pero enfocado en visualizar paquetes en lugar de gestionar localizaciones
+     */
+    public function mapaLocalizaciones()
+    {
+        // 1) Obtener todas las obras del cliente "Hierros Paco Reyes"
+        $obras = Obra::with('cliente')
+            ->whereHas('cliente', fn($q) => $q->where('empresa', 'LIKE', '%hierros paco reyes%'))
+            ->orderBy('obra')
+            ->get();
+
+        // 2) Determinar la obra activa (desde parámetro ?obra=ID o la primera disponible)
+        $obraActualId = request('obra');
+        $obraActiva   = $obras->firstWhere('id', $obraActualId) ?? $obras->first();
+        $cliente      = $obraActiva?->cliente;
+
+        // 3) Dimensiones de la nave en metros (convertidas a celdas de 0.5m)
+        $anchoM = max(1, (int) ($obraActiva->ancho_m ?? 22));
+        $largoM = max(1, (int) ($obraActiva->largo_m ?? 115));
+        $columnasReales = $anchoM * 2; // cada celda = 0.5m
+        $filasReales    = $largoM * 2;
+
+        // 4) Sin rotación: el mapa siempre crece de ABAJO hacia ARRIBA
+        $estaGirado = false; // ⬅️ CRÍTICO: desactivamos rotación
+        $columnasVista = $columnasReales; // ancho
+        $filasVista    = $filasReales;    // largo (vertical)
+
+        // 5) Inicializar colecciones
+        $localizacionesMaquinas = collect();
+        $localizacionesZonas    = collect();
+        $paquetesConLocalizacion = collect();
+        $ocupadas = [];
+
+        if ($obraActiva) {
+            // 5.1) Cargar TODAS las localizaciones de la nave (máquinas y zonas)
+            $localizaciones = Localizacion::with('maquina:id,nombre')
+                ->where('nave_id', $obraActiva->id)
+                ->get();
+
+            // 5.2) Separar localizaciones de MÁQUINAS
+            $localizacionesMaquinas = $localizaciones
+                ->where('tipo', 'maquina')
+                ->whereNotNull('maquina_id')
+                ->filter(fn($l) => $l->maquina)
+                ->values()
+                ->map(function ($l) {
+                    return [
+                        'id'         => (int) $l->id,
+                        'x1'         => (int) $l->x1,
+                        'y1'         => (int) $l->y1,
+                        'x2'         => (int) $l->x2,
+                        'y2'         => (int) $l->y2,
+                        'tipo'       => 'maquina',
+                        'maquina_id' => (int) $l->maquina_id,
+                        'nombre'     => (string) ($l->nombre ?: $l->maquina->nombre),
+                        'nave_id'    => (int) $l->nave_id,
+                    ];
+                });
+
+            // 5.3) Separar localizaciones de ZONAS (transitable, almacenamiento, carga_descarga)
+            $localizacionesZonas = $localizaciones
+                ->filter(fn($l) => $l->tipo !== 'maquina')
+                ->values()
+                ->map(function ($l) {
+                    $tipoNorm = str_replace('-', '_', (string) $l->tipo);
+                    return [
+                        'id'      => (int) $l->id,
+                        'x1'      => (int) $l->x1,
+                        'y1'      => (int) $l->y1,
+                        'x2'      => (int) $l->x2,
+                        'y2'      => (int) $l->y2,
+                        'tipo'    => $tipoNorm,
+                        'nombre'  => (string) ($l->nombre ?: strtoupper(str_replace('_', ' ', $tipoNorm))),
+                        'nave_id' => (int) $l->nave_id,
+                    ];
+                });
+
+            // 5.4) Coordenadas ocupadas (para colisiones, excluye transitables)
+            $ocupadas = $localizaciones
+                ->filter(fn($l) => str_replace('-', '_', $l->tipo) !== 'transitable')
+                ->map(fn($l) => [
+                    'x1' => (int) $l->x1,
+                    'y1' => (int) $l->y1,
+                    'x2' => (int) $l->x2,
+                    'y2' => (int) $l->y2,
+                ])->values()->all();
+
+            // 5.5) ⭐ OBTENER PAQUETES CON LOCALIZACIÓN EN ESTA NAVE
+            $paquetesConLocalizacion = Paquete::with([
+                'localizacionPaquete', // coordenadas x1,y1,x2,y2
+                'etiquetas.elementos', // para calcular tipo de contenido
+                'planilla.obra'        // info adicional: planilla y su obra
+            ])
+            ->where('nave_id', $obraActiva->id)
+            ->whereHas('localizacionPaquete') // solo paquetes con localización
+            ->get()
+            ->map(function ($paquete) {
+                $loc = $paquete->localizacionPaquete;
+
+                return [
+                    'id'                => (int) $paquete->id,
+                    'codigo'            => (string) $paquete->codigo,
+                    'peso'              => (float) $paquete->peso,
+                    'x1'                => (int) $loc->x1,
+                    'y1'                => (int) $loc->y1,
+                    'x2'                => (int) $loc->x2,
+                    'y2'                => (int) $loc->y2,
+                    'tipo_contenido'    => $paquete->getTipoContenido(), // 'barras', 'estribos', 'mixto'
+                    'cantidad_elementos' => $paquete->etiquetas->sum(fn($e) => $e->elementos->count()),
+                    'planilla'          => $paquete->planilla?->codigo,
+                    'obra'              => $paquete->planilla?->obra?->obra ?? '-',
+                ];
+            });
+        }
+
+        // 6) Información para la cabecera
+        $dimensiones = [
+            'ancho' => $anchoM,
+            'largo' => $largoM,
+            'obra'  => $obraActiva?->obra,
+        ];
+
+        // 7) Sectores verticales cada 20m
+        $sectorSize = 20;
+        $numeroSectores = max(1, (int) ceil($largoM / $sectorSize));
+
+        // 8) Contexto para JavaScript
+        $ctx = [
+            'naveId'         => $obraActiva?->id,
+            'estaGirado'     => false, // ⬅️ siempre false = crecimiento vertical
+            'columnasReales' => $columnasReales,
+            'filasReales'    => $filasReales,
+            'columnasVista'  => $columnasVista,
+            'filasVista'     => $filasVista,
+            'ocupadas'       => $ocupadas,
+        ];
+
+        // 9) Log de debug
+        Log::debug('mapaPaquetes payload', [
+            'obra_id'        => $obraActiva?->id,
+            'grid_real'      => "{$columnasReales}x{$filasReales}",
+            'loc_maquinas'   => $localizacionesMaquinas->count(),
+            'loc_zonas'      => $localizacionesZonas->count(),
+            'paquetes_count' => $paquetesConLocalizacion->count(),
+        ]);
+
+        // 10) Retornar vista
+        return view('mapa_paquetes.mapaLocalizaciones', [
+            'obras'                     => $obras,
+            'obraActualId'              => $obraActualId,
+            'cliente'                   => $cliente,
+            'dimensiones'               => $dimensiones,
+            'numeroSectores'            => $numeroSectores,
+            'columnasVista'             => $columnasVista,
+            'filasVista'                => $filasVista,
+            'localizacionesMaquinas'    => $localizacionesMaquinas,
+            'localizacionesZonas'       => $localizacionesZonas,
+            'paquetesConLocalizacion'   => $paquetesConLocalizacion,
+            'ctx'                       => $ctx,
+        ]);
+    }
+
+    //------------------------------------------------------------------------------------ UPDATE PAQUETE POSICION()
+    /**
+     * Actualiza la posición de un paquete en el mapa (arrastrar y soltar)
+     */
+    public function updatePaquetePosicion(Request $request, $paqueteId)
+    {
+        try {
+            // Validar los datos recibidos
+            $validated = $request->validate([
+                'x1' => 'required|integer|min:1',
+                'y1' => 'required|integer|min:1',
+                'x2' => 'required|integer|min:1',
+                'y2' => 'required|integer|min:1',
+            ]);
+
+            // Buscar la localización del paquete
+            $localizacionPaquete = LocalizacionPaquete::where('paquete_id', $paqueteId)->firstOrFail();
+
+            // Actualizar las coordenadas
+            $localizacionPaquete->update([
+                'x1' => $validated['x1'],
+                'y1' => $validated['y1'],
+                'x2' => $validated['x2'],
+                'y2' => $validated['y2'],
+            ]);
+
+            Log::info("✅ Paquete {$paqueteId} movido a ({$validated['x1']},{$validated['y1']}) - ({$validated['x2']},{$validated['y2']})");
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Posición del paquete actualizada correctamente',
+                'localizacion' => $localizacionPaquete
+            ]);
+
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Datos inválidos',
+                'errors' => $e->errors()
+            ], 422);
+
+        } catch (\Exception $e) {
+            Log::error("❌ Error actualizando posición del paquete {$paqueteId}: " . $e->getMessage());
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al actualizar la posición del paquete',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
 }

@@ -1,135 +1,160 @@
 <!-- --------------------------------------------------------------- COLUMNA IZQUIERDA --------------------------------------------------------------- -->
-<div class="w-full bg-white border shadow-md rounded-lg self-start sm:col-span-2 md:sticky md:top-4">
+<div
+    class="w-full bg-white border shadow-md rounded-lg self-start sm:col-span-2 md:sticky md:top-4">
     <!-- MATERIA PRIMA EN LA MAQUINA -->
     <ul class="list-none p-1 break-words">
         @foreach ($productosBaseCompatibles as $productoBase)
-        @php
-        $productoExistente = $maquina->productos->firstWhere('producto_base_id', $productoBase->id);
-        // Omitir si está consumido
-        if ($productoExistente && $productoExistente->estado === 'consumido') {
-        continue;
-        }
-        $pesoStock = $productoExistente->peso_stock ?? 0;
-        $pesoInicial = $productoExistente->peso_inicial ?? 0;
-        $porcentaje = $pesoInicial > 0 ? ($pesoStock / $pesoInicial) * 100 : 0;
-        @endphp
+            @php
+                $productoExistente = $maquina->productos->firstWhere(
+                    'producto_base_id',
+                    $productoBase->id,
+                );
+                // Omitir si está consumido
+                if (
+                    $productoExistente &&
+                    $productoExistente->estado === 'consumido'
+                ) {
+                    continue;
+                }
+                $pesoStock = $productoExistente->peso_stock ?? 0;
+                $pesoInicial = $productoExistente->peso_inicial ?? 0;
+                $porcentaje =
+                    $pesoInicial > 0 ? ($pesoStock / $pesoInicial) * 100 : 0;
+            @endphp
 
-        <li class="mb-1">
-            <div class="flex items-center justify-between gap-2 flex-wrap">
-                <div class="text-sm">
-                    <span><strong>Ø</strong> {{ $productoBase->diametro }} mm</span>
-                    @if (strtoupper($productoBase->tipo) === 'BARRA')
-                    <span class="ml-2"><strong>L:</strong> {{ $productoBase->longitud }}
-                        m</span>
-                    @endif
+            <li class="mb-1">
+                <div class="flex items-center justify-between gap-2 flex-wrap">
+                    <div class="text-sm">
+                        <span><strong>Ø</strong> {{ $productoBase->diametro }}
+                            mm</span>
+                        @if (strtoupper($productoBase->tipo) === 'BARRA')
+                            <span class="ml-2"><strong>L:</strong>
+                                {{ $productoBase->longitud }}
+                                m</span>
+                        @endif
+                    </div>
+
+                    <form method="POST"
+                        action="{{ route('movimientos.crear') }}">
+                        @csrf
+                        <input type="hidden" name="tipo"
+                            value="recarga_materia_prima">
+                        <input type="hidden" name="maquina_id"
+                            value="{{ $maquina->id }}">
+                        <input type="hidden" name="producto_base_id"
+                            value="{{ $productoBase->id }}">
+                        @if ($productoExistente)
+                            <input type="hidden" name="producto_id"
+                                value="{{ $productoExistente->id }}">
+                        @endif
+                        <input type="hidden" name="descripcion"
+                            value="Recarga solicitada para máquina {{ $maquina->nombre }} (Ø{{ $productoBase->diametro }} {{ strtolower($productoBase->tipo) }}, {{ $pesoStock }} kg)">
+                        <button
+                            class="bg-yellow-500 hover:bg-yellow-600 text-white text-sm font-medium px-3 py-1 rounded transition">
+                            Solicitar
+                        </button>
+
+
+                    </form>
                 </div>
 
-                <form method="POST" action="{{ route('movimientos.crear') }}">
-                    @csrf
-                    <input type="hidden" name="tipo" value="recarga_materia_prima">
-                    <input type="hidden" name="maquina_id" value="{{ $maquina->id }}">
-                    <input type="hidden" name="producto_base_id" value="{{ $productoBase->id }}">
-                    @if ($productoExistente)
-                    <input type="hidden" name="producto_id" value="{{ $productoExistente->id }}">
-                    @endif
-                    <input type="hidden" name="descripcion"
-                        value="Recarga solicitada para máquina {{ $maquina->nombre }} (Ø{{ $productoBase->diametro }} {{ strtolower($productoBase->tipo) }}, {{ $pesoStock }} kg)">
-                    <button
-                        class="bg-yellow-500 hover:bg-yellow-600 text-white text-sm font-medium px-3 py-1 rounded transition">
-                        Solicitar
-                    </button>
+                @if ($productoExistente)
+                    <div id="progreso-container-{{ $productoExistente->id }}"
+                        class="relative mt-2 {{ strtoupper($productoBase->tipo) === 'ENCARRETADO' ? 'w-20 h-20' : 'w-full max-w-sm h-4' }} bg-gray-300 overflow-hidden rounded-lg">
+                        <div class="absolute bottom-0 w-full"
+                            style="{{ strtoupper($productoBase->tipo) === 'ENCARRETADO' ? 'height' : 'width' }}: {{ $porcentaje }}%; background-color: green;">
+                        </div>
+                        <span
+                            class="absolute inset-0 flex items-center justify-center text-white text-xs font-semibold">
+                            {{ $pesoStock }} / {{ $pesoInicial }} kg
+                        </span>
+                    </div>
+                @endif
 
-
-                </form>
-            </div>
-
-            @if ($productoExistente)
-            <div id="progreso-container-{{ $productoExistente->id }}"
-                class="relative mt-2 {{ strtoupper($productoBase->tipo) === 'ENCARRETADO' ? 'w-20 h-20' : 'w-full max-w-sm h-4' }} bg-gray-300 overflow-hidden rounded-lg">
-                <div class="absolute bottom-0 w-full"
-                    style="{{ strtoupper($productoBase->tipo) === 'ENCARRETADO' ? 'height' : 'width' }}: {{ $porcentaje }}%; background-color: green;">
-                </div>
-                <span
-                    class="absolute inset-0 flex items-center justify-center text-white text-xs font-semibold">
-                    {{ $pesoStock }} / {{ $pesoInicial }} kg
-                </span>
-            </div>
-            @endif
-
-            <hr class="my-1">
-        </li>
+                <hr class="my-1">
+            </li>
         @endforeach
     </ul>
     <!-- BOTONES DEBAJO DE LA MATERIA PRIMA EN LA MAQUINA -->
     <div class="flex flex-col gap-2 p-4">
         @if ($elementosAgrupados->isNotEmpty())
-        <div id="datos-lote" data-lote='@json($elementosAgrupados->keys()->values())'></div>
+            <div id="datos-lote" data-lote='@json($elementosAgrupados->keys()->values())'></div>
 
-        <div x-data="{ cargando: false }">
-            <button type="button"
-                @click="
+            <div x-data="{ cargando: false }">
+                <button type="button"
+                    @click="
         cargando = true;
         let datos = document.getElementById('datos-lote').dataset.lote;
         let lote = JSON.parse(datos);
         Promise.resolve(imprimirEtiquetas(lote))
             .finally(() => cargando = false);
     "
-                :disabled="cargando"
-                class="inline-flex items-center gap-2 rounded-md px-4 py-2 font-semibold text-white shadow
+                    :disabled="cargando"
+                    class="inline-flex items-center gap-2 rounded-md px-4 py-2 font-semibold text-white shadow
            bg-blue-700 hover:bg-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed">
 
-                <svg x-show="cargando" class="h-4 w-4 animate-spin text-white" xmlns="http://www.w3.org/2000/svg"
-                    fill="none" viewBox="0 0 24 24" role="status" aria-hidden="true">
-                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor"
-                        stroke-width="4" />
-                    <path class="opacity-75" fill="currentColor"
-                        d="M4 12a8 8 0 018-8v4l3.536-3.536A9 9 0 103 12h4z" />
-                </svg>
+                    <svg x-show="cargando"
+                        class="h-4 w-4 animate-spin text-white"
+                        xmlns="http://www.w3.org/2000/svg" fill="none"
+                        viewBox="0 0 24 24" role="status" aria-hidden="true">
+                        <circle class="opacity-25" cx="12" cy="12"
+                            r="10" stroke="currentColor" stroke-width="4" />
+                        <path class="opacity-75" fill="currentColor"
+                            d="M4 12a8 8 0 018-8v4l3.536-3.536A9 9 0 103 12h4z" />
+                    </svg>
 
-                <span x-show="!cargando">🖨️ Imprimir Lote</span>
-                <span x-show="cargando">Cargando…</span>
-            </button>
+                    <span x-show="!cargando">🖨️ Imprimir Lote</span>
+                    <span x-show="cargando">Cargando…</span>
+                </button>
 
-        </div>
+            </div>
         @endif
 
         <!-- Botón Reportar Incidencia -->
-        <button onclick="document.getElementById('modalIncidencia').classList.remove('hidden')"
+        <button
+            onclick="document.getElementById('modalIncidencia').classList.remove('hidden')"
             class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded shadow-md w-full sm:w-auto">
             🚨
         </button>
         <!-- Botón Realizar Chequeo de Máquina -->
-        <button onclick="document.getElementById('modalCheckeo').classList.remove('hidden')"
+        <button
+            onclick="document.getElementById('modalCheckeo').classList.remove('hidden')"
             class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded shadow-md w-full sm:w-auto">
             🛠️
         </button>
     </div>
 </div>
 <!-- --------------------------------------------------------------- COLUMNA CENTRAL --------------------------------------------------------------- -->
-<div class="bg-white border shadow-md w-full rounded-lg sm:col-span-4
+<div
+    class="bg-white border shadow-md w-full rounded-lg sm:col-span-4
             flex flex-col items-center gap-4">
     @forelse ($elementosAgrupados as $etiquetaSubId => $elementos)
-    @php
-    $firstElement = $elementos->first();
-    $etiqueta = $firstElement->etiquetaRelacion ?? Etiqueta::where('etiqueta_sub_id', $etiquetaSubId)->first();
-    $planilla = $firstElement->planilla ?? null;
-    $tieneElementosEnOtrasMaquinas =
-    isset($otrosElementos[$etiqueta?->id]) && $otrosElementos[$etiqueta?->id]->isNotEmpty();
-    @endphp
+        @php
+            $firstElement = $elementos->first();
+            $etiqueta =
+                $firstElement->etiquetaRelacion ??
+                Etiqueta::where('etiqueta_sub_id', $etiquetaSubId)->first();
+            $planilla = $firstElement->planilla ?? null;
+            $tieneElementosEnOtrasMaquinas =
+                isset($otrosElementos[$etiqueta?->id]) &&
+                $otrosElementos[$etiqueta?->id]->isNotEmpty();
+        @endphp
 
-    <div>
-        <x-etiqueta.etiqueta :etiqueta="$etiqueta" :planilla="$planilla" :maquina-tipo="$maquina->tipo" />
-    </div>
+        <div>
+            <x-etiqueta.etiqueta :etiqueta="$etiqueta" :planilla="$planilla"
+                :maquina-tipo="$maquina->tipo" />
+        </div>
     @empty
-    <div
-        class="col-span-2 text-center mt-6 p-6 text-gray-800 text-lg font-semibold bg-yellow-100 border border-yellow-300 rounded-xl shadow-sm">
-        No hay planillas en la cola de trabajo.
-    </div>
+        <div
+            class="col-span-2 text-center mt-6 p-6 text-gray-800 text-lg font-semibold bg-yellow-100 border border-yellow-300 rounded-xl shadow-sm">
+            No hay planillas en la cola de trabajo.
+        </div>
     @endforelse
 </div>
 <!-- --------------------------------------------------------------- COLUMNA DERECHA --------------------------------------------------------------- -->
 
-<div class="bg-white border p-4 shadow-md rounded-lg self-start sm:col-span-2 md:sticky md:top-4">
+<div
+    class="bg-white border p-4 shadow-md rounded-lg self-start sm:col-span-2 md:sticky md:top-4">
     <div class="flex flex-col gap-4">
         <!-- Input de lectura de QR -->
         <div x-data="accionesLote()" class="mt-2 space-y-2">
@@ -146,7 +171,8 @@
             </button>
         </div>
 
-        <input type="text" id="procesoEtiqueta" placeholder="ESCANEA ETIQUETA" autofocus
+        <input type="text" id="procesoEtiqueta"
+            placeholder="ESCANEA ETIQUETA" autofocus
             class="w-full border border-gray-300 rounded text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
             style="height:2cm; padding:0.75rem 1rem; font-size:1.5rem;" />
 
@@ -169,12 +195,14 @@
 
                 <input type="text" id="qrItem"
                     class="w-full border border-gray-300 rounded text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    style="height:1cm; padding:0.75rem 1rem; font-size:1rem;" placeholder="AÑADIR ETIQUETA AL CARRO">
+                    style="height:1cm; padding:0.75rem 1rem; font-size:1rem;"
+                    placeholder="AÑADIR ETIQUETA AL CARRO">
             </div>
 
             <!-- Listado dinámico de etiquetas -->
             <div class="mb-4">
-                <h4 class="font-semibold text-gray-700 mb-2">Etiquetas en el carro:</h4>
+                <h4 class="font-semibold text-gray-700 mb-2">Etiquetas en el
+                    carro:</h4>
                 <ul id="itemsList" class="list-disc pl-6 space-y-2">
                     <!-- Se rellenan dinámicamente -->
                 </ul>
@@ -196,7 +224,8 @@
         <label for="paquete_id" class="block text-gray-700 font-semibold mb-2">
             ID del Paquete a Eliminar:
         </label>
-        <input type="number" name="paquete_id" id="paquete_id" required class="w-full border p-2 rounded mb-2"
+        <input type="number" name="paquete_id" id="paquete_id" required
+            class="w-full border p-2 rounded mb-2"
             placeholder="Ingrese ID del paquete">
         <button type="submit"
             class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded shadow-md mt-2">
@@ -205,7 +234,8 @@
     </form>
 
     <script>
-        document.getElementById('deleteForm').addEventListener('submit', function(event) {
+        document.getElementById('deleteForm').addEventListener('submit', function(
+            event) {
             event.preventDefault(); // Evita el envío inmediato
 
             const paqueteId = document.getElementById('paquete_id').value;
@@ -231,7 +261,8 @@
                 cancelButtonText: "Cancelar"
             }).then((result) => {
                 if (result.isConfirmed) {
-                    this.action = "/paquetes/" + paqueteId; // Modifica la acción con el ID
+                    this.action = "/paquetes/" +
+                    paqueteId; // Modifica la acción con el ID
                     this.submit(); // Envía el formulario
                 }
             });
@@ -257,43 +288,49 @@
                 async procesar(accion) {
                     this.cargando = true;
 
-                    const datos = document.getElementById('datos-lote')?.dataset.lote;
-                    const maquinaId = document.getElementById('maquina-info')?.dataset.maquinaId;
+                    const datos = document.getElementById('datos-lote')?.dataset
+                        .lote;
+                    const maquinaId = document.getElementById('maquina-info')
+                        ?.dataset.maquinaId;
 
                     if (!datos || !maquinaId) {
                         this.cargando = false;
-                        Swal.fire("Error", "No se encontraron datos del lote o de la máquina.", "error");
+                        Swal.fire("Error",
+                            "No se encontraron datos del lote o de la máquina.",
+                            "error");
                         return;
                     }
 
                     const etiquetas = JSON.parse(datos);
 
                     try {
-                        const response = await fetch(`/etiquetas/${accion}-lote`, {
-                            method: 'POST',
-                            headers: {
-                                'X-CSRF-TOKEN': '{{ csrf_token() }}',
-                                'Content-Type': 'application/json'
-                            },
-                            body: JSON.stringify({
-                                maquina_id: maquinaId,
-                                etiquetas: etiquetas
-                            })
-                        });
+                        const response = await fetch(
+                            `/etiquetas/${accion}-lote`, {
+                                method: 'POST',
+                                headers: {
+                                    'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                                    'Content-Type': 'application/json'
+                                },
+                                body: JSON.stringify({
+                                    maquina_id: maquinaId,
+                                    etiquetas: etiquetas
+                                })
+                            });
 
                         const data = await response.json();
 
                         Swal.fire({
                             icon: data.success ? 'success' : 'error',
-                            title: data.message || 'Resultado del proceso',
+                            title: data.message ||
+                                'Resultado del proceso',
                             html: data.errors?.length ?
                                 `<ul style="text-align:left;max-height:200px;overflow:auto;padding:0 0.5em">
               ${data.errors.map(err => `
-                                                                      <li>
-                                                                          <b>#${err.id}</b>: ${err.error}<br>
-                                                                          <small class="text-gray-600">🧭 ${err.file}:${err.line}</small>
-                                                                      </li>
-                                                                  `).join('')}
+                                                                          <li>
+                                                                              <b>#${err.id}</b>: ${err.error}<br>
+                                                                              <small class="text-gray-600">🧭 ${err.file}:${err.line}</small>
+                                                                          </li>
+                                                                      `).join('')}
            </ul>` : '',
                         }).then(() => {
                             if (data.success) location.reload();
@@ -309,6 +346,121 @@
             }
         }
     </script>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const inputQr = document.getElementById('qrItem');
+            const itemsList = document.getElementById('itemsList');
+            const btnCrear = document.getElementById('crearPaqueteBtn');
+            const maquinaInfo = document.getElementById('maquina-info');
+
+            // Carro local de etiquetas escaneadas (solo IDs)
+            const etiquetasSeleccionadas = new Set();
+
+            if (!inputQr || !itemsList || !btnCrear || !maquinaInfo) {
+                // Si falta algo, no hacemos nada
+                return;
+            }
+
+            const maquinaId = maquinaInfo.dataset.maquinaId;
+
+            /**
+             * Añade una etiqueta al carro cuando se escanea su código/ID.
+             * Aquí asumo que el valor del input es directamente el ID de la etiqueta.
+             * Si usas otro formato, adapta esta parte.
+             */
+            inputQr.addEventListener('keydown', (e) => {
+                if (e.key !== 'Enter') return;
+
+                e.preventDefault();
+
+                const valor = inputQr.value.trim();
+                if (!valor) return;
+
+                const etiquetaId = parseInt(valor, 10);
+                if (isNaN(etiquetaId)) {
+                    // Si no es un número, ignoramos (puedes meter aquí un Swal)
+                    inputQr.value = '';
+                    return;
+                }
+
+                if (etiquetasSeleccionadas.has(etiquetaId)) {
+                    // Ya está en el carro
+                    inputQr.value = '';
+                    return;
+                }
+
+                etiquetasSeleccionadas.add(etiquetaId);
+
+                // Dibujamos la etiqueta en la lista visual
+                const li = document.createElement('li');
+                li.textContent = `Etiqueta ${etiquetaId}`;
+                li.dataset.etiquetaId = etiquetaId;
+                itemsList.appendChild(li);
+
+                inputQr.value = '';
+            });
+
+            /**
+             * Enviar petición para crear el paquete desde la máquina actual.
+             * Envía:
+             *  - maquina_id
+             *  - etiquetas_ids[]
+             */
+            btnCrear.addEventListener('click', async () => {
+                if (!maquinaId) {
+                    alert(
+                        'No se ha podido determinar la máquina actual.');
+                    return;
+                }
+
+                const etiquetasIds = Array.from(
+                    etiquetasSeleccionadas);
+
+                try {
+                    const resp = await fetch(
+                        "{{ route('paquetes.store') }}", {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRF-TOKEN': document
+                                    .querySelector(
+                                        'meta[name=\"csrf-token\"]'
+                                        ).getAttribute(
+                                        'content'),
+                                'Accept': 'application/json',
+                            },
+                            body: JSON.stringify({
+                                maquina_id: maquinaId,
+                                etiquetas_ids: etiquetasIds,
+                            }),
+                        });
+
+                    if (!resp.ok) {
+                        throw new Error(
+                            'Error al crear el paquete');
+                    }
+
+                    const data = await resp.json();
+
+                    // Aquí el paquete ya tiene localización en el mapa
+                    // (se ha creado el registro en localizaciones_paquetes)
+                    // Podrías mostrar un Swal bonito:
+                    // Swal.fire({ icon: 'success', title: 'Paquete creado', text: 'ID: ' + data.paquete.id });
+
+                    // Limpiamos el carro
+                    etiquetasSeleccionadas.clear();
+                    itemsList.innerHTML = '';
+
+                } catch (e) {
+                    console.error(e);
+                    alert(
+                        'Ha ocurrido un error al crear el paquete.');
+                }
+            });
+        });
+    </script>
+
 </div>
 <!-- --------------------------------------------------------------- MODALES --------------------------------------------------------------- -->
 <x-maquinas.modales.cambio-maquina :maquina="$maquina" :maquinas="$maquinas" />

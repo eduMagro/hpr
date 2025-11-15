@@ -164,12 +164,14 @@
                         🚨 Reportar Incidencia
                     </button>
 
-                    <button onclick="document.getElementById('modalCheckeo').classList.remove('hidden')"
-                        class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5 px-4 rounded-lg shadow-md transition">
-                        🛠️ Chequeo Máquina
-                    </button>
-                </div>
-            </div>
+            <!-- Botón Realizar Chequeo de Máquina -->
+            <button
+                onclick="document.getElementById('modalCheckeo').classList.remove('hidden')"
+                class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded shadow-md w-full sm:w-auto transition">
+                🛠️ Chequeo
+            </button>
+        </div>
+    </div>
 
             <!-- ============================================================
                  COLUMNA CENTRAL - PLANILLAS DE TRABAJO
@@ -425,7 +427,8 @@
 @endonce
 
 <script>
-    document.getElementById('deleteForm')?.addEventListener('submit', function(event) {
+    document.getElementById('deleteForm')?.addEventListener('submit', function(
+        event) {
         event.preventDefault();
         const paqueteId = document.getElementById('paquete_id').value;
 

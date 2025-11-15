@@ -1,97 +1,220 @@
 <nav x-data="{
     open: false,
     notificationsOpen: false,
-    userMenuOpen: false
-}" x-cloak class="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 shadow-sm flex-shrink-0 transition-colors">
+    userMenuOpen: false,
+    quickActionsOpen: false,
+    sidebarOpen: window.innerWidth >= 768 ? (localStorage.getItem('sidebar_open') !== 'false') : false,
+    isToggling: false,
+
+    init() {
+        // Escuchar cuando el sidebar se abre/cierra
+        window.addEventListener('sidebar-toggled', (e) => {
+            this.sidebarOpen = e.detail.isOpen;
+        });
+
+        // Escuchar cuando los logos deben salir
+        window.addEventListener('logos-exit', () => {
+            this.isToggling = true;
+            setTimeout(() => {
+                this.isToggling = false;
+            }, 400);
+        });
+    }
+}" x-cloak
+    class="bg-gray-900 dark:bg-gray-950 border-b border-gray-800 dark:border-gray-700 shadow-sm flex-shrink-0 transition-colors">
     <!-- Primary Navigation Menu -->
-    <div class="w-full px-4 sm:px-6 lg:px-8">
+    <div class="w-full">
         <div class="flex justify-between items-center h-14">
             <!-- Logo & Title -->
-            <div class="flex items-center space-x-4">
+            <div class="flex items-center space-x-4 relative overflow-hidden">
                 <!-- Botón hamburguesa para móvil -->
                 <button @click="$dispatch('toggle-sidebar')"
-                        class="md:hidden p-2 rounded-lg text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition">
+                    class="md:hidden p-2 rounded-lg text-gray-600 dark:text-gray-300 hover:bg-gray-700 dark:hover:bg-gray-700 transition">
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M4 6h16M4 12h16M4 18h16"></path>
                     </svg>
                 </button>
 
-                <a href="{{ route('dashboard') }}" class="flex items-center space-x-3 group">
-                    <x-application-logo class="block h-8 w-auto fill-current text-gray-800 dark:text-gray-200 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition" />
+                <!-- Logo del Top Header (visible cuando sidebar está cerrado) -->
+                <a x-show="!sidebarOpen && !isToggling" x-transition:enter="transition-all duration-200 delay-200"
+                    x-transition:enter-start="opacity-0 transform -translate-y-16"
+                    x-transition:enter-end="opacity-100 transform translate-y-0"
+                    x-transition:leave="transition-all duration-200"
+                    x-transition:leave-start="opacity-100 transform translate-y-0"
+                    x-transition:leave-end="opacity-0 transform -translate-y-16" href="{{ route('dashboard') }}"
+                    wire:navigate class="flex items-center space-x-3 group relative z-50">
+                    <x-application-logo
+                        class="block h-8 w-auto fill-current text-gray-800 dark:text-gray-200 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition" />
                 </a>
             </div>
 
-
-            <!-- Right Side - User Actions -->
-            <div class="flex items-center space-x-2 sm:space-x-4">
-                <!-- Notificaciones - Enlace directo a alertas -->
-                <a href="{{ route('alertas.index') }}"
-                   class="relative p-2 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition"
-                   title="Ver mensajes">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path>
-                    </svg>
-                    <!-- Badge de notificaciones (se oculta automáticamente cuando no hay mensajes) -->
-                    <span id="alerta-count" class="absolute top-1 right-1 hidden bg-red-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center"></span>
-                </a>
-
-                <!-- User Dropdown -->
+            <!-- Center - Quick Actions -->
+            <div class="hidden lg:flex items-center translate-x-12 z-10">
+                <!-- Acciones Rápidas Dropdown -->
                 <div class="relative" x-data="{ open: false }">
-                    <button @click="open = !open"
-                            @click.away="open = false"
-                            class="flex items-center space-x-2 px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition">
-                        <div class="w-8 h-8 bg-gray-900 dark:bg-gray-950 rounded-full flex items-center justify-center text-white font-bold text-sm">
-                            {{ strtoupper(substr(Auth::user()->nombre_completo, 0, 1)) }}
-                        </div>
-                        <span class="hidden sm:block">{{ Auth::user()->nombre_completo }}</span>
-                        <svg class="w-4 h-4" :class="open ? 'rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                    <button @click="open = !open" @click.away="open = false"
+                        class="flex items-center space-x-2 px-4 py-2 text-sm text-gray-300 dark:text-gray-300 hover:bg-gray-700 dark:hover:bg-gray-700 rounded-lg transition">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                        </svg>
+                        <span>Acciones Rápidas</span>
+                        <svg class="w-4 h-4" :class="open ? 'rotate-180' : ''" fill="none" stroke="currentColor"
+                            viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7">
+                            </path>
                         </svg>
                     </button>
 
                     <!-- Dropdown Content -->
-                    <div x-show="open"
-                         x-transition
-                         x-cloak
-                         class="absolute right-0 mt-2 w-56 bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 py-2 z-50">
-                        <div class="px-4 py-3 border-b border-gray-200 dark:border-gray-700">
-                            <p class="text-sm font-medium text-gray-900 dark:text-white">{{ Auth::user()->nombre_completo }}</p>
-                            <p class="text-xs text-gray-500 dark:text-gray-400 truncate">{{ Auth::user()->email }}</p>
+                    <div x-show="open" x-transition x-cloak
+                        class="absolute -left-16 mt-4 w-80 bg-gray-900 dark:bg-gray-800 rounded-lg shadow-xl border border-gray-800 dark:border-gray-700 py-2 z-50">
+                        <div class="px-4 py-2 border-b border-gray-800 dark:border-gray-700">
+                            <h3 class="text-sm font-semibold text-gray-300 dark:text-white">Acciones Rápidas</h3>
+                            <p class="text-xs text-gray-400 dark:text-gray-400">Accede rápidamente a funciones comunes
+                            </p>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-2 p-3">
+                            <!-- Nueva Planilla -->
+                            <a href="{{ route('planillas.create') }}" wire:navigate
+                                class="flex flex-col items-center p-3 rounded-lg hover:bg-gray-700 dark:hover:bg-gray-700 transition text-center group">
+                                <span class="text-2xl mb-1">📄</span>
+                                <span
+                                    class="text-xs font-medium text-gray-300 dark:text-gray-300 group-hover:text-blue-600 dark:group-hover:text-blue-400">Nueva
+                                    Planilla</span>
+                            </a>
+
+                            <!-- Nueva Entrada -->
+                            <a href="{{ route('entradas.create') }}" wire:navigate
+                                class="flex flex-col items-center p-3 rounded-lg hover:bg-gray-700 dark:hover:bg-gray-700 transition text-center group">
+                                <span class="text-2xl mb-1">⬇️</span>
+                                <span
+                                    class="text-xs font-medium text-gray-300 dark:text-gray-300 group-hover:text-blue-600 dark:group-hover:text-blue-400">Nueva
+                                    Entrada</span>
+                            </a>
+
+                            <!-- Nueva Salida -->
+                            <a href="{{ route('salidas-ferralla.create') }}" wire:navigate
+                                class="flex flex-col items-center p-3 rounded-lg hover:bg-gray-700 dark:hover:bg-gray-700 transition text-center group">
+                                <span class="text-2xl mb-1">➡️</span>
+                                <span
+                                    class="text-xs font-medium text-gray-300 dark:text-gray-300 group-hover:text-blue-600 dark:group-hover:text-blue-400">Nueva
+                                    Salida</span>
+                            </a>
+
+                            <!-- Nuevo Pedido -->
+                            <a href="{{ route('pedidos.create') }}" wire:navigate
+                                class="flex flex-col items-center p-3 rounded-lg hover:bg-gray-700 dark:hover:bg-gray-700 transition text-center group">
+                                <span class="text-2xl mb-1">🛒</span>
+                                <span
+                                    class="text-xs font-medium text-gray-300 dark:text-gray-300 group-hover:text-blue-600 dark:group-hover:text-blue-400">Nuevo
+                                    Pedido</span>
+                            </a>
+
+                            <!-- Nuevo Cliente -->
+                            <a href="{{ route('clientes.create') }}" wire:navigate
+                                class="flex flex-col items-center p-3 rounded-lg hover:bg-gray-700 dark:hover:bg-gray-700 transition text-center group">
+                                <span class="text-2xl mb-1">👥</span>
+                                <span
+                                    class="text-xs font-medium text-gray-300 dark:text-gray-300 group-hover:text-blue-600 dark:group-hover:text-blue-400">Nuevo
+                                    Cliente</span>
+                            </a>
+
+                            <!-- Estadísticas -->
+                            <a href="{{ route('estadisticas.index') }}" wire:navigate
+                                class="flex flex-col items-center p-3 rounded-lg hover:bg-gray-700 dark:hover:bg-gray-700 transition text-center group">
+                                <span class="text-2xl mb-1">📊</span>
+                                <span
+                                    class="text-xs font-medium text-gray-300 dark:text-gray-300 group-hover:text-blue-600 dark:group-hover:text-blue-400">Estadísticas</span>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Side - User Actions -->
+            <div class="flex items-center space-x-2 sm:space-x-4">
+                <!-- Notificaciones - Enlace directo a alertas -->
+                <a href="{{ route('alertas.index') }}" wire:navigate
+                    class="relative p-2 text-gray-300 dark:text-gray-400 hover:bg-gray-700 dark:hover:bg-gray-700 rounded-lg transition"
+                    title="Ver mensajes">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9">
+                        </path>
+                    </svg>
+                    <!-- Badge de notificaciones (se oculta automáticamente cuando no hay mensajes) -->
+                    <span id="alerta-count"
+                        class="absolute top-1 right-1 hidden bg-red-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center"></span>
+                </a>
+
+                <!-- User Dropdown -->
+                <div class="relative" x-data="{ open: false }">
+                    <button @click="open = !open" @click.away="open = false"
+                        class="flex items-center space-x-2 px-3 py-2 text-sm font-medium text-gray-300 dark:text-gray-300 hover:bg-gray-700 dark:hover:bg-gray-700 rounded-lg transition">
+                        <div
+                            class="w-8 h-8 bg-gray-900 dark:bg-gray-950 rounded-full flex items-center justify-center text-white font-bold text-sm border-2 border-gray-300">
+                            {{ strtoupper(substr(Auth::user()->nombre_completo, 0, 1)) }}
+                        </div>
+                        <span class="hidden sm:block">{{ Auth::user()->nombre_completo }}</span>
+                        <svg class="w-4 h-4" :class="open ? 'rotate-180' : ''" fill="none" stroke="currentColor"
+                            viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7">
+                            </path>
+                        </svg>
+                    </button>
+
+                    <!-- Dropdown Content -->
+                    <div x-show="open" x-transition x-cloak
+                        class="absolute right-2 mt-2 w-56 bg-gray-900 dark:bg-gray-800 rounded-lg shadow-xl border border-gray-800 dark:border-gray-700 py-2 z-50">
+                        <div class="px-4 py-3 border-b border-gray-800 dark:border-gray-700">
+                            <p class="text-sm font-medium text-gray-300 dark:text-white">
+                                {{ Auth::user()->nombre_completo }}</p>
+                            <p class="text-xs text-gray-400 dark:text-gray-400 truncate">{{ Auth::user()->email }}</p>
                         </div>
 
                         <div class="py-2">
-                            <a href="{{ route('usuarios.show', auth()->id()) }}"
-                               class="flex items-center space-x-3 px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition">
+                            <a href="{{ route('usuarios.show', auth()->id()) }}" wire:navigate
+                                class="flex items-center space-x-3 px-4 py-2 text-sm text-gray-300 dark:text-gray-300 hover:bg-gray-700 dark:hover:bg-gray-700 transition">
                                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
                                 </svg>
                                 <span>Mi Perfil</span>
                             </a>
 
-                            <a href="{{ route('dashboard') }}"
-                               class="flex items-center space-x-3 px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition">
+                            <a href="{{ route('dashboard') }}" wire:navigate
+                                class="flex items-center space-x-3 px-4 py-2 text-sm text-gray-300 dark:text-gray-300 hover:bg-gray-700 dark:hover:bg-gray-700 transition">
                                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path>
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6">
+                                    </path>
                                 </svg>
                                 <span>Dashboard</span>
                             </a>
 
-                            <a href="{{ route('ayuda.index') }}"
-                               class="flex items-center space-x-3 px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition">
+                            <a href="{{ route('ayuda.index') }}" wire:navigate
+                                class="flex items-center space-x-3 px-4 py-2 text-sm text-gray-300 dark:text-gray-300 hover:bg-gray-700 dark:hover:bg-gray-700 transition">
                                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z">
+                                    </path>
                                 </svg>
                                 <span>Ayuda</span>
                             </a>
                         </div>
 
-                        <div class="border-t border-gray-200 dark:border-gray-700 py-2">
+                        <div class="border-t border-gray-800 dark:border-gray-700 py-2">
                             <form method="POST" action="{{ route('logout') }}">
                                 @csrf
                                 <button type="submit"
-                                        class="w-full flex items-center space-x-3 px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition text-left">
+                                    class="w-full flex items-center space-x-3 px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition text-left">
                                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path>
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1">
+                                        </path>
                                     </svg>
                                     <span>Cerrar Sesión</span>
                                 </button>
@@ -105,34 +228,39 @@
 </nav>
 
 <!-- Script para actualizar el contador de alertas en la campanita -->
-<script>
-    document.addEventListener("DOMContentLoaded", function() {
-        function actualizarContadorCampanita() {
-            fetch("{{ route('alertas.verSinLeer') }}", {
-                    headers: {
-                        'Accept': 'application/json'
-                    },
-                    credentials: 'same-origin'
-                })
-                .then(response => response.json())
-                .then(data => {
-                    const badge = document.getElementById('alerta-count');
-                    if (badge) {
-                        if (data.cantidad > 0) {
-                            badge.textContent = data.cantidad;
-                            badge.classList.remove('hidden');
-                        } else {
-                            badge.classList.add('hidden');
-                        }
+<script data-navigate-once>
+    function actualizarContadorCampanita() {
+        fetch("{{ route('alertas.verSinLeer') }}", {
+                headers: {
+                    'Accept': 'application/json'
+                },
+                credentials: 'same-origin'
+            })
+            .then(response => response.json())
+            .then(data => {
+                const badge = document.getElementById('alerta-count');
+                if (badge) {
+                    if (data.cantidad > 0) {
+                        badge.textContent = data.cantidad;
+                        badge.classList.remove('hidden');
+                    } else {
+                        badge.classList.add('hidden');
                     }
-                })
-                .catch(error => console.error("Error al obtener alertas:", error));
-        }
+                }
+            })
+            .catch(error => console.error("Error al obtener alertas:", error));
+    }
 
+    document.addEventListener("DOMContentLoaded", function() {
         // Actualizar al cargar la página
         actualizarContadorCampanita();
 
         // Actualizar cada 30 segundos
         setInterval(actualizarContadorCampanita, 30000);
+    });
+
+    // También actualizar cuando Livewire navegue
+    document.addEventListener('livewire:navigated', () => {
+        actualizarContadorCampanita();
     });
 </script>
