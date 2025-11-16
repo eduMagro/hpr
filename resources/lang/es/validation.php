@@ -218,6 +218,7 @@ return [
         'minute'                   => 'minuto',
         'mobile'                   => 'móvil',
         'month'                    => 'mes',
+        'mes_anio'                 => 'mes y año',
         'name'                     => 'nombre',
         'national_code'            => 'código nacional',
         'number'                   => 'número',

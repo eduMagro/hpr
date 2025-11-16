@@ -390,7 +390,7 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
     Route::get('/simulacion-inversa', [NominaController::class, 'formularioInverso'])->name('nomina.inversa');
     Route::post('/simulacion-inversa', [NominaController::class, 'simularDesdeNeto'])->name('nomina.inversa.calcular');
     Route::post('/nominas/dividir', [NominaController::class, 'dividirNominas'])->name('nominas.dividir');
-    Route::get('/mis-nominas/descargar', [NominaController::class, 'descargarNominasMes'])->name('nominas.crearDescargarMes');
+    Route::post('/mis-nominas/enviar', [NominaController::class, 'descargarNominasMes'])->name('nominas.crearDescargarMes');
 
     // === ALERTAS Y ESTADISTICAS ===
     Route::prefix('estadisticas')->group(function () {
@@ -402,7 +402,7 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
 
     Route::resource('alertas', AlertaController::class)->only(['index', 'store', 'update', 'destroy'])->names('alertas');
     Route::post('/alertas/marcar-leidas', [AlertaController::class, 'marcarLeidas'])->name('alertas.verMarcarLeidas');
-
+    Route::get('/alertas/{id}/hilo', [AlertaController::class, 'obtenerHilo'])->name('alertas.verHilo');
     Route::get('/alertas/sin-leer', [AlertaController::class, 'sinLeer'])->name('alertas.verSinLeer');
     Route::get('/estadisticas', [EstadisticasController::class, 'index'])->name('estadisticas.index');
 
