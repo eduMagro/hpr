@@ -43,6 +43,17 @@
     <!-- Livewire Styles -->
     @livewireStyles
 
+    <script>
+        // Prevenir que errores de scripts externos rompan Livewire
+        window.addEventListener('error', function(e) {
+            if (e.message && e.message.includes('browser is not defined')) {
+                console.warn('Error de browser API ignorado:', e.message);
+                e.preventDefault();
+                return true;
+            }
+        });
+    </script>
+
     <style>
         /* Oculta cualquier elemento marcado con x-cloak hasta que Alpine quite el atributo */
         [x-cloak] {

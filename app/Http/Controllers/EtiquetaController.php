@@ -248,6 +248,12 @@ class EtiquetaController extends Controller
 
     public function index(Request $request)
     {
+        // Retornar vista Livewire
+        return view('etiquetas.index-livewire');
+    }
+
+    public function indexTradicional(Request $request)
+    {
         $query = Etiqueta::with([
             'planilla:id,codigo,obra_id,cliente_id,seccion',
             'paquete:id,codigo',

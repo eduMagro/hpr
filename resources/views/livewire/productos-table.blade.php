@@ -6,51 +6,21 @@
         <table class="w-full min-w-[1000px] border border-gray-300 rounded-lg">
             <thead class="bg-blue-500 text-white">
                 <tr class="text-center text-xs uppercase">
-                    <th class="p-2 border cursor-pointer" wire:click="sortBy('id')">
-                        ID @if($sort === 'id'){{ $order === 'asc' ? '↑' : '↓' }}@endif
-                    </th>
-                    <th class="p-2 border cursor-pointer" wire:click="sortBy('entrada_id')">
-                        Albarán @if($sort === 'entrada_id'){{ $order === 'asc' ? '↑' : '↓' }}@endif
-                    </th>
-                    <th class="p-2 border cursor-pointer" wire:click="sortBy('codigo')">
-                        Código @if($sort === 'codigo'){{ $order === 'asc' ? '↑' : '↓' }}@endif
-                    </th>
-                    <th class="p-2 border cursor-pointer" wire:click="sortBy('nave')">
-                        Nave @if($sort === 'nave'){{ $order === 'asc' ? '↑' : '↓' }}@endif
-                    </th>
-                    <th class="p-2 border cursor-pointer" wire:click="sortBy('fabricante')">
-                        Fabricante @if($sort === 'fabricante'){{ $order === 'asc' ? '↑' : '↓' }}@endif
-                    </th>
-                    <th class="p-2 border cursor-pointer" wire:click="sortBy('tipo')">
-                        Tipo @if($sort === 'tipo'){{ $order === 'asc' ? '↑' : '↓' }}@endif
-                    </th>
-                    <th class="p-2 border cursor-pointer" wire:click="sortBy('diametro')">
-                        Diámetro @if($sort === 'diametro'){{ $order === 'asc' ? '↑' : '↓' }}@endif
-                    </th>
-                    <th class="p-2 border cursor-pointer" wire:click="sortBy('longitud')">
-                        Longitud @if($sort === 'longitud'){{ $order === 'asc' ? '↑' : '↓' }}@endif
-                    </th>
-                    <th class="p-2 border cursor-pointer" wire:click="sortBy('n_colada')">
-                        N° Colada @if($sort === 'n_colada'){{ $order === 'asc' ? '↑' : '↓' }}@endif
-                    </th>
-                    <th class="p-2 border cursor-pointer" wire:click="sortBy('n_paquete')">
-                        N° Paquete @if($sort === 'n_paquete'){{ $order === 'asc' ? '↑' : '↓' }}@endif
-                    </th>
-                    <th class="p-2 border cursor-pointer" wire:click="sortBy('peso_inicial')">
-                        Peso Inicial @if($sort === 'peso_inicial'){{ $order === 'asc' ? '↑' : '↓' }}@endif
-                    </th>
-                    <th class="p-2 border cursor-pointer" wire:click="sortBy('peso_stock')">
-                        Peso Stock @if($sort === 'peso_stock'){{ $order === 'asc' ? '↑' : '↓' }}@endif
-                    </th>
-                    <th class="p-2 border cursor-pointer" wire:click="sortBy('estado')">
-                        Estado @if($sort === 'estado'){{ $order === 'asc' ? '↑' : '↓' }}@endif
-                    </th>
-                    <th class="p-2 border cursor-pointer" wire:click="sortBy('ubicacion')">
-                        Ubicación @if($sort === 'ubicacion'){{ $order === 'asc' ? '↑' : '↓' }}@endif
-                    </th>
-                    <th class="p-2 border cursor-pointer" wire:click="sortBy('created_at')">
-                        Creado @if($sort === 'created_at'){{ $order === 'asc' ? '↑' : '↓' }}@endif
-                    </th>
+                    <x-tabla.encabezado-ordenable campo="id" :sortActual="$sort" :orderActual="$order" texto="ID" />
+                    <x-tabla.encabezado-ordenable campo="entrada_id" :sortActual="$sort" :orderActual="$order" texto="Albarán" />
+                    <x-tabla.encabezado-ordenable campo="codigo" :sortActual="$sort" :orderActual="$order" texto="Código" />
+                    <x-tabla.encabezado-ordenable campo="nave" :sortActual="$sort" :orderActual="$order" texto="Nave" />
+                    <x-tabla.encabezado-ordenable campo="fabricante" :sortActual="$sort" :orderActual="$order" texto="Fabricante" />
+                    <x-tabla.encabezado-ordenable campo="tipo" :sortActual="$sort" :orderActual="$order" texto="Tipo" />
+                    <x-tabla.encabezado-ordenable campo="diametro" :sortActual="$sort" :orderActual="$order" texto="Diámetro" />
+                    <x-tabla.encabezado-ordenable campo="longitud" :sortActual="$sort" :orderActual="$order" texto="Longitud" />
+                    <x-tabla.encabezado-ordenable campo="n_colada" :sortActual="$sort" :orderActual="$order" texto="N° Colada" />
+                    <x-tabla.encabezado-ordenable campo="n_paquete" :sortActual="$sort" :orderActual="$order" texto="N° Paquete" />
+                    <x-tabla.encabezado-ordenable campo="peso_inicial" :sortActual="$sort" :orderActual="$order" texto="Peso Inicial" />
+                    <x-tabla.encabezado-ordenable campo="peso_stock" :sortActual="$sort" :orderActual="$order" texto="Peso Stock" />
+                    <x-tabla.encabezado-ordenable campo="estado" :sortActual="$sort" :orderActual="$order" texto="Estado" />
+                    <x-tabla.encabezado-ordenable campo="ubicacion" :sortActual="$sort" :orderActual="$order" texto="Ubicación" />
+                    <x-tabla.encabezado-ordenable campo="created_at" :sortActual="$sort" :orderActual="$order" texto="Creado" />
                     <th class="p-2 border">Acciones</th>
                 </tr>
                 {{-- Fila de filtros --}}
@@ -221,7 +191,9 @@
     </div>
 
     {{-- Paginación --}}
-    {{ $productos->links() }}
+    <div class="mt-4">
+        {{ $productos->links('vendor.livewire.tailwind') }}
+    </div>
 
     {{-- Script para botón consumir con SweetAlert --}}
     <script>

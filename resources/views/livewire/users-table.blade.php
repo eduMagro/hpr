@@ -15,47 +15,21 @@
         <table class="w-full border border-gray-300 rounded-lg">
             <thead class="bg-blue-500 text-white">
                 <tr class="text-center text-xs uppercase">
-                    <th class="p-2 border cursor-pointer" wire:click="sortBy('id')">
-                        ID @if($sort === 'id'){{ $order === 'asc' ? '↑' : '↓' }}@endif
-                    </th>
-                    <th class="p-2 border cursor-pointer" wire:click="sortBy('nombre_completo')">
-                        Nombre @if($sort === 'nombre_completo'){{ $order === 'asc' ? '↑' : '↓' }}@endif
-                    </th>
-                    <th class="p-2 border cursor-pointer" wire:click="sortBy('nombre_completo')">
-                        Primer Apellido @if($sort === 'nombre_completo'){{ $order === 'asc' ? '↑' : '↓' }}@endif
-                    </th>
-                    <th class="p-2 border cursor-pointer" wire:click="sortBy('nombre_completo')">
-                        Segundo Apellido @if($sort === 'nombre_completo'){{ $order === 'asc' ? '↑' : '↓' }}@endif
-                    </th>
-                    <th class="p-2 border cursor-pointer" wire:click="sortBy('email')">
-                        Email @if($sort === 'email'){{ $order === 'asc' ? '↑' : '↓' }}@endif
-                    </th>
+                    <x-tabla.encabezado-ordenable campo="id" :sortActual="$sort" :orderActual="$order" texto="ID" />
+                    <x-tabla.encabezado-ordenable campo="nombre_completo" :sortActual="$sort" :orderActual="$order" texto="Nombre" />
+                    <x-tabla.encabezado-ordenable campo="nombre_completo" :sortActual="$sort" :orderActual="$order" texto="Primer Apellido" />
+                    <x-tabla.encabezado-ordenable campo="nombre_completo" :sortActual="$sort" :orderActual="$order" texto="Segundo Apellido" />
+                    <x-tabla.encabezado-ordenable campo="email" :sortActual="$sort" :orderActual="$order" texto="Email" />
                     <th class="p-2 border">Móvil Personal</th>
                     <th class="p-2 border">Móvil Empresa</th>
-                    <th class="p-2 border cursor-pointer" wire:click="sortBy('numero_corto')">
-                        Nº Corporativo @if($sort === 'numero_corto'){{ $order === 'asc' ? '↑' : '↓' }}@endif
-                    </th>
-                    <th class="p-2 border cursor-pointer" wire:click="sortBy('dni')">
-                        DNI @if($sort === 'dni'){{ $order === 'asc' ? '↑' : '↓' }}@endif
-                    </th>
-                    <th class="p-2 border cursor-pointer" wire:click="sortBy('empresa')">
-                        Empresa @if($sort === 'empresa'){{ $order === 'asc' ? '↑' : '↓' }}@endif
-                    </th>
-                    <th class="p-2 border cursor-pointer" wire:click="sortBy('rol')">
-                        Rol @if($sort === 'rol'){{ $order === 'asc' ? '↑' : '↓' }}@endif
-                    </th>
-                    <th class="p-2 border cursor-pointer" wire:click="sortBy('categoria')">
-                        Categoría @if($sort === 'categoria'){{ $order === 'asc' ? '↑' : '↓' }}@endif
-                    </th>
-                    <th class="p-2 border cursor-pointer" wire:click="sortBy('maquina_id')">
-                        Máquina @if($sort === 'maquina_id'){{ $order === 'asc' ? '↑' : '↓' }}@endif
-                    </th>
-                    <th class="p-2 border cursor-pointer" wire:click="sortBy('turno')">
-                        Turno @if($sort === 'turno'){{ $order === 'asc' ? '↑' : '↓' }}@endif
-                    </th>
-                    <th class="p-2 border cursor-pointer" wire:click="sortBy('estado')">
-                        Estado @if($sort === 'estado'){{ $order === 'asc' ? '↑' : '↓' }}@endif
-                    </th>
+                    <x-tabla.encabezado-ordenable campo="numero_corto" :sortActual="$sort" :orderActual="$order" texto="Nº Corporativo" />
+                    <x-tabla.encabezado-ordenable campo="dni" :sortActual="$sort" :orderActual="$order" texto="DNI" />
+                    <x-tabla.encabezado-ordenable campo="empresa" :sortActual="$sort" :orderActual="$order" texto="Empresa" />
+                    <x-tabla.encabezado-ordenable campo="rol" :sortActual="$sort" :orderActual="$order" texto="Rol" />
+                    <x-tabla.encabezado-ordenable campo="categoria" :sortActual="$sort" :orderActual="$order" texto="Categoría" />
+                    <x-tabla.encabezado-ordenable campo="maquina_id" :sortActual="$sort" :orderActual="$order" texto="Máquina" />
+                    <x-tabla.encabezado-ordenable campo="turno" :sortActual="$sort" :orderActual="$order" texto="Turno" />
+                    <x-tabla.encabezado-ordenable campo="estado" :sortActual="$sort" :orderActual="$order" texto="Estado" />
                     <th class="p-2 border"></th>
                     <th class="p-2 border">Acciones</th>
                 </tr>

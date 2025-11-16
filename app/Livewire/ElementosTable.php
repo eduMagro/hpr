@@ -13,70 +13,73 @@ class ElementosTable extends Component
 {
     use WithPagination;
 
+    protected $paginationTheme = 'tailwind';
+
     // Filtros - usando #[Url] para mantenerlos en la URL
-    #[Url]
+    #[Url(keep: true)]
     public $elemento_id = '';
 
-    #[Url]
+    #[Url(keep: true)]
     public $codigo = '';
 
-    #[Url]
+    #[Url(keep: true)]
     public $codigo_planilla = '';
 
-    #[Url]
+    #[Url(keep: true)]
     public $etiqueta = '';
 
-    #[Url]
+    #[Url(keep: true)]
     public $subetiqueta = '';
 
-    #[Url]
+    #[Url(keep: true)]
     public $dimensiones = '';
 
-    #[Url]
+    #[Url(keep: true)]
     public $diametro = '';
 
-    #[Url]
+    #[Url(keep: true)]
     public $barras = '';
 
-    #[Url]
+    #[Url(keep: true)]
     public $maquina = '';
 
-    #[Url]
+    #[Url(keep: true)]
     public $maquina_2 = '';
 
-    #[Url]
+    #[Url(keep: true)]
     public $maquina3 = '';
 
-    #[Url]
+    #[Url(keep: true)]
     public $producto1 = '';
 
-    #[Url]
+    #[Url(keep: true)]
     public $producto2 = '';
 
-    #[Url]
+    #[Url(keep: true)]
     public $producto3 = '';
 
-    #[Url]
+    #[Url(keep: true)]
     public $figura = '';
 
-    #[Url]
+    #[Url(keep: true)]
     public $peso = '';
 
-    #[Url]
+    #[Url(keep: true)]
     public $longitud = '';
 
-    #[Url]
+    #[Url(keep: true)]
     public $estado = '';
 
-    #[Url]
+    #[Url(keep: true)]
     public $planilla_id = '';
 
-    #[Url]
+    #[Url(keep: true)]
     public $sort = '';
 
-    #[Url]
-    public $order = 'asc';
+    #[Url(keep: true)]
+    public $order = 'desc';
 
+    #[Url(keep: true)]
     public $perPage = 10;
 
     // Cuando cambia cualquier filtro, resetear a la página 1
@@ -169,19 +172,19 @@ class ElementosTable extends Component
         // Productos
         if (!empty($this->producto1)) {
             $query->whereHas('producto', function ($q) {
-                $q->where('nombre', 'like', "%{$this->producto1}%");
+                $q->where('codigo', 'like', "%{$this->producto1}%");
             });
         }
 
         if (!empty($this->producto2)) {
             $query->whereHas('producto2', function ($q) {
-                $q->where('nombre', 'like', "%{$this->producto2}%");
+                $q->where('codigo', 'like', "%{$this->producto2}%");
             });
         }
 
         if (!empty($this->producto3)) {
             $query->whereHas('producto3', function ($q) {
-                $q->where('nombre', 'like', "%{$this->producto3}%");
+                $q->where('codigo', 'like', "%{$this->producto3}%");
             });
         }
 
@@ -207,18 +210,58 @@ class ElementosTable extends Component
 
     public function aplicarOrdenamiento($query)
     {
-        $ordenamientos = [
-            'id' => 'id',
-            'codigo' => 'codigo',
-            'figura' => 'figura',
-            'peso' => 'peso',
-            'diametro' => 'diametro',
-            'longitud' => 'longitud',
-            'estado' => 'estado',
+        $map = [
+            'id' => 'elementos.id',
+            'codigo' => 'elementos.codigo',
+            'codigo_planilla' => 'planillas.codigo',
+            'etiqueta' => 'etiquetas.id',
+            'subetiqueta' => 'elementos.etiqueta_sub_id',
+            'dimensiones' => 'elementos.dimensiones',
+            'diametro' => 'elementos.diametro',
+            'barras' => 'elementos.barras',
+            'maquina' => 'maquinas.nombre',
+            'maquina_2' => 'maquinas_2.nombre',
+            'maquina3' => 'maquinas_3.nombre',
+            'producto1' => 'productos.codigo',
+            'producto2' => 'productos_2.codigo',
+            'producto3' => 'productos_3.codigo',
+            'figura' => 'elementos.figura',
+            'peso' => 'elementos.peso',
+            'longitud' => 'elementos.longitud',
+            'estado' => 'elementos.estado',
         ];
 
-        if (!empty($this->sort) && isset($ordenamientos[$this->sort])) {
-            $query->orderBy($ordenamientos[$this->sort], $this->order);
+        if (!empty($this->sort) && isset($map[$this->sort])) {
+            $column = $map[$this->sort];
+
+            // Si ordenamos por una columna de relación, añadimos el JOIN correspondiente
+            if (str_starts_with($column, 'planillas.')) {
+                $query->leftJoin('planillas', 'planillas.id', '=', 'elementos.planilla_id')
+                    ->select('elementos.*');
+            } elseif (str_starts_with($column, 'etiquetas.')) {
+                $query->leftJoin('etiquetas', 'etiquetas.id', '=', 'elementos.etiqueta_id')
+                    ->select('elementos.*');
+            } elseif (str_starts_with($column, 'maquinas.')) {
+                $query->leftJoin('maquinas', 'maquinas.id', '=', 'elementos.maquina_id')
+                    ->select('elementos.*');
+            } elseif (str_starts_with($column, 'maquinas_2.')) {
+                $query->leftJoin('maquinas as maquinas_2', 'maquinas_2.id', '=', 'elementos.maquina_2_id')
+                    ->select('elementos.*');
+            } elseif (str_starts_with($column, 'maquinas_3.')) {
+                $query->leftJoin('maquinas as maquinas_3', 'maquinas_3.id', '=', 'elementos.maquina_3_id')
+                    ->select('elementos.*');
+            } elseif (str_starts_with($column, 'productos.')) {
+                $query->leftJoin('productos', 'productos.id', '=', 'elementos.producto_id')
+                    ->select('elementos.*');
+            } elseif (str_starts_with($column, 'productos_2.')) {
+                $query->leftJoin('productos as productos_2', 'productos_2.id', '=', 'elementos.producto2_id')
+                    ->select('elementos.*');
+            } elseif (str_starts_with($column, 'productos_3.')) {
+                $query->leftJoin('productos as productos_3', 'productos_3.id', '=', 'elementos.producto3_id')
+                    ->select('elementos.*');
+            }
+
+            $query->orderBy($column, $this->order);
         } else {
             $query->orderBy('created_at', 'desc');
         }
@@ -309,6 +352,34 @@ class ElementosTable extends Component
             $filtros[] = "<strong>Planilla ID:</strong> {$this->planilla_id}";
         }
 
+        // Añadir ordenamiento
+        if (!empty($this->sort)) {
+            $nombresCampos = [
+                'id' => 'ID',
+                'codigo' => 'Código',
+                'codigo_planilla' => 'Planilla',
+                'etiqueta' => 'Etiqueta',
+                'subetiqueta' => 'Subetiqueta',
+                'dimensiones' => 'Dimensiones',
+                'diametro' => 'Diámetro',
+                'barras' => 'Barras',
+                'maquina' => 'Máquina 1',
+                'maquina_2' => 'Máquina 2',
+                'maquina3' => 'Máquina 3',
+                'producto1' => 'M. Prima 1',
+                'producto2' => 'M. Prima 2',
+                'producto3' => 'M. Prima 3',
+                'figura' => 'Figura',
+                'peso' => 'Peso',
+                'longitud' => 'Longitud',
+                'estado' => 'Estado',
+            ];
+
+            $nombreCampo = $nombresCampos[$this->sort] ?? ucfirst($this->sort);
+            $direccion = $this->order === 'asc' ? '↑ Ascendente' : '↓ Descendente';
+            $filtros[] = "<strong>Ordenado por:</strong> {$nombreCampo} ({$direccion})";
+        }
+
         return $filtros;
     }
 
@@ -357,6 +428,6 @@ class ElementosTable extends Component
             'totalPesoFiltrado' => $totalPesoFiltrado,
             'planilla' => $planilla,
             'filtrosActivos' => $this->getFiltrosActivos(),
-        ])->layout('layouts.app');
+        ]);
     }
 }

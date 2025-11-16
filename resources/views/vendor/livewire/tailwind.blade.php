@@ -42,10 +42,22 @@ $scrollIntoViewJsSnippet = ($scrollTo !== false)
 
             {{-- Navegación de paginación --}}
             <div class="flex justify-center">
-                <nav class="inline-flex flex-wrap gap-1 bg-white px-2 py-1 mb-6 rounded-md shadow-sm">
+                <nav class="inline-flex items-center gap-1 bg-white px-2 py-1 mb-6 rounded-md shadow-sm">
+                    {{-- Botón Primera Página --}}
+                    @if ($paginator->currentPage() > 2)
+                        <button type="button"
+                                wire:click="gotoPage(1, '{{ $paginator->getPageName() }}')"
+                                x-on:click="{{ $scrollIntoViewJsSnippet }}"
+                                wire:loading.attr="disabled"
+                                class="px-2 py-1 text-xs text-blue-600 hover:bg-blue-100 rounded transition disabled:opacity-50"
+                                title="Primera página">
+                            &laquo;&laquo;
+                        </button>
+                    @endif
+
                     {{-- Botón anterior --}}
                     @if ($paginator->onFirstPage())
-                        <span class="px-3 py-1 text-xs text-gray-400 cursor-not-allowed">
+                        <span class="px-2 py-1 text-xs text-gray-400 cursor-not-allowed">
                             &laquo;
                         </span>
                     @else
@@ -53,37 +65,58 @@ $scrollIntoViewJsSnippet = ($scrollTo !== false)
                                 wire:click="previousPage('{{ $paginator->getPageName() }}')"
                                 x-on:click="{{ $scrollIntoViewJsSnippet }}"
                                 wire:loading.attr="disabled"
-                                class="px-3 py-1 text-xs text-blue-600 hover:bg-blue-100 rounded transition disabled:opacity-50">
+                                class="px-2 py-1 text-xs text-blue-600 hover:bg-blue-100 rounded transition disabled:opacity-50">
                             &laquo;
                         </button>
                     @endif
 
-                    {{-- Elementos de paginación --}}
-                    @foreach ($elements as $element)
-                        {{-- "Three Dots" Separator --}}
-                        @if (is_string($element))
-                            <span class="px-2 text-xs text-gray-400 select-none">&hellip;</span>
-                        @endif
+                    {{-- Elementos de paginación compactados --}}
+                    @php
+                        $start = max($paginator->currentPage() - 1, 1);
+                        $end = min($paginator->currentPage() + 1, $paginator->lastPage());
+                    @endphp
 
-                        {{-- Array Of Links --}}
-                        @if (is_array($element))
-                            @foreach ($element as $page => $url)
-                                @if ($page == $paginator->currentPage())
-                                    <span class="px-3 py-1 text-xs font-bold bg-blue-600 text-white rounded shadow border border-blue-700">
-                                        {{ $page }}
-                                    </span>
-                                @else
-                                    <button type="button"
-                                            wire:click="gotoPage({{ $page }}, '{{ $paginator->getPageName() }}')"
-                                            x-on:click="{{ $scrollIntoViewJsSnippet }}"
-                                            wire:loading.attr="disabled"
-                                            class="px-3 py-1 text-xs text-blue-600 hover:bg-blue-100 rounded transition disabled:opacity-50">
-                                        {{ $page }}
-                                    </button>
-                                @endif
-                            @endforeach
+                    @if ($start > 1)
+                        <button type="button"
+                                wire:click="gotoPage(1, '{{ $paginator->getPageName() }}')"
+                                x-on:click="{{ $scrollIntoViewJsSnippet }}"
+                                wire:loading.attr="disabled"
+                                class="px-2.5 py-1 text-xs text-blue-600 hover:bg-blue-100 rounded transition disabled:opacity-50">
+                            1
+                        </button>
+                        @if ($start > 2)
+                            <span class="px-1 text-xs text-gray-400 select-none">&hellip;</span>
                         @endif
-                    @endforeach
+                    @endif
+
+                    @for ($page = $start; $page <= $end; $page++)
+                        @if ($page == $paginator->currentPage())
+                            <span class="px-2.5 py-1 text-xs font-bold bg-blue-600 text-white rounded shadow border border-blue-700">
+                                {{ $page }}
+                            </span>
+                        @else
+                            <button type="button"
+                                    wire:click="gotoPage({{ $page }}, '{{ $paginator->getPageName() }}')"
+                                    x-on:click="{{ $scrollIntoViewJsSnippet }}"
+                                    wire:loading.attr="disabled"
+                                    class="px-2.5 py-1 text-xs text-blue-600 hover:bg-blue-100 rounded transition disabled:opacity-50">
+                                {{ $page }}
+                            </button>
+                        @endif
+                    @endfor
+
+                    @if ($end < $paginator->lastPage())
+                        @if ($end < $paginator->lastPage() - 1)
+                            <span class="px-1 text-xs text-gray-400 select-none">&hellip;</span>
+                        @endif
+                        <button type="button"
+                                wire:click="gotoPage({{ $paginator->lastPage() }}, '{{ $paginator->getPageName() }}')"
+                                x-on:click="{{ $scrollIntoViewJsSnippet }}"
+                                wire:loading.attr="disabled"
+                                class="px-2.5 py-1 text-xs text-blue-600 hover:bg-blue-100 rounded transition disabled:opacity-50">
+                            {{ $paginator->lastPage() }}
+                        </button>
+                    @endif
 
                     {{-- Botón siguiente --}}
                     @if ($paginator->hasMorePages())
@@ -91,13 +124,25 @@ $scrollIntoViewJsSnippet = ($scrollTo !== false)
                                 wire:click="nextPage('{{ $paginator->getPageName() }}')"
                                 x-on:click="{{ $scrollIntoViewJsSnippet }}"
                                 wire:loading.attr="disabled"
-                                class="px-3 py-1 text-xs text-blue-600 hover:bg-blue-100 rounded transition disabled:opacity-50">
+                                class="px-2 py-1 text-xs text-blue-600 hover:bg-blue-100 rounded transition disabled:opacity-50">
                             &raquo;
                         </button>
                     @else
-                        <span class="px-3 py-1 text-xs text-gray-400 cursor-not-allowed">
+                        <span class="px-2 py-1 text-xs text-gray-400 cursor-not-allowed">
                             &raquo;
                         </span>
+                    @endif
+
+                    {{-- Botón Última Página --}}
+                    @if ($paginator->currentPage() < $paginator->lastPage() - 1)
+                        <button type="button"
+                                wire:click="gotoPage({{ $paginator->lastPage() }}, '{{ $paginator->getPageName() }}')"
+                                x-on:click="{{ $scrollIntoViewJsSnippet }}"
+                                wire:loading.attr="disabled"
+                                class="px-2 py-1 text-xs text-blue-600 hover:bg-blue-100 rounded transition disabled:opacity-50"
+                                title="Última página">
+                            &raquo;&raquo;
+                        </button>
                     @endif
                 </nav>
             </div>

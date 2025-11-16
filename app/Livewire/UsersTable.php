@@ -16,6 +16,8 @@ class UsersTable extends Component
 {
     use WithPagination;
 
+    protected $paginationTheme = 'tailwind';
+
     // Filtros - usando #[Url] para mantenerlos en la URL
     #[Url]
     public $user_id = '';
@@ -157,21 +159,25 @@ class UsersTable extends Component
             $filtros[] = "<strong>Estado:</strong> " . ucfirst($this->estado);
         }
 
-        if ($this->sort) {
-            $sorts = [
+        // Añadir ordenamiento
+        if (!empty($this->sort)) {
+            $nombresCampos = [
+                'id' => 'ID',
                 'nombre_completo' => 'Nombre',
-                'email'           => 'Email',
-                'dni'             => 'DNI',
-                'empresa'         => 'Empresa',
-                'rol'             => 'Rol',
-                'categoria'       => 'Categoría',
-                'maquina_id'      => 'Máquina',
-                'turno'           => 'Turno',
-                'estado'          => 'Estado',
-                'numero_corto'    => 'Nº Corporativo',
-                'id'              => 'ID',
+                'email' => 'Email',
+                'numero_corto' => 'Nº Corporativo',
+                'dni' => 'DNI',
+                'empresa' => 'Empresa',
+                'rol' => 'Rol',
+                'categoria' => 'Categoría',
+                'maquina_id' => 'Máquina',
+                'turno' => 'Turno',
+                'estado' => 'Estado',
             ];
-            $filtros[] = '<strong>Ordenado por:</strong> ' . ($sorts[$this->sort] ?? $this->sort) . ' en <strong>' . ($this->order === 'asc' ? 'ascendente' : 'descendente') . '</strong>';
+
+            $nombreCampo = $nombresCampos[$this->sort] ?? ucfirst($this->sort);
+            $direccion = $this->order === 'asc' ? '↑ Ascendente' : '↓ Descendente';
+            $filtros[] = "<strong>Ordenado por:</strong> {$nombreCampo} ({$direccion})";
         }
 
         return $filtros;

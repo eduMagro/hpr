@@ -137,6 +137,31 @@ class ProductosTable extends Component
             $filtros[] = "<strong>Ubicación:</strong> {$this->ubicacion}";
         }
 
+        // Añadir ordenamiento
+        if (!empty($this->sort)) {
+            $nombresCampos = [
+                'id' => 'ID',
+                'entrada_id' => 'Albarán',
+                'codigo' => 'Código',
+                'nave' => 'Nave',
+                'fabricante' => 'Fabricante',
+                'tipo' => 'Tipo',
+                'diametro' => 'Diámetro',
+                'longitud' => 'Longitud',
+                'n_colada' => 'Nº Colada',
+                'n_paquete' => 'Nº Paquete',
+                'peso_inicial' => 'Peso Inicial',
+                'peso_stock' => 'Peso Stock',
+                'estado' => 'Estado',
+                'ubicacion' => 'Ubicación',
+                'created_at' => 'Fecha de Creación',
+            ];
+
+            $nombreCampo = $nombresCampos[$this->sort] ?? ucfirst($this->sort);
+            $direccion = $this->order === 'asc' ? '↑ Ascendente' : '↓ Descendente';
+            $filtros[] = "<strong>Ordenado por:</strong> {$nombreCampo} ({$direccion})";
+        }
+
         return $filtros;
     }
 

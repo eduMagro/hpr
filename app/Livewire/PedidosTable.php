@@ -16,6 +16,8 @@ class PedidosTable extends Component
 {
     use WithPagination;
 
+    protected $paginationTheme = 'tailwind';
+
     // Filtros - usando #[Url] para mantenerlos en la URL
     #[Url]
     public $codigo_linea = '';

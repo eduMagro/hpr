@@ -3,48 +3,32 @@
         <x-tabla.filtros-aplicados :filtros="$filtrosActivos" />
 
         <!-- Tabla con filtros Livewire -->
-        <div class="w-full overflow-x-auto bg-white shadow-lg rounded-lg" wire:ignore.self>
+        <div class="w-full overflow-x-auto bg-white shadow-lg rounded-lg">
             <table class="w-full min-w-[1200px] border border-gray-300 rounded-lg">
                 <thead class="bg-blue-500 text-white text-10">
                     <tr class="text-center text-xs uppercase">
-                        <th class="p-2 border cursor-pointer" wire:click="sortBy('id')">
-                            ID @if($sort === 'id') {{ $order === 'asc' ? '▲' : '▼' }} @endif
-                        </th>
-                        <th class="p-2 border cursor-pointer" wire:click="sortBy('codigo')">
-                            Codigo @if($sort === 'codigo') {{ $order === 'asc' ? '▲' : '▼' }} @endif
-                        </th>
-                        <th class="p-2 border">Codigo SubEtiqueta</th>
-                        <th class="p-2 border cursor-pointer" wire:click="sortBy('codigo_planilla')">
-                            Planilla @if($sort === 'codigo_planilla') {{ $order === 'asc' ? '▲' : '▼' }} @endif
-                        </th>
-                        <th class="p-2 border cursor-pointer" wire:click="sortBy('paquete')">
-                            Paquete @if($sort === 'paquete') {{ $order === 'asc' ? '▲' : '▼' }} @endif
-                        </th>
+                        <x-tabla.encabezado-ordenable campo="id" :sortActual="$sort" :orderActual="$order" texto="ID" />
+                        <x-tabla.encabezado-ordenable campo="codigo" :sortActual="$sort" :orderActual="$order" texto="Codigo" />
+                        <x-tabla.encabezado-ordenable campo="etiqueta_sub_id" :sortActual="$sort" :orderActual="$order" texto="Codigo SubEtiqueta" />
+                        <x-tabla.encabezado-ordenable campo="codigo_planilla" :sortActual="$sort" :orderActual="$order" texto="Planilla" />
+                        <x-tabla.encabezado-ordenable campo="paquete" :sortActual="$sort" :orderActual="$order" texto="Paquete" />
                         <th class="p-2 border">Op 1</th>
                         <th class="p-2 border">Op 2</th>
                         <th class="p-2 border">Ens 1</th>
                         <th class="p-2 border">Ens 2</th>
                         <th class="p-2 border">Sol 1</th>
                         <th class="p-2 border">Sol 2</th>
-                        <th class="p-2 border cursor-pointer" wire:click="sortBy('numero_etiqueta')">
-                            Número de Etiqueta @if($sort === 'numero_etiqueta') {{ $order === 'asc' ? '▲' : '▼' }} @endif
-                        </th>
-                        <th class="p-2 border cursor-pointer" wire:click="sortBy('nombre')">
-                            Nombre @if($sort === 'nombre') {{ $order === 'asc' ? '▲' : '▼' }} @endif
-                        </th>
+                        <x-tabla.encabezado-ordenable campo="numero_etiqueta" :sortActual="$sort" :orderActual="$order" texto="Número de Etiqueta" />
+                        <x-tabla.encabezado-ordenable campo="nombre" :sortActual="$sort" :orderActual="$order" texto="Nombre" />
                         <th class="p-2 border">Marca</th>
-                        <th class="p-2 border cursor-pointer" wire:click="sortBy('peso')">
-                            Peso (kg) @if($sort === 'peso') {{ $order === 'asc' ? '▲' : '▼' }} @endif
-                        </th>
-                        <th class="p-2 border">Inicio Fabricación</th>
-                        <th class="p-2 border">Final Fabricación</th>
-                        <th class="p-2 border">Inicio Ensamblado</th>
-                        <th class="p-2 border">Final Ensamblado</th>
-                        <th class="p-2 border">Inicio Soldadura</th>
-                        <th class="p-2 border">Final Soldadura</th>
-                        <th class="p-2 border cursor-pointer" wire:click="sortBy('estado')">
-                            Estado @if($sort === 'estado') {{ $order === 'asc' ? '▲' : '▼' }} @endif
-                        </th>
+                        <x-tabla.encabezado-ordenable campo="peso" :sortActual="$sort" :orderActual="$order" texto="Peso (kg)" />
+                        <x-tabla.encabezado-ordenable campo="inicio_fabricacion" :sortActual="$sort" :orderActual="$order" texto="Inicio Fabricación" />
+                        <x-tabla.encabezado-ordenable campo="final_fabricacion" :sortActual="$sort" :orderActual="$order" texto="Final Fabricación" />
+                        <x-tabla.encabezado-ordenable campo="inicio_ensamblado" :sortActual="$sort" :orderActual="$order" texto="Inicio Ensamblado" />
+                        <x-tabla.encabezado-ordenable campo="final_ensamblado" :sortActual="$sort" :orderActual="$order" texto="Final Ensamblado" />
+                        <x-tabla.encabezado-ordenable campo="inicio_soldadura" :sortActual="$sort" :orderActual="$order" texto="Inicio Soldadura" />
+                        <x-tabla.encabezado-ordenable campo="final_soldadura" :sortActual="$sort" :orderActual="$order" texto="Final Soldadura" />
+                        <x-tabla.encabezado-ordenable campo="estado" :sortActual="$sort" :orderActual="$order" texto="Estado" />
                         <th class="p-2 border">Acciones</th>
                     </tr>
 
@@ -125,7 +109,9 @@
 
                 <tbody class="text-gray-700 text-sm">
                     @forelse ($etiquetas as $etiqueta)
-                        <tr tabindex="0" x-data="{
+                        <tr tabindex="0"
+                            wire:key="etiqueta-{{ $etiqueta->id }}"
+                            x-data="{
                             editando: false,
                             etiqueta: @js($etiqueta),
                             original: JSON.parse(JSON.stringify(@js($etiqueta)))
@@ -272,54 +258,66 @@
                             <!-- Fecha Inicio Fabricación (editable) -->
                             <td class="p-2 text-center border">
                                 <template x-if="!editando">
-                                    <span x-text="etiqueta.fecha_inicio"></span>
+                                    <span x-text="etiqueta.fecha_inicio ? etiqueta.fecha_inicio.split(' ')[0] : ''"></span>
                                 </template>
-                                <input x-show="editando" type="date" x-model="etiqueta.fecha_inicio"
+                                <input x-show="editando" type="date"
+                                    :value="etiqueta.fecha_inicio ? etiqueta.fecha_inicio.split(' ')[0] : ''"
+                                    @input="etiqueta.fecha_inicio = $event.target.value"
                                     class="w-full text-xs border rounded px-1 py-0.5">
                             </td>
 
                             <!-- Fecha Finalización Fabricación (editable) -->
                             <td class="p-2 text-center border">
                                 <template x-if="!editando">
-                                    <span x-text="etiqueta.fecha_finalizacion"></span>
+                                    <span x-text="etiqueta.fecha_finalizacion ? etiqueta.fecha_finalizacion.split(' ')[0] : ''"></span>
                                 </template>
-                                <input x-show="editando" type="date" x-model="etiqueta.fecha_finalizacion"
+                                <input x-show="editando" type="date"
+                                    :value="etiqueta.fecha_finalizacion ? etiqueta.fecha_finalizacion.split(' ')[0] : ''"
+                                    @input="etiqueta.fecha_finalizacion = $event.target.value"
                                     class="w-full text-xs border rounded px-1 py-0.5">
                             </td>
 
                             <!-- Fecha Inicio Ensamblado (editable) -->
                             <td class="p-2 text-center border">
                                 <template x-if="!editando">
-                                    <span x-text="etiqueta.fecha_inicio_ensamblado"></span>
+                                    <span x-text="etiqueta.fecha_inicio_ensamblado ? etiqueta.fecha_inicio_ensamblado.split(' ')[0] : ''"></span>
                                 </template>
-                                <input x-show="editando" type="date" x-model="etiqueta.fecha_inicio_ensamblado"
+                                <input x-show="editando" type="date"
+                                    :value="etiqueta.fecha_inicio_ensamblado ? etiqueta.fecha_inicio_ensamblado.split(' ')[0] : ''"
+                                    @input="etiqueta.fecha_inicio_ensamblado = $event.target.value"
                                     class="w-full text-xs border rounded px-1 py-0.5">
                             </td>
 
                             <!-- Fecha Finalización Ensamblado (editable) -->
                             <td class="p-2 text-center border">
                                 <template x-if="!editando">
-                                    <span x-text="etiqueta.fecha_finalizacion_ensamblado"></span>
+                                    <span x-text="etiqueta.fecha_finalizacion_ensamblado ? etiqueta.fecha_finalizacion_ensamblado.split(' ')[0] : ''"></span>
                                 </template>
-                                <input x-show="editando" type="date" x-model="etiqueta.fecha_finalizacion_ensamblado"
+                                <input x-show="editando" type="date"
+                                    :value="etiqueta.fecha_finalizacion_ensamblado ? etiqueta.fecha_finalizacion_ensamblado.split(' ')[0] : ''"
+                                    @input="etiqueta.fecha_finalizacion_ensamblado = $event.target.value"
                                     class="w-full text-xs border rounded px-1 py-0.5">
                             </td>
 
                             <!-- Fecha Inicio Soldadura (editable) -->
                             <td class="p-2 text-center border">
                                 <template x-if="!editando">
-                                    <span x-text="etiqueta.fecha_inicio_soldadura"></span>
+                                    <span x-text="etiqueta.fecha_inicio_soldadura ? etiqueta.fecha_inicio_soldadura.split(' ')[0] : ''"></span>
                                 </template>
-                                <input x-show="editando" type="date" x-model="etiqueta.fecha_inicio_soldadura"
+                                <input x-show="editando" type="date"
+                                    :value="etiqueta.fecha_inicio_soldadura ? etiqueta.fecha_inicio_soldadura.split(' ')[0] : ''"
+                                    @input="etiqueta.fecha_inicio_soldadura = $event.target.value"
                                     class="w-full text-xs border rounded px-1 py-0.5">
                             </td>
 
                             <!-- Fecha Finalización Soldadura (editable) -->
                             <td class="p-2 text-center border">
                                 <template x-if="!editando">
-                                    <span x-text="etiqueta.fecha_finalizacion_soldadura"></span>
+                                    <span x-text="etiqueta.fecha_finalizacion_soldadura ? etiqueta.fecha_finalizacion_soldadura.split(' ')[0] : ''"></span>
                                 </template>
-                                <input x-show="editando" type="date" x-model="etiqueta.fecha_finalizacion_soldadura"
+                                <input x-show="editando" type="date"
+                                    :value="etiqueta.fecha_finalizacion_soldadura ? etiqueta.fecha_finalizacion_soldadura.split(' ')[0] : ''"
+                                    @input="etiqueta.fecha_finalizacion_soldadura = $event.target.value"
                                     class="w-full text-xs border rounded px-1 py-0.5">
                             </td>
 
@@ -653,8 +651,7 @@
             modal.classList.remove('flex');
         }
     </script>
-    <script src="{{ asset('js/maquinaJS/canvasMaquina.js') }}"></script>
-    <script src="{{ asset('js/maquinaJS/canvasMaquinaSinBoton.js') }}"></script>
+    <script src="{{ asset('js/maquinaJS/canvasMaquina.js') }}" onerror="console.warn('canvasMaquina.js no encontrado')"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <script>
         const domSafe = (v) => String(v).replace(/[^A-Za-z0-9_-]/g, '-');
@@ -908,6 +905,14 @@
         // Re-inicializar después de que Livewire actualice
         document.addEventListener('livewire:navigated', () => {
             window.etiquetasConElementos = @json($etiquetasJson);
+        });
+
+        // Debug: Verificar si Livewire está funcionando
+        document.addEventListener('livewire:init', () => {
+            console.log('Livewire initialized on Etiquetas Table');
+            Livewire.hook('commit', ({component, respond}) => {
+                console.log('Livewire commit:', component.name);
+            });
         });
     </script>
     @endpush

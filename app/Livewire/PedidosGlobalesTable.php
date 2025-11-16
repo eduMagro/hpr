@@ -4,6 +4,7 @@ namespace App\Livewire;
 
 use Livewire\Component;
 use Livewire\WithPagination;
+use Livewire\Attributes\Url;
 use App\Models\PedidoGlobal;
 use App\Models\Fabricante;
 use App\Models\Distribuidor;
@@ -12,28 +13,39 @@ class PedidosGlobalesTable extends Component
 {
     use WithPagination;
 
+    protected $paginationTheme = 'tailwind';
+
     // Filtros
+    #[Url(keep: true)]
     public $codigo = '';
+
+    #[Url(keep: true)]
     public $fabricante = '';
+
+    #[Url(keep: true)]
     public $distribuidor = '';
+
+    #[Url(keep: true)]
     public $estado = '';
 
     // Ordenamiento
+    #[Url(keep: true)]
     public $sort = 'created_at';
+
+    #[Url(keep: true)]
     public $order = 'desc';
 
     // Paginación
+    #[Url(keep: true)]
     public $perPage = 10;
 
-    protected $queryString = [
-        'codigo' => ['except' => ''],
-        'fabricante' => ['except' => ''],
-        'distribuidor' => ['except' => ''],
-        'estado' => ['except' => ''],
-        'sort' => ['except' => 'created_at'],
-        'order' => ['except' => 'desc'],
-        'perPage' => ['except' => 10],
-    ];
+    // Cuando cambia cualquier filtro, resetear a la página 1
+    public function updated($property)
+    {
+        if ($property !== 'perPage') {
+            $this->resetPage();
+        }
+    }
 
     public function sortBy($column)
     {
@@ -43,31 +55,6 @@ class PedidosGlobalesTable extends Component
             $this->sort = $column;
             $this->order = 'asc';
         }
-    }
-
-    public function updatingPerPage()
-    {
-        $this->resetPage();
-    }
-
-    public function updatingCodigo()
-    {
-        $this->resetPage();
-    }
-
-    public function updatingFabricante()
-    {
-        $this->resetPage();
-    }
-
-    public function updatingDistribuidor()
-    {
-        $this->resetPage();
-    }
-
-    public function updatingEstado()
-    {
-        $this->resetPage();
     }
 
     public function limpiarFiltros()

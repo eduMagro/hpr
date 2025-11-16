@@ -13,6 +13,8 @@ class AsignacionesTurnosTable extends Component
 {
     use WithPagination;
 
+    protected $paginationTheme = 'tailwind';
+
     // Filtros - usando #[Url] para mantenerlos en la URL
     #[Url]
     public $user_id = '';

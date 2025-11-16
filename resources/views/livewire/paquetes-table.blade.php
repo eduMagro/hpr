@@ -3,7 +3,7 @@
         <x-tabla.filtros-aplicados :filtros="$filtrosActivos" />
 
         <!-- Tabla con filtros Livewire -->
-        <div class="w-full overflow-x-auto bg-white shadow-lg rounded-lg" wire:ignore.self>
+        <div class="w-full overflow-x-auto bg-white shadow-lg rounded-lg">
             <table class="w-full min-w-[1600px] border border-gray-300 rounded-lg">
                 <thead class="bg-blue-500 text-white text-10">
                     <tr class="text-center text-xs uppercase">

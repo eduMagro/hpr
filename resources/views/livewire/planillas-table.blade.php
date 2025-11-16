@@ -29,71 +29,31 @@
 
         <x-tabla.filtros-aplicados :filtros="$filtrosActivos" />
         <!-- Tabla con filtros Livewire -->
-        <div class="w-full overflow-x-auto bg-white shadow-lg rounded-lg" wire:ignore.self>
+        <div class="w-full overflow-x-auto bg-white shadow-lg rounded-lg">
             <table class="w-full min-w-[2000px] border border-gray-300 rounded-lg">
                 <thead class="bg-blue-500 text-white text-4">
                     <tr class="text-center text-xs uppercase">
-                        <th class="p-2 border">ID</th>
-                        <th class="p-2 border cursor-pointer" wire:click="sortBy('codigo')">
-                            Código @if ($sort === 'codigo')
-                                {{ $order === 'asc' ? '▲' : '▼' }}
-                            @endif
-                        </th>
-                        <th class="p-2 border">Codigo Cliente</th>
-                        <th class="p-2 border">Cliente</th>
-                        <th class="p-2 border">Código Obra</th>
-                        <th class="p-2 border">Obra</th>
-                        <th class="p-2 border cursor-pointer" wire:click="sortBy('seccion')">
-                            Sección @if ($sort === 'seccion')
-                                {{ $order === 'asc' ? '▲' : '▼' }}
-                            @endif
-                        </th>
-                        <th class="p-2 border">Descripción</th>
-                        <th class="p-2 border cursor-pointer" wire:click="sortBy('ensamblado')">
-                            Ensamblado @if ($sort === 'ensamblado')
-                                {{ $order === 'asc' ? '▲' : '▼' }}
-                            @endif
-                        </th>
-                        <th class="p-2 border">Comentario</th>
+                        <x-tabla.encabezado-ordenable campo="id" :sortActual="$sort" :orderActual="$order" texto="ID" />
+                        <x-tabla.encabezado-ordenable campo="codigo" :sortActual="$sort" :orderActual="$order" texto="Código" />
+                        <x-tabla.encabezado-ordenable campo="codigo_cliente" :sortActual="$sort" :orderActual="$order" texto="Codigo Cliente" />
+                        <x-tabla.encabezado-ordenable campo="cliente_id" :sortActual="$sort" :orderActual="$order" texto="Cliente" />
+                        <x-tabla.encabezado-ordenable campo="codigo_obra" :sortActual="$sort" :orderActual="$order" texto="Código Obra" />
+                        <x-tabla.encabezado-ordenable campo="obra_id" :sortActual="$sort" :orderActual="$order" texto="Obra" />
+                        <x-tabla.encabezado-ordenable campo="seccion" :sortActual="$sort" :orderActual="$order" texto="Sección" />
+                        <x-tabla.encabezado-ordenable campo="descripcion" :sortActual="$sort" :orderActual="$order" texto="Descripción" />
+                        <x-tabla.encabezado-ordenable campo="ensamblado" :sortActual="$sort" :orderActual="$order" texto="Ensamblado" />
+                        <x-tabla.encabezado-ordenable campo="comentario" :sortActual="$sort" :orderActual="$order" texto="Comentario" />
                         <th class="p-2 border">Peso Fabricado</th>
-                        <th class="p-2 border cursor-pointer" wire:click="sortBy('peso_total')">
-                            Peso Total @if ($sort === 'peso_total')
-                                {{ $order === 'asc' ? '▲' : '▼' }}
-                            @endif
-                        </th>
-                        <th class="p-2 border cursor-pointer" wire:click="sortBy('estado')">
-                            Estado @if ($sort === 'estado')
-                                {{ $order === 'asc' ? '▲' : '▼' }}
-                            @endif
-                        </th>
-                        <th class="p-2 border cursor-pointer" wire:click="sortBy('fecha_inicio')">
-                            Fecha Inicio @if ($sort === 'fecha_inicio')
-                                {{ $order === 'asc' ? '▲' : '▼' }}
-                            @endif
-                        </th>
-                        <th class="p-2 border cursor-pointer" wire:click="sortBy('fecha_finalizacion')">
-                            Fecha Finalización @if ($sort === 'fecha_finalizacion')
-                                {{ $order === 'asc' ? '▲' : '▼' }}
-                            @endif
-                        </th>
-                        <th class="p-2 border cursor-pointer" wire:click="sortBy('created_at')">
-                            Fecha Importación @if ($sort === 'created_at')
-                                {{ $order === 'asc' ? '▲' : '▼' }}
-                            @endif
-                        </th>
-                        <th class="p-2 border cursor-pointer" wire:click="sortBy('fecha_estimada_entrega')">
-                            Fecha Entrega @if ($sort === 'fecha_estimada_entrega')
-                                {{ $order === 'asc' ? '▲' : '▼' }}
-                            @endif
-                        </th>
-                        <th class="p-2 border">Usuario</th>
-                        <th class="p-2 border cursor-pointer" wire:click="sortBy('revisada')">
-                            Revisada @if ($sort === 'revisada')
-                                {{ $order === 'asc' ? '▲' : '▼' }}
-                            @endif
-                        </th>
-                        <th class="p-2 border">Revisada por</th>
-                        <th class="p-2 border">Fecha revisión</th>
+                        <x-tabla.encabezado-ordenable campo="peso_total" :sortActual="$sort" :orderActual="$order" texto="Peso Total" />
+                        <x-tabla.encabezado-ordenable campo="estado" :sortActual="$sort" :orderActual="$order" texto="Estado" />
+                        <x-tabla.encabezado-ordenable campo="fecha_inicio" :sortActual="$sort" :orderActual="$order" texto="Fecha Inicio" />
+                        <x-tabla.encabezado-ordenable campo="fecha_finalizacion" :sortActual="$sort" :orderActual="$order" texto="Fecha Finalización" />
+                        <x-tabla.encabezado-ordenable campo="created_at" :sortActual="$sort" :orderActual="$order" texto="Fecha Importación" />
+                        <x-tabla.encabezado-ordenable campo="fecha_estimada_entrega" :sortActual="$sort" :orderActual="$order" texto="Fecha Entrega" />
+                        <x-tabla.encabezado-ordenable campo="usuario_id" :sortActual="$sort" :orderActual="$order" texto="Usuario" />
+                        <x-tabla.encabezado-ordenable campo="revisada" :sortActual="$sort" :orderActual="$order" texto="Revisada" />
+                        <x-tabla.encabezado-ordenable campo="revisor_id" :sortActual="$sort" :orderActual="$order" texto="Revisada por" />
+                        <x-tabla.encabezado-ordenable campo="revisada_at" :sortActual="$sort" :orderActual="$order" texto="Fecha revisión" />
                         <th class="p-2 border">Acciones</th>
                     </tr>
 
@@ -353,7 +313,9 @@
         @endif
 
         <!-- Paginación Livewire -->
-        {{ $planillas->links() }}
+        <div class="mt-4">
+            {{ $planillas->links('vendor.livewire.tailwind') }}
+        </div>
     </div>
 
     {{-- Modal Reimportar Planilla --}}

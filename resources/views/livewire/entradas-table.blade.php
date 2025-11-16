@@ -5,47 +5,12 @@
         <table class="w-full border text-sm text-center">
             <thead class="bg-blue-600 text-white uppercase text-xs">
                 <tr>
-                    <th class="px-3 py-2 border">
-                        <button wire:click="sortBy('pedido_producto_id')" class="w-full text-center hover:text-yellow-200">
-                            Código Línea
-                            @if($sort === 'pedido_producto_id')
-                                <span>{!! $order === 'asc' ? '▲' : '▼' !!}</span>
-                            @endif
-                        </button>
-                    </th>
-                    <th class="px-3 py-2 border">
-                        <button wire:click="sortBy('albaran')" class="w-full text-center hover:text-yellow-200">
-                            Albarán
-                            @if($sort === 'albaran')
-                                <span>{!! $order === 'asc' ? '▲' : '▼' !!}</span>
-                            @endif
-                        </button>
-                    </th>
-                    <th class="px-3 py-2 border">
-                        <button wire:click="sortBy('codigo_sage')" class="w-full text-center hover:text-yellow-200">
-                            Código SAGE
-                            @if($sort === 'codigo_sage')
-                                <span>{!! $order === 'asc' ? '▲' : '▼' !!}</span>
-                            @endif
-                        </button>
-                    </th>
-                    <th class="px-3 py-2 border">
-                        <button wire:click="sortBy('nave_id')" class="w-full text-center hover:text-yellow-200">
-                            Nave
-                            @if($sort === 'nave_id')
-                                <span>{!! $order === 'asc' ? '▲' : '▼' !!}</span>
-                            @endif
-                        </button>
-                    </th>
+                    <x-tabla.encabezado-ordenable campo="pedido_producto_id" :sortActual="$sort" :orderActual="$order" texto="Código Línea" padding="px-3 py-2" />
+                    <x-tabla.encabezado-ordenable campo="albaran" :sortActual="$sort" :orderActual="$order" texto="Albarán" padding="px-3 py-2" />
+                    <x-tabla.encabezado-ordenable campo="codigo_sage" :sortActual="$sort" :orderActual="$order" texto="Código SAGE" padding="px-3 py-2" />
+                    <x-tabla.encabezado-ordenable campo="nave_id" :sortActual="$sort" :orderActual="$order" texto="Nave" padding="px-3 py-2" />
                     <th class="px-3 py-2 border">Producto Base</th>
-                    <th class="px-3 py-2 border">
-                        <button wire:click="sortBy('created_at')" class="w-full text-center hover:text-yellow-200">
-                            Fecha
-                            @if($sort === 'created_at')
-                                <span>{!! $order === 'asc' ? '▲' : '▼' !!}</span>
-                            @endif
-                        </button>
-                    </th>
+                    <x-tabla.encabezado-ordenable campo="created_at" :sortActual="$sort" :orderActual="$order" texto="Fecha" padding="px-3 py-2" />
                     <th class="px-3 py-2 border">Nº Productos</th>
                     <th class="px-3 py-2 border">Peso Total</th>
                     <th class="px-3 py-2 border">Estado</th>

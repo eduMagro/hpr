@@ -219,60 +219,8 @@ class ElementoController extends Controller
 
     public function index(Request $request)
     {
-        $query = Elemento::with([
-            'planilla',
-            'etiquetaRelacion',
-            'maquina',
-            'maquina_2',
-            'maquina_3',
-            'producto',
-            'producto2',
-            'producto3',
-        ])->orderBy('created_at', 'desc');
-
-        $query = $this->aplicarFiltros($query, $request);
-        $query = $this->aplicarOrdenamientoElementos($query, $request);
-        $totalPesoFiltrado = (clone $query)->sum('peso');
-        // Paginación
-        $perPage = $request->input('per_page', 10);
-        $elementos = $query->paginate($perPage)->appends($request->except('page'));
-
-        // Asegurar relación etiqueta
-        $elementos->getCollection()->transform(function ($elemento) {
-            $elemento->etiquetaRelacion = $elemento->etiquetaRelacion ?? (object) ['id' => '', 'nombre' => ''];
-            return $elemento;
-        });
-
-        // Todas las máquinas
-        $maquinas = Maquina::all();
-
-        // Definir columnas ordenables para la vista
-        $ordenables = [
-            'id' => $this->getOrdenamiento('id', 'ID'),
-            'codigo' => $this->getOrdenamiento('codigo', 'Código Elemento'),
-            'codigo_planilla' => $this->getOrdenamiento('codigo_planilla', 'Planilla'),
-            'etiqueta' => $this->getOrdenamiento('etiqueta', 'Etiqueta'),
-            'subetiqueta' => $this->getOrdenamiento('subetiqueta', 'SubEtiqueta'),
-            'maquina' => $this->getOrdenamiento('maquina', 'Maq. 1'),
-            'maquina_2' => $this->getOrdenamiento('maquina_2', 'Maq. 2'),
-            'maquina3' => $this->getOrdenamiento('maquina3', 'Maq. 3'),
-            'producto1' => $this->getOrdenamiento('producto1', 'M. Prima 1'),
-            'producto2' => $this->getOrdenamiento('producto2', 'M. Prima 2'),
-            'producto3' => $this->getOrdenamiento('producto3', 'M. Prima 3'),
-            'figura' => $this->getOrdenamiento('figura', 'Figura'),
-            'peso' => $this->getOrdenamiento('peso', 'Peso (kg)'),
-            'diametro' => $this->getOrdenamiento('diametro', 'Diámetro (mm)'),
-            'longitud' => $this->getOrdenamiento('longitud', 'Longitud (m)'),
-            'estado' => $this->getOrdenamiento('estado', 'Estado'),
-        ];
-
-        // ⚠️ Detectar si se está viendo elementos de una planilla específica
-        $planilla = null;
-        if ($request->has('planilla_id')) {
-            $planilla = Planilla::find($request->planilla_id);
-        }
-
-        return view('elementos.index', compact('elementos', 'maquinas', 'ordenables', 'totalPesoFiltrado', 'planilla'));
+        // Retornar vista Livewire
+        return view('elementos.index-livewire');
     }
     public function actualizarMaquina(Request $request, Elemento $elemento)
     {

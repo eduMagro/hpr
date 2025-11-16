@@ -196,28 +196,61 @@ class PlanillasTable extends Component
     public function aplicarOrdenamiento($query)
     {
         $columnasPermitidas = [
+            'id',
             'codigo',
             'seccion',
             'descripcion',
             'ensamblado',
             'comentario',
-            'peso_fabricado',
             'peso_total',
             'estado',
             'fecha_inicio',
             'fecha_finalizacion',
             'fecha_estimada_entrega',
             'revisada',
+            'revisada_at',
             'created_at',
         ];
 
+        // Ordenamiento especial para relaciones
+        if ($this->sort === 'codigo_cliente') {
+            return $query->join('clientes', 'planillas.cliente_id', '=', 'clientes.id')
+                        ->orderBy('clientes.codigo', $this->order)
+                        ->select('planillas.*');
+        }
+
+        if ($this->sort === 'cliente_id') {
+            return $query->join('clientes', 'planillas.cliente_id', '=', 'clientes.id')
+                        ->orderBy('clientes.empresa', $this->order)
+                        ->select('planillas.*');
+        }
+
+        if ($this->sort === 'codigo_obra') {
+            return $query->join('obras', 'planillas.obra_id', '=', 'obras.id')
+                        ->orderBy('obras.cod_obra', $this->order)
+                        ->select('planillas.*');
+        }
+
+        if ($this->sort === 'obra_id') {
+            return $query->join('obras', 'planillas.obra_id', '=', 'obras.id')
+                        ->orderBy('obras.obra', $this->order)
+                        ->select('planillas.*');
+        }
+
+        if ($this->sort === 'usuario_id') {
+            return $query->join('users', 'planillas.users_id', '=', 'users.id')
+                        ->orderBy('users.name', $this->order)
+                        ->select('planillas.*');
+        }
+
+        if ($this->sort === 'revisor_id') {
+            return $query->leftJoin('users as revisores', 'planillas.revisada_por_id', '=', 'revisores.id')
+                        ->orderBy('revisores.name', $this->order)
+                        ->select('planillas.*');
+        }
+
         $sortBy = in_array($this->sort, $columnasPermitidas) ? $this->sort : 'created_at';
         $order = strtolower($this->order) === 'asc' ? 'asc' : 'desc';
-
-        // Mapear fecha_importacion a created_at
-        if ($sortBy === 'fecha_importacion') {
-            $sortBy = 'created_at';
-        }
 
         return $query->orderBy($sortBy, $order);
     }
@@ -308,6 +341,36 @@ class PlanillasTable extends Component
         }
         if ($this->revisada !== '') {
             $filtros[] = "<strong>Revisada:</strong> " . ($this->revisada ? 'Sí' : 'No');
+        }
+
+        // Añadir ordenamiento
+        if (!empty($this->sort)) {
+            $nombresCampos = [
+                'id' => 'ID',
+                'codigo' => 'Código',
+                'codigo_cliente' => 'Código Cliente',
+                'cliente_id' => 'Cliente',
+                'codigo_obra' => 'Código Obra',
+                'obra_id' => 'Obra',
+                'seccion' => 'Sección',
+                'descripcion' => 'Descripción',
+                'ensamblado' => 'Ensamblado',
+                'comentario' => 'Comentario',
+                'peso_total' => 'Peso Total',
+                'estado' => 'Estado',
+                'fecha_inicio' => 'Fecha Inicio',
+                'fecha_finalizacion' => 'Fecha Finalización',
+                'created_at' => 'Fecha Importación',
+                'fecha_estimada_entrega' => 'Fecha Entrega',
+                'usuario_id' => 'Usuario',
+                'revisada' => 'Revisada',
+                'revisor_id' => 'Revisada Por',
+                'revisada_at' => 'Fecha Revisión',
+            ];
+
+            $nombreCampo = $nombresCampos[$this->sort] ?? ucfirst($this->sort);
+            $direccion = $this->order === 'asc' ? '↑ Ascendente' : '↓ Descendente';
+            $filtros[] = "<strong>Ordenado por:</strong> {$nombreCampo} ({$direccion})";
         }
 
         return $filtros;

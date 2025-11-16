@@ -284,16 +284,16 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
         ->name('paquetes.getElementos');
 
     // 🔥 RUTA MIGRADA A LIVEWIRE - index ahora usa Livewire (sin recargar página)
-    Route::get('/etiquetas', App\Livewire\EtiquetasTable::class)->name('etiquetas.index');
+    Route::get('/etiquetas', [EtiquetaController::class, 'index'])->name('etiquetas.index');
 
     // Resto de rutas del resource (show, create, edit, update, destroy)
     Route::resource('etiquetas', EtiquetaController::class)->except(['index']);
 
     // 🔥 RUTA MIGRADA A LIVEWIRE - index ahora usa Livewire (sin recargar página)
-    Route::get('/elementos', App\Livewire\ElementosTable::class)->name('elementos.index');
+    Route::get('/elementos', [ElementoController::class, 'index'])->name('elementos.index');
 
     // Resto de rutas del resource (show, create, edit, update, destroy)
-    Route::resource('elementos', ElementoController::class);
+    Route::resource('elementos', ElementoController::class)->except(['index']);
 
     // RUTAS PROVISIONALES
     Route::post('/etiquetas/fabricar-lote', [EtiquetaController::class, 'fabricarLote'])->name('maquinas.fabricarLote');

@@ -290,8 +290,6 @@
             </div>
         </div>
 
-        <!-- Paginación -->
-        <x-tabla.paginacion :paginador="$registrosProductos" />
         <script>
             document.addEventListener('DOMContentLoaded', function() {
                 // Delegación de eventos para botones "Consumir"

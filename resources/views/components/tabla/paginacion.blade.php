@@ -1,30 +1,24 @@
 @props(['paginador', 'perPageName' => 'per_page'])
 
-{{-- SIEMPRE visible: selector de cantidad por página --}}
 <div class="m-4 text-center">
     <form method="GET" id="perPageForm" class="inline-flex items-center justify-center gap-2 text-sm">
         <label for="perPage" class="text-gray-600">Mostrar</label>
-        <select name="{{ $perPageName }}" id="perPage" class="border border-gray-300 rounded px-2 py-1 text-sm"
-            onchange="document.getElementById('perPageForm').submit()">
+        <select name="{{ $perPageName }}" id="perPage" class="border border-gray-300 rounded px-2 py-1 text-sm" onchange="document.getElementById('perPageForm').submit()">
             @foreach ([10, 25, 50, 100] as $option)
                 <option value="{{ $option }}" @selected(request($perPageName, $paginador->perPage()) == $option)>
                     {{ $option }}
                 </option>
             @endforeach
         </select>
-
         <span class="text-gray-600">por página</span>
-
-        {{-- Mantener otros filtros --}}
         @foreach (request()->except($perPageName, $paginador->getPageName()) as $key => $value)
             <input type="hidden" name="{{ $key }}" value="{{ $value }}">
         @endforeach
     </form>
 </div>
+
 @if ($paginador->hasPages())
     <div class="mt-6 space-y-3 text-center">
-
-        {{-- Texto resumen --}}
         <div class="text-sm text-gray-600">
             Mostrando
             <span class="font-semibold">{{ $paginador->firstItem() }}</span>
@@ -35,70 +29,61 @@
             resultados
         </div>
 
-        {{-- Paginación --}}
         <div class="flex justify-center">
-            <div class="inline-flex flex-wrap gap-1 bg-white px-2 py-1 mb-6 rounded-md shadow-sm">
-                {{-- Botón anterior --}}
-                @if ($paginador->onFirstPage())
-                    <span class="px-3 py-1 text-xs text-gray-400 cursor-not-allowed">
-                        << </span>
-                        @else
-                            <a href="{{ $paginador->previousPageUrl() }}"
-                                class="px-3 py-1 text-xs text-blue-600 hover:bg-blue-100 rounded transition">
-                                << </a>
+            <div class="inline-flex items-center gap-1 bg-white px-2 py-1 mb-6 rounded-md shadow-sm">
+                @if ($paginador->currentPage() > 2)
+                    <a href="{{ $paginador->url(1) }}" class="px-2 py-1 text-xs text-blue-600 hover:bg-blue-100 rounded transition" title="Primera pagina">
+                        &laquo;&laquo;
+                    </a>
                 @endif
 
-                {{-- Lógica de paginación con recorte --}}
+                @if ($paginador->onFirstPage())
+                    <span class="px-2 py-1 text-xs text-gray-400 cursor-not-allowed">&laquo;</span>
+                @else
+                    <a href="{{ $paginador->previousPageUrl() }}" class="px-2 py-1 text-xs text-blue-600 hover:bg-blue-100 rounded transition">
+                        &laquo;
+                    </a>
+                @endif
+
                 @php
                     $current = $paginador->currentPage();
                     $last = $paginador->lastPage();
-                    $range = 2; // número de páginas antes y después del actual
-                    $pages = [];
-
-                    // Páginas siempre visibles
-                    $pages[] = 1;
-
-                    for ($i = $current - $range; $i <= $current + $range; $i++) {
-                        if ($i > 1 && $i < $last) {
-                            $pages[] = $i;
-                        }
-                    }
-
-                    if ($last > 1) {
-                        $pages[] = $last;
-                    }
-
-                    $pages = array_unique($pages);
-                    sort($pages);
+                    $start = max($current - 1, 1);
+                    $end = min($current + 1, $last);
                 @endphp
 
-                @php $prevPage = 0; @endphp
-                @foreach ($pages as $page)
-                    @if ($prevPage && $page > $prevPage + 1)
-                        <span class="px-2 text-xs text-gray-400">…</span>
+                @if ($start > 1)
+                    <a href="{{ $paginador->url(1) }}" class="px-2.5 py-1 text-xs text-blue-600 hover:bg-blue-100 rounded transition">1</a>
+                    @if ($start > 2)
+                        <span class="px-1 text-xs text-gray-400 select-none">&hellip;</span>
                     @endif
+                @endif
 
+                @for ($page = $start; $page <= $end; $page++)
                     @if ($page == $current)
-                        <span
-                            class="px-3 py-1 text-xs font-bold bg-blue-600 text-white rounded shadow border border-blue-700">
-                            {{ $page }}
-                        </span>
+                        <span class="px-2.5 py-1 text-xs font-bold bg-blue-600 text-white rounded shadow border border-blue-700">{{ $page }}</span>
                     @else
-                        <a href="{{ $paginador->url($page) }}"
-                            class="px-3 py-1 text-xs text-blue-600 hover:bg-blue-100 rounded transition">
-                            {{ $page }}
-                        </a>
+                        <a href="{{ $paginador->url($page) }}" class="px-2.5 py-1 text-xs text-blue-600 hover:bg-blue-100 rounded transition">{{ $page }}</a>
                     @endif
+                @endfor
 
-                    @php $prevPage = $page; @endphp
-                @endforeach
+                @if ($end < $paginador->lastPage())
+                    @if ($end < $paginador->lastPage() - 1)
+                        <span class="px-1 text-xs text-gray-400 select-none">&hellip;</span>
+                    @endif
+                    <a href="{{ $paginador->url($paginador->lastPage()) }}" class="px-2.5 py-1 text-xs text-blue-600 hover:bg-blue-100 rounded transition">{{ $paginador->lastPage() }}</a>
+                @endif
 
-                {{-- Botón siguiente --}}
                 @if ($paginador->hasMorePages())
-                    <a href="{{ $paginador->nextPageUrl() }}"
-                        class="px-3 py-1 text-xs text-blue-600 hover:bg-blue-100 rounded transition">>></a>
+                    <a href="{{ $paginador->nextPageUrl() }}" class="px-2 py-1 text-xs text-blue-600 hover:bg-blue-100 rounded transition">&raquo;</a>
                 @else
-                    <span class="px-3 py-1 text-xs text-gray-400 cursor-not-allowed">>></span>
+                    <span class="px-2 py-1 text-xs text-gray-400 cursor-not-allowed">&raquo;</span>
+                @endif
+
+                @if ($paginador->currentPage() < $paginador->lastPage() - 1)
+                    <a href="{{ $paginador->url($paginador->lastPage()) }}" class="px-2 py-1 text-xs text-blue-600 hover:bg-blue-100 rounded transition" title="Ultima pagina">
+                        &raquo;&raquo;
+                    </a>
                 @endif
             </div>
         </div>

@@ -4,6 +4,7 @@ namespace App\Livewire;
 
 use Livewire\Component;
 use Livewire\WithPagination;
+use Livewire\Attributes\Url;
 use App\Models\Entrada;
 use App\Models\Fabricante;
 use App\Models\Distribuidor;
@@ -12,36 +13,51 @@ class EntradasTable extends Component
 {
     use WithPagination;
 
+    protected $paginationTheme = 'tailwind';
+
     // Filtros
+    #[Url(keep: true)]
     public $pedido_codigo = '';
+
+    #[Url(keep: true)]
     public $nave_id = '';
+
+    #[Url(keep: true)]
     public $fabricante_id = [];
+
+    #[Url(keep: true)]
     public $distribuidor_id = [];
+
+    #[Url(keep: true)]
     public $usuario = '';
+
+    #[Url(keep: true)]
     public $producto_tipo = '';
+
+    #[Url(keep: true)]
     public $producto_diametro = '';
+
+    #[Url(keep: true)]
     public $producto_longitud = '';
 
     // Ordenamiento
+    #[Url(keep: true)]
     public $sort = 'created_at';
+
+    #[Url(keep: true)]
     public $order = 'desc';
 
     // Paginación
+    #[Url(keep: true)]
     public $perPage = 10;
 
-    protected $queryString = [
-        'pedido_codigo' => ['except' => ''],
-        'nave_id' => ['except' => ''],
-        'fabricante_id' => ['except' => []],
-        'distribuidor_id' => ['except' => []],
-        'usuario' => ['except' => ''],
-        'producto_tipo' => ['except' => ''],
-        'producto_diametro' => ['except' => ''],
-        'producto_longitud' => ['except' => ''],
-        'sort' => ['except' => 'created_at'],
-        'order' => ['except' => 'desc'],
-        'perPage' => ['except' => 10],
-    ];
+    // Cuando cambia cualquier filtro, resetear a la página 1
+    public function updated($property)
+    {
+        if ($property !== 'perPage') {
+            $this->resetPage();
+        }
+    }
 
     public function sortBy($column)
     {
@@ -51,51 +67,6 @@ class EntradasTable extends Component
             $this->sort = $column;
             $this->order = 'asc';
         }
-    }
-
-    public function updatingPerPage()
-    {
-        $this->resetPage();
-    }
-
-    public function updatingPedidoCodigo()
-    {
-        $this->resetPage();
-    }
-
-    public function updatingNaveId()
-    {
-        $this->resetPage();
-    }
-
-    public function updatingFabricanteId()
-    {
-        $this->resetPage();
-    }
-
-    public function updatingDistribuidorId()
-    {
-        $this->resetPage();
-    }
-
-    public function updatingUsuario()
-    {
-        $this->resetPage();
-    }
-
-    public function updatingProductoTipo()
-    {
-        $this->resetPage();
-    }
-
-    public function updatingProductoDiametro()
-    {
-        $this->resetPage();
-    }
-
-    public function updatingProductoLongitud()
-    {
-        $this->resetPage();
     }
 
     public function limpiarFiltros()
@@ -198,18 +169,19 @@ class EntradasTable extends Component
             $filtros[] = 'Usuario: <strong>' . e($this->usuario) . '</strong>';
         }
 
-        if ($this->sort) {
-            $map = [
-                'pedido_producto_id' => 'ID Línea Pedido',
-                'albaran'            => 'Albarán',
-                'codigo_sage'        => 'Código SAGE',
-                'nave_id'            => 'Nave',
-                'pedido_codigo'      => 'Pedido Compra',
-                'usuario'            => 'Usuario',
-                'created_at'         => 'Fecha',
+        // Añadir ordenamiento
+        if (!empty($this->sort)) {
+            $nombresCampos = [
+                'pedido_producto_id' => 'Código Línea',
+                'albaran' => 'Albarán',
+                'codigo_sage' => 'Código SAGE',
+                'nave_id' => 'Nave',
+                'created_at' => 'Fecha',
             ];
-            $orden = $this->order === 'asc' ? 'ascendente' : 'descendente';
-            $filtros[] = 'Ordenado por <strong>' . ($map[$this->sort] ?? $this->sort) . '</strong> en orden <strong>' . $orden . '</strong>';
+
+            $nombreCampo = $nombresCampos[$this->sort] ?? ucfirst($this->sort);
+            $direccion = $this->order === 'asc' ? '↑ Ascendente' : '↓ Descendente';
+            $filtros[] = "<strong>Ordenado por:</strong> {$nombreCampo} ({$direccion})";
         }
 
         if ($this->perPage != 10) {

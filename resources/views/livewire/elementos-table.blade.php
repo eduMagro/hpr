@@ -50,56 +50,28 @@
         @endif
 
         <!-- Tabla de elementos con scroll horizontal -->
-        <div class="w-full overflow-x-auto bg-white shadow-lg rounded-lg" wire:ignore.self>
+        <div class="w-full overflow-x-auto bg-white shadow-lg rounded-lg">
             <table class="w-full min-w-[1000px] border border-gray-300 rounded-lg">
                 <thead class="bg-blue-500 text-white text-10">
                     <tr class="text-center text-xs uppercase">
-                        <th class="p-2 border cursor-pointer" wire:click="sortBy('id')">
-                            ID @if ($sort === 'id')
-                                {{ $order === 'asc' ? '▲' : '▼' }}
-                            @endif
-                        </th>
-                        <th class="p-2 border cursor-pointer" wire:click="sortBy('codigo')">
-                            Código @if ($sort === 'codigo')
-                                {{ $order === 'asc' ? '▲' : '▼' }}
-                            @endif
-                        </th>
-                        <th class="p-2 border">Planilla</th>
-                        <th class="p-2 border">Etiqueta</th>
-                        <th class="p-2 border">Subetiqueta</th>
-                        <th class="p-2 border">Dimensiones</th>
-                        <th class="p-2 border cursor-pointer" wire:click="sortBy('diametro')">
-                            Diámetro @if ($sort === 'diametro')
-                                {{ $order === 'asc' ? '▲' : '▼' }}
-                            @endif
-                        </th>
-                        <th class="p-2 border">Barras</th>
-                        <th class="p-2 border">Maq. 1</th>
-                        <th class="p-2 border">Maq. 2</th>
-                        <th class="p-2 border">Maq. 3</th>
-                        <th class="p-2 border">M. Prima 1</th>
-                        <th class="p-2 border">M. Prima 2</th>
-                        <th class="p-2 border">M. Prima 3</th>
-                        <th class="p-2 border cursor-pointer" wire:click="sortBy('figura')">
-                            Figura @if ($sort === 'figura')
-                                {{ $order === 'asc' ? '▲' : '▼' }}
-                            @endif
-                        </th>
-                        <th class="p-2 border cursor-pointer" wire:click="sortBy('peso')">
-                            Peso (kg) @if ($sort === 'peso')
-                                {{ $order === 'asc' ? '▲' : '▼' }}
-                            @endif
-                        </th>
-                        <th class="p-2 border cursor-pointer" wire:click="sortBy('longitud')">
-                            Longitud (m) @if ($sort === 'longitud')
-                                {{ $order === 'asc' ? '▲' : '▼' }}
-                            @endif
-                        </th>
-                        <th class="p-2 border cursor-pointer" wire:click="sortBy('estado')">
-                            Estado @if ($sort === 'estado')
-                                {{ $order === 'asc' ? '▲' : '▼' }}
-                            @endif
-                        </th>
+                        <x-tabla.encabezado-ordenable campo="id" :sortActual="$sort" :orderActual="$order" texto="ID" />
+                        <x-tabla.encabezado-ordenable campo="codigo" :sortActual="$sort" :orderActual="$order" texto="Código" />
+                        <x-tabla.encabezado-ordenable campo="codigo_planilla" :sortActual="$sort" :orderActual="$order" texto="Planilla" />
+                        <x-tabla.encabezado-ordenable campo="etiqueta" :sortActual="$sort" :orderActual="$order" texto="Etiqueta" />
+                        <x-tabla.encabezado-ordenable campo="subetiqueta" :sortActual="$sort" :orderActual="$order" texto="Subetiqueta" />
+                        <x-tabla.encabezado-ordenable campo="dimensiones" :sortActual="$sort" :orderActual="$order" texto="Dimensiones" />
+                        <x-tabla.encabezado-ordenable campo="diametro" :sortActual="$sort" :orderActual="$order" texto="Diámetro" />
+                        <x-tabla.encabezado-ordenable campo="barras" :sortActual="$sort" :orderActual="$order" texto="Barras" />
+                        <x-tabla.encabezado-ordenable campo="maquina" :sortActual="$sort" :orderActual="$order" texto="Maq. 1" />
+                        <x-tabla.encabezado-ordenable campo="maquina_2" :sortActual="$sort" :orderActual="$order" texto="Maq. 2" />
+                        <x-tabla.encabezado-ordenable campo="maquina3" :sortActual="$sort" :orderActual="$order" texto="Maq. 3" />
+                        <x-tabla.encabezado-ordenable campo="producto1" :sortActual="$sort" :orderActual="$order" texto="M. Prima 1" />
+                        <x-tabla.encabezado-ordenable campo="producto2" :sortActual="$sort" :orderActual="$order" texto="M. Prima 2" />
+                        <x-tabla.encabezado-ordenable campo="producto3" :sortActual="$sort" :orderActual="$order" texto="M. Prima 3" />
+                        <x-tabla.encabezado-ordenable campo="figura" :sortActual="$sort" :orderActual="$order" texto="Figura" />
+                        <x-tabla.encabezado-ordenable campo="peso" :sortActual="$sort" :orderActual="$order" texto="Peso (kg)" />
+                        <x-tabla.encabezado-ordenable campo="longitud" :sortActual="$sort" :orderActual="$order" texto="Longitud (m)" />
+                        <x-tabla.encabezado-ordenable campo="estado" :sortActual="$sort" :orderActual="$order" texto="Estado" />
                         <th class="p-2 border">Acciones</th>
                     </tr>
 
@@ -218,7 +190,9 @@
 
                 <tbody class="text-gray-700 text-sm">
                     @forelse ($elementos as $elemento)
-                        <tr tabindex="0" x-data="{
+                        <tr tabindex="0"
+                            wire:key="elemento-{{ $elemento->id }}"
+                            x-data="{
                             editando: false,
                             seleccionada: false,
                             elemento: @js($elemento),
@@ -245,7 +219,7 @@
                                 <template x-if="!editando">
                                     <span x-text="elemento.id"></span>
                                 </template>
-                                <input x-show="editando" type="text" x-model="elemento.id"
+                                <input x-show="editando" style="display: none;" type="text" x-model="elemento.id"
                                     class="form-control form-control-sm w-full text-xs border rounded px-1 py-0.5">
                             </td>
 
@@ -254,7 +228,7 @@
                                 <template x-if="!editando">
                                     <span x-text="elemento.codigo"></span>
                                 </template>
-                                <input x-show="editando" type="text" x-model="elemento.codigo"
+                                <input x-show="editando" style="display: none;" type="text" x-model="elemento.codigo"
                                     class="form-control form-control-sm w-full text-xs border rounded px-1 py-0.5">
                             </td>
 
@@ -292,7 +266,7 @@
                                 <template x-if="!editando">
                                     <span x-text="elemento.diametro_mm"></span>
                                 </template>
-                                <input x-show="editando" type="number" x-model="elemento.diametro"
+                                <input x-show="editando" style="display: none;" type="number" x-model="elemento.diametro"
                                     class="form-control form-control-sm w-full text-xs border rounded px-1 py-0.5">
                             </td>
 
@@ -301,7 +275,7 @@
                                 <template x-if="!editando">
                                     <span x-text="elemento.barras"></span>
                                 </template>
-                                <input x-show="editando" type="number" x-model="elemento.barras"
+                                <input x-show="editando" style="display: none;" type="number" x-model="elemento.barras"
                                     class="form-control form-control-sm w-full text-xs border rounded px-1 py-0.5">
                             </td>
 
@@ -319,19 +293,19 @@
                                             </option>
                                         @endforeach
                                     </select>
-                                    <a href="#"
-                                        class="w-6 h-6 bg-blue-100 text-blue-600 rounded hover:bg-blue-200 flex items-center justify-center abrir-modal-dibujo flex-shrink-0"
+                                    <div
+                                        class="w-6 h-6 bg-blue-100 text-blue-600 rounded hover:bg-blue-200 flex items-center justify-center abrir-modal-dibujo flex-shrink-0 cursor-pointer"
                                         data-id="{{ $elemento->id }}" data-codigo="{{ $elemento->codigo }}"
                                         data-dimensiones="{{ $elemento->dimensiones }}"
-                                        data-peso="{{ $elemento->peso_kg }}" title="Ver figura del elemento">
-                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none"
+                                        data-peso="{{ $elemento->peso_kg }}" title="Ver figura del elemento (solo hover)">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 pointer-events-none" fill="none"
                                             viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                                             <path stroke-linecap="round" stroke-linejoin="round"
                                                 d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                                             <path stroke-linecap="round" stroke-linejoin="round"
                                                 d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                                         </svg>
-                                    </a>
+                                    </div>
                                 </div>
                             </td>
 
@@ -369,7 +343,7 @@
                             <td class="px-2 py-2 text-center border">
                                 <a href="{{ route('productos.index', ['id' => $elemento->producto_id]) }}"
                                     class="text-blue-500 hover:underline">
-                                    {{ $elemento->producto_id ?? 'N/A' }}
+                                    {{ $elemento->producto?->codigo ?? 'N/A' }}
                                 </a>
                             </td>
 
@@ -377,7 +351,7 @@
                             <td class="px-2 py-2 text-center border">
                                 <a href="{{ route('productos.index', ['id' => $elemento->producto_id_2]) }}"
                                     class="text-blue-500 hover:underline">
-                                    {{ $elemento->producto_id_2 ?? 'N/A' }}
+                                    {{ $elemento->producto2?->codigo ?? 'N/A' }}
                                 </a>
                             </td>
 
@@ -385,7 +359,7 @@
                             <td class="px-2 py-2 text-center border">
                                 <a href="{{ route('productos.index', ['id' => $elemento->producto_id_3]) }}"
                                     class="text-blue-500 hover:underline">
-                                    {{ $elemento->producto_id_3 ?? 'N/A' }}
+                                    {{ $elemento->producto3?->codigo ?? 'N/A' }}
                                 </a>
                             </td>
 
@@ -394,7 +368,7 @@
                                 <template x-if="!editando">
                                     <span x-text="elemento.figura"></span>
                                 </template>
-                                <input x-show="editando" type="text" x-model="elemento.figura"
+                                <input x-show="editando" style="display: none;" type="text" x-model="elemento.figura"
                                     class="form-control form-control-sm w-full text-xs border rounded px-1 py-0.5">
                             </td>
 
@@ -403,7 +377,7 @@
                                 <template x-if="!editando">
                                     <span x-text="elemento.peso_kg"></span>
                                 </template>
-                                <input x-show="editando" type="number" x-model="elemento.peso"
+                                <input x-show="editando" style="display: none;" type="number" x-model="elemento.peso"
                                     class="form-control form-control-sm w-full text-xs border rounded px-1 py-0.5">
                             </td>
 
@@ -412,7 +386,7 @@
                                 <template x-if="!editando">
                                     <span x-text="elemento.longitud_m"></span>
                                 </template>
-                                <input x-show="editando" type="number" x-model="elemento.longitud"
+                                <input x-show="editando" style="display: none;" type="number" x-model="elemento.longitud"
                                     class="form-control form-control-sm w-full text-xs border rounded px-1 py-0.5">
                             </td>
 
@@ -421,7 +395,7 @@
                                 <template x-if="!editando">
                                     <span x-text="elemento.estado"></span>
                                 </template>
-                                <select x-show="editando" x-model="elemento.estado"
+                                <select x-show="editando" style="display: none;" x-model="elemento.estado"
                                     class="form-select w-full text-xs border rounded px-1 py-0.5">
                                     <option value="pendiente">Pendiente</option>
                                     <option value="fabricando">Fabricando</option>
@@ -433,7 +407,7 @@
                             <td class="px-1 py-2 border text-xs font-bold">
                                 <div class="flex items-center space-x-2 justify-center">
                                     <!-- Mostrar solo en modo edición -->
-                                    <button x-show="editando" @click="guardarCambios(elemento); editando = false"
+                                    <button x-show="editando" style="display: none;" @click="guardarCambios(elemento); editando = false"
                                         class="w-6 h-6 bg-green-100 text-green-600 rounded hover:bg-green-200 flex items-center justify-center"
                                         title="Guardar cambios">
                                         <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none"
@@ -442,7 +416,7 @@
                                                 d="M5 13l4 4L19 7" />
                                         </svg>
                                     </button>
-                                    <button x-show="editando"
+                                    <button x-show="editando" style="display: none;"
                                         @click="elemento = JSON.parse(JSON.stringify(original)); editando = false"
                                         class="w-6 h-6 bg-red-100 text-red-600 rounded hover:bg-red-200 flex items-center justify-center"
                                         title="Cancelar edición">
@@ -512,7 +486,9 @@
         </div>
 
         <!-- Paginación Livewire -->
-        ${{ $elementos->links() }}
+        <div class="mt-4">
+            {{ $elementos->links('vendor.livewire.tailwind') }}
+        </div>
 
         <!-- Modal de dibujo -->
         <div id="modal-dibujo" class="hidden fixed inset-0 flex justify-end items-center pr-96 pointer-events-none"
@@ -641,7 +617,11 @@
                 document.querySelectorAll(".abrir-modal-dibujo").forEach(ojo => {
                     ojo.addEventListener("mouseenter", () => abrirModal(ojo));
                     ojo.addEventListener("mouseleave", cerrarModal);
-                    ojo.addEventListener("click", e => e.preventDefault());
+                    ojo.addEventListener("click", (e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        return false;
+                    });
                 });
 
                 if (modal) {
@@ -664,7 +644,11 @@
                     document.querySelectorAll(".abrir-modal-dibujo").forEach(ojo => {
                         ojo.addEventListener("mouseenter", () => abrirModal(ojo));
                         ojo.addEventListener("mouseleave", cerrarModal);
-                        ojo.addEventListener("click", e => e.preventDefault());
+                        ojo.addEventListener("click", (e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            return false;
+                        });
                     });
                 });
             });

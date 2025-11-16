@@ -13,55 +13,58 @@ class EtiquetasTable extends Component
 {
     use WithPagination;
 
+    protected $paginationTheme = 'tailwind';
+
     // Filtros - usando #[Url] para mantenerlos en la URL
-    #[Url]
+    #[Url(keep: true)]
     public $etiqueta_id = '';
 
-    #[Url]
+    #[Url(keep: true)]
     public $codigo = '';
 
-    #[Url]
+    #[Url(keep: true)]
     public $etiqueta_sub_id = '';
 
-    #[Url]
+    #[Url(keep: true)]
     public $codigo_planilla = '';
 
-    #[Url]
+    #[Url(keep: true)]
     public $paquete = '';
 
-    #[Url]
+    #[Url(keep: true)]
     public $numero_etiqueta = '';
 
-    #[Url]
+    #[Url(keep: true)]
     public $nombre = '';
 
-    #[Url]
+    #[Url(keep: true)]
     public $inicio_fabricacion = '';
 
-    #[Url]
+    #[Url(keep: true)]
     public $final_fabricacion = '';
 
-    #[Url]
+    #[Url(keep: true)]
     public $inicio_ensamblado = '';
 
-    #[Url]
+    #[Url(keep: true)]
     public $final_ensamblado = '';
 
-    #[Url]
+    #[Url(keep: true)]
     public $inicio_soldadura = '';
 
-    #[Url]
+    #[Url(keep: true)]
     public $final_soldadura = '';
 
-    #[Url]
+    #[Url(keep: true)]
     public $estado = '';
 
-    #[Url]
+    #[Url(keep: true)]
     public $sort = '';
 
-    #[Url]
+    #[Url(keep: true)]
     public $order = 'desc';
 
+    #[Url(keep: true)]
     public $perPage = 10;
 
     // Cuando cambia cualquier filtro, resetear a la página 1
@@ -175,6 +178,12 @@ class EtiquetasTable extends Component
             'nombre'          => 'etiquetas.nombre',
             'peso'            => 'etiquetas.peso',
             'estado'          => 'etiquetas.estado',
+            'inicio_fabricacion' => 'etiquetas.fecha_inicio',
+            'final_fabricacion' => 'etiquetas.fecha_finalizacion',
+            'inicio_ensamblado' => 'etiquetas.fecha_inicio_ensamblado',
+            'final_ensamblado' => 'etiquetas.fecha_finalizacion_ensamblado',
+            'inicio_soldadura' => 'etiquetas.fecha_inicio_soldadura',
+            'final_soldadura' => 'etiquetas.fecha_finalizacion_soldadura',
         ];
 
         if (!empty($this->sort) && isset($map[$this->sort])) {
@@ -262,6 +271,31 @@ class EtiquetasTable extends Component
             $filtros[] = "<strong>Estado:</strong> " . ucfirst($this->estado);
         }
 
+        // Añadir ordenamiento
+        if (!empty($this->sort)) {
+            $nombresCampos = [
+                'id' => 'ID',
+                'codigo' => 'Código',
+                'etiqueta_sub_id' => 'Código SubEtiqueta',
+                'codigo_planilla' => 'Planilla',
+                'paquete' => 'Paquete',
+                'numero_etiqueta' => 'Número de Etiqueta',
+                'nombre' => 'Nombre',
+                'peso' => 'Peso',
+                'inicio_fabricacion' => 'Inicio Fabricación',
+                'final_fabricacion' => 'Final Fabricación',
+                'inicio_ensamblado' => 'Inicio Ensamblado',
+                'final_ensamblado' => 'Final Ensamblado',
+                'inicio_soldadura' => 'Inicio Soldadura',
+                'final_soldadura' => 'Final Soldadura',
+                'estado' => 'Estado',
+            ];
+
+            $nombreCampo = $nombresCampos[$this->sort] ?? ucfirst($this->sort);
+            $direccion = $this->order === 'asc' ? '↑ Ascendente' : '↓ Descendente';
+            $filtros[] = "<strong>Ordenado por:</strong> {$nombreCampo} ({$direccion})";
+        }
+
         return $filtros;
     }
 
@@ -296,6 +330,6 @@ class EtiquetasTable extends Component
             'etiquetas' => $etiquetas,
             'etiquetasJson' => $etiquetasJson,
             'filtrosActivos' => $this->getFiltrosActivos(),
-        ])->layout('layouts.app');
+        ]);
     }
 }
