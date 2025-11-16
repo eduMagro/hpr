@@ -275,62 +275,50 @@
    OPTIMIZACIONES MÓVILES - MEJORADAS
    ============================================ */
         @media (max-width: 768px) {
-
-            /* Contenedor alineado más arriba - CASI SIN PADDING */
+            /* Contenedor fijo en la parte superior */
             .swal2-container {
                 align-items: flex-start !important;
-                padding: 0px 10px 20px 10px !important;
+                padding: 5px 10px 20px 10px !important;
                 display: flex !important;
                 justify-content: center !important;
             }
 
-            /* Modal sin altura fija - se ajusta al contenido */
+            /* Modal posicionado arriba */
             .swal2-popup {
-                position: relative !important;
-                top: auto !important;
-                left: auto !important;
-                transform: none !important;
+                position: fixed !important;
+                top: 10px !important;
+                left: 50% !important;
+                transform: translateX(-50%) !important;
                 width: calc(100vw - 20px) !important;
                 max-width: 500px !important;
-                margin: -80px auto 0 auto !important;
-                /* ✅ Aumentado a -80px para subir mucho más */
-                padding: 20px 15px !important;
-                max-height: none !important;
-                overflow-y: visible !important;
+                margin: 0 !important;
+                padding: 15px 12px !important;
+                max-height: calc(100vh - 20px) !important;
+                overflow-y: auto !important;
             }
 
-            /* Contenido sin scroll - altura automática */
+            /* Contenido compacto */
             .swal2-html-container {
-                margin: 10px 0 !important;
+                margin: 8px 0 !important;
                 padding: 0 !important;
                 font-size: 15px !important;
                 max-height: none !important;
-                overflow-y: visible !important;
-                -webkit-overflow-scrolling: touch !important;
             }
 
-            /* Título más compacto */
             .swal2-title {
-                font-size: 18px !important;
-                padding: 5px 0 !important;
-                margin: 0 0 10px 0 !important;
+                font-size: 17px !important;
+                padding: 3px 0 !important;
+                margin: 0 0 8px 0 !important;
             }
 
-            /* Botones compactos pero visibles */
-            .swal2-actions {
-                margin: 15px 0 0 0 !important;
-                padding: 0 !important;
-                gap: 8px !important;
-            }
-
-            /* Inputs más compactos */
+            /* Inputs con font-size 16px para evitar zoom automático en iOS */
             .swal2-input,
             .swal2-select {
                 font-size: 16px !important;
-                padding: 10px !important;
+                padding: 8px !important;
                 height: auto !important;
                 min-height: 44px !important;
-                margin: 8px 0 !important;
+                margin: 6px 0 !important;
             }
 
             /* Botones táctiles */
@@ -343,14 +331,20 @@
                 min-width: 44px !important;
             }
 
-            /* Botones personalizados */
+            /* Botones compactos */
+            .swal2-actions {
+                margin: 12px 0 5px 0 !important;
+                padding: 0 !important;
+                gap: 8px !important;
+            }
+
             .swal2-confirm-custom,
             .swal2-cancel-custom,
             .swal2-deny-custom {
                 flex: 1 !important;
                 min-width: 90px !important;
-                padding: 12px 14px !important;
-                font-size: 15px !important;
+                padding: 10px 12px !important;
+                font-size: 14px !important;
             }
 
             /* Botón X */
@@ -364,26 +358,25 @@
 
             /* Indicador de pasos compacto */
             .step-indicator {
-                padding: 8px;
-                gap: 8px;
-                margin-bottom: 12px;
+                padding: 6px;
+                gap: 6px;
+                margin-bottom: 10px;
             }
 
             .step-dot {
-                width: 10px;
-                height: 10px;
+                width: 8px;
+                height: 8px;
             }
 
             .step-dot.active {
                 transform: scale(1.2);
             }
 
-            /* Resumen items */
+            /* Resumen items compacto */
             .resumen-item {
-                padding: 12px;
-                margin-bottom: 8px;
-                font-size: 14px;
-                flex-wrap: wrap;
+                padding: 8px;
+                margin-bottom: 6px;
+                font-size: 13px;
             }
 
             /* Checkbox */
@@ -403,48 +396,35 @@
                 display: none !important;
             }
 
-            /* PERMITIR SCROLL DEL BODY cuando sea necesario */
-            body {
-                overflow: auto !important;
-                position: relative !important;
-                width: auto !important;
+            /* Body sin scroll */
+            body.swal2-shown {
+                overflow: hidden !important;
             }
         }
 
         /* Dispositivos muy pequeños */
         @media (max-width: 375px) {
-            .swal2-container {
-                padding: 0px 8px 20px 8px !important;
-            }
-
             .swal2-popup {
                 width: calc(100vw - 16px) !important;
-                padding: 15px 12px !important;
-                margin: -80px auto 0 auto !important;
-                /* ✅ Aumentado a -80px */
+                padding: 12px 10px !important;
             }
         }
 
         /* Orientación horizontal */
         @media (max-height: 500px) and (orientation: landscape) {
-            .swal2-container {
-                padding: 0px 10px 10px 10px !important;
-            }
-
             .swal2-popup {
-                padding: 15px 10px !important;
-                margin: -60px auto 0 auto !important;
-                /* ✅ Aumentado a -60px */
+                padding: 12px 10px !important;
+                top: 5px !important;
             }
 
             .step-indicator {
-                padding: 6px;
-                margin-bottom: 8px;
+                padding: 4px;
+                margin-bottom: 6px;
             }
 
             .swal2-title {
                 font-size: 16px !important;
-                margin-bottom: 8px !important;
+                margin-bottom: 6px !important;
             }
         }
 
@@ -803,30 +783,35 @@
             async handleCancel() {
                 const confirmCancel = await Swal.fire({
                     title: '¿Cancelar recepción?',
-                    html: '<p>Se perderán todos los datos introducidos</p>' +
-                        '<p style="font-size: 13px; color: #6b7280; margin-top: 8px;">Los datos se guardarán temporalmente si recargas la página</p>',
+                    html: '<p>Los datos se guardarán para continuar después</p>' +
+                        '<p style="font-size: 13px; color: #6b7280; margin-top: 8px;">Podrás recuperarlos la próxima vez que recepciones</p>',
                     icon: 'warning',
                     showCancelButton: true,
-                    confirmButtonText: 'Sí, cancelar',
+                    confirmButtonText: 'Sí, cancelar y guardar',
                     cancelButtonText: 'Continuar recepción',
-                    confirmButtonColor: '#ef4444',
+                    confirmButtonColor: '#f59e0b',
                     customClass: {
                         container: this.isMobile ? 'swal2-mobile' : ''
                     }
                 });
 
                 if (confirmCancel.isConfirmed) {
-                    this.clearSavedData(); // ✅ Limpiar datos guardados
+                    // Guardar los datos antes de salir
+                    this.saveData();
+
                     await Swal.fire({
                         icon: 'info',
-                        title: 'Recepción cancelada',
-                        text: 'Los datos se han descartado',
+                        title: 'Datos guardados',
+                        text: 'Podrás continuar cuando vuelvas a recepcionar',
                         timer: 2000,
                         showConfirmButton: false,
                         customClass: {
                             container: this.isMobile ? 'swal2-mobile' : ''
                         }
                     });
+
+                    // Cerrar modal y volver
+                    window.history.back();
                 } else {
                     // Volver al paso actual
                     await this.showStep();

@@ -680,13 +680,11 @@ class ProfileController extends Controller
         // Obtener el usuario autenticado
         $authUser = auth()->user();
 
-        // 🔒 Verificar si el usuario autenticado es programador
-        if ($authUser->rol !== 'programador') {
-            return redirect()->route('dashboard')->with('abort', 'No tienes permiso para editar perfiles. Solo el departamento de programador puede editar usuarios.');
-        }
-
         // Buscar el usuario que se quiere editar
         $user = User::findOrFail($id);
+
+        // 🔒 Verificar si el usuario autenticado pertenece al departamento de programador (solo para nota informativa)
+        $esProgramador = $authUser->departamentos()->where('nombre', 'Programador')->exists();
         $sesiones = Session::where('user_id', $user->id)
             ->orderByDesc('last_activity')
             ->get()
@@ -705,19 +703,55 @@ class ProfileController extends Controller
     /**
      * Update the user's profile information.
      */
-    public function update(ProfileUpdateRequest $request, $id): RedirectResponse
+    public function update(Request $request, $id)
     {
         // Obtener el usuario autenticado
         $authUser = auth()->user();
 
-        // 🔒 Verificar si el usuario autenticado es programador
-        if ($authUser->rol !== 'programador') {
-            return redirect()->route('dashboard')->with('error', 'No tienes permiso para actualizar perfiles. Solo el departamento de programador puede editar DNI y email.');
-        }
+        // 🔒 Verificar si el usuario autenticado pertenece al departamento de programador
+        $esProgramador = $authUser->departamentos()->where('nombre', 'Programador')->exists();
 
         // Buscar el usuario que se quiere actualizar
         $user = User::findOrFail($id);
-        $user->fill($request->validated());
+
+        // 🔒 Si NO es programador y está intentando editar DNI o email, denegar
+        if (!$esProgramador && ($request->has('dni') || $request->has('email'))) {
+            if ($request->wantsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No tienes permiso para editar DNI y email. Solo el departamento de Programador puede editar estos campos.'
+                ], 403);
+            }
+            return redirect()->route('dashboard')->with('error', 'No tienes permiso para editar DNI y email. Solo el departamento de Programador puede editar estos campos.');
+        }
+
+        // Validación inline para peticiones JSON
+        if ($request->wantsJson()) {
+            $validated = $request->validate([
+                'name' => 'nullable|string|max:255',
+                'primer_apellido' => 'nullable|string|max:255',
+                'segundo_apellido' => 'nullable|string|max:255',
+                'email' => 'nullable|email|max:255|unique:users,email,' . $id,
+                'movil_personal' => 'nullable|string|max:20',
+                'movil_empresa' => 'nullable|string|max:20',
+                'numero_corto' => 'nullable|string|max:4',
+                'dni' => 'nullable|string|max:20',
+                'empresa_id' => 'nullable|exists:empresas,id',
+                'departamento_id' => 'nullable|exists:departamentos,id',
+                'rol_id' => 'nullable|exists:roles,id',
+                'grupo_trabajo_id' => 'nullable|exists:grupos_trabajo,id',
+                'tipo_trabajador' => 'nullable|string|in:fijo,eventual',
+                'hora_entrada' => 'nullable|date_format:H:i',
+                'hora_salida' => 'nullable|date_format:H:i',
+                'categoria' => 'nullable|string',
+            ]);
+
+            $user->fill($validated);
+        } else {
+            // Usar ProfileUpdateRequest para formularios normales
+            $validated = $request->validate((new ProfileUpdateRequest())->rules());
+            $user->fill($validated);
+        }
 
         if ($request->filled('email') && $user->isDirty('email')) {
             $user->email_verified_at = null;
@@ -728,6 +762,15 @@ class ProfileController extends Controller
         }
 
         $user->save();
+
+        // Responder según el tipo de petición
+        if ($request->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Usuario actualizado correctamente',
+                'user' => $user
+            ]);
+        }
 
         return Redirect::route('profile.edit', ['id' => $id])->with('status', 'profile-updated');
     }
@@ -770,9 +813,9 @@ class ProfileController extends Controller
     public function actualizarUsuario(Request $request, $id)
     {
         try {
-            // 🔒 Verificar que el usuario autenticado es programador para editar DNI y email
+            // 🔒 Verificar que el usuario autenticado pertenece al departamento de programador para editar DNI y email
             $authUser = auth()->user();
-            $isProgramador = $authUser->rol === 'programador';
+            $isProgramador = $authUser->departamentos()->where('nombre', 'Programador')->exists();
 
             // ✅ Validar los datos con mensajes personalizados
             $validationRules = [

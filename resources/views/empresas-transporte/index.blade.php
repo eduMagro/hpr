@@ -1,6 +1,6 @@
 <x-app-layout>
     <x-slot name="title">Transporte - {{ config('app.name') }}</x-slot>
-    <div x-data="{ openEmpresaModal: false, openCamionModal: false }" class="container mx-auto p-6">
+    <div x-data="{ openEmpresaModal: false }" class="container mx-auto p-6">
 
         <!-- Botón para abrir el modal de añadir empresa -->
         <div class="flex justify-between mb-6">
@@ -58,7 +58,7 @@
         <!-- Contenedor de empresas en grid -->
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             @foreach ($empresasTransporte as $empresa)
-                <div class="mb-8 p-4 bg-white rounded-lg shadow-sm">
+                <div x-data="{ openCamionModal: false }" class="mb-8 p-4 bg-white rounded-lg shadow-sm">
                     <h2 class="text-xl font-semibold text-blue-600 editable" contenteditable="true"
                         data-id="{{ $empresa->id }}" data-field="nombre">
                         {{ $empresa->nombre }}

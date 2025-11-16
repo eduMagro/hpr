@@ -19,7 +19,7 @@ return [
                     ]
                 ],
                 [
-                    'label' => 'Productos',
+                    'label' => 'Materia Prima',
                     'route' => 'productos.index',
                     'icon' => '🧱',
                     'actions' => [
@@ -389,7 +389,7 @@ return [
             'config' => [
                 'colorBase' => 'green',
                 'style' => 'tabs',
-                'mobileLabel' => 'Productos',
+                'mobileLabel' => 'Materia Prima',
             ]
         ],
 

@@ -351,4 +351,77 @@
     </div>
 
     <x-tabla.paginacion-livewire :paginador="$registrosUsuarios" />
+
+    <script>
+        function guardarCambios(usuario) {
+            fetch(`/users/${usuario.id}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+                    'Accept': 'application/json'
+                },
+                body: JSON.stringify({
+                    name: usuario.name,
+                    primer_apellido: usuario.primer_apellido,
+                    segundo_apellido: usuario.segundo_apellido,
+                    email: usuario.email,
+                    movil_personal: usuario.movil_personal,
+                    movil_empresa: usuario.movil_empresa,
+                    numero_corto: usuario.numero_corto,
+                    dni: usuario.dni,
+                    empresa_id: usuario.empresa_id,
+                    departamento_id: usuario.departamento_id,
+                    rol_id: usuario.rol_id,
+                    grupo_trabajo_id: usuario.grupo_trabajo_id,
+                    tipo_trabajador: usuario.tipo_trabajador,
+                    hora_entrada: usuario.hora_entrada,
+                    hora_salida: usuario.hora_salida
+                })
+            })
+            .then(async (response) => {
+                const contentType = response.headers.get('content-type');
+                let data = {};
+
+                if (contentType && contentType.includes('application/json')) {
+                    data = await response.json();
+                } else {
+                    const text = await response.text();
+                    throw new Error("Respuesta inesperada del servidor: " + text.slice(0, 200));
+                }
+
+                if (response.ok && data.success) {
+                    Swal.fire({
+                        icon: "success",
+                        title: "Usuario actualizado",
+                        text: "Los cambios se han guardado exitosamente.",
+                        timer: 2000,
+                        showConfirmButton: false
+                    }).then(() => {
+                        window.location.reload();
+                    });
+                } else {
+                    let errorMsg = data.message || "Error al actualizar el usuario.";
+                    if (data.errors) {
+                        errorMsg = Object.values(data.errors).flat().join("<br>");
+                    }
+                    Swal.fire({
+                        icon: "error",
+                        title: "Error al actualizar",
+                        html: errorMsg,
+                        confirmButtonText: "OK"
+                    });
+                }
+            })
+            .catch((err) => {
+                console.error("❌ Error en la solicitud fetch:", err);
+                Swal.fire({
+                    icon: "error",
+                    title: "Error de conexión",
+                    text: err.message || "No se pudo actualizar el usuario. Inténtalo nuevamente.",
+                    confirmButtonText: "OK"
+                });
+            });
+        }
+    </script>
 </div>

@@ -18,7 +18,7 @@
                         <span class="text-6xl">🧱</span>
                     </div>
                     <div class="p-4 text-center">
-                        <h3 class="font-bold text-gray-800 group-hover:text-green-600 transition">Productos</h3>
+                        <h3 class="font-bold text-gray-800 group-hover:text-green-600 transition">Materia Prima</h3>
                         <p class="text-xs text-gray-500 mt-1">Materiales en stock</p>
                     </div>
                 </a>

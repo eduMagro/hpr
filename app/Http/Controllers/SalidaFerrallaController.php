@@ -42,7 +42,7 @@ class SalidaFerrallaController extends Controller
                 ->get();
 
             $empresasTransporte = EmpresaTransporte::orderBy('nombre')->get();
-            $camiones = Camion::orderBy('modelo')->get(); // Con empresa_transporte_id
+            $camiones = Camion::with('empresaTransporte')->orderBy('modelo')->get();
             // Prepara el array plano con solo los datos necesarios
             $camionesJson = $camiones->map(function ($camion) {
                 return [
@@ -65,6 +65,11 @@ class SalidaFerrallaController extends Controller
                     'salidaClientes.obra',
                 ])
                 ->get();
+
+            // Inicializar variables para usuarios no oficina
+            $empresasTransporte = collect();
+            $camiones = collect();
+            $camionesJson = collect();
         }
 
         // Extraer todos los paquetes de las salidas

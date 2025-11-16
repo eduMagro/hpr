@@ -1,4 +1,4 @@
-function guardarCambios(elemento) {
+window.guardarCambios = function(elemento) {
     // Construir el objeto con los campos que se desean actualizar
     const datosActualizar = {
         // Aunque 'id' no suele actualizarse, lo incluimos para referencia.

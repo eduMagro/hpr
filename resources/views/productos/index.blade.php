@@ -6,21 +6,25 @@
     ])
 
     <div class="w-full px-6 py-4">
-        <!-- Botón para crear una nueva entrada con estilo Bootstrap -->
-        <div class="mb-4 flex justify-center space-x-2">
+        <!-- Botones superiores -->
+        <div class="mb-6 flex flex-wrap justify-center gap-3">
             @if (auth()->check() && auth()->id() === 1)
                 <x-tabla.boton-azul :href="route('entradas.create')">
                     ➕ Crear Nueva Entrada
                 </x-tabla.boton-azul>
             @endif
+
+            <button onclick="abrirModal()"
+                class="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-semibold py-2.5 px-6 rounded-lg shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105 hidden md:inline-flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                    <path d="M2 6a2 2 0 012-2h6a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V6zM14.553 7.106A1 1 0 0014 8v4a1 1 0 00.553.894l2 1A1 1 0 0018 13V7a1 1 0 00-1.447-.894l-2 1z" />
+                </svg>
+                Generar Códigos QR
+            </button>
         </div>
 
         <!-- 🖥️ Tabla solo en pantallas medianas o grandes -->
         <div class="hidden md:block">
-            <button onclick="abrirModal()"
-                class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg shadow">
-                Generar códigos
-            </button>
             <div id="modalGenerarCodigos"
                 class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden items-center justify-center">
                 <div class="bg-white rounded-lg shadow-lg p-6 w-full max-w-md relative">
@@ -85,37 +89,69 @@
 
             <!-- Catálogo de Productos Base -->
             <div x-data="{ open: false }" class="mb-6">
-                <div class="flex justify-between items-center mb-2">
-                    <h2 class="text-lg font-semibold text-gray-800">Catálogo de Productos Base</h2>
-                    <button @click="open = !open"
-                        class="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded text-sm">
-                        <span x-show="!open">Mostrar</span><span x-show="open">Ocultar</span>
-                    </button>
+                <div class="bg-gradient-to-r from-gray-50 to-gray-100 rounded-lg shadow-md border border-gray-200 p-4">
+                    <div class="flex justify-between items-center">
+                        <div class="flex items-center gap-3">
+                            <div class="bg-blue-600 p-2 rounded-lg">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                                </svg>
+                            </div>
+                            <div>
+                                <h2 class="text-lg font-bold text-gray-800">Catálogo de Productos Base</h2>
+                                <p class="text-xs text-gray-600">Listado de productos disponibles</p>
+                            </div>
+                        </div>
+                        <button @click="open = !open"
+                            class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 flex items-center gap-2 shadow-md hover:shadow-lg">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" :class="{'rotate-180': open}" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="transition: transform 0.2s;">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                            </svg>
+                            <span x-show="!open">Mostrar</span>
+                            <span x-show="open">Ocultar</span>
+                        </button>
+                    </div>
                 </div>
-                <div x-show="open" x-transition class="overflow-x-auto bg-white shadow rounded-lg">
-                    <table class="w-full min-w-[600px] border border-gray-300 text-sm">
-                        <thead class="bg-blue-200 text-gray-700">
-                            <tr>
-                                <th class="px-3 py-2 border">ID</th>
-                                <th class="px-3 py-2 border">Tipo</th>
-                                <th class="px-3 py-2 border">Diámetro</th>
-                                <th class="px-3 py-2 border">Longitud</th>
 
+                <div x-show="open"
+                     x-transition:enter="transition ease-out duration-200"
+                     x-transition:enter-start="opacity-0 transform scale-95"
+                     x-transition:enter-end="opacity-100 transform scale-100"
+                     x-transition:leave="transition ease-in duration-150"
+                     x-transition:leave-start="opacity-100 transform scale-100"
+                     x-transition:leave-end="opacity-0 transform scale-95"
+                     class="mt-3 overflow-x-auto bg-white shadow-lg rounded-lg border border-gray-200">
+                    <table class="w-full min-w-[600px] text-sm">
+                        <thead class="bg-gradient-to-r from-blue-500 to-blue-600 text-white">
+                            <tr>
+                                <th class="px-4 py-3 border-b border-blue-400 font-semibold">ID</th>
+                                <th class="px-4 py-3 border-b border-blue-400 font-semibold">Tipo</th>
+                                <th class="px-4 py-3 border-b border-blue-400 font-semibold">Diámetro</th>
+                                <th class="px-4 py-3 border-b border-blue-400 font-semibold">Longitud</th>
                             </tr>
                         </thead>
                         <tbody>
                             @forelse ($productosBase as $base)
-                                <tr class="border-b odd:bg-gray-100 even:bg-gray-50">
-                                    <td class="px-3 py-2 border text-center">{{ $base->id }}</td>
-                                    <td class="px-3 py-2 border text-center">{{ ucfirst($base->tipo) }}</td>
-                                    <td class="px-3 py-2 border text-center">{{ $base->diametro }} mm</td>
-                                    <td class="px-3 py-2 border text-center">{{ $base->longitud ?? '—' }}</td>
-
+                                <tr class="border-b hover:bg-blue-50 transition-colors">
+                                    <td class="px-4 py-3 text-center font-medium text-gray-700">{{ $base->id }}</td>
+                                    <td class="px-4 py-3 text-center">
+                                        <span class="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-xs font-semibold">
+                                            {{ ucfirst($base->tipo) }}
+                                        </span>
+                                    </td>
+                                    <td class="px-4 py-3 text-center font-medium text-gray-700">{{ $base->diametro }} mm</td>
+                                    <td class="px-4 py-3 text-center text-gray-600">{{ $base->longitud ?? '—' }}</td>
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="5" class="text-center py-4 text-gray-500">No hay productos base
-                                        registrados.</td>
+                                    <td colspan="4" class="text-center py-8">
+                                        <div class="flex flex-col items-center gap-2">
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
+                                            </svg>
+                                            <span class="text-gray-500 font-medium">No hay productos base registrados</span>
+                                        </div>
+                                    </td>
                                 </tr>
                             @endforelse
                         </tbody>

@@ -29,7 +29,7 @@
             x-cloak>
 
             @foreach ([
-        'productos.index' => '🧱 Productos',
+        'productos.index' => '🧱 Materia Prima',
         'movimientos.index' => '🔄 Movimientos',
         'entradas.index' => '⬅️ Entradas',
         'salidas-ferralla.index' => '➡️ Salidas',
@@ -48,7 +48,7 @@
     <!-- Menú escritorio -->
     <div class="hidden sm:flex w-full mb-4">
         @foreach ([
-        'productos.index' => '🧱 Productos',
+        'productos.index' => '🧱 Materia Prima',
         'movimientos.index' => '🔄 Movimientos',
         'entradas.index' => '⬅️ Entradas',
         'salidas-ferralla.index' => '➡️ Salidas',

@@ -75,7 +75,8 @@
                                                         data-key="{{ $salida->id }}-{{ $registro->cliente->id }}-{{ $registro->obra->id }}"
                                                         data-field="empresa_id"
                                                         data-cliente="{{ $registro->cliente->id }}"
-                                                        data-obra="{{ $registro->obra->id }}">
+                                                        data-obra="{{ $registro->obra->id }}"
+                                                        data-empresa="{{ $salida->empresa_id }}">
                                                         <option value="">Sin empresa</option>
                                                         @foreach ($empresasTransporte as $empresa)
                                                             <option value="{{ $empresa->id }}"
@@ -431,7 +432,7 @@
 
                     // Enviar actualización
 
-                    fetch(`/salidas/${id}`, {
+                    fetch(`/salidas-ferralla/${id}`, {
                             method: 'PUT',
                             headers: {
                                 'Content-Type': 'application/json',
@@ -564,6 +565,7 @@
     </script>
     <script>
         const TODOS_CAMIONES = @json($camionesJson);
+        console.log('TODOS_CAMIONES cargados:', TODOS_CAMIONES);
     </script>
 
     <script>
@@ -584,7 +586,14 @@
                 opt0.textContent = 'Sin camión';
                 frag.appendChild(opt0);
 
+                // Si no hay empresa seleccionada, no mostrar camiones
+                if (!empresaId) {
+                    return frag;
+                }
+
                 const lista = TODOS_CAMIONES.filter(c => String(c.empresa_id) === String(empresaId));
+                console.log('Filtrando camiones para empresa:', empresaId, 'Encontrados:', lista.length);
+
                 lista.forEach(c => {
                     const opt = document.createElement('option');
                     opt.value = c.id;
@@ -599,10 +608,10 @@
                 return document.querySelector(`select.camion-select[data-key="${CSS.escape(key)}"]`);
             }
 
-            // Inicializar “camión” para cada fila en base a la empresa seleccionada
+            // Inicializar "camión" para cada fila en base a la empresa seleccionada
             document.querySelectorAll('select.empresa-select').forEach(selEmpresa => {
                 const key = selEmpresa.dataset.key;
-                const empresaId = selEmpresa.value;
+                const empresaId = selEmpresa.value || selEmpresa.dataset.empresa || '';
                 const selCamion = findCamionSelectByKey(key);
                 if (!selCamion) return;
 
@@ -633,7 +642,7 @@
                     };
 
                     try {
-                        const res = await fetch(`/salidas/${payload.id}`, {
+                        const res = await fetch(`/salidas-ferralla/${payload.id}`, {
                             method: 'PUT',
                             headers: {
                                 'Content-Type': 'application/json',
@@ -660,7 +669,7 @@
                                     field: 'camion_id',
                                     value: null,
                                 };
-                                await fetch(`/salidas/${payload.id}`, {
+                                await fetch(`/salidas-ferralla/${payload.id}`, {
                                     method: 'PUT',
                                     headers: {
                                         'Content-Type': 'application/json',
@@ -690,7 +699,7 @@
                     };
 
                     try {
-                        const res = await fetch(`/salidas/${payload.id}`, {
+                        const res = await fetch(`/salidas-ferralla/${payload.id}`, {
                             method: 'PUT',
                             headers: {
                                 'Content-Type': 'application/json',
