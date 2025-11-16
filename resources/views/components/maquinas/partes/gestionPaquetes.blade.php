@@ -3,10 +3,10 @@
     Ubicación: Columna derecha de maquinas.show
     ================================================================ --}}
 
-<div class="w-full bg-white border shadow-md rounded-lg self-start p-4" x-data="gestionPaquetes()">
+<div class="w-full bg-white self-start" x-data="gestionPaquetes()">
 
     {{-- HEADER --}}
-    <div class="flex items-center justify-between mb-4">
+    <div>
         <h3 class="font-bold text-xl text-gray-800">📦 Paquetes de Planilla</h3>
         <button @click="cargarPaquetes()" class="text-blue-600 hover:text-blue-800 transition" title="Recargar paquetes">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -60,9 +60,19 @@
                             title="Ver elementos del paquete">
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24"
                                 stroke="currentColor" stroke-width="2">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                <path stroke-linecap="round" stroke-linejoin="round"
+                                    d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                                 <path stroke-linecap="round" stroke-linejoin="round"
                                     d="M2.458 12C3.732 7.943 7.523 5 12 5s8.268 2.943 9.542 7c-1.274 4.057-5.065 7-9.542 7s-8.268-2.943-9.542-7z" />
+                            </svg>
+                        </button>
+                        {{-- Botón Eliminar Paquete --}}
+                        <button @click="eliminarPaquete(paquete.id)"
+                            class="w-6 h-6 bg-red-100 text-red-600 rounded hover:bg-red-200 flex items-center justify-center transition"
+                            title="Eliminar paquete completo">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                             </svg>
                         </button>
                         {{-- Botón Expandir --}}
@@ -141,8 +151,7 @@
     <div id="modal-elementos-paquete"
         class="hidden fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center p-4"
         style="z-index: 99999 !important;">
-        <div
-            class="bg-white p-3 sm:p-4 rounded-lg w-full sm:w-[500px] md:w-[600px] max-w-[90vw] max-h-[70vh] flex flex-col shadow-lg relative"
+        <div class="bg-white p-3 sm:p-4 rounded-lg w-full sm:w-[500px] md:w-[600px] max-w-[90vw] max-h-[70vh] flex flex-col shadow-lg relative"
             style="z-index: 100000 !important;">
             <button id="cerrar-modal-elementos"
                 class="absolute top-2 right-2 text-red-600 hover:bg-red-100 w-7 h-7 flex items-center justify-center rounded text-lg"
@@ -153,7 +162,8 @@
             <h2 class="text-lg font-semibold mb-3 text-center pr-6">Elementos del paquete <span
                     id="modal-paquete-codigo"></span></h2>
 
-            <div class="overflow-y-auto flex-1 min-h-0" style="max-height: 60vh; position: relative; z-index: 100000;">
+            <div class="overflow-y-auto flex-1 min-h-0"
+                style="max-height: 60vh; position: relative; z-index: 100000;">
                 <div id="canvas-elementos-paquete" class="border max-w-full h-auto"></div>
             </div>
         </div>
@@ -359,6 +369,86 @@
                 }
             },
 
+            async eliminarPaquete(paqueteId) {
+                const paquete = this.paquetes.find(p => p.id === paqueteId);
+                const codigoPaquete = paquete ? paquete.codigo : `ID ${paqueteId}`;
+
+                // Obtener info de etiquetas antes de eliminar (guardar estado original)
+                const etiquetasDelPaquete = paquete && paquete.etiquetas ?
+                    paquete.etiquetas.map(e => ({
+                        id: e.codigo || e.etiqueta_sub_id,
+                        estado: e.estado
+                    })) : [];
+
+                const confirmacion = await Swal.fire({
+                    title: '¿Eliminar paquete completo?',
+                    html: `
+                        <p>Se eliminará el paquete <strong>${codigoPaquete}</strong></p>
+                        <p class="text-sm text-gray-600 mt-2">Las etiquetas quedarán libres manteniendo su estado (${etiquetasDelPaquete.length} etiquetas)</p>
+                    `,
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#dc2626',
+                    cancelButtonColor: '#6b7280',
+                    confirmButtonText: 'Sí, eliminar paquete',
+                    cancelButtonText: 'Cancelar'
+                });
+
+                if (!confirmacion.isConfirmed) return;
+
+                try {
+                    const response = await fetch(`/api/paquetes/${paqueteId}`, {
+                        method: 'DELETE',
+                        headers: {
+                            'Accept': 'application/json',
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content
+                        }
+                    });
+
+                    const data = await response.json();
+
+                    if (!response.ok) {
+                        throw new Error(data.message || 'Error al eliminar paquete');
+                    }
+
+                    // Actualizar visualmente las etiquetas liberadas a su estado original (no 'pendiente')
+                    // Solo necesitamos quitarles la clase 'en-paquete' y restaurar su estado real
+                    if (window.SistemaDOM && etiquetasDelPaquete.length > 0) {
+                        console.log('🎨 Actualizando estados de etiquetas liberadas...', etiquetasDelPaquete);
+                        etiquetasDelPaquete.forEach(etiqueta => {
+                            // Restaurar al estado original que tenía la etiqueta
+                            const estadoReal = etiqueta.estado || 'pendiente';
+                            window.SistemaDOM.actualizarEstadoEtiqueta(etiqueta.id, estadoReal);
+                        });
+                    }
+
+                    await Swal.fire({
+                        icon: 'success',
+                        title: '✅ Paquete eliminado',
+                        text: data.message,
+                        timer: 3000,
+                        showConfirmButton: false
+                    });
+
+                    // Recargar paquetes para refrescar la lista
+                    await this.cargarPaquetes();
+
+                    // Disparar evento para que otros componentes se enteren
+                    window.dispatchEvent(new CustomEvent('paquete:eliminado', {
+                        detail: {
+                            paqueteId,
+                            codigoPaquete,
+                            etiquetasLiberadas: data.etiquetas_liberadas,
+                            etiquetasIds: etiquetasDelPaquete.map(e => e.id)
+                        }
+                    }));
+
+                } catch (error) {
+                    console.error('Error al eliminar paquete:', error);
+                    await Swal.fire('Error', error.message, 'error');
+                }
+            },
+
             async verElementosPaquete(paqueteId) {
                 const paquete = this.paquetes.find(p => p.id === paqueteId);
                 if (!paquete) {
@@ -405,7 +495,8 @@
                 // Crear contenedores para cada elemento
                 elementos.forEach((elemento) => {
                     const elementoDiv = document.createElement('div');
-                    elementoDiv.className = 'mb-2 p-2 border border-gray-200 rounded bg-gray-50 modal-elemento-view';
+                    elementoDiv.className =
+                        'mb-2 p-2 border border-gray-200 rounded bg-gray-50 modal-elemento-view';
 
                     // Título del elemento
                     const titulo = document.createElement('h3');
@@ -469,7 +560,24 @@
                 }
             });
         }
+
+        // Escuchar eventos de actualización y eliminación de paquetes para actualizar colores de etiquetas
+        window.addEventListener('paquete:actualizado', actualizarColoresEtiquetas);
+        window.addEventListener('paquete:eliminado', actualizarColoresEtiquetas);
     });
+
+    /**
+     * Actualiza los colores/estados visuales de las etiquetas en el DOM
+     * Sin recargar la página completa
+     * Esta es una función de fallback - la lógica principal está en eliminarPaquete()
+     */
+    function actualizarColoresEtiquetas(event) {
+        console.log('🎨 Evento de actualización recibido...', event.detail);
+
+        // La actualización real de estados se hace en la función eliminarPaquete()
+        // usando SistemaDOM.actualizarEstadoEtiqueta() con el estado original de cada etiqueta
+        // Esta función solo se mantiene como listener para posibles extensiones futuras
+    }
 </script>
 
 {{-- Cargar script de dibujo de figuras si no está ya cargado --}}

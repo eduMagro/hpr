@@ -181,7 +181,7 @@
         <div>
             <h2 class="text-lg font-semibold text-gray-900">
                 {{ $planilla->obra->obra }} - {{ $planilla->cliente->empresa }}<br>
-                {{ $planilla->codigo_limpio }} - S:{{ $planilla->seccion }}
+                {{ $planilla->codigo_limpio }} - S:{{ $planilla->seccion }} - ID:{{ $etiqueta->etiqueta_sub_id }}
             </h2>
             <h3 class="text-lg font-semibold text-gray-900">
                 {{ $etiqueta->nombre ?? 'Sin nombre' }} - Cal:B500SD - {{ $etiqueta->peso_kg ?? 'N/A' }}

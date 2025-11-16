@@ -80,114 +80,127 @@
 
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-                    (function initModal() {
-                                const btnAbrir = document.getElementById('btn-abrir-import');
-                                const modal = document.getElementById('modal-import');
-                                const overlay = document.getElementById('modal-import-overlay');
-                                const btnCancel = document.getElementById('btn-cancelar-import');
-                                const form = document.getElementById('form-import-modal');
-                                const inputFecha = document.getElementById('fecha_aprobacion');
+            function initModal() {
+                const btnAbrir = document.getElementById('btn-abrir-import');
+                const modal = document.getElementById('modal-import');
+                const overlay = document.getElementById('modal-import-overlay');
+                const btnCancel = document.getElementById('btn-cancelar-import');
+                const form = document.getElementById('form-import-modal');
+                const inputFecha = document.getElementById('fecha_aprobacion');
 
-                                if (!btnAbrir) {
-                                    setTimeout(initModal, 100);
-                                    return;
-                                }
+                if (!btnAbrir || !modal || !overlay || !btnCancel || !form || !inputFecha) {
+                    console.log('⏳ Esperando elementos del modal de importación...');
+                    setTimeout(initModal, 100);
+                    return;
+                }
 
-                                const wrap = document.getElementById('import-progress-wrap');
-                                const bar = document.getElementById('import-progress-bar');
-                                const pct = document.getElementById('import-progress-percent');
-                                const msg = document.getElementById('import-progress-msg');
-                                const txt = document.getElementById('import-progress-text');
-                                const btnSend = document.getElementById('btn-confirmar-import');
-                                const importIdInput = document.getElementById('import_id');
+                console.log('✅ Modal de importación inicializado');
 
-                                function abrir() {
-                                    modal.classList.remove('hidden');
-                                    importIdInput.value = uuidv4();
-                                }
+                const wrap = document.getElementById('import-progress-wrap');
+                const bar = document.getElementById('import-progress-bar');
+                const pct = document.getElementById('import-progress-percent');
+                const msg = document.getElementById('import-progress-msg');
+                const txt = document.getElementById('import-progress-text');
+                const btnSend = document.getElementById('btn-confirmar-import');
+                const importIdInput = document.getElementById('import_id');
 
-                                function cerrar() {
-                                    modal.classList.add('hidden');
-                                }
+                // Función para generar UUID
+                function uuidv4() {
+                    if (crypto?.randomUUID) return crypto.randomUUID();
+                    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
+                        const r = Math.random() * 16 | 0,
+                            v = c === 'x' ? r : (r & 0x3 | 0x8);
+                        return v.toString(16);
+                    });
+                }
 
-                                const hoy = new Date().toISOString().split('T')[0];
-                                inputFecha.value = hoy;
-                                inputFecha.max = hoy;
+                // Función para abrir modal
+                function abrir() {
+                    console.log('🔓 Abriendo modal de importación');
+                    modal.classList.remove('hidden');
+                    importIdInput.value = uuidv4();
+                }
 
-                                if (btnAbrir) {
-                                    btnAbrir.addEventListener('click', abrir);
-                                }
-                                overlay.addEventListener('click', cerrar);
-                                btnCancel.addEventListener('click', cerrar);
+                // Función para cerrar modal
+                function cerrar() {
+                    console.log('🔒 Cerrando modal de importación');
+                    modal.classList.add('hidden');
+                }
 
-                                function uuidv4() {
-                                    if (crypto?.randomUUID) return crypto.randomUUID();
-                                    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g,
-                                        c => {
-                                            const r = Math.random() * 16 | 0,
-                                                v = c === 'x' ? r : (r & 0x3 | 0x8);
-                                            return v.toString(16);
-                                        });
-                                }
+                // Configurar fecha por defecto
+                const hoy = new Date().toISOString().split('T')[0];
+                inputFecha.value = hoy;
+                inputFecha.max = hoy;
 
-                                let pollTimer = null;
+                // Event listeners
+                btnAbrir.addEventListener('click', function(e) {
+                    console.log('🖱️ Click en botón importar');
+                    e.preventDefault();
+                    abrir();
+                });
 
-                                function startPolling(importId) {
-                                    wrap.classList.remove('hidden');
-                                    txt.textContent = 'Importando...';
-                                    msg.textContent = 'Procesando filas del Excel...';
-                                    const url = `/api/planillas/import/progress/${encodeURIComponent(importId)}`;
-                                    pollTimer = setInterval(async () => {
-                                        try {
-                                            const res = await fetch(url, {
-                                                cache: 'no-store'
-                                            });
-                                            if (!res.ok) return;
-                                            const data = await res.json();
-                                            const percent = Math.min(100, Math.max(0, Math.round(data.percent ?? 0)));
-                                            bar.style.width = percent + '%';
-                                            pct.textContent = percent + '%';
-                                            msg.textContent = data.message ?? '';
+                overlay.addEventListener('click', cerrar);
+                btnCancel.addEventListener('click', cerrar);
 
-                                            if (data.status === 'error') {
-                                                clearInterval(pollTimer);
-                                                txt.textContent = 'Error';
-                                                bar.classList.remove('bg-blue-600');
-                                                bar.classList.add('bg-red-600');
-                                            }
-                                            if (data.status === 'done' || percent >=
-                                                100) {
-                                                clearInterval(pollTimer);
-                                                txt.textContent = 'Completado';
-                                                bar.style.width = '100%';
-                                                pct.textContent = '100%';
-                                                msg.textContent =
-                                                    'Importación finalizada.';
-                                            }
-                                        } catch (e) {
-                                            /* silencioso */
-                                        }
-                                    }, 600);
-                                }
+                let pollTimer = null;
 
-                                form.addEventListener('submit', function(ev) {
-                                    const importId = importIdInput.value;
+                function startPolling(importId) {
+                    wrap.classList.remove('hidden');
+                    txt.textContent = 'Importando...';
+                    msg.textContent = 'Procesando filas del Excel...';
+                    const url = `/api/planillas/import/progress/${encodeURIComponent(importId)}`;
+                    pollTimer = setInterval(async () => {
+                        try {
+                            const res = await fetch(url, {
+                                cache: 'no-store'
+                            });
+                            if (!res.ok) return;
+                            const data = await res.json();
+                            const percent = Math.min(100, Math.max(0, Math.round(data.percent ?? 0)));
+                            bar.style.width = percent + '%';
+                            pct.textContent = percent + '%';
+                            msg.textContent = data.message ?? '';
 
-                                    // Mostrar barra de progreso indeterminada
-                                    wrap.classList.remove('hidden');
-                                    txt.textContent = 'Procesando importación...';
-                                    msg.textContent = 'Por favor espera, esto puede tardar unos minutos.';
-                                    bar.style.width = '50%';
-                                    bar.classList.add('animate-pulse');
-                                    pct.textContent = '';
+                            if (data.status === 'error') {
+                                clearInterval(pollTimer);
+                                txt.textContent = 'Error';
+                                bar.classList.remove('bg-blue-600');
+                                bar.classList.add('bg-red-600');
+                            }
+                            if (data.status === 'done' || percent >= 100) {
+                                clearInterval(pollTimer);
+                                txt.textContent = 'Completado';
+                                bar.style.width = '100%';
+                                pct.textContent = '100%';
+                                msg.textContent = 'Importación finalizada.';
+                            }
+                        } catch (e) {
+                            console.error('Error en polling:', e);
+                        }
+                    }, 600);
+                }
 
-                                    btnSend.disabled = true;
-                                    btnCancel.disabled = true;
+                form.addEventListener('submit', function(ev) {
+                    const importId = importIdInput.value;
 
-                                    // El formulario se enviará normalmente (sin preventDefault)
-                                    // y el servidor hará redirect con session para alerts.blade.php
-                                });
-                            })();
+                    // Mostrar barra de progreso indeterminada
+                    wrap.classList.remove('hidden');
+                    txt.textContent = 'Procesando importación...';
+                    msg.textContent = 'Por favor espera, esto puede tardar unos minutos.';
+                    bar.style.width = '50%';
+                    bar.classList.add('animate-pulse');
+                    pct.textContent = '';
+
+                    btnSend.disabled = true;
+                    btnCancel.disabled = true;
+
+                    // El formulario se enviará normalmente (sin preventDefault)
+                    // y el servidor hará redirect con session para alerts.blade.php
+                });
+            }
+
+            // Iniciar
+            initModal();
         });
     </script>
 </x-app-layout>

@@ -918,6 +918,77 @@ class PaqueteController extends Controller
     }
 
     /**
+     * Elimina un paquete completo y libera sus etiquetas
+     * API endpoint para eliminar desde la interfaz sin recargar
+     */
+    public function eliminarPaquete($paqueteId)
+    {
+        DB::beginTransaction();
+
+        try {
+            $paquete = Paquete::findOrFail($paqueteId);
+
+            Log::info('Eliminando paquete completo', [
+                'paquete_id' => $paquete->id,
+                'codigo' => $paquete->codigo,
+                'usuario' => auth()->user()->nombre_completo ?? 'desconocido'
+            ]);
+
+            // Liberar todas las etiquetas del paquete (solo quitar paquete_id, mantener estado)
+            $etiquetasLiberadas = Etiqueta::where('paquete_id', $paquete->id)
+                ->update([
+                    'paquete_id' => null
+                ]);
+
+            // Eliminar movimientos pendientes asociados al paquete
+            \App\Models\Movimiento::where('paquete_id', $paquete->id)
+                ->where('estado', 'pendiente')
+                ->delete();
+
+            // Registrar movimiento de eliminación
+            \App\Models\Movimiento::create([
+                'tipo' => 'Movimiento paquete',
+                'descripcion' => "Paquete {$paquete->codigo} eliminado completamente. {$etiquetasLiberadas} etiquetas liberadas",
+                'estado' => 'completado',
+                'fecha_solicitud' => now(),
+                'ejecutado_por' => auth()->id(),
+                'paquete_id' => null, // Ya que el paquete va a ser eliminado
+            ]);
+
+            // Eliminar el paquete
+            $codigoPaquete = $paquete->codigo;
+            $paquete->delete();
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => "Paquete {$codigoPaquete} eliminado correctamente. {$etiquetasLiberadas} etiquetas liberadas",
+                'etiquetas_liberadas' => $etiquetasLiberadas
+            ]);
+
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            DB::rollBack();
+            return response()->json([
+                'success' => false,
+                'message' => 'Paquete no encontrado'
+            ], 404);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Error al eliminar paquete completo', [
+                'paquete_id' => $paqueteId,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al eliminar el paquete: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
      * Obtiene todos los elementos de un paquete con sus etiquetas
      * Para mostrar en el modal de "Ver elementos"
      */

@@ -136,7 +136,7 @@ function indexToLetters(n) {
 
 // ——— Padding exclusivo para la leyenda (0 = pegado al borde) ———
 const LEGEND_PAD_X = 0;
-const LEGEND_PAD_Y = -10; // Negativo para bajar la leyenda (más cerca del borde inferior)
+const LEGEND_PAD_Y = -25; // Negativo para bajar la leyenda (más cerca del borde inferior)
 
 /** Dibuja la leyenda SIEMPRE abajo-izquierda del SVG */
 function drawLegendBottomLeft(svg, entries, width, height) {

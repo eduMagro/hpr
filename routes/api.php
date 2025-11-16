@@ -12,6 +12,8 @@ Route::post('/paquetes/{paqueteId}/añadir-etiqueta', [PaqueteController::class,
     ->name('api.paquetes.añadir-etiqueta');
 Route::delete('/paquetes/{paqueteId}/eliminar-etiqueta', [PaqueteController::class, 'eliminarEtiquetaDePaquete'])
     ->name('api.paquetes.eliminar-etiqueta');
+Route::delete('/paquetes/{paqueteId}', [PaqueteController::class, 'eliminarPaquete'])
+    ->name('api.paquetes.eliminar');
 
 use App\Http\Controllers\PlanillaController;
 
