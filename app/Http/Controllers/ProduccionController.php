@@ -94,18 +94,21 @@ class ProduccionController extends Controller
             ->orderBy('obra_id')
             ->orderBy('tipo')
             ->get(['id', 'nombre', 'codigo', 'obra_id', 'tipo'])
-            ->map(function ($maquina) use ($coloresMaquinas) {
+            ->values() // <- pone índices consecutivos
+            ->map(function ($maquina, $index) use ($coloresMaquinas) {
                 $color = $coloresMaquinas[$maquina->obra_id] ?? '#6c757d';
+
                 return [
                     'id' => str_pad($maquina->id, 3, '0', STR_PAD_LEFT),
                     'title' => $maquina->codigo,
-                    'orden' => $index,
+                    'orden' => $index,   // ✅ AHORA SÍ EXISTE
                     'extendedProps' => [
                         'backgroundColor' => $color,
                         'obra_id' => $maquina->obra_id,
                     ]
                 ];
             });
+
         // 👇 Aquí añadimos el recurso especial
         $maquinas->push([
             'id' => 'SIN',
