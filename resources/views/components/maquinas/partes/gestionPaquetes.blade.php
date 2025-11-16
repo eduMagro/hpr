@@ -142,18 +142,18 @@
         class="hidden fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center p-4"
         style="z-index: 99999 !important;">
         <div
-            class="bg-white p-4 sm:p-6 rounded-lg w-full sm:w-[800px] md:w-[900px] lg:w-[1000px] max-w-[95vw] max-h-[90vh] flex flex-col shadow-lg relative"
+            class="bg-white p-3 sm:p-4 rounded-lg w-full sm:w-[500px] md:w-[600px] max-w-[90vw] max-h-[70vh] flex flex-col shadow-lg relative"
             style="z-index: 100000 !important;">
             <button id="cerrar-modal-elementos"
-                class="absolute top-2 right-2 text-red-600 hover:bg-red-100 w-8 h-8 flex items-center justify-center rounded"
+                class="absolute top-2 right-2 text-red-600 hover:bg-red-100 w-7 h-7 flex items-center justify-center rounded text-lg"
                 style="z-index: 100001 !important;">
                 ✖
             </button>
 
-            <h2 class="text-xl font-semibold mb-4 text-center">Elementos del paquete <span
+            <h2 class="text-lg font-semibold mb-3 text-center pr-6">Elementos del paquete <span
                     id="modal-paquete-codigo"></span></h2>
 
-            <div class="overflow-y-auto flex-1 min-h-0" style="max-height: 75vh; position: relative; z-index: 100000;">
+            <div class="overflow-y-auto flex-1 min-h-0" style="max-height: 60vh; position: relative; z-index: 100000;">
                 <div id="canvas-elementos-paquete" class="border max-w-full h-auto"></div>
             </div>
         </div>
@@ -405,11 +405,11 @@
                 // Crear contenedores para cada elemento
                 elementos.forEach((elemento) => {
                     const elementoDiv = document.createElement('div');
-                    elementoDiv.className = 'mb-4 p-3 border border-gray-200 rounded-lg bg-gray-50 modal-elemento-view';
+                    elementoDiv.className = 'mb-2 p-2 border border-gray-200 rounded bg-gray-50 modal-elemento-view';
 
                     // Título del elemento
                     const titulo = document.createElement('h3');
-                    titulo.className = 'text-sm font-semibold text-gray-800 mb-2';
+                    titulo.className = 'text-xs font-semibold text-gray-800 mb-1';
                     titulo.textContent = `Elemento: ${elemento.codigo}`;
                     elementoDiv.appendChild(titulo);
 
@@ -418,7 +418,7 @@
                     svgDiv.id = `elemento-${elemento.id}`;
                     svgDiv.className = 'elemento-svg-container';
                     svgDiv.style.width = '100%';
-                    svgDiv.style.height = '200px';
+                    svgDiv.style.height = '120px';
                     svgDiv.style.border = '1px solid #e5e7eb';
                     svgDiv.style.borderRadius = '4px';
                     svgDiv.style.background = 'white';

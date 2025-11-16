@@ -95,11 +95,14 @@
                     'Error al mover a nueva etiqueta');
             }
 
-            // Cerrar modal y refrescar (ajusta a tu flujo: recargar canvas/tabla, etc.)
+            // Cerrar modal y refrescar sin recargar la página
             document.getElementById('modalDividirElemento').classList.add('hidden');
-            if (typeof window.refrescarCanvasMaquina === 'function') {
-                window.refrescarCanvasMaquina();
+
+            // Llamar a la función de refresco si existe
+            if (typeof window.refrescarEtiquetasMaquina === 'function') {
+                window.refrescarEtiquetasMaquina();
             } else {
+                console.warn('window.refrescarEtiquetasMaquina no está definida, recargando página...');
                 window.location.reload();
             }
         } catch (e) {

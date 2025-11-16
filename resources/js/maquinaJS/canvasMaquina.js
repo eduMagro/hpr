@@ -747,13 +747,20 @@ function planMasonryOptimal(medidas, svgW, svgH, opts = {}) {
         centersX[c] = xStart + w / 2;
         xStart += w + (opts.gapCol ?? 10);
     }
+    // Espacio reservado para la leyenda (fijo, no proporcional)
+    const LEGEND_RESERVED_HEIGHT = 80; // Altura fija reservada para la leyenda en la parte inferior
+    const availableHeightForLayout = svgH - LEGEND_RESERVED_HEIGHT;
+
     const centersYByCol = [];
     for (let c = 0; c < best.k; c++) {
         const col = best.cols[c];
         const hEscTotal =
             col.items.reduce((a, idx) => a + medidas[idx].h * best.S, 0) +
             (col.items.length - 1) * (opts.gapRow ?? 8);
-        let y = (svgH - hEscTotal) / 2;
+
+        // Centrar verticalmente solo en el espacio disponible (sin la zona de leyenda)
+        let y = (availableHeightForLayout - hEscTotal) / 2;
+
         centersYByCol[c] = [];
         for (let i = 0; i < col.items.length; i++) {
             const idx = col.items[i];
@@ -1017,38 +1024,49 @@ window.renderizarGrupoSVG = function renderizarGrupoSVG(grupo, gidx) {
                                 box.left < 0 ||
                                 box.right > ancho;
                             if (out) continue;
+
+                            // Margen completo con figuras (6px)
                             const collideFig = window.__figBoxesGroup.some(
                                 (b) => rectsOverlap(b, box, LABEL_CLEARANCE)
                             );
                             if (collideFig) continue;
+
+                            // Margen reducido con dimensiones (2px) - los ángulos pueden estar muy cerca de las cotas
                             const collideDims = (
                                 window.__dimBoxesGroup || []
-                            ).some((b) =>
-                                rectsOverlap(b, box, LABEL_CLEARANCE)
-                            );
+                            ).some((b) => rectsOverlap(b, box, 2));
                             if (collideDims) continue;
+
+                            // Margen reducido entre ángulos (2px)
                             const collideAngles = (
                                 window.__angleBoxesGroup || []
-                            ).some((b) =>
-                                rectsOverlap(b, box, LABEL_CLEARANCE)
-                            );
+                            ).some((b) => rectsOverlap(b, box, 2));
                             if (collideAngles) continue;
+
+                            // Margen reducido con letras (2px)
                             const collideLetters = (
                                 window.__placedLetterBoxes || []
-                            ).some((b) =>
-                                rectsOverlap(b, box, LABEL_CLEARANCE)
-                            );
+                            ).some((b) => rectsOverlap(b, box, 2));
                             if (collideLetters) continue;
+
+                            // Margen completo con leyenda (6px)
                             const collideLegend = (
                                 window.__legendBoxesGroup || []
-                            ).some((b) =>
-                                rectsOverlap(b, box, LABEL_CLEARANCE)
-                            );
+                            ).some((b) => rectsOverlap(b, box, LABEL_CLEARANCE));
                             if (collideLegend) continue;
+
                             placed = { x: lx, y: ly, box };
                         }
                     }
-                    if (!placed) return;
+
+                    // Si no encontramos posición válida, usar la posición base como último recurso
+                    if (!placed) {
+                        const fallbackX = P.x + bx * (R + ANGLE_LABEL_OFFSET);
+                        const fallbackY = P.y + by * (R + ANGLE_LABEL_OFFSET);
+                        const fallbackBox = makeBox(fallbackX, fallbackY);
+                        placed = { x: fallbackX, y: fallbackY, box: fallbackBox };
+                    }
+
                     window.__angleBoxesGroup.push(placed.box);
                     const txt = document.createElementNS(
                         "http://www.w3.org/2000/svg",
@@ -1195,16 +1213,22 @@ window.renderizarGrupoSVG = function renderizarGrupoSVG(grupo, gidx) {
                         0
                     );
                     if (collideFig) continue;
+
+                    // Margen reducido con ángulos (2px)
                     const collideAngles = (window.__angleBoxesGroup || []).some(
-                        (b) => rectsOverlap(b, labelBox, LABEL_CLEARANCE)
+                        (b) => rectsOverlap(b, labelBox, 2)
                     );
                     if (collideAngles) continue;
+
+                    // Margen completo con leyenda (6px)
                     const collideLegend = (
                         window.__legendBoxesGroup || []
                     ).some((b) => rectsOverlap(b, labelBox, LABEL_CLEARANCE));
                     if (collideLegend) continue;
+
+                    // Margen reducido entre cotas (2px)
                     const collideOth = placedBoxes.some((b) =>
-                        rectsOverlap(b, labelBox, LABEL_CLEARANCE)
+                        rectsOverlap(b, labelBox, 2)
                     );
                     if (collideOth) continue;
                     const outOfBounds =
@@ -1285,7 +1309,7 @@ window.renderizarGrupoSVG = function renderizarGrupoSVG(grupo, gidx) {
                     Math.min(centerYFig, alto - tb.h / 2)
                 );
                 function tryColumn(xPos) {
-                    const maxSpread = Math.max(60, alto * 0.6);
+                    const maxSpread = 30; // Reducido para mantener la letra cerca de su figura
                     for (let off = 0; off <= maxSpread; off += LABEL_STEP) {
                         const dir = off % 2 === 0 ? 1 : -1,
                             mult = Math.ceil(off / 2),
@@ -1296,26 +1320,35 @@ window.renderizarGrupoSVG = function renderizarGrupoSVG(grupo, gidx) {
                         );
                         const lx = xPos;
                         const box = makeBoxAt(lx, ly);
+
+                        // Margen completo con figuras (6px) - no queremos superposición
                         const collideFig = window.__figBoxesGroup.some((b) =>
                             rectsOverlap(b, box, LABEL_CLEARANCE)
                         );
                         if (collideFig) continue;
+
+                        // Margen reducido con dimensiones y ángulos (3px) - permitimos estar más cerca
                         const collideDims = (window.__dimBoxesGroup || []).some(
-                            (b) => rectsOverlap(b, box, LABEL_CLEARANCE)
+                            (b) => rectsOverlap(b, box, 3)
                         );
                         if (collideDims) continue;
                         const collideAngles = (
                             window.__angleBoxesGroup || []
-                        ).some((b) => rectsOverlap(b, box, LABEL_CLEARANCE));
+                        ).some((b) => rectsOverlap(b, box, 3));
                         if (collideAngles) continue;
+
+                        // Margen completo con leyenda (6px)
                         const collideLegend = (
                             window.__legendBoxesGroup || []
                         ).some((b) => rectsOverlap(b, box, LABEL_CLEARANCE));
                         if (collideLegend) continue;
+
+                        // Margen reducido entre letras (2px) - permitimos que estén más juntas
                         const collidePrev = (
                             window.__placedLetterBoxes || []
-                        ).some((b) => rectsOverlap(b, box, LABEL_CLEARANCE));
+                        ).some((b) => rectsOverlap(b, box, 2));
                         if (collidePrev) continue;
+
                         const out =
                             box.top < 0 ||
                             box.bottom > alto ||
@@ -1327,41 +1360,64 @@ window.renderizarGrupoSVG = function renderizarGrupoSVG(grupo, gidx) {
                     }
                     return false;
                 }
-                const baseRight = clampXInside(
-                    figBox.right + 10,
-                    tb.w,
-                    0,
-                    ancho
-                );
-                const baseLeft = clampXInside(
-                    figBox.left - 10 - tb.w,
-                    tb.w,
-                    0,
-                    ancho
-                );
-                let columnsTried = 0,
-                    xStep = 8;
-                while (!chosen && columnsTried < 8) {
-                    const xCol = clampXInside(
-                        baseRight + columnsTried * xStep,
-                        tb.w,
-                        0,
-                        ancho
-                    );
+                // Estrategia: buscar en círculos concéntricos, probando todas las posiciones cercanas primero
+                const positions = [
+                    // Prioridad 1: Inmediatamente a la derecha o izquierda de la figura
+                    { x: figBox.right + 10, priority: 1 },
+                    { x: figBox.left - 10 - tb.w, priority: 1 },
+                    // Prioridad 2: Ligeramente más alejado (5-15px)
+                    { x: figBox.right + 15, priority: 2 },
+                    { x: figBox.left - 15 - tb.w, priority: 2 },
+                    { x: figBox.right + 5, priority: 2 },
+                    { x: figBox.left - 5 - tb.w, priority: 2 },
+                    // Prioridad 3: Un poco más lejos (20-30px)
+                    { x: figBox.right + 20, priority: 3 },
+                    { x: figBox.left - 20 - tb.w, priority: 3 },
+                    { x: figBox.right + 25, priority: 3 },
+                    { x: figBox.left - 25 - tb.w, priority: 3 },
+                    { x: figBox.right + 30, priority: 3 },
+                    { x: figBox.left - 30 - tb.w, priority: 3 },
+                ];
+
+                // Ordenar por prioridad y probar cada posición
+                positions.sort((a, b) => a.priority - b.priority);
+
+                for (const pos of positions) {
+                    if (chosen) break;
+                    const xCol = clampXInside(pos.x, tb.w, 0, ancho);
                     if (tryColumn(xCol)) break;
-                    columnsTried++;
                 }
-                columnsTried = 0;
-                while (!chosen && columnsTried < 8) {
-                    const xColL = clampXInside(
-                        baseLeft - columnsTried * xStep,
-                        tb.w,
-                        0,
-                        ancho
-                    );
-                    if (tryColumn(xColL)) break;
-                    columnsTried++;
+
+                // Si no encontramos posición, intentar arriba/abajo de la figura centrada
+                if (!chosen) {
+                    const centerXFig = (figBox.left + figBox.right) / 2;
+                    const tryAboveBelow = [
+                        { x: centerXFig - tb.w / 2, y: figBox.top - tb.h - 5 },  // Arriba
+                        { x: centerXFig - tb.w / 2, y: figBox.bottom + tb.h + 5 }, // Abajo
+                    ];
+
+                    for (const pos of tryAboveBelow) {
+                        if (chosen) break;
+                        const lx = clampXInside(pos.x, tb.w, 0, ancho);
+                        const ly = Math.max(tb.h / 2, Math.min(alto - tb.h / 2, pos.y));
+                        const box = makeBoxAt(lx, ly);
+
+                        // Verificar colisiones con márgenes reducidos
+                        const noCollide =
+                            !window.__figBoxesGroup.some((b) => rectsOverlap(b, box, LABEL_CLEARANCE)) &&
+                            !(window.__dimBoxesGroup || []).some((b) => rectsOverlap(b, box, 3)) &&
+                            !(window.__angleBoxesGroup || []).some((b) => rectsOverlap(b, box, 3)) &&
+                            !(window.__legendBoxesGroup || []).some((b) => rectsOverlap(b, box, LABEL_CLEARANCE)) &&
+                            !(window.__placedLetterBoxes || []).some((b) => rectsOverlap(b, box, 2)) &&
+                            box.top >= 0 && box.bottom <= alto && box.left >= 0 && box.right <= ancho;
+
+                        if (noCollide) {
+                            chosen = { x: lx, y: ly, box };
+                        }
+                    }
                 }
+
+                // Último recurso: colocar a la derecha del canvas
                 if (!chosen) {
                     const lx = clampXInside(ancho - tb.w, tb.w, 0, ancho);
                     const ly = baseY;

@@ -146,6 +146,14 @@
                                                     const showRight = JSON.parse(localStorage.getItem('showRight') ?? 'true');
                                                     window.updateGridClasses(showLeft, showRight);
                                                 }
+
+                                                // Re-inicializar event listeners del botón crear paquete
+                                                const btnCrear = document.getElementById("crearPaqueteBtn");
+                                                if (btnCrear && window.TrabajoPaquete && window.TrabajoPaquete.crearPaquete) {
+                                                    btnCrear.removeEventListener("click", window.TrabajoPaquete.crearPaquete);
+                                                    btnCrear.addEventListener("click", window.TrabajoPaquete.crearPaquete);
+                                                    console.log('✅ Event listener del botón crear paquete re-inicializado después de cambio de planillas');
+                                                }
                                             });
                                         }, 100);
                                     }
@@ -296,6 +304,130 @@
             window.tipoMaquina = @json($maquina->tipo_material); // 👈 Añadido
             window.ubicacionId = @json(optional($ubicacion)->id);
             console.log('etiquetasData', window.etiquetasData);
+
+            /**
+             * Función para refrescar las etiquetas sin recargar la página completa
+             * Se llama después de dividir elementos o mover a nuevas subetiquetas
+             */
+            window.refrescarEtiquetasMaquina = async function() {
+                try {
+                    console.log('🔄 Refrescando etiquetas...');
+
+                    // Hacer fetch a la URL actual con los mismos parámetros
+                    const currentUrl = window.location.href;
+                    const response = await fetch(currentUrl, {
+                        headers: {
+                            'X-Requested-With': 'XMLHttpRequest'
+                        }
+                    });
+
+                    if (!response.ok) {
+                        throw new Error('Error al obtener datos actualizados');
+                    }
+
+                    const html = await response.text();
+
+                    // Parsear el HTML
+                    const parser = new DOMParser();
+                    const doc = parser.parseFromString(html, 'text/html');
+
+                    // Obtener el nuevo grid
+                    const nuevoGrid = doc.getElementById('grid-maquina');
+                    if (!nuevoGrid) {
+                        throw new Error('No se encontró el grid en la respuesta');
+                    }
+
+                    const gridActual = document.getElementById('grid-maquina');
+                    if (!gridActual) {
+                        throw new Error('No se encontró el grid actual');
+                    }
+
+                    // Animación de salida
+                    gridActual.style.opacity = '0';
+                    gridActual.style.transition = 'opacity 0.2s ease';
+
+                    await new Promise(resolve => setTimeout(resolve, 200));
+
+                    // Reemplazar contenido
+                    gridActual.innerHTML = nuevoGrid.innerHTML;
+
+                    // Actualizar variables globales
+                    const scripts = doc.querySelectorAll('script');
+                    scripts.forEach(script => {
+                        const content = script.textContent || script.innerText;
+                        if (content.includes('window.elementosAgrupadosScript') ||
+                            content.includes('window.etiquetasData') ||
+                            content.includes('window.pesosElementos') ||
+                            content.includes('window.SUGERENCIAS')) {
+                            try {
+                                eval(content);
+                            } catch (e) {
+                                console.warn('Error al evaluar script:', e);
+                            }
+                        }
+                    });
+
+                    // Actualizar data sources
+                    if (window.setDataSources && window.elementosAgrupadosScript) {
+                        window.setDataSources({
+                            sugerencias: window.SUGERENCIAS || {},
+                            elementosAgrupados: window.elementosAgrupadosScript || []
+                        });
+                    }
+
+                    // Re-renderizar SVGs
+                    if (window.elementosAgrupadosScript && window.renderizarGrupoSVG) {
+                        window.elementosAgrupadosScript.forEach((grupo, gidx) => {
+                            window.renderizarGrupoSVG(grupo, gidx);
+                        });
+                    }
+
+                    // Re-inicializar event listeners del botón crear paquete
+                    const btnCrear = document.getElementById("crearPaqueteBtn");
+                    if (btnCrear && window.TrabajoPaquete && window.TrabajoPaquete.crearPaquete) {
+                        // Remover listener anterior si existe
+                        btnCrear.replaceWith(btnCrear.cloneNode(true));
+                        const btnCrearNuevo = document.getElementById("crearPaqueteBtn");
+                        btnCrearNuevo.addEventListener("click", window.TrabajoPaquete.crearPaquete);
+                        console.log('✅ Event listener del botón crear paquete re-inicializado');
+                    }
+
+                    // Animación de entrada
+                    requestAnimationFrame(() => {
+                        gridActual.style.opacity = '1';
+
+                        // Mostrar etiquetas con animación
+                        document.querySelectorAll('.proceso').forEach(el => {
+                            el.style.opacity = '1';
+                        });
+
+                        // Re-aplicar clases de columnas
+                        if (window.updateGridClasses) {
+                            const numPlanillas = gridActual.querySelectorAll('.planilla-section, section.bg-gradient-to-br').length;
+
+                            if (numPlanillas >= 2) {
+                                gridActual.classList.remove('una-planilla');
+                                gridActual.classList.add('dos-planillas');
+                            } else {
+                                gridActual.classList.remove('dos-planillas');
+                                gridActual.classList.add('una-planilla');
+                            }
+
+                            const showLeft = JSON.parse(localStorage.getItem('showLeft') ?? 'false');
+                            const showRight = JSON.parse(localStorage.getItem('showRight') ?? 'true');
+                            window.updateGridClasses(showLeft, showRight);
+                        }
+                    });
+
+                    console.log('✅ Etiquetas refrescadas correctamente');
+
+                } catch (error) {
+                    console.error('❌ Error al refrescar etiquetas:', error);
+                    // Si falla, recargar la página como fallback
+                    console.warn('Recargando página como fallback...');
+                    window.location.reload();
+                }
+            };
         </script>
 
         <!-- ✅ Vite: Bundle de máquinas -->
