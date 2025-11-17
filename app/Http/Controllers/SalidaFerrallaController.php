@@ -80,7 +80,7 @@ class SalidaFerrallaController extends Controller
             return \Carbon\Carbon::parse($salida->fecha_salida)->translatedFormat('F Y');
         });
 
-        // Crear un resumen mensual (si sigue siendo necesario, puedes ajustarlo para que agrupe por empresa y obra si lo deseas)
+        // Crear un resumen mensual por Empresa de Transporte
         $resumenMensual = [];
         foreach ($salidasPorMes as $mes => $salidasGrupo) {
             $empresaSummary = [];
@@ -115,10 +115,49 @@ class SalidaFerrallaController extends Controller
             $resumenMensual[$mes] = $empresaSummary;
         }
 
+        // Crear un resumen mensual por Cliente y Obra
+        $resumenClienteObra = [];
+        foreach ($salidasPorMes as $mes => $salidasGrupo) {
+            $clienteObraSummary = [];
+            foreach ($salidasGrupo as $salida) {
+                foreach ($salida->salidaClientes as $registro) {
+                    $nombreCliente = trim($registro->cliente->empresa ?? "N/A") ?: "Cliente desconocido";
+                    $nombreObra = trim($registro->obra->obra ?? "N/A") ?: "Obra desconocida";
+                    $clave = "{$nombreCliente} - {$nombreObra}";
+
+                    if (!isset($clienteObraSummary[$clave])) {
+                        $clienteObraSummary[$clave] = [
+                            'cliente_id' => $registro->cliente->id ?? null,
+                            'obra_id' => $registro->obra->id ?? null,
+                            'horas_paralizacion' => 0,
+                            'importe_paralizacion' => 0,
+                            'horas_grua' => 0,
+                            'importe_grua' => 0,
+                            'horas_almacen' => 0,
+                            'importe' => 0,
+                            'total' => 0,
+                        ];
+                    }
+
+                    $clienteObraSummary[$clave]['horas_paralizacion'] += $registro->horas_paralizacion ?? 0;
+                    $clienteObraSummary[$clave]['importe_paralizacion'] += $registro->importe_paralizacion ?? 0;
+                    $clienteObraSummary[$clave]['horas_grua'] += $registro->horas_grua ?? 0;
+                    $clienteObraSummary[$clave]['importe_grua'] += $registro->importe_grua ?? 0;
+                    $clienteObraSummary[$clave]['horas_almacen'] += $registro->horas_almacen ?? 0;
+                    $clienteObraSummary[$clave]['importe'] += $registro->importe ?? 0;
+                }
+            }
+            foreach ($clienteObraSummary as $clave => &$data) {
+                $data['total'] = $data['importe_paralizacion'] + $data['importe_grua'] + $data['importe'];
+            }
+            $resumenClienteObra[$mes] = $clienteObraSummary;
+        }
+
         return view('salidas.index', compact(
             'salidasPorMes',
             'salidas',
             'resumenMensual',
+            'resumenClienteObra',
             'paquetes',
             'empresasTransporte',
             'camiones',
@@ -1283,6 +1322,7 @@ class SalidaFerrallaController extends Controller
     public function export($mes)
     {
         $meses = [
+            // Español
             'enero' => 'January',
             'febrero' => 'February',
             'marzo' => 'March',
@@ -1295,6 +1335,19 @@ class SalidaFerrallaController extends Controller
             'octubre' => 'October',
             'noviembre' => 'November',
             'diciembre' => 'December',
+            // Inglés (para compatibilidad)
+            'january' => 'January',
+            'february' => 'February',
+            'march' => 'March',
+            'april' => 'April',
+            'may' => 'May',
+            'june' => 'June',
+            'july' => 'July',
+            'august' => 'August',
+            'september' => 'September',
+            'october' => 'October',
+            'november' => 'November',
+            'december' => 'December',
         ];
 
         try {
@@ -1304,7 +1357,7 @@ class SalidaFerrallaController extends Controller
 
             // 🔹 Validar si el mes es válido
             if (!isset($meses[$mesSolo])) {
-                return redirect()->route('salidas.ferralla.index')->with('error', "Mes no válido: $mes");
+                return redirect()->route('salidas-ferralla.index')->with('error', "Mes no válido: $mes");
             }
 
             $mesIngles = $meses[$mesSolo];
@@ -1330,7 +1383,7 @@ class SalidaFerrallaController extends Controller
                 ->get();
 
             if ($salidas->isEmpty()) {
-                return redirect()->route('salidas.ferralla.index')->with('error', "No hay salidas registradas en $mesSolo $anio.");
+                return redirect()->route('salidas-ferralla.index')->with('error', "No hay salidas registradas en $mesSolo $anio.");
             }
 
             // 🔹 Generar resumen por empresa de transporte
@@ -1392,7 +1445,7 @@ class SalidaFerrallaController extends Controller
 
             return \Excel::download(new \App\Exports\SalidasExport($salidas, $empresaSummary), "salidas_{$mesSolo}_{$anio}.xlsx");
         } catch (\Exception $e) {
-            return redirect()->route('salidas.ferralla.index')->with('error', 'Hubo un problema al exportar las salidas: ' . $e->getMessage());
+            return redirect()->route('salidas-ferralla.index')->with('error', 'Hubo un problema al exportar las salidas: ' . $e->getMessage());
         }
     }
 

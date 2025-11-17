@@ -1,9 +1,6 @@
 <x-app-layout>
     <x-slot name="title">Salidas - {{ config('app.name') }}</x-slot>
 
-    <x-menu.salidas.salidas />
-    <x-menu.salidas.salidas2 />
-
     <div class="w-full p-4 sm:p-4">
 
         {{-- Si el usuario es de oficina, mostramos la tabla completa --}}
@@ -17,7 +14,7 @@
                 @foreach ($salidasPorMes as $mes => $salidasGrupo)
                     <div class="mb-4 flex items-center gap-20">
                         <h2 class="text-xl font-semibold text-gray-900">{{ ucfirst($mes) }}</h2>
-                        <a href="{{ route('salidas.export', ['mes' => $mes]) }}" wire:navigate
+                        <a href="{{ route('salidas.export', ['mes' => $mes]) }}"
                             class="inline-flex items-center bg-gray-400 text-white py-1 px-3 rounded-lg shadow-lg hover:bg-gray-700 transition duration-300">
                             <img width="28" height="28"
                                 src="https://img.icons8.com/fluency/48/microsoft-excel-2019.png"
@@ -180,8 +177,8 @@
                                             </td>
 
                                             <td class="py-2 px-4 border-b">
-                                                <a href="{{ route('salidas-ferralla.show', $salida->id) }}" wire:navigate
-                                                    class="text-blue-600 hover:text-blue-800">Ver</a>
+                                                <a href="{{ route('salidas-ferralla.show', $salida->id) }}"
+                                                    wire:navigate class="text-blue-600 hover:text-blue-800">Ver</a>
                                                 @if (auth()->user()->rol === 'oficina' || strtolower(auth()->user()->name) === 'alberto mayo martin')
                                                     <x-tabla.boton-eliminar :action="route('salidas-ferralla.destroy', $salida->id)" />
                                                 @endif
@@ -254,8 +251,63 @@
 
                             </table>
                         </div>
-                        <hr class="m-10 border-gray-300">
                     @endif
+
+                    {{-- Resumen por Cliente y Obra para este mes --}}
+                    @php
+                        $clienteObraSummary = $resumenClienteObra[$mes] ?? [];
+                    @endphp
+
+                    @if (!empty($clienteObraSummary))
+                        <div class="mt-6 px-20 mb-20">
+                            <h3 class="text-lg font-semibold text-gray-800">Resumen por Cliente y Obra -
+                                {{ ucfirst($mes) }}
+                            </h3>
+                            <table class="w-full border-collapse">
+                                <thead>
+                                    <tr class="bg-gray-200 text-left text-xs font-medium text-gray-700">
+                                        <th class="py-2 px-4 border-b">Cliente - Obra</th>
+                                        <th class="py-2 px-4 border-b">Horas Paralización</th>
+                                        <th class="py-2 px-4 border-b">Importe Paralización</th>
+                                        <th class="py-2 px-4 border-b">Horas Grúa</th>
+                                        <th class="py-2 px-4 border-b">Importe Grúa</th>
+                                        <th class="py-2 px-4 border-b">Horas Almacén</th>
+                                        <th class="py-2 px-4 border-b">Importe</th>
+                                        <th class="py-2 px-4 border-b">Total</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach ($clienteObraSummary as $clienteObra => $data)
+                                        <tr class="text-xs hover:bg-gray-50">
+                                            <td class="py-2 px-4 border-b font-semibold">{{ $clienteObra }}</td>
+                                            <td class="py-2 px-4 border-b text-center">
+                                                {{ $data['horas_paralizacion'] ?? 0 }}
+                                            </td>
+                                            <td class="py-2 px-4 border-b text-right">
+                                                {{ number_format($data['importe_paralizacion'] ?? 0, 2) }} €
+                                            </td>
+                                            <td class="py-2 px-4 border-b text-center">
+                                                {{ $data['horas_grua'] ?? 0 }}
+                                            </td>
+                                            <td class="py-2 px-4 border-b text-right">
+                                                {{ number_format($data['importe_grua'] ?? 0, 2) }} €
+                                            </td>
+                                            <td class="py-2 px-4 border-b text-center">
+                                                {{ $data['horas_almacen'] ?? 0 }}
+                                            </td>
+                                            <td class="py-2 px-4 border-b text-right">
+                                                {{ number_format($data['importe'] ?? 0, 2) }} €
+                                            </td>
+                                            <td class="py-2 px-4 border-b text-right font-bold">
+                                                {{ number_format($data['total'] ?? 0, 2) }} €
+                                            </td>
+                                        </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                        </div>
+                    @endif
+                    <hr class="m-10 border-gray-300">
                 @endforeach
             @endif
         @elseif (auth()->user()->rol == 'operario')
@@ -564,8 +616,8 @@
         });
     </script>
     <script>
-        const TODOS_CAMIONES = @json($camionesJson);
-        console.log('TODOS_CAMIONES cargados:', TODOS_CAMIONES);
+        window.TODOS_CAMIONES = @json($camionesJson);
+        console.log('TODOS_CAMIONES cargados:', window.TODOS_CAMIONES);
     </script>
 
     <script>
@@ -591,7 +643,7 @@
                     return frag;
                 }
 
-                const lista = TODOS_CAMIONES.filter(c => String(c.empresa_id) === String(empresaId));
+                const lista = window.TODOS_CAMIONES.filter(c => String(c.empresa_id) === String(empresaId));
                 console.log('Filtrando camiones para empresa:', empresaId, 'Encontrados:', lista.length);
 
                 lista.forEach(c => {

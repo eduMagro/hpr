@@ -9,6 +9,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use OpenAI\Laravel\Facades\OpenAI;
 
 class AsistenteVirtualController extends Controller
@@ -341,27 +342,39 @@ BASE DE CONOCIMIENTO:
 - Ver fichajes: Recursos Humanos → Registros Entrada/Salida
 
 ## VACACIONES
-**Opción 1 - Desde perfil:**
-1. Clic en tu nombre → Sección Vacaciones → Solicitar Vacaciones
-2. Modal con fechas de inicio y fin → Guardar
+**Cómo solicitar vacaciones (solo operarios):**
+1. Haz clic en tu nombre (esquina superior derecha) → Mi Perfil
+2. Verás un calendario con tus turnos asignados
+3. Sistema de selección clic-clic:
+   - PRIMER CLIC: Haz clic en el día de inicio (se resalta en azul)
+   - SEGUNDO CLIC:
+     * Si haces clic en el MISMO día = solicitas solo ese día
+     * Si haces clic en un DÍA DIFERENTE = creas un rango desde el primer día hasta el segundo
+   - Mientras mueves el ratón verás el resaltado visual del rango
+4. Aparecerá modal Solicitar vacaciones mostrando las fechas
+5. Haz clic en Enviar solicitud
+6. La solicitud queda como pendiente hasta aprobación de RRHH
 
-**Opción 2 - Desde menú:**
-1. Recursos Humanos → Vacaciones → Solicitar Vacaciones
+**Cancelar selección:** Presiona tecla ESC antes del segundo clic
 
-**Aprobación:**
-- Las solicitudes deben ser aprobadas por RRHH
-- Hay 3 calendarios: Mis Vacaciones, Aprobadas, Todas
-- Estado cambia de 'pendiente' a 'aprobada'
+**Gestión RRHH:** Recursos Humanos → Vacaciones
+- Ver calendarios por departamento (Maquinistas, Ferrallas, Oficina)
+- Aprobar/Denegar solicitudes pendientes
+- Asignar vacaciones directamente (solo personal oficina)
 
 ## NÓMINAS
-**Descargar nómina:**
+**Solicitar nómina por email:**
 1. Clic en tu nombre (esquina superior derecha)
 2. Baja a sección 'Mis Nóminas'
 3. Selecciona mes y año
-4. Clic en 'Descargar Nómina'
-5. Se genera PDF con salario bruto, deducciones, IRPF, SS
+4. Clic en 'Descargar Nómina' (botón)
+5. El sistema ENVÍA la nómina a tu correo electrónico
+6. Revisa tu email - recibirás un PDF adjunto con: salario bruto, deducciones, IRPF, SS
 
-**Importante:** Las nóminas deben estar generadas por RRHH previamente
+**Importante:**
+- Las nóminas deben estar generadas por RRHH previamente
+- Debes tener un email configurado en tu perfil
+- El PDF se envía por email, NO se descarga directamente
 
 ## CONTRASEÑAS
 **Si la olvidaste:**
@@ -372,16 +385,35 @@ BASE DE CONOCIMIENTO:
 **Si la recuerdas:** Contacta con administración
 
 ## PEDIDOS - RECEPCIÓN
-**Ruta:** Logística → Pedidos → [Seleccionar pedido] → Recepcionar
-**Proceso:**
-1. Por cada producto:
-   - Cantidad recibida
-   - Número de albarán del proveedor
-   - Ubicación de almacén
-   - 'Registrar Entrada'
-2. Repetir para todos los productos
-3. 'Cerrar Albarán' cuando todo esté recepcionado
-**Nota:** Se puede recepcionar parcialmente
+**IMPORTANTE:** El proceso tiene 3 pasos obligatorios:
+
+**Paso 1 - Activar línea de pedido:**
+- Ruta: Logística → Pedidos → [Seleccionar pedido]
+- En la tabla de productos del pedido, haz clic en botón 'Activar línea' (amarillo)
+- Solo se pueden activar líneas cuando la nave es válida
+
+**Paso 2 - Ir a máquina tipo GRUA:**
+- Ruta: Producción → Máquinas → [Seleccionar máquina tipo GRUA]
+- En sección 'Movimientos Pendientes' verás la entrada activada
+- Haz clic en botón 'Entrada' (naranja)
+
+**Paso 3 - Recepcionar el material:**
+El sistema te guiará paso a paso:
+1. **Cantidad de paquetes**: ¿1 o 2 paquetes?
+2. **Fabricante**: Selecciona el fabricante (si aplica)
+3. **Código del paquete**: Escanea o escribe código (debe empezar por MP)
+4. **Número de colada**: Introduce el número de colada
+5. **Número de paquete**: Número del paquete
+6. Si son 2 paquetes, repite pasos 3-5 para el segundo
+7. **Peso total (kg)**: Peso en kilogramos
+8. **Ubicación**:
+   - Selecciona Sector
+   - Selecciona Ubicación dentro del sector
+   - O marca checkbox para escanear ubicación
+9. **Revisar y confirmar** todos los datos
+10. El sistema registra y puedes **'Cerrar Albarán'** cuando termines
+
+**Importante:** Los datos se guardan automáticamente si sales, puedes continuar después
 
 ## PLANILLAS
 **Importar planilla:**
@@ -474,21 +506,27 @@ BASE DE CONOCIMIENTO:
         }
 
         if (preg_match('/(vacaciones|solicitar|días|festivos)/i', $pregunta)) {
-            return "**🏖️ Para solicitar vacaciones:**\n\n" .
-                   "**Opción 1 - Desde tu perfil:**\n" .
-                   "1. Haz clic en **tu nombre** (esquina superior derecha)\n" .
-                   "2. En la sección de vacaciones, haz clic en **\"Solicitar Vacaciones\"**\n" .
-                   "3. Se abrirá un modal - selecciona **fechas de inicio y fin**\n" .
-                   "4. Haz clic en **\"Guardar\"**\n\n" .
-                   "**Opción 2 - Desde Recursos Humanos:**\n" .
-                   "1. Ve a **Recursos Humanos → Vacaciones**\n" .
-                   "2. Haz clic en **\"Solicitar Vacaciones\"**\n" .
-                   "3. Selecciona las fechas y confirma\n\n" .
-                   "⚠️ **Aprobación:**\n" .
-                   "• Las solicitudes deben ser aprobadas por **RRHH**\n" .
-                   "• Verás **3 calendarios**: Mis Vacaciones, Aprobadas, y Todas\n" .
-                   "• El estado cambiará de **\"pendiente\"** a **\"aprobada\"** cuando se procese\n\n" .
-                   "📊 **Ver días disponibles:** En tu perfil verás los días que te quedan";
+            return "**🏖️ Para solicitar vacaciones (solo operarios):**\n\n" .
+                   "1. Haz clic en **tu nombre** en la esquina superior derecha → **\"Mi Perfil\"**\n" .
+                   "2. Verás un **calendario** con tus turnos asignados\n" .
+                   "3. Usa el sistema de selección **\"clic-clic\"**:\n\n" .
+                   "   **PRIMER CLIC:**\n" .
+                   "   • Haz clic en el **día de inicio** de tus vacaciones\n" .
+                   "   • El día se resaltará en **azul**\n\n" .
+                   "   **SEGUNDO CLIC:**\n" .
+                   "   • Si haces clic en el **mismo día** = solicitas solo ese día\n" .
+                   "   • Si haces clic en un **día diferente** = creas un rango completo\n" .
+                   "   • Mientras mueves el ratón verás el **resaltado visual** del rango\n\n" .
+                   "4. Aparecerá un modal **\"Solicitar vacaciones\"** mostrando:\n" .
+                   "   • Las fechas seleccionadas (desde/hasta)\n" .
+                   "   • Mensaje: \"Se enviará una solicitud para revisión\"\n" .
+                   "5. Haz clic en **\"Enviar solicitud\"** para confirmar\n" .
+                   "6. Tu solicitud quedará como **\"pendiente\"** hasta que RRHH la apruebe\n\n" .
+                   "💡 **Tip:** Presiona **ESC** para cancelar la selección antes del segundo clic\n\n" .
+                   "⚠️ **Importante:**\n" .
+                   "• Solo **operarios** pueden solicitar vacaciones de esta forma\n" .
+                   "• Personal de **oficina** tiene acceso directo para asignar estados\n" .
+                   "• Las solicitudes se gestionan desde: **Recursos Humanos → Vacaciones**";
         }
 
         if (preg_match('/(contraseña|password|clave|recuperar|cambiar)/i', $pregunta)) {
@@ -504,21 +542,32 @@ BASE DE CONOCIMIENTO:
         }
 
         if (preg_match('/(pedido|recepcionar|material|entrada.*almacén|almacen)/i', $pregunta)) {
-            return "**📦 Para recepcionar un pedido:**\n\n" .
+            return "**📦 Para recepcionar un pedido (3 pasos obligatorios):**\n\n" .
+                   "**PASO 1 - Activar línea de pedido:**\n" .
                    "1. Ve a **Logística → Pedidos**\n" .
-                   "2. Busca el pedido en la lista y **haz clic en él**\n" .
-                   "3. En la vista detallada, haz clic en el botón **\"Recepcionar\"** (icono de caja)\n" .
-                   "4. **Por cada producto:**\n" .
-                   "   • Introduce la **cantidad recibida**\n" .
-                   "   • Introduce el **número de albarán** del proveedor\n" .
-                   "   • Selecciona la **ubicación de almacén**\n" .
-                   "   • Haz clic en **\"Registrar Entrada\"**\n" .
-                   "5. Repite el paso 4 para cada producto recibido\n" .
-                   "6. Cuando hayas recepcionado todo, haz clic en **\"Cerrar Albarán\"**\n\n" .
-                   "⚠️ **Importante:**\n" .
-                   "• Puedes recepcionar parcialmente (si no llega todo a la vez)\n" .
-                   "• El albarán se cierra cuando se han recepcionado todos los productos\n" .
-                   "• La ruta exacta es: `/pedidos/{id}/recepcion/{producto_base_id}`";
+                   "2. Busca y **haz clic en el pedido**\n" .
+                   "3. En la tabla de productos, haz clic en el botón **\"Activar línea\"** (amarillo)\n" .
+                   "   ⚠️ Solo se pueden activar si la nave es válida\n\n" .
+                   "**PASO 2 - Ir a máquina GRÚA:**\n" .
+                   "4. Ve a **Producción → Máquinas**\n" .
+                   "5. Selecciona una **máquina tipo GRÚA**\n" .
+                   "6. En la sección **\"Movimientos Pendientes\"** verás la entrada activada\n" .
+                   "7. Haz clic en el botón **\"Entrada\"** (naranja)\n\n" .
+                   "**PASO 3 - Recepcionar el material (wizard paso a paso):**\n" .
+                   "8. Haz clic en **\"➕ Registrar nuevo paquete\"**\n" .
+                   "9. El sistema te guiará paso a paso:\n" .
+                   "   1️⃣ **Cantidad de paquetes**: ¿1 o 2?\n" .
+                   "   2️⃣ **Fabricante**: Selecciona (si aplica)\n" .
+                   "   3️⃣ **Código paquete**: Escanea o escribe (debe empezar por MP)\n" .
+                   "   4️⃣ **Número de colada**: Introduce número\n" .
+                   "   5️⃣ **Número de paquete**: Introduce número\n" .
+                   "   6️⃣ Si son 2 paquetes → Repite pasos 3-5 para el segundo\n" .
+                   "   7️⃣ **Peso total (kg)**: Introduce peso\n" .
+                   "   8️⃣ **Ubicación**: Selecciona Sector → Ubicación (o escanea)\n" .
+                   "   9️⃣ **Revisar y confirmar** → Finalizar\n" .
+                   "10. Repite si hay más productos\n" .
+                   "11. Cuando termines TODO, haz clic en **\"Cerrar Albarán\"**\n\n" .
+                   "💡 **Tip:** Puedes recepcionar parcialmente si no llega todo a la vez";
         }
 
         if (preg_match('/(planilla|importar|bvbs|asignar.*máquina|maquina)/i', $pregunta)) {
@@ -612,16 +661,18 @@ BASE DE CONOCIMIENTO:
         }
 
         if (preg_match('/(nómina|nomina|sueldo|descargar.*nómina|mis.*nóminas)/i', $pregunta)) {
-            return "**💰 Para descargar tu nómina:**\n\n" .
+            return "**💰 Para solicitar tu nómina:**\n\n" .
                    "1. Haz clic en **tu nombre** (esquina superior derecha)\n" .
                    "2. Baja hasta la sección **\"Mis Nóminas\"**\n" .
-                   "3. Selecciona el **mes y año** que quieres descargar\n" .
+                   "3. Selecciona el **mes y año** que quieres recibir\n" .
                    "4. Haz clic en **\"Descargar Nómina\"**\n" .
-                   "5. Se generará un PDF con tu nómina del mes seleccionado\n\n" .
+                   "5. El sistema **enviará la nómina a tu correo electrónico**\n" .
+                   "6. Revisa tu email - recibirás un **PDF adjunto**\n\n" .
                    "⚠️ **Importante:**\n" .
                    "• Las nóminas deben estar generadas previamente por RRHH\n" .
-                   "• Si no aparece tu nómina de un mes, contacta con RRHH\n" .
-                   "• El PDF incluye todos los detalles: salario bruto, deducciones, IRPF, SS, etc.\n\n" .
+                   "• **Debes tener un email configurado** en tu perfil\n" .
+                   "• El PDF se envía por **email**, NO se descarga directamente desde el sistema\n" .
+                   "• Si no recibes el email, revisa tu carpeta de spam\n\n" .
                    "📊 **Ver todas las nóminas (Admin):** Base de Datos → Nóminas";
         }
 

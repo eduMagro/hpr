@@ -53,7 +53,9 @@ export function configurarTooltipsYMenus(info, calendar) {
         }
 
         // Comentario
-        if (p.comentario) contenido += `📝 ${p.comentario}`;
+        if (p.comentario && p.comentario.trim()) {
+            contenido += `💬 <strong>Comentario:</strong> ${p.comentario}`;
+        }
 
         if (contenido) {
             tippy(info.el, {

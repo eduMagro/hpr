@@ -337,7 +337,7 @@
                                                 </button>
 
                                                 {{-- Eliminar --}}
-                                                <x-tabla.boton-eliminar :action=":action="route('etiquetas.destroy', $etiqueta->id)" wire:navigate" />
+                                                <x-tabla.boton-eliminar :action="route('etiquetas.destroy', $etiqueta->id)" />
                                             </div>
                                         </template>
                                     </div>

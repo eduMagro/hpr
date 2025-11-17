@@ -290,6 +290,251 @@ class ProductionLogger
     }
 
     /**
+     * Registra asignación detallada de coladas a elementos
+     *
+     * @param Etiqueta $etiqueta
+     * @param Maquina $maquina
+     * @param array $elementosConColadas Array de elementos con sus productos asignados
+     * @param array $productosAfectados Array de productos consumidos
+     * @param array $warnings Warnings generados durante el proceso
+     */
+    public static function logAsignacionColadas(
+        Etiqueta $etiqueta,
+        Maquina $maquina,
+        array $elementosConColadas,
+        array $productosAfectados = [],
+        array $warnings = []
+    ): void {
+        $compañero = auth()->user() ? auth()->user()->compañeroDeTurno() : null;
+
+        // Construir detalle de asignaciones
+        $asignacionesDetalle = [];
+        foreach ($elementosConColadas as $elementoData) {
+            $elemento = $elementoData['elemento'];
+            $coladas = $elementoData['coladas'] ?? [];
+
+            $coladasStr = collect($coladas)->map(function($colada) {
+                // Usar código si está disponible, sino ID
+                $identificador = $colada['producto_codigo'] ?? 'P' . $colada['producto_id'];
+                return sprintf(
+                    "%s(Colada:%s,%.2fkg)",
+                    $identificador,
+                    $colada['n_colada'] ?? 'N/A',
+                    $colada['peso_consumido'] ?? 0
+                );
+            })->implode(' + ');
+
+            $asignacionesDetalle[] = sprintf(
+                "Elem%d[Ø%smm,%.2fkg]→%s",
+                $elemento->id,
+                $elemento->diametro,
+                $elemento->peso,
+                $coladasStr ?: 'Sin asignar'
+            );
+        }
+
+        // Construir detalle de productos consumidos
+        $productosDetalle = collect($productosAfectados)->map(function($prod) {
+            // Usar código si está disponible, sino ID
+            $identificador = $prod['codigo'] ?? 'P' . $prod['id'];
+            return sprintf(
+                "%s: Colada %s | Stock: %.2fkg→%.2fkg | Consumido: %.2fkg%s",
+                $identificador,
+                $prod['n_colada'] ?? 'N/A',
+                ($prod['peso_inicial'] ?? 0),
+                ($prod['peso_stock'] ?? 0),
+                ($prod['peso_inicial'] ?? 0) - ($prod['peso_stock'] ?? 0),
+                ($prod['peso_stock'] ?? 0) <= 0 ? ' [AGOTADO]' : ''
+            );
+        })->implode(' | ');
+
+        // Estadísticas de asignación
+        $totalElementos = count($elementosConColadas);
+        $con1Producto = 0;
+        $con2Productos = 0;
+        $con3Productos = 0;
+
+        foreach ($elementosConColadas as $elemData) {
+            $numColadas = count($elemData['coladas'] ?? []);
+            if ($numColadas === 1) $con1Producto++;
+            if ($numColadas === 2) $con2Productos++;
+            if ($numColadas === 3) $con3Productos++;
+        }
+
+        $estadisticas = sprintf(
+            "Total:%d | Simple:%d | Doble:%d | Triple:%d",
+            $totalElementos,
+            $con1Producto,
+            $con2Productos,
+            $con3Productos
+        );
+
+        // Formatear observaciones de forma legible
+        $observaciones = [];
+        $observaciones[] = "📊 ESTADÍSTICAS";
+        $observaciones[] = "   Total elementos: {$totalElementos} | Simple: {$con1Producto} | Doble: {$con2Productos} | Triple: {$con3Productos}";
+        $observaciones[] = "";
+
+        $observaciones[] = "📦 ASIGNACIONES POR ELEMENTO";
+        foreach ($elementosConColadas as $elementoData) {
+            $elemento = $elementoData['elemento'];
+            $coladas = $elementoData['coladas'] ?? [];
+
+            $coladasStr = collect($coladas)->map(function($colada) {
+                $identificador = $colada['producto_codigo'] ?? 'P' . $colada['producto_id'];
+                return sprintf(
+                    "%s (Colada: %s, %.2f kg)",
+                    $identificador,
+                    $colada['n_colada'] ?? 'N/A',
+                    $colada['peso_consumido'] ?? 0
+                );
+            })->implode(' + ');
+
+            // Usar código del elemento si está disponible, sino usar ID
+            $elementoIdentificador = $elemento->codigo ?? 'E' . $elemento->id;
+
+            $observaciones[] = sprintf(
+                "   • Elemento %s [Ø%s mm, %.2f kg] → %s",
+                $elementoIdentificador,
+                $elemento->diametro,
+                $elemento->peso,
+                $coladasStr ?: 'Sin asignar'
+            );
+        }
+
+        if (!empty($productosDetalle)) {
+            $observaciones[] = "";
+            $observaciones[] = "📋 PRODUCTOS CONSUMIDOS";
+            foreach ($productosAfectados as $prod) {
+                $identificador = $prod['codigo'] ?? 'P' . $prod['id'];
+                $pesoInicial = $prod['peso_inicial'] ?? 0;
+                $pesoStock = $prod['peso_stock'] ?? 0;
+                // Usar el consumo acumulado si está disponible, sino calcular
+                $consumido = $prod['consumido'] ?? ($pesoInicial - $pesoStock);
+                $agotado = $pesoStock <= 0 ? ' ⚠️ AGOTADO' : '';
+
+                $observaciones[] = sprintf(
+                    "   • %s - Colada: %s | Stock: %.2f kg → %.2f kg | Consumido: %.2f kg%s",
+                    $identificador,
+                    $prod['n_colada'] ?? 'N/A',
+                    $pesoInicial,
+                    $pesoStock,
+                    $consumido,
+                    $agotado
+                );
+            }
+        }
+
+        if (!empty($warnings)) {
+            $observaciones[] = "";
+            $observaciones[] = "⚠️ ADVERTENCIAS";
+            foreach ($warnings as $warning) {
+                $observaciones[] = "   • " . $warning;
+            }
+        }
+
+        $data = [
+            'Fecha y Hora' => now()->format('Y-m-d H:i:s'),
+            'Acción' => 'ASIGNACIÓN COLADAS',
+            'Usuario' => auth()->user() ? auth()->user()->nombre_completo : 'Sistema',
+            'Usuario 2' => $compañero ? $compañero->nombre_completo : '',
+            'Etiqueta' => $etiqueta->etiqueta_sub_id ?? $etiqueta->id,
+            'Planilla' => $etiqueta->planilla->codigo ?? 'N/A',
+            'Obra' => $etiqueta->planilla->obra->obra ?? 'N/A',
+            'Cliente' => $etiqueta->planilla->cliente->nombre ?? 'N/A',
+            'Nave' => $maquina->obra->obra ?? 'N/A',
+            'Máquina' => $maquina->nombre,
+            'Tipo Máquina' => $maquina->tipo_material ?? $maquina->tipo,
+            'Operario 1' => optional($etiqueta->operario1)->nombre_completo ?? 'No asignado',
+            'Operario 2' => optional($etiqueta->operario2)->nombre_completo ?? 'No asignado',
+            'Estado Inicial' => 'fabricando',
+            'Estado Final' => 'fabricando',
+            'Elementos' => $totalElementos,
+            'Peso Estimado (kg)' => number_format($etiqueta->peso ?? 0, 2, ',', '.'),
+            'Diámetros' => $etiqueta->elementos->pluck('diametro')->unique()->implode(', ') . ' mm',
+            'Paquete' => $etiqueta->paquete?->codigo ?? 'Sin asignar',
+            'Observaciones' => implode("\n", $observaciones)
+        ];
+
+        self::writeToCSV($data);
+    }
+
+    /**
+     * Registra detalle de consumo de stock por diámetro
+     *
+     * @param Etiqueta $etiqueta
+     * @param Maquina $maquina
+     * @param array $consumosPorDiametro Array con consumos agrupados por diámetro
+     */
+    public static function logConsumoStockPorDiametro(
+        Etiqueta $etiqueta,
+        Maquina $maquina,
+        array $consumosPorDiametro
+    ): void {
+        $compañero = auth()->user() ? auth()->user()->compañeroDeTurno() : null;
+
+        // Debug: verificar datos recibidos
+        \Log::info('ProductionLogger::logConsumoStockPorDiametro', [
+            'etiqueta_id' => $etiqueta->id,
+            'consumos_count' => count($consumosPorDiametro),
+            'consumos_data' => $consumosPorDiametro
+        ]);
+
+        // Formatear observaciones de forma legible
+        $observaciones = [];
+        $observaciones[] = "📊 CONSUMO DE STOCK POR DIÁMETRO";
+        $observaciones[] = "";
+
+        foreach ($consumosPorDiametro as $diametro => $consumos) {
+            $totalConsumido = array_sum(array_column($consumos, 'consumido'));
+            $numProductos = count($consumos);
+
+            $observaciones[] = sprintf("🔹 Ø%d mm - Total: %.2f kg (%d producto%s)",
+                $diametro,
+                $totalConsumido,
+                $numProductos,
+                $numProductos > 1 ? 's' : ''
+            );
+
+            foreach ($consumos as $consumo) {
+                $identificador = $consumo['producto_codigo'] ?? 'P' . $consumo['producto_id'];
+                $observaciones[] = sprintf(
+                    "   • %s: %.2f kg",
+                    $identificador,
+                    $consumo['consumido']
+                );
+            }
+
+            $observaciones[] = "";
+        }
+
+        $data = [
+            'Fecha y Hora' => now()->format('Y-m-d H:i:s'),
+            'Acción' => 'CONSUMO STOCK',
+            'Usuario' => auth()->user() ? auth()->user()->nombre_completo : 'Sistema',
+            'Usuario 2' => $compañero ? $compañero->nombre_completo : '',
+            'Etiqueta' => $etiqueta->etiqueta_sub_id ?? $etiqueta->id,
+            'Planilla' => $etiqueta->planilla->codigo ?? 'N/A',
+            'Obra' => $etiqueta->planilla->obra->obra ?? 'N/A',
+            'Cliente' => $etiqueta->planilla->cliente->nombre ?? 'N/A',
+            'Nave' => $maquina->obra->obra ?? 'N/A',
+            'Máquina' => $maquina->nombre,
+            'Tipo Máquina' => $maquina->tipo_material ?? $maquina->tipo,
+            'Operario 1' => optional($etiqueta->operario1)->nombre_completo ?? 'No asignado',
+            'Operario 2' => optional($etiqueta->operario2)->nombre_completo ?? 'No asignado',
+            'Estado Inicial' => 'fabricando',
+            'Estado Final' => 'fabricando',
+            'Elementos' => $etiqueta->elementos->count(),
+            'Peso Estimado (kg)' => number_format($etiqueta->peso ?? 0, 2, ',', '.'),
+            'Diámetros' => implode(', ', array_keys($consumosPorDiametro)) . ' mm',
+            'Paquete' => $etiqueta->paquete?->codigo ?? 'Sin asignar',
+            'Observaciones' => implode("\n", array_filter($observaciones))
+        ];
+
+        self::writeToCSV($data);
+    }
+
+    /**
      * Escribe una línea en el archivo CSV del mes actual
      */
     private static function writeToCSV(array $data): void

@@ -3,34 +3,247 @@
 
     <div class="max-w-6xl mx-auto px-4 py-6">
 
-        <!-- Chat del Asistente Virtual -->
-        <div x-data="chatApp()" x-init="loadSugerencias()"
-            class="flex flex-col h-[calc(100vh-150px)] bg-white rounded-xl shadow-xl overflow-hidden">
-
-            <!-- CABECERA -->
-            <div class="px-6 py-4 bg-gradient-to-r from-red-600 to-red-700 text-white">
-                <div class="flex items-center justify-between">
-                    <div class="flex items-center gap-3">
-                        <div class="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
-                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z">
-                                </path>
-                            </svg>
+        <!-- Header RESPONSIVE -->
+        <div class="header-ferrallin">
+            <div class="header-content">
+                <div class="header-left">
+                    <h1 class="header-title">
+                        <img src="{{ asset('imagenes/iconos/asistente-sin-fondo.png') }}" alt="Ferrallin" class="header-icon">
+                        <div class="header-text">
+                            <span class="header-name">FERRALLIN</span>
+                            <span class="header-subtitle">Asistente de Ayuda Inteligente</span>
                         </div>
-                        <div>
-                            <h1 class="text-lg font-bold">Centro de Ayuda</h1>
-                            <p class="text-xs text-red-100" x-show="!isTyping">Pregúntame cualquier cosa sobre el sistema</p>
-                            <p class="text-xs text-red-100 animate-pulse" x-show="isTyping">Escribiendo...</p>
-                        </div>
-                    </div>
-
-                    <button @click="clearChat()"
-                        class="px-3 py-1.5 bg-white/10 hover:bg-white/20 rounded-lg text-sm transition">
-                        Limpiar
+                    </h1>
+                    <p class="header-status" x-show="!isTyping">
+                        <span class="status-dot"></span>
+                        <span class="status-text">Potenciado por OpenAI GPT-4 • Listo para ayudarte</span>
+                    </p>
+                    <p class="header-typing" x-show="isTyping">
+                        <svg class="typing-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                        </svg>
+                        <span class="typing-text">Escribiendo...</span>
+                    </p>
+                </div>
+                <div class="header-right">
+                    <button @click="clearChat()" class="btn-clear">
+                        <svg class="btn-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                        </svg>
+                        <span class="btn-text">Limpiar</span>
                     </button>
                 </div>
             </div>
+        </div>
+
+        <style>
+            /* Animaciones */
+            @keyframes pulse {
+                0%, 100% { opacity: 1; }
+                50% { opacity: .5; }
+            }
+            @keyframes spin {
+                from { transform: rotate(0deg); }
+                to { transform: rotate(360deg); }
+            }
+
+            /* Header Responsive */
+            .header-ferrallin {
+                background-color: #7f1d1d;
+                color: white;
+                padding: 1rem;
+                border-radius: 0.75rem;
+                margin-bottom: 1rem;
+                box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+                border: 1px solid #991b1b;
+            }
+
+            .header-content {
+                display: flex;
+                justify-content: space-between;
+                align-items: flex-start;
+                gap: 1rem;
+            }
+
+            .header-left {
+                flex: 1;
+            }
+
+            .header-title {
+                font-size: 1.5rem;
+                font-weight: bold;
+                display: flex;
+                align-items: center;
+                gap: 0.75rem;
+                margin: 0;
+            }
+
+            .header-icon {
+                width: 3rem;
+                height: 3rem;
+                object-fit: contain;
+                flex-shrink: 0;
+            }
+
+            .header-text {
+                display: flex;
+                flex-direction: column;
+            }
+
+            .header-name {
+                display: block;
+                color: white;
+                font-size: 1.5rem;
+                line-height: 1.2;
+            }
+
+            .header-subtitle {
+                font-size: 0.875rem;
+                font-weight: normal;
+                color: #d1d5db;
+                line-height: 1.3;
+            }
+
+            .header-status,
+            .header-typing {
+                color: #d1d5db;
+                margin-top: 0.5rem;
+                font-size: 0.875rem;
+                display: flex;
+                align-items: center;
+                gap: 0.5rem;
+            }
+
+            .header-typing {
+                color: #fef08a;
+                display: none;
+            }
+
+            .status-dot {
+                width: 0.625rem;
+                height: 0.625rem;
+                background-color: #4ade80;
+                border-radius: 9999px;
+                animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+                flex-shrink: 0;
+            }
+
+            .status-text,
+            .typing-text {
+                line-height: 1.3;
+            }
+
+            .typing-icon {
+                width: 1rem;
+                height: 1rem;
+                animation: spin 1s linear infinite;
+                flex-shrink: 0;
+            }
+
+            .btn-clear {
+                background-color: #991b1b;
+                color: white;
+                font-weight: 600;
+                padding: 0.75rem 1rem;
+                border-radius: 0.75rem;
+                border: 1px solid #7f1d1d;
+                cursor: pointer;
+                display: flex;
+                align-items: center;
+                gap: 0.5rem;
+                transition: all 0.2s;
+                white-space: nowrap;
+            }
+
+            .btn-clear:hover {
+                background-color: #7f1d1d;
+            }
+
+            .btn-icon {
+                width: 1.25rem;
+                height: 1.25rem;
+                flex-shrink: 0;
+            }
+
+            /* Responsive Mobile */
+            @media (max-width: 640px) {
+                .header-ferrallin {
+                    padding: 0.875rem;
+                }
+
+                .header-content {
+                    flex-direction: column;
+                    align-items: stretch;
+                }
+
+                .header-title {
+                    font-size: 1.25rem;
+                    gap: 0.5rem;
+                }
+
+                .header-icon {
+                    width: 2.5rem;
+                    height: 2.5rem;
+                }
+
+                .header-name {
+                    font-size: 1.25rem;
+                }
+
+                .header-subtitle {
+                    font-size: 0.75rem;
+                }
+
+                .header-status,
+                .header-typing {
+                    font-size: 0.75rem;
+                    margin-top: 0.375rem;
+                }
+
+                .status-dot {
+                    width: 0.5rem;
+                    height: 0.5rem;
+                }
+
+                .typing-icon {
+                    width: 0.875rem;
+                    height: 0.875rem;
+                }
+
+                .status-text {
+                    font-size: 0.75rem;
+                }
+
+                .btn-clear {
+                    width: 100%;
+                    justify-content: center;
+                    padding: 0.625rem 0.875rem;
+                    font-size: 0.875rem;
+                }
+
+                .btn-text {
+                    display: inline;
+                }
+            }
+
+            @media (max-width: 380px) {
+                .header-subtitle {
+                    font-size: 0.7rem;
+                }
+
+                .status-text {
+                    font-size: 0.7rem;
+                }
+
+                .typing-text {
+                    font-size: 0.75rem;
+                }
+            }
+        </style>
+
+        <!-- Chat del Asistente Virtual -->
+        <div x-data="chatApp()" x-init="loadSugerencias()"
+            class="flex flex-col h-[calc(100vh-250px)] bg-white rounded-xl shadow-xl overflow-hidden">
 
             <!-- SUGERENCIAS -->
             <div x-show="messages.filter(m => m.sender === 'user').length === 0"
@@ -57,7 +270,7 @@
                         <div class="flex-shrink-0">
                             <div :class="msg.sender === 'user' ? 'bg-red-500' : 'bg-gradient-to-br from-red-500 to-red-600'"
                                 class="w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-bold shadow">
-                                <span x-text="msg.sender === 'user' ? 'TU' : '🤖'"></span>
+                                <span x-text="msg.sender === 'user' ? 'TU' : 'F'"></span>
                             </div>
                         </div>
 
@@ -78,8 +291,8 @@
                 <div x-show="isTyping" class="flex gap-3 animate-fade-in">
                     <div class="flex-shrink-0">
                         <div
-                            class="w-8 h-8 bg-gradient-to-br from-red-500 to-red-600 rounded-full flex items-center justify-center text-white text-sm font-bold">
-                            🤖
+                            class="w-8 h-8 bg-gradient-to-br from-red-500 to-red-600 rounded-full flex items-center justify-center text-white text-sm font-bold shadow">
+                            F
                         </div>
                     </div>
                     <div class="bg-white border border-gray-200 px-4 py-3 rounded-2xl shadow-sm">
@@ -150,15 +363,19 @@
                 init() {
                     // Mensaje de bienvenida
                     this.addMessage('bot',
-                        '¡Hola! 👋 Soy tu asistente virtual. Puedo ayudarte con información sobre:\n\n' +
-                        '• **Fichajes**: Cómo fichar entrada/salida\n' +
-                        '• **Vacaciones**: Solicitar y consultar vacaciones\n' +
-                        '• **Pedidos**: Recepcionar material\n' +
-                        '• **Planillas**: Importar y asignar a máquinas\n' +
-                        '• **Producción**: Fabricación y creación de paquetes\n' +
-                        '• **Salidas**: Preparar portes\n' +
-                        '• **Contraseñas**: Cambiar o recuperar contraseña\n' +
-                        '• **Stock**: Consultar disponibilidad de material\n\n' +
+                        '¡Hola! 👋 Soy **FERRALLIN**, tu asistente de ayuda inteligente.\n\n' +
+                        'Puedo ayudarte con información sobre:\n\n' +
+                        '• 📍 **Fichajes**: Cómo fichar entrada/salida\n' +
+                        '• 🏖️ **Vacaciones**: Solicitar y consultar vacaciones\n' +
+                        '• 💰 **Nóminas**: Descargar tus nóminas\n' +
+                        '• 📦 **Pedidos**: Recepcionar material\n' +
+                        '• 📋 **Planillas**: Importar y asignar a máquinas\n' +
+                        '• ⚙️ **Producción**: Fabricación y creación de paquetes\n' +
+                        '• 🚚 **Salidas**: Preparar portes\n' +
+                        '• 🔐 **Contraseñas**: Cambiar o recuperar contraseña\n' +
+                        '• 📊 **Stock**: Consultar disponibilidad de material\n' +
+                        '• 👤 **Usuarios**: Gestionar empleados\n\n' +
+                        '💡 **Tip:** Pregúntame en lenguaje natural, por ejemplo: "¿cómo descargo mi nómina?" o "necesito solicitar vacaciones"\n\n' +
                         '¿En qué puedo ayudarte hoy?'
                     );
                     this.loadConversationHistory();
@@ -289,7 +506,7 @@
                 clearChat() {
                     if (confirm('¿Seguro que quieres borrar toda la conversación?')) {
                         this.messages = [];
-                        this.addMessage('bot', '¡Conversación limpiada! ¿En qué puedo ayudarte?');
+                        this.addMessage('bot', '🗑️ ¡Conversación limpiada! Soy FERRALLIN, ¿en qué puedo ayudarte ahora?');
                         localStorage.removeItem('asistente_chat_history');
                     }
                 },

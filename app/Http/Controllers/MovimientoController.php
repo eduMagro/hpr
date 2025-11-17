@@ -851,20 +851,20 @@ class MovimientoController extends Controller
                                 'estado'       => 'fabricando',
                             ]);
 
-                            // Consumir anterior
-                            $productoAnterior = Producto::where('producto_base_id', $producto->producto_base_id)
-                                ->where('id', '!=', $producto->id)
-                                ->where('maquina_id', $maquinaDetectada->id)
-                                ->where('estado', 'fabricando')
-                                ->latest('updated_at')
-                                ->first();
+                            // // Consumir anterior YA NO LO USAMOS, LO DEJAMOS POR AHORA
+                            // $productoAnterior = Producto::where('producto_base_id', $producto->producto_base_id)
+                            //     ->where('id', '!=', $producto->id)
+                            //     ->where('maquina_id', $maquinaDetectada->id)
+                            //     ->where('estado', 'fabricando')
+                            //     ->latest('updated_at')
+                            //     ->first();
 
-                            if ($productoAnterior) {
-                                $productoAnterior->update([
-                                    'maquina_id' => null,
-                                    'estado'     => 'consumido',
-                                ]);
-                            }
+                            // if ($productoAnterior) {
+                            //     $productoAnterior->update([
+                            //         'maquina_id' => null,
+                            //         'estado'     => 'consumido',
+                            //     ]);
+                            // }
                         } else {
                             // A ubicación
                             Movimiento::create([

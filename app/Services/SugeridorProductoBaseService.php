@@ -18,6 +18,12 @@ class SugeridorProductoBaseService
     /** Máximo de tipos distintos en patrón (A, A+B, A+B+C) */
     private const MAX_TIPOS_EN_PATRON = 3;
 
+    /** Máximo de iteraciones en backtracking para evitar timeout */
+    private const MAX_BACKTRACK_ITERATIONS = 10000;
+
+    /** Contador de iteraciones actual */
+    private int $backtrackIterations = 0;
+
     /**
      * Punto de entrada:
      * - $elemento: A
@@ -158,6 +164,20 @@ class SugeridorProductoBaseService
             'len_cm'      => $x['len_cm'],
         ], $pool));
 
+        // OPTIMIZACIÓN: Limitar número de candidatos para evitar explosión combinatoria
+        // Si hay demasiados elementos, tomar solo los más relevantes
+        if (count($items) > 30) {
+            // Priorizar: elemento requerido + los más cortos (caben mejor)
+            $elementoA = array_filter($items, fn($x) => $x['elemento_id'] === $elementoA_id);
+            $otros = array_filter($items, fn($x) => $x['elemento_id'] !== $elementoA_id);
+
+            // Ordenar otros por longitud
+            usort($otros, fn($a, $b) => $a['len_cm'] <=> $b['len_cm']);
+
+            // Tomar elemento A + primeros 29 otros
+            $items = array_merge($elementoA, array_slice($otros, 0, 29));
+        }
+
         // ordenar por longitud asc para podar antes
         usort($items, fn($a, $b) => $a['len_cm'] <=> $b['len_cm']);
 
@@ -170,6 +190,10 @@ class SugeridorProductoBaseService
 
         // estrategia: backtracking con índices no decrecientes
         $stack = []; // cada entrada: ['idx' => i, 'elemento_id' => .., 'len_cm' => ..]
+
+        // Resetear contador de iteraciones
+        $this->backtrackIterations = 0;
+
         $this->backtrackPatrones(
             items: $items,
             startIdx: 0,
@@ -180,6 +204,15 @@ class SugeridorProductoBaseService
             actual: [],
             mejor: $mejor // por referencia
         );
+
+        // Log si alcanzamos el límite
+        if ($this->backtrackIterations >= self::MAX_BACKTRACK_ITERATIONS) {
+            Log::warning('⚠️ SUGERIDOR: Alcanzado límite de iteraciones', [
+                'elemento_id' => $elementoA_id,
+                'iteraciones' => $this->backtrackIterations,
+                'items_count' => count($items)
+            ]);
+        }
 
         return $mejor;
     }
@@ -194,6 +227,12 @@ class SugeridorProductoBaseService
         array $actual,
         ?array &$mejor
     ): void {
+        // Verificar límite de iteraciones para evitar timeout
+        $this->backtrackIterations++;
+        if ($this->backtrackIterations >= self::MAX_BACKTRACK_ITERATIONS) {
+            return; // Detener exploración
+        }
+
         // Evaluar combinación actual si no está vacía
         if (!empty($actual)) {
             // Debe contener al menos una A

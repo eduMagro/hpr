@@ -116,9 +116,13 @@ class EtiquetasTable extends Component
 
         // Paquete
         if (!empty($this->paquete)) {
-            $paquete = Paquete::where('codigo', $this->paquete)->first();
-            if ($paquete) {
-                $query->where('paquete_id', $paquete->id);
+            // Buscar paquetes que coincidan con el código (búsqueda parcial)
+            $paquetesIds = Paquete::where('codigo', 'LIKE', '%' . $this->paquete . '%')
+                ->pluck('id')
+                ->toArray();
+
+            if (!empty($paquetesIds)) {
+                $query->whereIn('paquete_id', $paquetesIds);
             } else {
                 $query->whereRaw('1 = 0');
             }

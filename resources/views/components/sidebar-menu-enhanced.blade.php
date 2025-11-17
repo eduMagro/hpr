@@ -28,6 +28,21 @@
     },
 
     init() {
+        // Migrar favoritos y recientes antiguos: eliminar los que no tienen URL
+        const favorites = JSON.parse(localStorage.getItem('nav_favorites') || '[]');
+        const favoritesMigrados = favorites.filter(f => f.url);
+        if (favoritesMigrados.length !== favorites.length) {
+            localStorage.setItem('nav_favorites', JSON.stringify(favoritesMigrados));
+            this.favorites = favoritesMigrados;
+        }
+
+        const recents = JSON.parse(localStorage.getItem('nav_recent') || '[]');
+        const recentsMigrados = recents.filter(r => r.url);
+        if (recentsMigrados.length !== recents.length) {
+            localStorage.setItem('nav_recent', JSON.stringify(recentsMigrados));
+            this.recentPages = recentsMigrados;
+        }
+
         // Guardar estado inicial sin cambios visuales
         if (window.innerWidth < 768) {
             localStorage.setItem('sidebar_open', 'false');
@@ -116,7 +131,7 @@
             // Guardar en localStorage para persistencia
             localStorage.setItem('sidebar_active_section', '{{ $section['id'] }}');
             // Agregar a recientes cuando navegamos
-            this.addToRecent('{{ $item['route'] }}', '{{ $item['label'] }}', '{{ $section['label'] }}', '{{ $item['icon'] }}');
+            this.addToRecent('{{ $item['route'] }}', '{{ $item['label'] }}', '{{ $section['label'] }}', '{{ $item['icon'] }}', '{{ route($item['route']) }}');
         }
         @endforeach
         @endif
@@ -153,12 +168,12 @@
         }, 200);
     },
 
-    toggleFavorite(route, label, section, icon) {
+    toggleFavorite(route, label, section, icon, url = null) {
         const index = this.favorites.findIndex(f => f.route === route);
         if (index >= 0) {
             this.favorites.splice(index, 1);
         } else {
-            this.favorites.push({ route, label, section, icon, addedAt: Date.now() });
+            this.favorites.push({ route, label, section, icon, url: url || this.getRouteUrl(route), addedAt: Date.now() });
         }
         localStorage.setItem('nav_favorites', JSON.stringify(this.favorites));
     },
@@ -182,12 +197,12 @@
         return '/' + parts.join('/');
     },
 
-    addToRecent(route, label, section, icon) {
+    addToRecent(route, label, section, icon, url = null) {
         // Evitar duplicados
         this.recentPages = this.recentPages.filter(p => p.route !== route);
 
         // Agregar al inicio
-        this.recentPages.unshift({ route, label, section, icon, visitedAt: Date.now() });
+        this.recentPages.unshift({ route, label, section, icon, url: url || this.getRouteUrl(route), visitedAt: Date.now() });
 
         // Mantener solo últimos 10
         if (this.recentPages.length > 10) {
@@ -355,7 +370,7 @@
                     <template x-for="fav in favorites" :key="fav.route">
                         <div
                             class="flex items-center group px-3 py-2 rounded-lg hover:bg-gray-700 transition">
-                            <a :href="`{{ url('/') }}${getRouteUrl(fav.route)}`"
+                            <a :href="fav.url || `{{ url('/') }}${getRouteUrl(fav.route)}`"
                                 wire:navigate
                                 class="flex items-center space-x-2 flex-1 min-w-0">
                                 <span x-text="fav.icon"></span>
@@ -417,7 +432,7 @@
                     </template>
                     <template x-for="page in recentPages.slice(0, 5)"
                         :key="page.route">
-                        <a :href="`{{ url('/') }}${getRouteUrl(page.route)}`"
+                        <a :href="page.url || `{{ url('/') }}${getRouteUrl(page.route)}`"
                             wire:navigate
                             class="flex items-center space-x-2 px-3 py-2 rounded-lg text-sm hover:bg-gray-700 transition group">
                             <span x-text="page.icon"></span>
@@ -506,7 +521,7 @@
 
                                     <!-- Botón de favorito -->
                                     <button
-                                        @click="toggleFavorite('{{ $item['route'] }}', '{{ $item['label'] }}', '{{ $section['label'] }}', '{{ $item['icon'] }}')"
+                                        @click="toggleFavorite('{{ $item['route'] }}', '{{ $item['label'] }}', '{{ $section['label'] }}', '{{ $item['icon'] }}', '{{ route($item['route']) }}')"
                                         class="ml-2 p-1.5 rounded hover:bg-gray-800 transition opacity-0 group-hover:opacity-100">
                                         <svg class="w-4 h-4 transition"
                                             :class="isFavorite(

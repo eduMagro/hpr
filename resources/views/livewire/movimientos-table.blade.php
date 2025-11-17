@@ -220,7 +220,7 @@
                         </td>
 
                         <td class="px-6 py-4 text-center border">
-                            <x-tabla.boton-eliminar :action=":action="route('movimientos.destroy', $movimiento->id)" wire:navigate" />
+                            <x-tabla.boton-eliminar :action="route('movimientos.destroy', $movimiento->id)" />
                         </td>
                     </tr>
                 @empty

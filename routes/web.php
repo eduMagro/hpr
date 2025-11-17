@@ -48,6 +48,7 @@ use App\Http\Controllers\TurnoController;
 use App\Http\Controllers\ClaveSeccionController;
 use App\Http\Controllers\PedidoAlmacenVentaController;
 use App\Http\Controllers\ClienteAlmacenController;
+use App\Http\Controllers\FabricacionLogController;
 use App\Services\PlanillaService;
 use Illuminate\Support\Facades\Log;
 
@@ -250,6 +251,10 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
     // Endpoints de optimización de planillas
     Route::get('/api/produccion/optimizar-analisis', [ProduccionController::class, 'optimizarAnalisis'])->name('api.produccion.optimizar.analisis');
     Route::post('/api/produccion/optimizar-aplicar', [ProduccionController::class, 'optimizarAplicar'])->name('api.produccion.optimizar.aplicar');
+
+    // Endpoints de balanceo de carga entre máquinas
+    Route::get('/api/produccion/balancear-carga-analisis', [ProduccionController::class, 'balancearCargaAnalisis'])->name('api.produccion.balancear.analisis');
+    Route::post('/api/produccion/balancear-carga-aplicar', [ProduccionController::class, 'aplicarBalanceoCarga'])->name('api.produccion.balancear.aplicar');
 
     //MSR20 BVBS
     Route::get('/maquinas/{maquina}/exportar-bvbs', [MaquinaController::class, 'exportarBVBS'])
@@ -525,6 +530,27 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
     // Descargar archivo CSV completo
     Route::get('/production-logs/download/{fileName}', [App\Http\Controllers\ProductionLogController::class, 'downloadLog'])
         ->name('production.logs.download');
+
+    // ========== TRAZABILIDAD DE FABRICACIÓN (COLADAS) ==========
+    // Vista principal de trazabilidad
+    Route::get('/fabricacion/trazabilidad', [App\Http\Controllers\FabricacionLogController::class, 'index'])
+        ->name('fabricacion.trazabilidad.index');
+
+    // API: Obtener detalles de fabricación de una etiqueta
+    Route::get('/api/fabricacion/detalles-etiqueta', [App\Http\Controllers\FabricacionLogController::class, 'getDetallesEtiqueta'])
+        ->name('api.fabricacion.detalles');
+
+    // API: Buscar elementos por colada
+    Route::get('/api/fabricacion/buscar-colada', [App\Http\Controllers\FabricacionLogController::class, 'buscarPorColada'])
+        ->name('api.fabricacion.buscar.colada');
+
+    // API: Obtener estadísticas del mes
+    Route::get('/api/fabricacion/estadisticas', [App\Http\Controllers\FabricacionLogController::class, 'getEstadisticas'])
+        ->name('api.fabricacion.estadisticas');
+
+    // API: Obtener meses disponibles
+    Route::get('/api/fabricacion/meses-disponibles', [App\Http\Controllers\FabricacionLogController::class, 'getMesesDisponibles'])
+        ->name('api.fabricacion.meses');
 
     // Vista para editar el mapa
     Route::get('/localizaciones/editar-mapa', [LocalizacionController::class, 'editarMapa'])

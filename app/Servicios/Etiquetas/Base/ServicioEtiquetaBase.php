@@ -12,6 +12,7 @@ use App\Models\Planilla;
 use App\Models\OrdenPlanilla;
 use App\Models\ProductoBase;
 use App\Models\Ubicacion;
+use App\Services\ProductionLogger;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
@@ -216,6 +217,7 @@ abstract class ServicioEtiquetaBase
 
         // 1) CONSUMOS (con pool por diámetro y locks)
         $consumos = [];
+        $consumosParaLog = []; // Copia para el logging
         foreach ($elementosEnMaquina->groupBy(fn($e) => (int)$e->diametro) as $diametro => $elementos) {
 
             // Regla especial ensambladora: sólo Ø5
@@ -285,29 +287,59 @@ abstract class ServicioEtiquetaBase
                 }
                 $producto->save();
 
-                $productosAfectados[] = [
-                    'id'           => $producto->id,
-                    'peso_stock'   => $producto->peso_stock,
-                    'peso_inicial' => $pesoInicial,
-                    'n_colada'     => $producto->n_colada,
-                ];
+                // Acumular consumo por producto (evitar duplicados)
+                $productoKey = $producto->id;
+                if (!isset($productosAfectados[$productoKey])) {
+                    $productosAfectados[$productoKey] = [
+                        'id'           => $producto->id,
+                        'codigo'       => $producto->codigo,
+                        'peso_stock'   => $producto->peso_stock,
+                        'peso_inicial' => $pesoInicial,
+                        'n_colada'     => $producto->n_colada,
+                        'consumido'    => 0, // Inicializar consumo acumulado
+                    ];
+                }
+                // Acumular el consumo
+                $productosAfectados[$productoKey]['consumido'] += $restar;
+                // Actualizar peso_stock (siempre el más reciente)
+                $productosAfectados[$productoKey]['peso_stock'] = $producto->peso_stock;
                 $consumos[$diametro][] = [
                     'producto_id' => $producto->id,
+                    'consumido'   => $restar,
+                ];
+
+                // Guardar también para el log (con copia del valor y código)
+                if (!isset($consumosParaLog[$diametro])) {
+                    $consumosParaLog[$diametro] = [];
+                }
+                $consumosParaLog[$diametro][] = [
+                    'producto_id' => $producto->id,
+                    'producto_codigo' => $producto->codigo,
                     'consumido'   => $restar,
                 ];
             }
 
             // Si falta stock residual, dispara recarga (warning) y continúa
             if ($pesoNecesarioTotal > 0) {
+
+                // 1) Solicitar recarga automáticamente
                 $pb = ProductoBase::where('diametro', (int)$diametro)
                     ->where('tipo', $maquina->tipo_material)
                     ->first();
+
                 if ($pb) {
                     $this->generarMovimientoRecargaMateriaPrima($pb, $maquina, null, $solicitanteId);
-                    $warnings[] = "Stock insuficiente para Ø{$diametro} en {$maquina->nombre}. Se ha solicitado recarga.";
-                } else {
-                    $warnings[] = "Stock insuficiente para Ø{$diametro} y no existe ProductoBase configurado (tipo {$maquina->tipo_material}).";
                 }
+
+                // 2) Lanzar excepción y detener fabricación completa
+                throw new ServicioEtiquetaException(
+                    "Stock insuficiente para fabricar elementos de Ø{$diametro} en la máquina {$maquina->nombre}. Se ha solicitado recarga.",
+                    [
+                        'diametro'    => (int)$diametro,
+                        'maquina_id'  => $maquina->id,
+                        'peso_faltante' => $pesoNecesarioTotal
+                    ]
+                );
             }
         }
 
@@ -344,6 +376,13 @@ abstract class ServicioEtiquetaBase
             }
             $elemento->save();
         }
+
+        // LOG DETALLADO: Asignación de coladas a elementos
+        // Convertir $productosAfectados de array asociativo a indexado
+        $this->logAsignacionColadasDetallada($elementosEnMaquina, $etiqueta, $maquina, array_values($productosAfectados), $warnings);
+
+        // LOG DETALLADO: Consumo de stock por diámetro (usar la copia guardada)
+        $this->logConsumoStockDetallado($consumosParaLog, $etiqueta, $maquina);
 
         // ACTUALIZAR PESO TOTAL DE LA ETIQUETA SIEMPRE
         $this->actualizarPesoEtiqueta($etiqueta);
@@ -511,24 +550,94 @@ abstract class ServicioEtiquetaBase
                 $planilla->fecha_finalizacion = now();
                 $planilla->estado = 'completada';
                 $planilla->save();
-
-                // Limpieza de cola + compactar posiciones
-                DB::transaction(function () use ($planilla, $maquina) {
-                    OrdenPlanilla::where('planilla_id', $planilla->id)
-                        ->where('maquina_id', $maquina->id)
-                        ->delete();
-
-                    $ordenes = OrdenPlanilla::where('maquina_id', $maquina->id)
-                        ->orderBy('posicion')
-                        ->lockForUpdate()
-                        ->get();
-
-                    foreach ($ordenes as $index => $orden) {
-                        $orden->posicion = $index;
-                        $orden->save();
-                    }
-                });
             }
         }
+    }
+
+    /**
+     * Registra en CSV la asignación detallada de coladas a elementos
+     */
+    protected function logAsignacionColadasDetallada(
+        $elementosEnMaquina,
+        Etiqueta $etiqueta,
+        Maquina $maquina,
+        array $productosAfectados,
+        array $warnings
+    ): void {
+        // Preparar datos de elementos con sus coladas asignadas
+        $elementosConColadas = [];
+
+        foreach ($elementosEnMaquina as $elemento) {
+            $coladas = [];
+
+            // Buscar información de cada producto asignado
+            if ($elemento->producto_id) {
+                $productoInfo = collect($productosAfectados)->firstWhere('id', $elemento->producto_id);
+                if ($productoInfo) {
+                    $coladas[] = [
+                        'producto_id' => $elemento->producto_id,
+                        'producto_codigo' => $productoInfo['codigo'] ?? 'N/A',
+                        'n_colada' => $productoInfo['n_colada'] ?? 'N/A',
+                        'peso_consumido' => 0, // Se calcula en el logger
+                    ];
+                }
+            }
+
+            if ($elemento->producto_id_2) {
+                $productoInfo = collect($productosAfectados)->firstWhere('id', $elemento->producto_id_2);
+                if ($productoInfo) {
+                    $coladas[] = [
+                        'producto_id' => $elemento->producto_id_2,
+                        'producto_codigo' => $productoInfo['codigo'] ?? 'N/A',
+                        'n_colada' => $productoInfo['n_colada'] ?? 'N/A',
+                        'peso_consumido' => 0,
+                    ];
+                }
+            }
+
+            if ($elemento->producto_id_3) {
+                $productoInfo = collect($productosAfectados)->firstWhere('id', $elemento->producto_id_3);
+                if ($productoInfo) {
+                    $coladas[] = [
+                        'producto_id' => $elemento->producto_id_3,
+                        'producto_codigo' => $productoInfo['codigo'] ?? 'N/A',
+                        'n_colada' => $productoInfo['n_colada'] ?? 'N/A',
+                        'peso_consumido' => 0,
+                    ];
+                }
+            }
+
+            $elementosConColadas[] = [
+                'elemento' => $elemento,
+                'coladas' => $coladas,
+            ];
+        }
+
+        // Llamar al logger
+        ProductionLogger::logAsignacionColadas(
+            $etiqueta,
+            $maquina,
+            $elementosConColadas,
+            $productosAfectados,
+            $warnings
+        );
+    }
+
+    /**
+     * Registra en CSV el consumo de stock por diámetro
+     */
+    protected function logConsumoStockDetallado(
+        array $consumos,
+        Etiqueta $etiqueta,
+        Maquina $maquina
+    ): void {
+        // El array $consumos ya tiene el formato correcto:
+        // $consumos[$diametro][] = ['producto_id' => X, 'consumido' => Y]
+
+        ProductionLogger::logConsumoStockPorDiametro(
+            $etiqueta,
+            $maquina,
+            $consumos
+        );
     }
 }

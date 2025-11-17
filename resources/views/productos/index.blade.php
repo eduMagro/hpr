@@ -241,15 +241,15 @@
                         <p class="text-gray-600 mt-2">{{ $producto->created_at->format('d/m/Y H:i') }}</p>
 
                         <hr class="my-2 border-gray-300">
-                        <td class="px-2 py-3 text-center border">
-                            @php
-                                $usuario = auth()->user();
-                                $esOficina = $usuario->rol === 'oficina';
-                                $esGruista = $usuario->rol !== 'oficina' && $usuario->maquina?->tipo === 'grua';
-                            @endphp
 
-                            @if ($esOficina || $esGruista)
-                                <div class="flex flex-wrap gap-2 mt-4 w-full">
+                        @php
+                            $usuario = auth()->user();
+                            $esOficina = $usuario->rol === 'oficina';
+                            $esGruista = $usuario->rol !== 'oficina' && $usuario->maquina?->tipo === 'grua';
+                        @endphp
+
+                        @if ($esOficina || $esGruista)
+                            <div class="flex flex-wrap gap-2 mt-4 w-full">
                                     <a href="{{ route('productos.show', $producto->id) }}" wire:navigate
                                         class="flex-1 bg-blue-500 hover:bg-blue-600 text-white text-center text-sm font-semibold py-2 px-2 rounded shadow">
                                         Ver
@@ -279,9 +279,8 @@
                                         </button>
                                     </form>
 
-                                </div>
-                            @endif
-                        </td>
+                            </div>
+                        @endif
 
                     </div>
                 @empty

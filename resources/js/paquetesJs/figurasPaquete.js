@@ -2,6 +2,13 @@ document.addEventListener("DOMContentLoaded", function () {
     const modal = document.getElementById("modal-dibujo");
     const cerrarModal = document.getElementById("cerrar-modal");
     const canvas = document.getElementById("canvas-dibujo");
+
+    // Verificar que el canvas existe antes de obtener el contexto
+    if (!canvas) {
+        console.log('Canvas no encontrado en esta página, saltando inicialización de figuras');
+        return;
+    }
+
     const ctx = canvas.getContext("2d");
 
     // Márgenes y espaciado

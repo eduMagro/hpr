@@ -350,9 +350,6 @@ class MaquinaController extends Controller
                 return (int) $c->countBy()->sortDesc()->keys()->first();
             })
             ->toArray();
-        Log::info('[MaquinaController@show] 🧩 Planillas activas en cola:', collect($planillasActivas)->pluck('id')->toArray());
-
-        Log::info('[MaquinaController@show] 🧩 Planillas presentes en elementosFiltrados:', $elementosFiltrados->pluck('planilla_id')->unique()->toArray());
 
         // 11) Devolver vista
         return view('maquinas.show', array_merge($base, [
@@ -1469,7 +1466,6 @@ class MaquinaController extends Controller
 
             $posiciones = array_filter([$posicion1, $posicion2]);
             $planillasCompletadas = [];
-            $errores = [];
 
             DB::beginTransaction();
 
@@ -1481,20 +1477,27 @@ class MaquinaController extends Controller
                     ->first();
 
                 if (!$ordenPlanilla) {
-                    $errores[] = "No se encontró planilla en la posición {$posicion}";
-                    continue;
+                    DB::rollBack();
+                    return response()->json([
+                        'success' => false,
+                        'message' => "No se encontró planilla en la posición {$posicion}"
+                    ], 400);
                 }
 
                 $planilla = $ordenPlanilla->planilla;
 
-                // Verificar que todas las etiquetas de esa planilla tengan paquete asignado
+                // Verificar que todas las etiquetas de esa planilla EN ESTA MÁQUINA tengan paquete asignado
                 $etiquetasSinPaquete = $planilla->etiquetas()
+                    ->where('maquina_id', $maquina->id)
                     ->whereDoesntHave('paquete')
                     ->count();
 
                 if ($etiquetasSinPaquete > 0) {
-                    $errores[] = "La planilla {$planilla->codigo} (Pos. {$posicion}) aún tiene {$etiquetasSinPaquete} etiqueta(s) sin paquete asignado";
-                    continue;
+                    DB::rollBack();
+                    return response()->json([
+                        'success' => false,
+                        'message' => "La planilla {$planilla->codigo} (Pos. {$posicion}) aún tiene {$etiquetasSinPaquete} etiqueta(s) sin paquete asignado en esta máquina"
+                    ], 400);
                 }
 
                 // Guardar posición para reordenar
@@ -1515,26 +1518,14 @@ class MaquinaController extends Controller
 
             DB::commit();
 
-            if (empty($planillasCompletadas) && !empty($errores)) {
-                return response()->json([
-                    'success' => false,
-                    'message' => implode('. ', $errores)
-                ], 400);
-            }
-
-            $mensaje = count($planillasCompletadas) > 0
-                ? 'Planilla(s) completada(s): ' . implode(', ', $planillasCompletadas)
-                : 'No se completaron planillas';
-
-            if (!empty($errores)) {
-                $mensaje .= '. Advertencias: ' . implode('. ', $errores);
-            }
+            $mensaje = count($planillasCompletadas) > 1
+                ? 'Planillas completadas: ' . implode(', ', $planillasCompletadas)
+                : 'Planilla completada: ' . $planillasCompletadas[0];
 
             return response()->json([
                 'success' => true,
                 'message' => $mensaje,
-                'planillas_completadas' => $planillasCompletadas,
-                'errores' => $errores
+                'planillas_completadas' => $planillasCompletadas
             ]);
 
         } catch (\Exception $e) {

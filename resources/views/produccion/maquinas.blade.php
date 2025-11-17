@@ -2731,12 +2731,15 @@
 
                     // Filtro por código planilla (búsqueda parcial, case-insensitive)
                     if (filtrosActivos.codigoPlanilla && filtrosActivos.codigoPlanilla !== '') {
-                        const codigoPlanilla = (props.codigo_planilla || '').toLowerCase();
+                        const codigoPlanilla = (props.codigo_planilla || evento.extendedProps.codigo || evento.title || '').toLowerCase();
                         const filtro = filtrosActivos.codigoPlanilla.toLowerCase();
                         const cumple = codigoPlanilla.includes(filtro);
-                        console.log('Código Planilla filtro:', filtrosActivos.codigoPlanilla);
-                        console.log('Código Planilla evento:', props.codigo_planilla);
-                        console.log('Cumple código planilla:', cumple ? '✅' : '❌');
+                        console.log('🔍 Código Planilla filtro:', filtrosActivos.codigoPlanilla);
+                        console.log('🔍 Código Planilla evento (codigo_planilla):', props.codigo_planilla);
+                        console.log('🔍 Código Planilla evento (codigo):', evento.extendedProps.codigo);
+                        console.log('🔍 Código Planilla evento (title):', evento.title);
+                        console.log('🔍 Valor final usado:', codigoPlanilla);
+                        console.log('🔍 Cumple código planilla:', cumple ? '✅' : '❌');
                         if (!cumple) return false;
                     }
 
@@ -2784,9 +2787,12 @@
                         const eventosPorPlanilla = {};
 
                         calendar.getEvents().forEach(evento => {
-                            // Extraer ID de planilla del ID del evento (formato: "planilla-123-seg1")
-                            const match = evento.id.match(/^planilla-(\d+)-seg\d+$/);
-                            if (!match) return;
+                            // Extraer ID de planilla del ID del evento (formato: "planilla-123-maq2-orden456")
+                            const match = evento.id.match(/^planilla-(\d+)-/);
+                            if (!match) {
+                                console.warn('⚠️ Evento sin formato correcto:', evento.id);
+                                return;
+                            }
 
                             const planillaId = match[1];
 
@@ -4192,13 +4198,264 @@
             }
 
             // ============================================================
+            // BALANCEO DE CARGA
+            // ============================================================
+
+            window.datosBalanceo = window.datosBalanceo || null;
+
+            async function abrirModalBalanceo() {
+                const modal = document.getElementById('modalBalanceo');
+                const loading = document.getElementById('balanceoLoading');
+                const content = document.getElementById('balanceoContent');
+                const empty = document.getElementById('balanceoEmpty');
+                const btnAplicar = document.getElementById('btnAplicarBalanceo');
+
+                // Mostrar modal en estado de carga
+                modal.classList.remove('hidden');
+                modal.classList.add('flex');
+                loading.classList.remove('hidden');
+                content.classList.add('hidden');
+                empty.classList.add('hidden');
+                btnAplicar.classList.add('hidden');
+
+                try {
+                    // Llamar al endpoint para obtener análisis de balanceo
+                    const response = await fetch('/api/produccion/balancear-carga-analisis', {
+                        method: 'GET',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                        }
+                    });
+
+                    if (!response.ok) {
+                        throw new Error('Error al analizar balanceo');
+                    }
+
+                    const data = await response.json();
+                    window.datosBalanceo = data;
+
+                    loading.classList.add('hidden');
+
+                    if (data.elementos && data.elementos.length > 0) {
+                        mostrarPreviewBalanceo(data);
+                        content.classList.remove('hidden');
+                        btnAplicar.classList.remove('hidden');
+                    } else {
+                        empty.classList.remove('hidden');
+                    }
+
+                } catch (error) {
+                    console.error('Error al cargar balanceo:', error);
+                    loading.classList.add('hidden');
+                    empty.classList.remove('hidden');
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: 'No se pudo cargar el análisis de balanceo'
+                    });
+                }
+            }
+
+            function mostrarPreviewBalanceo(data) {
+                // Actualizar estadísticas
+                document.getElementById('estadElementosBalanceo').textContent = data.total_elementos || 0;
+                document.getElementById('estadTiempoPromedio').textContent = (data.tiempo_promedio_horas || 0) + 'h';
+                document.getElementById('estadMaquinasBalanceadas').textContent = (data.resumen_original || []).length;
+
+                // Mostrar gráfico de carga original
+                const grafico = document.getElementById('graficoCargaOriginal');
+                grafico.innerHTML = '';
+
+                if (data.resumen_original && data.resumen_original.length > 0) {
+                    const maxHoras = Math.max(...data.resumen_original.map(m => m.tiempo_horas));
+
+                    data.resumen_original.forEach(maquina => {
+                        const porcentaje = (maquina.tiempo_horas / maxHoras) * 100;
+                        const esSobrecargada = maquina.tiempo_horas > (data.tiempo_promedio_horas * 1.15);
+                        const esSubcargada = maquina.tiempo_horas < (data.tiempo_promedio_horas * 0.85);
+
+                        const barColor = esSobrecargada ? 'bg-red-500' : (esSubcargada ? 'bg-yellow-500' : 'bg-green-500');
+
+                        grafico.innerHTML += `
+                            <div class="flex items-center gap-2">
+                                <div class="w-32 text-sm font-medium text-gray-700">${maquina.nombre}</div>
+                                <div class="flex-1 bg-gray-200 rounded-full h-6 relative">
+                                    <div class="${barColor} h-6 rounded-full flex items-center justify-end pr-2 text-white text-xs font-medium"
+                                         style="width: ${porcentaje}%">
+                                        ${maquina.tiempo_horas}h
+                                    </div>
+                                </div>
+                                <div class="w-24 text-sm text-gray-600">${maquina.cantidad_elementos} elem.</div>
+                            </div>
+                        `;
+                    });
+                }
+
+                // Llenar tabla de elementos
+                const tabla = document.getElementById('tablaBalanceo');
+                tabla.innerHTML = '';
+
+                data.elementos.forEach((elemento, index) => {
+                    const row = document.createElement('tr');
+                    row.className = 'hover:bg-gray-50';
+                    row.innerHTML = `
+                        <td class="px-3 py-2">
+                            <input type="checkbox"
+                                   class="balanceo-checkbox rounded border-gray-300 text-green-600 focus:ring-green-500"
+                                   data-elemento-id="${elemento.elemento_id}"
+                                   data-maquina-actual="${elemento.maquina_actual_id}"
+                                   data-maquina-nueva="${elemento.maquina_nueva_id}"
+                                   checked>
+                        </td>
+                        <td class="px-3 py-2 font-medium text-gray-900">${elemento.codigo}</td>
+                        <td class="px-3 py-2 text-gray-600">${elemento.planilla_codigo || '-'}</td>
+                        <td class="px-3 py-2 text-gray-600">${elemento.diametro}</td>
+                        <td class="px-3 py-2 text-gray-600">${elemento.tiempo_horas}h</td>
+                        <td class="px-3 py-2">
+                            <span class="px-2 py-1 text-xs font-medium rounded-full bg-red-100 text-red-800">
+                                ${elemento.maquina_actual_nombre}
+                            </span>
+                        </td>
+                        <td class="px-3 py-2">
+                            <span class="px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-800">
+                                ${elemento.maquina_nueva_nombre}
+                            </span>
+                        </td>
+                        <td class="px-3 py-2 text-sm text-gray-600">${elemento.razon || '-'}</td>
+                    `;
+                    tabla.appendChild(row);
+                });
+            }
+
+            function cerrarModalBalanceo() {
+                const modal = document.getElementById('modalBalanceo');
+                modal.classList.add('hidden');
+                modal.classList.remove('flex');
+                window.datosBalanceo = null;
+            }
+
+            function toggleAllBalanceo(checkbox) {
+                const checkboxes = document.querySelectorAll('.balanceo-checkbox');
+                checkboxes.forEach(cb => cb.checked = checkbox.checked);
+            }
+
+            function seleccionarTodosBalanceo() {
+                const checkboxes = document.querySelectorAll('.balanceo-checkbox');
+                checkboxes.forEach(cb => cb.checked = true);
+                document.getElementById('checkAllBalanceo').checked = true;
+            }
+
+            function deseleccionarTodosBalanceo() {
+                const checkboxes = document.querySelectorAll('.balanceo-checkbox');
+                checkboxes.forEach(cb => cb.checked = false);
+                document.getElementById('checkAllBalanceo').checked = false;
+            }
+
+            async function aplicarBalanceo() {
+                // Recopilar elementos seleccionados
+                const checkboxes = document.querySelectorAll('.balanceo-checkbox:checked');
+                const movimientos = [];
+
+                checkboxes.forEach(cb => {
+                    movimientos.push({
+                        elemento_id: parseInt(cb.dataset.elementoId),
+                        maquina_actual_id: parseInt(cb.dataset.maquinaActual),
+                        maquina_nueva_id: parseInt(cb.dataset.maquinaNueva)
+                    });
+                });
+
+                if (movimientos.length === 0) {
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'Sin selección',
+                        text: 'Por favor selecciona al menos un elemento para balancear'
+                    });
+                    return;
+                }
+
+                // Confirmar con el usuario
+                const result = await Swal.fire({
+                    icon: 'question',
+                    title: '¿Aplicar balanceo de carga?',
+                    html: `Se van a mover <strong>${movimientos.length}</strong> elemento(s) para balancear la carga entre máquinas.<br><br>¿Deseas continuar?`,
+                    showCancelButton: true,
+                    confirmButtonText: 'Sí, aplicar',
+                    cancelButtonText: 'Cancelar',
+                    confirmButtonColor: '#16a34a',
+                    cancelButtonColor: '#6b7280'
+                });
+
+                if (!result.isConfirmed) return;
+
+                // Mostrar loading
+                Swal.fire({
+                    title: 'Aplicando balanceo...',
+                    text: 'Por favor espera',
+                    allowOutsideClick: false,
+                    didOpen: () => {
+                        Swal.showLoading();
+                    }
+                });
+
+                try {
+                    const response = await fetch('/api/produccion/balancear-carga-aplicar', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                        },
+                        body: JSON.stringify({ movimientos })
+                    });
+
+                    if (!response.ok) {
+                        throw new Error('Error al aplicar balanceo');
+                    }
+
+                    const data = await response.json();
+
+                    Swal.fire({
+                        icon: 'success',
+                        title: '¡Balanceo aplicado!',
+                        html: `Se han redistribuido <strong>${data.procesados}</strong> elemento(s) exitosamente.`,
+                        confirmButtonColor: '#16a34a'
+                    });
+
+                    cerrarModalBalanceo();
+
+                    // Refrescar calendario
+                    if (typeof calendar !== 'undefined') {
+                        calendar.refetchResources();
+                        calendar.refetchEvents();
+                    }
+
+                } catch (error) {
+                    console.error('Error al aplicar balanceo:', error);
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: 'No se pudo aplicar el balanceo. Por favor intenta de nuevo.'
+                    });
+                }
+            }
+
+            // ============================================================
             // GESTIÓN DE TURNOS
             // ============================================================
 
             async function toggleTurno(turnoId, turnoNombre) {
+                console.log('🔄 toggleTurno llamado:', turnoId, turnoNombre);
+
                 const btn = document.querySelector(`button[data-turno-id="${turnoId}"]`);
+                if (!btn) {
+                    console.error('❌ No se encontró el botón con turno-id:', turnoId);
+                    return;
+                }
+
                 const icon = btn.querySelector('.turno-icon');
                 const currentActivo = btn.classList.contains('bg-green-500');
+
+                console.log('✅ Botón encontrado, estado actual:', currentActivo ? 'activo' : 'inactivo');
 
                 try {
                     // Mostrar estado de carga
@@ -4223,11 +4480,7 @@
                     const data = await response.json();
                     const nuevoActivo = data.turno.activo;
 
-                    // Actualizar el estado en el array turnosActivos
-                    const turnoEnArray = turnosActivos.find(t => t.id === turnoId);
-                    if (turnoEnArray) {
-                        turnoEnArray.activo = nuevoActivo;
-                    }
+                    console.log('✅ Respuesta del servidor:', nuevoActivo ? 'Turno activado' : 'Turno desactivado');
 
                     // Actualizar UI del botón
                     if (nuevoActivo) {

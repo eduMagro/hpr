@@ -819,18 +819,13 @@
 
             <!-- Contenido del modal -->
             <div class="p-4 md:p-6">
-                <!-- Mensaje padre (con estilo similar al hilo) -->
-                <div id="contenidoMensajePadre" class="mb-4">
-                    <!-- Se llenará dinámicamente con JavaScript -->
-                </div>
-
                 <!-- Mensaje en modo edición (inicialmente oculto) -->
                 <textarea id="textareaMensaje"
                     class="w-full mt-2 p-3 md:p-4 border-2 border-blue-300 rounded-lg hidden text-sm md:text-base text-gray-800 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
                     rows="6" placeholder="Escribe tu mensaje aquí..."></textarea>
 
-                <!-- Hilo de conversación -->
-                <div id="hiloConversacion" class="mt-4 hidden">
+                <!-- Hilo de conversación (siempre visible ahora) -->
+                <div id="hiloConversacion" class="">
                     <div
                         class="bg-gradient-to-r from-blue-500 to-blue-600 rounded-t-lg px-4 py-2 flex items-center justify-between">
                         <h3 class="text-sm font-bold text-white flex items-center">
@@ -839,14 +834,15 @@
                                     d="M18 10c0 3.866-3.582 7-8 7a8.841 8.841 0 01-4.083-.98L2 17l1.338-3.123C2.493 12.767 2 11.434 2 10c0-3.866 3.582-7 8-7s8 3.134 8 7zM7 9H5v2h2V9zm8 0h-2v2h2V9zM9 9h2v2H9V9z"
                                     clip-rule="evenodd" />
                             </svg>
-                            Historial de conversación
+                            Conversación
                         </h3>
                         <span id="contadorRespuestas"
                             class="text-xs text-white bg-white bg-opacity-20 px-2 py-0.5 rounded-full font-medium"></span>
                     </div>
                     <div id="hiloContenido"
-                        class="space-y-2 max-h-96 overflow-y-auto bg-gradient-to-b from-gray-50 to-white rounded-b-lg p-4 border-x border-b border-gray-200">
-                        <!-- Se llenará dinámicamente -->
+                        class="min-h-[200px] max-h-96 overflow-y-auto bg-gray-100 rounded-b-lg p-4 border-x border-b border-gray-200"
+                        style="background-image: url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZGVmcz48cGF0dGVybiBpZD0iYSIgcGF0dGVyblVuaXRzPSJ1c2VyU3BhY2VPblVzZSIgd2lkdGg9IjQwIiBoZWlnaHQ9IjQwIiBwYXR0ZXJuVHJhbnNmb3JtPSJyb3RhdGUoNDUpIj48cGF0aCBkPSJNLTEwIDMwaDYwdi0yMGgtNjB6IiBmaWxsPSJyZ2JhKDI1NSwyNTUsMjU1LDAuMDIpIi8+PC9wYXR0ZXJuPjwvZGVmcz48cmVjdCBmaWxsPSJ1cmwoI2EpIiB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIi8+PC9zdmc+'); background-color: #f3f4f6;">
+                        <!-- Se llenará dinámicamente con el mensaje padre + respuestas -->
                     </div>
                 </div>
 
@@ -1295,57 +1291,64 @@
                 .then(response => response.json())
                 .then(data => {
                     if (data.success && data.hilo) {
-                        // Mostrar el mensaje padre con estilo de hilo
-                        mostrarMensajePadre(data.hilo);
-
                         const hiloContenido = document.getElementById('hiloContenido');
                         hiloContenido.innerHTML = '';
 
-                        // Si hay respuestas, mostrar el historial
-                        if (data.hilo.respuestas && data.hilo.respuestas.length > 0) {
-                            // Contar total de respuestas (recursivo)
-                            const totalRespuestas = contarRespuestas(data.hilo.respuestas);
-                            document.getElementById('contadorRespuestas').textContent =
-                                `${totalRespuestas} ${totalRespuestas === 1 ? 'respuesta' : 'respuestas'}`;
+                        // Insertar el mensaje padre DENTRO del historial
+                        mostrarMensajePadre(data.hilo);
 
-                            // Mostrar las respuestas
+                        // Contar total de respuestas (recursivo)
+                        const totalRespuestas = data.hilo.respuestas ? contarRespuestas(data.hilo.respuestas) : 0;
+
+                        // Actualizar contador (mensaje original + respuestas)
+                        const totalMensajes = totalRespuestas + 1;
+                        document.getElementById('contadorRespuestas').textContent =
+                            `${totalMensajes} ${totalMensajes === 1 ? 'mensaje' : 'mensajes'}`;
+
+                        // Si hay respuestas, mostrarlas después del mensaje padre
+                        if (data.hilo.respuestas && data.hilo.respuestas.length > 0) {
                             mostrarHilo(data.hilo.respuestas, 0);
-                            document.getElementById('hiloConversacion').classList.remove('hidden');
-                        } else {
-                            document.getElementById('hiloConversacion').classList.add('hidden');
                         }
-                    } else {
-                        document.getElementById('hiloConversacion').classList.add('hidden');
+
+                        // Scroll al final para ver el mensaje más reciente
+                        setTimeout(() => {
+                            hiloContenido.scrollTop = hiloContenido.scrollHeight;
+                        }, 100);
                     }
                 })
                 .catch(error => {
                     console.error('Error al cargar hilo:', error);
-                    document.getElementById('hiloConversacion').classList.add('hidden');
                 });
         }
 
         function mostrarMensajePadre(mensaje) {
-            const contenedor = document.getElementById('contenidoMensajePadre');
+            const hiloContenido = document.getElementById('hiloContenido');
             const esPropio = mensaje.es_propio;
-            const colorBorde = esPropio ? 'border-blue-500' : 'border-green-500';
-            const colorFondo = esPropio ? 'bg-blue-50' : 'bg-green-50';
 
-            contenedor.innerHTML = `
-                <div class="border-l-4 ${colorBorde} ${colorFondo} rounded-r-lg p-4 shadow-sm">
-                    <div class="flex items-start justify-between mb-2">
-                        <div class="flex items-center space-x-2">
-                            <p class="text-sm font-bold ${esPropio ? 'text-blue-700' : 'text-green-700'}">
-                                ${mensaje.emisor}
-                            </p>
-                            <span class="px-2 py-0.5 bg-gray-200 text-gray-700 text-xs rounded-full font-medium">
-                                Mensaje original
+            // Estilo chat - Mensajes propios a la derecha (azul), ajenos a la izquierda (verde)
+            const alineacion = esPropio ? 'justify-end' : 'justify-start';
+            const bgColor = esPropio ? 'bg-blue-500' : 'bg-green-500';
+            const textColor = 'text-white';
+            const borderRadius = esPropio ? 'rounded-l-2xl rounded-tr-2xl rounded-br-md' : 'rounded-r-2xl rounded-tl-2xl rounded-bl-md';
+
+            const mensajeDiv = document.createElement('div');
+            mensajeDiv.className = `flex ${alineacion} mb-4 animate-fade-in`;
+            mensajeDiv.innerHTML = `
+                <div class="flex flex-col max-w-[75%]">
+                    <div class="${bgColor} ${textColor} ${borderRadius} px-4 py-3 shadow-md">
+                        <div class="flex items-center gap-2 mb-1">
+                            <span class="font-bold text-sm">${mensaje.emisor}</span>
+                            <span class="px-2 py-0.5 bg-white bg-opacity-20 text-xs rounded-full font-medium">
+                                📌
                             </span>
                         </div>
-                        <span class="text-xs text-gray-500">${mensaje.created_at}</span>
+                        <p class="text-sm leading-relaxed whitespace-pre-wrap">${mensaje.mensaje}</p>
                     </div>
-                    <p class="text-sm text-gray-800 leading-relaxed whitespace-pre-wrap">${mensaje.mensaje}</p>
+                    <span class="text-xs text-gray-500 mt-1 ${esPropio ? 'text-right' : 'text-left'} px-2">${mensaje.created_at}</span>
                 </div>
             `;
+
+            hiloContenido.appendChild(mensajeDiv);
         }
 
         function contarRespuestas(respuestas) {
@@ -1388,24 +1391,28 @@
             const hiloContenido = document.getElementById('hiloContenido');
 
             respuestas.forEach(respuesta => {
-                const margenIzquierdo = nivel * 20;
                 const esPropio = respuesta.es_propio;
-                const colorBorde = esPropio ? 'border-blue-500' : 'border-green-500';
-                const colorFondo = esPropio ? 'bg-blue-50' : 'bg-green-50';
-                const iconoRespuesta = '<svg class="w-3 h-3 mr-1 inline" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M7.707 3.293a1 1 0 010 1.414L5.414 7H11a7 7 0 017 7v2a1 1 0 11-2 0v-2a5 5 0 00-5-5H5.414l2.293 2.293a1 1 0 11-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>';
+
+                // Estilo chat - Mensajes propios a la derecha (azul), ajenos a la izquierda (verde)
+                const alineacion = esPropio ? 'justify-end' : 'justify-start';
+                const bgColor = esPropio ? 'bg-blue-500' : 'bg-green-500';
+                const textColor = 'text-white';
+                const borderRadius = esPropio ? 'rounded-l-2xl rounded-tr-2xl rounded-br-md' : 'rounded-r-2xl rounded-tl-2xl rounded-bl-md';
 
                 const respuestaDiv = document.createElement('div');
-                respuestaDiv.className =
-                    `border-l-4 ${colorBorde} ${colorFondo} rounded-r-lg p-3 mb-2 shadow-sm hover:shadow-md transition-shadow duration-200`;
-                respuestaDiv.style.marginLeft = `${margenIzquierdo}px`;
+                respuestaDiv.className = `flex ${alineacion} mb-3 animate-fade-in`;
+                respuestaDiv.style.marginLeft = `${nivel * 12}px`;
+
                 respuestaDiv.innerHTML = `
-                    <div class="flex items-start justify-between mb-1">
-                        <p class="text-xs font-bold ${esPropio ? 'text-blue-700' : 'text-green-700'}">
-                            ${iconoRespuesta}${respuesta.emisor}
-                        </p>
-                        <span class="text-xs text-gray-500">${respuesta.created_at}</span>
+                    <div class="flex flex-col max-w-[75%]">
+                        <div class="${bgColor} ${textColor} ${borderRadius} px-4 py-2.5 shadow-md hover:shadow-lg transition-shadow">
+                            <div class="flex items-center gap-2 mb-1">
+                                <span class="font-semibold text-sm">${respuesta.emisor}</span>
+                            </div>
+                            <p class="text-sm leading-relaxed whitespace-pre-wrap">${respuesta.mensaje}</p>
+                        </div>
+                        <span class="text-xs text-gray-500 mt-1 ${esPropio ? 'text-right' : 'text-left'} px-2">${respuesta.created_at}</span>
                     </div>
-                    <p class="text-sm text-gray-800 leading-relaxed whitespace-pre-wrap">${respuesta.mensaje}</p>
                 `;
 
                 hiloContenido.appendChild(respuestaDiv);
@@ -1496,4 +1503,45 @@
                 });
         }
     </script>
+    <style>
+        /* Animación para mensajes estilo chat */
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .animate-fade-in {
+            animation: fadeIn 0.3s ease-out;
+        }
+
+        /* Mejora del scroll en el contenedor de mensajes */
+        #hiloContenido {
+            scroll-behavior: smooth;
+        }
+
+        /* Estilo del scroll */
+        #hiloContenido::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        #hiloContenido::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.05);
+            border-radius: 10px;
+        }
+
+        #hiloContenido::-webkit-scrollbar-thumb {
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 10px;
+        }
+
+        #hiloContenido::-webkit-scrollbar-thumb:hover {
+            background: rgba(0, 0, 0, 0.3);
+        }
+    </style>
 </x-app-layout>

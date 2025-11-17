@@ -283,10 +283,10 @@
                                     </button>
 
                                     <!-- Botón Ver -->
-                                    <x-tabla.boton-ver :href=":href="route('planillas.show', $planilla->id)" wire:navigate" />
+                                    <x-tabla.boton-ver :href="route('planillas.show', $planilla->id)" />
 
                                     <!-- Botón Eliminar -->
-                                    <x-tabla.boton-eliminar :action=":action="route('planillas.destroy', $planilla->id)" wire:navigate" />
+                                    <x-tabla.boton-eliminar :action="route('planillas.destroy', $planilla->id)" />
                                 </div>
                             </td>
                         </tr>

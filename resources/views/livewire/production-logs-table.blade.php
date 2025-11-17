@@ -24,23 +24,24 @@
 
         <!-- Tabla con filtros Livewire -->
         <div class="w-full overflow-x-auto bg-white shadow-lg rounded-lg">
-            <table class="w-full min-w-[2500px] border border-gray-300 rounded-lg">
-                <thead class="bg-blue-500 text-white text-4">
+            <table class="w-full min-w-[1800px] border border-gray-300 rounded-lg text-xs">
+                <thead class="bg-blue-500 text-white">
                     <tr class="text-center text-xs uppercase">
-                        <x-tabla.encabezado-ordenable campo="Fecha y Hora" :sortActual="$sort" :orderActual="$order" texto="Fecha y Hora" />
-                        <x-tabla.encabezado-ordenable campo="Acción" :sortActual="$sort" :orderActual="$order" texto="Acción" />
-                        <x-tabla.encabezado-ordenable campo="Usuario" :sortActual="$sort" :orderActual="$order" texto="Usuario" />
-                        <x-tabla.encabezado-ordenable campo="Usuario 2" :sortActual="$sort" :orderActual="$order" texto="Usuario 2" />
-                        <x-tabla.encabezado-ordenable campo="Etiqueta" :sortActual="$sort" :orderActual="$order" texto="Etiqueta" />
-                        <x-tabla.encabezado-ordenable campo="Planilla" :sortActual="$sort" :orderActual="$order" texto="Planilla" />
-                        <x-tabla.encabezado-ordenable campo="Obra" :sortActual="$sort" :orderActual="$order" texto="Obra" />
-                        <x-tabla.encabezado-ordenable campo="Cliente" :sortActual="$sort" :orderActual="$order" texto="Cliente" />
-                        <x-tabla.encabezado-ordenable campo="Nave" :sortActual="$sort" :orderActual="$order" texto="Nave" />
-                        <x-tabla.encabezado-ordenable campo="Máquina" :sortActual="$sort" :orderActual="$order" texto="Máquina" />
-                        <th class="p-2 border">Estado</th>
-                        <x-tabla.encabezado-ordenable campo="Peso Estimado (kg)" :sortActual="$sort" :orderActual="$order" texto="Peso (kg)" />
-                        <x-tabla.encabezado-ordenable campo="Paquete" :sortActual="$sort" :orderActual="$order" texto="Paquete" />
-                        <th class="p-2 border">Observaciones</th>
+                        <x-tabla.encabezado-ordenable campo="Fecha y Hora" :sortActual="$sort" :orderActual="$order" texto="Fecha" class="w-32" />
+                        <x-tabla.encabezado-ordenable campo="Acción" :sortActual="$sort" :orderActual="$order" texto="Acción" class="w-36" />
+                        <x-tabla.encabezado-ordenable campo="Usuario" :sortActual="$sort" :orderActual="$order" texto="Usuario" class="w-24" />
+                        <x-tabla.encabezado-ordenable campo="Usuario 2" :sortActual="$sort" :orderActual="$order" texto="Usuario 2" class="w-24" />
+                        <x-tabla.encabezado-ordenable campo="Etiqueta" :sortActual="$sort" :orderActual="$order" texto="Etiq." class="w-20" />
+                        <x-tabla.encabezado-ordenable campo="Planilla" :sortActual="$sort" :orderActual="$order" texto="Planilla" class="w-24" />
+                        <x-tabla.encabezado-ordenable campo="Obra" :sortActual="$sort" :orderActual="$order" texto="Obra" class="w-28" />
+                        <x-tabla.encabezado-ordenable campo="Cliente" :sortActual="$sort" :orderActual="$order" texto="Cliente" class="w-32" />
+                        <x-tabla.encabezado-ordenable campo="Nave" :sortActual="$sort" :orderActual="$order" texto="Nave" class="w-20" />
+                        <x-tabla.encabezado-ordenable campo="Máquina" :sortActual="$sort" :orderActual="$order" texto="Máq." class="w-20" />
+                        <th class="p-1 border w-20">Estado</th>
+                        <x-tabla.encabezado-ordenable campo="Peso Estimado (kg)" :sortActual="$sort" :orderActual="$order" texto="Peso" class="w-16" />
+                        <x-tabla.encabezado-ordenable campo="Paquete" :sortActual="$sort" :orderActual="$order" texto="Paq." class="w-20" />
+                        <th class="p-1 border w-64">Observaciones</th>
+                        <th class="p-1 border w-20">Traz.</th>
                     </tr>
 
                     <tr class="text-center text-xs uppercase">
@@ -119,6 +120,7 @@
                                 </svg>
                             </button>
                         </th>
+                        <th class="p-1 border"></th>
                     </tr>
                 </thead>
 
@@ -139,40 +141,58 @@
                             // Verificar si es un log nuevo
                             $isNew = in_array($log['Fecha y Hora'], $newLogIds ?? []);
                         @endphp
-                        <tr class="border-b odd:bg-gray-100 even:bg-gray-50 hover:bg-blue-200 text-xs leading-none transition-colors {{ $isNew ? 'new-log-row bg-green-300 animate-pulse' : '' }}"
+                        <tr class="border-b odd:bg-gray-100 even:bg-gray-50 hover:bg-blue-200 text-xs leading-tight transition-colors {{ $isNew ? 'new-log-row bg-green-300 animate-pulse' : '' }}"
                             data-log-id="{{ $log['Fecha y Hora'] }}">
-                            <td class="p-2 text-center border font-mono">{{ $log['Fecha y Hora'] }}</td>
-                            <td class="p-2 text-center border">
-                                <span class="px-2 py-1 rounded-full text-xs font-medium {{ $actionClass }}">
-                                    {{ $log['Acción'] }}
+                            <td class="px-1 py-1 text-center border font-mono text-xs">{{ \Carbon\Carbon::parse($log['Fecha y Hora'])->format('d/m H:i') }}</td>
+                            <td class="px-1 py-1 text-center border">
+                                <span class="px-1 py-0.5 rounded text-xs font-medium {{ $actionClass }}">
+                                    {{ str_replace(['FABRICACIÓN', 'PAQUETE'], ['FAB.', 'PAQ.'], $log['Acción']) }}
                                 </span>
                             </td>
-                            <td class="p-2 text-center border font-semibold text-blue-600">{{ $log['Usuario'] ?? 'Sistema' }}</td>
-                            <td class="p-2 text-center border font-semibold text-green-600">{{ $log['Usuario 2'] ?? '-' }}</td>
-                            <td class="p-2 text-center border font-semibold">{{ $log['Etiqueta'] ?? '-' }}</td>
-                            <td class="p-2 text-center border">{{ $log['Planilla'] ?? '-' }}</td>
-                            <td class="p-2 text-center border">{{ $log['Obra'] ?? '-' }}</td>
-                            <td class="p-2 text-center border">{{ $log['Cliente'] ?? '-' }}</td>
-                            <td class="p-2 text-center border">{{ $log['Nave'] ?? '-' }}</td>
-                            <td class="p-2 text-center border">{{ $log['Máquina'] ?? '-' }}</td>
-                            <td class="p-2 text-center border">
-                                <div class="text-xs">
-                                    <div class="text-gray-500">{{ $log['Estado Inicial'] ?? '-' }}</div>
+                            <td class="px-1 py-1 text-center border text-blue-600 truncate max-w-[100px]" title="{{ $log['Usuario'] ?? 'Sistema' }}">
+                                {{ \Illuminate\Support\Str::limit($log['Usuario'] ?? 'Sistema', 15, '') }}
+                            </td>
+                            <td class="px-1 py-1 text-center border text-green-600 truncate max-w-[100px]" title="{{ $log['Usuario 2'] ?? '-' }}">
+                                {{ $log['Usuario 2'] && $log['Usuario 2'] !== '' ? \Illuminate\Support\Str::limit($log['Usuario 2'], 15, '') : '-' }}
+                            </td>
+                            <td class="px-1 py-1 text-center border font-semibold">{{ $log['Etiqueta'] ?? '-' }}</td>
+                            <td class="px-1 py-1 text-center border text-xs">{{ $log['Planilla'] ?? '-' }}</td>
+                            <td class="px-1 py-1 text-center border truncate max-w-[120px]" title="{{ $log['Obra'] ?? '-' }}">{{ \Illuminate\Support\Str::limit($log['Obra'] ?? '-', 20, '') }}</td>
+                            <td class="px-1 py-1 text-center border truncate max-w-[140px]" title="{{ $log['Cliente'] ?? '-' }}">{{ \Illuminate\Support\Str::limit($log['Cliente'] ?? '-', 25, '') }}</td>
+                            <td class="px-1 py-1 text-center border text-xs">{{ $log['Nave'] ?? '-' }}</td>
+                            <td class="px-1 py-1 text-center border text-xs">{{ $log['Máquina'] ?? '-' }}</td>
+                            <td class="px-1 py-1 text-center border">
+                                <div class="text-xs leading-tight">
+                                    <div class="text-gray-500 text-xs">{{ \Illuminate\Support\Str::limit($log['Estado Inicial'] ?? '-', 12, '') }}</div>
                                     @if(isset($log['Estado Final']) && $log['Estado Final'] !== $log['Estado Inicial'])
-                                        <div class="text-gray-400">↓</div>
-                                        <div class="text-gray-900 font-medium">{{ $log['Estado Final'] }}</div>
+                                        <div class="text-gray-400 text-xs">↓</div>
+                                        <div class="text-gray-900 font-medium text-xs">{{ \Illuminate\Support\Str::limit($log['Estado Final'], 12, '') }}</div>
                                     @endif
                                 </div>
                             </td>
-                            <td class="p-2 text-right border">{{ $log['Peso Estimado (kg)'] ?? '-' }}</td>
-                            <td class="p-2 text-center border font-mono">{{ $log['Paquete'] ?? '-' }}</td>
-                            <td class="p-2 text-xs border max-w-xs truncate" title="{{ $log['Observaciones'] ?? '' }}">
+                            <td class="px-1 py-1 text-right border text-xs">{{ $log['Peso Estimado (kg)'] ?? '-' }}</td>
+                            <td class="px-1 py-1 text-center border font-mono text-xs">{{ $log['Paquete'] ?? '-' }}</td>
+                            <td class="px-1 py-1 text-left border text-xs max-w-[250px] overflow-hidden whitespace-pre-wrap break-words" style="line-height: 1.3;">
                                 {{ $log['Observaciones'] ?? '-' }}
+                            </td>
+                            <td class="px-1 py-1 text-center border">
+                                @if(isset($log['Etiqueta']) && $log['Etiqueta'] !== '-')
+                                    <button
+                                        onclick="filtrarPorEtiqueta('{{ $log['Etiqueta'] }}')"
+                                        class="px-1.5 py-0.5 bg-blue-600 text-white rounded hover:bg-blue-700 text-xs inline-flex items-center gap-0.5"
+                                        title="Ver todos los logs de esta etiqueta">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+                                        </svg>
+                                    </button>
+                                @else
+                                    <span class="text-gray-400 text-xs">-</span>
+                                @endif
                             </td>
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="14" class="text-center py-8 text-gray-500">
+                            <td colspan="15" class="text-center py-8 text-gray-500">
                                 No hay registros de producción para mostrar
                             </td>
                         </tr>
@@ -232,6 +252,38 @@
 
     @push('scripts')
     <script>
+        /**
+         * Filtra la tabla para mostrar solo los logs de una etiqueta específica
+         */
+        window.filtrarPorEtiqueta = function(etiqueta) {
+            console.log('Filtrando por etiqueta:', etiqueta);
+
+            // Buscar el input de filtro de etiqueta
+            const inputEtiqueta = document.querySelector('input[wire\\:model\\.live\\.debounce\\.300ms="etiqueta"]');
+
+            if (inputEtiqueta) {
+                // Establecer el valor del filtro
+                inputEtiqueta.value = etiqueta;
+
+                // Disparar el evento de input para que Livewire lo detecte
+                inputEtiqueta.dispatchEvent(new Event('input', { bubbles: true }));
+
+                // Scroll suave al input para que el usuario vea el filtro aplicado
+                inputEtiqueta.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+                // Resaltar brevemente el input
+                inputEtiqueta.classList.add('ring-2', 'ring-blue-500');
+                setTimeout(() => {
+                    inputEtiqueta.classList.remove('ring-2', 'ring-blue-500');
+                }, 2000);
+
+                console.log('✅ Filtro aplicado a etiqueta:', etiqueta);
+            } else {
+                console.error('No se encontró el input de filtro de etiqueta');
+                alert('Error: No se pudo aplicar el filtro');
+            }
+        };
+
         // Remover señalización de logs nuevos después de 25 segundos
         document.addEventListener('DOMContentLoaded', function() {
             function removeNewLogHighlight() {

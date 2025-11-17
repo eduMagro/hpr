@@ -253,7 +253,7 @@
                                     </a>
 
                                     {{-- Botón eliminar --}}
-                                    <x-tabla.boton-eliminar :action=":action="route('paquetes.destroy', $paquete->id)" wire:navigate" />
+                                    <x-tabla.boton-eliminar :action="route('paquetes.destroy', $paquete->id)" />
                                 </div>
                             </td>
                         </tr>
