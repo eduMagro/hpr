@@ -1494,8 +1494,35 @@
                         };
                     },
                     eventClick: async function(info) {
-                        const planillaId = info.event.id.split('-')[1];
+                        console.log('🔍 Event clicked:', info.event);
+                        console.log('🔍 Event ID:', info.event.id);
+                        console.log('🔍 Event extendedProps:', info.event.extendedProps);
+
+                        // Intentar obtener planillaId de múltiples fuentes
+                        let planillaId = null;
+
+                        // Opción 1: Del ID del evento (formato: "planilla-123")
+                        if (info.event.id && typeof info.event.id === 'string' && info.event.id.includes('-')) {
+                            const partes = info.event.id.split('-');
+                            if (partes.length > 1 && partes[1]) {
+                                planillaId = partes[1];
+                            }
+                        }
+
+                        // Opción 2: De extendedProps.planilla_id
+                        if (!planillaId && info.event.extendedProps?.planilla_id) {
+                            planillaId = info.event.extendedProps.planilla_id;
+                        }
+
+                        // Opción 3: De extendedProps.id
+                        if (!planillaId && info.event.extendedProps?.id) {
+                            planillaId = info.event.extendedProps.id;
+                        }
+
                         const codigoPlanilla = info.event.extendedProps.codigo ?? info.event.title;
+
+                        console.log('🔍 planillaId extraído:', planillaId);
+                        console.log('🔍 codigoPlanilla:', codigoPlanilla);
 
                         if (!planillaId) {
                             Swal.fire({
@@ -1509,8 +1536,10 @@
                         try {
                             const response = await fetch(`/elementos/por-ids?planilla_id=${planillaId}`);
                             const elementos = await response.json();
+                            console.log('✅ Elementos cargados:', elementos.length);
                             mostrarPanelElementos(elementos, planillaId, codigoPlanilla);
                         } catch (error) {
+                            console.error('❌ Error al cargar elementos:', error);
                             Swal.fire({
                                 icon: 'error',
                                 title: 'Error',
@@ -2164,6 +2193,23 @@
 
                 // Función para mostrar panel de elementos
                 function mostrarPanelElementos(elementos, planillaId, codigo) {
+                    console.log('📋 mostrarPanelElementos llamado con:', {
+                        elementos: elementos?.length || 0,
+                        planillaId,
+                        codigo
+                    });
+
+                    // Validar planillaId
+                    if (!planillaId) {
+                        console.error('❌ planillaId es undefined o null');
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Error',
+                            text: 'No se pudo identificar la planilla',
+                        });
+                        return;
+                    }
+
                     const panel = document.getElementById('panel_elementos');
                     const overlay = document.getElementById('panel_overlay');
                     const lista = document.getElementById('panel_lista');
@@ -2178,6 +2224,7 @@
 
                     // Guardar el planillaId actual
                     planillaIdActualPanel = planillaId;
+                    console.log('✅ planillaIdActualPanel establecido:', planillaIdActualPanel);
 
                     if (panelCodigo) panelCodigo.textContent = codigo;
                     lista.innerHTML = '';
@@ -2315,9 +2362,15 @@
                 }
 
                 function cerrarPanel() {
+                    console.log('🚪 Cerrando panel...');
+
                     // Limpiar selección múltiple
                     window.MultiSelectElementos.limpiarSelecciones();
                     document.body.classList.remove('panel-abierto');
+
+                    // Limpiar planillaId actual
+                    planillaIdActualPanel = null;
+                    console.log('🧹 planillaIdActualPanel limpiado');
 
                     const panelElementos = document.getElementById('panel_elementos');
                     const panelOverlay = document.getElementById('panel_overlay');
@@ -2341,42 +2394,77 @@
                 const btnMarcarRevisada = document.getElementById('btn_marcar_revisada');
                 if (btnMarcarRevisada) {
                     btnMarcarRevisada.addEventListener('click', async function() {
+                        console.log('🔍 planillaIdActualPanel:', planillaIdActualPanel);
+
                         if (!planillaIdActualPanel) {
-                            alert('No hay planilla seleccionada');
+                            Swal.fire({
+                                icon: 'warning',
+                                title: 'Sin planilla',
+                                text: 'No hay planilla seleccionada',
+                                confirmButtonColor: '#3085d6',
+                            });
                             return;
-                    }
+                        }
 
-                    if (!confirm('¿Estás seguro de que quieres marcar esta planilla como revisada?')) {
-                        return;
-                    }
-
-                    try {
-                        const response = await fetch(`/planillas/${planillaIdActualPanel}/marcar-revisada`, {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                                'Accept': 'application/json',
-                                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
-                            }
+                        const resultado = await Swal.fire({
+                            title: '¿Marcar como revisada?',
+                            text: '¿Estás seguro de que quieres marcar esta planilla como revisada?',
+                            icon: 'question',
+                            showCancelButton: true,
+                            confirmButtonColor: '#3085d6',
+                            cancelButtonColor: '#d33',
+                            confirmButtonText: 'Sí, marcar como revisada',
+                            cancelButtonText: 'Cancelar'
                         });
 
-                        const data = await response.json();
-
-                        if (data.success) {
-                            alert('Planilla marcada como revisada correctamente');
-                            cerrarPanel();
-
-                            // Recargar eventos del calendario
-                            if (window.calendar) {
-                                calendar.refetchEvents();
-                            }
-                        } else {
-                            alert('Error: ' + (data.mensaje || 'No se pudo marcar como revisada'));
+                        if (!resultado.isConfirmed) {
+                            return;
                         }
-                    } catch (error) {
-                        console.error('Error:', error);
-                        alert('Error al marcar como revisada: ' + error.message);
-                    }
+
+                        try {
+                            const response = await fetch(`/planillas/${planillaIdActualPanel}/marcar-revisada`, {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'Accept': 'application/json',
+                                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                                }
+                            });
+
+                            const data = await response.json();
+
+                            if (data.success) {
+                                await Swal.fire({
+                                    icon: 'success',
+                                    title: 'Éxito',
+                                    text: 'Planilla marcada como revisada correctamente',
+                                    timer: 2000,
+                                    showConfirmButton: false
+                                });
+
+                                cerrarPanel();
+
+                                // Recargar eventos del calendario
+                                if (window.calendar) {
+                                    calendar.refetchEvents();
+                                }
+                            } else {
+                                Swal.fire({
+                                    icon: 'error',
+                                    title: 'Error',
+                                    text: data.mensaje || 'No se pudo marcar como revisada',
+                                    confirmButtonColor: '#d33',
+                                });
+                            }
+                        } catch (error) {
+                            console.error('Error:', error);
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Error',
+                                text: 'Error al marcar como revisada: ' + error.message,
+                                confirmButtonColor: '#d33',
+                            });
+                        }
                     });
                 }
 
@@ -2972,6 +3060,15 @@
 
                 function aplicarActualizaciones(actualizaciones) {
                     actualizaciones.forEach(upd => {
+                        console.log('📊 POLLING: Actualización recibida', {
+                            planilla_id: upd.planilla_id,
+                            maquina_id: upd.maquina_id,
+                            revisada: upd.revisada,
+                            fecha_entrega: upd.fecha_entrega,
+                            fin_programado: upd.fin_programado,
+                            tiene_retraso: upd.tiene_retraso
+                        });
+
                         // Buscar todos los eventos de esta planilla y máquina
                         const eventos = calendar.getEvents().filter(e => {
                             const eventoId = e.id || '';
@@ -3005,29 +3102,77 @@
                                 cambios.push(`estado: ${evento.extendedProps.estado} → ${upd.estado}`);
                             }
 
-                            // 3. Actualizar revisión
+                            // 3. Actualizar revisión y fechas
                             const revisadaAnterior = evento.extendedProps.revisada;
+                            const fechaEntregaAnterior = evento.extendedProps.fecha_entrega;
+                            const finProgramadoAnterior = evento.extendedProps.fin_programado;
+
+                            let cambioRelevante = false;
+
                             if (revisadaAnterior !== upd.revisada) {
                                 evento.setExtendedProp('revisada', upd.revisada);
                                 cambios.push(`revisada: ${revisadaAnterior} → ${upd.revisada}`);
+                                cambioRelevante = true;
+                            }
 
-                                // Cambiar color y título si cambió revisión
-                                if (upd.revisada) {
-                                    // Cambió a revisada → Color verde
+                            if (upd.fecha_entrega && fechaEntregaAnterior !== upd.fecha_entrega) {
+                                evento.setExtendedProp('fecha_entrega', upd.fecha_entrega);
+                                cambios.push(`fecha_entrega: ${fechaEntregaAnterior} → ${upd.fecha_entrega}`);
+                                cambioRelevante = true;
+                            }
+
+                            if (upd.fin_programado && finProgramadoAnterior !== upd.fin_programado) {
+                                evento.setExtendedProp('fin_programado', upd.fin_programado);
+                                cambios.push(`fin_programado: ${finProgramadoAnterior} → ${upd.fin_programado}`);
+                                cambioRelevante = true;
+                            }
+
+                            // 🎨 Actualizar color según estado de revisión y retraso
+                            if (cambioRelevante) {
+                                console.log('🎨 Aplicando cambio de color', {
+                                    evento_id: evento.id,
+                                    revisada: upd.revisada,
+                                    tiene_retraso: upd.tiene_retraso
+                                });
+
+                                if (!upd.revisada) {
+                                    // Sin revisar → Color gris
+                                    console.log('➡️ Aplicando color GRIS (sin revisar)');
+                                    evento.setProp('backgroundColor', '#9e9e9e');
+                                    evento.setProp('borderColor', '#757575');
+                                    evento.setProp('classNames', ['evento-sin-revisar']);
+                                    evento.setProp('title', `⚠️ ${upd.codigo} (SIN REVISAR)`);
+                                } else if (upd.tiene_retraso) {
+                                    // Revisada con retraso → Color rojo
+                                    console.log('➡️ Aplicando color ROJO (con retraso)');
+                                    evento.setProp('backgroundColor', '#ef4444');
+                                    evento.setProp('borderColor', null);
+                                    evento.setProp('classNames', ['evento-revisado', 'evento-retraso']);
+                                    evento.setProp('title', upd.codigo);
+
+                                    if (revisadaAnterior !== upd.revisada) {
+                                        mostrarNotificacion(
+                                            `⚠️ Planilla ${upd.codigo} marcada como revisada (CON RETRASO)`,
+                                            'warning'
+                                        );
+                                    }
+                                } else {
+                                    // Revisada a tiempo → Color verde
+                                    console.log('➡️ Aplicando color VERDE (a tiempo)');
                                     evento.setProp('backgroundColor', '#22c55e');
                                     evento.setProp('borderColor', null);
                                     evento.setProp('classNames', ['evento-revisado']);
                                     evento.setProp('title', upd.codigo);
 
-                                    mostrarNotificacion(
-                                        `✅ Planilla ${upd.codigo} marcada como revisada`, 'success');
-                                } else {
-                                    // Cambió a sin revisar → Color gris
-                                    evento.setProp('backgroundColor', '#9e9e9e');
-                                    evento.setProp('borderColor', '#757575');
-                                    evento.setProp('classNames', ['evento-sin-revisar']);
-                                    evento.setProp('title', `⚠️ ${upd.codigo} (SIN REVISAR)`);
+                                    if (revisadaAnterior !== upd.revisada) {
+                                        mostrarNotificacion(
+                                            `✅ Planilla ${upd.codigo} marcada como revisada`,
+                                            'success'
+                                        );
+                                    }
                                 }
+                            } else {
+                                console.log('⚠️ No hay cambio relevante, no actualizando color');
                             }
 
                             // 4. Si se completó la planilla

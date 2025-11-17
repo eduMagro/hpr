@@ -80,6 +80,14 @@ return [
                         ['label' => 'Nuevo movimiento', 'route' => 'movimientos.create', 'permission' => 'crear'],
                     ]
                 ],
+                [
+                    'label' => 'Panel de Control',
+                    'route' => 'production.logs.index',
+                    'icon' => '📊',
+                    'actions' => [
+                        ['label' => 'Ver panel', 'route' => 'production.logs.index', 'permission' => 'ver'],
+                    ]
+                ],
             ]
         ],
         [

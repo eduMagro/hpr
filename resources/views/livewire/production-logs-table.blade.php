@@ -8,14 +8,14 @@
                 <select wire:model.live="selectedFile" class="border-indigo-300 rounded-md shadow-sm text-sm px-3 py-1.5 bg-white text-gray-700 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500">
                     @foreach($logFiles as $file)
                         <option value="{{ basename($file['path']) }}">
-                            {{ basename($file['path']) }} wire:navigate
+                            {{ basename($file['path']) }}
                             ({{ \Carbon\Carbon::createFromTimestamp($file['modified'])->format('d/m/Y') }})
                             - {{ number_format($file['size'] / 1024, 2) }} KB
                         </option>
                     @endforeach
                 </select>
                 <span class="text-xs text-indigo-600 font-medium">
-                    Total de archivos: {{ count($logFiles) }} wire:navigate
+                    Total de archivos: {{ count($logFiles) }}
                 </span>
             </div>
         </div>
@@ -211,7 +211,7 @@
                             });
                         @endphp
                         @if($currentFile)
-                            <a href="{{ route('production.logs.download', basename($currentFile['path'])) }}" wire:navigate
+                            <a href="{{ route('production.logs.download', basename($currentFile['path'])) }}"
                                class="px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700 transition text-sm inline-flex items-center gap-1">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
@@ -226,7 +226,7 @@
 
         <!-- Paginación Livewire -->
         <div class="mt-4">
-            {{ $logs->links('vendor.livewire.tailwind') }} wire:navigate
+            {{ $logs->links('vendor.livewire.tailwind') }}
         </div>
     </div>
 

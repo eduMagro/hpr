@@ -356,9 +356,19 @@ class ProduccionController extends Controller
         $planillasActualizadas = Planilla::where('updated_at', '>', $desde)
             ->whereIn('estado', ['pendiente', 'fabricando', 'completada'])
             ->with(['elementos' => function ($q) {
-                $q->select('id', 'planilla_id', 'estado', 'maquina_id');
+                $q->select('id', 'planilla_id', 'estado', 'maquina_id', 'tiempo_fabricacion');
             }, 'obra'])
             ->get();
+
+        // Obtener festivos para cálculo de fin programado
+        $festivosSet = $this->obtenerFestivosSet();
+
+        // Obtener todas las órdenes de planillas para calcular posición en cola
+        $ordenesEnCola = DB::table('orden_planillas')
+            ->orderBy('maquina_id')
+            ->orderBy('posicion')
+            ->get()
+            ->groupBy('maquina_id');
 
         $actualizaciones = [];
 
@@ -371,6 +381,27 @@ class ProduccionController extends Controller
                 $total = $elementos->count();
                 $progreso = $total > 0 ? round(($completados / $total) * 100) : 0;
 
+                // 🕐 Calcular fin programado real
+                $finProgramado = $this->calcularFinProgramado($planilla->id, $maquinaId, $ordenesEnCola, $festivosSet);
+
+                // 📅 Parsear fecha de entrega
+                $fechaEntrega = $this->parseFechaEntregaFlexible($planilla->fecha_estimada_entrega);
+
+                // ⚠️ Determinar si tiene retraso
+                $tieneRetraso = false;
+                if ($fechaEntrega && $finProgramado) {
+                    $tieneRetraso = $finProgramado->gt($fechaEntrega);
+                }
+
+                Log::info('📊 POLLING: Calculando actualización', [
+                    'planilla_id' => $planilla->id,
+                    'maquina_id' => $maquinaId,
+                    'revisada' => $planilla->revisada,
+                    'fecha_entrega' => $fechaEntrega ? $fechaEntrega->format('d/m/Y H:i') : null,
+                    'fin_programado' => $finProgramado ? $finProgramado->format('d/m/Y H:i') : null,
+                    'tiene_retraso' => $tieneRetraso,
+                ]);
+
                 $actualizaciones[] = [
                     'planilla_id' => $planilla->id,
                     'maquina_id' => $maquinaId,
@@ -382,6 +413,9 @@ class ProduccionController extends Controller
                     'elementos_completados' => $completados,
                     'elementos_total' => $total,
                     'obra' => optional($planilla->obra)->obra ?? '—',
+                    'fecha_entrega' => $fechaEntrega ? $fechaEntrega->format('d/m/Y H:i') : null,
+                    'fin_programado' => $finProgramado ? $finProgramado->format('d/m/Y H:i') : null,
+                    'tiene_retraso' => $tieneRetraso,
                 ];
             }
         }
@@ -929,7 +963,76 @@ class ProduccionController extends Controller
 
     //---------------------------------------------------------- GENERAR EVENTOS MAQUINAS
 
+    /** Obtener festivos como array asociativo [fecha => true] */
+    private function obtenerFestivosSet(): array
+    {
+        try {
+            $festivoFechas = collect(Festivo::eventosCalendario())
+                ->map(fn($e) => Carbon::parse($e['start'])->toDateString())
+                ->unique()
+                ->values();
+        } catch (\Throwable $e) {
+            Log::error('Festivos no disponibles', ['err' => $e->getMessage()]);
+            $festivoFechas = collect();
+        }
 
+        return array_flip($festivoFechas->all());
+    }
+
+    /**
+     * Calcular fin programado de una planilla en una máquina específica
+     * Considera la cola de trabajo y usa tramos laborales
+     */
+    private function calcularFinProgramado($planillaId, $maquinaId, $ordenesEnCola, $festivosSet)
+    {
+        // Obtener órdenes de esta máquina
+        $ordenesMaquina = $ordenesEnCola->get($maquinaId, collect());
+
+        if ($ordenesMaquina->isEmpty()) {
+            // Si no está en cola, no podemos calcular
+            return null;
+        }
+
+        // Iniciar desde ahora
+        $cursor = now();
+
+        // Procesar todas las planillas en orden hasta llegar a la que buscamos
+        foreach ($ordenesMaquina as $orden) {
+            // Obtener elementos de esta planilla-máquina
+            $elementos = Elemento::where('planilla_id', $orden->planilla_id)
+                ->where('maquina_id', $maquinaId)
+                ->where('estado', 'pendiente')
+                ->get();
+
+            if ($elementos->isEmpty()) {
+                continue;
+            }
+
+            // Sumar tiempo de fabricación
+            $tiempoSegundos = $elementos->sum('tiempo_fabricacion');
+
+            // Calcular tramos laborales
+            $tramos = $this->generarTramosLaborales($cursor, $tiempoSegundos, $festivosSet);
+
+            if (empty($tramos)) {
+                continue;
+            }
+
+            // El fin es el end del último tramo
+            $ultimoTramo = end($tramos);
+            $finCalculado = $ultimoTramo['end'];
+
+            // Si esta es la planilla que buscamos, devolver el fin
+            if ($orden->planilla_id == $planillaId) {
+                return $finCalculado;
+            }
+
+            // Avanzar el cursor para la siguiente planilla
+            $cursor = $finCalculado;
+        }
+
+        return null;
+    }
 
     /** ¿Es no laborable? (festivo o fin de semana) */
     private function esNoLaborable(Carbon $dia, array $festivosSet): bool
@@ -1103,6 +1206,7 @@ class ProduccionController extends Controller
             }
 
             // Obtener segmentos laborables del día basados en turnos activos
+            $diaActual = $cursor->copy()->startOfDay(); // Guardar referencia al día que estamos procesando
             $segmentos = $this->obtenerSegmentosLaborablesDia($cursor);
 
             // Saltar no laborables completos SOLO si no tienen segmentos
@@ -1178,8 +1282,46 @@ class ProduccionController extends Controller
 
                 // Si aún queda tiempo después de procesar todos los segmentos del día
                 if ($restante > 0) {
-                    // Avanzar al día siguiente
-                    $cursor->addDay()->startOfDay();
+                    // ✅ MEJORA: Verificar si hay continuidad entre el último segmento de hoy y el primero de mañana
+                    $ultimoSegmentoHoy = end($segmentos);
+
+                    // El día siguiente es +1 al día que acabamos de procesar
+                    $siguienteDia = $diaActual->copy()->addDay();
+
+                    $segmentosSiguienteDia = $this->obtenerSegmentosLaborablesDia($siguienteDia);
+
+                    Log::info('🔍 TRAMOS: Verificando continuidad', [
+                        'dia_procesado' => $diaActual->format('Y-m-d'),
+                        'dia_siguiente' => $siguienteDia->format('Y-m-d'),
+                        'cursor' => $cursor->format('Y-m-d H:i:s'),
+                        'restante_segundos' => $restante,
+                        'ultimo_segmento_fin' => $ultimoSegmentoHoy ? $ultimoSegmentoHoy['fin']->format('Y-m-d H:i:s') : 'N/A',
+                        'ultimo_segmento_fin_timestamp' => $ultimoSegmentoHoy ? $ultimoSegmentoHoy['fin']->timestamp : 'N/A',
+                        'segmentos_hoy_count' => count($segmentos),
+                        'segmentos_manana_count' => count($segmentosSiguienteDia),
+                        'primer_segmento_manana_inicio' => !empty($segmentosSiguienteDia) ? $segmentosSiguienteDia[0]['inicio']->format('Y-m-d H:i:s') : 'N/A',
+                        'primer_segmento_manana_inicio_timestamp' => !empty($segmentosSiguienteDia) ? $segmentosSiguienteDia[0]['inicio']->timestamp : 'N/A',
+                    ]);
+
+                    // Si hay segmentos mañana y el último segmento de hoy conecta con el primero de mañana
+                    if (!empty($segmentosSiguienteDia)) {
+                        $primerSegmentoManana = $segmentosSiguienteDia[0];
+
+                        // Verificar si son continuos (ej: turno noche 22:00 hoy → 06:00 mañana)
+                        if ($ultimoSegmentoHoy &&
+                            $ultimoSegmentoHoy['fin']->equalTo($primerSegmentoManana['inicio'])) {
+                            Log::info('✅ TRAMOS: Continuidad detectada, NO cortando');
+                            // ✅ Son continuos, avanzar al día siguiente SIN crear corte
+                            // Mover el cursor al día siguiente para continuar procesando
+                            $cursor = $siguienteDia->copy()->startOfDay();
+                            continue;
+                        } else {
+                            Log::info('❌ TRAMOS: Sin continuidad, creando corte');
+                        }
+                    }
+
+                    // No hay continuidad, avanzar al día siguiente normalmente
+                    $cursor = $siguienteDia->copy()->startOfDay();
 
                     // Saltar días no laborables (pero verificar si tienen segmentos antes)
                     $diasSaltados = 0;
@@ -2537,8 +2679,8 @@ class ProduccionController extends Controller
         try {
             Log::info('🔍 OPTIMIZAR: Iniciando análisis simple');
 
-            // 1. Obtener todas las máquinas disponibles
-            $maquinas = Maquina::where('tipo', '<>', 'grua')
+            // 1. Obtener todas las máquinas disponibles (excluir grúas, soldadoras y ensambladoras)
+            $maquinas = Maquina::whereNotIn('tipo', ['grua', 'soldadora', 'ensambladora'])
                 ->whereNotNull('tipo')
                 ->where('estado', '!=', 'inactiva')
                 ->get()
@@ -2562,78 +2704,127 @@ class ProduccionController extends Controller
             $planillasConRetraso = [];
             $elementosAMover = [];
 
-            foreach ($ordenesConPlanillas as $orden) {
-                $maquinaId = $orden->maquina_id;
-                $planillaId = $orden->planilla_id;
+            // Obtener festivos para cálculo de tramos
+            $festivosSet = $this->obtenerFestivosSet();
 
-                // Inicializar carga de máquina si no existe
-                if (!isset($cargaMaquinas[$maquinaId])) {
-                    $cargaMaquinas[$maquinaId] = now();
-                }
+            // Agrupar órdenes por máquina para procesar en orden
+            $ordenesPorMaquina = $ordenesConPlanillas->groupBy('maquina_id');
 
-                // Obtener elementos pendientes de esta planilla en esta máquina
-                $elementos = Elemento::where('planilla_id', $planillaId)
-                    ->where('maquina_id', $maquinaId)
-                    ->where('estado', 'pendiente')
-                    ->get();
+            foreach ($ordenesPorMaquina as $maquinaId => $ordenesEnMaquina) {
+                // Inicializar cursor de tiempo para esta máquina
+                $cargaMaquinas[$maquinaId] = now();
 
-                if ($elementos->isEmpty()) continue;
-
-                // Calcular tiempo total
-                $tiempoSegundos = $elementos->sum('tiempo_fabricacion');
-                $cargaMaquinas[$maquinaId] = $cargaMaquinas[$maquinaId]->copy()->addSeconds($tiempoSegundos);
-
-                // Parsear fecha de entrega
-                $fechaEntrega = $this->parseFechaEntregaFlexible($orden->fecha_estimada_entrega);
-
-                Log::info('🔍 OPTIMIZAR: Analizando planilla', [
-                    'planilla_id' => $planillaId,
-                    'codigo' => $orden->codigo,
+                Log::info('🔍 OPTIMIZAR: Procesando máquina', [
                     'maquina_id' => $maquinaId,
-                    'fecha_entrega' => $fechaEntrega?->format('d/m/Y H:i'),
-                    'fin_programado' => $cargaMaquinas[$maquinaId]->format('d/m/Y H:i'),
-                    'tiene_retraso' => $fechaEntrega ? $cargaMaquinas[$maquinaId]->gt($fechaEntrega) : false,
+                    'ordenes_en_cola' => $ordenesEnMaquina->count(),
                 ]);
 
-                // Verificar retraso
-                if ($fechaEntrega && $cargaMaquinas[$maquinaId]->gt($fechaEntrega)) {
-                    if (!in_array($planillaId, $planillasConRetraso)) {
-                        $planillasConRetraso[] = $planillaId;
+                foreach ($ordenesEnMaquina as $orden) {
+                    $planillaId = $orden->planilla_id;
+
+                    // Obtener elementos pendientes de esta planilla en esta máquina
+                    $elementos = Elemento::where('planilla_id', $planillaId)
+                        ->where('maquina_id', $maquinaId)
+                        ->where('estado', 'pendiente')
+                        ->get();
+
+                    if ($elementos->isEmpty()) {
+                        Log::warning('🔍 OPTIMIZAR: Planilla sin elementos pendientes', [
+                            'planilla_id' => $planillaId,
+                            'maquina_id' => $maquinaId,
+                        ]);
+                        continue;
                     }
 
-                    Log::info('🚨 OPTIMIZAR: RETRASO DETECTADO', [
+                    // Calcular tiempo total de TODOS los elementos de esta planilla en esta máquina
+                    $tiempoSegundos = $elementos->sum('tiempo_fabricacion');
+
+                    Log::info('🔍 OPTIMIZAR: Calculando tramos', [
                         'planilla_id' => $planillaId,
-                        'codigo' => $orden->codigo,
-                        'fecha_entrega' => $fechaEntrega->format('d/m/Y H:i'),
-                        'fin_programado' => $cargaMaquinas[$maquinaId]->format('d/m/Y H:i'),
+                        'inicio' => $cargaMaquinas[$maquinaId]->format('d/m/Y H:i'),
+                        'tiempo_segundos' => $tiempoSegundos,
+                        'tiempo_horas' => round($tiempoSegundos / 3600, 2),
                     ]);
 
-                    // Analizar cada elemento para encontrar máquinas compatibles
-                    foreach ($elementos as $elemento) {
-                        $maquinasCompatibles = $this->encontrarMaquinasCompatiblesSimple(
-                            $elemento,
-                            $maquinas,
-                            $maquinaId
-                        );
+                    // ✅ USAR TRAMOS LABORALES como el calendario
+                    $tramos = $this->generarTramosLaborales($cargaMaquinas[$maquinaId], $tiempoSegundos, $festivosSet);
 
-                        if (count($maquinasCompatibles) > 0) {
-                            $maquinaSugerida = $maquinasCompatibles[0];
+                    if (!empty($tramos)) {
+                        $ultimoTramo = end($tramos);
+                        $finProgramado = $ultimoTramo['end'] instanceof Carbon
+                            ? $ultimoTramo['end']->copy()
+                            : Carbon::parse($ultimoTramo['end']);
 
-                            $elementosAMover[] = [
-                                'id' => $elemento->id,
-                                'codigo' => $elemento->codigo,
-                                'planilla_codigo' => $orden->codigo ?? 'N/A',
-                                'planilla_id' => $planillaId,
-                                'diametro' => $elemento->diametro,
-                                'tipo_material' => $maquinas[$maquinaId]->tipo_material ?? null,
-                                'peso' => $elemento->peso,
-                                'maquina_actual_id' => $maquinaId,
-                                'maquina_actual_nombre' => $maquinas[$maquinaId]->nombre ?? 'N/A',
-                                'fecha_entrega' => $fechaEntrega->toIso8601String(),
-                                'fin_programado' => $cargaMaquinas[$maquinaId]->toIso8601String(),
-                                'maquina_destino_sugerida' => $maquinaSugerida['id'],
-                                'maquinas_compatibles' => $maquinasCompatibles,
-                            ];
+                        Log::info('🔍 OPTIMIZAR: Tramos generados', [
+                            'planilla_id' => $planillaId,
+                            'num_tramos' => count($tramos),
+                            'fin_programado' => $finProgramado->format('d/m/Y H:i'),
+                        ]);
+
+                        // Actualizar cursor para siguiente planilla
+                        $cargaMaquinas[$maquinaId] = $finProgramado;
+                    } else {
+                        Log::warning('🔍 OPTIMIZAR: Sin tramos, usando suma lineal', [
+                            'planilla_id' => $planillaId,
+                        ]);
+                        // Si no hay tramos, suma linealmente (fallback)
+                        $finProgramado = $cargaMaquinas[$maquinaId]->copy()->addSeconds($tiempoSegundos);
+                        $cargaMaquinas[$maquinaId] = $finProgramado;
+                    }
+
+                    // Parsear fecha de entrega
+                    $fechaEntrega = $this->parseFechaEntregaFlexible($orden->fecha_estimada_entrega);
+
+                    Log::info('🔍 OPTIMIZAR: Analizando planilla', [
+                        'planilla_id' => $planillaId,
+                        'codigo' => $orden->codigo,
+                        'maquina_id' => $maquinaId,
+                        'fecha_entrega' => $fechaEntrega?->format('d/m/Y H:i'),
+                        'fin_programado' => $finProgramado->format('d/m/Y H:i'),
+                        'tiene_retraso' => $fechaEntrega ? $finProgramado->gt($fechaEntrega) : false,
+                    ]);
+
+                    // Verificar retraso
+                    if ($fechaEntrega && $finProgramado->gt($fechaEntrega)) {
+                        if (!in_array($planillaId, $planillasConRetraso)) {
+                            $planillasConRetraso[] = $planillaId;
+                        }
+
+                        Log::info('🚨 OPTIMIZAR: RETRASO DETECTADO', [
+                            'planilla_id' => $planillaId,
+                            'codigo' => $orden->codigo,
+                            'fecha_entrega' => $fechaEntrega->format('d/m/Y H:i'),
+                            'fin_programado' => $finProgramado->format('d/m/Y H:i'),
+                            'retraso_horas' => $finProgramado->diffInHours($fechaEntrega),
+                        ]);
+
+                        // Analizar cada elemento para encontrar máquinas compatibles
+                        foreach ($elementos as $elemento) {
+                            $maquinasCompatibles = $this->encontrarMaquinasCompatiblesSimple(
+                                $elemento,
+                                $maquinas,
+                                $maquinaId
+                            );
+
+                            if (count($maquinasCompatibles) > 0) {
+                                $maquinaSugerida = $maquinasCompatibles[0];
+
+                                $elementosAMover[] = [
+                                    'id' => $elemento->id,
+                                    'codigo' => $elemento->codigo,
+                                    'planilla_codigo' => $orden->codigo ?? 'N/A',
+                                    'planilla_id' => $planillaId,
+                                    'diametro' => $elemento->diametro,
+                                    'tipo_material' => $maquinas[$maquinaId]->tipo_material ?? null,
+                                    'peso' => $elemento->peso,
+                                    'maquina_actual_id' => $maquinaId,
+                                    'maquina_actual_nombre' => $maquinas[$maquinaId]->nombre ?? 'N/A',
+                                    'fecha_entrega' => $fechaEntrega->toIso8601String(),
+                                    'fin_programado' => $finProgramado->toIso8601String(),
+                                    'maquina_destino_sugerida' => $maquinaSugerida['id'],
+                                    'maquinas_compatibles' => $maquinasCompatibles,
+                                ];
+                            }
                         }
                     }
                 }
@@ -2677,6 +2868,11 @@ class ProduccionController extends Controller
         foreach ($maquinas as $maquina) {
             // No incluir la máquina actual
             if ($maquina->id == $maquinaActualId) continue;
+
+            // ❌ Excluir soldadoras y ensambladoras
+            if (in_array($maquina->tipo, ['soldadora', 'ensambladora'])) {
+                continue;
+            }
 
             // Verificar compatibilidad de tipo de material
             if ($maquina->tipo_material && $elemento->diametro) {
@@ -2722,6 +2918,11 @@ class ProduccionController extends Controller
         foreach ($maquinas as $maquina) {
             // No incluir la máquina actual
             if ($maquina->id == $maquinaActualId) continue;
+
+            // ❌ Excluir soldadoras y ensambladoras
+            if (in_array($maquina->tipo, ['soldadora', 'ensambladora'])) {
+                continue;
+            }
 
             // Verificar compatibilidad de tipo de material
             if ($maquina->tipo_material && $elemento->diametro) {
@@ -2775,26 +2976,101 @@ class ProduccionController extends Controller
             $redistribuciones = $request->input('redistribuciones');
             $elementosMovidos = 0;
 
+            // Rastrear planillas afectadas por máquina
+            $planillasAfectadas = []; // [planilla_id => ['maquina_anterior' => id, 'maquina_nueva' => id]]
+
             foreach ($redistribuciones as $redistribucion) {
                 $elemento = Elemento::find($redistribucion['elemento_id']);
                 $nuevaMaquinaId = $redistribucion['nueva_maquina_id'];
 
                 if (!$elemento) continue;
 
-                // Actualizar máquina del elemento
                 $maquinaAnterior = $elemento->maquina_id;
+                $planillaId = $elemento->planilla_id;
+
+                // Actualizar máquina del elemento
                 $elemento->maquina_id = $nuevaMaquinaId;
                 $elemento->save();
 
                 $elementosMovidos++;
 
+                // Registrar planilla afectada
+                if (!isset($planillasAfectadas[$planillaId])) {
+                    $planillasAfectadas[$planillaId] = [];
+                }
+
+                if (!isset($planillasAfectadas[$planillaId][$maquinaAnterior])) {
+                    $planillasAfectadas[$planillaId][$maquinaAnterior] = [];
+                }
+
+                $planillasAfectadas[$planillaId][$maquinaAnterior][] = $nuevaMaquinaId;
+
                 Log::info('Elemento redistribuido por optimización', [
                     'elemento_id' => $elemento->id,
                     'codigo' => $elemento->codigo,
+                    'planilla_id' => $planillaId,
                     'maquina_anterior' => $maquinaAnterior,
                     'nueva_maquina' => $nuevaMaquinaId,
                     'user_id' => auth()->id(),
                 ]);
+            }
+
+            // 🔄 Actualizar orden_planillas
+            foreach ($planillasAfectadas as $planillaId => $maquinas) {
+                foreach ($maquinas as $maquinaAnterior => $maquinasNuevas) {
+                    // Verificar si quedan elementos en la máquina anterior
+                    $elementosRestantes = Elemento::where('planilla_id', $planillaId)
+                        ->where('maquina_id', $maquinaAnterior)
+                        ->count();
+
+                    if ($elementosRestantes === 0) {
+                        // 🗑️ No quedan elementos, borrar de orden_planillas
+                        DB::table('orden_planillas')
+                            ->where('planilla_id', $planillaId)
+                            ->where('maquina_id', $maquinaAnterior)
+                            ->delete();
+
+                        Log::info('✅ Registro eliminado de orden_planillas (sin elementos)', [
+                            'planilla_id' => $planillaId,
+                            'maquina_id' => $maquinaAnterior,
+                        ]);
+                    }
+
+                    // 🆕 Para cada máquina nueva, verificar/crear registro
+                    foreach (array_unique($maquinasNuevas) as $maquinaNueva) {
+                        $existeOrden = DB::table('orden_planillas')
+                            ->where('planilla_id', $planillaId)
+                            ->where('maquina_id', $maquinaNueva)
+                            ->exists();
+
+                        if (!$existeOrden) {
+                            // Obtener la última posición en esta máquina
+                            $ultimaPosicion = DB::table('orden_planillas')
+                                ->where('maquina_id', $maquinaNueva)
+                                ->max('posicion') ?? 0;
+
+                            // Insertar nuevo registro al final de la cola
+                            DB::table('orden_planillas')->insert([
+                                'planilla_id' => $planillaId,
+                                'maquina_id' => $maquinaNueva,
+                                'posicion' => $ultimaPosicion + 1,
+                                'created_at' => now(),
+                                'updated_at' => now(),
+                            ]);
+
+                            Log::info('✅ Registro creado en orden_planillas', [
+                                'planilla_id' => $planillaId,
+                                'maquina_id' => $maquinaNueva,
+                                'posicion' => $ultimaPosicion + 1,
+                            ]);
+                        } else {
+                            Log::info('ℹ️ Registro ya existe en orden_planillas', [
+                                'planilla_id' => $planillaId,
+                                'maquina_id' => $maquinaNueva,
+                            ]);
+                        }
+                    }
+                }
             }
 
             DB::commit();
@@ -2802,7 +3078,8 @@ class ProduccionController extends Controller
             return response()->json([
                 'success' => true,
                 'elementos_movidos' => $elementosMovidos,
-                'message' => "Se redistribuyeron {$elementosMovidos} elementos exitosamente"
+                'planillas_actualizadas' => count($planillasAfectadas),
+                'message' => "Se redistribuyeron {$elementosMovidos} elementos de " . count($planillasAfectadas) . " planillas exitosamente"
             ]);
 
         } catch (\Exception $e) {
