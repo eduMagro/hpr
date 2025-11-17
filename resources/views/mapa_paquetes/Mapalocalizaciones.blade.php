@@ -3,12 +3,9 @@
     <x-slot name="title">Mapa de Localizaciones -
         {{ config('app.name') }}</x-slot>
 
-    {{-- Menú lateral/top --}}
-    <x-menu.planillas />
-
-    <div class="w-full p-4 sm:p-6">
+    <div class="w-full p-4">
         {{-- === Cabecera de la página === --}}
-        <div class="bg-white rounded-lg shadow-sm p-4 mb-4">
+        <div class="bg-white rounded-lg shadow-sm p-4">
             <div class="flex justify-between items-center">
                 <div>
                     <h1 class="text-2xl font-bold text-gray-800">Mapa de
@@ -43,21 +40,21 @@
         </div>
 
         {{-- === GRID principal: Mapa + Panel lateral === --}}
-        <div class="flex gap-4 w-full" style="height: calc(100vh - 200px); max-height: calc(100vh - 200px);">
+        <div class="flex gap-4 w-full" style="height: calc(100vh - 170px);">
 
             {{-- COMPONENTE DE MAPA (nuevo) --}}
-            <div class="flex-1 overflow-hidden">
+            <div class="flex-1 overflow-hidden border border-gray-300">
                 <x-mapa-component :ctx="$ctx" :localizaciones-zonas="$localizacionesZonas"
                     :localizaciones-maquinas="$localizacionesMaquinas" :paquetes-con-localizacion="$paquetesConLocalizacion" :dimensiones="$dimensiones"
                     :obra-actual-id="$obraActualId" :show-controls="false" :mostrarObra="false"
                     :show-scan-result="false" :ruta-paquete="route('paquetes.tamaño')" :ruta-guardar="route('localizaciones.storePaquete')"
-                    :enable-drag-paquetes="true"
-                    height="100%" class='w-full h-full border-2 rounded-lg' />
+                    :enable-drag-paquetes="true" height="100%"
+                    class='w-full h-full border-2 rounded-lg' />
             </div>
 
             {{-- PANEL LATERAL: Lista de paquetes (igual que lo tenías) --}}
             <div
-                class="bg-white rounded-lg shadow-sm overflow-hidden flex flex-col w-full max-w-xl flex-shrink-0">
+                class="bg-white rounded-lg shadow-sm overflow-hidden flex flex-col w-full max-w-xl flex-shrink-0 border border-gray-300">
                 <div
                     class="bg-gradient-to-r from-blue-600 to-blue-700 text-white p-4">
                     <h2 class="text-lg font-bold">Paquetes Ubicados</h2>
@@ -91,19 +88,20 @@
                                 <span class="font-bold text-gray-800 text-sm">📦
                                     {{ $paquete['codigo'] }}</span>
                                 <span
-                                    class="text-xs text-gray-500">{{ $paquete['cantidad_elementos'] }}
-                                    elementos</span>
+                                    class="text-xs text-gray-500">{{ $paquete['cantidad_etiquetas'] }}
+                                    etiquetas</span>
                             </div>
                             <div
                                 class="grid grid-cols-2 gap-2 text-xs text-gray-600">
                                 <div><span class="text-gray-500">Peso:</span>
                                     <span
-                                        class="font-semibold">{{ number_format($paquete['peso'], 2) }} wire:navigate
+                                        class="font-semibold">{{ number_format($paquete['peso'], 2) }}
                                         kg</span>
                                 </div>
                                 <div class="col-span-2">
                                     <span class="text-gray-500">Obra:</span>
-                                    <span class="font-semibold">{{ $paquete['obra'] }}</span>
+                                    <span
+                                        class="font-semibold">{{ $paquete['obra'] }}</span>
                                 </div>
                             </div>
                             <div class="mt-2 flex items-center gap-2">
@@ -165,34 +163,54 @@
     </div>
 
     {{-- Context Menu para paquetes --}}
-    <div id="context-menu-paquete" class="hidden fixed bg-white border border-gray-300 rounded-lg shadow-lg py-1" style="min-width: 150px; z-index: 9999;">
-        <button id="context-menu-ver-elementos" class="w-full px-4 py-2 text-left hover:bg-blue-50 text-sm text-gray-700 flex items-center gap-2">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+    <div id="context-menu-paquete"
+        class="hidden fixed bg-white border border-gray-300 rounded-lg shadow-lg py-1"
+        style="min-width: 150px; z-index: 9999;">
+        <button id="context-menu-ver-elementos"
+            class="w-full px-4 py-2 text-left hover:bg-blue-50 text-sm text-gray-700 flex items-center gap-2">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor"
+                viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round"
+                    stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z">
+                </path>
+                <path stroke-linecap="round" stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z">
+                </path>
             </svg>
-            Ver elementos
+            Ver etiquetas
         </button>
     </div>
 
-    {{-- Modal para mostrar elementos del paquete --}}
-    <div id="modal-elementos-paquete" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4" style="z-index: 99999;">
-        <div class="bg-white rounded-lg shadow-xl w-full max-w-6xl max-h-[90vh] overflow-hidden flex flex-col">
+    {{-- Modal para mostrar etiquetas del paquete --}}
+    <div id="modal-elementos-paquete"
+        class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4"
+        style="z-index: 99999;">
+        <div
+            class="bg-white rounded-lg shadow-xl w-full max-w-6xl max-h-[90vh] overflow-hidden flex flex-col">
             <!-- Header del modal -->
-            <div class="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
-                <h2 class="text-xl font-bold text-gray-800">Elementos del Paquete <span id="modal-paquete-codigo"></span></h2>
-                <button id="cerrar-modal-elementos" class="text-gray-500 hover:text-gray-700">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+            <div
+                class="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
+                <h2 class="text-xl font-bold text-gray-800">Etiquetas del
+                    Paquete <span id="modal-paquete-codigo"></span></h2>
+                <button id="cerrar-modal-elementos"
+                    class="text-gray-500 hover:text-gray-700">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor"
+                        viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round"
+                            stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
                     </svg>
                 </button>
             </div>
 
             <!-- Contenido del modal -->
-            <div id="modal-elementos-contenido" class="flex-1 overflow-y-auto p-6">
+            <div id="modal-elementos-contenido"
+                class="flex-1 overflow-y-auto p-6">
                 <div class="text-center text-gray-500">
-                    <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
-                    <p class="mt-2">Cargando elementos...</p>
+                    <div
+                        class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900">
+                    </div>
+                    <p class="mt-2">Cargando etiquetas...</p>
                 </div>
             </div>
         </div>
@@ -204,6 +222,15 @@
     {{-- Script para integrar el panel lateral con el componente del mapa --}}
     @push('scripts')
         <script>
+            // Limpiar estado al navegar con Livewire (evitar caché)
+            document.addEventListener('livewire:navigating', function() {
+                console.log('Limpiando estado del mapa antes de navegar...');
+                const canvas = document.querySelector('[data-mapa-canvas]');
+                if (canvas && canvas.mapaInstance) {
+                    canvas.mapaInstance = null;
+                }
+            });
+
             document.addEventListener('DOMContentLoaded', function() {
                 // Obtenemos el canvas del mapa (el div con data-mapa-canvas)
                 const canvas = document.querySelector('[data-mapa-canvas]');
@@ -250,7 +277,11 @@
                             // 1) Quitar estilos de selección en el menú
                             this.classList.remove(
                                 'border-blue-500',
-                                'bg-blue-50');
+                                'bg-blue-100');
+
+                            this.classList.add(
+                                'border-gray-200',
+                                'bg-gray-50');
 
                             // 2) Ocultar el paquete del mapa
                             if (typeof mapaInstance
@@ -270,7 +301,11 @@
                             // 1) Marcar visualmente el paquete como seleccionado en la lista
                             this.classList.add(
                                 'border-blue-500',
-                                'bg-blue-50');
+                                'bg-blue-100');
+
+                            this.classList.remove(
+                                'border-gray-200',
+                                'bg-gray-50');
 
                             // 2) Mostrar el paquete en el mapa
                             if (typeof mapaInstance
@@ -367,11 +402,13 @@
                 // =====================
                 // FILTRO DE OBRAS PAQUETES (JS - sin recargar página)
                 // =====================
-                const filterObraPaquetes = document.getElementById('filter-obra-paquetes');
+                const filterObraPaquetes = document.getElementById(
+                    'filter-obra-paquetes');
 
                 if (filterObraPaquetes) {
                     // Poblar el select con obras únicas de los paquetes
-                    const paqueteItems = document.querySelectorAll('.paquete-item');
+                    const paqueteItems = document.querySelectorAll(
+                        '.paquete-item');
                     const obrasUnicas = new Set();
 
                     paqueteItems.forEach(item => {
@@ -401,7 +438,10 @@
                                 item.style.display = 'block';
                             } else {
                                 // Mostrar solo los que coinciden
-                                item.style.display = (obraItem === obraSeleccionada) ? 'block' : 'none';
+                                item.style.display = (
+                                        obraItem ===
+                                        obraSeleccionada) ?
+                                    'block' : 'none';
                             }
                         });
                     });
@@ -410,16 +450,23 @@
                 // =====================
                 // CONTEXT MENU Y MODAL DE ELEMENTOS
                 // =====================
-                const contextMenu = document.getElementById('context-menu-paquete');
-                const modal = document.getElementById('modal-elementos-paquete');
-                const modalContenido = document.getElementById('modal-elementos-contenido');
-                const modalCodigo = document.getElementById('modal-paquete-codigo');
-                const btnCerrarModal = document.getElementById('cerrar-modal-elementos');
-                const btnVerElementos = document.getElementById('context-menu-ver-elementos');
+                const contextMenu = document.getElementById(
+                    'context-menu-paquete');
+                const modal = document.getElementById(
+                    'modal-elementos-paquete');
+                const modalContenido = document.getElementById(
+                    'modal-elementos-contenido');
+                const modalCodigo = document.getElementById(
+                    'modal-paquete-codigo');
+                const btnCerrarModal = document.getElementById(
+                    'cerrar-modal-elementos');
+                const btnVerElementos = document.getElementById(
+                    'context-menu-ver-elementos');
                 let paqueteIdActual = null;
 
                 console.log('Context menu element:', contextMenu);
-                console.log('Paquetes encontrados:', document.querySelectorAll('.paquete-item').length);
+                console.log('Paquetes encontrados:', document.querySelectorAll(
+                    '.paquete-item').length);
 
                 // Agregar context menu a los paquetes de la lista
                 document.querySelectorAll('.paquete-item').forEach(item => {
@@ -427,12 +474,17 @@
                         e.preventDefault();
                         e.stopPropagation();
 
-                        paqueteIdActual = item.dataset.paqueteId;
-                        console.log('Context menu activado para paquete:', paqueteIdActual);
+                        paqueteIdActual = item.dataset
+                            .paqueteId;
+                        console.log(
+                            'Context menu activado para paquete:',
+                            paqueteIdActual);
 
                         // Posicionar context menu (usar clientX/clientY en lugar de pageX/pageY)
-                        contextMenu.style.left = e.clientX + 'px';
-                        contextMenu.style.top = e.clientY + 'px';
+                        contextMenu.style.left = e.clientX +
+                            'px';
+                        contextMenu.style.top = e.clientY +
+                            'px';
                         contextMenu.classList.remove('hidden');
                     });
                 });
@@ -452,59 +504,99 @@
                     }
                 });
 
-                // Abrir modal y cargar elementos
+                // Abrir modal y cargar etiquetas
                 async function abrirModalElementos(paqueteId) {
                     modal.classList.remove('hidden');
-                    modalContenido.innerHTML = '<div class="text-center text-gray-500"><div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div><p class="mt-2">Cargando elementos...</p></div>';
+                    modalContenido.innerHTML =
+                        '<div class="text-center text-gray-500"><div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div><p class="mt-2">Cargando etiquetas...</p></div>';
 
                     try {
-                        const response = await fetch(`/paquetes/${paqueteId}/elementos`);
+                        const response = await fetch(
+                            `/paquetes/${paqueteId}/elementos`);
                         const data = await response.json();
 
                         if (data.success) {
                             modalCodigo.textContent = data.paquete.codigo;
-                            renderizarElementos(data.elementos);
+                            renderizarEtiquetas(data.etiquetas);
                         } else {
-                            modalContenido.innerHTML = '<div class="text-center text-red-500"><p>Error al cargar elementos: ' + (data.message || 'Error desconocido') + '</p></div>';
+                            modalContenido.innerHTML =
+                                '<div class="text-center text-red-500"><p>Error al cargar etiquetas: ' +
+                                (data.message || 'Error desconocido') +
+                                '</p></div>';
                         }
                     } catch (error) {
-                        console.error('Error al cargar elementos:', error);
-                        modalContenido.innerHTML = '<div class="text-center text-red-500"><p>Error al cargar elementos del paquete</p></div>';
+                        console.error('Error al cargar etiquetas:', error);
+                        modalContenido.innerHTML =
+                            '<div class="text-center text-red-500"><p>Error al cargar etiquetas del paquete</p></div>';
                     }
                 }
 
-                // Renderizar elementos en grid (4 por fila)
-                function renderizarElementos(elementos) {
-                    if (!elementos || elementos.length === 0) {
-                        modalContenido.innerHTML = '<div class="text-center text-gray-500"><p>Este paquete no tiene elementos</p></div>';
+                // Renderizar etiquetas con sus elementos
+                function renderizarEtiquetas(etiquetas) {
+                    if (!etiquetas || etiquetas.length === 0) {
+                        modalContenido.innerHTML =
+                            '<div class="text-center text-gray-500"><p>Este paquete no tiene etiquetas</p></div>';
                         return;
                     }
 
-                    modalContenido.innerHTML = '<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4" id="grid-elementos"></div>';
-                    const grid = document.getElementById('grid-elementos');
+                    let html = '<div class="space-y-6">';
 
-                    elementos.forEach((elemento, index) => {
-                        const elementoDiv = document.createElement('div');
-                        elementoDiv.className = 'border border-gray-300 rounded-lg p-3 bg-white shadow-sm';
-                        elementoDiv.innerHTML = `
-                            <h3 class="text-sm font-semibold text-gray-700 mb-2 truncate" title="${elemento.codigo}">${elemento.codigo}</h3>
-                            <div id="svg-elemento-${elemento.id}" class="w-full" style="height: 150px; border: 1px solid #e5e7eb; border-radius: 4px; background: white;"></div>
+                    console.log("ETIQUETAS====", etiquetas)
+                    etiquetas.forEach((etiqueta, etqIndex) => {
+                        html += `
+                            <div class="border border-gray-200 rounded-lg overflow-hidden">
+                                <div class="bg-gradient-to-r from-blue-50 to-blue-100 px-4 py-3 border-b border-gray-200">
+                                    <div class="flex justify-between items-center">
+                                        <h3 class="font-bold text-gray-800">
+                                            🏷️ ${etiqueta.etiqueta_sub_id || etiqueta.nombre}
+                                        </h3>
+                                        <div class="text-sm text-gray-600">
+                                            <span class="font-medium">${etiqueta.cantidad_elementos}</span> elementos
+                                            ${etiqueta.peso ? `· <span class="font-medium">${Number(etiqueta.peso).toFixed(2)} kg</span>` : ''}
+                                            ${etiqueta.marca ? `· Marca: <span class="font-medium">${etiqueta.marca}</span>` : ''}
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="p-4 bg-white">
+                                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3" id="grid-etiqueta-${etiqueta.id}">
                         `;
-                        grid.appendChild(elementoDiv);
 
-                        // Dibujar el elemento usando la función del script figuraElemento.js
-                        // Esperar a que el elemento esté en el DOM
-                        setTimeout(() => {
-                            if (typeof window.dibujarFiguraElemento === 'function') {
-                                window.dibujarFiguraElemento(
-                                    'svg-elemento-' + elemento.id,
-                                    elemento.dimensiones,
-                                    elemento.peso_kg,
-                                    elemento.diametro,
-                                    elemento.barras
-                                );
-                            }
-                        }, 50 * index); // Pequeño delay escalonado para mejor rendimiento
+                        etiqueta.elementos.forEach((elemento) => {
+                            html += `
+                                <div class="border border-gray-200 rounded p-2 bg-gray-50">
+                                    <p class="text-xs font-semibold text-gray-600 mb-1 truncate" title="${elemento.codigo}">${elemento.codigo}</p>
+                                    <div id="svg-elemento-${elemento.id}" class="w-full bg-white rounded" style="height: 120px; border: 1px solid #e5e7eb;"></div>
+                                </div>
+                            `;
+                        });
+
+                        html += `
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    });
+
+                    html += '</div>';
+                    modalContenido.innerHTML = html;
+
+                    // Dibujar las figuras de los elementos
+                    let delayIndex = 0;
+                    etiquetas.forEach((etiqueta) => {
+                        etiqueta.elementos.forEach((elemento) => {
+                            setTimeout(() => {
+                                if (typeof window.dibujarFiguraElemento === 'function') {
+                                    window.dibujarFiguraElemento(
+                                        'svg-elemento-' + elemento.id,
+                                        elemento.dimensiones,
+                                        elemento.peso_kg,
+                                        elemento.diametro,
+                                        elemento.barras
+                                    );
+                                }
+                            }, 30 * delayIndex);
+                            delayIndex++;
+                        });
                     });
                 }
 
@@ -695,6 +787,7 @@
             from {
                 transform: rotate(0deg);
             }
+
             to {
                 transform: rotate(360deg);
             }

@@ -1,3 +1,12 @@
+﻿{{-- CSS para el componente de mapa (necesario para el modal de mover paquete) --}}
+@once
+    <link rel="stylesheet" href="{{ asset('css/localizaciones/styleLocIndex.css') }}">
+@endonce
+
+@php
+    $mapaData = $mapaData ?? [];
+@endphp
+
   {{-- 🔄 MODAL MOVIMIENTO GENERAL --}}
   <div id="modalMovimientoLibre"
       class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center">
@@ -460,3 +469,440 @@
   </style>
 
   <script src="{{ asset('js/movimientos/movimientosgrua.js') }}"></script>
+
+  {{-- ðŸ“¦ MODAL MOVER PAQUETE (3 pasos: escanear, validar, ubicar en mapa) --}}
+  <div id="modal-mover-paquete"
+      class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center p-4">
+      <div class="bg-white rounded-2xl shadow-xl w-full max-w-6xl max-h-[95vh] overflow-hidden flex flex-col">
+          {{-- Header --}}
+          <div class="bg-gradient-to-r from-green-600 to-green-700 text-white p-4 flex justify-between items-center">
+              <h2 class="text-lg sm:text-xl font-bold">ðŸ“¦ Mover Paquete a Nueva Ubicación</h2>
+              <button onclick="cerrarModalMoverPaquete()" class="text-white hover:text-gray-200 text-2xl">&times;</button>
+          </div>
+
+          {{-- Contenido --}}
+          <div class="flex-1 overflow-auto p-4">
+              {{-- PASO 1: Escanear código --}}
+              <div id="paso-escanear-paquete" class="space-y-4">
+                  <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                      <h3 class="font-semibold text-blue-800 mb-2">Paso 1: Escanear Código del Paquete</h3>
+                      <p class="text-sm text-blue-600 mb-3">Escanea o introduce el código QR del paquete que deseas mover.</p>
+
+                      <x-tabla.input-movil
+                          type="text"
+                          id="codigo_paquete_mover"
+                          label="Código del Paquete"
+                          placeholder="Escanea o escribe el código (ej: ETQ123456.01)"
+                          autocomplete="off"
+                          inputmode="text" />
+
+                      <div id="error-paquete-mover" class="hidden mt-2 text-sm text-red-600 bg-red-50 p-2 rounded"></div>
+                      <div id="loading-paquete-mover" class="hidden mt-2 text-sm text-gray-600">
+                          <div class="flex items-center gap-2">
+                              <div class="animate-spin rounded-full h-4 w-4 border-b-2 border-green-600"></div>
+                              <span>Buscando paquete...</span>
+                          </div>
+                      </div>
+                  </div>
+
+                  {{-- Info del paquete (se muestra despuÃ©s de validar) --}}
+                  <div id="info-paquete-validado" class="hidden bg-green-50 border border-green-200 rounded-lg p-4">
+                      <h3 class="font-semibold text-green-800 mb-3">âœ… Paquete Encontrado</h3>
+                      <div class="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+                          <div class="bg-white p-2 rounded border">
+                              <p class="text-gray-600 text-xs">Código Paquete</p>
+                              <p id="paquete-codigo-info" class="font-bold text-gray-800"></p>
+                          </div>
+                          <div class="bg-white p-2 rounded border">
+                              <p class="text-gray-600 text-xs">Etiquetas / Elementos</p>
+                              <p id="paquete-peso-info" class="font-bold text-gray-800"></p>
+                          </div>
+                          <div class="bg-white p-2 rounded border">
+                              <p class="text-gray-600 text-xs">Dimensiones (L x A)</p>
+                              <p id="paquete-dimensiones-info" class="font-bold text-gray-800"></p>
+                          </div>
+                      </div>
+                      <button onclick="mostrarPasoMapa()"
+                          class="mt-4 w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-3 px-4 rounded-lg shadow">
+                          Seleccionar Ubicación en Mapa
+                      </button>
+                  </div>
+              </div>
+
+              {{-- PASO 2: Seleccionar ubicación en mapa --}}
+              <div id="paso-mapa-paquete" class="hidden space-y-4">
+                  <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                      <h3 class="font-semibold text-yellow-800 mb-2">Paso 2: Seleccionar Nueva Ubicación</h3>
+                      <p class="text-sm text-yellow-600 mb-3">Arrastra el paquete en el mapa para ubicarlo en su nueva posición, o introduce las coordenadas manualmente.</p>
+
+                      <div class="flex items-center gap-2 mb-3">
+                          <button onclick="volverPasoEscaneo()" class="text-sm text-gray-600 hover:text-gray-800 underline">
+                              ← Volver al paso anterior
+                          </button>
+                      </div>
+
+                      {{-- Información del paquete seleccionado --}}
+                      <div class="bg-white p-3 rounded border mb-3">
+                          <p class="text-sm"><strong>Paquete:</strong> <span id="paquete-codigo-mapa" class="text-green-700 font-bold"></span></p>
+                      </div>
+                  </div>
+
+                  @if (!empty($mapaData))
+                      <div class="bg-white p-4 rounded-lg border space-y-3">
+                          <div class="space-y-1">
+                              <p class="text-xs uppercase tracking-wide text-gray-500">Nave</p>
+                              <p class="text-lg font-semibold text-gray-800">{{ $mapaData['dimensiones']['obra'] ?? 'Sin nave' }}</p>
+                              <p class="text-sm text-gray-500">
+                                  Dimensiones: {{ $mapaData['dimensiones']['ancho'] ?? '0' }}m × {{ $mapaData['dimensiones']['largo'] ?? '0' }}m
+                              </p>
+                          </div>
+
+                          <div class="rounded-xl border border-gray-200 overflow-hidden bg-white shadow-inner" style="min-height: 420px;">
+                              <x-mapa-component
+                                  :ctx="$mapaData['ctx'] ?? []"
+                                  :localizaciones-zonas="$mapaData['localizacionesZonas'] ?? []"
+                                  :localizaciones-maquinas="$mapaData['localizacionesMaquinas'] ?? []"
+                                  :paquetes-con-localizacion="$mapaData['paquetesConLocalizacion'] ?? []"
+                                  :dimensiones="$mapaData['dimensiones'] ?? null"
+                                  :obra-actual-id="$mapaData['obraActualId'] ?? null"
+                                  :map-id="$mapaData['mapaId'] ?? null"
+                                  :show-controls="false"
+                                  :mostrarObra="false"
+                                  :show-scan-result="false"
+                                  :ruta-paquete="route('paquetes.tamaño')"
+                                  :ruta-guardar="route('localizaciones.storePaquete')"
+                                  :modo-modal="true"
+                                  height="100%"
+                                  class="w-full h-[420px]"
+                              />
+                          </div>
+
+                          <p class="text-xs text-gray-500">
+                              Arrastra el ghost del paquete para colocar la nueva ubicación; las coordenadas se sincronizan abajo.
+                          </p>
+                      </div>
+                  @else
+                      <div id="contenedor-mapa-paquete" class="bg-gray-100 rounded-lg border-2 border-dashed border-gray-300 min-h-[400px] flex items-center justify-center">
+                          <div class="text-center text-gray-500">
+                              <svg class="w-16 h-16 mx-auto mb-3 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/>
+                              </svg>
+                              <p class="font-medium">Mapa no disponible</p>
+                          </div>
+                      </div>
+                  @endif
+
+                  {{-- Coordenadas seleccionadas --}}
+                  <div id="coordenadas-seleccionadas" class="hidden bg-blue-50 border border-blue-200 rounded-lg p-4">
+                      <h4 class="font-semibold text-blue-800 mb-2">Coordenadas Seleccionadas</h4>
+                      <div class="grid grid-cols-4 gap-3 text-sm">
+                          <div>
+                              <label class="text-gray-600 text-xs">X1</label>
+                              <input type="number" id="coord-x1" class="w-full border rounded px-2 py-1" readonly>
+                          </div>
+                          <div>
+                              <label class="text-gray-600 text-xs">Y1</label>
+                              <input type="number" id="coord-y1" class="w-full border rounded px-2 py-1" readonly>
+                          </div>
+                          <div>
+                              <label class="text-gray-600 text-xs">X2</label>
+                              <input type="number" id="coord-x2" class="w-full border rounded px-2 py-1" readonly>
+                          </div>
+                          <div>
+                              <label class="text-gray-600 text-xs">Y2</label>
+                              <input type="number" id="coord-y2" class="w-full border rounded px-2 py-1" readonly>
+                          </div>
+                      </div>
+                  </div>
+              </div>
+          </div>
+
+          {{-- Footer con botones --}}
+          <div class="border-t p-4 bg-gray-50 flex justify-end gap-3">
+              <button onclick="cerrarModalMoverPaquete()"
+                  class="px-4 py-2 bg-gray-300 hover:bg-gray-400 rounded-lg font-medium">
+                  Cancelar
+              </button>
+              <button id="btn-guardar-ubicacion-paquete" onclick="guardarUbicacionPaquete()"
+                  class="hidden px-6 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-semibold shadow">
+                  ðŸ’¾ Guardar Nueva Ubicación
+              </button>
+          </div>
+      </div>
+  </div>
+
+  {{-- Scripts para el modal de mover paquete --}}
+  <script>
+      let paqueteMoverData = null;
+      let coordenadasPaquete = { x1: null, y1: null, x2: null, y2: null };
+      const MAPA_MODAL_ID = '{{ $mapaData['mapaId'] ?? '' }}';
+      const MAPA_OBRA_ID = {{ $mapaData['obraActualId'] ?? 'null' }};
+      let mapaModalApi = null;
+      let mapaModalUnsubscribe = null;
+
+      function abrirModalMoverPaquete() {
+          const modal = document.getElementById('modal-mover-paquete');
+          modal.classList.remove('hidden');
+
+          resetearModalMoverPaquete();
+
+          setTimeout(() => {
+              document.getElementById('codigo_paquete_mover')?.focus();
+          }, 100);
+      }
+
+      function cerrarModalMoverPaquete() {
+          document.getElementById('modal-mover-paquete').classList.add('hidden');
+          resetearModalMoverPaquete();
+      }
+
+      function resetearModalMoverPaquete() {
+          const inputCodigo = document.getElementById('codigo_paquete_mover');
+          if (inputCodigo) inputCodigo.value = '';
+
+          document.getElementById('info-paquete-validado').classList.add('hidden');
+          document.getElementById('paso-mapa-paquete').classList.add('hidden');
+          document.getElementById('paso-escanear-paquete').classList.remove('hidden');
+          document.getElementById('error-paquete-mover').classList.add('hidden');
+          document.getElementById('loading-paquete-mover').classList.add('hidden');
+          document.getElementById('btn-guardar-ubicacion-paquete').classList.add('hidden');
+          document.getElementById('coordenadas-seleccionadas').classList.add('hidden');
+          document.getElementById('coord-x1').value = '';
+          document.getElementById('coord-y1').value = '';
+          document.getElementById('coord-x2').value = '';
+          document.getElementById('coord-y2').value = '';
+
+          paqueteMoverData = null;
+          coordenadasPaquete = { x1: null, y1: null, x2: null, y2: null };
+
+          if (mapaModalUnsubscribe) {
+              mapaModalUnsubscribe();
+              mapaModalUnsubscribe = null;
+          }
+          mapaModalApi = null;
+      }
+
+      async function mostrarPasoMapa() {
+          document.getElementById('paso-escanear-paquete').classList.add('hidden');
+          document.getElementById('paso-mapa-paquete').classList.remove('hidden');
+          document.getElementById('paquete-codigo-mapa').textContent = paqueteMoverData?.codigo || '';
+          await mostrarGhostParaPaquete();
+      }
+
+      function volverPasoEscaneo() {
+          document.getElementById('paso-mapa-paquete').classList.add('hidden');
+          document.getElementById('paso-escanear-paquete').classList.remove('hidden');
+          document.getElementById('btn-guardar-ubicacion-paquete').classList.add('hidden');
+      }
+
+      document.addEventListener('DOMContentLoaded', function() {
+          const inputCodigo = document.getElementById('codigo_paquete_mover');
+          if (inputCodigo) {
+              inputCodigo.addEventListener('keydown', function(e) {
+                  if (e.key === 'Enter') {
+                      e.preventDefault();
+                      buscarPaqueteParaMover();
+                  }
+              });
+          }
+      });
+
+      async function buscarPaqueteParaMover() {
+          const codigo = document.getElementById('codigo_paquete_mover').value.trim();
+          if (!codigo) {
+              mostrarErrorPaquete('Debes introducir un código de paquete.');
+              return;
+          }
+
+          document.getElementById('loading-paquete-mover').classList.remove('hidden');
+          document.getElementById('error-paquete-mover').classList.add('hidden');
+          document.getElementById('info-paquete-validado').classList.add('hidden');
+
+          try {
+              const response = await fetch('/paquetes/tamaño', {
+                  method: 'POST',
+                  headers: {
+                      'Content-Type': 'application/json',
+                      'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '',
+                      'Accept': 'application/json'
+                  },
+                  body: JSON.stringify({ codigo: codigo })
+              });
+
+              const data = await response.json();
+
+              if (!response.ok) {
+                  throw new Error(data.error || data.message || 'Paquete no encontrado');
+              }
+
+              paqueteMoverData = data;
+
+              document.getElementById('paquete-codigo-info').textContent = data.codigo || codigo;
+              document.getElementById('paquete-peso-info').textContent =
+                  `${data.etiquetas_count || 0} etq / ${data.elementos_count || 0} elem`;
+              document.getElementById('paquete-dimensiones-info').textContent =
+                  `${(data.longitud || 0).toFixed(2)}m x ${(data.ancho || 1).toFixed(2)}m`;
+
+              document.getElementById('info-paquete-validado').classList.remove('hidden');
+              mostrarGhostParaPaquete();
+
+          } catch (error) {
+              console.error('Error al buscar paquete:', error);
+              mostrarErrorPaquete(error.message || 'No se encontró el paquete. Verifica el código.');
+          } finally {
+              document.getElementById('loading-paquete-mover').classList.add('hidden');
+          }
+      }
+
+      function mostrarErrorPaquete(mensaje) {
+          const errorDiv = document.getElementById('error-paquete-mover');
+          errorDiv.textContent = mensaje;
+          errorDiv.classList.remove('hidden');
+      }
+
+      function esperarInstanciaMapaComponent(mapaId, timeout = 5000) {
+          return new Promise((resolve, reject) => {
+              const inicio = Date.now();
+
+              function revisar() {
+                  const registro = window.mapaComponentInstances || {};
+                  const instancia = registro[mapaId];
+                  if (instancia) {
+                      resolve(instancia);
+                      return;
+                  }
+
+                  if (Date.now() - inicio >= timeout) {
+                      reject(new Error('Instancia del mapa no disponible'));
+                      return;
+                  }
+
+                  setTimeout(revisar, 120);
+              }
+
+              revisar();
+          });
+      }
+
+      async function inicializarMapaModal() {
+          if (!MAPA_MODAL_ID) return null;
+          if (mapaModalApi) return mapaModalApi;
+
+          try {
+              const api = await esperarInstanciaMapaComponent(MAPA_MODAL_ID);
+              mapaModalApi = api;
+
+              if (mapaModalUnsubscribe) {
+                  mapaModalUnsubscribe();
+              }
+
+              mapaModalUnsubscribe = api.onGhostMove(coords => {
+                  actualizarCoordenadas(coords.x1, coords.y1, coords.x2, coords.y2);
+                  document.getElementById('coordenadas-seleccionadas').classList.remove('hidden');
+                  document.getElementById('btn-guardar-ubicacion-paquete').classList.remove('hidden');
+              });
+
+              return api;
+          } catch (error) {
+              console.error('No se pudo inicializar el mapa del modal:', error);
+              return null;
+          }
+      }
+
+      async function mostrarGhostParaPaquete() {
+          if (!paqueteMoverData || !MAPA_MODAL_ID) return;
+
+          const api = await inicializarMapaModal();
+          if (!api) return;
+
+          api.triggerGhost({
+              codigo: paqueteMoverData.codigo,
+              paquete_id: paqueteMoverData.paquete_id,
+              longitud: paqueteMoverData.longitud || 0,
+              ancho: paqueteMoverData.ancho || 1,
+          });
+      }
+
+      function actualizarCoordenadas(x1, y1, x2, y2) {
+          coordenadasPaquete = { x1, y1, x2, y2 };
+          document.getElementById('coord-x1').value = x1;
+          document.getElementById('coord-y1').value = y1;
+          document.getElementById('coord-x2').value = x2;
+          document.getElementById('coord-y2').value = y2;
+      }
+
+      async function guardarUbicacionPaquete() {
+          if (!paqueteMoverData || !MAPA_OBRA_ID) {
+              Swal.fire('Error', 'Faltan datos del paquete o la nave.', 'error');
+              return;
+          }
+
+          if (!coordenadasPaquete.x1) {
+              Swal.fire('Error', 'Debes seleccionar una ubicación en el mapa.', 'error');
+              return;
+          }
+
+          const confirmResult = await Swal.fire({
+              title: '¿Confirmar nueva ubicación?',
+              html: `
+                  <p>El paquete <strong>${paqueteMoverData.codigo}</strong> se moverá a:</p>
+                  <p class="mt-2">Coordenadas: (${coordenadasPaquete.x1}, ${coordenadasPaquete.y1}) - (${coordenadasPaquete.x2}, ${coordenadasPaquete.y2})</p>
+              `,
+              icon: 'question',
+              showCancelButton: true,
+              confirmButtonText: 'Sí, guardar',
+              cancelButtonText: 'Cancelar',
+              confirmButtonColor: '#16a34a'
+          });
+
+          if (!confirmResult.isConfirmed) return;
+
+          try {
+              Swal.fire({
+                  title: 'Guardando...',
+                  text: 'Actualizando ubicación del paquete',
+                  allowOutsideClick: false,
+                  didOpen: () => Swal.showLoading()
+              });
+
+              const response = await fetch('/localizaciones/paquete', {
+                  method: 'POST',
+                  headers: {
+                      'Content-Type': 'application/json',
+                      'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '',
+                      'Accept': 'application/json'
+                  },
+                  body: JSON.stringify({
+                      nave_id: MAPA_OBRA_ID,
+                      paquete_id: paqueteMoverData.paquete_id,
+                      x1: coordenadasPaquete.x1,
+                      y1: coordenadasPaquete.y1,
+                      x2: coordenadasPaquete.x2,
+                      y2: coordenadasPaquete.y2
+                  })
+              });
+
+              const data = await response.json();
+
+              if (!response.ok) {
+                  throw new Error(data.message || data.error || 'Error al guardar la ubicación');
+              }
+
+              await Swal.fire({
+                  icon: 'success',
+                  title: '¡Ubicación guardada!',
+                  text: `El paquete ${paqueteMoverData.codigo} ha sido ubicado correctamente.`,
+                  timer: 2500,
+                  showConfirmButton: false
+              });
+
+              cerrarModalMoverPaquete();
+
+          } catch (error) {
+              console.error('Error al guardar ubicación:', error);
+              Swal.fire('Error', error.message || 'No se pudo guardar la ubicación del paquete.', 'error');
+          }
+      }
+  </script>
+
+

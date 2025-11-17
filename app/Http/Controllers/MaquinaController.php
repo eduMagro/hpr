@@ -18,6 +18,8 @@ use App\Models\AsignacionTurno;
 use App\Models\User;
 use App\Models\Ubicacion;
 use App\Models\Movimiento;
+use App\Models\Localizacion;
+use App\Models\Paquete;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Session;
@@ -683,6 +685,8 @@ class MaquinaController extends Controller
             ->get();
 
         // 👉 Devolvemos tanto las colecciones Eloquent (si las usas en Blade) como los JSON ligeros para JS
+        $mapaData = $this->obtenerDatosMapaParaNave($obraId);
+
         return [
             'movimientosPendientes'                 => $movimientosPendientes,
             'movimientosCompletados'                => $movimientosCompletados,
@@ -691,6 +695,102 @@ class MaquinaController extends Controller
             'ubicacionesDisponiblesPorProductoBase' => $ubicacionesDisponiblesPorProductoBase,
             'pedidosActivos'                        => $pedidosActivos,
             'maquinasDisponibles'                   => $maquinasDisponibles,
+            'mapaData'                              => $mapaData,
+        ];
+    }
+
+    private function obtenerDatosMapaParaNave(?int $naveId): array
+    {
+        if (!$naveId) {
+            return [];
+        }
+
+        $obra = Obra::find($naveId);
+        if (!$obra) {
+            return [];
+        }
+
+        $anchoM = max(1, (int) ($obra->ancho_m ?? 22));
+        $largoM = max(1, (int) ($obra->largo_m ?? 115));
+        $columnasReales = $anchoM * 2;
+        $filasReales = $largoM * 2;
+
+        $ctx = [
+            'naveId'         => $naveId,
+            'columnasReales' => $columnasReales,
+            'filasReales'    => $filasReales,
+            'estaGirado'     => true,
+            'columnasVista'  => $columnasReales,
+            'filasVista'     => $filasReales,
+        ];
+
+        $localizaciones = Localizacion::with('maquina:id,nombre')
+            ->where('nave_id', $naveId)
+            ->get();
+
+        $localizacionesMaquinas = $localizaciones
+            ->where('tipo', 'maquina')
+            ->whereNotNull('maquina_id')
+            ->filter(fn($loc) => $loc->maquina)
+            ->map(function ($loc) {
+                return [
+                    'id'         => (int) $loc->id,
+                    'x1'         => (int) $loc->x1,
+                    'y1'         => (int) $loc->y1,
+                    'x2'         => (int) $loc->x2,
+                    'y2'         => (int) $loc->y2,
+                    'maquina_id' => (int) $loc->maquina_id,
+                    'nombre'     => (string) ($loc->nombre ?: $loc->maquina->nombre),
+                ];
+            })->values()->toArray();
+
+        $localizacionesZonas = $localizaciones
+            ->where('tipo', '!=', 'maquina')
+            ->map(function ($loc) {
+                $tipo = str_replace('-', '_', $loc->tipo ?? 'transitable');
+                return [
+                    'id'    => (int) $loc->id,
+                    'x1'    => (int) $loc->x1,
+                    'y1'    => (int) $loc->y1,
+                    'x2'    => (int) $loc->x2,
+                    'y2'    => (int) $loc->y2,
+                    'tipo'  => $loc->tipo ?? 'transitable',
+                    'nombre'=> (string) $loc->nombre,
+                ];
+            })->values()->toArray();
+
+        $paquetesConLocalizacion = Paquete::with('localizacionPaquete')
+            ->where('nave_id', $naveId)
+            ->whereHas('localizacionPaquete')
+            ->get()
+            ->map(function ($paquete) {
+                $loc = $paquete->localizacionPaquete;
+                return [
+                    'id'             => (int) $paquete->id,
+                    'codigo'         => (string) $paquete->codigo,
+                    'x1'             => (int) $loc->x1,
+                    'y1'             => (int) $loc->y1,
+                    'x2'             => (int) $loc->x2,
+                    'y2'             => (int) $loc->y2,
+                    'tipo_contenido' => $paquete->getTipoContenido(),
+                    'orientacion'    => $paquete->orientacion ?? 'I',
+                ];
+            })->values()->toArray();
+
+        $dimensiones = [
+            'ancho' => $anchoM,
+            'largo' => $largoM,
+            'obra'  => $obra->obra,
+        ];
+
+        return [
+            'ctx'                      => $ctx,
+            'localizacionesZonas'     => $localizacionesZonas,
+            'localizacionesMaquinas'   => $localizacionesMaquinas,
+            'paquetesConLocalizacion'  => $paquetesConLocalizacion,
+            'dimensiones'              => $dimensiones,
+            'obraActualId'             => $naveId,
+            'mapaId'                   => 'mapa-modal-paquete-' . $naveId,
         ];
     }
 

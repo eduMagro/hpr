@@ -267,7 +267,7 @@
         </div>
 
         <!-- Paginación Livewire -->
-        ${{ $paquetes->links() }} wire:navigate
+        {{ $paquetes->links() }}
     </div>
 
     {{-- Modal para visualizar elementos del paquete --}}

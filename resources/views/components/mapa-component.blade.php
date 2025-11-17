@@ -6,6 +6,7 @@
     'paquetesConLocalizacion' => [],
     'dimensiones' => null,
     'obraActualId' => null,
+    'mapId' => null,
 
     // Opciones visuales / comportamiento
     'showControls' => false, // botones Horizontal/Vertical + input QR
@@ -13,6 +14,7 @@
     'mostrarObra' => false,
     'height' => '',
     'enableDragPaquetes' => false, // habilitar arrastre de paquetes
+    'modoModal' => false, // renderizar ghost sin guardar automático
 
     // Rutas para AJAX
     'rutaPaquete' => null, // route('paquetes.tamaño')
@@ -20,7 +22,7 @@
 ])
 
 @php
-    $mapId = 'mapa-' . uniqid();
+    $mapId = $mapId ?? ('mapa-' . uniqid());
 
     $isVertical = !empty($ctx['estaGirado']);
     $colsReales = $ctx['columnasReales'] ?? 0;
@@ -669,8 +671,8 @@
         })();
     </script>
 
-    {{-- Script de ghost + escaneo sólo si hay controles y rutas --}}
-    @if ($showControls && $rutaPaquete && $rutaGuardar)
+    {{-- Script de ghost + escaneo sólo si hay rutas configuradas --}}
+    @if ($rutaPaquete && $rutaGuardar)
         <script>
             (() => {
                 const escenario = document.getElementById('escenario-cuadricula');
@@ -706,6 +708,9 @@
                     };
                 }
 
+                const modoModal = {{ $modoModal ? 'true' : 'false' }};
+                const ghostSubscribers = new Set();
+
                 let ghost = null;
                 let ghostActions = null;
                 let celdaPx = getCeldaPx();
@@ -725,7 +730,7 @@
 
                     ghostActions = document.createElement('div');
                     ghostActions.id = '{{ $mapId }}-ghost-actions';
-                    ghostActions.innerHTML = `
+                    const baseButtons = `
           <button class="ghost-btn cancel" id="{{ $mapId }}-btn-cancel-ghost" title="Cancelar (Esc)" aria-label="Cancelar">
             <svg class="icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
               <path d="M6 6l12 12M18 6L6 18" stroke="#ef4444" stroke-width="2" stroke-linecap="round"/>
@@ -737,7 +742,8 @@
               <path d="M12 4v4l3-2-3-2zM4 12a8 8 0 1 1 8 8" stroke="#3b82f6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
             </svg>
           </button>
-
+        `;
+                    const confirmButton = `
           <button class="ghost-btn confirm" id="{{ $mapId }}-btn-place-ghost" title="Asignar aquí (Enter)" aria-label="Asignar">
             <svg class="icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
               <circle cx="12" cy="12" r="9" stroke="#22c55e" stroke-width="2"/>
@@ -745,6 +751,7 @@
             </svg>
           </button>
         `;
+                    ghostActions.innerHTML = baseButtons + (modoModal ? '' : confirmButton);
                     grid.appendChild(ghostActions);
 
                     document.getElementById('{{ $mapId }}-btn-cancel-ghost')
@@ -755,8 +762,10 @@
                             ghostActions = null;
                             paqueteMeta = null;
                         });
-                    document.getElementById('{{ $mapId }}-btn-place-ghost')
-                        .addEventListener('click', onPlaceGhost);
+                    if (!modoModal) {
+                        document.getElementById('{{ $mapId }}-btn-place-ghost')
+                            .addEventListener('click', onPlaceGhost);
+                    }
                     document.getElementById('{{ $mapId }}-btn-rotate-ghost')
                         .addEventListener('click', rotateGhostKeepCenter);
 
@@ -786,12 +795,39 @@
                         ghostActions.style.top = ghost.style.top;
                         ghostActions.style.display = 'flex';
                     }
+
+                    notifyGhostCoords();
                 }
 
                 function centerGhost() {
                     gX = Math.floor((viewCols - gWidthCells) / 2) + 1;
                     gY = Math.floor((viewRows - gHeightCells) / 2) + 1;
                     layoutGhost();
+                }
+
+                function notifyGhostCoords() {
+                    if (!ghost) return;
+                    const x1v = gX;
+                    const y1v = gY;
+                    const x2v = gX + gWidthCells - 1;
+                    const y2v = gY + gHeightCells - 1;
+                    const p1 = mapViewToReal(x1v, y1v);
+                    const p2 = mapViewToReal(x2v, y2v);
+
+                    const coords = {
+                        x1: Math.min(p1.x, p2.x),
+                        y1: Math.min(p1.y, p2.y),
+                        x2: Math.max(p1.x, p2.x),
+                        y2: Math.max(p1.y, p2.y),
+                    };
+
+                    ghostSubscribers.forEach(cb => {
+                        try {
+                            cb(coords);
+                        } catch (error) {
+                            console.error('Error en callback de coordenadas del mapa', error);
+                        }
+                    });
                 }
 
                 function setGhostSizeFromPaquete(tamano) {
@@ -881,6 +917,22 @@
                     gY = newGY;
 
                     layoutGhost();
+                }
+
+                function triggerGhost(paquete) {
+                    paqueteMeta = {
+                        codigo: paquete.codigo || paquete.nombre || 'PKG',
+                        paquete_id: paquete.paquete_id ?? paquete.id ?? null,
+                        longitud: Number(paquete.longitud ?? paquete.largo ?? 0),
+                        ancho: Number(paquete.ancho ?? paquete.altura ?? 1),
+                    };
+                    setGhostSizeFromPaquete({
+                        ancho: paqueteMeta.ancho,
+                        longitud: paqueteMeta.longitud,
+                    });
+                    ensureGhost();
+                    centerGhost();
+                    notifyGhostCoords();
                 }
 
                 async function onPlaceGhost() {
@@ -1009,7 +1061,10 @@
                         document.getElementById(
                                 '{{ $mapId }}-btn-cancel-ghost')
                             ?.click();
-                    } else if (e.key.toLowerCase() === 'r') {
+                        return;
+                    }
+                    if (modoModal) return;
+                    if (e.key.toLowerCase() === 'r') {
                         document.getElementById(
                                 '{{ $mapId }}-btn-rotate-ghost')
                             ?.click();
@@ -1026,6 +1081,16 @@
                 }, {
                     passive: true
                 });
+
+                window.mapaComponentInstances = window.mapaComponentInstances || {};
+                window.mapaComponentInstances['{{ $mapId }}'] = {
+                    triggerGhost,
+                    onGhostMove(callback) {
+                        ghostSubscribers.add(callback);
+                        return () => ghostSubscribers.delete(callback);
+                    },
+                    mapId: '{{ $mapId }}',
+                };
 
             })();
 

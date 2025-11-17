@@ -5,7 +5,8 @@
 }
 
 /* ============ CONTENEDOR ============ */
-#escenario-cuadricula {
+#escenario-cuadricula,
+[data-mapa-canvas] {
     position: relative;
     width: 100%;
     min-height: 100vh;
@@ -15,7 +16,8 @@
 }
 
 /* HORIZONTAL: scroll X/Y permitido, anclado arriba-izquierda */
-#escenario-cuadricula.orient-horizontal {
+#escenario-cuadricula.orient-horizontal,
+[data-mapa-canvas].orient-horizontal {
     overflow: auto;
     -webkit-overflow-scrolling: touch;
     overscroll-behavior: contain;
@@ -23,7 +25,8 @@
 }
 
 /* VERTICAL: ocupa ancho, centra horizontalmente, solo scroll vertical */
-#escenario-cuadricula.orient-vertical {
+#escenario-cuadricula.orient-vertical,
+[data-mapa-canvas].orient-vertical {
     overflow-y: auto;
     overflow-x: hidden;
     -webkit-overflow-scrolling: touch;
@@ -35,7 +38,8 @@
 }
 
 /* ============ CUADRÍCULA ============ */
-#cuadricula {
+#cuadricula,
+.cuadricula-mapa {
     position: relative;
     width: calc(var(--cols) * var(--tam-celda));
     height: calc(var(--rows) * var(--tam-celda));
@@ -193,7 +197,8 @@
 }
 
 /* Ghost del paquete */
-#paquete-ghost {
+#paquete-ghost,
+.ghost-paquete-mover {
     position: absolute;
     pointer-events: auto;
     border: 2px dashed #2563eb;
@@ -205,12 +210,14 @@
     z-index: 40;
 }
 
-#paquete-ghost.dragging {
+#paquete-ghost.dragging,
+.ghost-paquete-mover.dragging {
     cursor: grabbing;
     opacity: 0.9;
 }
 
-#paquete-ghost .ghost-label {
+#paquete-ghost .ghost-label,
+.ghost-paquete-mover .ghost-label {
     position: absolute;
     bottom: 2px;
     right: 4px;

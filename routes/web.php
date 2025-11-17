@@ -557,6 +557,18 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
     Route::put('/localizaciones/paquete/{paqueteId}', [LocalizacionController::class, 'updatePaquetePosicion'])
         ->name('localizaciones.updatePaquetePosicion');
 
+    // API: Obtener lista de naves (obras HPR)
+    Route::get('/api/naves', [LocalizacionController::class, 'getNavesApi'])
+        ->name('api.naves.index');
+
+    // API: Obtener datos del mapa de una nave
+    Route::get('/api/naves/{naveId}/mapa-data', [LocalizacionController::class, 'getMapaDataApi'])
+        ->name('api.naves.mapaData');
+
+    // API: Renderizar componente de mapa (HTML)
+    Route::get('/api/naves/{naveId}/mapa-component', [LocalizacionController::class, 'renderMapaComponente'])
+        ->name('api.naves.mapaComponent');
+
     // API: Eliminar localización
     Route::delete('/localizaciones/{id}', [LocalizacionController::class, 'destroy'])
         ->name('localizaciones.destroy');
