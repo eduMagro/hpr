@@ -1,7 +1,7 @@
 <x-app-layout>
     <x-slot name="header">
         <h2 class="font-semibold text-xl text-gray-800 leading-tight">
-            {{ __('Editar Ubicación') }} wire:navigate
+            {{ __('Editar Ubicación') }}
         </h2>
     </x-slot>
     <!-- Mostrar errores de validación -->
@@ -17,12 +17,12 @@
     <!-- Mostrar mensajes de éxito o error -->
     @if (session('error'))
         <div class="alert alert-danger">
-            {{ session('error') }} wire:navigate
+            {{ session('error') }}
         </div>
     @endif
     @if (session('success'))
         <div class="alert alert-success">
-            {{ session('success') }} wire:navigate
+            {{ session('success') }}
         </div>
     @endif
 

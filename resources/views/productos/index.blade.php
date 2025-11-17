@@ -136,7 +136,7 @@
                                     <td class="px-4 py-3 text-center font-medium text-gray-700">{{ $base->id }}</td>
                                     <td class="px-4 py-3 text-center">
                                         <span class="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-xs font-semibold">
-                                            {{ ucfirst($base->tipo) }} wire:navigate
+                                            {{ ucfirst($base->tipo) }}
                                         </span>
                                     </td>
                                     <td class="px-4 py-3 text-center font-medium text-gray-700">{{ $base->diametro }} mm</td>
@@ -215,7 +215,7 @@
                         <p><strong>Fabricante:</strong> {{ $producto->fabricante->nombre ?? '—' }}</p>
                         <p>
                             <strong>Características:</strong>
-                            {{ strtoupper($producto->productoBase->tipo ?? '—') }} wire:navigate
+                            {{ strtoupper($producto->productoBase->tipo ?? '—') }}
                             |
                             Ø{{ $producto->productoBase->diametro ?? '—' }}
                             {{ $producto->productoBase->longitud ? '| ' . $producto->productoBase->longitud . ' m' : '' }}

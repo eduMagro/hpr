@@ -3,7 +3,7 @@
     <x-slot name="header">
         <h2 class="text-lg font-semibold text-gray-800 flex items-center gap-2">
             <a href="{{ route('clientes.index') }}" wire:navigate class="text-blue-600 hover:underline">
-                {{ __('Clientes') }} wire:navigate
+                {{ __('Clientes') }}
             </a>
             <span class="mx-2">/</span>
             {{ __('Cliente ') }} {{ $cliente->empresa }}

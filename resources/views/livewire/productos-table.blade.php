@@ -192,7 +192,7 @@
 
     {{-- Paginación --}}
     <div class="mt-4">
-        {{ $productos->links('vendor.livewire.tailwind') }} wire:navigate
+        {{ $productos->links('vendor.livewire.tailwind') }}
     </div>
 
     {{-- Script para botón consumir con SweetAlert --}}

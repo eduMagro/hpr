@@ -348,7 +348,7 @@ Inesperados: ${inesperados.join(', ') || '—'}
     <x-slot name="header">
         <h2 class="font-semibold text-xl text-gray-800 leading-tight">
             <a href="{{ route('ubicaciones.index') }}" wire:navigate class="text-gray-600 hover:text-gray-800">
-                {{ __('Ubicaciones') }} wire:navigate
+                {{ __('Ubicaciones') }}
             </a>
         </h2>
     </x-slot>
@@ -444,7 +444,7 @@ Inesperados: ${inesperados.join(', ') || '—'}
                                                         @endif
                                                     </td>
                                                     <td class="px-2 py-1 text-center">
-                                                        {{ number_format($producto->peso_inicial, 1, ',', '.') }} wire:navigate
+                                                        {{ number_format($producto->peso_inicial, 1, ',', '.') }}
                                                     </td>
                                                     <td class="px-2 py-1 text-center">
                                                         <span x-show="productoEscaneado('{{ $producto->codigo }}')"

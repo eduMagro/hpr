@@ -1,11 +1,11 @@
 <section>
     <header>
         <h2 class="text-lg font-medium text-gray-900">
-            {{ __('Información del perfil') }} wire:navigate
+            {{ __('Información del perfil') }}
         </h2>
 
         <p class="mt-1 text-sm text-gray-600">
-            {{ __('Actualiza la información de tu cuenta y tu dirección de correo electrónico.') }} wire:navigate
+            {{ __('Actualiza la información de tu cuenta y tu dirección de correo electrónico.') }}
         </p>
     </header>
 
@@ -33,17 +33,17 @@
             @if ($user instanceof \Illuminate\Contracts\Auth\MustVerifyEmail && !$user->hasVerifiedEmail())
                 <div>
                     <p class="text-sm mt-2 text-gray-800">
-                        {{ __('Tu dirección de correo electrónico no está verificada.') }} wire:navigate
+                        {{ __('Tu dirección de correo electrónico no está verificada.') }}
 
                         <button form="send-verification"
                             class="underline text-sm text-gray-600 hover:text-gray-900 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
-                            {{ __('Haz clic aquí para reenviar el correo de verificación.') }} wire:navigate
+                            {{ __('Haz clic aquí para reenviar el correo de verificación.') }}
                         </button>
                     </p>
 
                     @if (session('status') === 'verification-link-sent')
                         <p class="mt-2 font-medium text-sm text-green-600">
-                            {{ __('Se ha enviado un nuevo enlace de verificación a tu dirección de correo electrónico.') }} wire:navigate
+                            {{ __('Se ha enviado un nuevo enlace de verificación a tu dirección de correo electrónico.') }}
                         </p>
                     @endif
                 </div>

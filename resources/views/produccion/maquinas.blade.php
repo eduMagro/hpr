@@ -140,7 +140,7 @@
                                         </div>
                                         @if($turno->hora_inicio && $turno->hora_fin)
                                             <div class="text-[10px] opacity-75 mt-0.5">
-                                                {{ substr($turno->hora_inicio, 0, 5) }}-{{ substr($turno->hora_fin, 0, 5) }} wire:navigate
+                                                {{ substr($turno->hora_inicio, 0, 5) }}-{{ substr($turno->hora_fin, 0, 5) }}
                                             </div>
                                         @endif
                                     </button>

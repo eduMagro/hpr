@@ -2,7 +2,7 @@
     <x-slot name="header">
         <h2 class="text-lg font-semibold text-gray-800">
             <a href="{{ route('maquinas.index') }}" wire:navigate class="text-blue-600">
-                {{ __('Movimientos') }} wire:navigate
+                {{ __('Movimientos') }}
             </a>
             <span class="mx-2">/</span>
             {{ $linea->codigo ?? $pedido->codigo }}
@@ -46,7 +46,7 @@
                 </div>
 
                 <p class="text-sm text-gray-600 mb-3">
-                    Total recepcionado: <strong>{{ number_format($entradaAbierta->peso_total, 2, ',', '.') }} wire:navigate
+                    Total recepcionado: <strong>{{ number_format($entradaAbierta->peso_total, 2, ',', '.') }}
                         kg</strong>
                 </p>
 

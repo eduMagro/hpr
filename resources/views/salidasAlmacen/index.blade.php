@@ -91,7 +91,7 @@
                                 <span class="text-blue-600">Fecha:</span>
                                 {{ \Carbon\Carbon::parse($salida->fecha)->format('d/m/Y') }} |
                                 <span class="text-blue-600">Camionero:</span> {{ $salida->camionero->name ?? '—' }} |
-                                <span class="text-blue-600">Estado:</span> {{ ucfirst($salida->estado) }} wire:navigate
+                                <span class="text-blue-600">Estado:</span> {{ ucfirst($salida->estado) }}
 
                                 <span class="float-right flex items-center gap-2">
                                     <a href="{{ route('salidas-almacen.show', $salida) }}" wire:navigate
@@ -131,7 +131,7 @@
                                         {{ $linea->productoBase->longitud ?? '—' }}m
                                     </td>
                                     <td class="border px-2 py-1 text-right">
-                                        {{ number_format($linea->cantidad_kg, 2, ',', '.') }} wire:navigate
+                                        {{ number_format($linea->cantidad_kg, 2, ',', '.') }}
                                     </td>
                                     <td class="border px-2 py-1 text-right">
                                         {{ $linea->precio_unitario !== null ? number_format($linea->precio_unitario, 2, ',', '.') . ' €' : '—' }}

@@ -57,7 +57,7 @@
         <div class="flex items-center justify-end mt-4">
             <x-primary-button>
 
-                {{ __('Cambiar Contraseña') }} wire:navigate
+                {{ __('Cambiar Contraseña') }}
 
             </x-primary-button>
         </div>

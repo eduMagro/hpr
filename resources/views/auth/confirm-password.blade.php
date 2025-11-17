@@ -1,6 +1,6 @@
 <x-guest-layout>
     <div class="mb-4 text-sm text-gray-600">
-        {{ __('Esta es una zona segura de la aplicación. Por favor, confirma tu contraseña antes de continuar.') }} wire:navigate
+        {{ __('Esta es una zona segura de la aplicación. Por favor, confirma tu contraseña antes de continuar.') }}
     </div>
 
     <form method="POST" action="{{ route('password.confirm') }}">
@@ -23,7 +23,7 @@
 
         <div class="flex justify-end mt-4">
             <x-primary-button>
-                {{ __('Confirmar') }} wire:navigate
+                {{ __('Confirmar') }}
             </x-primary-button>
         </div>
     </form>

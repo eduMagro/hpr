@@ -238,7 +238,7 @@
         </table>
     </div>
 
-    {{ $registrosEntradas->links() }} wire:navigate
+    {{ $registrosEntradas->links() }}
 
     {{-- Modal para adjuntar albarán --}}
     <div x-data="{ mostrar: false, entradaId: null }" @abrir-modal-adjuntar.window="mostrar = true; entradaId = $event.detail.entradaId"

@@ -407,7 +407,7 @@
         </div>
 
         <!-- Paginación Livewire -->
-        ${{ $etiquetas->links() }} wire:navigate
+        ${{ $etiquetas->links() }}
 
         <!-- Modal para mostrar etiqueta -->
         <div id="modalEtiqueta"

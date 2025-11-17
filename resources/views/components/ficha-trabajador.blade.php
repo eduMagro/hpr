@@ -21,7 +21,7 @@
                             @else
                                 <div
                                     class="w-24 h-24 sm:w-28 sm:h-28 md:w-32 md:h-32 bg-gradient-to-br from-gray-700 to-gray-800 rounded-xl sm:rounded-2xl flex items-center justify-center text-4xl sm:text-5xl font-bold text-white shadow-2xl ring-4 ring-gray-700">
-                                    {{ strtoupper(substr($user->name, 0, 1)) }} wire:navigate
+                                    {{ strtoupper(substr($user->name, 0, 1)) }}
                                 </div>
                             @endif
 
@@ -321,7 +321,7 @@
                                         </div>
                                         <div class="ml-3">
                                             <p class="text-sm font-medium text-red-800">
-                                                {{ $errors->first('mes_anio') }} wire:navigate
+                                                {{ $errors->first('mes_anio') }}
                                             </p>
                                         </div>
                                     </div>

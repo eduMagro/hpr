@@ -35,7 +35,7 @@
                     @endphp
 
                     <span class="{{ $color }}">
-                        {{ ucfirst($obra->estado) }} wire:navigate
+                        {{ ucfirst($obra->estado) }}
                     </span>
 
                 </div>
@@ -70,7 +70,7 @@
                                     <td class="px-2 py-3 text-center border">
                                         <span
                                             class="{{ $planilla->estado == 'completada' ? 'text-green-500' : 'text-red-500' }}">
-                                            {{ ucfirst($planilla->estado) }} wire:navigate
+                                            {{ ucfirst($planilla->estado) }}
                                         </span>
                                     </td>
                                     <td class="px-2 py-3 text-center border">
@@ -85,7 +85,7 @@
 
                 <!-- Paginación -->
                 <div class="mt-4">
-                    {{ $planillas->links() }} wire:navigate
+                    {{ $planillas->links() }}
                 </div>
             @endif
         </div>

@@ -3,7 +3,7 @@
 
     <x-slot name="header">
         <h2 class="text-lg font-semibold text-gray-800">
-            {{ __('Lista de Obras') }} wire:navigate
+            {{ __('Lista de Obras') }}
         </h2>
     </x-slot>
 
@@ -236,7 +236,7 @@
                 </tbody>
             </table>
         </div>
-        <div class="mt-4 flex justify-center">{{ $obras->onEachSide(2)->links('vendor.pagination.bootstrap-5') }} wire:navigate
+        <div class="mt-4 flex justify-center">{{ $obras->onEachSide(2)->links('vendor.pagination.bootstrap-5') }}
         </div>
     </div>
 

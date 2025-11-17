@@ -4,11 +4,11 @@
     <x-slot name="header">
         <h2 class="text-lg font-semibold text-gray-800">
             <a href="{{ route('empresas.index') }}" wire:navigate class="text-blue-600">
-                {{ __('Empresa Información') }} wire:navigate
+                {{ __('Empresa Información') }}
             </a>
             <span class="mx-2">/</span>
             <a href="{{ route('nominas.index') }}" wire:navigate class="text-blue-600">
-                {{ __('Tabla Nóminas') }} wire:navigate
+                {{ __('Tabla Nóminas') }}
             </a>
             <span class="mx-2">/</span>
             {{ __('Nómina de ') }} <a href="{{ route('users.show', $nomina->empleado_id ?? '#') }}" wire:navigate
@@ -73,7 +73,7 @@
                             <div class="p-2 border-r border-gray-400 col-span-3">{{ $nomina->categoria->nombre }}</div>
                             <div class="p-2 border-r border-gray-400 col-span-2">{{ $nomina->empleado->id }}</div>
                             <div class="p-2 border-r border-gray-400 col-span-2">
-                                {{ \Carbon\Carbon::parse($nomina->empleado->fecha_alta)->translatedFormat('d M Y') }} wire:navigate
+                                {{ \Carbon\Carbon::parse($nomina->empleado->fecha_alta)->translatedFormat('d M Y') }}
                             </div>
                             <div class="p-2 col-span-2">{{ $nomina->empleado->dni }}</div>
                         </div>
@@ -102,9 +102,9 @@
                             <div class="p-2 border-r border-gray-400">{{ $nomina->empleado->id }}</div>
                             <div class="p-2 border-r border-gray-400">
                                 MENS
-                                {{ \Carbon\Carbon::parse($nomina->fecha)->startOfMonth()->translatedFormat('d M Y') }} wire:navigate
+                                {{ \Carbon\Carbon::parse($nomina->fecha)->startOfMonth()->translatedFormat('d M Y') }}
                                 a
-                                {{ \Carbon\Carbon::parse($nomina->fecha)->endOfMonth()->translatedFormat('d M Y') }} wire:navigate
+                                {{ \Carbon\Carbon::parse($nomina->fecha)->endOfMonth()->translatedFormat('d M Y') }}
                             </div>
                             <div class="p-2">{{ $nomina->dias_trabajados }}</div>
                         </div>
@@ -128,11 +128,11 @@
                                 <tr>
                                     <td class="border border-gray-400 p-1">{{ $nomina->dias_trabajados }}</td>
                                     <td class="border border-gray-400 p-1">
-                                        {{ number_format($nomina->salario_base / $nomina->dias_trabajados, 3, ',', '.') }} wire:navigate
+                                        {{ number_format($nomina->salario_base / $nomina->dias_trabajados, 3, ',', '.') }}
                                     </td>
                                     <td class="border border-gray-400 p-1 text-left" colspan="2">*Salario Base</td>
                                     <td class="border border-gray-400 p-1 text-right">
-                                        {{ number_format($nomina->salario_base, 2, ',', '.') }} wire:navigate
+                                        {{ number_format($nomina->salario_base, 2, ',', '.') }}
                                     </td>
                                     <td class="border border-gray-400 p-1"></td>
                                 </tr>
@@ -140,11 +140,11 @@
                                 <tr>
                                     <td class="border border-gray-400 p-1">1</td>
                                     <td class="border border-gray-400 p-1">
-                                        {{ number_format($nomina->plus_actividad, 3, ',', '.') }} wire:navigate
+                                        {{ number_format($nomina->plus_actividad, 3, ',', '.') }}
                                     </td>
                                     <td class="border border-gray-400 p-1 text-left" colspan="2">*Plus Actividad</td>
                                     <td class="border border-gray-400 p-1 text-right">
-                                        {{ number_format($nomina->plus_actividad, 2, ',', '.') }} wire:navigate
+                                        {{ number_format($nomina->plus_actividad, 2, ',', '.') }}
                                     </td>
                                     <td class="border border-gray-400 p-1"></td>
                                 </tr>
@@ -152,12 +152,12 @@
                                 <tr>
                                     <td class="border border-gray-400 p-1">1</td>
                                     <td class="border border-gray-400 p-1">
-                                        {{ number_format($nomina->plus_asistencia, 3, ',', '.') }} wire:navigate
+                                        {{ number_format($nomina->plus_asistencia, 3, ',', '.') }}
                                     </td>
                                     <td class="border border-gray-400 p-1 text-left" colspan="2">*Plus Asistencia
                                     </td>
                                     <td class="border border-gray-400 p-1 text-right">
-                                        {{ number_format($nomina->plus_asistencia, 2, ',', '.') }} wire:navigate
+                                        {{ number_format($nomina->plus_asistencia, 2, ',', '.') }}
                                     </td>
                                     <td class="border border-gray-400 p-1"></td>
                                 </tr>
@@ -165,12 +165,12 @@
                                 <tr>
                                     <td class="border border-gray-400 p-1">1</td>
                                     <td class="border border-gray-400 p-1">
-                                        {{ number_format($nomina->plus_transporte, 3, ',', '.') }} wire:navigate
+                                        {{ number_format($nomina->plus_transporte, 3, ',', '.') }}
                                     </td>
                                     <td class="border border-gray-400 p-1 text-left" colspan="2">*Plus Transporte
                                     </td>
                                     <td class="border border-gray-400 p-1 text-right">
-                                        {{ number_format($nomina->plus_transporte, 2, ',', '.') }} wire:navigate
+                                        {{ number_format($nomina->plus_transporte, 2, ',', '.') }}
                                     </td>
                                     <td class="border border-gray-400 p-1"></td>
                                 </tr>
@@ -178,11 +178,11 @@
                                 <tr>
                                     <td class="border border-gray-400 p-1">1</td>
                                     <td class="border border-gray-400 p-1">
-                                        {{ number_format($nomina->plus_dieta, 3, ',', '.') }} wire:navigate
+                                        {{ number_format($nomina->plus_dieta, 3, ',', '.') }}
                                     </td>
                                     <td class="border border-gray-400 p-1 text-left" colspan="2">*Plus Dieta</td>
                                     <td class="border border-gray-400 p-1 text-right">
-                                        {{ number_format($nomina->plus_dieta, 2, ',', '.') }} wire:navigate
+                                        {{ number_format($nomina->plus_dieta, 2, ',', '.') }}
                                     </td>
                                     <td class="border border-gray-400 p-1"></td>
                                 </tr>
@@ -190,12 +190,12 @@
                                 <tr>
                                     <td class="border border-gray-400 p-1">1</td>
                                     <td class="border border-gray-400 p-1">
-                                        {{ number_format($nomina->plus_turnicidad, 3, ',', '.') }} wire:navigate
+                                        {{ number_format($nomina->plus_turnicidad, 3, ',', '.') }}
                                     </td>
                                     <td class="border border-gray-400 p-1 text-left" colspan="2">*Plus Turnicidad
                                     </td>
                                     <td class="border border-gray-400 p-1 text-right">
-                                        {{ number_format($nomina->plus_turnicidad, 2, ',', '.') }} wire:navigate
+                                        {{ number_format($nomina->plus_turnicidad, 2, ',', '.') }}
                                     </td>
                                     <td class="border border-gray-400 p-1"></td>
                                 </tr>
@@ -203,12 +203,12 @@
                                 <tr>
                                     <td class="border border-gray-400 p-1">1</td>
                                     <td class="border border-gray-400 p-1">
-                                        {{ number_format($nomina->plus_productividad, 3, ',', '.') }} wire:navigate
+                                        {{ number_format($nomina->plus_productividad, 3, ',', '.') }}
                                     </td>
                                     <td class="border border-gray-400 p-1 text-left" colspan="2">*Plus
                                         Productividad</td>
                                     <td class="border border-gray-400 p-1 text-right">
-                                        {{ number_format($nomina->plus_productividad, 2, ',', '.') }} wire:navigate
+                                        {{ number_format($nomina->plus_productividad, 2, ',', '.') }}
                                     </td>
                                     <td class="border border-gray-400 p-1"></td>
                                 </tr>
@@ -216,11 +216,11 @@
                                 <tr>
                                     <td class="border border-gray-400 p-1">{{ $nomina->horas_extra }}</td>
                                     <td class="border border-gray-400 p-1">
-                                        {{ number_format($nomina->valor_hora_extra, 3, ',', '.') }} wire:navigate
+                                        {{ number_format($nomina->valor_hora_extra, 3, ',', '.') }}
                                     </td>
                                     <td class="border border-gray-400 p-1 text-left" colspan="2">*Horas Extra</td>
                                     <td class="border border-gray-400 p-1 text-right">
-                                        {{ number_format($nomina->horas_extra * $nomina->valor_hora_extra, 2, ',', '.') }} wire:navigate
+                                        {{ number_format($nomina->horas_extra * $nomina->valor_hora_extra, 2, ',', '.') }}
                                     </td>
                                     <td class="border border-gray-400 p-1"></td>
                                 </tr>
@@ -228,12 +228,12 @@
                                 <tr>
                                     <td class="border border-gray-400 p-1">1</td>
                                     <td class="border border-gray-400 p-1">
-                                        {{ number_format($nomina->prorrateo, 3, ',', '.') }} wire:navigate
+                                        {{ number_format($nomina->prorrateo, 3, ',', '.') }}
                                     </td>
                                     <td class="border border-gray-400 p-1 text-left" colspan="2">*Prorrata Pagas
                                         Extras</td>
                                     <td class="border border-gray-400 p-1 text-right">
-                                        {{ number_format($nomina->prorrateo, 2, ',', '.') }} wire:navigate
+                                        {{ number_format($nomina->prorrateo, 2, ',', '.') }}
                                     </td>
                                     <td class="border border-gray-400 p-1"></td>
                                 </tr>
@@ -293,7 +293,7 @@
                             <div class="p-2 border-r border-gray-400">
                                 {{ number_format($nomina->total_devengado, 2, ',', '.') }}</div>
                             <div class="p-2">
-                                {{ number_format($nomina->irpf_mensual + $nomina->total_deducciones_ss, 2, ',', '.') }} wire:navigate
+                                {{ number_format($nomina->irpf_mensual + $nomina->total_deducciones_ss, 2, ',', '.') }}
                             </div>
                         </div>
                     </td>
@@ -345,13 +345,13 @@
                 <div class="grid grid-cols-4 text-xs text-gray-800 text-center border-b border-gray-300">
                     <div class="p-2 border-r border-gray-400">{{ $aportacion->tipo_aportacion }}</div>
                     <div class="p-2 border-r border-gray-400">
-                        {{ number_format($nomina->total_devengado, 2, ',', '.') }} wire:navigate
+                        {{ number_format($nomina->total_devengado, 2, ',', '.') }}
                     </div>
                     <div class="p-2 border-r border-gray-400">
                         {{ number_format($aportacion->porcentaje, 2, ',', '.') }}%
                     </div>
                     <div class="p-2">
-                        {{ number_format(($nomina->total_devengado * $aportacion->porcentaje) / 100, 2, ',', '.') }} wire:navigate
+                        {{ number_format(($nomina->total_devengado * $aportacion->porcentaje) / 100, 2, ',', '.') }}
                     </div>
                 </div>
             @endforeach
@@ -359,7 +359,7 @@
             <div class="grid grid-cols-4 text-xs text-right font-semibold text-black bg-yellow-50">
                 <div class="col-span-3 p-2 border-t border-gray-400 border-r text-right">Total Aportación Empresa</div>
                 <div class="p-2 border-t border-gray-400">
-                    {{ number_format($nomina->coste_empresa - $nomina->total_devengado, 2, ',', '.') }} wire:navigate
+                    {{ number_format($nomina->coste_empresa - $nomina->total_devengado, 2, ',', '.') }}
                 </div>
             </div>
         </div>

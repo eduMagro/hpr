@@ -114,7 +114,7 @@ $scrollIntoViewJsSnippet = ($scrollTo !== false)
                                 x-on:click="{{ $scrollIntoViewJsSnippet }}"
                                 wire:loading.attr="disabled"
                                 class="px-2.5 py-1 text-xs text-blue-600 hover:bg-blue-100 rounded transition disabled:opacity-50">
-                            {{ $paginator->lastPage() }} wire:navigate
+                            {{ $paginator->lastPage() }}
                         </button>
                     @endif
 

@@ -2,7 +2,7 @@
     <x-slot name="header">
         <h2 class="font-semibold text-xl text-gray-800 leading-tight">
             <a href="{{ route('ubicaciones.index') }}" wire:navigate class="text-blue-500">
-                {{ __('Ubicaciones') }} wire:navigate
+                {{ __('Ubicaciones') }}
             </a><span> / </span>Detalles de Ubicación
         </h2>
     </x-slot>

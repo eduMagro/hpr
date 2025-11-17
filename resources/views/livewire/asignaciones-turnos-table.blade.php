@@ -126,7 +126,7 @@
                             {{ $asignacion->user->segundo_apellido ?? '—' }}
                         </td>
                         <td class="px-2 py-2 border">
-                            {{ \Carbon\Carbon::parse($asignacion->fecha)->format('d/m/Y') }} wire:navigate
+                            {{ \Carbon\Carbon::parse($asignacion->fecha)->format('d/m/Y') }}
                         </td>
                         <td class="px-2 py-2 border">{{ $asignacion->obra->obra ?? '—' }}</td>
                         <td class="px-2 py-2 border">

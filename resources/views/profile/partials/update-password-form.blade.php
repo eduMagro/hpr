@@ -1,11 +1,11 @@
 <section>
     <header>
         <h2 class="text-lg font-medium text-gray-900">
-            {{ __('Actualizar contraseña') }} wire:navigate
+            {{ __('Actualizar contraseña') }}
         </h2>
 
         <p class="mt-1 text-sm text-gray-600">
-            {{ __('Asegúrate de que tu cuenta esté utilizando una contraseña larga y aleatoria para mantenerla segura.') }} wire:navigate
+            {{ __('Asegúrate de que tu cuenta esté utilizando una contraseña larga y aleatoria para mantenerla segura.') }}
         </p>
     </header>
 

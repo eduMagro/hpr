@@ -229,7 +229,7 @@
         </table>
     </div>
 
-    {{ $pedidosGlobales->links() }} wire:navigate
+    {{ $pedidosGlobales->links() }}
 
     {{-- =========================
          TABLA MAQUILA

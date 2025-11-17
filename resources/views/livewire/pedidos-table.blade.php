@@ -209,7 +209,7 @@
                             <td class="border px-2 py-1 text-center">
                                 {{-- Vista normal --}}
                                 <div class="producto-view-{{ $linea->id }}">
-                                    {{ ucfirst($linea->tipo) }} wire:navigate
+                                    {{ ucfirst($linea->tipo) }}
                                     Ø{{ $linea->diametro }}
                                     @if($linea->tipo === 'barra' && $linea->longitud && $linea->longitud !== '—')
                                         x {{ $linea->longitud }} m
@@ -368,7 +368,7 @@
     </div>
 
     {{-- Paginación --}}
-    {{ $pedidos->links() }} wire:navigate
+    {{ $pedidos->links() }}
 </div>
 
 {{-- SCRIPTS JAVASCRIPT --}}

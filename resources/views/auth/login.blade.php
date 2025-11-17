@@ -62,11 +62,11 @@
                 <a class="underline text-sm text-gray-600 hover:text-gray-900 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 mr-auto"
                     href="{{ route('password.request') }}" wire:navigate>
 
-                    {{ __('¿Olvidaste tu contraseña?') }} wire:navigate
+                    {{ __('¿Olvidaste tu contraseña?') }}
                 </a>
             @endif
             <x-primary-button class="ms-3">
-                {{ __('Iniciar Sesión') }} wire:navigate
+                {{ __('Iniciar Sesión') }}
             </x-primary-button>
         </div>
     </form>

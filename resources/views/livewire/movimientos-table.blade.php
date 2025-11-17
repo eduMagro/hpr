@@ -138,7 +138,7 @@
 
                         <td class="px-6 py-4 text-center border">
                             @if($movimiento->productoBase)
-                                {{ ucfirst(strtolower($movimiento->productoBase->tipo)) }} wire:navigate
+                                {{ ucfirst(strtolower($movimiento->productoBase->tipo)) }}
                                 (Ø{{ $movimiento->productoBase->diametro }}{{ strtolower($movimiento->productoBase->tipo) === 'barra' ? ', ' . $movimiento->productoBase->longitud . ' m' : '' }})
                             @else
                                 <span class="text-gray-400 italic">Sin datos</span>
@@ -189,7 +189,7 @@
 
                         <td class="px-6 py-4 text-center border">
                             <span class="px-2 py-1 rounded text-xs font-semibold {{ $movimiento->estado === 'pendiente' ? 'bg-yellow-200 text-yellow-800' : ($movimiento->estado === 'completado' ? 'bg-green-200 text-green-800' : 'bg-gray-200 text-gray-800') }}">
-                                {{ ucfirst($movimiento->estado) }} wire:navigate
+                                {{ ucfirst($movimiento->estado) }}
                             </span>
                         </td>
 
@@ -198,11 +198,11 @@
                         <td class="px-6 py-4 text-center border">{{ $movimiento->fecha_ejecucion ?? '—' }}</td>
 
                         <td class="px-6 py-4 text-center border">
-                            {{ $movimiento->ubicacionOrigen->nombre ?? ($movimiento->maquinaOrigen->nombre ?? '—') }} wire:navigate
+                            {{ $movimiento->ubicacionOrigen->nombre ?? ($movimiento->maquinaOrigen->nombre ?? '—') }}
                         </td>
 
                         <td class="px-6 py-4 text-center border">
-                            {{ $movimiento->ubicacionDestino->nombre ?? ($movimiento->maquinaDestino->nombre ?? '—') }} wire:navigate
+                            {{ $movimiento->ubicacionDestino->nombre ?? ($movimiento->maquinaDestino->nombre ?? '—') }}
                         </td>
 
                         <td class="px-6 py-4 text-center border">

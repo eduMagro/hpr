@@ -1,6 +1,6 @@
 <x-guest-layout>
     <div class="mb-4 text-sm text-gray-600">
-        {{ __('¿Olvidaste tu contraseña? No hay problema. Solo dinos tu dirección de correo electrónico y te enviaremos un enlace para restablecer la contraseña, lo que te permitirá elegir una nueva.') }} wire:navigate
+        {{ __('¿Olvidaste tu contraseña? No hay problema. Solo dinos tu dirección de correo electrónico y te enviaremos un enlace para restablecer la contraseña, lo que te permitirá elegir una nueva.') }}
     </div>
 
     <!-- Session Status -->
@@ -28,7 +28,7 @@
 
         <div class="flex items-center justify-end mt-4">
             <x-primary-button>
-                {{ __('Restablecer Contraseña') }} wire:navigate
+                {{ __('Restablecer Contraseña') }}
 
             </x-primary-button>
         </div>
