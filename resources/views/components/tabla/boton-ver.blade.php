@@ -1,6 +1,7 @@
 @props(['href'])
 
 <a href="{{ $href }}"
+    wire:navigate
     {{ $attributes->merge([
         'class' => 'w-6 h-6 bg-blue-100 text-blue-600 rounded hover:bg-blue-200 flex items-center justify-center',
     ]) }}>

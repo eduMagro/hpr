@@ -90,7 +90,8 @@ Route::middleware(['auth', 'puede.asistente', 'throttle:60,1'])
         Route::post('/conversaciones', [AsistenteVirtualController::class, 'crearConversacion']);
         Route::get('/conversaciones/{conversacionId}/mensajes', [AsistenteVirtualController::class, 'obtenerMensajes']);
         Route::delete('/conversaciones/{conversacionId}', [AsistenteVirtualController::class, 'eliminarConversacion']);
-        Route::get('/sugerencias', [AsistenteVirtualController::class, 'obtenerSugerencias']);
+        Route::get('/sugerencias', [AsistenteVirtualController::class, 'sugerencias'])->name('asistente.sugerencias');
+        Route::post('/preguntar', [AsistenteVirtualController::class, 'preguntar'])->name('asistente.preguntar');
         Route::post('/permisos/{userId}', [AsistenteVirtualController::class, 'actualizarPermisos']);
 
         // Ruta de envío de mensajes con rate limiting más estricto

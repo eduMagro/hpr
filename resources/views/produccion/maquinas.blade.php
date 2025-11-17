@@ -140,7 +140,7 @@
                                         </div>
                                         @if($turno->hora_inicio && $turno->hora_fin)
                                             <div class="text-[10px] opacity-75 mt-0.5">
-                                                {{ substr($turno->hora_inicio, 0, 5) }}-{{ substr($turno->hora_fin, 0, 5) }} wire:navigate
+                                                {{ substr($turno->hora_inicio, 0, 5) }}-{{ substr($turno->hora_fin, 0, 5) }}
                                             </div>
                                         @endif
                                     </button>
@@ -158,15 +158,28 @@
             </div>
             <!-- Por esta versión con transición -->
             <div id="contenedor-calendario" class="bg-white shadow rounded-lg p-2 transition-all duration-300 relative">
-                <!-- Botón de optimizar planillas en esquina superior izquierda -->
-                <button onclick="abrirModalOptimizar()" id="optimizar-btn"
-                    title="Optimizar planillas con retraso"
-                    class="absolute top-4 left-4 z-10 px-3 py-2 bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white rounded-lg transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105 flex items-center gap-2 group">
-                    <svg class="w-5 h-5 transition-transform group-hover:scale-110" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
-                    </svg>
-                    <span class="text-sm font-medium hidden md:inline">Optimizar Planillas</span>
-                </button>
+                <!-- Botones en esquina superior izquierda -->
+                <div class="absolute top-4 left-4 z-10 flex gap-2">
+                    <!-- Botón de optimizar planillas -->
+                    <button onclick="abrirModalOptimizar()" id="optimizar-btn"
+                        title="Optimizar planillas con retraso"
+                        class="px-3 py-2 bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white rounded-lg transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105 flex items-center gap-2 group">
+                        <svg class="w-5 h-5 transition-transform group-hover:scale-110" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                        </svg>
+                        <span class="text-sm font-medium hidden md:inline">Optimizar Planillas</span>
+                    </button>
+
+                    <!-- Botón de balancear carga -->
+                    <button onclick="abrirModalBalanceo()" id="balancear-btn"
+                        title="Balancear carga entre máquinas"
+                        class="px-3 py-2 bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white rounded-lg transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105 flex items-center gap-2 group">
+                        <svg class="w-5 h-5 transition-transform group-hover:scale-110" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3"></path>
+                        </svg>
+                        <span class="text-sm font-medium hidden md:inline">Balancear Carga</span>
+                    </button>
+                </div>
 
                 <!-- Botón de pantalla completa en esquina superior derecha -->
                 <button onclick="toggleFullScreen()" id="fullscreen-btn"
@@ -586,6 +599,127 @@
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
                         </svg>
                         Aplicar Optimización
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal Balancear Carga -->
+        <div id="modalBalanceo"
+            class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50 overflow-y-auto">
+            <div class="bg-white rounded-lg shadow-xl w-full max-w-6xl mx-4 my-8 max-h-[90vh] flex flex-col">
+                <div class="bg-green-600 text-white px-6 py-4 rounded-t-lg">
+                    <h3 class="text-lg font-semibold flex items-center gap-2">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3"></path>
+                        </svg>
+                        Balancear Carga entre Máquinas
+                    </h3>
+                    <p class="text-sm opacity-90 mt-1">Distribuir equitativamente el trabajo entre todas las máquinas</p>
+                </div>
+
+                <!-- Loading state -->
+                <div id="balanceoLoading" class="p-12 text-center">
+                    <div class="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-green-600"></div>
+                    <p class="mt-4 text-gray-600">Analizando carga de máquinas y calculando distribución...</p>
+                </div>
+
+                <!-- Content state -->
+                <div id="balanceoContent" class="hidden flex-1 overflow-y-auto">
+                    <!-- Estadísticas superiores -->
+                    <div class="p-6 bg-gray-50 border-b border-gray-200">
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                                <div class="text-sm text-blue-600 font-medium">Elementos a Redistribuir</div>
+                                <div id="estadElementosBalanceo" class="text-3xl font-bold text-blue-700">0</div>
+                            </div>
+                            <div class="bg-green-50 border border-green-200 rounded-lg p-4">
+                                <div class="text-sm text-green-600 font-medium">Tiempo Promedio por Máquina</div>
+                                <div id="estadTiempoPromedio" class="text-3xl font-bold text-green-700">0h</div>
+                            </div>
+                            <div class="bg-purple-50 border border-purple-200 rounded-lg p-4">
+                                <div class="text-sm text-purple-600 font-medium">Máquinas Balanceadas</div>
+                                <div id="estadMaquinasBalanceadas" class="text-3xl font-bold text-purple-700">0</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Gráfico de distribución -->
+                    <div class="p-6 border-b border-gray-200">
+                        <h4 class="font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                            <svg class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+                            </svg>
+                            Distribución de Carga Original
+                        </h4>
+                        <div id="graficoCargaOriginal" class="space-y-2">
+                            <!-- Se llenará dinámicamente -->
+                        </div>
+                    </div>
+
+                    <!-- Tabla de elementos -->
+                    <div class="p-6">
+                        <h4 class="font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                            <svg class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"></path>
+                            </svg>
+                            Movimientos Propuestos
+                        </h4>
+                        <div class="mb-4 flex gap-2">
+                            <button onclick="seleccionarTodosBalanceo()" class="text-sm text-green-600 hover:text-green-700 font-medium">
+                                Seleccionar todos
+                            </button>
+                            <span class="text-gray-300">|</span>
+                            <button onclick="deseleccionarTodosBalanceo()" class="text-sm text-gray-600 hover:text-gray-700 font-medium">
+                                Deseleccionar todos
+                            </button>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="min-w-full divide-y divide-gray-200 text-sm">
+                                <thead class="bg-gray-50">
+                                    <tr>
+                                        <th class="px-3 py-2 text-left">
+                                            <input type="checkbox" id="checkAllBalanceo" onchange="toggleAllBalanceo(this)"
+                                                class="rounded border-gray-300 text-green-600 focus:ring-green-500">
+                                        </th>
+                                        <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Elemento</th>
+                                        <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Planilla</th>
+                                        <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Ø mm</th>
+                                        <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Tiempo</th>
+                                        <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Máquina Actual</th>
+                                        <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Nueva Máquina</th>
+                                        <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Razón</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tablaBalanceo" class="bg-white divide-y divide-gray-200">
+                                    <!-- Se llenará dinámicamente -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Empty state -->
+                <div id="balanceoEmpty" class="hidden p-12 text-center">
+                    <svg class="w-16 h-16 mx-auto text-green-500 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                    <h3 class="text-lg font-semibold text-gray-800 mb-2">¡Carga ya balanceada!</h3>
+                    <p class="text-gray-600">La distribución de trabajo entre máquinas ya es óptima.</p>
+                </div>
+
+                <!-- Botones de acción -->
+                <div class="bg-gray-50 px-6 py-4 rounded-b-lg flex justify-end gap-3 border-t border-gray-200">
+                    <button onclick="cerrarModalBalanceo()"
+                        class="bg-gray-300 hover:bg-gray-400 text-gray-700 px-4 py-2 rounded-lg transition-colors">
+                        Cancelar
+                    </button>
+                    <button id="btnAplicarBalanceo" onclick="aplicarBalanceo()"
+                        class="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-lg transition-colors flex items-center gap-2 hidden">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                        </svg>
+                        Aplicar Balanceo
                     </button>
                 </div>
             </div>

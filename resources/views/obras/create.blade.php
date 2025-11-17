@@ -2,7 +2,7 @@
     <x-slot name="title">Crear Obra - {{ config('app.name') }}</x-slot>
     <x-slot name="header">
         <h2 class="font-semibold text-xl text-gray-800 leading-tight">
-            {{ __('Crear Nueva Obra') }} wire:navigate
+            {{ __('Crear Nueva Obra') }}
         </h2>
     </x-slot>
 
@@ -70,7 +70,7 @@
                             <!-- Botones de Acción -->
                             <div class="d-flex justify-content-between">
                                 <!-- Botón Cancelar -->
-                                <a href="{{ route('obras.index') }}" wire:navigate class="btn btn-danger btn-lg">Cancelar</a>
+                                <a href="{{ route('obras.index') }}" class="btn btn-danger btn-lg">Cancelar</a>
                                 
                                 <!-- Botón Guardar -->
                                 <button type="submit" class="btn btn-success btn-lg">Registrar Obra</button>

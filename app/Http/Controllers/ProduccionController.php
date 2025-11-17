@@ -1169,11 +1169,15 @@ class ProduccionController extends Controller
         $tramos   = [];
         $restante = max(0, (int) $durSeg);
 
-        // Verificar si el inicio está fuera de horario laborable
+        // Verificar si el inicio está dentro de horario laborable
+        // IMPORTANTE: también verificar segmentos del día anterior que se extiendan al día actual
+        // (como el turno de noche 22:00-06:00)
         $segmentosInicio = $this->obtenerSegmentosLaborablesDia($inicio);
+        $segmentosDiaAnterior = $this->obtenerSegmentosLaborablesDia($inicio->copy()->subDay());
+        $todosSegmentos = array_merge($segmentosDiaAnterior, $segmentosInicio);
         $dentroDeSegmento = false;
 
-        foreach ($segmentosInicio as $seg) {
+        foreach ($todosSegmentos as $seg) {
             if ($inicio->gte($seg['inicio']) && $inicio->lt($seg['fin'])) {
                 $dentroDeSegmento = true;
                 break;
@@ -1206,12 +1210,21 @@ class ProduccionController extends Controller
             }
 
             // Obtener segmentos laborables del día basados en turnos activos
+            // IMPORTANTE: también incluir segmentos del día anterior que se extiendan a hoy
             $diaActual = $cursor->copy()->startOfDay(); // Guardar referencia al día que estamos procesando
-            $segmentos = $this->obtenerSegmentosLaborablesDia($cursor);
+            $segmentosHoy = $this->obtenerSegmentosLaborablesDia($cursor);
+            $segmentosAyer = $this->obtenerSegmentosLaborablesDia($cursor->copy()->subDay());
+
+            // Combinar segmentos y filtrar solo los que sean relevantes para el cursor actual
+            $segmentos = collect($segmentosAyer)
+                ->merge($segmentosHoy)
+                ->filter(fn($seg) => $cursor->lt($seg['fin'])) // Solo segmentos que aún no han terminado
+                ->values()
+                ->all();
 
             // Saltar no laborables completos SOLO si no tienen segmentos
             // (Esto permite que domingo tenga segmentos nocturnos)
-            if ($this->esNoLaborable($cursor, $festivosSet) && empty($segmentos)) {
+            if ($this->esNoLaborable($cursor, $festivosSet) && empty($segmentosHoy)) {
                 $cursor = $this->siguienteLaborableInicio($cursor, $festivosSet);
                 continue;
             }
@@ -1875,8 +1888,9 @@ class ProduccionController extends Controller
                             $duracionSegundos = $tiempoTranscurrido + $duracionPendientes;
                             $duracionSegundos = max($duracionSegundos, 3600);
                         } else {
-                            // Para sub-grupos completamente pendientes
-                            $fechaInicio = $inicioCola->gt(Carbon::now()) ? $inicioCola->copy() : Carbon::now();
+                            // Para sub-grupos completamente pendientes: usar siempre inicioCola
+                            // Esto asegura continuidad entre eventos consecutivos
+                            $fechaInicio = $inicioCola->copy();
                         }
 
                         $tramos = $this->generarTramosLaborales($fechaInicio, $duracionSegundos, $festivosSet);
@@ -2850,6 +2864,341 @@ class ProduccionController extends Controller
                 'error' => 'Error al analizar planillas',
                 'message' => $e->getMessage()
             ], 500);
+        }
+    }
+
+    /**
+     * Analizar y sugerir balanceo de carga entre máquinas
+     * Redistribuye elementos para igualar el tiempo de trabajo entre máquinas
+     *
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function balancearCargaAnalisis()
+    {
+        try {
+            Log::info('⚖️ BALANCEO: Iniciando análisis de carga');
+
+            // 1. Obtener todas las máquinas disponibles (excluir grúas)
+            $maquinas = Maquina::whereNotNull('tipo')
+                ->where('tipo', '<>', 'grua')
+                ->where('tipo', '<>', 'soldadora')
+                ->where('tipo', '<>', 'ensambladora')
+                ->get();
+
+            if ($maquinas->isEmpty()) {
+                return response()->json([
+                    'elementos' => [],
+                    'mensaje' => 'No hay máquinas disponibles'
+                ]);
+            }
+
+            // 2. Calcular carga actual de cada máquina (en segundos)
+            $cargasMaquinas = [];
+            $elementosPorMaquina = [];
+
+            foreach ($maquinas as $maquina) {
+                $elementos = Elemento::with(['planilla', 'maquina'])
+                    ->where('maquina_id', $maquina->id)
+                    ->whereHas('planilla', fn($q) => $q->whereIn('estado', ['pendiente', 'fabricando']))
+                    ->where('estado', 'pendiente')
+                    ->get();
+
+                $tiempoTotal = $elementos->sum('tiempo_fabricacion');
+
+                $cargasMaquinas[$maquina->id] = [
+                    'maquina' => $maquina,
+                    'tiempo_segundos' => $tiempoTotal,
+                    'tiempo_horas' => round($tiempoTotal / 3600, 2),
+                    'cantidad_elementos' => $elementos->count(),
+                ];
+
+                $elementosPorMaquina[$maquina->id] = $elementos;
+            }
+
+            // 3. Calcular promedio de carga
+            $tiempoTotal = collect($cargasMaquinas)->sum('tiempo_segundos');
+            $tiempoPromedio = $tiempoTotal / $maquinas->count();
+            $umbralDesbalance = $tiempoPromedio * 0.15; // 15% de tolerancia
+
+            Log::info('⚖️ BALANCEO: Cargas calculadas', [
+                'tiempo_total' => round($tiempoTotal / 3600, 2) . 'h',
+                'tiempo_promedio' => round($tiempoPromedio / 3600, 2) . 'h',
+                'umbral_desbalance' => round($umbralDesbalance / 3600, 2) . 'h',
+            ]);
+
+            // 4. Identificar máquinas sobrecargadas y subcargadas
+            $maquinasSobrecargadas = collect($cargasMaquinas)
+                ->filter(fn($carga) => $carga['tiempo_segundos'] > ($tiempoPromedio + $umbralDesbalance))
+                ->sortByDesc('tiempo_segundos');
+
+            $maquinasSubcargadas = collect($cargasMaquinas)
+                ->filter(fn($carga) => $carga['tiempo_segundos'] < ($tiempoPromedio - $umbralDesbalance))
+                ->sortBy('tiempo_segundos');
+
+            // 5. Sugerir movimientos para balancear
+            $elementosAMover = [];
+
+            foreach ($maquinasSobrecargadas as $idSobrecargada => $cargaSobrecargada) {
+                $exceso = $cargaSobrecargada['tiempo_segundos'] - $tiempoPromedio;
+                $elementos = $elementosPorMaquina[$idSobrecargada]
+                    ->sortBy('tiempo_fabricacion'); // Empezar con los más pequeños
+
+                foreach ($elementos as $elemento) {
+                    if ($exceso <= 0) break;
+
+                    // Buscar máquina compatible menos cargada
+                    $maquinasCompatibles = $this->encontrarMaquinasCompatiblesParaBalanceo(
+                        $elemento,
+                        $maquinas,
+                        $idSobrecargada,
+                        $cargasMaquinas,
+                        $tiempoPromedio
+                    );
+
+                    if (!empty($maquinasCompatibles)) {
+                        $mejorMaquina = $maquinasCompatibles[0];
+
+                        $elementosAMover[] = [
+                            'elemento_id' => $elemento->id,
+                            'codigo' => $elemento->codigo,
+                            'marca' => $elemento->marca,
+                            'diametro' => $elemento->diametro,
+                            'peso' => $elemento->peso,
+                            'tiempo_fabricacion' => $elemento->tiempo_fabricacion,
+                            'tiempo_horas' => round($elemento->tiempo_fabricacion / 3600, 2),
+                            'planilla_id' => $elemento->planilla_id,
+                            'planilla_codigo' => optional($elemento->planilla)->codigo_limpio,
+                            'maquina_actual_id' => $idSobrecargada,
+                            'maquina_actual_nombre' => $cargaSobrecargada['maquina']->nombre,
+                            'maquina_nueva_id' => $mejorMaquina['id'],
+                            'maquina_nueva_nombre' => $mejorMaquina['nombre'],
+                            'razon' => "Balancear carga: {$cargaSobrecargada['maquina']->nombre} ({$cargaSobrecargada['tiempo_horas']}h) → {$mejorMaquina['nombre']} ({$mejorMaquina['carga_horas']}h)",
+                        ];
+
+                        // Actualizar cargas simuladas
+                        $cargasMaquinas[$idSobrecargada]['tiempo_segundos'] -= $elemento->tiempo_fabricacion;
+                        $cargasMaquinas[$idSobrecargada]['tiempo_horas'] = round($cargasMaquinas[$idSobrecargada]['tiempo_segundos'] / 3600, 2);
+
+                        $cargasMaquinas[$mejorMaquina['id']]['tiempo_segundos'] += $elemento->tiempo_fabricacion;
+                        $cargasMaquinas[$mejorMaquina['id']]['tiempo_horas'] = round($cargasMaquinas[$mejorMaquina['id']]['tiempo_segundos'] / 3600, 2);
+
+                        $exceso -= $elemento->tiempo_fabricacion;
+                    }
+                }
+            }
+
+            // 6. Preparar resumen
+            $resumenMaquinas = collect($cargasMaquinas)->map(function($carga) {
+                return [
+                    'id' => $carga['maquina']->id,
+                    'nombre' => $carga['maquina']->nombre,
+                    'tipo' => $carga['maquina']->tipo,
+                    'tiempo_horas' => $carga['tiempo_horas'],
+                    'cantidad_elementos' => $carga['cantidad_elementos'],
+                ];
+            })->values();
+
+            Log::info('⚖️ BALANCEO: Análisis completado', [
+                'elementos_a_mover' => count($elementosAMover),
+                'maquinas_analizadas' => $maquinas->count(),
+            ]);
+
+            return response()->json([
+                'elementos' => $elementosAMover,
+                'resumen_original' => $resumenMaquinas,
+                'tiempo_promedio_horas' => round($tiempoPromedio / 3600, 2),
+                'total_elementos' => count($elementosAMover),
+                'timestamp' => now()->toIso8601String(),
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Error en balancearCargaAnalisis:', [
+                'message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return response()->json([
+                'error' => 'Error al analizar balanceo',
+                'message' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Encontrar máquinas compatibles para balanceo
+     */
+    private function encontrarMaquinasCompatiblesParaBalanceo($elemento, $maquinas, $maquinaActualId, $cargasActuales, $tiempoPromedio)
+    {
+        $compatibles = [];
+
+        foreach ($maquinas as $maquina) {
+            if ($maquina->id == $maquinaActualId) continue;
+
+            // Verificar compatibilidad básica
+            $esCompatible = $this->verificarCompatibilidadBasica($elemento, $maquina);
+
+            if ($esCompatible) {
+                $cargaActual = $cargasActuales[$maquina->id]['tiempo_segundos'];
+                $nuevaCarga = $cargaActual + $elemento->tiempo_fabricacion;
+                $diferenciaPromedio = abs($nuevaCarga - $tiempoPromedio);
+
+                $compatibles[] = [
+                    'id' => $maquina->id,
+                    'nombre' => $maquina->nombre,
+                    'carga_actual' => $cargaActual,
+                    'carga_horas' => round($cargaActual / 3600, 2),
+                    'nueva_carga' => $nuevaCarga,
+                    'diferencia_promedio' => $diferenciaPromedio,
+                ];
+            }
+        }
+
+        // Ordenar por menor diferencia con el promedio después de agregar
+        usort($compatibles, fn($a, $b) => $a['diferencia_promedio'] <=> $b['diferencia_promedio']);
+
+        return $compatibles;
+    }
+
+    /**
+     * Verificar compatibilidad básica entre elemento y máquina
+     */
+    private function verificarCompatibilidadBasica($elemento, $maquina)
+    {
+        // Verificar diámetro
+        if ($maquina->diametro_minimo && $elemento->diametro < $maquina->diametro_minimo) {
+            return false;
+        }
+        if ($maquina->diametro_maximo && $elemento->diametro > $maquina->diametro_maximo) {
+            return false;
+        }
+
+        // Verificar tipo de máquina compatible
+        $tiposCompatibles = ['cortadora', 'dobladora', 'dobladora_manual', 'cortadora_manual'];
+        if (!in_array($maquina->tipo, $tiposCompatibles)) {
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
+     * Aplicar el balanceo de carga sugerido
+     *
+     * @param \Illuminate\Http\Request $request
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function aplicarBalanceoCarga(Request $request)
+    {
+        try {
+            $movimientos = $request->input('movimientos', []);
+
+            if (empty($movimientos)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No hay movimientos para aplicar'
+                ], 400);
+            }
+
+            Log::info('⚖️ BALANCEO: Aplicando redistribución', [
+                'total_movimientos' => count($movimientos)
+            ]);
+
+            DB::beginTransaction();
+
+            $procesados = 0;
+            $errores = [];
+
+            foreach ($movimientos as $mov) {
+                try {
+                    $elemento = Elemento::find($mov['elemento_id']);
+
+                    if (!$elemento) {
+                        $errores[] = "Elemento {$mov['elemento_id']} no encontrado";
+                        continue;
+                    }
+
+                    // Actualizar máquina del elemento
+                    $maquinaAnterior = $elemento->maquina_id;
+                    $elemento->maquina_id = $mov['maquina_nueva_id'];
+                    $elemento->save();
+
+                    // Actualizar/crear orden en la nueva máquina
+                    $this->actualizarOrdenPlanilla($elemento->planilla_id, $mov['maquina_nueva_id'], $maquinaAnterior);
+
+                    $procesados++;
+
+                } catch (\Exception $e) {
+                    $errores[] = "Error moviendo elemento {$mov['elemento_id']}: " . $e->getMessage();
+                    Log::error('Error moviendo elemento', [
+                        'elemento_id' => $mov['elemento_id'],
+                        'error' => $e->getMessage()
+                    ]);
+                }
+            }
+
+            DB::commit();
+
+            Log::info('⚖️ BALANCEO: Redistribución completada', [
+                'procesados' => $procesados,
+                'errores' => count($errores)
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'procesados' => $procesados,
+                'total' => count($movimientos),
+                'errores' => $errores,
+                'message' => "Balanceo aplicado: $procesados elementos redistribuidos"
+            ]);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+
+            Log::error('Error en aplicarBalanceoCarga:', [
+                'message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al aplicar balanceo: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Actualizar orden de planilla en máquina
+     */
+    private function actualizarOrdenPlanilla($planillaId, $maquinaId, $maquinaAnteriorId = null)
+    {
+        // Verificar si ya existe orden para esta planilla en la nueva máquina
+        $ordenExistente = OrdenPlanilla::where('planilla_id', $planillaId)
+            ->where('maquina_id', $maquinaId)
+            ->first();
+
+        if (!$ordenExistente) {
+            // Crear nueva orden al final de la cola
+            $maxPosicion = OrdenPlanilla::where('maquina_id', $maquinaId)->max('posicion') ?? 0;
+
+            OrdenPlanilla::create([
+                'planilla_id' => $planillaId,
+                'maquina_id' => $maquinaId,
+                'posicion' => $maxPosicion + 1,
+            ]);
+        }
+
+        // Si había máquina anterior, verificar si aún tiene elementos
+        if ($maquinaAnteriorId) {
+            $elementosRestantes = Elemento::where('planilla_id', $planillaId)
+                ->where('maquina_id', $maquinaAnteriorId)
+                ->count();
+
+            if ($elementosRestantes == 0) {
+                // Eliminar orden de la máquina anterior si ya no tiene elementos
+                OrdenPlanilla::where('planilla_id', $planillaId)
+                    ->where('maquina_id', $maquinaAnteriorId)
+                    ->delete();
+            }
         }
     }
 

@@ -5,32 +5,32 @@
         <table class="min-w-full table-auto">
             <thead class="bg-blue-500 text-white text-10">
                 <tr class="text-center text-xs uppercase">
-                    <th class="p-2 border cursor-pointer" wire:click="sortBy('id')" wire:navigate>
+                    <th class="p-2 border cursor-pointer" wire:click="wire:click="sortBy('id')" wire:navigate">
                         ID @if($sort === 'id'){{ $order === 'asc' ? '↑' : '↓' }}@endif
                     </th>
-                    <th class="p-2 border cursor-pointer" wire:click="sortBy('tipo')" wire:navigate>
+                    <th class="p-2 border cursor-pointer" wire:click="wire:click="sortBy('tipo')" wire:navigate">
                         Tipo @if($sort === 'tipo'){{ $order === 'asc' ? '↑' : '↓' }}@endif
                     </th>
-                    <th class="p-2 border cursor-pointer" wire:click="sortBy('pedido_producto_id')" wire:navigate>
+                    <th class="p-2 border cursor-pointer" wire:click="wire:click="sortBy('pedido_producto_id')" wire:navigate">
                         Línea Pedido @if($sort === 'pedido_producto_id'){{ $order === 'asc' ? '↑' : '↓' }}@endif
                     </th>
                     <th class="p-2 border">Producto</th>
-                    <th class="p-2 border cursor-pointer" wire:click="sortBy('descripcion')" wire:navigate>
+                    <th class="p-2 border cursor-pointer" wire:click="wire:click="sortBy('descripcion')" wire:navigate">
                         Descripción @if($sort === 'descripcion'){{ $order === 'asc' ? '↑' : '↓' }}@endif
                     </th>
                     <th class="p-2 border">Nave</th>
-                    <th class="p-2 border cursor-pointer" wire:click="sortBy('prioridad')" wire:navigate>
+                    <th class="p-2 border cursor-pointer" wire:click="wire:click="sortBy('prioridad')" wire:navigate">
                         Prioridad @if($sort === 'prioridad'){{ $order === 'asc' ? '↑' : '↓' }}@endif
                     </th>
                     <th class="p-2 border">Solicitado por</th>
                     <th class="p-2 border">Ejecutado por</th>
-                    <th class="p-2 border cursor-pointer" wire:click="sortBy('estado')" wire:navigate>
+                    <th class="p-2 border cursor-pointer" wire:click="wire:click="sortBy('estado')" wire:navigate">
                         Estado @if($sort === 'estado'){{ $order === 'asc' ? '↑' : '↓' }}@endif
                     </th>
-                    <th class="p-2 border cursor-pointer" wire:click="sortBy('fecha_solicitud')" wire:navigate>
+                    <th class="p-2 border cursor-pointer" wire:click="wire:click="sortBy('fecha_solicitud')" wire:navigate">
                         Fecha Solicitud @if($sort === 'fecha_solicitud'){{ $order === 'asc' ? '↑' : '↓' }}@endif
                     </th>
-                    <th class="p-2 border cursor-pointer" wire:click="sortBy('fecha_ejecucion')" wire:navigate>
+                    <th class="p-2 border cursor-pointer" wire:click="wire:click="sortBy('fecha_ejecucion')" wire:navigate">
                         Fecha Ejecución @if($sort === 'fecha_ejecucion'){{ $order === 'asc' ? '↑' : '↓' }}@endif
                     </th>
                     <th class="p-2 border">Origen</th>
@@ -128,7 +128,7 @@
                         <td class="px-6 py-4 text-center border">
                             @php $linea = $movimiento->pedido_producto_id; @endphp
                             @if($linea)
-                                <a href="{{ route('pedidos.index', ['pedido_producto_id' => $linea]) }}" wire:navigate class="text-indigo-600 hover:underline">
+                                <a href="{{ route('pedidos.index', ['pedido_producto_id' => $linea]) }}" class="text-indigo-600 hover:underline">
                                     #{{ $linea }}
                                 </a>
                             @else
@@ -138,7 +138,7 @@
 
                         <td class="px-6 py-4 text-center border">
                             @if($movimiento->productoBase)
-                                {{ ucfirst(strtolower($movimiento->productoBase->tipo)) }} wire:navigate
+                                {{ ucfirst(strtolower($movimiento->productoBase->tipo)) }}
                                 (Ø{{ $movimiento->productoBase->diametro }}{{ strtolower($movimiento->productoBase->tipo) === 'barra' ? ', ' . $movimiento->productoBase->longitud . ' m' : '' }})
                             @else
                                 <span class="text-gray-400 italic">Sin datos</span>
@@ -169,7 +169,7 @@
 
                         <td class="px-6 py-4 text-center border">
                             @if($movimiento->solicitadoPor)
-                                <a href="{{ route('users.show', $movimiento->solicitadoPor->id) }}" wire:navigate class="text-blue-500 hover:underline">
+                                <a href="{{ route('users.show', $movimiento->solicitadoPor->id) }}" class="text-blue-500 hover:underline">
                                     {{ $movimiento->solicitadoPor->nombre_completo }}
                                 </a>
                             @else
@@ -179,7 +179,7 @@
 
                         <td class="px-6 py-4 text-center border">
                             @if($movimiento->ejecutadoPor)
-                                <a href="{{ route('users.show', $movimiento->ejecutadoPor->id) }}" wire:navigate class="text-green-600 hover:underline">
+                                <a href="{{ route('users.show', $movimiento->ejecutadoPor->id) }}" class="text-green-600 hover:underline">
                                     {{ $movimiento->ejecutadoPor->nombre_completo }}
                                 </a>
                             @else
@@ -189,7 +189,7 @@
 
                         <td class="px-6 py-4 text-center border">
                             <span class="px-2 py-1 rounded text-xs font-semibold {{ $movimiento->estado === 'pendiente' ? 'bg-yellow-200 text-yellow-800' : ($movimiento->estado === 'completado' ? 'bg-green-200 text-green-800' : 'bg-gray-200 text-gray-800') }}">
-                                {{ ucfirst($movimiento->estado) }} wire:navigate
+                                {{ ucfirst($movimiento->estado) }}
                             </span>
                         </td>
 
@@ -198,20 +198,20 @@
                         <td class="px-6 py-4 text-center border">{{ $movimiento->fecha_ejecucion ?? '—' }}</td>
 
                         <td class="px-6 py-4 text-center border">
-                            {{ $movimiento->ubicacionOrigen->nombre ?? ($movimiento->maquinaOrigen->nombre ?? '—') }} wire:navigate
+                            {{ $movimiento->ubicacionOrigen->nombre ?? ($movimiento->maquinaOrigen->nombre ?? '—') }}
                         </td>
 
                         <td class="px-6 py-4 text-center border">
-                            {{ $movimiento->ubicacionDestino->nombre ?? ($movimiento->maquinaDestino->nombre ?? '—') }} wire:navigate
+                            {{ $movimiento->ubicacionDestino->nombre ?? ($movimiento->maquinaDestino->nombre ?? '—') }}
                         </td>
 
                         <td class="px-6 py-4 text-center border">
                             @if($movimiento->producto)
-                                <a href="{{ route('productos.index', ['id' => $movimiento->producto->id]) }}" wire:navigate class="text-blue-500 hover:underline">
+                                <a href="{{ route('productos.index', ['id' => $movimiento->producto->id]) }}" class="text-blue-500 hover:underline">
                                     {{ $movimiento->producto->codigo }}
                                 </a>
                             @elseif($movimiento->paquete)
-                                <a href="{{ route('paquetes.index', ['id' => $movimiento->paquete->id]) }}" wire:navigate class="text-blue-500 hover:underline">
+                                <a href="{{ route('paquetes.index', ['id' => $movimiento->paquete->id]) }}" class="text-blue-500 hover:underline">
                                     {{ $movimiento->paquete->codigo }}
                                 </a>
                             @else
@@ -220,7 +220,7 @@
                         </td>
 
                         <td class="px-6 py-4 text-center border">
-                            <x-tabla.boton-eliminar :action="route('movimientos.destroy', $movimiento->id)" wire:navigate />
+                            <x-tabla.boton-eliminar :action=":action="route('movimientos.destroy', $movimiento->id)" wire:navigate" />
                         </td>
                     </tr>
                 @empty

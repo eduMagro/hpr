@@ -13,7 +13,7 @@
             <!-- Grid de opciones -->
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
 
-                <a href="{{ route('clientes.index') }}" wire:navigate class="bg-white rounded-lg shadow-md hover:shadow-xl transition-all duration-300 overflow-hidden group">
+                <a href="{{ route('clientes.index') }}" class="bg-white rounded-lg shadow-md hover:shadow-xl transition-all duration-300 overflow-hidden group">
                     <div class="bg-gradient-to-br from-purple-500 to-purple-600 p-6 text-center">
                         <span class="text-6xl">👥</span>
                     </div>
@@ -23,7 +23,7 @@
                     </div>
                 </a>
 
-                <a href="{{ route('empresas.index') }}" wire:navigate class="bg-white rounded-lg shadow-md hover:shadow-xl transition-all duration-300 overflow-hidden group">
+                <a href="{{ route('empresas.index') }}" class="bg-white rounded-lg shadow-md hover:shadow-xl transition-all duration-300 overflow-hidden group">
                     <div class="bg-gradient-to-br from-purple-500 to-purple-600 p-6 text-center">
                         <span class="text-6xl">🏢</span>
                     </div>
@@ -33,7 +33,7 @@
                     </div>
                 </a>
 
-                <a href="{{ route('fabricantes.index') }}" wire:navigate class="bg-white rounded-lg shadow-md hover:shadow-xl transition-all duration-300 overflow-hidden group">
+                <a href="{{ route('fabricantes.index') }}" class="bg-white rounded-lg shadow-md hover:shadow-xl transition-all duration-300 overflow-hidden group">
                     <div class="bg-gradient-to-br from-purple-500 to-purple-600 p-6 text-center">
                         <span class="text-6xl">🏭</span>
                     </div>
@@ -43,7 +43,7 @@
                     </div>
                 </a>
 
-                <a href="{{ route('empresas-transporte.index') }}" wire:navigate class="bg-white rounded-lg shadow-md hover:shadow-xl transition-all duration-300 overflow-hidden group">
+                <a href="{{ route('empresas-transporte.index') }}" class="bg-white rounded-lg shadow-md hover:shadow-xl transition-all duration-300 overflow-hidden group">
                     <div class="bg-gradient-to-br from-purple-500 to-purple-600 p-6 text-center">
                         <span class="text-6xl">🚚</span>
                     </div>
@@ -53,7 +53,7 @@
                     </div>
                 </a>
 
-                <a href="{{ route('planificacion.index') }}" wire:navigate class="bg-white rounded-lg shadow-md hover:shadow-xl transition-all duration-300 overflow-hidden group">
+                <a href="{{ route('planificacion.index') }}" class="bg-white rounded-lg shadow-md hover:shadow-xl transition-all duration-300 overflow-hidden group">
                     <div class="bg-gradient-to-br from-indigo-500 to-indigo-600 p-6 text-center">
                         <span class="text-6xl">📅</span>
                     </div>

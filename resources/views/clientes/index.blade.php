@@ -3,7 +3,7 @@
 
     <x-slot name="header">
         <h2 class="text-lg font-semibold text-gray-800">
-            {{ __('Lista de Clientes') }} wire:navigate
+            {{ __('Lista de Clientes') }}
         </h2>
     </x-slot>
 
@@ -11,9 +11,10 @@
     <div x-data="{ modalObra: false }">
         {{--  Nuevo cliente --}}
         <div class="flex flex-wrap items-center gap-3 mb-4">
-            <x-tabla.boton-azul @click="modalObra = true">
+            <button @click="modalObra = true"
+                class="inline-block text-white bg-blue-600 hover:bg-blue-700 font-semibold px-4 py-2 rounded shadow text-sm transition">
                 ➕ Nuevo Cliente
-            </x-tabla.boton-azul>
+            </button>
 
             <form method="GET" action="{{ route('clientes.index') }}" class="flex flex-wrap gap-2 items-center">
                 <x-tabla.input name="codigo_obra" value="{{ request('cod_obra') }}" placeholder="Código de obra"
@@ -92,11 +93,14 @@
                     </div>
 
                     <div class="flex justify-end gap-3">
-                        <x-tabla.boton-azul type="button" @click="modalObra = false"
-                            class="bg-gray-500 hover:bg-gray-600">
+                        <button type="button" @click="modalObra = false"
+                            class="inline-block text-white bg-gray-500 hover:bg-gray-600 font-semibold px-4 py-2 rounded shadow text-sm transition">
                             Cancelar
-                        </x-tabla.boton-azul>
-                        <x-tabla.boton-azul type="submit">Guardar</x-tabla.boton-azul>
+                        </button>
+                        <button type="submit"
+                            class="inline-block text-white bg-blue-600 hover:bg-blue-700 font-semibold px-4 py-2 rounded shadow text-sm transition">
+                            Guardar
+                        </button>
                     </div>
                 </form>
             </div>

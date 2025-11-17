@@ -1,8 +1,8 @@
 <x-app-layout>
     <x-slot name="header">
         <h2 class="font-semibold text-xl text-gray-800 leading-tight">
-            <a href="{{ route('ubicaciones.index') }}" wire:navigate class="text-blue-500">
-                {{ __('Ubicaciones') }} wire:navigate
+            <a href="{{ route('ubicaciones.index') }}" class="text-blue-500">
+                {{ __('Ubicaciones') }}
             </a><span> / </span>Detalles de Ubicación
         </h2>
     </x-slot>
@@ -41,7 +41,7 @@
             </div>
 
             <button
-                onclick="imprimirQR({{ $id }}, {{ $nombre }}, {{ $descripcion }}, '{{ $ubicacion->codigo }}')" wire:navigate
+                onclick="onclick="imprimirQR({{ $id }}, {{ $nombre }}, {{ $descripcion }}, '{{ $ubicacion->codigo }}')" wire:navigate"
                 class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">
                 Imprimir QR
             </button>

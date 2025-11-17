@@ -3,11 +3,11 @@
 
     <x-slot name="header">
         <h2 class="text-lg font-semibold text-gray-800">
-            <a href="{{ route('empresas.index') }}" wire:navigate class="text-blue-600">
-                {{ __('Empresa Información') }} wire:navigate
+            <a href="{{ route('empresas.index') }}" class="text-blue-600">
+                {{ __('Empresa Información') }}
             </a>
             <span class="mx-2">/</span>
-            {{ __('Nómina') }} wire:navigate
+            {{ __('Nómina') }}
         </h2>
     </x-slot>
     <div class="flex items-center space-x-4 mt-10 ml-10">

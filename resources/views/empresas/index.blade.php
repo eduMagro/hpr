@@ -189,7 +189,7 @@
                         <tr class="hover:bg-gray-50">
                             <td class="px-4 py-2 border text-center">{{ $tramo->id }}</td>
                             <td class="px-4 py-2 border text-right">
-                                {{ number_format($tramo->tramo_inicial, 2, ',', '.') }} wire:navigate
+                                {{ number_format($tramo->tramo_inicial, 2, ',', '.') }}
                             </td>
                             <td class="px-4 py-2 border text-right">
                                 {{ $tramo->tramo_final !== null ? number_format($tramo->tramo_final, 2, ',', '.') : 'Sin límite' }}

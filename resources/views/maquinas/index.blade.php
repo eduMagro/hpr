@@ -32,7 +32,7 @@
                 </select>
 
                 {{-- Botón crear nueva máquina --}}
-                <x-tabla.boton-azul :href="route('maquinas.create')" wire:navigate class="whitespace-nowrap">
+                <x-tabla.boton-azul :href="route('maquinas.create')" class="whitespace-nowrap">
                     ➕ Nueva Máquina
                 </x-tabla.boton-azul>
             </div>
@@ -133,7 +133,7 @@
                                             </svg>
                                             <span class="truncate flex-1">{{ $asig->user->name }}</span>
                                             <span class="ml-1 text-[10px] text-gray-500 bg-white px-1.5 py-0.5 rounded flex-shrink-0">
-                                                {{ substr(ucfirst(data_get($asig, 'turno.nombre', 'Sin')), 0, 1) }} wire:navigate
+                                                {{ substr(ucfirst(data_get($asig, 'turno.nombre', 'Sin')), 0, 1) }}
                                             </span>
                                         </li>
                                     @endforeach
@@ -211,7 +211,7 @@
         {{-- Paginación --}}
         @if ($registrosMaquina->hasPages())
             <div class="mt-8 flex justify-center">
-                {{ $registrosMaquina->links('vendor.pagination.bootstrap-5') }} wire:navigate
+                {{ $registrosMaquina->links('vendor.pagination.bootstrap-5') }}
             </div>
         @endif
     </div>

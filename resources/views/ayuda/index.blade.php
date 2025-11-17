@@ -1,153 +1,326 @@
 <x-app-layout>
     <x-slot name="title">Centro de Ayuda</x-slot>
 
-    <x-slot name="header">
-        <h2 class="text-xl font-semibold text-gray-800">📘 Centro de Ayuda</h2>
-    </x-slot>
-    <div class="flex flex-col md:flex-row">
+    <div class="max-w-6xl mx-auto px-4 py-6">
 
-        <div class="md:hidden sticky top-0 z-40 bg-red-50 border-b border-red-200 shadow-sm" x-data="{ open: false }">
-            <div class="px-4 py-3 flex items-center justify-between">
-                <h3 class="text-base font-bold text-red-800 uppercase tracking-wide">Navegación</h3>
-                <button @click="open = !open" class="text-red-800 focus:outline-none">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16" />
-                    </svg>
-                </button>
+        <!-- Chat del Asistente Virtual -->
+        <div x-data="chatApp()" x-init="loadSugerencias()"
+            class="flex flex-col h-[calc(100vh-150px)] bg-white rounded-xl shadow-xl overflow-hidden">
+
+            <!-- CABECERA -->
+            <div class="px-6 py-4 bg-gradient-to-r from-red-600 to-red-700 text-white">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z">
+                                </path>
+                            </svg>
+                        </div>
+                        <div>
+                            <h1 class="text-lg font-bold">Centro de Ayuda</h1>
+                            <p class="text-xs text-red-100" x-show="!isTyping">Pregúntame cualquier cosa sobre el sistema</p>
+                            <p class="text-xs text-red-100 animate-pulse" x-show="isTyping">Escribiendo...</p>
+                        </div>
+                    </div>
+
+                    <button @click="clearChat()"
+                        class="px-3 py-1.5 bg-white/10 hover:bg-white/20 rounded-lg text-sm transition">
+                        Limpiar
+                    </button>
+                </div>
             </div>
 
-            <!-- Menú desplegable solo visible en móvil -->
-            <nav :class="{ 'block': open, 'hidden': !open }" class="px-4 pb-4 space-y-2">
-                <a href="#inicio-sesion" @click="open = false"
-                    class="block w-full px-3 py-2 rounded-lg hover:bg-red-100 text-red-800 font-medium transition">🔐
-                    Inicio de sesión</a>
-                <a href="#usuarios" @click="open = false"
-                    class="block w-full px-3 py-2 rounded-lg hover:bg-red-100 text-red-800 font-medium transition">👤
-                    Usuarios</a>
-                <a href="#materiales" @click="open = false"
-                    class="block w-full px-3 py-2 rounded-lg hover:bg-red-100 text-red-800 font-medium transition">📦
-                    Materiales (Entradas)</a>
-                <a href="#movimientos" @click="open = false"
-                    class="block w-full px-3 py-2 rounded-lg hover:bg-red-100 text-red-800 font-medium transition">🔄
-                    Movimientos de Material</a>
-                <a href="#planillas" @click="open = false"
-                    class="block w-full px-3 py-2 rounded-lg hover:bg-red-100 text-red-800 font-medium transition">📋
-                    Planillas</a>
-                <a href="#produccion" @click="open = false"
-                    class="block w-full px-3 py-2 rounded-lg hover:bg-red-100 text-red-800 font-medium transition">⚙️
-                    Producción</a>
-                <a href="#salidas" @click="open = false"
-                    class="block w-full px-3 py-2 rounded-lg hover:bg-red-100 text-red-800 font-medium transition">🚚
-                    Salidas</a>
-            </nav>
+            <!-- SUGERENCIAS -->
+            <div x-show="messages.filter(m => m.sender === 'user').length === 0"
+                class="px-6 py-4 bg-gradient-to-b from-gray-50 to-white border-b">
+                <p class="text-sm font-medium text-gray-700 mb-3">💡 Preguntas frecuentes:</p>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
+                    <template x-for="sugerencia in sugerencias.slice(0, 6)" :key="sugerencia">
+                        <button @click="useSugerencia(sugerencia)"
+                            class="text-left px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm text-gray-600 hover:border-red-300 hover:bg-red-50 hover:text-red-700 transition">
+                            <span x-text="sugerencia"></span>
+                        </button>
+                    </template>
+                </div>
+            </div>
 
+            <!-- ZONA DE MENSAJES -->
+            <div class="flex-1 overflow-y-auto px-6 py-4 space-y-4 bg-gray-50" id="chat-box" x-ref="chatBox">
+
+                <template x-for="(msg, i) in messages" :key="i">
+                    <div class="flex gap-3 animate-fade-in"
+                        :class="msg.sender === 'user' ? 'flex-row-reverse' : 'flex-row'">
+
+                        <!-- Avatar -->
+                        <div class="flex-shrink-0">
+                            <div :class="msg.sender === 'user' ? 'bg-red-500' : 'bg-gradient-to-br from-red-500 to-red-600'"
+                                class="w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-bold shadow">
+                                <span x-text="msg.sender === 'user' ? 'TU' : '🤖'"></span>
+                            </div>
+                        </div>
+
+                        <!-- Mensaje -->
+                        <div class="flex-1 max-w-[75%]">
+                            <div :class="msg.sender === 'user' ?
+                                'bg-red-500 text-white' :
+                                'bg-white text-gray-800 border border-gray-200'"
+                                class="px-4 py-3 rounded-2xl shadow-sm">
+                                <div x-html="formatMessage(msg.text)" class="text-sm leading-relaxed"></div>
+                            </div>
+                            <div class="mt-1 px-2 text-xs text-gray-400" x-text="msg.time"></div>
+                        </div>
+                    </div>
+                </template>
+
+                <!-- Indicador de "escribiendo..." -->
+                <div x-show="isTyping" class="flex gap-3 animate-fade-in">
+                    <div class="flex-shrink-0">
+                        <div
+                            class="w-8 h-8 bg-gradient-to-br from-red-500 to-red-600 rounded-full flex items-center justify-center text-white text-sm font-bold">
+                            🤖
+                        </div>
+                    </div>
+                    <div class="bg-white border border-gray-200 px-4 py-3 rounded-2xl shadow-sm">
+                        <div class="flex gap-1">
+                            <div class="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style="animation-delay: 0s"></div>
+                            <div class="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style="animation-delay: 0.2s">
+                            </div>
+                            <div class="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style="animation-delay: 0.4s">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ÁREA DE INPUT -->
+            <form @submit.prevent="sendMessage" class="border-t bg-white px-6 py-4">
+                <div class="flex gap-3">
+                    <input x-model="input" type="text" placeholder="Escribe tu pregunta aquí..." :disabled="isTyping"
+                        class="flex-1 border border-gray-300 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed transition"
+                        maxlength="500">
+
+                    <button type="submit" :disabled="!input.trim() || isTyping"
+                        class="bg-red-500 hover:bg-red-600 disabled:bg-gray-300 disabled:cursor-not-allowed text-white px-6 py-3 rounded-xl font-medium transition-all transform hover:scale-105 active:scale-95 shadow-md">
+                        <svg x-show="!isTyping" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path>
+                        </svg>
+                        <svg x-show="isTyping" class="w-5 h-5 animate-spin" fill="none" stroke="currentColor"
+                            viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15">
+                            </path>
+                        </svg>
+                    </button>
+                </div>
+                <p class="text-xs text-gray-400 mt-2" x-text="input.length + '/500 caracteres'"></p>
+            </form>
         </div>
-
-
-
-
-        <!-- Contenido principal -->
-        <main class="flex-1 w-full max-w-5xl mx-auto px-0 md:px-6 py-8 space-y-10 mt-2 md:mt-0">
-
-            <section id="inicio-sesion">
-                <h3 class="text-lg font-bold mb-4 text-center">🔐 Inicio de sesión</h3>
-                <!-- Solo para oficina / administrativos -->
-                <div class="bg-white border border-gray-200 rounded-lg p-4">
-                    <ul class="list-disc list-inside text-sm text-gray-700 space-y-1">
-                        <li>El <strong>correo</strong> será el que ha proporcionado a administración.</li>
-                        <li>El cambio de <strong>contraseña</strong>contraseña no está permitido. Si es necesario por
-                            razones
-                            operativas o de acceso, deberá solicitarse a administración o utilizar el enlace
-                            <strong>“¿Olvidaste
-                                tu contraseña?”</strong> para iniciar el proceso de recuperación.
-                        </li>
-                        <li>El operario solo puede entrar en las partes de la aplicación que necesita para trabajar.
-                        </li>
-                        <li>Si marcas <strong>“Recuérdame”</strong>, no tendrás que volver a iniciar sesión cada vez,
-                            aunque cierres el navegador.</li>
-                        <li>Si marcas <strong>“Recordar correo”</strong>, el sistema guardará tu email y solo tendrás
-                            que escribir la contraseña la próxima vez.</li>
-                        <li>Los permisos dependen del <code>rol</code> asignado: <strong>operario, oficina o
-                                admin</strong>.</li>
-                    </ul>
-                </div>
-            </section>
-
-            <section id="usuarios" class="space-y-4">
-                <h3 class="text-lg font-bold mb-4 text-center">👤 Usuarios</h3>
-                <div class="grid md:grid-cols-2 gap-6">
-                    <div class="bg-white p-4 border rounded shadow">
-                        <h4 class="font-semibold text-red-700 mb-2">👨‍💼 Oficina</h4>
-                        <ul class="list-disc list-inside text-sm text-gray-700 space-y-1">
-                            <li>Registrar nuevos usuarios mediante el botón <strong>“Registrar Usuario”</strong>.</li>
-                            <li>Aplicar filtros por nombre, email, empresa, categoría, turno, etc.</li>
-                            <li>Ordenar columnas como nombre, DNI, email, rol, estado.</li>
-                            <li>Editar usuarios directamente en la tabla mediante doble clic, puede guardar con enter o
-                                botón verde <strong>guardar</strong> en la columna acciones. Con otro doble clic puede
-                                cerrar la edición.</li>
-                            <li>Ver si un usuario está <strong>en línea</strong> actualmente.</li>
-                            <li>Acceder a la ficha completa del usuario con el botón <strong>"ver"</strong> en la
-                                columna acciones.</li>
-                            <li>Asignar o modificar <strong>turnos</strong> manualmente en el enlace
-                                <strong>"ver"</strong> .
-                            </li>
-                            <li>Generar turnos automáticamente según el tipo (diurno, mañana y nocturno). Si el operario
-                                tiene turno de mañana al clicar en el botón turnos asignara turnos de mañana hasta final
-                                de año, obviando los días festivos y vacaciones ya asignadas. Si el operario tiene turno
-                                de noche asignara la noche. Cuando el operario tiene turno diurno saltará una ventana
-                                pidiendo si quiere que empiece asignando la mañana o la tarde.</li>
-                            <li>Los cambios de <strong>contraseña y eliminación de usuario</strong> con
-                                el botón <strong>"Editar"</strong> en
-                                acciones.</li>
-
-                            <li>Ver vacaciones globales de todos los usuarios.</li>
-                        </ul>
-                    </div>
-
-                    <div class="bg-red-50 p-4 border border-red-200 rounded shadow">
-                        <h4 class="font-semibold text-red-700 mb-2">👷 Operarios</h4>
-                        <ul class="list-disc list-inside text-sm text-gray-700 space-y-1">
-                            <li>El operario no tiene acceso a la gestión de usuarios.</li>
-                            <li>Solo ve su propia ficha con datos personales (nombre, categoría, máquina asignada).</li>
-                            <li>Pueden consultar sus vacaciones disponibles y su historial de fichajes.</li>
-                            <li>Realiza <strong>fichaje de entrada y salida</strong> con validación por geolocalización
-                                y obra seleccionada.</li>
-                            <li>Visualiza un calendario con sus turnos y ausencias.</li>
-                        </ul>
-                    </div>
-                </div>
-
-                <div class="mt-4 text-sm text-gray-600">
-                    <p>El acceso a esta vista y las acciones disponibles dependen del <strong>rol del usuario
-                            autenticado</strong> (<code>oficina</code> o <code>operario</code>).</p>
-                </div>
-            </section>
-
-
-            <section id="materiales">
-                <h3 class="text-lg font-bold mb-4 text-center">📦 Materiales (Entradas)</h3>
-                <p>Dar de alta productos, imprimir códigos QR y gestionar entradas al almacén.</p>
-            </section>
-
-            <section id="movimientos">
-                <h3 class="text-lg font-bold mb-4 text-center">🔄 Movimientos de Material</h3>
-                <p>Cómo mover productos entre ubicaciones y registrar cambios en tiempo real.</p>
-            </section>
-
-            <section id="planillas">
-                <h3 class="text-lg font-bold mb-4 text-center">📋 Planillas</h3>
-                <p>Creación de planillas de fabricación, vinculación con obras y fechas de entrega.</p>
-            </section>
-
-            <section id="produccion">
-                <h3 class="text-lg font-bold mb-4 text-center">⚙️ Producción</h3>
-                <p>Control de máquinas, asignación de tareas y seguimiento del proceso productivo.</p>
-            </section>
-
-            <section id="salidas">
-                <h3 class="text-lg font-bold mb-4 text-center">🚚 Salidas</h3>
-                <p>Asignación de paquetes a camiones, albaranes y confirmación de portes.</p>
-            </section>
-        </main>
     </div>
+
+    <style>
+        @keyframes fade-in {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .animate-fade-in {
+            animation: fade-in 0.3s ease-out;
+        }
+    </style>
+
+    <script>
+        function chatApp() {
+            return {
+                input: '',
+                isTyping: false,
+                messages: [],
+                sugerencias: [],
+                autoScroll: true,
+
+                init() {
+                    // Mensaje de bienvenida
+                    this.addMessage('bot',
+                        '¡Hola! 👋 Soy tu asistente virtual. Puedo ayudarte con información sobre:\n\n' +
+                        '• **Fichajes**: Cómo fichar entrada/salida\n' +
+                        '• **Vacaciones**: Solicitar y consultar vacaciones\n' +
+                        '• **Pedidos**: Recepcionar material\n' +
+                        '• **Planillas**: Importar y asignar a máquinas\n' +
+                        '• **Producción**: Fabricación y creación de paquetes\n' +
+                        '• **Salidas**: Preparar portes\n' +
+                        '• **Contraseñas**: Cambiar o recuperar contraseña\n' +
+                        '• **Stock**: Consultar disponibilidad de material\n\n' +
+                        '¿En qué puedo ayudarte hoy?'
+                    );
+                    this.loadConversationHistory();
+                },
+
+                async loadSugerencias() {
+                    try {
+                        const res = await fetch("{{ route('asistente.sugerencias') }}");
+                        const data = await res.json();
+
+                        if (data.success) {
+                            // Agregar sugerencias de ayuda personalizadas
+                            this.sugerencias = [
+                                '¿Cómo cambio mi contraseña?',
+                                '¿Cómo ficho entrada/salida?',
+                                '¿Cómo solicito vacaciones?',
+                                '¿Cómo recepciono un pedido?',
+                                '¿Cómo importo una planilla?',
+                                '¿Cómo creo un paquete?'
+                            ];
+
+                            // Agregar las del backend también
+                            const backendSugs = data.data.flatMap(cat => cat.ejemplos);
+                            this.sugerencias = [...this.sugerencias, ...backendSugs];
+                        }
+                    } catch (err) {
+                        console.error('Error cargando sugerencias:', err);
+                        // Sugerencias por defecto
+                        this.sugerencias = [
+                            '¿Cómo cambio mi contraseña?',
+                            '¿Cómo ficho entrada/salida?',
+                            '¿Cómo solicito vacaciones?',
+                            '¿Cómo recepciono un pedido?',
+                            '¿Cómo importo una planilla?',
+                            '¿Cómo creo un paquete?'
+                        ];
+                    }
+                },
+
+                addMessage(sender, text) {
+                    const now = new Date();
+                    const time = now.toLocaleTimeString('es-ES', {
+                        hour: '2-digit',
+                        minute: '2-digit'
+                    });
+
+                    this.messages.push({
+                        sender,
+                        text,
+                        time,
+                        timestamp: now.getTime()
+                    });
+
+                    this.saveToLocalStorage();
+                    this.scrollToBottom();
+                },
+
+                async sendMessage() {
+                    if (!this.input.trim() || this.isTyping) return;
+
+                    const userMsg = this.input.trim();
+                    this.addMessage('user', userMsg);
+                    this.input = '';
+                    this.isTyping = true;
+
+                    try {
+                        const res = await fetch("{{ route('asistente.preguntar') }}", {
+                            method: "POST",
+                            headers: {
+                                "Content-Type": "application/json",
+                                "X-CSRF-TOKEN": "{{ csrf_token() }}"
+                            },
+                            body: JSON.stringify({
+                                pregunta: userMsg
+                            })
+                        });
+
+                        const data = await res.json();
+
+                        // Simular delay natural
+                        await new Promise(resolve => setTimeout(resolve, 800));
+
+                        if (data.success) {
+                            this.addMessage('bot', data.data.respuesta || data.respuesta ||
+                                'No pude generar una respuesta.');
+                        } else {
+                            this.addMessage('bot', '❌ ' + (data.error || 'Ocurrió un error al procesar tu pregunta.'));
+                        }
+
+                    } catch (err) {
+                        console.error('Error:', err);
+                        this.addMessage('bot', '❌ Error de conexión. Por favor, inténtalo de nuevo.');
+                    } finally {
+                        this.isTyping = false;
+                        this.scrollToBottom();
+                    }
+                },
+
+                useSugerencia(texto) {
+                    this.input = texto;
+                    this.$nextTick(() => {
+                        this.sendMessage();
+                    });
+                },
+
+                formatMessage(text) {
+                    // Formato básico de markdown
+                    return text
+                        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                        .replace(/\*(.*?)\*/g, '<em>$1</em>')
+                        .replace(/\n/g, '<br>')
+                        .replace(/`(.*?)`/g, '<code class="bg-gray-200 px-1 rounded">$1</code>')
+                        .replace(/•/g, '&bull;');
+                },
+
+                scrollToBottom() {
+                    this.$nextTick(() => {
+                        const chatBox = this.$refs.chatBox;
+                        if (chatBox && this.autoScroll) {
+                            chatBox.scrollTo({
+                                top: chatBox.scrollHeight,
+                                behavior: 'smooth'
+                            });
+                        }
+                    });
+                },
+
+                clearChat() {
+                    if (confirm('¿Seguro que quieres borrar toda la conversación?')) {
+                        this.messages = [];
+                        this.addMessage('bot', '¡Conversación limpiada! ¿En qué puedo ayudarte?');
+                        localStorage.removeItem('asistente_chat_history');
+                    }
+                },
+
+                saveToLocalStorage() {
+                    try {
+                        localStorage.setItem('asistente_chat_history', JSON.stringify(this.messages));
+                    } catch (e) {
+                        console.warn('No se pudo guardar el historial:', e);
+                    }
+                },
+
+                loadConversationHistory() {
+                    try {
+                        const saved = localStorage.getItem('asistente_chat_history');
+                        if (saved) {
+                            const history = JSON.parse(saved);
+                            // Solo cargar si es del mismo día
+                            const lastMsg = history[history.length - 1];
+                            const today = new Date().setHours(0, 0, 0, 0);
+                            const msgDate = new Date(lastMsg.timestamp).setHours(0, 0, 0, 0);
+
+                            if (msgDate === today) {
+                                this.messages = history;
+                            }
+                        }
+                    } catch (e) {
+                        console.warn('No se pudo cargar el historial:', e);
+                    }
+                }
+            }
+        }
+    </script>
 </x-app-layout>

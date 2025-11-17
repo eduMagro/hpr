@@ -2,7 +2,7 @@
     <x-slot name="title">Departamentos</x-slot>
     <x-slot name="header">
         <h2 class="font-semibold text-xl text-gray-800 leading-tight">
-            {{ __('Gestión de Permisos') }} wire:navigate
+            {{ __('Gestión de Permisos') }}
         </h2>
     </x-slot>
 
@@ -95,7 +95,7 @@
                                             <path
                                                 d="M9 6a3 3 0 11-6 0 3 3 0 016 0zM17 6a3 3 0 11-6 0 3 3 0 016 0zM12.93 17c.046-.327.07-.66.07-1a6.97 6.97 0 00-1.5-4.33A5 5 0 0119 16v1h-6.07zM6 11a5 5 0 015 5v1H1v-1a5 5 0 015-5z" />
                                         </svg>
-                                        {{ $departamento->usuarios->count() }} wire:navigate
+                                        {{ $departamento->usuarios->count() }}
                                     </span>
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-center">
@@ -105,7 +105,7 @@
                                             <path
                                                 d="M2 6a2 2 0 012-2h5l2 2h5a2 2 0 012 2v6a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" />
                                         </svg>
-                                        {{ $departamento->secciones->count() }} wire:navigate
+                                        {{ $departamento->secciones->count() }}
                                     </span>
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
@@ -700,7 +700,7 @@
                                             <div class="flex items-center gap-2">
                                                 <div
                                                     class="w-8 h-8 rounded-full bg-gradient-to-br from-green-400 to-emerald-500 flex items-center justify-center text-white font-semibold text-sm">
-                                                    {{ strtoupper(substr($usuario->nombre_completo, 0, 1)) }} wire:navigate
+                                                    {{ strtoupper(substr($usuario->nombre_completo, 0, 1)) }}
                                                 </div>
                                                 <div class="flex-1 min-w-0">
                                                     <p
@@ -857,7 +857,7 @@
                                                 @else
                                                     <div
                                                         class="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-400 to-purple-500 flex items-center justify-center text-white font-semibold text-xs">
-                                                        {{ strtoupper(substr($seccion->nombre, 0, 2)) }} wire:navigate
+                                                        {{ strtoupper(substr($seccion->nombre, 0, 2)) }}
                                                     </div>
                                                 @endif
                                                 <div class="flex-1 min-w-0">

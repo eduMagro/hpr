@@ -157,7 +157,7 @@
     class="bg-white border p-4 shadow-md rounded-lg self-start sm:col-span-2 md:sticky md:top-4">
     <div class="flex flex-col gap-4">
         <!-- Input de lectura de QR -->
-        <div x-data="accionesLote()" wire:navigate class="mt-2 space-y-2">
+        <div x-data="accionesLote()" class="mt-2 space-y-2">
             <button @click="procesar('fabricar')" :disabled="cargando"
                 class="w-full inline-flex items-center justify-center gap-2 rounded-md px-4 py-2 font-semibold text-white shadow bg-yellow-600 hover:bg-yellow-700 focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:ring-offset-2 disabled:opacity-50">
                 <span x-show="!cargando">Empezar a Fabricar</span>

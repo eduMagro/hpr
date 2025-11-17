@@ -407,7 +407,7 @@
         </div>
 
         <!-- Paginación Livewire -->
-        ${{ $etiquetas->links() }} wire:navigate
+        ${{ $etiquetas->links() }}
 
         <!-- Modal para mostrar etiqueta -->
         <div id="modalEtiqueta"
@@ -415,7 +415,7 @@
 
             <div class="relative bg-white p-4 rounded-lg max-w-4xl">
                 <!-- Botón de cierre -->
-                <button onclick="cerrarModal()" wire:navigate aria-label="Cerrar" id="modalClose"
+                <button onclick="onclick="cerrarModal()" wire:navigate" aria-label="Cerrar" id="modalClose"
                     class="absolute -top-3 -right-3 bg-white border border-black
                    rounded-full w-7 h-7 flex items-center justify-center
                    text-xl leading-none hover:bg-red-100 z-10">
@@ -576,7 +576,7 @@
                                 </select>
 
                                 <button type="button" class="bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700"
-                                    onclick="const modo = document.getElementById('modo-impresion-${etiquetaId}').value; imprimirEtiquetas(['${subId}'], modo)" wire:navigate>
+                                    onclick="onclick="const modo = document.getElementById('modo-impresion-${etiquetaId}').value; imprimirEtiquetas(['${subId}'], modo)" wire:navigate">
                                     🖨️
                                 </button>
                             </div>

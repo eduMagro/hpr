@@ -140,7 +140,7 @@
                                                 data-cliente="{{ $registro->cliente->id }}"
                                                 data-obra="{{ $registro->obra->id }}"
                                                 data-field="importe_paralizacion">
-                                                {{ number_format($registro->importe_paralizacion, 2) }} wire:navigate
+                                                {{ number_format($registro->importe_paralizacion, 2) }}
                                             </td>
                                             <td class="p-2 border-b editable" contenteditable="true"
                                                 data-id="{{ $salida->id }}"
@@ -152,7 +152,7 @@
                                                 data-id="{{ $salida->id }}"
                                                 data-cliente="{{ $registro->cliente->id }}"
                                                 data-obra="{{ $registro->obra->id }}" data-field="importe_grua">
-                                                {{ number_format($registro->importe_grua, 2) }} wire:navigate
+                                                {{ number_format($registro->importe_grua, 2) }}
                                             </td>
                                             <td class="p-2 border-b editable" contenteditable="true"
                                                 data-id="{{ $salida->id }}"
@@ -164,7 +164,7 @@
                                                 data-id="{{ $salida->id }}"
                                                 data-cliente="{{ $registro->cliente->id }}"
                                                 data-obra="{{ $registro->obra->id }}" data-field="importe">
-                                                {{ number_format($registro->importe, 2) }} wire:navigate
+                                                {{ number_format($registro->importe, 2) }}
                                             </td>
                                             <td class="py-2 px-4 border-b editable" contenteditable="true"
                                                 data-id="{{ $salida->id }}"
@@ -176,7 +176,7 @@
                                                 data-id="{{ $salida->id }}"
                                                 data-cliente="{{ $registro->cliente->id }}"
                                                 data-obra="{{ $registro->obra->id }}" data-field="estado">
-                                                {{ ucfirst($salida->estado) }} wire:navigate
+                                                {{ ucfirst($salida->estado) }}
                                             </td>
 
                                             <td class="py-2 px-4 border-b">
@@ -202,7 +202,7 @@
                     @if (!empty($clientSummary))
                         <div class="mt-6 px-20 mb-20">
                             <h3 class="text-lg font-semibold text-gray-800">Resumen por Empresa Transporte -
-                                {{ ucfirst($mes) }} wire:navigate
+                                {{ ucfirst($mes) }}
                             </h3>
                             <table class="w-full border-collapse">
                                 <thead>
@@ -268,7 +268,7 @@
                                     <div>
                                         <p class="text-xs font-semibold">{{ $salida->codigo_salida }}</p>
                                         <p class="text-xs text-gray-500">
-                                            {{ $salida->created_at->format('d/m/Y H:i') }} wire:navigate
+                                            {{ $salida->created_at->format('d/m/Y H:i') }}
                                         </p>
                                     </div>
                                     <div class="mt-2 sm:mt-0">

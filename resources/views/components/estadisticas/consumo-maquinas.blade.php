@@ -94,7 +94,7 @@
                         <tr class="border-b odd:bg-gray-100 even:bg-gray-50 hover:bg-blue-100">
                             <td class="px-2 py-1 text-center border">{{ $row['maquina'] }}</td>
                             <td class="px-2 py-1 text-center border">
-                                {{ number_format($row['kg_totales'], 2) }} wire:navigate
+                                {{ number_format($row['kg_totales'], 2) }}
                             </td>
                         </tr>
                     @empty
@@ -116,7 +116,7 @@
 
     {{-- Pie con fecha de generación --}}
     <div class="text-center text-gray-500 bg-gray-100 py-1 rounded-b text-xs">
-        Generado el {{ now()->format('d/m/Y H:i') }} wire:navigate
+        Generado el {{ now()->format('d/m/Y H:i') }}
     </div>
 
     {{-- Gráfica --}}

@@ -66,15 +66,15 @@
                                 </th>
                                 <th class="p-1 border">
                                     <x-tabla.input name="cantidad_solicitada" type="number" step="0.01"
-                                        :value="request('cantidad_solicitada')" wire:navigate class="w-full text-xs" placeholder="≥" />
+                                        :value="request('cantidad_solicitada')" class="w-full text-xs" placeholder="≥" />
                                 </th>
                                 <th class="p-1 border">
                                     <x-tabla.input name="cantidad_servida" type="number" step="0.01"
-                                        :value="request('cantidad_servida')" wire:navigate class="w-full text-xs" placeholder="≥" />
+                                        :value="request('cantidad_servida')" class="w-full text-xs" placeholder="≥" />
                                 </th>
                                 <th class="p-1 border">
                                     <x-tabla.input name="precio_unitario" type="number" step="0.01"
-                                        :value="request('precio_unitario')" wire:navigate class="w-full text-xs" placeholder="€" />
+                                        :value="request('precio_unitario')" class="w-full text-xs" placeholder="€" />
                                 </th>
                                 <th class="p-1 border">
 
@@ -96,7 +96,7 @@
                                     <span class="text-blue-600">Fecha:</span> {{ $pedido->fecha->format('d/m/Y') }} |
                                     <span class="text-blue-600">Cliente:</span> {{ $pedido->cliente->nombre ?? '—' }} |
                                     <span class="text-blue-600">Estado:</span>
-                                    {{ ucfirst(str_replace('_', ' ', $pedido->estado)) }} wire:navigate
+                                    {{ ucfirst(str_replace('_', ' ', $pedido->estado)) }}
 
                                     <span class="float-right flex items-center gap-2">
                                         <a href="{{ route('pedidos-almacen-venta.show', $pedido) }}" wire:navigate
@@ -146,10 +146,10 @@
                                     </td>
                                     <td class="border px-2 py-1">{{ $linea->unidad_medida ?? '—' }}</td>
                                     <td class="border px-2 py-1 text-right">
-                                        {{ number_format($linea->cantidad_solicitada, 2, ',', '.') }} wire:navigate
+                                        {{ number_format($linea->cantidad_solicitada, 2, ',', '.') }}
                                     </td>
                                     <td class="border px-2 py-1 text-right">
-                                        {{ number_format($linea->cantidad_servida_calculada, 2, ',', '.') }} wire:navigate
+                                        {{ number_format($linea->cantidad_servida_calculada, 2, ',', '.') }}
                                     </td>
                                     <td class="border px-2 py-1 text-right">
                                         {{ $linea->precio_unitario !== null ? number_format($linea->precio_unitario, 2, ',', '.') . ' €' : '—' }}
@@ -164,7 +164,7 @@
                                             <input type="checkbox" name="lineas[]" value="{{ $linea->id }}"
                                                 class="chk-linea">
                                         @else
-                                            {{ ucfirst($linea->estado_dinamico) }} wire:navigate
+                                            {{ ucfirst($linea->estado_dinamico) }}
                                         @endif
                                     </td>
 

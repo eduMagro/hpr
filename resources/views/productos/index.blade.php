@@ -9,12 +9,12 @@
         <!-- Botones superiores -->
         <div class="mb-6 flex flex-wrap justify-center gap-3">
             @if (auth()->check() && auth()->id() === 1)
-                <x-tabla.boton-azul :href="route('entradas.create')" wire:navigate>
+                <x-tabla.boton-azul :href="route('entradas.create')">
                     ➕ Crear Nueva Entrada
                 </x-tabla.boton-azul>
             @endif
 
-            <button onclick="abrirModal()" wire:navigate
+            <button onclick="abrirModal()"
                 class="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-semibold py-2.5 px-6 rounded-lg shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105 hidden md:inline-flex items-center gap-2">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                     <path d="M2 6a2 2 0 012-2h6a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V6zM14.553 7.106A1 1 0 0014 8v4a1 1 0 00.553.894l2 1A1 1 0 0018 13V7a1 1 0 00-1.447-.894l-2 1z" />
@@ -46,7 +46,7 @@
                                 evitar duplicados.
                             </p>
 
-                            <button type="button" onclick="cerrarModal()" wire:navigate
+                            <button type="button" onclick="cerrarModal()"
                                 class="px-4 py-2 bg-gray-300 text-gray-800 rounded hover:bg-gray-400">
                                 Cancelar
                             </button>
@@ -136,7 +136,7 @@
                                     <td class="px-4 py-3 text-center font-medium text-gray-700">{{ $base->id }}</td>
                                     <td class="px-4 py-3 text-center">
                                         <span class="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-xs font-semibold">
-                                            {{ ucfirst($base->tipo) }} wire:navigate
+                                            {{ ucfirst($base->tipo) }}
                                         </span>
                                     </td>
                                     <td class="px-4 py-3 text-center font-medium text-gray-700">{{ $base->diametro }} mm</td>
@@ -215,7 +215,7 @@
                         <p><strong>Fabricante:</strong> {{ $producto->fabricante->nombre ?? '—' }}</p>
                         <p>
                             <strong>Características:</strong>
-                            {{ strtoupper($producto->productoBase->tipo ?? '—') }} wire:navigate
+                            {{ strtoupper($producto->productoBase->tipo ?? '—') }}
                             |
                             Ø{{ $producto->productoBase->diametro ?? '—' }}
                             {{ $producto->productoBase->longitud ? '| ' . $producto->productoBase->longitud . ' m' : '' }}
@@ -258,7 +258,7 @@
                                         class="flex-1 bg-blue-400 hover:bg-blue-500 text-white text-center text-sm font-semibold py-2 px-2 rounded shadow">
                                         Editar
                                     </a>
-                                    <button onclick="abrirModalMovimientoLibre('{{ $producto->codigo }}')" wire:navigate
+                                    <button onclick="abrirModalMovimientoLibre('{{ $producto->codigo }}')"
                                         class="flex-1 bg-green-500 hover:bg-green-600 text-white text-center text-sm font-semibold py-2 px-2 rounded shadow">
                                         Mover
                                     </button>

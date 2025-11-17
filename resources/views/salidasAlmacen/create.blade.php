@@ -210,7 +210,7 @@
 
             {{-- Botón añadir línea --}}
             <div class="text-left">
-                <button type="button" @click="lineas.push({})" wire:navigate class="text-sm text-blue-600 hover:underline">
+                <button type="button" @click="lineas.push({})" class="text-sm text-blue-600 hover:underline">
                     ➕ Añadir otra línea
                 </button>
             </div>

@@ -153,7 +153,7 @@
                                 <div class="inline-flex flex-col items-center gap-1">
                                     <span class="font-semibold">{{ $pedido->codigo }}</span>
                                     @if(!empty($linea->id))
-                                        <a href="{{ route('entradas.index', ['pedido_producto_id' => $linea->id]) }}" wire:navigate class="text-blue-600 hover:underline text-[11px]">
+                                        <a href="{{ route('entradas.index', ['pedido_producto_id' => $linea->id]) }}" class="text-blue-600 hover:underline text-[11px]">
                                             Ver entradas
                                         </a>
                                     @endif
@@ -209,7 +209,7 @@
                             <td class="border px-2 py-1 text-center">
                                 {{-- Vista normal --}}
                                 <div class="producto-view-{{ $linea->id }}">
-                                    {{ ucfirst($linea->tipo) }} wire:navigate
+                                    {{ ucfirst($linea->tipo) }}
                                     Ø{{ $linea->diametro }}
                                     @if($linea->tipo === 'barra' && $linea->longitud && $linea->longitud !== '—')
                                         x {{ $linea->longitud }} m
@@ -335,21 +335,21 @@
                                                     @method('PUT')
                                                 </form>
 
-                                                <button type="button" onclick="confirmarCancelacionLinea({{ $pedido->id }}, {{ $linea['id'] }})" wire:navigate class="bg-gray-500 hover:bg-gray-600 text-white text-xs px-2 py-1 rounded shadow transition">
+                                                <button type="button" onclick="onclick="confirmarCancelacionLinea({{ $pedido->id }}, {{ $linea['id'] }})" wire:navigate" class="bg-gray-500 hover:bg-gray-600 text-white text-xs px-2 py-1 rounded shadow transition">
                                                     Cancelar
                                                 </button>
                                             </div>
 
                                             {{-- BOTONES DE EDICIÓN --}}
-                                            <button type="button" onclick="abrirEdicionLinea({{ $linea->id }})" wire:navigate class="btn-editar-linea-{{ $linea->id }} bg-blue-600 hover:bg-blue-700 text-white text-xs px-2 py-1 rounded shadow transition" title="Editar línea">
+                                            <button type="button" onclick="onclick="abrirEdicionLinea({{ $linea->id }})" wire:navigate" class="btn-editar-linea-{{ $linea->id }} bg-blue-600 hover:bg-blue-700 text-white text-xs px-2 py-1 rounded shadow transition" title="Editar línea">
                                                 ✏️
                                             </button>
 
-                                            <button type="button" onclick="guardarLinea({{ $linea->id }}, {{ $pedido->id }})" wire:navigate class="btn-guardar-linea-{{ $linea->id }} hidden bg-green-600 hover:bg-green-700 text-white text-xs px-2 py-1 rounded shadow transition" title="Guardar cambios">
+                                            <button type="button" onclick="onclick="guardarLinea({{ $linea->id }}, {{ $pedido->id }})" wire:navigate" class="btn-guardar-linea-{{ $linea->id }} hidden bg-green-600 hover:bg-green-700 text-white text-xs px-2 py-1 rounded shadow transition" title="Guardar cambios">
                                                 💾
                                             </button>
 
-                                            <button type="button" onclick="cancelarEdicionLinea({{ $linea->id }})" wire:navigate class="btn-cancelar-edicion-{{ $linea->id }} hidden bg-red-600 hover:bg-red-700 text-white text-xs px-2 py-1 rounded shadow transition" title="Cancelar edición">
+                                            <button type="button" onclick="onclick="cancelarEdicionLinea({{ $linea->id }})" wire:navigate" class="btn-cancelar-edicion-{{ $linea->id }} hidden bg-red-600 hover:bg-red-700 text-white text-xs px-2 py-1 rounded shadow transition" title="Cancelar edición">
                                                 ✖️
                                             </button>
                                         @endif
@@ -368,7 +368,7 @@
     </div>
 
     {{-- Paginación --}}
-    {{ $pedidos->links() }} wire:navigate
+    {{ $pedidos->links() }}
 </div>
 
 {{-- SCRIPTS JAVASCRIPT --}}

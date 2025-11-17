@@ -2,8 +2,8 @@
     <x-slot name="title">{{ $salida->codigo_salida }} - {{ config('app.name') }}</x-slot>
     <x-slot name="header">
         <h2 class="text-lg font-semibold text-gray-800">
-            <a href="{{ route('planificacion.index') }}" wire:navigate class="text-blue-600">
-                {{ __('Planificación') }} wire:navigate
+            <a href="{{ route('planificacion.index') }}" class="text-blue-600">
+                {{ __('Planificación') }}
             </a>
             <span class="mx-2">/</span>
             {{ __('Detalles de la Salida') }} {{ $salida->codigo_salida }}

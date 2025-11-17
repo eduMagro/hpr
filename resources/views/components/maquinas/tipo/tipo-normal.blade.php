@@ -332,7 +332,7 @@
     <div class="bg-white rounded-lg shadow-xl p-6 w-auto max-w-full max-h-[85vh] overflow-y-auto">
         <div class="flex justify-between items-center mb-4">
             <h2 class="text-xl font-bold text-gray-800">Elementos del patrón</h2>
-            <button onclick="cerrarModalPatron()" wire:navigate class="text-gray-500 hover:text-gray-800 text-2xl">✖</button>
+            <button onclick="onclick="cerrarModalPatron()" wire:navigate" class="text-gray-500 hover:text-gray-800 text-2xl">✖</button>
         </div>
         <div id="contenedorPatron" class="flex flex-col gap-4"></div>
     </div>

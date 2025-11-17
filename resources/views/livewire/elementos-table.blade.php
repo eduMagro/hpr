@@ -487,7 +487,7 @@
 
         <!-- Paginación Livewire -->
         <div class="mt-4">
-            {{ $elementos->links('vendor.livewire.tailwind') }} wire:navigate
+            {{ $elementos->links('vendor.livewire.tailwind') }}
         </div>
 
         <!-- Modal de dibujo -->

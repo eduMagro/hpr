@@ -167,21 +167,21 @@
                             class="border-b odd:bg-gray-100 even:bg-gray-50 hover:bg-blue-200 cursor-pointer text-xs leading-none uppercase transition-colors">
                             <td class="p-2 text-center border">{{ $planilla->id }}</td>
                             <td class="p-2 text-center border">
-                                <a href="{{ route('planillas.show', $planilla->id) }}" wire:navigate
+                                <a href="{{ route('planillas.show', $planilla->id) }}"
                                     class="text-blue-500 hover:underline">
                                     {{ $planilla->codigo_limpio }}
                                 </a>
                             </td>
                             <td class="p-2 text-center border">{{ $planilla->cliente->codigo ?? 'N/A' }}</td>
                             <td class="p-2 text-center border">
-                                <a href="{{ route('clientes.index', ['id' => $planilla->cliente_id]) }}" wire:navigate
+                                <a href="{{ route('clientes.index', ['id' => $planilla->cliente_id]) }}"
                                     class="text-blue-500 hover:underline">
                                     {{ $planilla->cliente->empresa ?? 'N/A' }}
                                 </a>
                             </td>
                             <td class="p-2 text-center border">{{ $planilla->obra->cod_obra ?? 'N/A' }}</td>
                             <td class="p-2 text-center border">
-                                <a href="{{ route('clientes.show', ['cliente' => $planilla->cliente_id]) }}" wire:navigate
+                                <a href="{{ route('clientes.show', ['cliente' => $planilla->cliente_id]) }}"
                                     class="text-blue-500 hover:underline">
                                     {{ $planilla->obra->obra ?? 'N/A' }}
                                 </a>
@@ -200,14 +200,14 @@
                                     {{ $planilla->estado === 'pendiente' ? 'bg-red-200 text-red-800' : '' }}
                                     {{ $planilla->estado === 'fabricando' ? 'bg-blue-200 text-blue-800' : '' }}
                                     {{ $planilla->estado === 'montaje' ? 'bg-purple-200 text-purple-800' : '' }}">
-                                    {{ ucfirst($planilla->estado) }} wire:navigate
+                                    {{ ucfirst($planilla->estado) }}
                                 </span>
                             </td>
                             <td class="p-2 text-center border">
                                 @if ($planilla->fecha_inicio)
                                     {{ is_string($planilla->fecha_inicio) && str_contains($planilla->fecha_inicio, '/')
                                         ? \Carbon\Carbon::createFromFormat('d/m/Y H:i', $planilla->fecha_inicio)->format('d/m/Y')
-                                        : \Carbon\Carbon::parse($planilla->fecha_inicio)->format('d/m/Y') }} wire:navigate
+                                        : \Carbon\Carbon::parse($planilla->fecha_inicio)->format('d/m/Y') }}
                                 @else
                                     -
                                 @endif
@@ -216,7 +216,7 @@
                                 @if ($planilla->fecha_finalizacion)
                                     {{ is_string($planilla->fecha_finalizacion) && str_contains($planilla->fecha_finalizacion, '/')
                                         ? \Carbon\Carbon::createFromFormat('d/m/Y H:i', $planilla->fecha_finalizacion)->format('d/m/Y')
-                                        : \Carbon\Carbon::parse($planilla->fecha_finalizacion)->format('d/m/Y') }} wire:navigate
+                                        : \Carbon\Carbon::parse($planilla->fecha_finalizacion)->format('d/m/Y') }}
                                 @else
                                     -
                                 @endif
@@ -224,13 +224,13 @@
                             <td class="p-2 text-center border">
                                 {{ is_string($planilla->created_at) && str_contains($planilla->created_at, '/')
                                     ? \Carbon\Carbon::createFromFormat('d/m/Y H:i', $planilla->created_at)->format('d/m/Y')
-                                    : \Carbon\Carbon::parse($planilla->created_at)->format('d/m/Y') }} wire:navigate
+                                    : \Carbon\Carbon::parse($planilla->created_at)->format('d/m/Y') }}
                             </td>
                             <td class="p-2 text-center border">
                                 @if ($planilla->fecha_estimada_entrega)
                                     {{ is_string($planilla->fecha_estimada_entrega) && str_contains($planilla->fecha_estimada_entrega, '/')
                                         ? \Carbon\Carbon::createFromFormat('d/m/Y H:i', $planilla->fecha_estimada_entrega)->format('d/m/Y')
-                                        : \Carbon\Carbon::parse($planilla->fecha_estimada_entrega)->format('d/m/Y') }} wire:navigate
+                                        : \Carbon\Carbon::parse($planilla->fecha_estimada_entrega)->format('d/m/Y') }}
                                 @else
                                     -
                                 @endif
@@ -247,7 +247,7 @@
                                 @if ($planilla->fecha_revision)
                                     {{ is_string($planilla->fecha_revision) && str_contains($planilla->fecha_revision, '/')
                                         ? \Carbon\Carbon::createFromFormat('d/m/Y H:i', $planilla->fecha_revision)->format('d/m/Y H:i')
-                                        : \Carbon\Carbon::parse($planilla->fecha_revision)->format('d/m/Y H:i') }} wire:navigate
+                                        : \Carbon\Carbon::parse($planilla->fecha_revision)->format('d/m/Y H:i') }}
                                 @else
                                     -
                                 @endif
@@ -255,7 +255,7 @@
                             <td class="px-2 py-2 border text-xs font-bold">
                                 <div class="flex items-center space-x-2 justify-center">
                                     <!-- Botón Reimportar -->
-                                    <button onclick="abrirModalReimportar({{ $planilla->id }})" wire:navigate
+                                    <button onclick="abrirModalReimportar({{ $planilla->id }})"
                                         class="w-6 h-6 bg-yellow-100 text-yellow-600 rounded hover:bg-yellow-200 flex items-center justify-center"
                                         title="Reimportar Planilla">
                                         <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none"
@@ -266,7 +266,7 @@
                                     </button>
 
                                     <!-- Botón Marcar como revisada -->
-                                    <button wire:click="toggleRevisada({{ $planilla->id }})" wire:navigate
+                                    <button wire:click="toggleRevisada({{ $planilla->id }})"
                                         class="w-6 h-6 bg-indigo-100 text-indigo-700 rounded hover:bg-indigo-200 flex items-center justify-center"
                                         title="Marcar como revisada">
                                         <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24"
@@ -276,17 +276,17 @@
                                     </button>
 
                                     <!-- Botón Ver elementos de esta planilla -->
-                                    <button wire:click="verElementosFiltrados({{ $planilla->id }})" wire:navigate
+                                    <button wire:click="verElementosFiltrados({{ $planilla->id }})"
                                         class="w-6 h-6 bg-purple-100 text-purple-600 rounded hover:bg-purple-200 flex items-center justify-center"
                                         title="Ver elementos de esta planilla">
                                         📋
                                     </button>
 
                                     <!-- Botón Ver -->
-                                    <x-tabla.boton-ver :href="route('planillas.show', $planilla->id)" wire:navigate />
+                                    <x-tabla.boton-ver :href=":href="route('planillas.show', $planilla->id)" wire:navigate" />
 
                                     <!-- Botón Eliminar -->
-                                    <x-tabla.boton-eliminar :action="route('planillas.destroy', $planilla->id)" wire:navigate />
+                                    <x-tabla.boton-eliminar :action=":action="route('planillas.destroy', $planilla->id)" wire:navigate" />
                                 </div>
                             </td>
                         </tr>
@@ -314,7 +314,7 @@
 
         <!-- Paginación Livewire -->
         <div class="mt-4">
-            {{ $planillas->links('vendor.livewire.tailwind') }} wire:navigate
+            {{ $planillas->links('vendor.livewire.tailwind') }}
         </div>
     </div>
 
@@ -336,7 +336,7 @@
                     </div>
 
                     <div class="flex justify-end gap-2">
-                        <button type="button" onclick="cerrarModalReimportar()" wire:navigate
+                        <button type="button" onclick="cerrarModalReimportar()"
                             class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-semibold px-4 py-2 rounded">
                             Cancelar
                         </button>

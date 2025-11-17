@@ -6,10 +6,10 @@
         x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100"
         x-transition:leave="transition ease-in duration-200" x-transition:leave-start="opacity-100 scale-100"
         x-transition:leave-end="opacity-0 scale-95"
-        class="modal-overlay hidden backdrop-blur-sm backdrop-blur-md backdrop-blur-lg bg-black/40 bg-black/50 bg-black/60"
+        class="modal-overlay-clave"
         x-cloak>
 
-        <div class="bg-white rounded-xl p-6 w-80 shadow-xl">
+        <div class="bg-white rounded-xl p-6 w-80 shadow-xl relative z-50">
             <h2 class="text-lg font-bold mb-4 text-center">Sección protegida</h2>
 
             <form @submit.prevent="enviarClave">
@@ -29,16 +29,25 @@
     </div>
 </div>
 <style>
-    .modal-overlay {
+    .modal-overlay-clave {
         position: fixed;
-        inset: 0;
-        z-index: 50;
+        top: 3.5rem;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        z-index: 30;
         display: flex;
         align-items: center;
         justify-content: center;
         background-color: rgba(0, 0, 0, 0.5);
         backdrop-filter: blur(8px);
         -webkit-backdrop-filter: blur(8px);
+    }
+
+    @media (min-width: 768px) {
+        .modal-overlay-clave {
+            left: 16rem;
+        }
     }
 </style>
 <script>

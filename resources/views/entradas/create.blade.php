@@ -2,11 +2,11 @@
     @if (auth()->user()->rol !== 'operario')
         <x-slot name="header">
             <h2 class="text-lg font-semibold text-gray-800">
-                <a href="{{ route('entradas.index') }}" wire:navigate class="text-blue-600">
-                    {{ __('Entradas') }} wire:navigate
+                <a href="{{ route('entradas.index') }}" class="text-blue-600">
+                    {{ __('Entradas') }}
                 </a>
                 <span class="mx-2">/</span>
-                {{ __('Crear Entradas de Material') }} wire:navigate
+                {{ __('Crear Entradas de Material') }}
             </h2>
         </x-slot>
     @endif

@@ -337,7 +337,7 @@
                                                 </button>
 
                                                 {{-- Eliminar --}}
-                                                <x-tabla.boton-eliminar :action="route('etiquetas.destroy', $etiqueta->id)" wire:navigate />
+                                                <x-tabla.boton-eliminar :action=":action="route('etiquetas.destroy', $etiqueta->id)" wire:navigate" />
                                             </div>
                                         </template>
                                     </div>
@@ -363,12 +363,12 @@
 
                 <!-- 📐 Marco blanco exterior -->
                 <div class="relative bg-white p-1 rounded-lg">
-                    <button onclick="imprimirEtiqueta('${subId}')" wire:navigate
+                    <button onclick="onclick="imprimirEtiqueta('${subId}')" wire:navigate"
                         class="absolute top-2 right-10 text-blue-800 hover:text-blue-900 no-print">
                         🖨️
                     </button>
                     <!-- Botón de cierre en el marco -->
-                    <button onclick="cerrarModal()" wire:navigate aria-label="Cerrar"
+                    <button onclick="onclick="cerrarModal()" wire:navigate" aria-label="Cerrar"
                         class="absolute -top-3 -right-3 bg-white border border-black
                        rounded-full w-7 h-7 flex items-center justify-center
                        text-xl leading-none hover:bg-red-100">

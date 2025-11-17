@@ -98,7 +98,7 @@
                                 class="grid grid-cols-2 gap-2 text-xs text-gray-600">
                                 <div><span class="text-gray-500">Peso:</span>
                                     <span
-                                        class="font-semibold">{{ number_format($paquete['peso'], 2) }} wire:navigate
+                                        class="font-semibold">{{ number_format($paquete['peso'], 2) }}
                                         kg</span>
                                 </div>
                                 <div class="col-span-2">

@@ -78,7 +78,7 @@
                         <div class="flex items-center justify-between mb-2">
                             <span class="font-semibold text-gray-800">{{ $planilla->codigo_limpio }}</span>
                             <span class="text-xs px-2 py-1 rounded {{ $planilla->estado_class }}">
-                                {{ ucfirst($planilla->estado) }} wire:navigate
+                                {{ ucfirst($planilla->estado) }}
                             </span>
                         </div>
                         <p class="text-sm text-gray-600">Obra: {{ $planilla->obra->obra }}</p>

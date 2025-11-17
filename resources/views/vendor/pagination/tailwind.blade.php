@@ -31,7 +31,7 @@
                         {!! __('to') !!}
                         <span class="font-medium">{{ $paginator->lastItem() }}</span>
                     @else
-                        {{ $paginator->count() }} wire:navigate
+                        {{ $paginator->count() }}
                     @endif
                     {!! __('of') !!}
                     <span class="font-medium">{{ $paginator->total() }}</span>
