@@ -323,13 +323,8 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
     Route::post('/planillas/completar', [PlanillaController::class, 'completar'])->name('planillas.completar');
     Route::get('/planificacion/index', [PlanificacionController::class, 'index'])->name('planificacion.index');
     Route::get('/planificacion/totales', [PlanificacionController::class, 'getTotalesAjax']);
-    Route::post('/planillas/completar-todas', function (PlanillaService $svc) {
-        $resultado = $svc->completarTodasPlanillas(); // llama al service
-        return back()->with(
-            $resultado['success'] ? 'success' : 'error',
-            "Procesadas OK: {$resultado['procesadas_ok']} | Omitidas por fecha: {$resultado['omitidas_fecha']} | Fallidas: {$resultado['fallidas']}"
-        );
-    })->name('planillas.completarTodas');
+    Route::post('/planillas/completar-todas', [PlanillaController::class, 'completarTodas'])
+        ->name('planillas.completarTodas');
     // === EMPRESAS TRANSPORTE ===
     Route::resource('empresas-transporte', EmpresaTransporteController::class);
     Route::resource('camiones', CamionController::class);

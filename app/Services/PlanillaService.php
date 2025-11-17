@@ -32,7 +32,7 @@ class PlanillaService
                     'codigo'      => $codigoPaquete,
                     'planilla_id' => $planillaId,
                     'peso'        => $pesoTotal,
-                    'estado'      => 'completado',
+                    'estado'      => 'pendiente',
                 ]);
 
                 // ✅ Marcar planilla como completada
@@ -171,7 +171,7 @@ class PlanillaService
                     'planilla_id'     => $planillaId,
                     'etiqueta_sub_id' => $etiquetaSubId,
                     'peso'            => $pesoTotal,
-                    'estado'          => 'completado',
+                    'estado'          => 'pendiente',
                 ]);
 
                 // Actualizar etiquetas

@@ -1017,13 +1017,22 @@ class PlanillaController extends Controller
         ], 422);
     }
 
-    public function completarTodas(PlanillaService $svc)
+    public function completarTodas(Request $request, PlanillaService $svc)
     {
         $resultado = $svc->completarTodasPlanillas();
+        $mensaje = "Procesadas OK: {$resultado['procesadas_ok']} | Omitidas por fecha: {$resultado['omitidas_fecha']} | Fallidas: {$resultado['fallidas']}";
+
+        if ($request->expectsJson() || $request->wantsJson()) {
+            return response()->json([
+                'success'  => $resultado['success'],
+                'message'  => $mensaje,
+                'detalles' => $resultado,
+            ], $resultado['success'] ? 200 : 422);
+        }
 
         return back()->with(
             $resultado['success'] ? 'success' : 'error',
-            "Procesadas OK: {$resultado['procesadas_ok']} | Omitidas por fecha: {$resultado['omitidas_fecha']} | Fallidas: {$resultado['fallidas']}"
+            $mensaje
         );
     }
 
