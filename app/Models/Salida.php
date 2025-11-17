@@ -24,7 +24,7 @@ class Salida extends Model
         'importe',
         'estado',
         'fecha_salida',
-        'observaciones'
+        'comentario'
     ];
     public function usuario()
     {

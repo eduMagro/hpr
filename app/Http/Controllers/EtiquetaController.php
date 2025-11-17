@@ -1204,6 +1204,7 @@ class EtiquetaController extends Controller
         $userId = Auth::id();
         $compaId = auth()->user()->compañeroDeTurno()?->id;
         $resultados = [];
+        $maquina = null; // Para usar después en el logging
 
         DB::beginTransaction();
         try {
@@ -1236,6 +1237,18 @@ class EtiquetaController extends Controller
             }
 
             DB::commit();
+
+            // 🔧 REGISTRAR LOG DE PATRÓN DE CORTE - SYNTAX LINE
+            // Se hace DESPUÉS del commit para que los elementos tengan productos asignados
+            if ($maquina) {
+                \App\Services\ProductionLogger::logCortePatron(
+                    etiquetas: $data['etiquetas'],
+                    longitudBarraCm: $longitud,
+                    maquina: $maquina,
+                    tipoPatron: 'optimizado',
+                    patronInfo: []
+                );
+            }
 
             // ✅ Calcular el peso total de la etiqueta
             $pesoTotalEtiqueta = $resultado->etiqueta->peso

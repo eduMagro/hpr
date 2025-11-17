@@ -460,6 +460,225 @@ class ProductionLogger
     }
 
     /**
+     * Registra patrones de corte de la Syntax Line 28
+     *
+     * @param array $etiquetas Array de etiquetas procesadas con patrones
+     * @param float $longitudBarraCm Longitud de la barra en cm
+     * @param Maquina $maquina Máquina Syntax Line
+     * @param string|null $tipoPatron 'simple' o 'optimizado'
+     * @param array $patronInfo Información adicional del patrón
+     */
+    public static function logCortePatron(
+        array $etiquetas,
+        float $longitudBarraCm,
+        Maquina $maquina,
+        ?string $tipoPatron = null,
+        array $patronInfo = []
+    ): void {
+        // 🔍 DEBUG: Registrar qué datos están llegando
+        \Log::info('ProductionLogger::logCortePatron - Datos recibidos', [
+            'etiquetas' => $etiquetas,
+            'longitudBarraCm' => $longitudBarraCm,
+            'tipoPatron' => $tipoPatron,
+            'patronInfo' => $patronInfo
+        ]);
+
+        $compañero = auth()->user() ? auth()->user()->compañeroDeTurno() : null;
+
+        // Obtener las etiquetas completas con relaciones necesarias
+        $etiquetasObjetos = collect($etiquetas)->map(function($item) {
+            $subId = is_array($item) ? ($item['etiqueta_sub_id'] ?? $item) : $item;
+            return Etiqueta::where('etiqueta_sub_id', $subId)
+                ->orWhere('id', $subId)
+                ->with([
+                    'elementos.producto.productoBase',
+                    'elementos.producto2.productoBase',
+                    'elementos.producto3.productoBase'
+                ])
+                ->first();
+        })->filter();
+
+        // Información básica del patrón
+        $longitudBarraM = $longitudBarraCm / 100;
+        $numEtiquetas = $etiquetasObjetos->count();
+        $etiquetasIds = $etiquetasObjetos->pluck('etiqueta_sub_id')->implode(', ');
+
+        // Calcular peso total y diámetros
+        $pesoTotal = $etiquetasObjetos->sum('peso');
+        $diametros = $etiquetasObjetos->flatMap(fn($e) => $e->elementos->pluck('diametro'))
+            ->unique()
+            ->sort()
+            ->implode(', ');
+
+        // Información de la planilla/obra (usar la primera etiqueta como referencia)
+        $primeraEtiqueta = $etiquetasObjetos->first();
+
+        // Construir detalle del patrón (SIN EMOJIS para compatibilidad CSV)
+        $observaciones = [];
+        $observaciones[] = "========================================";
+        $observaciones[] = "PATRON DE CORTE - SYNTAX LINE 28";
+        $observaciones[] = "========================================";
+        $observaciones[] = "";
+        $observaciones[] = sprintf("Barra: %.2f m (%d cm)", $longitudBarraM, $longitudBarraCm);
+        $observaciones[] = sprintf("Tipo: %s", ucfirst($tipoPatron ?? 'desconocido'));
+        $observaciones[] = sprintf("Etiquetas procesadas: %d", $numEtiquetas);
+        $observaciones[] = "";
+
+        // Información del patrón optimizado
+        if (isset($patronInfo['aprovechamiento'])) {
+            $observaciones[] = "ESTADISTICAS DEL PATRON";
+            $observaciones[] = sprintf("   - Aprovechamiento: %.1f%%", $patronInfo['aprovechamiento']);
+            if (isset($patronInfo['desperdicio_cm'])) {
+                $observaciones[] = sprintf("   - Desperdicio: %.1f cm", $patronInfo['desperdicio_cm']);
+            }
+            $observaciones[] = "";
+        }
+
+        // Patrón de letras - Mostrar el patrón completo de la barra
+        $patronesLetras = collect($etiquetas)->map(function($item) {
+            $patron = null;
+
+            // Intentar obtener el patrón del item
+            if (is_array($item) && isset($item['patron_letras']) && !empty($item['patron_letras'])) {
+                $patron = $item['patron_letras'];
+            }
+
+            // Si no hay patrón, generar uno por defecto basado en el número de etiquetas
+            if (!$patron) {
+                // Para un patrón simple, asumimos todas las piezas iguales
+                $patron = 'A'; // Por defecto una sola pieza
+                \Log::warning('ProductionLogger: patron_letras vacío para etiqueta', [
+                    'etiqueta' => $item['etiqueta_sub_id'] ?? 'N/A',
+                    'item_completo' => $item
+                ]);
+            }
+
+            return [
+                'etiqueta' => $item['etiqueta_sub_id'] ?? 'N/A',
+                'patron' => $patron
+            ];
+        });
+
+        if ($patronesLetras->isNotEmpty()) {
+            $observaciones[] = "PATRON DE CORTE ELEGIDO";
+            $observaciones[] = "========================================";
+
+            // Si todas las etiquetas tienen el mismo patrón, mostrarlo una vez
+            $patronesUnicos = $patronesLetras->pluck('patron')->unique();
+
+            if ($patronesUnicos->count() === 1) {
+                $observaciones[] = sprintf("   PATRON: %s", $patronesUnicos->first());
+                $observaciones[] = sprintf("   Aplicado a %d etiqueta(s)", $patronesLetras->count());
+            } else {
+                // Si hay diferentes patrones, mostrarlos por etiqueta
+                foreach ($patronesLetras as $info) {
+                    $observaciones[] = sprintf("   - Etiqueta %s -> %s", $info['etiqueta'], $info['patron']);
+                }
+            }
+            $observaciones[] = "";
+        }
+
+        // Información de consumos (materia prima utilizada)
+        $observaciones[] = "CONSUMOS DE MATERIA PRIMA";
+        $observaciones[] = "========================================";
+
+        // Recopilar información de productos consumidos
+        $productosConsumidos = collect();
+        $coladasUtilizadas = collect();
+
+        foreach ($etiquetasObjetos as $etiq) {
+            foreach ($etiq->elementos as $elemento) {
+                // Producto principal
+                if ($elemento->producto_id && $elemento->producto) {
+                    $productosConsumidos->push($elemento->producto);
+                    if ($elemento->producto->codigo_colada) {
+                        $coladasUtilizadas->push($elemento->producto->codigo_colada);
+                    }
+                }
+                // Productos secundarios
+                if ($elemento->producto_id_2 && $elemento->producto2) {
+                    $productosConsumidos->push($elemento->producto2);
+                    if ($elemento->producto2->codigo_colada) {
+                        $coladasUtilizadas->push($elemento->producto2->codigo_colada);
+                    }
+                }
+                if ($elemento->producto_id_3 && $elemento->producto3) {
+                    $productosConsumidos->push($elemento->producto3);
+                    if ($elemento->producto3->codigo_colada) {
+                        $coladasUtilizadas->push($elemento->producto3->codigo_colada);
+                    }
+                }
+            }
+        }
+
+        // Productos únicos utilizados
+        $productosUnicos = $productosConsumidos->unique('id');
+        if ($productosUnicos->isNotEmpty()) {
+            $observaciones[] = "PRODUCTOS UTILIZADOS:";
+            foreach ($productosUnicos as $prod) {
+                $productoBase = $prod->productoBase;
+                $observaciones[] = sprintf(
+                    "   - Codigo: %s | Diametro: %s mm | Longitud: %s m | Stock restante: %.2f kg",
+                    $prod->codigo ?? 'N/A',
+                    $productoBase->diametro ?? 'N/A',
+                    $productoBase->longitud ?? 'N/A',
+                    $prod->peso_stock ?? 0
+                );
+            }
+        } else {
+            $observaciones[] = "   - Sin información de productos consumidos";
+        }
+        $observaciones[] = "";
+
+        // Coladas utilizadas
+        $coladasUnicas = $coladasUtilizadas->unique()->filter();
+        if ($coladasUnicas->isNotEmpty()) {
+            $observaciones[] = "COLADAS UTILIZADAS:";
+            $observaciones[] = "   " . $coladasUnicas->implode(', ');
+            $observaciones[] = "";
+        }
+
+        // Detalle de etiquetas
+        $observaciones[] = "DETALLE DE ETIQUETAS";
+        $observaciones[] = "========================================";
+        foreach ($etiquetasObjetos as $etiq) {
+            $observaciones[] = sprintf(
+                "   - %s - %s | Elementos: %d | Peso: %.2f kg | Diametros: %s",
+                $etiq->etiqueta_sub_id ?? $etiq->id,
+                $etiq->planilla->codigo ?? 'N/A',
+                $etiq->elementos->count(),
+                $etiq->peso,
+                $etiq->elementos->pluck('diametro')->unique()->implode(', ') . 'mm'
+            );
+        }
+
+        $data = [
+            'Fecha y Hora' => now()->format('Y-m-d H:i:s'),
+            'Acción' => 'CORTE SYNTAX LINE',
+            'Usuario' => auth()->user() ? auth()->user()->nombre_completo : 'Sistema',
+            'Usuario 2' => $compañero ? $compañero->nombre_completo : '',
+            'Etiqueta' => $etiquetasIds,
+            'Planilla' => $primeraEtiqueta ? ($primeraEtiqueta->planilla->codigo ?? 'N/A') : 'N/A',
+            'Obra' => $primeraEtiqueta ? ($primeraEtiqueta->planilla->obra->obra ?? 'N/A') : 'N/A',
+            'Cliente' => $primeraEtiqueta ? ($primeraEtiqueta->planilla->cliente->nombre ?? 'N/A') : 'N/A',
+            'Nave' => $maquina->obra->obra ?? 'N/A',
+            'Máquina' => $maquina->nombre,
+            'Tipo Máquina' => $maquina->tipo_material ?? $maquina->tipo,
+            'Operario 1' => auth()->user() ? auth()->user()->nombre_completo : 'Sistema',
+            'Operario 2' => $compañero ? $compañero->nombre_completo : '',
+            'Estado Inicial' => 'pendiente',
+            'Estado Final' => 'fabricando',
+            'Elementos' => $etiquetasObjetos->sum(fn($e) => $e->elementos->count()),
+            'Peso Estimado (kg)' => number_format($pesoTotal, 2, ',', '.'),
+            'Diámetros' => $diametros . ' mm',
+            'Paquete' => 'Sin asignar',
+            'Observaciones' => implode("\n", $observaciones)
+        ];
+
+        self::writeToCSV($data);
+    }
+
+    /**
      * Registra detalle de consumo de stock por diámetro
      *
      * @param Etiqueta $etiqueta

@@ -234,7 +234,11 @@ class PlanificacionController extends Controller
             $camion     = optional($salida->camion)->modelo;
             $pesoTotal  = round($salida->paquetes->sum(fn($p) => optional($p->planilla)->peso_total ?? 0), 0);
             $fechaInicio = Carbon::parse($salida->fecha_salida);
-            $fechaFin   = $fechaInicio->copy()->addHours(3);
+
+            // En vista mensual, hacer eventos de día completo para que no se extiendan
+            $isMonthView = $viewType === 'dayGridMonth';
+            $fechaFin   = $isMonthView ? null : $fechaInicio->copy()->addHours(3);
+
             $color      = $salida->estado === 'completada' ? '#4CAF50' : '#3B82F6';
             $codigoSage = $salida->codigo_sage ? " - {$salida->codigo_sage}" : '';
 
@@ -315,8 +319,7 @@ class PlanificacionController extends Controller
             $evento = [
                 'title'        => $titulo,
                 'id'           => (string) $salida->id,
-                'start'        => $fechaInicio->toDateTimeString(),
-                'end'          => $fechaFin->toDateTimeString(),
+                'start'        => $isMonthView ? $fechaInicio->toDateString() : $fechaInicio->toDateTimeString(),
                 'tipo'         => 'salida',
                 'backgroundColor' => $color,
                 'borderColor'     => $color,
@@ -340,6 +343,14 @@ class PlanificacionController extends Controller
                     'peso_total'   => $pesoTotal,
                 ],
             ];
+
+            // Solo agregar 'end' si no es vista mensual
+            if (!$isMonthView && $fechaFin) {
+                $evento['end'] = $fechaFin->toDateTimeString();
+            } else if ($isMonthView) {
+                // En vista mensual, marcar como evento de día completo
+                $evento['allDay'] = true;
+            }
 
             // Solo agregar resourceId si no es vista timeGridDay
             if ($viewType !== 'timeGridDay') {

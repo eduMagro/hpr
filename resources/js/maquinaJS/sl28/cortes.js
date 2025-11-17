@@ -371,10 +371,19 @@ window.Cortes = (function () {
         });
 
         if (resultado.isConfirmed && seleccionado) {
+            // Generar el patrón de letras para el corte simple (todas las piezas son iguales: A + A + A...)
+            const esquemaSimple = Array(seleccionado.por_barra).fill("A").join(" + ");
+
             return {
                 accion: "fabricar_patron_simple",
                 longitud_m: seleccionado.longitud_m,
                 patron: seleccionado,
+                patron_letras: esquemaSimple, // 🔧 Incluir el patrón de letras
+                patronInfo: {
+                    aprovechamiento: seleccionado.aprovechamiento,
+                    desperdicio_cm: seleccionado.sobra_cm || 0,
+                    esquema: esquemaSimple
+                }
             };
         } else if (resultado.isDenied) {
             return { accion: "optimizar" };
@@ -788,13 +797,29 @@ window.Cortes = (function () {
                 .getElementById("btn-fabricar")
                 .addEventListener("click", () => {
                     limpiarYRestaurar();
+
+                    // Generar el esquema de letras para incluirlo en cada etiqueta
+                    const { esquema } = generarEsquema(patronActual);
+
+                    console.log('🔧 Patrón generado:', esquema);
+                    console.log('📦 Etiquetas con patrón:', patronActual.etiquetas.map((id) => ({
+                        etiqueta_sub_id: id,
+                        patron_letras: esquema
+                    })));
+
                     resolve({
                         accion: "fabricar",
                         longitudBarraCm: patronActual.longitud_barra_cm,
                         etiquetas: patronActual.etiquetas.map((id) => ({
                             etiqueta_sub_id: id,
+                            patron_letras: esquema, // 🔧 Incluir el patrón de letras
                         })),
                         patron: patronActual,
+                        patronInfo: {
+                            aprovechamiento: patronActual.aprovechamiento,
+                            desperdicio_cm: patronActual.desperdicio_cm || 0,
+                            esquema: esquema
+                        }
                     });
                 });
 

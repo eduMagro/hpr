@@ -361,14 +361,23 @@
             });
         }
 
-        // Iniciar
-        initModal();
-        initCompletarTodas();
+        // Inicializar al cargar el DOM
+        document.addEventListener('DOMContentLoaded', function() {
+            initModal();
+            initCompletarTodas();
+        });
+
+        // Reinicializar después de actualizaciones de Livewire
+        document.addEventListener('livewire:navigated', function() {
+            console.log('🔄 Livewire navegó, reinicializando...');
+            modalInitialized = false;
+            initModal();
+            initCompletarTodas();
         });
 
         // Para Livewire v2 (si es el caso)
         document.addEventListener('livewire:load', function() {
-            console.log('🔄 Livewire cargado, inicializando modal...');
+            console.log('🔄 Livewire cargado, inicializando...');
             initModal();
             initCompletarTodas();
         });
