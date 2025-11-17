@@ -229,6 +229,7 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
     Route::post('/maquinas/{id}/cambiar-estado', [MaquinaController::class, 'cambiarEstado'])->name('maquinas.cambiarEstado');
     Route::get('/maquinas/{id}/elementos-pendientes', [MaquinaController::class, 'elementosPendientes'])->name('maquinas.elementosPendientes');
     Route::post('/maquinas/{id}/redistribuir', [MaquinaController::class, 'redistribuir'])->name('maquinas.redistribuir');
+    Route::post('/maquinas/{id}/completar-planilla', [MaquinaController::class, 'completarPlanillaManual'])->name('maquinas.completar-planilla');
     Route::post('/maquinas/sesion/guardar', [MaquinaController::class, 'guardarSesion'])->name('maquinas.sesion.guardar');
     Route::get('/maquinas/{id}/json', [MaquinaController::class, 'showJson'])->name('maquinas.json');
     Route::post('/turnos/cambiar-maquina', [Maquinacontroller::class, 'cambiarMaquina'])->name('turno.cambiarMaquina');
@@ -505,6 +506,19 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
     // Vista del mapa de localizaciones de paquetes (NUEVA)
     Route::get('/mapa-paquetes', [LocalizacionController::class, 'mapaLocalizaciones'])
         ->name('mapa.paquetes');
+
+    // ========== LOGS DE PRODUCCIÓN ==========
+    // Vista de espionaje de producción en tiempo real
+    Route::get('/production-logs', [App\Http\Controllers\ProductionLogController::class, 'index'])
+        ->name('production.logs.index');
+
+    // API: Obtener últimos registros en tiempo real
+    Route::get('/api/production-logs/latest', [App\Http\Controllers\ProductionLogController::class, 'getLatestLogs'])
+        ->name('production.logs.latest');
+
+    // Descargar archivo CSV completo
+    Route::get('/production-logs/download/{fileName}', [App\Http\Controllers\ProductionLogController::class, 'downloadLog'])
+        ->name('production.logs.download');
 
     // Vista para editar el mapa
     Route::get('/localizaciones/editar-mapa', [LocalizacionController::class, 'editarMapa'])

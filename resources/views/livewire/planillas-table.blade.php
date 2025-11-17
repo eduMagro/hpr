@@ -255,7 +255,7 @@
                             <td class="px-2 py-2 border text-xs font-bold">
                                 <div class="flex items-center space-x-2 justify-center">
                                     <!-- Botón Reimportar -->
-                                    <button onclick="abrirModalReimportar({{ $planilla->id }})"
+                                    <button onclick="abrirModalReimportar({{ $planilla->id }})" wire:navigate
                                         class="w-6 h-6 bg-yellow-100 text-yellow-600 rounded hover:bg-yellow-200 flex items-center justify-center"
                                         title="Reimportar Planilla">
                                         <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none"
@@ -266,7 +266,7 @@
                                     </button>
 
                                     <!-- Botón Marcar como revisada -->
-                                    <button wire:click="toggleRevisada({{ $planilla->id }})"
+                                    <button wire:click="toggleRevisada({{ $planilla->id }})" wire:navigate
                                         class="w-6 h-6 bg-indigo-100 text-indigo-700 rounded hover:bg-indigo-200 flex items-center justify-center"
                                         title="Marcar como revisada">
                                         <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24"
@@ -276,17 +276,17 @@
                                     </button>
 
                                     <!-- Botón Ver elementos de esta planilla -->
-                                    <button wire:click="verElementosFiltrados({{ $planilla->id }})"
+                                    <button wire:click="verElementosFiltrados({{ $planilla->id }})" wire:navigate
                                         class="w-6 h-6 bg-purple-100 text-purple-600 rounded hover:bg-purple-200 flex items-center justify-center"
                                         title="Ver elementos de esta planilla">
                                         📋
                                     </button>
 
                                     <!-- Botón Ver -->
-                                    <x-tabla.boton-ver :href="route('planillas.show', $planilla->id)" />
+                                    <x-tabla.boton-ver :href="route('planillas.show', $planilla->id)" wire:navigate />
 
                                     <!-- Botón Eliminar -->
-                                    <x-tabla.boton-eliminar :action="route('planillas.destroy', $planilla->id)" />
+                                    <x-tabla.boton-eliminar :action="route('planillas.destroy', $planilla->id)" wire:navigate />
                                 </div>
                             </td>
                         </tr>
@@ -336,7 +336,7 @@
                     </div>
 
                     <div class="flex justify-end gap-2">
-                        <button type="button" onclick="cerrarModalReimportar()"
+                        <button type="button" onclick="cerrarModalReimportar()" wire:navigate
                             class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-semibold px-4 py-2 rounded">
                             Cancelar
                         </button>

@@ -363,6 +363,14 @@ class PaqueteController extends Controller
             // 14) Guardar en sesión los IDs de elementos reempaquetados (para otras vistas/lógica)
             session(['elementos_reempaquetados' => $todosElementos->pluck('id')->toArray()]);
 
+            // 📊 LOG DE PRODUCCIÓN EN CSV - Creación de paquete
+            \App\Services\ProductionLogger::logCreacionPaquete(
+                $paquete,
+                $etiquetasSubIds,
+                $maquina,
+                \Illuminate\Support\Facades\Auth::user()
+            );
+
             DB::commit();
 
             return response()->json([
@@ -771,6 +779,9 @@ class PaqueteController extends Controller
                 ], 400);
             }
 
+            // Guardar peso anterior para logs
+            $pesoAnterior = $paquete->peso;
+
             // Asignar etiqueta al paquete
             $etiqueta->paquete_id = $paquete->id;
             $etiqueta->estado = 'en paquete';
@@ -791,6 +802,14 @@ class PaqueteController extends Controller
                 'fecha_solicitud' => now(),
                 'ejecutado_por' => auth()->id(),
             ]);
+
+            // 📊 LOG DE PRODUCCIÓN EN CSV - Añadir etiqueta a paquete
+            \App\Services\ProductionLogger::logAñadirEtiquetaPaquete(
+                $paquete,
+                $etiqueta,
+                $pesoAnterior,
+                auth()->user()
+            );
 
             DB::commit();
 
@@ -884,6 +903,15 @@ class PaqueteController extends Controller
                 'ejecutado_por' => auth()->id(),
             ]);
 
+            // 📊 LOG DE PRODUCCIÓN EN CSV - Eliminar etiqueta de paquete
+            \App\Services\ProductionLogger::logEliminarEtiquetaPaquete(
+                $paquete,
+                $etiqueta,
+                $pesoAnterior,
+                $etiquetasRestantes,
+                auth()->user()
+            );
+
             DB::commit();
 
             return response()->json([
@@ -934,6 +962,11 @@ class PaqueteController extends Controller
                 'usuario' => auth()->user()->nombre_completo ?? 'desconocido'
             ]);
 
+            // 📊 Obtener IDs de etiquetas para logs (antes de liberarlas)
+            $etiquetasIds = Etiqueta::where('paquete_id', $paquete->id)
+                ->pluck('etiqueta_sub_id')
+                ->toArray();
+
             // Liberar todas las etiquetas del paquete (solo quitar paquete_id, mantener estado)
             $etiquetasLiberadas = Etiqueta::where('paquete_id', $paquete->id)
                 ->update([
@@ -957,6 +990,15 @@ class PaqueteController extends Controller
 
             // Eliminar el paquete
             $codigoPaquete = $paquete->codigo;
+
+            // 📊 LOG DE PRODUCCIÓN EN CSV - Eliminar paquete completo
+            \App\Services\ProductionLogger::logEliminarPaquete(
+                $paquete,
+                $etiquetasLiberadas,
+                $etiquetasIds,
+                auth()->user()
+            );
+
             $paquete->delete();
 
             DB::commit();

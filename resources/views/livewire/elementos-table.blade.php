@@ -69,8 +69,8 @@
                         <x-tabla.encabezado-ordenable campo="producto2" :sortActual="$sort" :orderActual="$order" texto="M. Prima 2" />
                         <x-tabla.encabezado-ordenable campo="producto3" :sortActual="$sort" :orderActual="$order" texto="M. Prima 3" />
                         <x-tabla.encabezado-ordenable campo="figura" :sortActual="$sort" :orderActual="$order" texto="Figura" />
-                        <x-tabla.encabezado-ordenable campo="peso" :sortActual="$sort" :orderActual="$order" texto="Peso (kg)" />
-                        <x-tabla.encabezado-ordenable campo="longitud" :sortActual="$sort" :orderActual="$order" texto="Longitud (m)" />
+                        <x-tabla.encabezado-ordenable campo="peso" :sortActual="$sort" :orderActual="$order" texto="Peso (kg)" wire:navigate />
+                        <x-tabla.encabezado-ordenable campo="longitud" :sortActual="$sort" :orderActual="$order" texto="Longitud (m)" wire:navigate />
                         <x-tabla.encabezado-ordenable campo="estado" :sortActual="$sort" :orderActual="$order" texto="Estado" />
                         <th class="p-2 border">Acciones</th>
                     </tr>
@@ -285,7 +285,7 @@
                                     <select
                                         class="text-xs border rounded px-1 py-0.5 flex-1 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none"
                                         data-id="{{ $elemento->id }}" data-field="maquina_id"
-                                        onchange="actualizarCampoElemento(this)">
+                                        onchange="actualizarCampoElemento(this)" wire:navigate>
                                         <option value="">N/A</option>
                                         @foreach ($maquinas->whereIn('tipo', ['cortadora_dobladora', 'estribadora', 'cortadora manual']) as $maquina)
                                             <option value="{{ $maquina->id }}" @selected($elemento->maquina_id === $maquina->id)>
@@ -297,7 +297,7 @@
                                         class="w-6 h-6 bg-blue-100 text-blue-600 rounded hover:bg-blue-200 flex items-center justify-center abrir-modal-dibujo flex-shrink-0 cursor-pointer"
                                         data-id="{{ $elemento->id }}" data-codigo="{{ $elemento->codigo }}"
                                         data-dimensiones="{{ $elemento->dimensiones }}"
-                                        data-peso="{{ $elemento->peso_kg }}" title="Ver figura del elemento (solo hover)">
+                                        data-peso="{{ $elemento->peso_kg }}" title="Ver figura del elemento (solo hover)" wire:navigate>
                                         <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 pointer-events-none" fill="none"
                                             viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                                             <path stroke-linecap="round" stroke-linejoin="round"
@@ -314,7 +314,7 @@
                                 <select
                                     class="text-xs border rounded px-1 py-0.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none"
                                     data-id="{{ $elemento->id }}" data-field="maquina_id_2"
-                                    onchange="actualizarCampoElemento(this)">
+                                    onchange="actualizarCampoElemento(this)" wire:navigate>
                                     <option value="">N/A</option>
                                     @foreach ($maquinas->whereIn('tipo', ['cortadora_dobladora', 'estribadora', 'cortadora_manual', 'dobladora_manual', 'soldadora']) as $maquina)
                                         <option value="{{ $maquina->id }}" @selected($elemento->maquina_id_2 === $maquina->id)>
@@ -329,7 +329,7 @@
                                 <select
                                     class="text-xs border rounded px-1 py-0.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none"
                                     data-id="{{ $elemento->id }}" data-field="maquina_id_3"
-                                    onchange="actualizarCampoElemento(this)">
+                                    onchange="actualizarCampoElemento(this)" wire:navigate>
                                     <option value="">N/A</option>
                                     @foreach ($maquinas->whereIn('tipo', ['soldadora', 'ensambladora']) as $maquina)
                                         <option value="{{ $maquina->id }}" @selected($elemento->maquina_id_3 === $maquina->id)>

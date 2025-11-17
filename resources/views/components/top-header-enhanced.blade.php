@@ -2,7 +2,6 @@
     open: false,
     notificationsOpen: false,
     userMenuOpen: false,
-    quickActionsOpen: false,
     sidebarOpen: window.innerWidth >= 768 ? (localStorage.getItem('sidebar_open') !== 'false') : false,
     isToggling: false,
 
@@ -47,91 +46,6 @@
                     <x-application-logo
                         class="block h-8 w-auto fill-current text-gray-800 dark:text-gray-200 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition" />
                 </a>
-            </div>
-
-            <!-- Center - Quick Actions -->
-            <div class="hidden lg:flex items-center translate-x-12 z-10">
-                <!-- Acciones Rápidas Dropdown -->
-                <div class="relative" x-data="{ open: false }">
-                    <button @click="open = !open" @click.away="open = false"
-                        class="flex items-center space-x-2 px-4 py-2 text-sm text-gray-300 dark:text-gray-300 hover:bg-gray-700 dark:hover:bg-gray-700 rounded-lg transition">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M13 10V3L4 14h7v7l9-11h-7z"></path>
-                        </svg>
-                        <span>Acciones Rápidas</span>
-                        <svg class="w-4 h-4" :class="open ? 'rotate-180' : ''" fill="none" stroke="currentColor"
-                            viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7">
-                            </path>
-                        </svg>
-                    </button>
-
-                    <!-- Dropdown Content -->
-                    <div x-show="open" x-transition x-cloak
-                        class="absolute -left-16 mt-4 w-80 bg-gray-900 dark:bg-gray-800 rounded-lg shadow-xl border border-gray-800 dark:border-gray-700 py-2 z-50">
-                        <div class="px-4 py-2 border-b border-gray-800 dark:border-gray-700">
-                            <h3 class="text-sm font-semibold text-gray-300 dark:text-white">Acciones Rápidas</h3>
-                            <p class="text-xs text-gray-400 dark:text-gray-400">Accede rápidamente a funciones comunes
-                            </p>
-                        </div>
-
-                        <div class="grid grid-cols-2 gap-2 p-3">
-                            <!-- Nueva Planilla -->
-                            <a href="{{ route('planillas.create') }}" wire:navigate
-                                class="flex flex-col items-center p-3 rounded-lg hover:bg-gray-700 dark:hover:bg-gray-700 transition text-center group">
-                                <span class="text-2xl mb-1">📄</span>
-                                <span
-                                    class="text-xs font-medium text-gray-300 dark:text-gray-300 group-hover:text-blue-600 dark:group-hover:text-blue-400">Nueva
-                                    Planilla</span>
-                            </a>
-
-                            <!-- Nueva Entrada -->
-                            <a href="{{ route('entradas.create') }}" wire:navigate
-                                class="flex flex-col items-center p-3 rounded-lg hover:bg-gray-700 dark:hover:bg-gray-700 transition text-center group">
-                                <span class="text-2xl mb-1">⬇️</span>
-                                <span
-                                    class="text-xs font-medium text-gray-300 dark:text-gray-300 group-hover:text-blue-600 dark:group-hover:text-blue-400">Nueva
-                                    Entrada</span>
-                            </a>
-
-                            <!-- Nueva Salida -->
-                            <a href="{{ route('salidas-ferralla.create') }}" wire:navigate
-                                class="flex flex-col items-center p-3 rounded-lg hover:bg-gray-700 dark:hover:bg-gray-700 transition text-center group">
-                                <span class="text-2xl mb-1">➡️</span>
-                                <span
-                                    class="text-xs font-medium text-gray-300 dark:text-gray-300 group-hover:text-blue-600 dark:group-hover:text-blue-400">Nueva
-                                    Salida</span>
-                            </a>
-
-                            <!-- Nuevo Pedido -->
-                            <a href="{{ route('pedidos.create') }}" wire:navigate
-                                class="flex flex-col items-center p-3 rounded-lg hover:bg-gray-700 dark:hover:bg-gray-700 transition text-center group">
-                                <span class="text-2xl mb-1">🛒</span>
-                                <span
-                                    class="text-xs font-medium text-gray-300 dark:text-gray-300 group-hover:text-blue-600 dark:group-hover:text-blue-400">Nuevo
-                                    Pedido</span>
-                            </a>
-
-                            <!-- Nuevo Cliente -->
-                            <a href="{{ route('clientes.create') }}" wire:navigate
-                                class="flex flex-col items-center p-3 rounded-lg hover:bg-gray-700 dark:hover:bg-gray-700 transition text-center group">
-                                <span class="text-2xl mb-1">👥</span>
-                                <span
-                                    class="text-xs font-medium text-gray-300 dark:text-gray-300 group-hover:text-blue-600 dark:group-hover:text-blue-400">Nuevo
-                                    Cliente</span>
-                            </a>
-
-                            <!-- Estadísticas -->
-                            <a href="{{ route('estadisticas.index') }}" wire:navigate
-                                class="flex flex-col items-center p-3 rounded-lg hover:bg-gray-700 dark:hover:bg-gray-700 transition text-center group">
-                                <span class="text-2xl mb-1">📊</span>
-                                <span
-                                    class="text-xs font-medium text-gray-300 dark:text-gray-300 group-hover:text-blue-600 dark:group-hover:text-blue-400">Estadísticas</span>
-                            </a>
-                        </div>
-                    </div>
-                </div>
             </div>
 
             <!-- Right Side - User Actions -->
@@ -193,6 +107,16 @@
                                     </path>
                                 </svg>
                                 <span>Dashboard</span>
+                            </a>
+
+                            <a href="{{ route('production.logs.index') }}" wire:navigate
+                                class="flex items-center space-x-3 px-4 py-2 text-sm text-gray-300 dark:text-gray-300 hover:bg-gray-700 dark:hover:bg-gray-700 transition">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z">
+                                    </path>
+                                </svg>
+                                <span>📊 Espionaje Producción</span>
                             </a>
 
                             <a href="{{ route('ayuda.index') }}" wire:navigate

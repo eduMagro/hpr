@@ -21,7 +21,7 @@
                         <x-tabla.encabezado-ordenable campo="numero_etiqueta" :sortActual="$sort" :orderActual="$order" texto="Número de Etiqueta" />
                         <x-tabla.encabezado-ordenable campo="nombre" :sortActual="$sort" :orderActual="$order" texto="Nombre" />
                         <th class="p-2 border">Marca</th>
-                        <x-tabla.encabezado-ordenable campo="peso" :sortActual="$sort" :orderActual="$order" texto="Peso (kg)" />
+                        <x-tabla.encabezado-ordenable campo="peso" :sortActual="$sort" :orderActual="$order" texto="Peso (kg)" wire:navigate />
                         <x-tabla.encabezado-ordenable campo="inicio_fabricacion" :sortActual="$sort" :orderActual="$order" texto="Inicio Fabricación" />
                         <x-tabla.encabezado-ordenable campo="final_fabricacion" :sortActual="$sort" :orderActual="$order" texto="Final Fabricación" />
                         <x-tabla.encabezado-ordenable campo="inicio_ensamblado" :sortActual="$sort" :orderActual="$order" texto="Inicio Ensamblado" />
@@ -366,7 +366,7 @@
                                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                                                 </svg>
                                             </button>
-                                            <button @click="mostrar({{ $etiqueta->id }})"
+                                            <button @click="mostrar({{ $etiqueta->id }})" wire:navigate
                                                 class="w-6 h-6 bg-blue-100 text-blue-600 rounded hover:bg-blue-200 flex items-center justify-center"
                                                 title="Ver">
                                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4"
@@ -415,7 +415,7 @@
 
             <div class="relative bg-white p-4 rounded-lg max-w-4xl">
                 <!-- Botón de cierre -->
-                <button onclick="cerrarModal()" aria-label="Cerrar" id="modalClose"
+                <button onclick="cerrarModal()" wire:navigate aria-label="Cerrar" id="modalClose"
                     class="absolute -top-3 -right-3 bg-white border border-black
                    rounded-full w-7 h-7 flex items-center justify-center
                    text-xl leading-none hover:bg-red-100 z-10">
@@ -576,7 +576,7 @@
                                 </select>
 
                                 <button type="button" class="bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700"
-                                    onclick="const modo = document.getElementById('modo-impresion-${etiquetaId}').value; imprimirEtiquetas(['${subId}'], modo)">
+                                    onclick="const modo = document.getElementById('modo-impresion-${etiquetaId}').value; imprimirEtiquetas(['${subId}'], modo)" wire:navigate>
                                     🖨️
                                 </button>
                             </div>
@@ -651,7 +651,7 @@
             modal.classList.remove('flex');
         }
     </script>
-    <script src="{{ asset('js/maquinaJS/canvasMaquina.js') }}" onerror="console.warn('canvasMaquina.js no encontrado')"></script>
+    <script src="{{ asset('js/maquinaJS/canvasMaquina.js') }}" onerror="console.warn('canvasMaquina.js no encontrado')" wire:navigate></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <script>
         const domSafe = (v) => String(v).replace(/[^A-Za-z0-9_-]/g, '-');

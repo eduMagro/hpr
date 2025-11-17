@@ -155,7 +155,7 @@
                                         <path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                                     </svg>
                                 </a>
-                                <button type="button" onclick="abrirModalMovimientoLibre('{{ $producto->codigo }}')" class="w-6 h-6 bg-green-100 text-green-600 rounded hover:bg-green-200 flex items-center justify-center" title="Mover producto">
+                                <button type="button" onclick="abrirModalMovimientoLibre('{{ $producto->codigo }}')" wire:navigate wire:navigate class="w-6 h-6 bg-green-100 text-green-600 rounded hover:bg-green-200 flex items-center justify-center" title="Mover producto">
                                     <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
                                         <path d="M8.5 2A1.5 1.5 0 0 1 10 3.5V10h.5V4A1.5 1.5 0 0 1 13 4v6h.5V5.5a1.5 1.5 0 0 1 3 0V10h.5V7a1.5 1.5 0 0 1 3 0v9.5a3.5 3.5 0 0 1-7 0V18h-2a3 3 0 0 1-3-3v-4H8V3.5A1.5 1.5 0 0 1 8.5 2z" />
                                     </svg>
@@ -165,7 +165,7 @@
                                         <path d="M13.5 3.5c-2 2-1.5 4-3 5.5s-4 1-4 5a6 6 0 0012 0c0-2-1-3.5-2-4.5s-1-3-3-6z" />
                                     </svg>
                                 </a>
-                                <x-tabla.boton-eliminar :action="route('productos.destroy', $producto->id)" />
+                                <x-tabla.boton-eliminar :action="route('productos.destroy', $producto->id)" wire:navigate />
                             </div>
                         </td>
                     </tr>

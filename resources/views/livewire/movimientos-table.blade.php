@@ -5,32 +5,32 @@
         <table class="min-w-full table-auto">
             <thead class="bg-blue-500 text-white text-10">
                 <tr class="text-center text-xs uppercase">
-                    <th class="p-2 border cursor-pointer" wire:click="sortBy('id')">
+                    <th class="p-2 border cursor-pointer" wire:click="sortBy('id')" wire:navigate>
                         ID @if($sort === 'id'){{ $order === 'asc' ? '↑' : '↓' }}@endif
                     </th>
-                    <th class="p-2 border cursor-pointer" wire:click="sortBy('tipo')">
+                    <th class="p-2 border cursor-pointer" wire:click="sortBy('tipo')" wire:navigate>
                         Tipo @if($sort === 'tipo'){{ $order === 'asc' ? '↑' : '↓' }}@endif
                     </th>
-                    <th class="p-2 border cursor-pointer" wire:click="sortBy('pedido_producto_id')">
+                    <th class="p-2 border cursor-pointer" wire:click="sortBy('pedido_producto_id')" wire:navigate>
                         Línea Pedido @if($sort === 'pedido_producto_id'){{ $order === 'asc' ? '↑' : '↓' }}@endif
                     </th>
                     <th class="p-2 border">Producto</th>
-                    <th class="p-2 border cursor-pointer" wire:click="sortBy('descripcion')">
+                    <th class="p-2 border cursor-pointer" wire:click="sortBy('descripcion')" wire:navigate>
                         Descripción @if($sort === 'descripcion'){{ $order === 'asc' ? '↑' : '↓' }}@endif
                     </th>
                     <th class="p-2 border">Nave</th>
-                    <th class="p-2 border cursor-pointer" wire:click="sortBy('prioridad')">
+                    <th class="p-2 border cursor-pointer" wire:click="sortBy('prioridad')" wire:navigate>
                         Prioridad @if($sort === 'prioridad'){{ $order === 'asc' ? '↑' : '↓' }}@endif
                     </th>
                     <th class="p-2 border">Solicitado por</th>
                     <th class="p-2 border">Ejecutado por</th>
-                    <th class="p-2 border cursor-pointer" wire:click="sortBy('estado')">
+                    <th class="p-2 border cursor-pointer" wire:click="sortBy('estado')" wire:navigate>
                         Estado @if($sort === 'estado'){{ $order === 'asc' ? '↑' : '↓' }}@endif
                     </th>
-                    <th class="p-2 border cursor-pointer" wire:click="sortBy('fecha_solicitud')">
+                    <th class="p-2 border cursor-pointer" wire:click="sortBy('fecha_solicitud')" wire:navigate>
                         Fecha Solicitud @if($sort === 'fecha_solicitud'){{ $order === 'asc' ? '↑' : '↓' }}@endif
                     </th>
-                    <th class="p-2 border cursor-pointer" wire:click="sortBy('fecha_ejecucion')">
+                    <th class="p-2 border cursor-pointer" wire:click="sortBy('fecha_ejecucion')" wire:navigate>
                         Fecha Ejecución @if($sort === 'fecha_ejecucion'){{ $order === 'asc' ? '↑' : '↓' }}@endif
                     </th>
                     <th class="p-2 border">Origen</th>
@@ -220,7 +220,7 @@
                         </td>
 
                         <td class="px-6 py-4 text-center border">
-                            <x-tabla.boton-eliminar :action="route('movimientos.destroy', $movimiento->id)" />
+                            <x-tabla.boton-eliminar :action="route('movimientos.destroy', $movimiento->id)" wire:navigate />
                         </td>
                     </tr>
                 @empty

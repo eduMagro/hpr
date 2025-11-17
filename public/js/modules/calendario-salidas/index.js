@@ -135,7 +135,9 @@ document.addEventListener("DOMContentLoaded", () => {
         }
         // Actualizar estilos
         actualizarEstilosContenedores();
-        calendar.refetchEvents();
+        if (calendar && typeof calendar.refetchEvents === 'function') {
+            calendar.refetchEvents();
+        }
     });
 
     const debounce = (fn, ms = 150) => {
@@ -147,7 +149,9 @@ document.addEventListener("DOMContentLoaded", () => {
     };
 
     const refiltrar = debounce(() => {
-        calendar.refetchEvents(); // eventDidMount hará el resaltado
+        if (calendar && typeof calendar.refetchEvents === 'function') {
+            calendar.refetchEvents(); // eventDidMount hará el resaltado
+        }
     }, 120);
 
     filtroCodigo?.addEventListener("input", refiltrar);
@@ -187,7 +191,9 @@ document.addEventListener("DOMContentLoaded", () => {
         // Actualizar estilos
         actualizarEstilosContenedores();
         // Refrescar eventos del calendario
-        calendar.refetchEvents();
+        if (calendar && typeof calendar.refetchEvents === 'function') {
+            calendar.refetchEvents();
+        }
     });
 
     checkboxSoloPlanillas?.addEventListener("change", (e) => {
@@ -201,7 +207,9 @@ document.addEventListener("DOMContentLoaded", () => {
         // Actualizar estilos
         actualizarEstilosContenedores();
         // Refrescar eventos del calendario
-        calendar.refetchEvents();
+        if (calendar && typeof calendar.refetchEvents === 'function') {
+            calendar.refetchEvents();
+        }
     });
 
     // Aplicar estilos iniciales
@@ -210,6 +218,8 @@ document.addEventListener("DOMContentLoaded", () => {
     btnLimpiar?.addEventListener("click", () => {
         if (filtroCodigo) filtroCodigo.value = "";
         if (filtroNombre) filtroNombre.value = "";
-        calendar.refetchEvents();
+        if (calendar && typeof calendar.refetchEvents === 'function') {
+            calendar.refetchEvents();
+        }
     });
 });

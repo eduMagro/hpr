@@ -20,10 +20,23 @@
     showRecent: false,
     isToggling: false,
 
+    // Cerrar paneles desplegables en navegación
+    closePanels() {
+        this.showFavorites = false;
+        this.showRecent = false;
+        this.searchOpen = false;
+    },
+
     init() {
         // Guardar estado inicial sin cambios visuales
         if (window.innerWidth < 768) {
             localStorage.setItem('sidebar_open', 'false');
+        }
+
+        // Restaurar sección activa desde localStorage
+        const savedActiveSection = localStorage.getItem('sidebar_active_section');
+        if (savedActiveSection) {
+            this.activeSection = savedActiveSection;
         }
 
         // Detectar sección activa inicial
@@ -77,6 +90,9 @@
 
         // Actualizar sección activa cuando Livewire navega
         document.addEventListener('livewire:navigated', () => {
+            // Cerrar paneles desplegables
+            this.closePanels();
+
             // Pequeño delay para asegurar que la URL se actualizó
             setTimeout(() => {
                 this.updateActiveSection();
@@ -97,6 +113,8 @@
         @foreach($section['submenu'] as $item)
         if (this.isRouteActive('{{ route($item['route']) }}')) {
             this.activeSection = '{{ $section['id'] }}';
+            // Guardar en localStorage para persistencia
+            localStorage.setItem('sidebar_active_section', '{{ $section['id'] }}');
             // Agregar a recientes cuando navegamos
             this.addToRecent('{{ $item['route'] }}', '{{ $item['label'] }}', '{{ $section['label'] }}', '{{ $item['icon'] }}');
         }
@@ -428,9 +446,17 @@
                     <div class="relative">
                         <button
                             @click="if (open) {
-                                activeSection = activeSection === '{{ $section['id'] }}' ? null : '{{ $section['id'] }}'
+                                activeSection = activeSection === '{{ $section['id'] }}' ? null : '{{ $section['id'] }}';
+                                localStorage.setItem('sidebar_active_section', activeSection || '');
                             } else {
-                                window.location.href = '{{ route($section['route']) }}'
+                                // Cuando está cerrado, abrir el sidebar y expandir la sección
+                                // Usar toggleSidebar() para mantener la misma animación del logo
+                                toggleSidebar();
+                                // Después de la animación, expandir la sección
+                                setTimeout(() => {
+                                    activeSection = '{{ $section['id'] }}';
+                                    localStorage.setItem('sidebar_active_section', '{{ $section['id'] }}');
+                                }, 400);
                             }"
                             class="w-full flex items-center justify-between px-3 py-2.5 rounded-lg transition group
                                    {{ $currentRoute === $section['route'] ? 'bg-' . $section['color'] . '-600 text-white shadow-lg' : 'text-gray-300 hover:bg-gray-800 hover:text-white' }}">

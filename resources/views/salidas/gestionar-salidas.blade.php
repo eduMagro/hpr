@@ -1,9 +1,33 @@
 <x-app-layout>
     <x-slot name="title">Gestionar Salidas - {{ config('app.name') }}</x-slot>
-    <x-menu.salidas />
+
+    {{-- Header con título y botón de volver --}}
+    <div class="bg-white border-b border-gray-200 shadow-sm mb-6">
+        <div class="container mx-auto px-2 sm:px-4 md:px-6 py-4">
+            <div class="flex items-center gap-3">
+                <h1 class="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900">
+                    Gestionar Salidas para Planillas
+                </h1>
+
+                <a href="{{ route('planificacion.index') }}"
+                   wire:navigate
+                   class="inline-flex items-center gap-2 text-gray-600 hover:text-blue-600 transition-colors group flex-shrink-0"
+                   title="Volver a Planificación de Portes">
+                    <svg class="w-5 h-5 transform group-hover:-translate-x-1 transition-transform"
+                         fill="none"
+                         stroke="currentColor"
+                         viewBox="0 0 24 24">
+                        <path stroke-linecap="round"
+                              stroke-linejoin="round"
+                              stroke-width="2"
+                              d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
+                    </svg>
+                </a>
+            </div>
+        </div>
+    </div>
 
     <div class="container mx-auto px-2 sm:px-4 md:px-6 py-6">
-        <h1 class="text-2xl sm:text-3xl font-bold mb-4 sm:mb-6 text-gray-900">Gestionar Salidas para Planillas</h1>
 
         {{-- Resumen de Estados --}}
         @php
@@ -190,25 +214,90 @@
                                 <div class="flex items-center justify-between mb-2">
                                     <div class="font-semibold text-gray-900">📋 Paquetes Disponibles</div>
                                     <button type="button" id="btn-toggle-paquetes"
-                                            onclick="toggleFiltroPaquetes()"
-                                            class="text-xs px-3 py-1 rounded-md transition-colors {{ $mostrarTodosPaquetes ? 'bg-orange-500 hover:bg-orange-600 text-white' : 'bg-blue-500 hover:bg-blue-600 text-white' }}">
-                                        {{ $mostrarTodosPaquetes ? '📍 Ver solo obra/cliente' : '🌐 Ver todos pendientes' }}
+                                            onclick="event.preventDefault(); event.stopPropagation(); toggleFiltroPaquetes();"
+                                            title="{{ $mostrarTodosPaquetes ? 'Mostrar solo paquetes de las ' . $planillas->count() . ' planillas que estás gestionando' : 'Mostrar también paquetes pendientes de otras planillas (para mezclar salidas)' }}"
+                                            class="text-xs px-3 py-1.5 rounded-md transition-colors shadow-sm font-medium {{ $mostrarTodosPaquetes ? 'bg-orange-500 hover:bg-orange-600 text-white' : 'bg-blue-500 hover:bg-blue-600 text-white' }}">
+                                        @if($mostrarTodosPaquetes)
+                                            <span class="flex items-center gap-1">
+                                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"/>
+                                                </svg>
+                                                Solo estas planillas
+                                            </span>
+                                        @else
+                                            <span class="flex items-center gap-1">
+                                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                                                </svg>
+                                                Incluir otros paquetes
+                                            </span>
+                                        @endif
                                     </button>
                                 </div>
-                                <p class="text-xs text-gray-600">
-                                    @if($mostrarTodosPaquetes)
-                                        Mostrando <strong>TODOS</strong> los paquetes pendientes sin filtro
-                                    @else
-                                        Mostrando solo paquetes de <strong>esta obra/cliente</strong>
-                                    @endif
-                                </p>
+                                <div class="bg-blue-50 border border-blue-200 rounded-md px-3 py-2 mb-3">
+                                    <p class="text-xs text-blue-800">
+                                        @if($mostrarTodosPaquetes)
+                                            <strong>🌐 Mostrando:</strong> Todos los paquetes pendientes sin asignar ({{ $paquetesTodos->count() }} total)
+                                        @else
+                                            <strong>📋 Mostrando:</strong> Solo paquetes de las {{ $planillas->count() }} planillas seleccionadas ({{ $paquetesFiltrados->count() }} paquetes)
+                                        @endif
+                                    </p>
+                                </div>
+
+                                {{-- Filtros adicionales --}}
+                                <div class="space-y-2 mb-3" wire:ignore>
+                                    {{-- Filtro por Obra --}}
+                                    <div>
+                                        <label class="block text-xs font-medium text-gray-700 mb-1">🏗️ Filtrar por Obra</label>
+                                        <select id="filtro-obra"
+                                                onchange="aplicarFiltros()"
+                                                class="w-full text-xs border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                                            <option value="">-- Todas las obras --</option>
+                                        </select>
+                                    </div>
+
+                                    {{-- Filtro por Cliente --}}
+                                    <div>
+                                        <label class="block text-xs font-medium text-gray-700 mb-1">👤 Filtrar por Cliente</label>
+                                        <select id="filtro-cliente"
+                                                onchange="aplicarFiltros()"
+                                                class="w-full text-xs border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                                            <option value="">-- Todos los clientes --</option>
+                                        </select>
+                                    </div>
+
+                                    {{-- Filtro por Planilla --}}
+                                    <div>
+                                        <label class="block text-xs font-medium text-gray-700 mb-1">📄 Filtrar por Planilla</label>
+                                        <select id="filtro-planilla"
+                                                onchange="aplicarFiltros()"
+                                                class="w-full text-xs border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                                            <option value="">-- Todas las planillas --</option>
+                                        </select>
+                                    </div>
+
+                                    {{-- Botón limpiar filtros --}}
+                                    <button type="button"
+                                            onclick="event.preventDefault(); limpiarFiltros();"
+                                            class="w-full text-xs px-2 py-1.5 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-md transition-colors">
+                                        🔄 Limpiar Filtros
+                                    </button>
+                                </div>
                             </div>
                             <div class="paquetes-zona drop-zone bg-white rounded border-2 border-dashed border-gray-400 p-2 min-h-[300px]"
-                                data-salida-id="null">
+                                data-salida-id="null"
+                                wire:ignore.self>
                                 @foreach ($paquetesDisponibles as $paquete)
                                     <div class="paquete-item bg-white border border-gray-300 rounded p-2 mb-2 cursor-move hover:shadow-md transition-shadow"
-                                        draggable="true" data-paquete-id="{{ $paquete->id }}"
-                                        data-peso="{{ $paquete->peso }}">
+                                        draggable="true"
+                                        data-paquete-id="{{ $paquete->id }}"
+                                        data-peso="{{ $paquete->peso }}"
+                                        data-obra="{{ $paquete->planilla->obra->obra ?? '' }}"
+                                        data-obra-id="{{ $paquete->planilla->obra_id ?? '' }}"
+                                        data-cliente="{{ $paquete->planilla->cliente->empresa ?? '' }}"
+                                        data-cliente-id="{{ $paquete->planilla->cliente_id ?? '' }}"
+                                        data-planilla="{{ $paquete->planilla->codigo ?? '' }}"
+                                        data-planilla-id="{{ $paquete->planilla_id ?? '' }}">
                                         <div class="flex items-center justify-between text-xs">
                                             <span class="font-medium">📦 {{ $paquete->codigo }}</span>
                                             <button onclick="mostrarDibujo({{ $paquete->id }}); event.stopPropagation();"
@@ -325,6 +414,53 @@
 
     @endphp
 
+    {{-- Estilos para soporte táctil --}}
+    <style>
+        /* Mejorar experiencia táctil en móviles */
+        .paquete-item {
+            touch-action: none;
+            user-select: none;
+            -webkit-user-select: none;
+            transition: opacity 0.2s ease;
+        }
+
+        /* Elemento fantasma que sigue el dedo */
+        .ghost-dragging {
+            transition: none !important;
+            will-change: transform;
+            border-radius: 0.5rem;
+        }
+
+        .drop-zone {
+            transition: background-color 0.2s ease;
+            min-height: 100px;
+        }
+
+        /* Hacer las zonas de drop más visibles en móvil */
+        @media (max-width: 768px) {
+            .drop-zone {
+                min-height: 150px;
+                border-width: 3px;
+            }
+
+            .paquete-item {
+                cursor: grab;
+                margin-bottom: 0.75rem;
+            }
+
+            .paquete-item:active {
+                cursor: grabbing;
+            }
+        }
+
+        /* Desktop */
+        @media (min-width: 769px) {
+            .paquete-item {
+                cursor: move;
+            }
+        }
+    </style>
+
     {{-- SweetAlert2 --}}
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
@@ -344,4 +480,40 @@
 
     <script src="{{ asset('js/gestion-salidas.js') }}"></script>
     <script src="{{ asset('js/elementosJs/figuraElemento.js') }}"></script>
+
+    {{-- Debug y inicialización de filtros --}}
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('🔍 DEBUG: Verificando elementos...');
+
+            const selectObra = document.getElementById('filtro-obra');
+            const selectCliente = document.getElementById('filtro-cliente');
+            const selectPlanilla = document.getElementById('filtro-planilla');
+            const paquetes = document.querySelectorAll('.paquetes-zona[data-salida-id="null"] .paquete-item');
+
+            console.log('Selector Obra encontrado:', selectObra !== null);
+            console.log('Selector Cliente encontrado:', selectCliente !== null);
+            console.log('Selector Planilla encontrado:', selectPlanilla !== null);
+            console.log('Paquetes encontrados:', paquetes.length);
+
+            if (paquetes.length > 0) {
+                const primerPaquete = paquetes[0];
+                console.log('Datos del primer paquete:', {
+                    obra: primerPaquete.dataset.obra,
+                    cliente: primerPaquete.dataset.cliente,
+                    planilla: primerPaquete.dataset.planilla
+                });
+            }
+
+            // Forzar inicialización de filtros después de un pequeño delay
+            setTimeout(() => {
+                if (typeof inicializarFiltros === 'function') {
+                    console.log('🔄 Forzando inicialización de filtros...');
+                    inicializarFiltros();
+                } else {
+                    console.error('❌ Función inicializarFiltros no disponible');
+                }
+            }, 500);
+        });
+    </script>
 </x-app-layout>

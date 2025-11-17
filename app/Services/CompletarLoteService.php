@@ -364,6 +364,7 @@ class CompletarLoteService
                 'tipo'              => 'Recarga materia prima',
                 'maquina_origen'    => null,
                 'maquina_destino'   => $maquina->id,
+                'nave_id'           => $maquina->obra_id, // Nave donde se ejecuta el movimiento
                 'producto_id'       => $productoId,
                 'producto_base_id'  => $productoBase->id,
                 'estado'            => 'pendiente',

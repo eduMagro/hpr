@@ -7,17 +7,17 @@
             <table class="w-full min-w-[1600px] border border-gray-300 rounded-lg">
                 <thead class="bg-blue-500 text-white text-10">
                     <tr class="text-center text-xs uppercase">
-                        <th class="p-2 border cursor-pointer" wire:click="sortBy('id')">
+                        <th class="p-2 border cursor-pointer" wire:click="sortBy('id')" wire:navigate>
                             ID @if ($sort === 'id')
                                 {{ $order === 'asc' ? '▲' : '▼' }}
                             @endif
                         </th>
-                        <th class="p-2 border cursor-pointer" wire:click="sortBy('codigo')">
+                        <th class="p-2 border cursor-pointer" wire:click="sortBy('codigo')" wire:navigate>
                             Código @if ($sort === 'codigo')
                                 {{ $order === 'asc' ? '▲' : '▼' }}
                             @endif
                         </th>
-                        <th class="p-2 border cursor-pointer" wire:click="sortBy('planilla_id')">
+                        <th class="p-2 border cursor-pointer" wire:click="sortBy('planilla_id')" wire:navigate>
                             Planilla @if ($sort === 'planilla_id')
                                 {{ $order === 'asc' ? '▲' : '▼' }}
                             @endif
@@ -28,18 +28,18 @@
                         <th class="p-2 border">Cliente</th>
                         <th class="p-2 border">Nave</th>
                         <th class="p-2 border">Ubicación</th>
-                        <th class="p-2 border cursor-pointer" wire:click="sortBy('estado')">
+                        <th class="p-2 border cursor-pointer" wire:click="sortBy('estado')" wire:navigate>
                             Estado @if ($sort === 'estado')
                                 {{ $order === 'asc' ? '▲' : '▼' }}
                             @endif
                         </th>
                         <th class="p-2 border">Elementos</th>
-                        <th class="p-2 border cursor-pointer" wire:click="sortBy('peso')">
+                        <th class="p-2 border cursor-pointer" wire:click="sortBy('peso')" wire:navigate>
                             Peso (Kg) @if ($sort === 'peso')
                                 {{ $order === 'asc' ? '▲' : '▼' }}
                             @endif
                         </th>
-                        <th class="p-2 border cursor-pointer" wire:click="sortBy('created_at')">
+                        <th class="p-2 border cursor-pointer" wire:click="sortBy('created_at')" wire:navigate>
                             Fecha Creación @if ($sort === 'created_at')
                                 {{ $order === 'asc' ? '▲' : '▼' }}
                             @endif
@@ -229,7 +229,7 @@
                                 <div class="flex flex-row justify-center items-center gap-3">
                                     {{-- Botón QR --}}
                                     <button
-                                        onclick="generateAndPrintQR('{{ $paquete->codigo }}', '{{ $paquete->planilla->codigo_limpio }}', 'PAQUETE')"
+                                        onclick="generateAndPrintQR('{{ $paquete->codigo }}', '{{ $paquete->planilla->codigo_limpio }}', 'PAQUETE')" wire:navigate
                                         class="w-6 h-6 bg-green-100 text-green-600 rounded hover:bg-green-200 flex items-center justify-center"
                                         title="Generar QR">
                                         <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none"
@@ -253,7 +253,7 @@
                                     </a>
 
                                     {{-- Botón eliminar --}}
-                                    <x-tabla.boton-eliminar :action="route('paquetes.destroy', $paquete->id)" />
+                                    <x-tabla.boton-eliminar :action="route('paquetes.destroy', $paquete->id)" wire:navigate />
                                 </div>
                             </td>
                         </tr>

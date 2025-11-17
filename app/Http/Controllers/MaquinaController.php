@@ -949,17 +949,21 @@ class MaquinaController extends Controller
     public function cambiarMaquina(Request $request)
     {
         $request->validate([
-            'asignacion_id' => 'required|exists:asignaciones_turnos,id',
+            'asignacion_id' => 'nullable|exists:asignaciones_turnos,id',
             'nueva_maquina_id' => 'required|exists:maquinas,id',
         ]);
 
-        $asignacion = AsignacionTurno::findOrFail($request->asignacion_id);
-        $asignacion->maquina_id = $request->nueva_maquina_id;
-        $asignacion->save();
+        // Si hay asignación de turno, actualizarla
+        if ($request->asignacion_id) {
+            $asignacion = AsignacionTurno::findOrFail($request->asignacion_id);
+            $asignacion->maquina_id = $request->nueva_maquina_id;
+            $asignacion->save();
+        }
 
+        // Redirigir a la nueva máquina seleccionada
         return redirect()
-            ->route('maquinas.index')
-            ->with('success', 'Máquina actualizada correctamente.');
+            ->route('maquinas.show', $request->nueva_maquina_id)
+            ->with('success', 'Máquina cambiada correctamente.');
     }
 
     public function cambiarEstado(Request $request, $id, ActionLoggerService $logger)
@@ -1440,6 +1444,105 @@ class MaquinaController extends Controller
             return response()->json([
                 'success' => false,
                 'mensaje' => 'Error al redistribuir elementos: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Completa manualmente la planilla actual de una máquina
+     * Verifica que todas las etiquetas estén en paquetes y elimina la planilla de la cola
+     */
+    public function completarPlanillaManual(Request $request, $id)
+    {
+        try {
+            $maquina = Maquina::findOrFail($id);
+
+            $posicion1 = $request->input('posicion_1');
+            $posicion2 = $request->input('posicion_2');
+
+            if (!$posicion1 && !$posicion2) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Debes seleccionar al menos una posición de planilla'
+                ], 400);
+            }
+
+            $posiciones = array_filter([$posicion1, $posicion2]);
+            $planillasCompletadas = [];
+            $errores = [];
+
+            DB::beginTransaction();
+
+            foreach ($posiciones as $posicion) {
+                // Buscar la planilla en esa posición para esta máquina
+                $ordenPlanilla = OrdenPlanilla::where('maquina_id', $maquina->id)
+                    ->where('posicion', $posicion)
+                    ->lockForUpdate()
+                    ->first();
+
+                if (!$ordenPlanilla) {
+                    $errores[] = "No se encontró planilla en la posición {$posicion}";
+                    continue;
+                }
+
+                $planilla = $ordenPlanilla->planilla;
+
+                // Verificar que todas las etiquetas de esa planilla tengan paquete asignado
+                $etiquetasSinPaquete = $planilla->etiquetas()
+                    ->whereDoesntHave('paquete')
+                    ->count();
+
+                if ($etiquetasSinPaquete > 0) {
+                    $errores[] = "La planilla {$planilla->codigo} (Pos. {$posicion}) aún tiene {$etiquetasSinPaquete} etiqueta(s) sin paquete asignado";
+                    continue;
+                }
+
+                // Guardar posición para reordenar
+                $posicionEliminada = $ordenPlanilla->posicion;
+
+                // Eliminar de la cola
+                $ordenPlanilla->delete();
+
+                // Reordenar posiciones posteriores
+                OrdenPlanilla::where('maquina_id', $maquina->id)
+                    ->where('posicion', '>', $posicionEliminada)
+                    ->decrement('posicion');
+
+                $planillasCompletadas[] = $planilla->codigo;
+
+                Log::info("Planilla {$planilla->codigo} completada manualmente en máquina {$maquina->nombre} (Pos. {$posicion})");
+            }
+
+            DB::commit();
+
+            if (empty($planillasCompletadas) && !empty($errores)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => implode('. ', $errores)
+                ], 400);
+            }
+
+            $mensaje = count($planillasCompletadas) > 0
+                ? 'Planilla(s) completada(s): ' . implode(', ', $planillasCompletadas)
+                : 'No se completaron planillas';
+
+            if (!empty($errores)) {
+                $mensaje .= '. Advertencias: ' . implode('. ', $errores);
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => $mensaje,
+                'planillas_completadas' => $planillasCompletadas,
+                'errores' => $errores
+            ]);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error("Error al completar planilla manual en máquina {$id}: " . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al completar planilla: ' . $e->getMessage()
             ], 500);
         }
     }

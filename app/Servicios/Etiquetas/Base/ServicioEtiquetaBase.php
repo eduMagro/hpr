@@ -128,6 +128,7 @@ abstract class ServicioEtiquetaBase
             'tipo'             => 'Recarga materia prima',
             'maquina_origen'   => null,
             'maquina_destino'  => $maquina->id,
+            'nave_id'          => $maquina->obra_id, // Nave donde se ejecuta el movimiento
             'producto_id'      => $productoId,
             'producto_base_id' => $productoBase->id,
             'estado'           => 'pendiente',
@@ -468,6 +469,9 @@ abstract class ServicioEtiquetaBase
                 })
                 ->exists();
 
+            // ❌ DESHABILITADO: La verificación automática de paquetes y eliminación de planilla
+            // ahora se hace manualmente desde la vista de máquina con el botón "Planilla Completada"
+            /*
             if (! $quedanPendientesEnEstaMaquina) {
 
                 // 🔍 Verificamos que todas las etiquetas de esa planilla tengan paquete asignado
@@ -497,6 +501,7 @@ abstract class ServicioEtiquetaBase
                     });
                 }
             }
+            */
             // 5) Si todos los elementos de la planilla están fabricados → cerrar planilla
             $todosElementosPlanillaCompletos = $planilla->elementos()
                 ->where('estado', '!=', 'fabricado')

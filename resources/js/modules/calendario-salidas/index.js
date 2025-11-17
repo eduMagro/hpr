@@ -90,6 +90,7 @@ function inicializarCalendario() {
     }
 
     const cal = crearCalendario();
+    calendar = cal;
     window.calendar = cal;
 
     // recarga inicial

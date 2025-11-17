@@ -19,7 +19,7 @@
                 $activo = $rutaActual === $item['route'];
             @endphp
 
-            <a href="{{ route($item['route']) }}"
+            <a href="{{ route($item['route']) }}" wire:navigate
                 class="px-3 py-1.5 text-sm rounded-md border transition
                        {{ $activo
                            ? ($colores['bgActivo'] ?? 'bg-blue-800') . ' ' . ($colores['txt'] ?? 'text-white') . ' font-semibold'

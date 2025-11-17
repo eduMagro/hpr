@@ -1280,6 +1280,11 @@ class EtiquetaController extends Controller
 
             $request->validate($rules);
 
+            // 🔍 Obtener estado anterior para logs
+            $etiquetaAntes = Etiqueta::where('etiqueta_sub_id', $id)->first();
+            $estadoAnterior = $etiquetaAntes ? $etiquetaAntes->estado : 'pendiente';
+            $fechaInicio = $etiquetaAntes ? $etiquetaAntes->fecha_inicio : null;
+
             $dto = new \App\Servicios\Etiquetas\DTOs\ActualizarEtiquetaDatos(
                 etiquetaSubId: $id,
                 maquinaId: (int) $maquina_id,
@@ -1339,6 +1344,33 @@ class EtiquetaController extends Controller
                     'maquina_id' => $maquina->id,
                     'maquina_nombre' => $maquina->nombre,
                 ]);
+            }
+
+            // 📊 LOG DE PRODUCCIÓN EN CSV
+            $operario1 = Auth::user();
+            $operario2 = $operario1->compañeroDeTurno();
+
+            // Log según tipo de cambio de estado
+            if ($estadoAnterior === 'pendiente' && $etiqueta->estado === 'fabricando') {
+                // Inicio de fabricación
+                \App\Services\ProductionLogger::logInicioFabricacion(
+                    $etiqueta,
+                    $maquina,
+                    $operario1,
+                    $operario2
+                );
+            } elseif ($estadoAnterior !== $etiqueta->estado) {
+                // Cambio de estado durante fabricación
+                \App\Services\ProductionLogger::logCambioEstadoFabricacion(
+                    $etiqueta,
+                    $estadoAnterior,
+                    $etiqueta->estado,
+                    $maquina,
+                    $resultado->productosAfectados ?? [],
+                    $coladas,
+                    $fechaInicio ? \Carbon\Carbon::parse($fechaInicio) : null,
+                    $etiqueta->fecha_finalizacion ? \Carbon\Carbon::parse($etiqueta->fecha_finalizacion) : null
+                );
             }
 
             return response()->json([
@@ -2349,6 +2381,9 @@ class EtiquetaController extends Controller
             })
             ->exists();
 
+        // ❌ DESHABILITADO: La verificación automática de paquetes y eliminación de planilla
+        // ahora se hace manualmente desde la vista de máquina con el botón "Planilla Completada"
+        /*
         if (! $quedanPendientesEnEstaMaquina) {
 
             // 🔍 Verificamos que todas las etiquetas de esa planilla tengan paquete asignado
@@ -2378,6 +2413,7 @@ class EtiquetaController extends Controller
                 });
             }
         }
+        */
 
         // ✅ Si todos los elementos de la planilla están completados, actualizar la planilla
         $todosElementosPlanillaCompletos = $planilla->elementos()
@@ -2478,6 +2514,7 @@ class EtiquetaController extends Controller
                 'tipo'              => 'Recarga materia prima',
                 'maquina_origen'    => null,
                 'maquina_destino'   => $maquina->id,
+                'nave_id'           => $maquina->obra_id, // Nave donde se ejecuta el movimiento
                 'producto_id'       => $productoId,
                 'producto_base_id'  => $productoBase->id,
                 'estado'            => 'pendiente',

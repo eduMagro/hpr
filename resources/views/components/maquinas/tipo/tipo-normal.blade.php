@@ -55,7 +55,7 @@
             <div x-show="showLeft" x-cloak
                 class="col-span-12 lg:col-span-2 bg-white border border-gray-200 shadow-lg rounded-lg self-start lg:sticky lg:top-2 overflow-hidden">
 
-                <div class="p-2 overflow-y-auto" style="max-height: calc(100vh - 60px);">
+                <div id="materia-prima-container" class="p-2 overflow-y-auto" style="max-height: calc(100vh - 60px);">
                     @foreach ($productosBaseCompatibles as $productoBase)
                         @php
                             $productoExistente = $maquina->productos->firstWhere('producto_base_id', $productoBase->id);
@@ -398,5 +398,72 @@
         select1.addEventListener('change', validar);
         select2.addEventListener('change', validar);
         form.addEventListener('submit', (e) => !validar() && e.preventDefault());
+    });
+
+    // Auto-refresh para el contenedor de materia prima cada 10 segundos
+    let materiaPrimaRefreshInterval = null;
+
+    function refreshMateriaPrima() {
+        const container = document.getElementById('materia-prima-container');
+        if (!container) {
+            console.warn('Contenedor de materia prima no encontrado');
+            return;
+        }
+
+        // Obtener parámetros de URL actuales
+        const params = new URLSearchParams(window.location.search);
+        const url = window.location.pathname + '?' + params.toString();
+
+        // Hacer fetch para obtener el HTML actualizado
+        fetch(url, {
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+        .then(response => response.text())
+        .then(html => {
+            // Parsear el HTML
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(html, 'text/html');
+
+            // Obtener el nuevo contenedor de materia prima
+            const nuevoContainer = doc.getElementById('materia-prima-container');
+
+            if (nuevoContainer && container) {
+                // Guardar scroll position
+                const scrollPosition = container.scrollTop;
+
+                // Actualizar contenido
+                container.innerHTML = nuevoContainer.innerHTML;
+
+                // Restaurar scroll position
+                container.scrollTop = scrollPosition;
+
+                console.log('✅ Materia prima actualizada');
+            }
+        })
+        .catch(error => {
+            console.error('❌ Error al actualizar materia prima:', error);
+        });
+    }
+
+    // Iniciar auto-refresh cuando el documento esté listo
+    document.addEventListener('DOMContentLoaded', function() {
+        // Primera actualización después de 10 segundos
+        setTimeout(() => {
+            refreshMateriaPrima();
+
+            // Luego actualizar cada 10 segundos
+            materiaPrimaRefreshInterval = setInterval(refreshMateriaPrima, 10000);
+        }, 10000);
+
+        console.log('🔄 Auto-refresh de materia prima iniciado (cada 10s)');
+    });
+
+    // Limpiar interval cuando se abandona la página
+    window.addEventListener('beforeunload', function() {
+        if (materiaPrimaRefreshInterval) {
+            clearInterval(materiaPrimaRefreshInterval);
+        }
     });
 </script>

@@ -98,7 +98,7 @@
                                         'ensamblando' => 'Ensamblando',
                                         'soldando' => 'Soldando',
                                         'completada' => 'Completada',
-                                    ]" :selected="request('estado')" empty="Todos" />
+                                    ]" :selected="request('estado')" wire:navigate empty="Todos" />
                                 </th>
                                 <x-tabla.botones-filtro ruta="etiquetas.index" />
                             </form>
@@ -323,7 +323,7 @@
                                         <template x-if="!editando">
                                             <div class="flex items-center space-x-2">
                                                 <x-tabla.boton-editar @click="editando = true" x-show="!editando" />
-                                                <button @click="mostrar({{ $etiqueta->id }})"
+                                                <button @click="mostrar({{ $etiqueta->id }})" wire:navigate
                                                     class="w-6 h-6 bg-blue-100 text-blue-600 rounded hover:bg-blue-200 flex items-center justify-center"
                                                     title="Ver">
                                                     <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4"
@@ -337,7 +337,7 @@
                                                 </button>
 
                                                 {{-- Eliminar --}}
-                                                <x-tabla.boton-eliminar :action="route('etiquetas.destroy', $etiqueta->id)" />
+                                                <x-tabla.boton-eliminar :action="route('etiquetas.destroy', $etiqueta->id)" wire:navigate />
                                             </div>
                                         </template>
                                     </div>
@@ -363,12 +363,12 @@
 
                 <!-- 📐 Marco blanco exterior -->
                 <div class="relative bg-white p-1 rounded-lg">
-                    <button onclick="imprimirEtiqueta('${subId}')"
+                    <button onclick="imprimirEtiqueta('${subId}')" wire:navigate
                         class="absolute top-2 right-10 text-blue-800 hover:text-blue-900 no-print">
                         🖨️
                     </button>
                     <!-- Botón de cierre en el marco -->
-                    <button onclick="cerrarModal()" aria-label="Cerrar"
+                    <button onclick="cerrarModal()" wire:navigate aria-label="Cerrar"
                         class="absolute -top-3 -right-3 bg-white border border-black
                        rounded-full w-7 h-7 flex items-center justify-center
                        text-xl leading-none hover:bg-red-100">
