@@ -719,7 +719,7 @@ class MaquinaController extends Controller
             'naveId'         => $naveId,
             'columnasReales' => $columnasReales,
             'filasReales'    => $filasReales,
-            'estaGirado'     => true,
+            'estaGirado'     => false,
             'columnasVista'  => $columnasReales,
             'filasVista'     => $filasReales,
         ];
