@@ -358,7 +358,8 @@
         });
 
         // 9. Animación
-        elemento.style.transition = "all 0.5s ease";
+        // ✅ FIX: Solo transicionar transform y background, NO "all"
+        elemento.style.transition = "transform 0.5s ease, background-color 0.5s ease";
         elemento.style.transform = "scale(1.03)";
         setTimeout(() => {
             elemento.style.transform = "scale(1)";
@@ -447,7 +448,43 @@
                     return;
                 }
 
-                console.log("🛒 Añadiendo etiqueta al carro:", etiquetaId);
+                // ✅ DETECTAR PESTAÑA ACTIVA (crear vs gestión)
+                const tabCrearActivo = document.querySelector('[x-show="tabActivo === \'crear\'"]');
+                const tabGestionActivo = document.querySelector('[x-show="tabActivo === \'gestion\'"]');
+
+                const estaEnCrear = tabCrearActivo && window.getComputedStyle(tabCrearActivo).display !== 'none';
+                const estaEnGestion = tabGestionActivo && window.getComputedStyle(tabGestionActivo).display !== 'none';
+
+                // ✅ MODO GESTIÓN: Añadir al input de escanear etiqueta del primer paquete visible
+                if (estaEnGestion) {
+                    console.log("📦 Modo Gestión: Añadiendo al input de añadir etiqueta");
+
+                    // Buscar el primer input visible de añadir etiqueta en paquetes expandidos
+                    const inputEtiqueta = document.querySelector('input[id^="input-etiqueta-"]');
+
+                    if (inputEtiqueta) {
+                        inputEtiqueta.value = etiquetaId;
+                        inputEtiqueta.focus();
+
+                        // Resaltar el input brevemente
+                        inputEtiqueta.classList.add('ring-4', 'ring-green-400');
+                        setTimeout(() => {
+                            inputEtiqueta.classList.remove('ring-4', 'ring-green-400');
+                        }, 1000);
+
+                        console.log(`✅ Etiqueta ${etiquetaId} añadida al input de gestión`);
+                    } else {
+                        await Swal.fire({
+                            icon: "info",
+                            title: "Expande un paquete",
+                            text: "Para añadir una etiqueta, primero expande el paquete donde deseas añadirla",
+                        });
+                    }
+                    return;
+                }
+
+                // ✅ MODO CREAR: Añadir al carro (comportamiento original)
+                console.log("🛒 Modo Crear: Añadiendo etiqueta al carro:", etiquetaId);
 
                 try {
                     // Validar etiqueta

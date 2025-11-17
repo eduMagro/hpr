@@ -53,8 +53,10 @@
         );
     }
 
-    // Inyectar colores inmediatamente
-    inyectarColoresEstado();
+    // ⚠️ DESHABILITADO: Los colores ahora están en app.css para evitar reflows
+    // La inyección dinámica causaba problemas de desplazamiento en los selects
+    // inyectarColoresEstado();
+    console.log('ℹ️ Colores de estado cargados desde app.css (no inyectados dinámicamente)');
 
     // ========================================================================
     // CONFIGURACIÓN DE COLORES Y ESTADOS (según CSS del proyecto)
@@ -232,7 +234,9 @@
     // APLICAR ANIMACIÓN
     // ========================================================================
     function aplicarAnimacion(elemento) {
-        elemento.style.transition = "all 0.5s ease";
+        // ✅ FIX: Solo transicionar transform y background, NO "all"
+        // "all" causaba reflows globales afectando selectsde toda la aplicación
+        elemento.style.transition = "transform 0.5s ease, background-color 0.5s ease";
         elemento.style.transform = "scale(1.03)";
 
         setTimeout(() => {

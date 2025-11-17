@@ -1,3 +1,55 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* === FIX GLOBAL: Prevenir desplazamiento de TODOS los selects === */
+select,
+select:focus,
+select:active,
+select:focus-visible {
+    transition: none !important;
+    transform: none !important;
+    box-sizing: border-box !important;
+    will-change: auto !important;
+}
+
+/* === Colores de estado para etiquetas === */
+.proceso {
+    --bg-estado: #e5e7eb;
+}
+
+.proceso.estado-pendiente {
+    --bg-estado: #ffffff;
+}
+
+.proceso.estado-fabricando {
+    --bg-estado: #facc15;
+}
+
+.proceso.estado-ensamblando {
+    --bg-estado: #facc15;
+}
+
+.proceso.estado-soldando {
+    --bg-estado: #facc15;
+}
+
+.proceso.estado-fabricada {
+    --bg-estado: #22c55e;
+}
+
+.proceso.estado-completada {
+    --bg-estado: #22c55e;
+}
+
+.proceso.estado-ensamblada {
+    --bg-estado: #22c55e;
+}
+
+.proceso.estado-soldada {
+    --bg-estado: #22c55e;
+}
+
+.proceso.estado-en-paquete {
+    --bg-estado: #e3e4FA;
+}

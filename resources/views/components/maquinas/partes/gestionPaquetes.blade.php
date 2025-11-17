@@ -22,7 +22,7 @@
             Seleccionar Planilla:
         </label>
         <select x-model="planillaSeleccionada" @change="cargarPaquetes()"
-            class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+            class="select-planilla-gestion w-full border border-gray-300 rounded-lg px-3 py-2 focus:border-blue-500 focus:outline-none">
             <option value="">-- Seleccione una planilla --</option>
             @foreach ($planillasActivas as $planilla)
                 <option value="{{ $planilla->id }}">
@@ -31,6 +31,24 @@
             @endforeach
         </select>
     </div>
+
+    <style>
+        /* Fix para evitar desplazamiento del select de planillas en gestión de paquetes */
+        .select-planilla-gestion {
+            transition: none !important;
+            transform: none !important;
+            box-sizing: border-box !important;
+            display: block !important;
+        }
+
+        .select-planilla-gestion:focus,
+        .select-planilla-gestion:focus-visible,
+        .select-planilla-gestion:active {
+            box-shadow: none !important;
+            outline: none !important;
+            transform: none !important;
+        }
+    </style>
 
     {{-- LOADING --}}
     <div x-show="cargando" class="text-center py-8">

@@ -14,14 +14,10 @@
             <div class="flex flex-wrap items-center gap-4">
                 @if ($maquina->tipo !== 'grua' && $maquina->tipo !== 'dobladora_manual' && $maquina->tipo !== 'cortadora_manual')
                     {{-- Selectores de posiciones de planillas --}}
-                    <div class="flex items-center gap-2 bg-white rounded-md px-3 py-1.5 border border-gray-300 shadow-sm">
-                        <label class="text-sm font-medium text-gray-700 whitespace-nowrap">
-                            📋 Planillas:
-                        </label>
+                    <div class="contenedor-selectores-planilla">
+                        <label>📋 Planillas:</label>
 
-                        <select id="posicion_1" name="posicion_1"
-                            class="border border-gray-300 rounded-md px-2 py-1 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none transition"
-                            onchange="cambiarPosicionesPlanillas()">
+                        <select id="posicion_1" name="posicion_1" onchange="cambiarPosicionesPlanillas()">
                             <option value="">-- Pos. 1 --</option>
                             @foreach ($posicionesDisponibles as $pos)
                                 <option value="{{ $pos }}" {{ request('posicion_1') == $pos ? 'selected' : '' }}>
@@ -30,11 +26,9 @@
                             @endforeach
                         </select>
 
-                        <span class="text-gray-400">+</span>
+                        <span class="separador">+</span>
 
-                        <select id="posicion_2" name="posicion_2"
-                            class="border border-gray-300 rounded-md px-2 py-1 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none transition"
-                            onchange="cambiarPosicionesPlanillas()">
+                        <select id="posicion_2" name="posicion_2" onchange="cambiarPosicionesPlanillas()">
                             <option value="">-- Pos. 2 --</option>
                             @foreach ($posicionesDisponibles as $pos)
                                 <option value="{{ $pos }}" {{ request('posicion_2') == $pos ? 'selected' : '' }}>
@@ -42,12 +36,153 @@
                                 </option>
                             @endforeach
                         </select>
+
+                        {{-- Indicador de carga --}}
+                        <span id="loading-planillas" class="spinner-loading" style="display: none;">
+                            <svg class="animate-spin h-5 w-5 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                        </span>
                     </div>
 
+                    <style>
+                        /* Contenedor con layout fijo */
+                        .contenedor-selectores-planilla {
+                            display: inline-flex;
+                            align-items: center;
+                            gap: 8px;
+                            background: white;
+                            border-radius: 6px;
+                            padding: 6px 12px;
+                            border: 1px solid #d1d5db;
+                            box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+                            /* CRÍTICO: Dimensiones fijas para evitar recalculos */
+                            min-width: 320px;
+                            height: 40px;
+                            box-sizing: border-box;
+                            /* Alineación vertical con otros controles */
+                            vertical-align: middle;
+                            /* NUEVO: Evitar que se mueva por cambios de layout */
+                            will-change: auto;
+                            contain: layout style;
+                        }
+
+                        .contenedor-selectores-planilla label {
+                            font-size: 0.875rem;
+                            font-weight: 500;
+                            color: #374151;
+                            white-space: nowrap;
+                            flex-shrink: 0;
+                            margin: 0;
+                        }
+
+                        .contenedor-selectores-planilla select {
+                            width: 90px;
+                            height: 30px;
+                            padding: 4px 8px;
+                            border: 1px solid #d1d5db;
+                            border-radius: 4px;
+                            font-size: 0.875rem;
+                            background: white;
+                            flex-shrink: 0;
+                            /* CRÍTICO: Sin transiciones ni transformaciones */
+                            transition: none !important;
+                            transform: none !important;
+                            box-sizing: border-box;
+                            /* NUEVO: Aislar del layout */
+                            isolation: isolate;
+                            -webkit-appearance: none;
+                            -moz-appearance: none;
+                            appearance: none;
+                            /* Agregar flecha personalizada */
+                            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23374151' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
+                            background-repeat: no-repeat;
+                            background-position: right 8px center;
+                            padding-right: 28px;
+                        }
+
+                        .contenedor-selectores-planilla select:focus {
+                            outline: none !important;
+                            border-color: #3b82f6 !important;
+                            box-shadow: none !important;
+                            /* Mantener dimensiones exactas */
+                            width: 90px !important;
+                            height: 30px !important;
+                        }
+
+                        .contenedor-selectores-planilla select:disabled {
+                            opacity: 0.5;
+                            cursor: not-allowed;
+                        }
+
+                        .contenedor-selectores-planilla .separador {
+                            color: #9ca3af;
+                            flex-shrink: 0;
+                        }
+
+                        .contenedor-selectores-planilla .spinner-loading {
+                            flex-shrink: 0;
+                        }
+                    </style>
+
                     <script>
+                        // Variable global para evitar múltiples ejecuciones simultáneas
+                        let cambiarPosicionesTimeout = null;
+                        let cambiarPosicionesEnProceso = false;
+
                         function cambiarPosicionesPlanillas() {
+                            // Evitar ejecuciones múltiples si ya está en proceso
+                            if (cambiarPosicionesEnProceso) {
+                                console.log('⏸️ Cambio de planillas ya en proceso, ignorando...');
+                                return;
+                            }
+
+                            // Limpiar timeout anterior si existe
+                            if (cambiarPosicionesTimeout) {
+                                clearTimeout(cambiarPosicionesTimeout);
+                            }
+
+                            // Debounce de 300ms para evitar llamadas múltiples
+                            cambiarPosicionesTimeout = setTimeout(() => {
+                                ejecutarCambioPlanillas();
+                            }, 300);
+                        }
+
+                        function ejecutarCambioPlanillas() {
                             const pos1 = document.getElementById('posicion_1').value;
                             const pos2 = document.getElementById('posicion_2').value;
+
+                            // Validar que no sean la misma posición
+                            if (pos1 && pos2 && pos1 === pos2) {
+                                Swal.fire({
+                                    icon: 'warning',
+                                    title: 'Posiciones duplicadas',
+                                    text: 'No puedes seleccionar la misma posición dos veces',
+                                    confirmButtonColor: '#3085d6',
+                                });
+                                // Resetear el segundo selector
+                                document.getElementById('posicion_2').value = '';
+                                return;
+                            }
+
+                            // Marcar como en proceso
+                            cambiarPosicionesEnProceso = true;
+
+                            // Deshabilitar los selectores mientras se carga
+                            const select1 = document.getElementById('posicion_1');
+                            const select2 = document.getElementById('posicion_2');
+                            const loadingIndicator = document.getElementById('loading-planillas');
+
+                            select1.disabled = true;
+                            select2.disabled = true;
+
+                            // Mostrar indicador de carga
+                            if (loadingIndicator) {
+                                loadingIndicator.style.display = 'inline-block';
+                            }
+
+                            console.log('🔄 Cambiando planillas a posiciones:', pos1, pos2);
 
                             // Construir URL con parámetros
                             const params = new URLSearchParams(window.location.search);
@@ -155,12 +290,31 @@
                                                     console.log('✅ Event listener del botón crear paquete re-inicializado después de cambio de planillas');
                                                 }
                                             });
+
+                                            // Re-habilitar selectores y ocultar loading
+                                            select1.disabled = false;
+                                            select2.disabled = false;
+                                            if (loadingIndicator) {
+                                                loadingIndicator.style.display = 'none';
+                                            }
+                                            cambiarPosicionesEnProceso = false;
+
+                                            console.log('✅ Planillas cambiadas correctamente');
                                         }, 100);
                                     }
                                 }
                             })
                             .catch(error => {
-                                console.error('Error al cambiar planillas:', error);
+                                console.error('❌ Error al cambiar planillas:', error);
+
+                                // Re-habilitar selectores y ocultar loading en caso de error
+                                select1.disabled = false;
+                                select2.disabled = false;
+                                if (loadingIndicator) {
+                                    loadingIndicator.style.display = 'none';
+                                }
+                                cambiarPosicionesEnProceso = false;
+
                                 // Si falla, hacer refresh normal
                                 window.location.href = newUrl;
                             });
@@ -432,7 +586,7 @@
 
         <!-- ✅ Vite: Bundle de máquinas -->
         @vite(['resources/js/maquinaJS/maquina-bundle.js'])
-        <script src="{{ asset('js/maquinaJS/sl28/cortes.js') }}"></script>
+        <script src="{{ asset('js/maquinaJS/sl28/cortes.js') }}?v={{ time() }}"></script>
         {{-- <script src="{{ asset('js/maquinaJS/crearPaquetes.js') }}" defer></script> --}}
         {{-- Al final del archivo Blade --}}
 

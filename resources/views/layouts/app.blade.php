@@ -27,8 +27,8 @@
     <!-- ✅ Vite Assets - Cache busting automático -->
     @vite(['resources/css/app.css', 'resources/js/app.js', 'resources/css/styles.css', 'resources/css/etiquetas-responsive.css'])
 
-    <!-- ✅ Tailwind (si lo usas como principal) -->
-    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <!-- ⚠️ DESHABILITADO: Tailwind CDN duplicado causa conflictos -->
+    {{-- <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet"> --}}
 
     <!-- Alpine.js ya está incluido en Livewire 3, NO cargar desde CDN -->
 

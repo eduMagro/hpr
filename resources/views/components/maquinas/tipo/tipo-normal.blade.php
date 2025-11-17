@@ -304,22 +304,6 @@
                                 📦 Crear Paquete
                             </button>
                         </div>
-
-                        {{-- Eliminar paquete --}}
-                        <form id="deleteForm" method="POST" class="mt-4 bg-red-50 border-2 border-red-200 rounded-lg p-4">
-                            @csrf
-                            @method('DELETE')
-                            <label for="paquete_id" class="block text-red-800 font-semibold mb-2 text-sm">
-                                🗑️ Eliminar Paquete (ID):
-                            </label>
-                            <input type="number" name="paquete_id" id="paquete_id" required
-                                class="w-full border-2 border-red-300 rounded-lg p-2 mb-3 focus:ring-2 focus:ring-red-500 focus:outline-none"
-                                placeholder="ID del paquete">
-                            <button type="submit"
-                                class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-2.5 px-4 rounded-lg shadow-md transition">
-                                Eliminar Paquete
-                            </button>
-                        </form>
                     </div>
 
                     {{-- Tab: Gestión de Paquetes --}}
@@ -385,38 +369,6 @@
 @endonce
 
 <script>
-    document.getElementById('deleteForm')?.addEventListener('submit', function(
-        event) {
-        event.preventDefault();
-        const paqueteId = document.getElementById('paquete_id').value;
-
-        if (!paqueteId) {
-            Swal.fire({
-                icon: "warning",
-                title: "Campo vacío",
-                text: "Por favor, ingrese un ID válido.",
-                confirmButtonColor: "#3085d6",
-            });
-            return;
-        }
-
-        Swal.fire({
-            title: "¿Estás seguro?",
-            text: "Esta acción no se puede deshacer.",
-            icon: "warning",
-            showCancelButton: true,
-            confirmButtonColor: "#d33",
-            cancelButtonColor: "#3085d6",
-            confirmButtonText: "Sí, eliminar",
-            cancelButtonText: "Cancelar"
-        }).then((result) => {
-            if (result.isConfirmed) {
-                this.action = "/paquetes/" + paqueteId;
-                this.submit();
-            }
-        });
-    });
-
     // Validación de posiciones de planillas
     document.addEventListener('DOMContentLoaded', function() {
         const form = document.getElementById('form-posiciones-planillas');

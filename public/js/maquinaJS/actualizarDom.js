@@ -232,7 +232,9 @@
     // APLICAR ANIMACIÓN
     // ========================================================================
     function aplicarAnimacion(elemento) {
-        elemento.style.transition = "all 0.5s ease";
+        // ✅ FIX: Solo transicionar transform y background, NO "all"
+        // "all" causaba reflows globales afectando selects de toda la aplicación
+        elemento.style.transition = "transform 0.5s ease, background-color 0.5s ease";
         elemento.style.transform = "scale(1.03)";
 
         setTimeout(() => {

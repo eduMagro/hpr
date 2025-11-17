@@ -42,7 +42,8 @@ class Paquete extends Model
         $year = now()->format('y');
         $month = now()->format('m');
 
-        $ultimoCodigo = self::where('codigo', 'LIKE', "P{$year}{$month}%")
+        $ultimoCodigo = self::withTrashed()   // 👈 INCLUYE soft-deletes
+            ->where('codigo', 'LIKE', "P{$year}{$month}%")
             ->orderBy('codigo', 'desc')
             ->value('codigo');
 
@@ -98,14 +99,6 @@ class Paquete extends Model
     public function etiquetas()
     {
         return $this->hasMany(Etiqueta::class, 'paquete_id');
-    }
-
-    /**
-     * Relación: Un paquete tiene muchos subpaquetes
-     */
-    public function subpaquetes()
-    {
-        return $this->hasMany(Subpaquete::class, 'paquete_id');
     }
 
     /**

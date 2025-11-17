@@ -77,7 +77,8 @@
         }
 
         // 4. Animación de cambio
-        elemento.style.transition = "all 0.5s ease";
+        // ✅ FIX: Solo transicionar transform y background, NO "all"
+        elemento.style.transition = "transform 0.5s ease, background-color 0.5s ease";
         elemento.style.transform = "scale(1.03)";
         setTimeout(() => {
             elemento.style.transform = "scale(1)";

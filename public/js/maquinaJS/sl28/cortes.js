@@ -439,7 +439,8 @@ window.Cortes = (function () {
                     elemento.style.outline = "4px solid #3b82f6";
                     elemento.style.outlineOffset = "4px";
                     elemento.style.background = "#eff6ff";
-                    elemento.style.transition = "all 0.3s ease";
+                    // ✅ FIX: Solo transicionar propiedades específicas, NO "all"
+                    elemento.style.transition = "transform 0.3s ease, background 0.3s ease, outline 0.3s ease";
                     elemento.style.transform = "scale(1.02)";
                 }
             });

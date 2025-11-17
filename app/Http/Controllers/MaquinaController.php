@@ -416,10 +416,21 @@ class MaquinaController extends Controller
         // 3) Crear un mapa inverso [posicion => planilla_id] para búsqueda rápida
         $posicionAPlanilla = $ordenManual->flip();
 
-        // 4) Obtener todas las posiciones disponibles en orden
-        $posicionesDisponibles = $ordenManual->values()->sort()->values()->toArray();
+        // 4) Obtener todas las posiciones disponibles (solo planillas REVISADAS)
+        $posicionesDisponibles = [];
+        foreach ($ordenManual as $planillaId => $posicion) {
+            if ($porPlanilla->has($planillaId)) {
+                $planilla = $porPlanilla[$planillaId]->first()->planilla;
+                // Solo incluir posiciones con planillas revisadas
+                if ($planilla && $planilla->revisada) {
+                    $posicionesDisponibles[] = $posicion;
+                }
+            }
+        }
+        sort($posicionesDisponibles);
 
         // 5) Seleccionar planillas según las posiciones solicitadas
+        // ⚠️ SOLO planillas REVISADAS pueden ser mostradas
         $planillasActivas = [];
         foreach ($posiciones as $pos) {
             if ($posicionAPlanilla->has($pos)) {
@@ -428,8 +439,13 @@ class MaquinaController extends Controller
                 // Buscar la planilla en los elementos agrupados
                 if ($porPlanilla->has($planillaId)) {
                     $planilla = $porPlanilla[$planillaId]->first()->planilla;
-                    if ($planilla) {
+
+                    // ✅ VALIDACIÓN CRÍTICA: Solo mostrar planillas revisadas
+                    if ($planilla && $planilla->revisada) {
                         $planillasActivas[] = $planilla;
+                        Log::info("✅ Planilla {$planilla->codigo} (posición {$pos}) añadida - REVISADA");
+                    } else {
+                        Log::warning("⚠️ Planilla en posición {$pos} OMITIDA - No está revisada");
                     }
                 }
             }
