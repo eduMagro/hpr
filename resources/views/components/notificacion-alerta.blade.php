@@ -1,4 +1,4 @@
-<a id="notificacion-alerta" href="{{ route('alertas.index') }}">
+<a id="notificacion-alerta" href="{{ route('alertas.index') }}" wire:navigate>
     <p id="notificacion-alertas-texto">🔔 Tienes mensajes sin leer</p>
 </a>
 

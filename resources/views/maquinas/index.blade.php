@@ -32,7 +32,7 @@
                 </select>
 
                 {{-- Botón crear nueva máquina --}}
-                <x-tabla.boton-azul :href="route('maquinas.create')" class="whitespace-nowrap">
+                <x-tabla.boton-azul :href="route('maquinas.create')" wire:navigate class="whitespace-nowrap">
                     ➕ Nueva Máquina
                 </x-tabla.boton-azul>
             </div>
@@ -133,7 +133,7 @@
                                             </svg>
                                             <span class="truncate flex-1">{{ $asig->user->name }}</span>
                                             <span class="ml-1 text-[10px] text-gray-500 bg-white px-1.5 py-0.5 rounded flex-shrink-0">
-                                                {{ substr(ucfirst(data_get($asig, 'turno.nombre', 'Sin')), 0, 1) }}
+                                                {{ substr(ucfirst(data_get($asig, 'turno.nombre', 'Sin')), 0, 1) }} wire:navigate
                                             </span>
                                         </li>
                                     @endforeach
@@ -169,7 +169,7 @@
 
                     {{-- Acciones --}}
                     <div class="bg-gray-50 px-3 py-3 border-t border-gray-200 flex flex-col gap-2 mt-auto">
-                        <a href="{{ route('maquinas.show', $maquina->id) }}"
+                        <a href="{{ route('maquinas.show', $maquina->id) }}" wire:navigate
                             class="w-full inline-flex items-center justify-center px-3 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg transition-colors shadow-sm">
                             <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -211,7 +211,7 @@
         {{-- Paginación --}}
         @if ($registrosMaquina->hasPages())
             <div class="mt-8 flex justify-center">
-                {{ $registrosMaquina->links('vendor.pagination.bootstrap-5') }}
+                {{ $registrosMaquina->links('vendor.pagination.bootstrap-5') }} wire:navigate
             </div>
         @endif
     </div>

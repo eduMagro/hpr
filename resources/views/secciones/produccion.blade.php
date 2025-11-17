@@ -13,7 +13,7 @@
             <!-- Grid de opciones -->
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
 
-                <a href="{{ route('maquinas.index') }}" class="bg-white rounded-lg shadow-md hover:shadow-xl transition-all duration-300 overflow-hidden group">
+                <a href="{{ route('maquinas.index') }}" wire:navigate class="bg-white rounded-lg shadow-md hover:shadow-xl transition-all duration-300 overflow-hidden group">
                     <div class="bg-gradient-to-br from-blue-500 to-blue-600 p-6 text-center">
                         <span class="text-6xl">⚙️</span>
                     </div>
@@ -23,7 +23,7 @@
                     </div>
                 </a>
 
-                <a href="{{ route('productos.index') }}" class="bg-white rounded-lg shadow-md hover:shadow-xl transition-all duration-300 overflow-hidden group">
+                <a href="{{ route('productos.index') }}" wire:navigate class="bg-white rounded-lg shadow-md hover:shadow-xl transition-all duration-300 overflow-hidden group">
                     <div class="bg-gradient-to-br from-blue-500 to-blue-600 p-6 text-center">
                         <span class="text-6xl">🧱</span>
                     </div>
@@ -33,7 +33,7 @@
                     </div>
                 </a>
 
-                <a href="{{ route('planillas.index') }}" class="bg-white rounded-lg shadow-md hover:shadow-xl transition-all duration-300 overflow-hidden group">
+                <a href="{{ route('planillas.index') }}" wire:navigate class="bg-white rounded-lg shadow-md hover:shadow-xl transition-all duration-300 overflow-hidden group">
                     <div class="bg-gradient-to-br from-blue-500 to-blue-600 p-6 text-center">
                         <span class="text-6xl">📄</span>
                     </div>
@@ -43,7 +43,7 @@
                     </div>
                 </a>
 
-                <a href="{{ route('etiquetas.index') }}" class="bg-white rounded-lg shadow-md hover:shadow-xl transition-all duration-300 overflow-hidden group">
+                <a href="{{ route('etiquetas.index') }}" wire:navigate class="bg-white rounded-lg shadow-md hover:shadow-xl transition-all duration-300 overflow-hidden group">
                     <div class="bg-gradient-to-br from-blue-500 to-blue-600 p-6 text-center">
                         <span class="text-6xl">🏷️</span>
                     </div>
@@ -53,7 +53,7 @@
                     </div>
                 </a>
 
-                <a href="{{ route('elementos.index') }}" class="bg-white rounded-lg shadow-md hover:shadow-xl transition-all duration-300 overflow-hidden group">
+                <a href="{{ route('elementos.index') }}" wire:navigate class="bg-white rounded-lg shadow-md hover:shadow-xl transition-all duration-300 overflow-hidden group">
                     <div class="bg-gradient-to-br from-blue-500 to-blue-600 p-6 text-center">
                         <span class="text-6xl">🔩</span>
                     </div>
@@ -63,7 +63,7 @@
                     </div>
                 </a>
 
-                <a href="{{ route('paquetes.index') }}" class="bg-white rounded-lg shadow-md hover:shadow-xl transition-all duration-300 overflow-hidden group">
+                <a href="{{ route('paquetes.index') }}" wire:navigate class="bg-white rounded-lg shadow-md hover:shadow-xl transition-all duration-300 overflow-hidden group">
                     <div class="bg-gradient-to-br from-blue-500 to-blue-600 p-6 text-center">
                         <span class="text-6xl">📦</span>
                     </div>
@@ -73,7 +73,7 @@
                     </div>
                 </a>
 
-                <a href="{{ route('ubicaciones.index') }}" class="bg-white rounded-lg shadow-md hover:shadow-xl transition-all duration-300 overflow-hidden group">
+                <a href="{{ route('ubicaciones.index') }}" wire:navigate class="bg-white rounded-lg shadow-md hover:shadow-xl transition-all duration-300 overflow-hidden group">
                     <div class="bg-gradient-to-br from-blue-500 to-blue-600 p-6 text-center">
                         <span class="text-6xl">📍</span>
                     </div>
@@ -83,7 +83,7 @@
                     </div>
                 </a>
 
-                <a href="{{ route('movimientos.index') }}" class="bg-white rounded-lg shadow-md hover:shadow-xl transition-all duration-300 overflow-hidden group">
+                <a href="{{ route('movimientos.index') }}" wire:navigate class="bg-white rounded-lg shadow-md hover:shadow-xl transition-all duration-300 overflow-hidden group">
                     <div class="bg-gradient-to-br from-blue-500 to-blue-600 p-6 text-center">
                         <span class="text-6xl">🔄</span>
                     </div>

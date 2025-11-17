@@ -234,7 +234,7 @@
 
                             <!-- PLANILLA -->
                             <td class="px-2 py-2 text-center border">
-                                <a href="{{ route('elementos.index', ['planilla_id' => $elemento->planilla_id]) }}"
+                                <a href="{{ route('elementos.index', ['planilla_id' => $elemento->planilla_id]) }}" wire:navigate
                                     class="text-blue-500 hover:underline">
                                     {{ $elemento->planilla->codigo_limpio ?? 'N/A' }}
                                 </a>
@@ -242,7 +242,7 @@
 
                             <!-- ETIQUETA -->
                             <td class="px-2 py-2 text-center border">
-                                <a href="{{ route('etiquetas.index', ['id' => $elemento->etiquetaRelacion?->id ?? '#']) }}"
+                                <a href="{{ route('etiquetas.index', ['id' => $elemento->etiquetaRelacion?->id ?? '#']) }}" wire:navigate
                                     class="text-blue-500 hover:underline">
                                     {{ $elemento->etiquetaRelacion?->id ?? 'N/A' }}
                                 </a>
@@ -250,7 +250,7 @@
 
                             <!-- SUBETIQUETA -->
                             <td class="px-2 py-2 text-center border">
-                                <a href="{{ route('etiquetas.index', ['id' => $elemento->etiquetaRelacion?->id ?? '#']) }}"
+                                <a href="{{ route('etiquetas.index', ['id' => $elemento->etiquetaRelacion?->id ?? '#']) }}" wire:navigate
                                     class="text-blue-500 hover:underline">
                                     {{ $elemento->subetiqueta ?? 'N/A' }}
                                 </a>
@@ -341,7 +341,7 @@
 
                             <!-- PRODUCTO 1 -->
                             <td class="px-2 py-2 text-center border">
-                                <a href="{{ route('productos.index', ['id' => $elemento->producto_id]) }}"
+                                <a href="{{ route('productos.index', ['id' => $elemento->producto_id]) }}" wire:navigate
                                     class="text-blue-500 hover:underline">
                                     {{ $elemento->producto?->codigo ?? 'N/A' }}
                                 </a>
@@ -349,7 +349,7 @@
 
                             <!-- PRODUCTO 2 -->
                             <td class="px-2 py-2 text-center border">
-                                <a href="{{ route('productos.index', ['id' => $elemento->producto_id_2]) }}"
+                                <a href="{{ route('productos.index', ['id' => $elemento->producto_id_2]) }}" wire:navigate
                                     class="text-blue-500 hover:underline">
                                     {{ $elemento->producto2?->codigo ?? 'N/A' }}
                                 </a>
@@ -357,7 +357,7 @@
 
                             <!-- PRODUCTO 3 -->
                             <td class="px-2 py-2 text-center border">
-                                <a href="{{ route('productos.index', ['id' => $elemento->producto_id_3]) }}"
+                                <a href="{{ route('productos.index', ['id' => $elemento->producto_id_3]) }}" wire:navigate
                                     class="text-blue-500 hover:underline">
                                     {{ $elemento->producto3?->codigo ?? 'N/A' }}
                                 </a>
@@ -487,7 +487,7 @@
 
         <!-- Paginación Livewire -->
         <div class="mt-4">
-            {{ $elementos->links('vendor.livewire.tailwind') }}
+            {{ $elementos->links('vendor.livewire.tailwind') }} wire:navigate
         </div>
 
         <!-- Modal de dibujo -->

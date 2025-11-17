@@ -230,7 +230,7 @@
                 <h2>Confirmación de pedido</h2>
                 <p style="font-size:14px; color:#374151; margin-bottom:16px;">
                     Estimado proveedor, {{ $proveedorNombre }}.<br>
-                    Le informamos que se ha generado un nuevo pedido a fecha {{ $pedido->created_at->format('d/m/Y') }}
+                    Le informamos que se ha generado un nuevo pedido a fecha {{ $pedido->created_at->format('d/m/Y') }} wire:navigate
                     con los siguientes datos:
                 </p>
 
@@ -321,10 +321,10 @@
                                     @endif
                                 </td>
                                 <td style="text-align:right;">
-                                    {{ number_format($producto->pivot->cantidad, 2, ',', '.') }}
+                                    {{ number_format($producto->pivot->cantidad, 2, ',', '.') }} wire:navigate
                                 </td>
                                 <td style="text-align:right;">
-                                    {{ \Carbon\Carbon::parse($producto->pivot->fecha_estimada_entrega)->format('d/m/Y') }}
+                                    {{ \Carbon\Carbon::parse($producto->pivot->fecha_estimada_entrega)->format('d/m/Y') }} wire:navigate
                                 </td>
                             </tr>
                         @endforeach

@@ -1,1 +1,1 @@
-<img src="{{asset('imagenes/logoHPR.png')}}" alt="logo" style="width: 100px">
+<img src="{{asset('imagenes/logoHPR.png')}}" wire:navigate alt="logo" style="width: 100px">

@@ -40,7 +40,7 @@
             </select>
 
             <div class="mt-4 text-right">
-                <button type="button" onclick="cerrarModalCambio()" class="mr-2 px-4 py-1 bg-gray-300 rounded">
+                <button type="button" onclick="cerrarModalCambio()" wire:navigate class="mr-2 px-4 py-1 bg-gray-300 rounded">
                     Cancelar
                 </button>
                 <button type="submit" class="px-4 py-1 bg-green-600 text-white rounded hover:bg-green-700">

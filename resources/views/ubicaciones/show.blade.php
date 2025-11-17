@@ -1,8 +1,8 @@
 <x-app-layout>
     <x-slot name="header">
         <h2 class="font-semibold text-xl text-gray-800 leading-tight">
-            <a href="{{ route('ubicaciones.index') }}" class="text-blue-500">
-                {{ __('Ubicaciones') }}
+            <a href="{{ route('ubicaciones.index') }}" wire:navigate class="text-blue-500">
+                {{ __('Ubicaciones') }} wire:navigate
             </a><span> / </span>Detalles de Ubicación
         </h2>
     </x-slot>
@@ -71,7 +71,7 @@
                             <p><strong>Peso Stock:</strong> {{ $producto->peso_stock }} kg</p>
                             <p><strong>Estado:</strong> {{ $producto->estado }}</p>
                             <p><strong>Otros:</strong> {{ $producto->otros ?? 'N/A' }}</p>
-                            <a href="{{ route('productos.show', $producto->id) }}"
+                            <a href="{{ route('productos.show', $producto->id) }}" wire:navigate
                                 class="mt-2 inline-block bg-blue-500 text-white text-xs px-3 py-1 rounded-md hover:bg-blue-600 transition">
                                 Ver
                             </a>
@@ -93,7 +93,7 @@
                             <h3 class="font-bold text-lg text-gray-700">ID Paquete: {{ $paquete->id }}</h3>
                             <p><strong>Planilla:</strong> {{ $paquete->planilla->codigo_limpio }}</p>
                             <p><strong>Peso:</strong> {{ number_format($paquete->peso, 2) }} kg</p>
-                            <a href="{{ route('paquetes.index', ['id' => $paquete->id ?? '#']) }}"
+                            <a href="{{ route('paquetes.index', ['id' => $paquete->id ?? '#']) }}" wire:navigate
                                 class="mt-2 inline-block bg-green-500 text-white text-xs px-3 py-1 rounded-md hover:bg-green-600 transition">
                                 Ver
                             </a>
@@ -104,7 +104,7 @@
         </div>
 
         <div class="mt-6 text-center">
-            <a href="{{ route('ubicaciones.index') }}"
+            <a href="{{ route('ubicaciones.index') }}" wire:navigate
                 class="bg-gray-500 text-white px-4 py-2 rounded-md hover:bg-gray-600 transition">Volver</a>
         </div>
     </div>

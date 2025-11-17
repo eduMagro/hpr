@@ -84,7 +84,7 @@
                         $active = $isActive($item['route']);
                         $hasBadge = isset($badges[$item['route']]) && $badges[$item['route']] > 0;
                     @endphp
-                    <a href="{{ route($item['route']) }}"
+                    <a href="{{ route($item['route']) }}" wire:navigate
                        wire:navigate
                        class="relative flex items-center justify-between px-4 py-3 text-sm font-medium transition-colors border-b last:border-b-0 dark:border-gray-700
                               {{ $active
@@ -117,7 +117,7 @@
                     $active = $isActive($item['route']);
                     $hasBadge = isset($badges[$item['route']]) && $badges[$item['route']] > 0;
                 @endphp
-                <a href="{{ route($item['route']) }}"
+                <a href="{{ route($item['route']) }}" wire:navigate
                    wire:navigate
                    class="relative group transition-all duration-200
                           @if($style === 'tabs')

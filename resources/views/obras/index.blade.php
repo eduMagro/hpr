@@ -3,7 +3,7 @@
 
     <x-slot name="header">
         <h2 class="text-lg font-semibold text-gray-800">
-            {{ __('Lista de Obras') }}
+            {{ __('Lista de Obras') }} wire:navigate
         </h2>
     </x-slot>
 
@@ -13,7 +13,7 @@
                 data-bs-target="#filtrosBusqueda">
                 🔍 Filtros Avanzados
             </button>
-            <a href="{{ route('obras.create') }}" class="btn btn-primary">
+            <a href="{{ route('obras.create') }}" wire:navigate class="btn btn-primary">
                 Agregar Obra
             </a>
         </div>
@@ -133,7 +133,7 @@
                             <th class="p-1 border text-center">
                                 <button type="submit" class="btn btn-sm btn-info px-2"><i
                                         class="fas fa-search"></i></button>
-                                <a href="{{ route('obras.index') }}" class="btn btn-sm btn-warning px-2"><i
+                                <a href="{{ route('obras.index') }}" wire:navigate class="btn btn-sm btn-warning px-2"><i
                                         class="fas fa-undo"></i></a>
                             </th>
                         </form>
@@ -236,7 +236,7 @@
                 </tbody>
             </table>
         </div>
-        <div class="mt-4 flex justify-center">{{ $obras->onEachSide(2)->links('vendor.pagination.bootstrap-5') }}
+        <div class="mt-4 flex justify-center">{{ $obras->onEachSide(2)->links('vendor.pagination.bootstrap-5') }} wire:navigate
         </div>
     </div>
 

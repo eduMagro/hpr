@@ -3,11 +3,11 @@
 
     <x-slot name="header">
         <h2 class="text-lg font-semibold text-gray-800">
-            <a href="{{ route('empresas.index') }}" class="text-blue-600">
-                {{ __('Empresa Información') }}
+            <a href="{{ route('empresas.index') }}" wire:navigate class="text-blue-600">
+                {{ __('Empresa Información') }} wire:navigate
             </a>
             <span class="mx-2">/</span>
-            {{ __('Nómina') }}
+            {{ __('Nómina') }} wire:navigate
         </h2>
     </x-slot>
     <div class="flex items-center space-x-4 mt-10 ml-10">
@@ -168,7 +168,7 @@
                         <td class="px-4 py-2">{{ number_format($nomina->coste_empresa, 2, ',', '.') }} €</td>
                         <td class="px-4 py-2">{{ \Carbon\Carbon::parse($nomina->fecha)->format('d/m/Y') }}</td>
                         <td class="px-4 py-2">
-                            <a href="{{ route('nominas.show', $nomina->id) }}" target="_blank"
+                            <a href="{{ route('nominas.show', $nomina->id) }}" wire:navigate target="_blank"
                                 rel="noopener noreferrer"
                                 class="inline-block px-3 py-1 text-xs text-white bg-blue-600 hover:bg-blue-700 rounded">
                                 Ver Nómina

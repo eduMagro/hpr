@@ -198,16 +198,16 @@ class AsignarMaquinaService
             return;
         }
 
-        // 🎯 Primero, enviar a CM: Ø32 y dobles_barra = 0
-        $vaParaCM = $resto->filter(fn($e) => (int)$e->diametro === 32 && (int)$e->dobles_barra === 0);
+        // 🎯 Primero, enviar a CM: elementos con dobles_barra = 0 (barras rectas)
+        $vaParaCM = $resto->filter(fn($e) => (int)$e->dobles_barra === 0);
 
         if ($vaParaCM->isNotEmpty()) {
-            Log::channel('planilla_import')->info("🪚 [AsignarMaquina] Detectados {$vaParaCM->count()} elementos para CM (Ø32 con dobles_barra=0)");
+            Log::channel('planilla_import')->info("🪚 [AsignarMaquina] Detectados {$vaParaCM->count()} elementos para CM (barras rectas con dobles_barra=0)");
 
             if (!$cortadoraManual) {
-                Log::channel('planilla_import')->warning("⚠️ [AsignarMaquina] CM no disponible para {$vaParaCM->count()} elementos Ø32 con dobles_barra=0 en planilla {$planilla->id}");
+                Log::channel('planilla_import')->warning("⚠️ [AsignarMaquina] CM no disponible para {$vaParaCM->count()} elementos con dobles_barra=0 en planilla {$planilla->id}");
                 foreach ($vaParaCM as $e) {
-                    Log::channel('planilla_import')->warning("   ❌ Elemento {$e->id} sin asignar (requiere CM)");
+                    Log::channel('planilla_import')->warning("   ❌ Elemento {$e->id} (Ø{$e->diametro}, dobles=0) sin asignar (requiere CM)");
                 }
             } else {
                 $asignadosCM = 0;
@@ -216,13 +216,13 @@ class AsignarMaquinaService
                     $e->save();
                     $this->sumarCarga($cargas, $cortadoraManual->id, (float)$e->peso);
                     $asignadosCM++;
-                    Log::channel('planilla_import')->debug("✓ [AsignarMaquina] Elemento {$e->id} (Ø32, {$e->peso}kg, dobles=0) → CM (ID {$cortadoraManual->id})");
+                    Log::channel('planilla_import')->debug("✓ [AsignarMaquina] Elemento {$e->id} (Ø{$e->diametro}, {$e->peso}kg, dobles=0) → CM (ID {$cortadoraManual->id})");
                 }
                 Log::channel('planilla_import')->info("✅ [AsignarMaquina] Asignados {$asignadosCM} elementos a CM");
             }
 
             // El resto continúa por el flujo normal
-            $resto = $resto->reject(fn($e) => (int)$e->diametro === 32 && (int)$e->dobles_barra === 0);
+            $resto = $resto->reject(fn($e) => (int)$e->dobles_barra === 0);
             Log::channel('planilla_import')->debug("📊 [AsignarMaquina] Elementos restantes después de CM: {$resto->count()}");
 
             if ($resto->isEmpty()) {

@@ -7,13 +7,13 @@
 
         @if (session('success'))
             <div class="mb-4 p-4 bg-green-100 border border-green-400 text-green-700 rounded-lg">
-                {{ session('success') }}
+                {{ session('success') }} wire:navigate
             </div>
         @endif
 
         @if (session('error'))
             <div class="mb-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded-lg">
-                {{ session('error') }}
+                {{ session('error') }} wire:navigate
             </div>
         @endif
 
@@ -87,7 +87,7 @@
                                                 {{ $info['icono'] }} {{ $info['nombre'] }}
                                                 <span
                                                     class="ml-2 px-3 py-1 bg-red-100 text-red-700 text-sm rounded-full">
-                                                    {{ $deletedData[$key]->count() }}
+                                                    {{ $deletedData[$key]->count() }} wire:navigate
                                                 </span>
                                             </h3>
                                         </div>
@@ -103,7 +103,7 @@
                                                         @foreach ($info['campos'] as $campo)
                                                             <th
                                                                 class="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
-                                                                {{ ucfirst(str_replace('.', ' ', str_replace('_', ' ', $campo))) }}
+                                                                {{ ucfirst(str_replace('.', ' ', str_replace('_', ' ', $campo))) }} wire:navigate
                                                             </th>
                                                         @endforeach
                                                         <th
@@ -137,7 +137,7 @@
                                                                 </td>
                                                             @endforeach
                                                             <td class="px-4 py-3 text-sm text-gray-500">
-                                                                {{ $registro->deleted_at->format('d/m/Y H:i') }}
+                                                                {{ $registro->deleted_at->format('d/m/Y H:i') }} wire:navigate
                                                             </td>
                                                             <td class="px-4 py-3 text-center">
                                                                 <form

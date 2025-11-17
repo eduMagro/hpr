@@ -2,8 +2,7 @@
 // GESTIÓN DE SALIDAS - CREAR Y ASIGNAR PAQUETES
 // ==============================================
 
-function initGestionSalidas() {
-    console.log("🚀 Iniciando gestión de salidas...");
+document.addEventListener("DOMContentLoaded", function () {
     // Generar formularios para crear salidas
     const btnGenerarFormularios = document.getElementById(
         "btn-generar-formularios"
@@ -64,11 +63,7 @@ function initGestionSalidas() {
             }
         }
     }
-}
-
-// Ejecutar en DOMContentLoaded y en navegación de Livewire
-document.addEventListener("DOMContentLoaded", initGestionSalidas);
-document.addEventListener("livewire:navigated", initGestionSalidas);
+});
 
 /* ===================== Generar formularios de salidas ===================== */
 function generarFormulariosSalidas() {

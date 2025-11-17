@@ -17,7 +17,7 @@
         </button>
 
         {{-- ♻️ Botón reset --}}
-        <a href="{{ route($ruta) }}"
+        <a href="{{ route($ruta) }}" wire:navigate
             class="bg-yellow-500 hover:bg-yellow-600 text-white px-2 py-1 rounded text-xs flex items-center justify-center"
             title="Restablecer filtros">
             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24"
@@ -29,7 +29,7 @@
 
         {{-- 📤 Botón exportar Excel --}}
         @if ($rutaExportar)
-            <a href="{{ route($rutaExportar, request()->query()) }}" title="Descarga los registros en Excel"
+            <a href="{{ route($rutaExportar, request()->query()) }}" wire:navigate title="Descarga los registros en Excel"
                 class="bg-green-600 hover:bg-green-700 text-white rounded text-xs flex items-center justify-center">
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" class="h-6 w-8">
                     <path fill="#21A366"

@@ -2,7 +2,7 @@
     <x-slot name="title">Detalles de Obra - {{ $obra->obra }}</x-slot>
     <x-slot name="header">
         <h2 class="text-lg font-semibold text-gray-800">
-            <a href="{{ route('clientes.show', $obra->cliente_id) }}" class="text-blue-600 hover:underline">
+            <a href="{{ route('clientes.show', $obra->cliente_id) }}" wire:navigate class="text-blue-600 hover:underline">
                 {{ $obra->cliente->empresa }}
             </a>
             <span class="mx-2">/</span>
@@ -35,7 +35,7 @@
                     @endphp
 
                     <span class="{{ $color }}">
-                        {{ ucfirst($obra->estado) }}
+                        {{ ucfirst($obra->estado) }} wire:navigate
                     </span>
 
                 </div>
@@ -70,11 +70,11 @@
                                     <td class="px-2 py-3 text-center border">
                                         <span
                                             class="{{ $planilla->estado == 'completada' ? 'text-green-500' : 'text-red-500' }}">
-                                            {{ ucfirst($planilla->estado) }}
+                                            {{ ucfirst($planilla->estado) }} wire:navigate
                                         </span>
                                     </td>
                                     <td class="px-2 py-3 text-center border">
-                                        <a href="{{ route('planillas.show', $planilla->id) }}"
+                                        <a href="{{ route('planillas.show', $planilla->id) }}" wire:navigate
                                             class="text-blue-500 hover:underline">Ver</a>
                                     </td>
                                 </tr>
@@ -85,7 +85,7 @@
 
                 <!-- Paginación -->
                 <div class="mt-4">
-                    {{ $planillas->links() }}
+                    {{ $planillas->links() }} wire:navigate
                 </div>
             @endif
         </div>

@@ -391,7 +391,7 @@
                             <!-- Footer -->
                             <div class="flex items-center justify-between pt-2 border-t border-gray-200">
                                 <span class="text-xs text-gray-500">
-                                    {{ $alerta->created_at->format('d/m/Y H:i') }}
+                                    {{ $alerta->created_at->format('d/m/Y H:i') }} wire:navigate
                                 </span>
                                 @if ($esSaliente)
                                     <button onclick="event.stopPropagation(); eliminarAlerta({{ $alerta->id }})"
@@ -442,7 +442,7 @@
             </h2>
             <span
                 class="text-xs sm:text-sm text-gray-600 bg-gray-100 px-3 py-1.5 rounded-full font-medium whitespace-nowrap">
-                Total: {{ $todasLasAlertas->total() }}
+                Total: {{ $todasLasAlertas->total() }} wire:navigate
             </span>
         </div>
 
@@ -470,7 +470,7 @@
                         class="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg font-medium text-sm">
                         Filtrar
                     </button>
-                    <a href="{{ route('alertas.index') }}"
+                    <a href="{{ route('alertas.index') }}" wire:navigate
                         class="flex-1 bg-gray-500 hover:bg-gray-600 text-white py-2 px-4 rounded-lg font-medium text-sm text-center">
                         Limpiar
                     </a>
@@ -546,7 +546,7 @@
                                 @if ($alerta->destino)
                                     <span
                                         class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800 border border-purple-200">
-                                        {{ ucfirst($alerta->destino) }}
+                                        {{ ucfirst($alerta->destino) }} wire:navigate
                                     </span>
                                 @else
                                     <span class="text-gray-400">—</span>
@@ -596,13 +596,13 @@
                             <td class="p-3 text-center border-r border-gray-200">
                                 <div class="flex flex-col items-center">
                                     <span class="text-gray-900 font-medium text-xs">
-                                        {{ $alerta->created_at?->format('d/m/Y') }}
+                                        {{ $alerta->created_at?->format('d/m/Y') }} wire:navigate
                                     </span>
                                     <span class="text-gray-500 text-xs">
-                                        {{ $alerta->created_at?->format('H:i') }}
+                                        {{ $alerta->created_at?->format('H:i') }} wire:navigate
                                     </span>
                                     <span class="text-gray-400 text-xs mt-0.5">
-                                        {{ $alerta->created_at?->diffForHumans() }}
+                                        {{ $alerta->created_at?->diffForHumans() }} wire:navigate
                                     </span>
                                 </div>
                             </td>
@@ -675,7 +675,7 @@
                                 </span>
                             </div>
                             <span class="text-white text-xs font-medium">
-                                {{ $alerta->created_at?->format('d/m/Y') }}
+                                {{ $alerta->created_at?->format('d/m/Y') }} wire:navigate
                             </span>
                         </div>
                     </div>
@@ -702,12 +702,12 @@
                                 @if ($alerta->usuario1?->rol)
                                     <p class="text-xs text-gray-500 mt-0.5">
                                         <span class="inline-block w-2 h-2 rounded-full bg-blue-400 mr-1"></span>
-                                        {{ ucfirst($alerta->usuario1->rol) }}
+                                        {{ ucfirst($alerta->usuario1->rol) }} wire:navigate
                                     </p>
                                 @endif
                                 <p class="text-xs text-gray-400 mt-1">
                                     {{ $alerta->created_at?->format('H:i') }} ·
-                                    {{ $alerta->created_at?->diffForHumans() }}
+                                    {{ $alerta->created_at?->diffForHumans() }} wire:navigate
                                 </p>
                             </div>
                         </div>
@@ -722,7 +722,7 @@
                                             d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z"
                                             clip-rule="evenodd" />
                                     </svg>
-                                    Rol: {{ ucfirst($alerta->destino) }}
+                                    Rol: {{ ucfirst($alerta->destino) }} wire:navigate
                                 </span>
                             @endif
                             @if ($alerta->destinatarioUser)

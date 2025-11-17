@@ -7,7 +7,7 @@
                 class="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-lg shadow transition cursor-pointer">
                 ➕ Nueva Ubicación ({{ $nombreAlmacen }})
             </a>
-            <a href="{{ route('ubicaciones.verInventario', ['almacen' => $obraActualId]) }}"
+            <a href="{{ route('ubicaciones.verInventario', ['almacen' => $obraActualId]) }}" wire:navigate
                 class="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-lg shadow transition cursor-pointer">
                 📦 Inventario
             </a>
@@ -68,7 +68,7 @@
                     @foreach ($ubicaciones as $ubicacion)
                         <div class="ubicacion">
                             <span>
-                                <a href="{{ route('ubicaciones.show', $ubicacion->id) }}">
+                                <a href="{{ route('ubicaciones.show', $ubicacion->id) }}" wire:navigate>
                                     {{ $ubicacion->id }}
                                 </a>
                             </span>

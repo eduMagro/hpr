@@ -52,7 +52,7 @@
         </button>
 
         <!-- Botón reset -->
-        <a href="{{ route('estadisticas.verConsumo-maquinas') }}#consumo-maquinas"
+        <a href="{{ route('estadisticas.verConsumo-maquinas') }}#consumo-maquinas" wire:navigate
             class="bg-yellow-500 hover:bg-yellow-600 text-white px-2 py-1 rounded text-xs flex items-center justify-center"
             title="Restablecer filtros">
 
@@ -94,7 +94,7 @@
                         <tr class="border-b odd:bg-gray-100 even:bg-gray-50 hover:bg-blue-100">
                             <td class="px-2 py-1 text-center border">{{ $row['maquina'] }}</td>
                             <td class="px-2 py-1 text-center border">
-                                {{ number_format($row['kg_totales'], 2) }}
+                                {{ number_format($row['kg_totales'], 2) }} wire:navigate
                             </td>
                         </tr>
                     @empty
@@ -116,7 +116,7 @@
 
     {{-- Pie con fecha de generación --}}
     <div class="text-center text-gray-500 bg-gray-100 py-1 rounded-b text-xs">
-        Generado el {{ now()->format('d/m/Y H:i') }}
+        Generado el {{ now()->format('d/m/Y H:i') }} wire:navigate
     </div>
 
     {{-- Gráfica --}}

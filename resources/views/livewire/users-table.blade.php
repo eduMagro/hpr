@@ -141,7 +141,7 @@
                             </button>
 
                             {{-- 📤 Botón exportar Excel --}}
-                            <a href="{{ route('users.verExportar', request()->query()) }}" title="Descarga los registros en Excel"
+                            <a href="{{ route('users.verExportar', request()->query()) }}" wire:navigate title="Descarga los registros en Excel"
                                 class="bg-green-600 hover:bg-green-700 text-white rounded text-xs flex items-center justify-center">
                                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" class="h-6 w-8">
                                     <path fill="#21A366"
@@ -301,7 +301,7 @@
                                     <div class="flex items-center space-x-2">
                                         <x-tabla.boton-editar @click="editando=true" x-show="!editando" />
                                         <x-tabla.boton-ver :href="route('users.show', $user->id)" target="_self" rel="noopener" />
-                                        <a href="{{ route('users.edit', $user->id) }}" title="Configuración"
+                                        <a href="{{ route('users.edit', $user->id) }}" wire:navigate title="Configuración"
                                             class="w-6 h-6 bg-yellow-100 text-yellow-600 rounded hover:bg-yellow-200 flex items-center justify-center">
                                             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4"
                                                 viewBox="0 0 24 24" fill="currentColor">

@@ -40,7 +40,7 @@
                     $base = Str::beforeLast($link['route'], '.'); // p.ej. 'salidas-ferralla'
                     $active = request()->routeIs($base . '.*');
                 @endphp
-                <a href="{{ route($link['route']) }}"
+                <a href="{{ route($link['route']) }}" wire:navigate
                     wire:navigate
                     class="block px-2 py-3 text-sm font-medium transition
               {{ $active
@@ -60,7 +60,7 @@
                 $base = Str::beforeLast($link['route'], '.');
                 $active = request()->routeIs($base . '.*');
             @endphp
-            <a href="{{ route($link['route']) }}"
+            <a href="{{ route($link['route']) }}" wire:navigate
                 wire:navigate
                 class="flex-1 text-center px-4 py-2 font-semibold transition
               {{ $active

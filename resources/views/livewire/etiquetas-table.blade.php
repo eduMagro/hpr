@@ -143,7 +143,7 @@
                             <!-- PLANILLA (no editable) -->
                             <td class="p-2 text-center border">
                                 @if ($etiqueta->planilla_id)
-                                    <a href="{{ route('planillas.index', ['planilla_id' => $etiqueta->planilla_id]) }}"
+                                    <a href="{{ route('planillas.index', ['planilla_id' => $etiqueta->planilla_id]) }}" wire:navigate
                                         class="text-blue-500 hover:underline">
                                         {{ $etiqueta->planilla->codigo_limpio ?? 'N/A' }}
                                     </a>
@@ -155,7 +155,7 @@
                             <!-- PAQUETE (no editable) -->
                             <td class="p-2 text-center border">
                                 @if (isset($etiqueta->paquete->codigo))
-                                    <a href="{{ route('paquetes.index', [$etiqueta->paquete_id => $etiqueta->paquete->codigo]) }}"
+                                    <a href="{{ route('paquetes.index', [$etiqueta->paquete_id => $etiqueta->paquete->codigo]) }}" wire:navigate
                                         class="text-blue-500 hover:underline">
                                         {{ $etiqueta->paquete->codigo }}
                                     </a>
@@ -167,7 +167,7 @@
                             <!-- Opeario 1 (no editable) -->
                             <td class="p-2 text-center border">
                                 @if ($etiqueta->operario1)
-                                    <a href="{{ route('users.index', ['users_id' => $etiqueta->operario1]) }}"
+                                    <a href="{{ route('users.index', ['users_id' => $etiqueta->operario1]) }}" wire:navigate
                                         class="text-blue-500 hover:underline">
                                         {{ $etiqueta->operario1->name }}
                                         {{ $etiqueta->operario1->primer_apellido }}
@@ -180,7 +180,7 @@
                             <!-- Operario 2 (no editable) -->
                             <td class="p-2 text-center border">
                                 @if ($etiqueta->operario2)
-                                    <a href="{{ route('users.index', ['users_id' => $etiqueta->operario2]) }}"
+                                    <a href="{{ route('users.index', ['users_id' => $etiqueta->operario2]) }}" wire:navigate
                                         class="text-blue-500 hover:underline">
                                         {{ $etiqueta->operario2->name }}
                                     </a>
@@ -192,7 +192,7 @@
                             <!-- Ensamblador 1 (no editable) -->
                             <td class="p-2 text-center border">
                                 @if ($etiqueta->ensamblador1)
-                                    <a href="{{ route('users.index', ['users_id' => $etiqueta->ensamblador1]) }}"
+                                    <a href="{{ route('users.index', ['users_id' => $etiqueta->ensamblador1]) }}" wire:navigate
                                         class="text-blue-500 hover:underline">
                                         {{ $etiqueta->ensamblador1->name }}
                                     </a>
@@ -204,7 +204,7 @@
                             <!-- Ensamblador 2 (no editable) -->
                             <td class="p-2 text-center border">
                                 @if ($etiqueta->ensamblador2)
-                                    <a href="{{ route('users.index', ['users_id' => $etiqueta->ensamblador2]) }}"
+                                    <a href="{{ route('users.index', ['users_id' => $etiqueta->ensamblador2]) }}" wire:navigate
                                         class="text-blue-500 hover:underline">
                                         {{ $etiqueta->ensamblador2->name }}
                                     </a>
@@ -407,7 +407,7 @@
         </div>
 
         <!-- Paginación Livewire -->
-        ${{ $etiquetas->links() }}
+        ${{ $etiquetas->links() }} wire:navigate
 
         <!-- Modal para mostrar etiqueta -->
         <div id="modalEtiqueta"

@@ -138,7 +138,7 @@
                             <td class="p-2 text-center border">{{ $paquete->id }}</td>
                             <td class="p-2 text-center border">{{ $paquete->codigo }}</td>
                             <td class="p-2 text-center border">
-                                <a href="{{ route('planillas.index', ['planilla_id' => $paquete->planilla->id]) }}"
+                                <a href="{{ route('planillas.index', ['planilla_id' => $paquete->planilla->id]) }}" wire:navigate
                                     class="text-blue-500 hover:underline">
                                     {{ $paquete->planilla->codigo_limpio }}
                                 </a>
@@ -193,7 +193,7 @@
                                 @if ($paquete->etiquetas->isNotEmpty())
                                     @foreach ($paquete->etiquetas as $etiqueta)
                                         <p class="font-semibold text-blue-700">
-                                            🏷️ <a href="{{ route('etiquetas.index', ['id' => $etiqueta->id]) }}"
+                                            🏷️ <a href="{{ route('etiquetas.index', ['id' => $etiqueta->id]) }}" wire:navigate
                                                 class="hover:underline">
                                                 {{ $etiqueta->nombre }}{{ $etiqueta->etiqueta_sub_id }}
                                             </a> –
@@ -203,7 +203,7 @@
                                             <ul class="ml-2 text-xs text-gray-700">
                                                 @foreach ($etiqueta->elementos as $elemento)
                                                     <li>
-                                                        <a href="{{ route('elementos.index', ['id' => $elemento->id]) }}"
+                                                        <a href="{{ route('elementos.index', ['id' => $elemento->id]) }}" wire:navigate
                                                             class="text-green-600 hover:underline">
                                                             {{ $elemento->codigo }} – {{ $elemento->figura }}
                                                             – {{ $elemento->peso_kg }}
@@ -267,7 +267,7 @@
         </div>
 
         <!-- Paginación Livewire -->
-        ${{ $paquetes->links() }}
+        ${{ $paquetes->links() }} wire:navigate
     </div>
 
     {{-- Modal para visualizar elementos del paquete --}}

@@ -30,28 +30,28 @@
                                 <div>
                                     <label for="name" class="{{ $labelClass }}">Nombre <span class="text-red-500">*</span></label>
                                     <input id="name" name="name" type="text" class="{{ $inputClass }}" value="{{ old('name') }}" required autofocus>
-                                    <x-input-error :messages="$errors->get('name')" class="{{ $errorClass }}" />
+                                    <x-input-error :messages="$errors->get('name')" wire:navigate class="{{ $errorClass }}" />
                                 </div>
 
                                 {{-- PRIMER APELLIDO --}}
                                 <div>
                                     <label for="primer_apellido" class="{{ $labelClass }}">Primer Apellido <span class="text-red-500">*</span></label>
                                     <input id="primer_apellido" name="primer_apellido" type="text" class="{{ $inputClass }}" value="{{ old('primer_apellido') }}" required>
-                                    <x-input-error :messages="$errors->get('primer_apellido')" class="{{ $errorClass }}" />
+                                    <x-input-error :messages="$errors->get('primer_apellido')" wire:navigate class="{{ $errorClass }}" />
                                 </div>
 
                                 {{-- SEGUNDO APELLIDO --}}
                                 <div>
                                     <label for="segundo_apellido" class="{{ $labelClass }}">Segundo Apellido</label>
                                     <input id="segundo_apellido" name="segundo_apellido" type="text" class="{{ $inputClass }}" value="{{ old('segundo_apellido') }}">
-                                    <x-input-error :messages="$errors->get('segundo_apellido')" class="{{ $errorClass }}" />
+                                    <x-input-error :messages="$errors->get('segundo_apellido')" wire:navigate class="{{ $errorClass }}" />
                                 </div>
 
                                 {{-- DNI --}}
                                 <div>
                                     <label for="dni" class="{{ $labelClass }}">DNI <span class="text-red-500">*</span></label>
                                     <input id="dni" name="dni" type="text" class="{{ $inputClass }}" value="{{ old('dni') }}" required>
-                                    <x-input-error :messages="$errors->get('dni')" class="{{ $errorClass }}" />
+                                    <x-input-error :messages="$errors->get('dni')" wire:navigate class="{{ $errorClass }}" />
                                 </div>
                             </div>
                         </div>
@@ -66,21 +66,21 @@
                                 <div>
                                     <label for="email" class="{{ $labelClass }}">Email <span class="text-red-500">*</span></label>
                                     <input id="email" name="email" type="email" class="{{ $inputClass }}" value="{{ old('email') }}" required>
-                                    <x-input-error :messages="$errors->get('email')" class="{{ $errorClass }}" />
+                                    <x-input-error :messages="$errors->get('email')" wire:navigate class="{{ $errorClass }}" />
                                 </div>
 
                                 {{-- MÓVIL PERSONAL --}}
                                 <div>
                                     <label for="movil_personal" class="{{ $labelClass }}">Móvil Personal</label>
                                     <input id="movil_personal" name="movil_personal" type="text" class="{{ $inputClass }}" value="{{ old('movil_personal') }}">
-                                    <x-input-error :messages="$errors->get('movil_personal')" class="{{ $errorClass }}" />
+                                    <x-input-error :messages="$errors->get('movil_personal')" wire:navigate class="{{ $errorClass }}" />
                                 </div>
 
                                 {{-- MÓVIL EMPRESA --}}
                                 <div>
                                     <label for="movil_empresa" class="{{ $labelClass }}">Móvil Empresa</label>
                                     <input id="movil_empresa" name="movil_empresa" type="text" class="{{ $inputClass }}" value="{{ old('movil_empresa') }}">
-                                    <x-input-error :messages="$errors->get('movil_empresa')" class="{{ $errorClass }}" />
+                                    <x-input-error :messages="$errors->get('movil_empresa')" wire:navigate class="{{ $errorClass }}" />
                                 </div>
                             </div>
                         </div>
@@ -100,7 +100,7 @@
                                             <option value="{{ $empresa->id }}" {{ old('empresa_id') == $empresa->id ? 'selected' : '' }}>{{ ucfirst($empresa->nombre) }}</option>
                                         @endforeach
                                     </select>
-                                    <x-input-error :messages="$errors->get('empresa_id')" class="{{ $errorClass }}" />
+                                    <x-input-error :messages="$errors->get('empresa_id')" wire:navigate class="{{ $errorClass }}" />
                                 </div>
 
                                 {{-- ROL --}}
@@ -113,7 +113,7 @@
                                         <option value="transportista">Transportista</option>
                                         <option value="visitante">Visitante</option>
                                     </select>
-                                    <x-input-error :messages="$errors->get('rol')" class="{{ $errorClass }}" />
+                                    <x-input-error :messages="$errors->get('rol')" wire:navigate class="{{ $errorClass }}" />
                                 </div>
 
                                 {{-- CATEGORÍA --}}
@@ -125,7 +125,7 @@
                                             <option value="{{ $categoria->id }}" {{ old('categoria_id') == $categoria->id ? 'selected' : '' }}>{{ ucfirst($categoria->nombre) }}</option>
                                         @endforeach
                                     </select>
-                                    <x-input-error :messages="$errors->get('categoria_id')" class="{{ $errorClass }}" />
+                                    <x-input-error :messages="$errors->get('categoria_id')" wire:navigate class="{{ $errorClass }}" />
                                 </div>
 
                                 {{-- TURNO --}}
@@ -137,7 +137,7 @@
                                         <option value="diurno">Diurno</option>
                                         <option value="mañana">Mañana</option>
                                     </select>
-                                    <x-input-error :messages="$errors->get('turno')" class="{{ $errorClass }}" />
+                                    <x-input-error :messages="$errors->get('turno')" wire:navigate class="{{ $errorClass }}" />
                                 </div>
                             </div>
                         </div>
@@ -152,14 +152,14 @@
                                 <div>
                                     <label for="password" class="{{ $labelClass }}">Contraseña <span class="text-red-500">*</span></label>
                                     <input id="password" name="password" type="password" class="{{ $inputClass }}" required>
-                                    <x-input-error :messages="$errors->get('password')" class="{{ $errorClass }}" />
+                                    <x-input-error :messages="$errors->get('password')" wire:navigate class="{{ $errorClass }}" />
                                 </div>
 
                                 {{-- CONFIRMAR CONTRASEÑA --}}
                                 <div>
                                     <label for="password_confirmation" class="{{ $labelClass }}">Confirmar Contraseña <span class="text-red-500">*</span></label>
                                     <input id="password_confirmation" name="password_confirmation" type="password" class="{{ $inputClass }}" required>
-                                    <x-input-error :messages="$errors->get('password_confirmation')" class="{{ $errorClass }}" />
+                                    <x-input-error :messages="$errors->get('password_confirmation')" wire:navigate class="{{ $errorClass }}" />
                                 </div>
                             </div>
                         </div>

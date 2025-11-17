@@ -41,7 +41,7 @@
                     x-transition:enter-end="opacity-100 transform translate-y-0"
                     x-transition:leave="transition-all duration-200"
                     x-transition:leave-start="opacity-100 transform translate-y-0"
-                    x-transition:leave-end="opacity-0 transform -translate-y-16" href="{{ route('dashboard') }}"
+                    x-transition:leave-end="opacity-0 transform -translate-y-16" href="{{ route('dashboard') }}" wire:navigate
                     wire:navigate class="flex items-center space-x-3 group relative z-50">
                     <x-application-logo
                         class="block h-8 w-auto fill-current text-gray-800 dark:text-gray-200 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition" />
@@ -70,7 +70,7 @@
                         class="flex items-center space-x-2 px-3 py-2 text-sm font-medium text-gray-300 dark:text-gray-300 hover:bg-gray-700 dark:hover:bg-gray-700 rounded-lg transition">
                         <div
                             class="w-8 h-8 bg-gray-900 dark:bg-gray-950 rounded-full flex items-center justify-center text-white font-bold text-sm border-2 border-gray-300">
-                            {{ strtoupper(substr(Auth::user()->nombre_completo, 0, 1)) }}
+                            {{ strtoupper(substr(Auth::user()->nombre_completo, 0, 1)) }} wire:navigate
                         </div>
                         <span class="hidden sm:block">{{ Auth::user()->nombre_completo }}</span>
                         <svg class="w-4 h-4" :class="open ? 'rotate-180' : ''" fill="none" stroke="currentColor"

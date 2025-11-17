@@ -1,11 +1,11 @@
 <x-guest-layout>
     <div class="mb-4 text-sm text-gray-600">
-        {{ __('¡Gracias por registrarte! Antes de comenzar, ¿podrías verificar tu dirección de correo electrónico haciendo clic en el enlace que te acabamos de enviar? Si no recibiste el correo, con gusto te enviaremos otro.') }}
+        {{ __('¡Gracias por registrarte! Antes de comenzar, ¿podrías verificar tu dirección de correo electrónico haciendo clic en el enlace que te acabamos de enviar? Si no recibiste el correo, con gusto te enviaremos otro.') }} wire:navigate
     </div>
 
     @if (session('status') == 'verification-link-sent')
         <div class="mb-4 font-medium text-sm text-green-600">
-            {{ __('Se ha enviado un nuevo enlace de verificación a la dirección de correo electrónico que proporcionaste durante el registro.') }}
+            {{ __('Se ha enviado un nuevo enlace de verificación a la dirección de correo electrónico que proporcionaste durante el registro.') }} wire:navigate
         </div>
     @endif
 
@@ -16,7 +16,7 @@
 
             <div>
                 <x-primary-button>
-                    {{ __('Reenviar Email') }}
+                    {{ __('Reenviar Email') }} wire:navigate
                 </x-primary-button>
             </div>
         </form>
@@ -28,7 +28,7 @@
                 type="submit" 
                 
             >
-                {{ __('Cerrar Sesión') }}
+                {{ __('Cerrar Sesión') }} wire:navigate
             </button>
         </form>
     </div>

@@ -1802,6 +1802,7 @@ class ProduccionController extends Controller
                                 'borderColor'     => !$planilla->revisada ? '#757575' : null,
                                 'classNames'      => !$planilla->revisada ? ['evento-sin-revisar'] : ['evento-revisado'],
                                 'extendedProps' => [
+                                    'planilla_id'    => $planilla->id,
                                     'obra'           => optional($planilla->obra)->obra ?? '—',
                                     'cod_obra'       => optional($planilla->obra)->cod_obra ?? '—',
                                     'cliente'        => optional($planilla->obra->cliente)->empresa ?? '—',
@@ -2523,6 +2524,299 @@ class ProduccionController extends Controller
             ]);
 
             throw $e;
+        }
+    }
+
+    /**
+     * Analizar planillas con retraso y sugerir redistribución óptima
+     *
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function optimizarAnalisis()
+    {
+        try {
+            Log::info('🔍 OPTIMIZAR: Iniciando análisis simple');
+
+            // 1. Obtener todas las máquinas disponibles
+            $maquinas = Maquina::where('tipo', '<>', 'grua')
+                ->whereNotNull('tipo')
+                ->where('estado', '!=', 'inactiva')
+                ->get()
+                ->keyBy('id');
+
+            Log::info('🔍 OPTIMIZAR: Máquinas cargadas', ['total' => $maquinas->count()]);
+
+            // 2. Obtener todas las planillas en cola con sus elementos pendientes
+            $ordenesConPlanillas = DB::table('orden_planillas')
+                ->join('planillas', 'planillas.id', '=', 'orden_planillas.planilla_id')
+                ->select('orden_planillas.*', 'planillas.fecha_estimada_entrega', 'planillas.codigo')
+                ->where('planillas.revisada', true)
+                ->orderBy('orden_planillas.maquina_id')
+                ->orderBy('orden_planillas.posicion')
+                ->get();
+
+            Log::info('🔍 OPTIMIZAR: Órdenes en cola', ['total' => $ordenesConPlanillas->count()]);
+
+            // 3. Calcular tiempo acumulado por máquina y detectar retrasos
+            $cargaMaquinas = [];
+            $planillasConRetraso = [];
+            $elementosAMover = [];
+
+            foreach ($ordenesConPlanillas as $orden) {
+                $maquinaId = $orden->maquina_id;
+                $planillaId = $orden->planilla_id;
+
+                // Inicializar carga de máquina si no existe
+                if (!isset($cargaMaquinas[$maquinaId])) {
+                    $cargaMaquinas[$maquinaId] = now();
+                }
+
+                // Obtener elementos pendientes de esta planilla en esta máquina
+                $elementos = Elemento::where('planilla_id', $planillaId)
+                    ->where('maquina_id', $maquinaId)
+                    ->where('estado', 'pendiente')
+                    ->get();
+
+                if ($elementos->isEmpty()) continue;
+
+                // Calcular tiempo total
+                $tiempoSegundos = $elementos->sum('tiempo_fabricacion');
+                $cargaMaquinas[$maquinaId] = $cargaMaquinas[$maquinaId]->copy()->addSeconds($tiempoSegundos);
+
+                // Parsear fecha de entrega
+                $fechaEntrega = $this->parseFechaEntregaFlexible($orden->fecha_estimada_entrega);
+
+                Log::info('🔍 OPTIMIZAR: Analizando planilla', [
+                    'planilla_id' => $planillaId,
+                    'codigo' => $orden->codigo,
+                    'maquina_id' => $maquinaId,
+                    'fecha_entrega' => $fechaEntrega?->format('d/m/Y H:i'),
+                    'fin_programado' => $cargaMaquinas[$maquinaId]->format('d/m/Y H:i'),
+                    'tiene_retraso' => $fechaEntrega ? $cargaMaquinas[$maquinaId]->gt($fechaEntrega) : false,
+                ]);
+
+                // Verificar retraso
+                if ($fechaEntrega && $cargaMaquinas[$maquinaId]->gt($fechaEntrega)) {
+                    if (!in_array($planillaId, $planillasConRetraso)) {
+                        $planillasConRetraso[] = $planillaId;
+                    }
+
+                    Log::info('🚨 OPTIMIZAR: RETRASO DETECTADO', [
+                        'planilla_id' => $planillaId,
+                        'codigo' => $orden->codigo,
+                        'fecha_entrega' => $fechaEntrega->format('d/m/Y H:i'),
+                        'fin_programado' => $cargaMaquinas[$maquinaId]->format('d/m/Y H:i'),
+                    ]);
+
+                    // Analizar cada elemento para encontrar máquinas compatibles
+                    foreach ($elementos as $elemento) {
+                        $maquinasCompatibles = $this->encontrarMaquinasCompatiblesSimple(
+                            $elemento,
+                            $maquinas,
+                            $maquinaId
+                        );
+
+                        if (count($maquinasCompatibles) > 0) {
+                            $maquinaSugerida = $maquinasCompatibles[0];
+
+                            $elementosAMover[] = [
+                                'id' => $elemento->id,
+                                'codigo' => $elemento->codigo,
+                                'planilla_codigo' => $orden->codigo ?? 'N/A',
+                                'planilla_id' => $planillaId,
+                                'diametro' => $elemento->diametro,
+                                'tipo_material' => $maquinas[$maquinaId]->tipo_material ?? null,
+                                'peso' => $elemento->peso,
+                                'maquina_actual_id' => $maquinaId,
+                                'maquina_actual_nombre' => $maquinas[$maquinaId]->nombre ?? 'N/A',
+                                'fecha_entrega' => $fechaEntrega->toIso8601String(),
+                                'fin_programado' => $cargaMaquinas[$maquinaId]->toIso8601String(),
+                                'maquina_destino_sugerida' => $maquinaSugerida['id'],
+                                'maquinas_compatibles' => $maquinasCompatibles,
+                            ];
+                        }
+                    }
+                }
+            }
+
+            // 4. Contar máquinas disponibles
+            $maquinasDisponibles = $maquinas->count();
+
+            return response()->json([
+                'planillas_retraso' => count($planillasConRetraso),
+                'elementos' => $elementosAMover,
+                'maquinas_disponibles' => $maquinasDisponibles,
+                'timestamp' => now()->toIso8601String(),
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Error en optimizarAnalisis:', [
+                'message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return response()->json([
+                'error' => 'Error al analizar planillas',
+                'message' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Encontrar máquinas compatibles con un elemento (versión simple)
+     *
+     * @param \App\Models\Elemento $elemento
+     * @param \Illuminate\Support\Collection $maquinas
+     * @param int $maquinaActualId
+     * @return array
+     */
+    private function encontrarMaquinasCompatiblesSimple($elemento, $maquinas, $maquinaActualId)
+    {
+        $compatibles = [];
+
+        foreach ($maquinas as $maquina) {
+            // No incluir la máquina actual
+            if ($maquina->id == $maquinaActualId) continue;
+
+            // Verificar compatibilidad de tipo de material
+            if ($maquina->tipo_material && $elemento->diametro) {
+                // Verificar si el tipo de material es compatible
+                $maquinaActual = $maquinas->get($maquinaActualId);
+                if ($maquinaActual && $maquinaActual->tipo_material !== $maquina->tipo_material) {
+                    continue;
+                }
+
+                // Verificar rango de diámetro
+                if ($maquina->diametro_min && $elemento->diametro < $maquina->diametro_min) {
+                    continue;
+                }
+
+                if ($maquina->diametro_max && $elemento->diametro > $maquina->diametro_max) {
+                    continue;
+                }
+            }
+
+            $compatibles[] = [
+                'id' => $maquina->id,
+                'nombre' => $maquina->nombre,
+                'carga_horas' => 0, // No calculamos carga aquí
+            ];
+        }
+
+        return $compatibles;
+    }
+
+    /**
+     * Encontrar máquinas compatibles con un elemento
+     *
+     * @param \App\Models\Elemento $elemento
+     * @param \Illuminate\Support\Collection $maquinas
+     * @param array $cargaMaquinas
+     * @param int $maquinaActualId
+     * @return array
+     */
+    private function encontrarMaquinasCompatibles($elemento, $maquinas, $cargaMaquinas, $maquinaActualId)
+    {
+        $compatibles = [];
+
+        foreach ($maquinas as $maquina) {
+            // No incluir la máquina actual
+            if ($maquina->id == $maquinaActualId) continue;
+
+            // Verificar compatibilidad de tipo de material
+            if ($maquina->tipo_material && $elemento->diametro) {
+                // Verificar si el tipo de material es compatible
+                $maquinaActual = $maquinas->get($maquinaActualId);
+                if ($maquinaActual && $maquinaActual->tipo_material !== $maquina->tipo_material) {
+                    continue;
+                }
+
+                // Verificar rango de diámetro
+                if ($maquina->diametro_min && $elemento->diametro < $maquina->diametro_min) {
+                    continue;
+                }
+
+                if ($maquina->diametro_max && $elemento->diametro > $maquina->diametro_max) {
+                    continue;
+                }
+            }
+
+            // Calcular carga relativa
+            $carga = $cargaMaquinas[$maquina->id]['tiempo_total_segundos'] ?? 0;
+            $cargaHoras = round($carga / 3600, 1);
+
+            $compatibles[] = [
+                'id' => $maquina->id,
+                'nombre' => $maquina->nombre,
+                'carga_horas' => $cargaHoras,
+            ];
+        }
+
+        return $compatibles;
+    }
+
+    /**
+     * Aplicar redistribución optimizada
+     *
+     * @param \Illuminate\Http\Request $request
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function optimizarAplicar(Request $request)
+    {
+        $request->validate([
+            'redistribuciones' => 'required|array',
+            'redistribuciones.*.elemento_id' => 'required|integer|exists:elementos,id',
+            'redistribuciones.*.nueva_maquina_id' => 'required|integer|exists:maquinas,id',
+        ]);
+
+        DB::beginTransaction();
+
+        try {
+            $redistribuciones = $request->input('redistribuciones');
+            $elementosMovidos = 0;
+
+            foreach ($redistribuciones as $redistribucion) {
+                $elemento = Elemento::find($redistribucion['elemento_id']);
+                $nuevaMaquinaId = $redistribucion['nueva_maquina_id'];
+
+                if (!$elemento) continue;
+
+                // Actualizar máquina del elemento
+                $maquinaAnterior = $elemento->maquina_id;
+                $elemento->maquina_id = $nuevaMaquinaId;
+                $elemento->save();
+
+                $elementosMovidos++;
+
+                Log::info('Elemento redistribuido por optimización', [
+                    'elemento_id' => $elemento->id,
+                    'codigo' => $elemento->codigo,
+                    'maquina_anterior' => $maquinaAnterior,
+                    'nueva_maquina' => $nuevaMaquinaId,
+                    'user_id' => auth()->id(),
+                ]);
+            }
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'elementos_movidos' => $elementosMovidos,
+                'message' => "Se redistribuyeron {$elementosMovidos} elementos exitosamente"
+            ]);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+
+            Log::error('Error en optimizarAplicar:', [
+                'message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return response()->json([
+                'error' => 'Error al aplicar optimización',
+                'message' => $e->getMessage()
+            ], 500);
         }
     }
 }

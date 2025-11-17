@@ -276,7 +276,7 @@
                x-transition:leave="transition-all duration-200"
                x-transition:leave-start="opacity-100 transform translate-y-0"
                x-transition:leave-end="opacity-0 transform -translate-y-16"
-               href="{{ route('dashboard') }}"
+               href="{{ route('dashboard') }}" wire:navigate
                wire:navigate
                class="flex items-center space-x-3 group relative z-50">
                 <x-application-logo
@@ -486,7 +486,7 @@
                             class="mt-2 ml-4 space-y-1 border-l-2 border-gray-700 pl-4">
                             @foreach ($section['submenu'] as $item)
                                 <div class="flex items-center group">
-                                    <a href="{{ route($item['route']) }}"
+                                    <a href="{{ route($item['route']) }}" wire:navigate
                                         wire:navigate
                                         @click="if (window.innerWidth < 768) { open = false; localStorage.setItem('sidebar_open', 'false'); }"
                                         :class="isRouteActive('{{ route($item['route']) }}')

@@ -9,7 +9,7 @@
             <thead class="bg-blue-500 text-white">
                 <tr class="text-xs uppercase">
                     <th class="p-2 border">
-                        <button wire:click="sortBy('codigo')" class="w-full text-center hover:text-yellow-200">
+                        <button wire:click="sortBy('codigo')" wire:navigate class="w-full text-center hover:text-yellow-200">
                             Código
                             @if($sort === 'codigo')
                                 <span>{!! $order === 'asc' ? '▲' : '▼' !!}</span>
@@ -19,7 +19,7 @@
                     <th class="p-2 border">Fabricante</th>
                     <th class="p-2 border">Distribuidor</th>
                     <th class="p-2 border">
-                        <button wire:click="sortBy('precio_referencia')" class="w-full text-center hover:text-yellow-200">
+                        <button wire:click="sortBy('precio_referencia')" wire:navigate class="w-full text-center hover:text-yellow-200">
                             Precio Ref.
                             @if($sort === 'precio_referencia')
                                 <span>{!! $order === 'asc' ? '▲' : '▼' !!}</span>
@@ -27,7 +27,7 @@
                         </button>
                     </th>
                     <th class="p-2 border">
-                        <button wire:click="sortBy('cantidad_total')" class="w-full text-center hover:text-yellow-200">
+                        <button wire:click="sortBy('cantidad_total')" wire:navigate class="w-full text-center hover:text-yellow-200">
                             Cantidad Total
                             @if($sort === 'cantidad_total')
                                 <span>{!! $order === 'asc' ? '▲' : '▼' !!}</span>
@@ -37,7 +37,7 @@
                     <th class="p-2 border">Cantidad Restante</th>
                     <th class="p-2 border">Progreso</th>
                     <th class="p-2 border">
-                        <button wire:click="sortBy('estado')" class="w-full text-center hover:text-yellow-200">
+                        <button wire:click="sortBy('estado')" wire:navigate class="w-full text-center hover:text-yellow-200">
                             Estado
                             @if($sort === 'estado')
                                 <span>{!! $order === 'asc' ? '▲' : '▼' !!}</span>
@@ -229,7 +229,7 @@
         </table>
     </div>
 
-    {{ $pedidosGlobales->links() }}
+    {{ $pedidosGlobales->links() }} wire:navigate
 
     {{-- =========================
          TABLA MAQUILA

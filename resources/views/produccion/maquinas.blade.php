@@ -140,7 +140,7 @@
                                         </div>
                                         @if($turno->hora_inicio && $turno->hora_fin)
                                             <div class="text-[10px] opacity-75 mt-0.5">
-                                                {{ substr($turno->hora_inicio, 0, 5) }}-{{ substr($turno->hora_fin, 0, 5) }}
+                                                {{ substr($turno->hora_inicio, 0, 5) }}-{{ substr($turno->hora_fin, 0, 5) }} wire:navigate
                                             </div>
                                         @endif
                                     </button>
@@ -158,6 +158,16 @@
             </div>
             <!-- Por esta versión con transición -->
             <div id="contenedor-calendario" class="bg-white shadow rounded-lg p-2 transition-all duration-300 relative">
+                <!-- Botón de optimizar planillas en esquina superior izquierda -->
+                <button onclick="abrirModalOptimizar()" id="optimizar-btn"
+                    title="Optimizar planillas con retraso"
+                    class="absolute top-4 left-4 z-10 px-3 py-2 bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white rounded-lg transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105 flex items-center gap-2 group">
+                    <svg class="w-5 h-5 transition-transform group-hover:scale-110" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                    </svg>
+                    <span class="text-sm font-medium hidden md:inline">Optimizar Planillas</span>
+                </button>
+
                 <!-- Botón de pantalla completa en esquina superior derecha -->
                 <button onclick="toggleFullScreen()" id="fullscreen-btn"
                     title="Pantalla completa (F11)"
@@ -479,6 +489,103 @@
                     <button onclick="cerrarModalSelectorMaquina()"
                         class="bg-gray-300 hover:bg-gray-400 text-gray-700 px-4 py-2 rounded-lg transition-colors">
                         Cancelar
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal Optimizar Planillas -->
+        <div id="modalOptimizar"
+            class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50 overflow-y-auto">
+            <div class="bg-white rounded-lg shadow-xl w-full max-w-6xl mx-4 my-8 max-h-[90vh] flex flex-col">
+                <div class="bg-purple-600 text-white px-6 py-4 rounded-t-lg">
+                    <h3 class="text-lg font-semibold flex items-center gap-2">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                        </svg>
+                        Optimizar Planillas con Retraso
+                    </h3>
+                    <p class="text-sm opacity-90 mt-1">Redistribuir elementos para cumplir fechas de entrega</p>
+                </div>
+
+                <!-- Loading state -->
+                <div id="optimizarLoading" class="p-12 text-center">
+                    <div class="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600"></div>
+                    <p class="mt-4 text-gray-600">Analizando planillas y calculando optimización...</p>
+                </div>
+
+                <!-- Content state -->
+                <div id="optimizarContent" class="hidden flex-1 overflow-y-auto">
+                    <!-- Estadísticas superiores -->
+                    <div class="p-6 bg-gray-50 border-b border-gray-200">
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div class="bg-red-50 border border-red-200 rounded-lg p-4">
+                                <div class="text-sm text-red-600 font-medium">Planillas con Retraso</div>
+                                <div id="estadPlanillasRetraso" class="text-3xl font-bold text-red-700">0</div>
+                            </div>
+                            <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                                <div class="text-sm text-blue-600 font-medium">Elementos a Mover</div>
+                                <div id="estadElementosMover" class="text-3xl font-bold text-blue-700">0</div>
+                            </div>
+                            <div class="bg-green-50 border border-green-200 rounded-lg p-4">
+                                <div class="text-sm text-green-600 font-medium">Máquinas Disponibles</div>
+                                <div id="estadMaquinasDisponibles" class="text-3xl font-bold text-green-700">0</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Tabla de elementos -->
+                    <div class="p-6">
+                        <h4 class="font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                            <svg class="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+                            </svg>
+                            Previsualización de Redistribución
+                        </h4>
+                        <div class="overflow-x-auto">
+                            <table class="min-w-full divide-y divide-gray-200 text-sm">
+                                <thead class="bg-gray-50">
+                                    <tr>
+                                        <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Elemento</th>
+                                        <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Planilla</th>
+                                        <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Ø mm</th>
+                                        <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Material</th>
+                                        <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Peso kg</th>
+                                        <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Máquina Actual</th>
+                                        <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Fecha Entrega</th>
+                                        <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Fin Programado</th>
+                                        <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Nueva Máquina</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tablaOptimizacion" class="bg-white divide-y divide-gray-200">
+                                    <!-- Se llenará dinámicamente -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Empty state -->
+                <div id="optimizarEmpty" class="hidden p-12 text-center">
+                    <svg class="w-16 h-16 mx-auto text-green-500 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                    <h3 class="text-lg font-semibold text-gray-800 mb-2">¡Todo está optimizado!</h3>
+                    <p class="text-gray-600">No hay planillas con retraso que requieran redistribución.</p>
+                </div>
+
+                <!-- Botones de acción -->
+                <div class="bg-gray-50 px-6 py-4 rounded-b-lg flex justify-end gap-3 border-t border-gray-200">
+                    <button onclick="cerrarModalOptimizar()"
+                        class="bg-gray-300 hover:bg-gray-400 text-gray-700 px-4 py-2 rounded-lg transition-colors">
+                        Cancelar
+                    </button>
+                    <button id="btnAplicarOptimizacion" onclick="aplicarOptimizacion()"
+                        class="bg-purple-600 hover:bg-purple-700 text-white px-6 py-2 rounded-lg transition-colors flex items-center gap-2 hidden">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                        </svg>
+                        Aplicar Optimización
                     </button>
                 </div>
             </div>
@@ -3589,6 +3696,220 @@
                 document.body.appendChild(link);
                 link.click();
                 document.body.removeChild(link);
+            }
+
+            // ============================================================
+            // OPTIMIZACIÓN DE PLANILLAS
+            // ============================================================
+
+            window.datosOptimizacion = window.datosOptimizacion || null;
+
+            async function abrirModalOptimizar() {
+                const modal = document.getElementById('modalOptimizar');
+                const loading = document.getElementById('optimizarLoading');
+                const content = document.getElementById('optimizarContent');
+                const empty = document.getElementById('optimizarEmpty');
+                const btnAplicar = document.getElementById('btnAplicarOptimizacion');
+
+                // Mostrar modal en estado de carga
+                modal.classList.remove('hidden');
+                modal.classList.add('flex');
+                loading.classList.remove('hidden');
+                content.classList.add('hidden');
+                empty.classList.add('hidden');
+                btnAplicar.classList.add('hidden');
+
+                try {
+                    // Llamar al endpoint para obtener análisis de optimización
+                    const response = await fetch('/api/produccion/optimizar-analisis', {
+                        method: 'GET',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                        }
+                    });
+
+                    if (!response.ok) {
+                        throw new Error('Error al analizar planillas');
+                    }
+
+                    const data = await response.json();
+                    window.datosOptimizacion = data;
+
+                    loading.classList.add('hidden');
+
+                    if (data.elementos && data.elementos.length > 0) {
+                        mostrarPreviewOptimizacion(data);
+                        content.classList.remove('hidden');
+                        btnAplicar.classList.remove('hidden');
+                    } else {
+                        empty.classList.remove('hidden');
+                    }
+
+                } catch (error) {
+                    console.error('Error al cargar optimización:', error);
+                    loading.classList.add('hidden');
+                    empty.classList.remove('hidden');
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: 'No se pudo cargar el análisis de optimización'
+                    });
+                }
+            }
+
+            function mostrarPreviewOptimizacion(data) {
+                // Actualizar estadísticas
+                document.getElementById('estadPlanillasRetraso').textContent = data.planillas_retraso || 0;
+                document.getElementById('estadElementosMover').textContent = data.elementos.length || 0;
+                document.getElementById('estadMaquinasDisponibles').textContent = data.maquinas_disponibles || 0;
+
+                // Llenar tabla de elementos
+                const tabla = document.getElementById('tablaOptimizacion');
+                tabla.innerHTML = '';
+
+                data.elementos.forEach((elem, index) => {
+                    const row = document.createElement('tr');
+                    row.className = index % 2 === 0 ? 'bg-white' : 'bg-gray-50';
+
+                    // Crear select de máquinas compatibles
+                    const selectMaquinas = crearSelectMaquinas(elem.id, elem.maquina_destino_sugerida, elem.maquinas_compatibles);
+
+                    // Calcular retraso
+                    const fechaEntrega = new Date(elem.fecha_entrega);
+                    const finProgramado = new Date(elem.fin_programado);
+                    const retraso = finProgramado > fechaEntrega;
+
+                    row.innerHTML = `
+                        <td class="px-3 py-2 text-sm text-gray-900">${elem.codigo}</td>
+                        <td class="px-3 py-2 text-sm text-gray-600">${elem.planilla_codigo}</td>
+                        <td class="px-3 py-2 text-sm text-gray-900">${elem.diametro}</td>
+                        <td class="px-3 py-2 text-sm text-gray-600">${elem.tipo_material || '-'}</td>
+                        <td class="px-3 py-2 text-sm text-gray-900">${elem.peso}</td>
+                        <td class="px-3 py-2 text-sm text-gray-600">${elem.maquina_actual_nombre}</td>
+                        <td class="px-3 py-2 text-sm ${retraso ? 'text-green-600 font-medium' : 'text-gray-600'}">
+                            ${formatearFecha(elem.fecha_entrega)}
+                        </td>
+                        <td class="px-3 py-2 text-sm ${retraso ? 'text-red-600 font-bold' : 'text-gray-600'}">
+                            ${formatearFecha(elem.fin_programado)}
+                        </td>
+                        <td class="px-3 py-2">${selectMaquinas}</td>
+                    `;
+
+                    tabla.appendChild(row);
+                });
+            }
+
+            function crearSelectMaquinas(elementoId, maquinaSugerida, maquinasCompatibles) {
+                let html = `<select class="maquina-selector border border-gray-300 rounded px-2 py-1 text-sm w-full focus:ring-2 focus:ring-purple-500" data-elemento-id="${elementoId}">`;
+
+                maquinasCompatibles.forEach(maq => {
+                    const selected = maq.id === maquinaSugerida ? 'selected' : '';
+                    const badge = maq.id === maquinaSugerida ? ' ⭐' : '';
+                    html += `<option value="${maq.id}" ${selected}>${maq.nombre}${badge}</option>`;
+                });
+
+                html += '</select>';
+                return html;
+            }
+
+            function formatearFecha(fechaStr) {
+                if (!fechaStr) return '-';
+                const fecha = new Date(fechaStr);
+                return fecha.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+            }
+
+            function cerrarModalOptimizar() {
+                const modal = document.getElementById('modalOptimizar');
+                modal.classList.add('hidden');
+                modal.classList.remove('flex');
+                window.datosOptimizacion = null;
+            }
+
+            async function aplicarOptimizacion() {
+                // Recopilar las selecciones del usuario
+                const selectores = document.querySelectorAll('.maquina-selector');
+                const redistribuciones = [];
+
+                selectores.forEach(select => {
+                    redistribuciones.push({
+                        elemento_id: parseInt(select.dataset.elementoId),
+                        nueva_maquina_id: parseInt(select.value)
+                    });
+                });
+
+                if (redistribuciones.length === 0) {
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'Sin cambios',
+                        text: 'No hay elementos para redistribuir'
+                    });
+                    return;
+                }
+
+                // Confirmar con el usuario
+                const result = await Swal.fire({
+                    icon: 'question',
+                    title: '¿Aplicar optimización?',
+                    html: `Se van a mover <strong>${redistribuciones.length}</strong> elemento(s) a nuevas máquinas.<br><br>¿Deseas continuar?`,
+                    showCancelButton: true,
+                    confirmButtonText: 'Sí, aplicar',
+                    cancelButtonText: 'Cancelar',
+                    confirmButtonColor: '#9333ea',
+                    cancelButtonColor: '#6b7280'
+                });
+
+                if (!result.isConfirmed) return;
+
+                // Mostrar loading
+                Swal.fire({
+                    title: 'Aplicando optimización...',
+                    text: 'Por favor espera',
+                    allowOutsideClick: false,
+                    didOpen: () => {
+                        Swal.showLoading();
+                    }
+                });
+
+                try {
+                    const response = await fetch('/api/produccion/optimizar-aplicar', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                        },
+                        body: JSON.stringify({ redistribuciones })
+                    });
+
+                    if (!response.ok) {
+                        throw new Error('Error al aplicar optimización');
+                    }
+
+                    const data = await response.json();
+
+                    Swal.fire({
+                        icon: 'success',
+                        title: '¡Optimización aplicada!',
+                        html: `Se han redistribuido <strong>${data.elementos_movidos}</strong> elemento(s) exitosamente.`,
+                        confirmButtonColor: '#9333ea'
+                    });
+
+                    cerrarModalOptimizar();
+
+                    // Refrescar calendario
+                    if (typeof calendar !== 'undefined') {
+                        calendar.refetchResources();
+                        calendar.refetchEvents();
+                    }
+
+                } catch (error) {
+                    console.error('Error al aplicar optimización:', error);
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: 'No se pudo aplicar la optimización. Por favor intenta de nuevo.'
+                    });
+                }
             }
 
             // ============================================================

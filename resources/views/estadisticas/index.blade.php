@@ -3,7 +3,7 @@
 
     <x-slot name="header">
         <h2 class="text-lg font-semibold text-gray-800">
-            {{ __('Estadísticas') }}
+            {{ __('Estadísticas') }} wire:navigate
         </h2>
     </x-slot>
     @php

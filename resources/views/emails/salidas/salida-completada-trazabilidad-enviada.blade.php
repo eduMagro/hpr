@@ -28,7 +28,7 @@
         @endif
 
         <p style="margin-top: 30px;">
-            <a href="{{ route('salidas-ferralla.show', $salida->id) }}"
+            <a href="{{ route('salidas-ferralla.show', $salida->id) }}" wire:navigate
                 style="display: inline-block; padding: 10px 20px; background-color: #4a90e2; color: white; text-decoration: none; border-radius: 5px;">
                 Ver salida
             </a>

@@ -9,7 +9,7 @@
                         Administra los turnos laborales, horarios y offsets para el calendario de producción
                     </p>
                 </div>
-                <a href="{{ route('turnos.create') }}"
+                <a href="{{ route('turnos.create') }}" wire:navigate
                     class="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition">
                     <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
@@ -73,7 +73,7 @@
                                     </div>
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                    {{ substr($turno->hora_inicio, 0, 5) }} - {{ substr($turno->hora_fin, 0, 5) }}
+                                    {{ substr($turno->hora_inicio, 0, 5) }} - {{ substr($turno->hora_fin, 0, 5) }} wire:navigate
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
                                     <div class="space-y-1">
@@ -111,7 +111,7 @@
                                     </form>
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
-                                    <a href="{{ route('turnos.edit', $turno) }}"
+                                    <a href="{{ route('turnos.edit', $turno) }}" wire:navigate
                                         class="text-blue-600 hover:text-blue-900">
                                         Editar
                                     </a>
@@ -129,7 +129,7 @@
                         @empty
                             <tr>
                                 <td colspan="6" class="px-6 py-12 text-center text-gray-500">
-                                    No hay turnos configurados. <a href="{{ route('turnos.create') }}"
+                                    No hay turnos configurados. <a href="{{ route('turnos.create') }}" wire:navigate
                                         class="text-blue-600 hover:text-blue-800">Crear el primero</a>
                                 </td>
                             </tr>

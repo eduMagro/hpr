@@ -400,7 +400,7 @@
 
                     {{-- Botón Exportar BVBs para MSR20 --}}
                     @if (strtoupper($maquina->nombre) === 'MSR20')
-                        <a href="{{ route('maquinas.exportar-bvbs', $maquina->id) }}"
+                        <a href="{{ route('maquinas.exportar-bvbs', $maquina->id) }}" wire:navigate
                             class="px-4 py-2 bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white rounded-lg text-sm font-medium shadow-md hover:shadow-lg transition-all duration-200 flex items-center gap-2"
                             title="Exportar BVBs">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

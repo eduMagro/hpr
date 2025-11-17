@@ -4,7 +4,7 @@
             <!-- Header -->
             <div class="mb-6">
                 <div class="flex items-center gap-4 mb-2">
-                    <a href="{{ route('turnos.index') }}"
+                    <a href="{{ route('turnos.index') }}" wire:navigate
                         class="text-gray-600 hover:text-gray-900 transition">
                         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -27,7 +27,7 @@
 
                     <!-- Botones -->
                     <div class="mt-6 flex items-center justify-end gap-3">
-                        <a href="{{ route('turnos.index') }}"
+                        <a href="{{ route('turnos.index') }}" wire:navigate
                             class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition">
                             Cancelar
                         </a>

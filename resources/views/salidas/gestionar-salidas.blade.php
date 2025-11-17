@@ -9,7 +9,7 @@
                     Gestionar Salidas para Planillas
                 </h1>
 
-                <a href="{{ route('planificacion.index') }}"
+                <a href="{{ route('planificacion.index') }}" wire:navigate
                    wire:navigate
                    class="inline-flex items-center gap-2 text-gray-600 hover:text-blue-600 transition-colors group flex-shrink-0"
                    title="Volver a Planificación de Portes">
@@ -78,7 +78,7 @@
                         <div class="flex items-center justify-between mb-2">
                             <span class="font-semibold text-gray-800">{{ $planilla->codigo_limpio }}</span>
                             <span class="text-xs px-2 py-1 rounded {{ $planilla->estado_class }}">
-                                {{ ucfirst($planilla->estado) }}
+                                {{ ucfirst($planilla->estado) }} wire:navigate
                             </span>
                         </div>
                         <p class="text-sm text-gray-600">Obra: {{ $planilla->obra->obra }}</p>
@@ -482,8 +482,8 @@
     <script src="{{ asset('js/elementosJs/figuraElemento.js') }}"></script>
 
     {{-- Debug y inicialización de filtros --}}
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
+    <script data-navigate-once>
+        function initGestionSalidasPage() {
             console.log('🔍 DEBUG: Verificando elementos...');
 
             const selectObra = document.getElementById('filtro-obra');
@@ -514,6 +514,10 @@
                     console.error('❌ Función inicializarFiltros no disponible');
                 }
             }, 500);
-        });
+        }
+
+        // Ejecutar en DOMContentLoaded y en navegación de Livewire
+        document.addEventListener('DOMContentLoaded', initGestionSalidasPage);
+        document.addEventListener('livewire:navigated', initGestionSalidasPage);
     </script>
 </x-app-layout>

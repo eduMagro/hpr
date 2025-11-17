@@ -2,7 +2,7 @@
     <x-slot name="title">Departamentos</x-slot>
     <x-slot name="header">
         <h2 class="font-semibold text-xl text-gray-800 leading-tight">
-            {{ __('Gestión de Permisos') }}
+            {{ __('Gestión de Permisos') }} wire:navigate
         </h2>
     </x-slot>
 
@@ -95,7 +95,7 @@
                                             <path
                                                 d="M9 6a3 3 0 11-6 0 3 3 0 016 0zM17 6a3 3 0 11-6 0 3 3 0 016 0zM12.93 17c.046-.327.07-.66.07-1a6.97 6.97 0 00-1.5-4.33A5 5 0 0119 16v1h-6.07zM6 11a5 5 0 015 5v1H1v-1a5 5 0 015-5z" />
                                         </svg>
-                                        {{ $departamento->usuarios->count() }}
+                                        {{ $departamento->usuarios->count() }} wire:navigate
                                     </span>
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-center">
@@ -105,7 +105,7 @@
                                             <path
                                                 d="M2 6a2 2 0 012-2h5l2 2h5a2 2 0 012 2v6a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" />
                                         </svg>
-                                        {{ $departamento->secciones->count() }}
+                                        {{ $departamento->secciones->count() }} wire:navigate
                                     </span>
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
@@ -130,7 +130,7 @@
                                             </svg>
                                             Usuarios
                                         </button>
-                                        <a href="{{ route('departamentos.edit', $departamento) }}"
+                                        <a href="{{ route('departamentos.edit', $departamento) }}" wire:navigate
                                             class="inline-flex items-center px-3 py-1.5 bg-yellow-400 hover:bg-yellow-500 text-white rounded-lg text-xs font-medium transition-colors shadow-sm hover:shadow">
                                             <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor"
                                                 viewBox="0 0 24 24">
@@ -256,7 +256,7 @@
                                 </button>
                             </div>
                             <div class="grid grid-cols-2 gap-2">
-                                <a href="{{ route('departamentos.edit', $departamento) }}"
+                                <a href="{{ route('departamentos.edit', $departamento) }}" wire:navigate
                                     class="flex items-center justify-center gap-1.5 bg-yellow-400 hover:bg-yellow-500 text-white py-2.5 px-3 rounded-lg text-xs font-semibold transition-colors shadow-sm">
                                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -700,7 +700,7 @@
                                             <div class="flex items-center gap-2">
                                                 <div
                                                     class="w-8 h-8 rounded-full bg-gradient-to-br from-green-400 to-emerald-500 flex items-center justify-center text-white font-semibold text-sm">
-                                                    {{ strtoupper(substr($usuario->nombre_completo, 0, 1)) }}
+                                                    {{ strtoupper(substr($usuario->nombre_completo, 0, 1)) }} wire:navigate
                                                 </div>
                                                 <div class="flex-1 min-w-0">
                                                     <p
@@ -857,7 +857,7 @@
                                                 @else
                                                     <div
                                                         class="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-400 to-purple-500 flex items-center justify-center text-white font-semibold text-xs">
-                                                        {{ strtoupper(substr($seccion->nombre, 0, 2)) }}
+                                                        {{ strtoupper(substr($seccion->nombre, 0, 2)) }} wire:navigate
                                                     </div>
                                                 @endif
                                                 <div class="flex-1 min-w-0">

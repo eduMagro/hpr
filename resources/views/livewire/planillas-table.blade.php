@@ -167,21 +167,21 @@
                             class="border-b odd:bg-gray-100 even:bg-gray-50 hover:bg-blue-200 cursor-pointer text-xs leading-none uppercase transition-colors">
                             <td class="p-2 text-center border">{{ $planilla->id }}</td>
                             <td class="p-2 text-center border">
-                                <a href="{{ route('planillas.show', $planilla->id) }}"
+                                <a href="{{ route('planillas.show', $planilla->id) }}" wire:navigate
                                     class="text-blue-500 hover:underline">
                                     {{ $planilla->codigo_limpio }}
                                 </a>
                             </td>
                             <td class="p-2 text-center border">{{ $planilla->cliente->codigo ?? 'N/A' }}</td>
                             <td class="p-2 text-center border">
-                                <a href="{{ route('clientes.index', ['id' => $planilla->cliente_id]) }}"
+                                <a href="{{ route('clientes.index', ['id' => $planilla->cliente_id]) }}" wire:navigate
                                     class="text-blue-500 hover:underline">
                                     {{ $planilla->cliente->empresa ?? 'N/A' }}
                                 </a>
                             </td>
                             <td class="p-2 text-center border">{{ $planilla->obra->cod_obra ?? 'N/A' }}</td>
                             <td class="p-2 text-center border">
-                                <a href="{{ route('clientes.show', ['cliente' => $planilla->cliente_id]) }}"
+                                <a href="{{ route('clientes.show', ['cliente' => $planilla->cliente_id]) }}" wire:navigate
                                     class="text-blue-500 hover:underline">
                                     {{ $planilla->obra->obra ?? 'N/A' }}
                                 </a>
@@ -200,14 +200,14 @@
                                     {{ $planilla->estado === 'pendiente' ? 'bg-red-200 text-red-800' : '' }}
                                     {{ $planilla->estado === 'fabricando' ? 'bg-blue-200 text-blue-800' : '' }}
                                     {{ $planilla->estado === 'montaje' ? 'bg-purple-200 text-purple-800' : '' }}">
-                                    {{ ucfirst($planilla->estado) }}
+                                    {{ ucfirst($planilla->estado) }} wire:navigate
                                 </span>
                             </td>
                             <td class="p-2 text-center border">
                                 @if ($planilla->fecha_inicio)
                                     {{ is_string($planilla->fecha_inicio) && str_contains($planilla->fecha_inicio, '/')
                                         ? \Carbon\Carbon::createFromFormat('d/m/Y H:i', $planilla->fecha_inicio)->format('d/m/Y')
-                                        : \Carbon\Carbon::parse($planilla->fecha_inicio)->format('d/m/Y') }}
+                                        : \Carbon\Carbon::parse($planilla->fecha_inicio)->format('d/m/Y') }} wire:navigate
                                 @else
                                     -
                                 @endif
@@ -216,7 +216,7 @@
                                 @if ($planilla->fecha_finalizacion)
                                     {{ is_string($planilla->fecha_finalizacion) && str_contains($planilla->fecha_finalizacion, '/')
                                         ? \Carbon\Carbon::createFromFormat('d/m/Y H:i', $planilla->fecha_finalizacion)->format('d/m/Y')
-                                        : \Carbon\Carbon::parse($planilla->fecha_finalizacion)->format('d/m/Y') }}
+                                        : \Carbon\Carbon::parse($planilla->fecha_finalizacion)->format('d/m/Y') }} wire:navigate
                                 @else
                                     -
                                 @endif
@@ -224,13 +224,13 @@
                             <td class="p-2 text-center border">
                                 {{ is_string($planilla->created_at) && str_contains($planilla->created_at, '/')
                                     ? \Carbon\Carbon::createFromFormat('d/m/Y H:i', $planilla->created_at)->format('d/m/Y')
-                                    : \Carbon\Carbon::parse($planilla->created_at)->format('d/m/Y') }}
+                                    : \Carbon\Carbon::parse($planilla->created_at)->format('d/m/Y') }} wire:navigate
                             </td>
                             <td class="p-2 text-center border">
                                 @if ($planilla->fecha_estimada_entrega)
                                     {{ is_string($planilla->fecha_estimada_entrega) && str_contains($planilla->fecha_estimada_entrega, '/')
                                         ? \Carbon\Carbon::createFromFormat('d/m/Y H:i', $planilla->fecha_estimada_entrega)->format('d/m/Y')
-                                        : \Carbon\Carbon::parse($planilla->fecha_estimada_entrega)->format('d/m/Y') }}
+                                        : \Carbon\Carbon::parse($planilla->fecha_estimada_entrega)->format('d/m/Y') }} wire:navigate
                                 @else
                                     -
                                 @endif
@@ -247,7 +247,7 @@
                                 @if ($planilla->fecha_revision)
                                     {{ is_string($planilla->fecha_revision) && str_contains($planilla->fecha_revision, '/')
                                         ? \Carbon\Carbon::createFromFormat('d/m/Y H:i', $planilla->fecha_revision)->format('d/m/Y H:i')
-                                        : \Carbon\Carbon::parse($planilla->fecha_revision)->format('d/m/Y H:i') }}
+                                        : \Carbon\Carbon::parse($planilla->fecha_revision)->format('d/m/Y H:i') }} wire:navigate
                                 @else
                                     -
                                 @endif
@@ -314,7 +314,7 @@
 
         <!-- Paginación Livewire -->
         <div class="mt-4">
-            {{ $planillas->links('vendor.livewire.tailwind') }}
+            {{ $planillas->links('vendor.livewire.tailwind') }} wire:navigate
         </div>
     </div>
 

@@ -6,7 +6,7 @@
                     <h1 class="text-3xl font-bold text-gray-900">Permisos del Asistente Virtual</h1>
                     <p class="text-gray-600 mt-1">Gestiona qué usuarios pueden usar el asistente y modificar la base de datos</p>
                 </div>
-                <a href="{{ route('asistente.index') }}"
+                <a href="{{ route('asistente.index') }}" wire:navigate
                    class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg transition duration-200 flex items-center">
                     <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>

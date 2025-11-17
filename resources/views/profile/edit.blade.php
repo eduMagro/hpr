@@ -1,7 +1,7 @@
 <x-app-layout>
     <x-slot name="header">
         <h2 class="font-semibold text-xl text-gray-800 leading-tight">
-            <x-volver />{{ __('Administración de Perfil') }}
+            <x-volver />{{ __('Administración de Perfil') }} wire:navigate
         </h2>
 
     </x-slot>

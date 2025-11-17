@@ -13,7 +13,7 @@
             <!-- Grid de opciones -->
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
 
-                <a href="{{ route('users.index') }}" class="bg-white rounded-lg shadow-md hover:shadow-xl transition-all duration-300 overflow-hidden group">
+                <a href="{{ route('users.index') }}" wire:navigate class="bg-white rounded-lg shadow-md hover:shadow-xl transition-all duration-300 overflow-hidden group">
                     <div class="bg-gradient-to-br from-indigo-500 to-indigo-600 p-6 text-center">
                         <span class="text-6xl">👤</span>
                     </div>
@@ -23,7 +23,7 @@
                     </div>
                 </a>
 
-                <a href="{{ route('register') }}" class="bg-white rounded-lg shadow-md hover:shadow-xl transition-all duration-300 overflow-hidden group">
+                <a href="{{ route('register') }}" wire:navigate class="bg-white rounded-lg shadow-md hover:shadow-xl transition-all duration-300 overflow-hidden group">
                     <div class="bg-gradient-to-br from-indigo-500 to-indigo-600 p-6 text-center">
                         <span class="text-6xl">➕</span>
                     </div>
@@ -33,7 +33,7 @@
                     </div>
                 </a>
 
-                <a href="{{ route('vacaciones.index') }}" class="bg-white rounded-lg shadow-md hover:shadow-xl transition-all duration-300 overflow-hidden group">
+                <a href="{{ route('vacaciones.index') }}" wire:navigate class="bg-white rounded-lg shadow-md hover:shadow-xl transition-all duration-300 overflow-hidden group">
                     <div class="bg-gradient-to-br from-indigo-500 to-indigo-600 p-6 text-center">
                         <span class="text-6xl">🌴</span>
                     </div>
@@ -43,7 +43,7 @@
                     </div>
                 </a>
 
-                <a href="{{ route('asignaciones-turnos.index') }}" class="bg-white rounded-lg shadow-md hover:shadow-xl transition-all duration-300 overflow-hidden group">
+                <a href="{{ route('asignaciones-turnos.index') }}" wire:navigate class="bg-white rounded-lg shadow-md hover:shadow-xl transition-all duration-300 overflow-hidden group">
                     <div class="bg-gradient-to-br from-indigo-500 to-indigo-600 p-6 text-center">
                         <span class="text-6xl">🕐</span>
                     </div>

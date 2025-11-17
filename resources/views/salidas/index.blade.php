@@ -17,7 +17,7 @@
                 @foreach ($salidasPorMes as $mes => $salidasGrupo)
                     <div class="mb-4 flex items-center gap-20">
                         <h2 class="text-xl font-semibold text-gray-900">{{ ucfirst($mes) }}</h2>
-                        <a href="{{ route('salidas.export', ['mes' => $mes]) }}"
+                        <a href="{{ route('salidas.export', ['mes' => $mes]) }}" wire:navigate
                             class="inline-flex items-center bg-gray-400 text-white py-1 px-3 rounded-lg shadow-lg hover:bg-gray-700 transition duration-300">
                             <img width="28" height="28"
                                 src="https://img.icons8.com/fluency/48/microsoft-excel-2019.png"
@@ -140,7 +140,7 @@
                                                 data-cliente="{{ $registro->cliente->id }}"
                                                 data-obra="{{ $registro->obra->id }}"
                                                 data-field="importe_paralizacion">
-                                                {{ number_format($registro->importe_paralizacion, 2) }}
+                                                {{ number_format($registro->importe_paralizacion, 2) }} wire:navigate
                                             </td>
                                             <td class="p-2 border-b editable" contenteditable="true"
                                                 data-id="{{ $salida->id }}"
@@ -152,7 +152,7 @@
                                                 data-id="{{ $salida->id }}"
                                                 data-cliente="{{ $registro->cliente->id }}"
                                                 data-obra="{{ $registro->obra->id }}" data-field="importe_grua">
-                                                {{ number_format($registro->importe_grua, 2) }}
+                                                {{ number_format($registro->importe_grua, 2) }} wire:navigate
                                             </td>
                                             <td class="p-2 border-b editable" contenteditable="true"
                                                 data-id="{{ $salida->id }}"
@@ -164,7 +164,7 @@
                                                 data-id="{{ $salida->id }}"
                                                 data-cliente="{{ $registro->cliente->id }}"
                                                 data-obra="{{ $registro->obra->id }}" data-field="importe">
-                                                {{ number_format($registro->importe, 2) }}
+                                                {{ number_format($registro->importe, 2) }} wire:navigate
                                             </td>
                                             <td class="py-2 px-4 border-b editable" contenteditable="true"
                                                 data-id="{{ $salida->id }}"
@@ -176,11 +176,11 @@
                                                 data-id="{{ $salida->id }}"
                                                 data-cliente="{{ $registro->cliente->id }}"
                                                 data-obra="{{ $registro->obra->id }}" data-field="estado">
-                                                {{ ucfirst($salida->estado) }}
+                                                {{ ucfirst($salida->estado) }} wire:navigate
                                             </td>
 
                                             <td class="py-2 px-4 border-b">
-                                                <a href="{{ route('salidas-ferralla.show', $salida->id) }}"
+                                                <a href="{{ route('salidas-ferralla.show', $salida->id) }}" wire:navigate
                                                     class="text-blue-600 hover:text-blue-800">Ver</a>
                                                 @if (auth()->user()->rol === 'oficina' || strtolower(auth()->user()->name) === 'alberto mayo martin')
                                                     <x-tabla.boton-eliminar :action="route('salidas-ferralla.destroy', $salida->id)" />
@@ -202,7 +202,7 @@
                     @if (!empty($clientSummary))
                         <div class="mt-6 px-20 mb-20">
                             <h3 class="text-lg font-semibold text-gray-800">Resumen por Empresa Transporte -
-                                {{ ucfirst($mes) }}
+                                {{ ucfirst($mes) }} wire:navigate
                             </h3>
                             <table class="w-full border-collapse">
                                 <thead>
@@ -268,7 +268,7 @@
                                     <div>
                                         <p class="text-xs font-semibold">{{ $salida->codigo_salida }}</p>
                                         <p class="text-xs text-gray-500">
-                                            {{ $salida->created_at->format('d/m/Y H:i') }}
+                                            {{ $salida->created_at->format('d/m/Y H:i') }} wire:navigate
                                         </p>
                                     </div>
                                     <div class="mt-2 sm:mt-0">

@@ -7,7 +7,7 @@
     <div class="px-3 py-2">
         <form method="GET" class="flex items-center gap-2 mb-4 text-sm">
             <label for="modo" class="font-medium text-gray-700">Agrupar por:</label>
-            <select name="modo" id="modo" onchange="this.form.submit()" class="border px-2 py-1 rounded">
+            <select name="modo" id="modo" onchange="this.form.submit()" wire:navigate class="border px-2 py-1 rounded">
                 <option value="mes" {{ $modo == 'mes' ? 'selected' : '' }}>Mes</option>
                 <option value="anio" {{ $modo == 'anio' ? 'selected' : '' }}>Año</option>
                 <option value="origen" {{ $modo == 'origen' ? 'selected' : '' }}>Total</option>
@@ -30,7 +30,7 @@
                         <tr class="border-b odd:bg-gray-100 even:bg-gray-50 hover:bg-blue-100">
                             <td class="px-2 py-1 text-center border">{{ $planillero->nombre_completo }}</td>
                             <td class="px-2 py-1 text-center border">
-                                {{ number_format($planillero->peso_importado, 2) }}
+                                {{ number_format($planillero->peso_importado, 2) }} wire:navigate
                             </td>
                         </tr>
                     @empty
@@ -46,7 +46,7 @@
     </div>
 
     <div class="text-center text-gray-500 bg-gray-100 py-1 rounded-b text-xs">
-        Generado el {{ now()->format('d/m/Y H:i') }}
+        Generado el {{ now()->format('d/m/Y H:i') }} wire:navigate
     </div>
 
     <div class="px-3 py-2">

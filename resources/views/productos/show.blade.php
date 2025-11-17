@@ -2,7 +2,7 @@
     <x-slot name="header">
         <h2 class="font-semibold text-xl text-gray-800 leading-tight">
 
-            {{ __('Detalles Materia Prima') }}
+            {{ __('Detalles Materia Prima') }} wire:navigate
 
         </h2>
     </x-slot>
@@ -51,7 +51,7 @@
                     <div class="mt-2 flex space-x-2 justify-between">
 
                         {{-- Botón editar (como enlace con estilo de componente) --}}
-                        <a href="{{ route('productos.edit', $detalles_producto->id) }}"
+                        <a href="{{ route('productos.edit', $detalles_producto->id) }}" wire:navigate
                             class="w-6 h-6 bg-yellow-100 text-yellow-600 rounded hover:bg-yellow-200 flex items-center justify-center"
                             title="Editar">
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24"
@@ -64,7 +64,7 @@
                         {{-- Botón ver (componente ya existente) --}}
                         <x-tabla.boton-ver :href="route('productos.show', $detalles_producto->id)" />
                         {{-- Botón mover (personalizado con icono) --}}
-                        <a href="{{ route('movimientos.create', ['codigo' => $detalles_producto->codigo]) }}"
+                        <a href="{{ route('movimientos.create', ['codigo' => $detalles_producto->codigo]) }}" wire:navigate
                             class="w-6 h-6 bg-green-100 text-green-600 rounded hover:bg-green-200 flex items-center justify-center"
                             title="Mover">
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24"

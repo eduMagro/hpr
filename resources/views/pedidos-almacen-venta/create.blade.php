@@ -5,7 +5,7 @@
     <x-menu.salidas.salidas2 />
     <x-menu.salidas.salidasAlmacen />
     <div class="w-full px-6 py-4">
-        <div x-data="crearPedidoAlmacen()" class="max-w-4xl mx-auto px-6 py-4 space-y-6">
+        <div x-data="crearPedidoAlmacen()" wire:navigate class="max-w-4xl mx-auto px-6 py-4 space-y-6">
 
             {{-- 1) Buscador de disponibilidad por Producto Base --}}
 
@@ -190,7 +190,7 @@
 
                 <!-- Botón añadir línea -->
                 <div class="text-left">
-                    <button type="button" @click="productos.push({})" class="text-sm text-blue-600 hover:underline">
+                    <button type="button" @click="productos.push({})" wire:navigate class="text-sm text-blue-600 hover:underline">
                         ➕ Añadir otro producto base
                     </button>
                 </div>

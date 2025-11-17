@@ -193,7 +193,7 @@
                                     {{ $pedido->fabricante->nombre ?? '—' }}</div>
                                 <div><span class="font-semibold">Estado:</span> {{ $pedido->estado ?? '—' }}</div>
                                 <div class="mt-2">
-                                    <a href="{{ route('pedidos.crearRecepcion', $pedido->id) }}"
+                                    <a href="{{ route('pedidos.crearRecepcion', $pedido->id) }}" wire:navigate
                                         class="bg-green-600 hover:bg-green-700 text-white py-1 px-3 rounded text-xs">
                                         Recepcionar
                                     </a>
@@ -220,7 +220,7 @@
                                         <td class="px-3 py-2">{{ $pedido->fabricante->nombre ?? '—' }}</td>
                                         <td class="px-3 py-2">{{ $pedido->estado ?? '—' }}</td>
                                         <td class="px-3 py-2">
-                                            <a href="{{ route('pedidos.recepcion', $pedido->id) }}"
+                                            <a href="{{ route('pedidos.recepcion', $pedido->id) }}" wire:navigate
                                                 class="bg-green-600 hover:bg-green-700 text-white py-1 px-3 rounded text-xs">
                                                 Recepcionar
                                             </a>

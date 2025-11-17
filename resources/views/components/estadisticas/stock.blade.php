@@ -311,7 +311,7 @@
                             </td>
                             <td
                                 class="px-4 py-2 border {{ $item['stock'] + $item['pedido'] - ($item['consumo_ant'] ?? 0) < 0 ? 'text-red-600' : 'text-green-700' }}">
-                                {{ number_format($item['stock'] + $item['pedido'] - ($item['consumo_ant'] ?? 0), 0, ',', '.') }}
+                                {{ number_format($item['stock'] + $item['pedido'] - ($item['consumo_ant'] ?? 0), 0, ',', '.') }} wire:navigate
                                 kg
                             </td>
                         </tr>

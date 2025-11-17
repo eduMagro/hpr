@@ -85,7 +85,7 @@
                             </button>
 
                             {{-- 📤 Botón exportar Excel --}}
-                            <a href="{{ route('asignaciones-turnos.verExportar', request()->query()) }}" title="Descarga los registros en Excel"
+                            <a href="{{ route('asignaciones-turnos.verExportar', request()->query()) }}" wire:navigate title="Descarga los registros en Excel"
                                 class="bg-green-600 hover:bg-green-700 text-white rounded text-xs flex items-center justify-center">
                                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" class="h-6 w-8">
                                     <path fill="#21A366"
@@ -126,7 +126,7 @@
                             {{ $asignacion->user->segundo_apellido ?? '—' }}
                         </td>
                         <td class="px-2 py-2 border">
-                            {{ \Carbon\Carbon::parse($asignacion->fecha)->format('d/m/Y') }}
+                            {{ \Carbon\Carbon::parse($asignacion->fecha)->format('d/m/Y') }} wire:navigate
                         </td>
                         <td class="px-2 py-2 border">{{ $asignacion->obra->obra ?? '—' }}</td>
                         <td class="px-2 py-2 border">

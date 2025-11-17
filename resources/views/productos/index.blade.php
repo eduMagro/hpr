@@ -136,7 +136,7 @@
                                     <td class="px-4 py-3 text-center font-medium text-gray-700">{{ $base->id }}</td>
                                     <td class="px-4 py-3 text-center">
                                         <span class="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-xs font-semibold">
-                                            {{ ucfirst($base->tipo) }}
+                                            {{ ucfirst($base->tipo) }} wire:navigate
                                         </span>
                                     </td>
                                     <td class="px-4 py-3 text-center font-medium text-gray-700">{{ $base->diametro }} mm</td>
@@ -176,7 +176,7 @@
                 Buscar
             </button>
             @if (request('codigo'))
-            <a href="{{ route('productos.index') }}"
+            <a href="{{ route('productos.index') }}" wire:navigate
                 class="text-sm text-gray-600 underline hover:text-gray-800">Limpiar</a> 
             @endif
             </form>
@@ -215,7 +215,7 @@
                         <p><strong>Fabricante:</strong> {{ $producto->fabricante->nombre ?? '—' }}</p>
                         <p>
                             <strong>Características:</strong>
-                            {{ strtoupper($producto->productoBase->tipo ?? '—') }}
+                            {{ strtoupper($producto->productoBase->tipo ?? '—') }} wire:navigate
                             |
                             Ø{{ $producto->productoBase->diametro ?? '—' }}
                             {{ $producto->productoBase->longitud ? '| ' . $producto->productoBase->longitud . ' m' : '' }}
@@ -250,11 +250,11 @@
 
                             @if ($esOficina || $esGruista)
                                 <div class="flex flex-wrap gap-2 mt-4 w-full">
-                                    <a href="{{ route('productos.show', $producto->id) }}"
+                                    <a href="{{ route('productos.show', $producto->id) }}" wire:navigate
                                         class="flex-1 bg-blue-500 hover:bg-blue-600 text-white text-center text-sm font-semibold py-2 px-2 rounded shadow">
                                         Ver
                                     </a>
-                                    <a href="{{ route('productos.edit', $producto->id) }}"
+                                    <a href="{{ route('productos.edit', $producto->id) }}" wire:navigate
                                         class="flex-1 bg-blue-400 hover:bg-blue-500 text-white text-center text-sm font-semibold py-2 px-2 rounded shadow">
                                         Editar
                                     </a>
@@ -263,7 +263,7 @@
                                         Mover
                                     </button>
 
-                                    <a href="{{ route('productos.editarConsumir', $producto->id) }}"
+                                    <a href="{{ route('productos.editarConsumir', $producto->id) }}" wire:navigate
                                         data-consumir="{{ route('productos.editarConsumir', $producto->id) }}"
                                         class="btn-consumir flex-1 bg-red-500 hover:bg-red-600 text-white text-center text-sm font-semibold py-2 px-2 rounded shadow">
                                         Consumir

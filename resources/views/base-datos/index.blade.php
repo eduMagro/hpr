@@ -19,31 +19,31 @@
                         </h2>
                     </div>
                     <div class="p-4 space-y-2">
-                        <a href="{{ route('maquinas.index') }}" class="block px-4 py-3 rounded-lg bg-gray-50 hover:bg-blue-50 transition-colors group">
+                        <a href="{{ route('maquinas.index') }}" wire:navigate class="block px-4 py-3 rounded-lg bg-gray-50 hover:bg-blue-50 transition-colors group">
                             <span class="text-gray-700 group-hover:text-blue-700 font-medium flex items-center">
                                 <span class="text-xl mr-3">🏭</span>
                                 Máquinas
                             </span>
                         </a>
-                        <a href="{{ route('elementos.index') }}" class="block px-4 py-3 rounded-lg bg-gray-50 hover:bg-blue-50 transition-colors group">
+                        <a href="{{ route('elementos.index') }}" wire:navigate class="block px-4 py-3 rounded-lg bg-gray-50 hover:bg-blue-50 transition-colors group">
                             <span class="text-gray-700 group-hover:text-blue-700 font-medium flex items-center">
                                 <span class="text-xl mr-3">🔩</span>
                                 Elementos
                             </span>
                         </a>
-                        <a href="{{ route('etiquetas.index') }}" class="block px-4 py-3 rounded-lg bg-gray-50 hover:bg-blue-50 transition-colors group">
+                        <a href="{{ route('etiquetas.index') }}" wire:navigate class="block px-4 py-3 rounded-lg bg-gray-50 hover:bg-blue-50 transition-colors group">
                             <span class="text-gray-700 group-hover:text-blue-700 font-medium flex items-center">
                                 <span class="text-xl mr-3">🏷️</span>
                                 Etiquetas
                             </span>
                         </a>
-                        <a href="{{ route('paquetes.index') }}" class="block px-4 py-3 rounded-lg bg-gray-50 hover:bg-blue-50 transition-colors group">
+                        <a href="{{ route('paquetes.index') }}" wire:navigate class="block px-4 py-3 rounded-lg bg-gray-50 hover:bg-blue-50 transition-colors group">
                             <span class="text-gray-700 group-hover:text-blue-700 font-medium flex items-center">
                                 <span class="text-xl mr-3">📦</span>
                                 Paquetes
                             </span>
                         </a>
-                        <a href="{{ route('planillas.index') }}" class="block px-4 py-3 rounded-lg bg-gray-50 hover:bg-blue-50 transition-colors group">
+                        <a href="{{ route('planillas.index') }}" wire:navigate class="block px-4 py-3 rounded-lg bg-gray-50 hover:bg-blue-50 transition-colors group">
                             <span class="text-gray-700 group-hover:text-blue-700 font-medium flex items-center">
                                 <span class="text-xl mr-3">📄</span>
                                 Planillas
@@ -61,37 +61,37 @@
                         </h2>
                     </div>
                     <div class="p-4 space-y-2">
-                        <a href="{{ route('productos.index') }}" class="block px-4 py-3 rounded-lg bg-gray-50 hover:bg-green-50 transition-colors group">
+                        <a href="{{ route('productos.index') }}" wire:navigate class="block px-4 py-3 rounded-lg bg-gray-50 hover:bg-green-50 transition-colors group">
                             <span class="text-gray-700 group-hover:text-green-700 font-medium flex items-center">
                                 <span class="text-xl mr-3">🧱</span>
                                 Productos
                             </span>
                         </a>
-                        <a href="{{ route('ubicaciones.index') }}" class="block px-4 py-3 rounded-lg bg-gray-50 hover:bg-green-50 transition-colors group">
+                        <a href="{{ route('ubicaciones.index') }}" wire:navigate class="block px-4 py-3 rounded-lg bg-gray-50 hover:bg-green-50 transition-colors group">
                             <span class="text-gray-700 group-hover:text-green-700 font-medium flex items-center">
                                 <span class="text-xl mr-3">📍</span>
                                 Ubicaciones
                             </span>
                         </a>
-                        <a href="{{ route('movimientos.index') }}" class="block px-4 py-3 rounded-lg bg-gray-50 hover:bg-green-50 transition-colors group">
+                        <a href="{{ route('movimientos.index') }}" wire:navigate class="block px-4 py-3 rounded-lg bg-gray-50 hover:bg-green-50 transition-colors group">
                             <span class="text-gray-700 group-hover:text-green-700 font-medium flex items-center">
                                 <span class="text-xl mr-3">🔄</span>
                                 Movimientos
                             </span>
                         </a>
-                        <a href="{{ route('entradas.index') }}" class="block px-4 py-3 rounded-lg bg-gray-50 hover:bg-green-50 transition-colors group">
+                        <a href="{{ route('entradas.index') }}" wire:navigate class="block px-4 py-3 rounded-lg bg-gray-50 hover:bg-green-50 transition-colors group">
                             <span class="text-gray-700 group-hover:text-green-700 font-medium flex items-center">
                                 <span class="text-xl mr-3">⬇️</span>
                                 Entradas
                             </span>
                         </a>
-                        <a href="{{ route('salidas-ferralla.index') }}" class="block px-4 py-3 rounded-lg bg-gray-50 hover:bg-green-50 transition-colors group">
+                        <a href="{{ route('salidas-ferralla.index') }}" wire:navigate class="block px-4 py-3 rounded-lg bg-gray-50 hover:bg-green-50 transition-colors group">
                             <span class="text-gray-700 group-hover:text-green-700 font-medium flex items-center">
                                 <span class="text-xl mr-3">➡️</span>
                                 Salidas Ferralla
                             </span>
                         </a>
-                        <a href="{{ route('salidasAlmacen.index') }}" class="block px-4 py-3 rounded-lg bg-gray-50 hover:bg-green-50 transition-colors group">
+                        <a href="{{ route('salidasAlmacen.index') }}" wire:navigate class="block px-4 py-3 rounded-lg bg-gray-50 hover:bg-green-50 transition-colors group">
                             <span class="text-gray-700 group-hover:text-green-700 font-medium flex items-center">
                                 <span class="text-xl mr-3">📤</span>
                                 Salidas Almacén
@@ -109,25 +109,25 @@
                         </h2>
                     </div>
                     <div class="p-4 space-y-2">
-                        <a href="{{ route('clientes.index') }}" class="block px-4 py-3 rounded-lg bg-gray-50 hover:bg-purple-50 transition-colors group">
+                        <a href="{{ route('clientes.index') }}" wire:navigate class="block px-4 py-3 rounded-lg bg-gray-50 hover:bg-purple-50 transition-colors group">
                             <span class="text-gray-700 group-hover:text-purple-700 font-medium flex items-center">
                                 <span class="text-xl mr-3">👥</span>
                                 Clientes
                             </span>
                         </a>
-                        <a href="{{ route('empresas.index') }}" class="block px-4 py-3 rounded-lg bg-gray-50 hover:bg-purple-50 transition-colors group">
+                        <a href="{{ route('empresas.index') }}" wire:navigate class="block px-4 py-3 rounded-lg bg-gray-50 hover:bg-purple-50 transition-colors group">
                             <span class="text-gray-700 group-hover:text-purple-700 font-medium flex items-center">
                                 <span class="text-xl mr-3">🏢</span>
                                 Empresas
                             </span>
                         </a>
-                        <a href="{{ route('fabricantes.index') }}" class="block px-4 py-3 rounded-lg bg-gray-50 hover:bg-purple-50 transition-colors group">
+                        <a href="{{ route('fabricantes.index') }}" wire:navigate class="block px-4 py-3 rounded-lg bg-gray-50 hover:bg-purple-50 transition-colors group">
                             <span class="text-gray-700 group-hover:text-purple-700 font-medium flex items-center">
                                 <span class="text-xl mr-3">🏭</span>
                                 Proveedores
                             </span>
                         </a>
-                        <a href="{{ route('empresas-transporte.index') }}" class="block px-4 py-3 rounded-lg bg-gray-50 hover:bg-purple-50 transition-colors group">
+                        <a href="{{ route('empresas-transporte.index') }}" wire:navigate class="block px-4 py-3 rounded-lg bg-gray-50 hover:bg-purple-50 transition-colors group">
                             <span class="text-gray-700 group-hover:text-purple-700 font-medium flex items-center">
                                 <span class="text-xl mr-3">🚚</span>
                                 Empresas Transporte
@@ -145,13 +145,13 @@
                         </h2>
                     </div>
                     <div class="p-4 space-y-2">
-                        <a href="{{ route('pedidos.index') }}" class="block px-4 py-3 rounded-lg bg-gray-50 hover:bg-orange-50 transition-colors group">
+                        <a href="{{ route('pedidos.index') }}" wire:navigate class="block px-4 py-3 rounded-lg bg-gray-50 hover:bg-orange-50 transition-colors group">
                             <span class="text-gray-700 group-hover:text-orange-700 font-medium flex items-center">
                                 <span class="text-xl mr-3">🛒</span>
                                 Pedidos
                             </span>
                         </a>
-                        <a href="{{ route('pedidos_globales.index') }}" class="block px-4 py-3 rounded-lg bg-gray-50 hover:bg-orange-50 transition-colors group">
+                        <a href="{{ route('pedidos_globales.index') }}" wire:navigate class="block px-4 py-3 rounded-lg bg-gray-50 hover:bg-orange-50 transition-colors group">
                             <span class="text-gray-700 group-hover:text-orange-700 font-medium flex items-center">
                                 <span class="text-xl mr-3">🌐</span>
                                 Pedidos Globales
@@ -169,31 +169,31 @@
                         </h2>
                     </div>
                     <div class="p-4 space-y-2">
-                        <a href="{{ route('user.index') }}" class="block px-4 py-3 rounded-lg bg-gray-50 hover:bg-indigo-50 transition-colors group">
+                        <a href="{{ route('user.index') }}" wire:navigate class="block px-4 py-3 rounded-lg bg-gray-50 hover:bg-indigo-50 transition-colors group">
                             <span class="text-gray-700 group-hover:text-indigo-700 font-medium flex items-center">
                                 <span class="text-xl mr-3">👤</span>
                                 Usuarios
                             </span>
                         </a>
-                        <a href="{{ route('departamentos.index') }}" class="block px-4 py-3 rounded-lg bg-gray-50 hover:bg-indigo-50 transition-colors group">
+                        <a href="{{ route('departamentos.index') }}" wire:navigate class="block px-4 py-3 rounded-lg bg-gray-50 hover:bg-indigo-50 transition-colors group">
                             <span class="text-gray-700 group-hover:text-indigo-700 font-medium flex items-center">
                                 <span class="text-xl mr-3">🏛️</span>
                                 Departamentos
                             </span>
                         </a>
-                        <a href="{{ route('vacaciones.index') }}" class="block px-4 py-3 rounded-lg bg-gray-50 hover:bg-indigo-50 transition-colors group">
+                        <a href="{{ route('vacaciones.index') }}" wire:navigate class="block px-4 py-3 rounded-lg bg-gray-50 hover:bg-indigo-50 transition-colors group">
                             <span class="text-gray-700 group-hover:text-indigo-700 font-medium flex items-center">
                                 <span class="text-xl mr-3">🌴</span>
                                 Vacaciones
                             </span>
                         </a>
-                        <a href="{{ route('asignaciones-turnos.index') }}" class="block px-4 py-3 rounded-lg bg-gray-50 hover:bg-indigo-50 transition-colors group">
+                        <a href="{{ route('asignaciones-turnos.index') }}" wire:navigate class="block px-4 py-3 rounded-lg bg-gray-50 hover:bg-indigo-50 transition-colors group">
                             <span class="text-gray-700 group-hover:text-indigo-700 font-medium flex items-center">
                                 <span class="text-xl mr-3">⏱️</span>
                                 Turnos
                             </span>
                         </a>
-                        <a href="{{ route('nominas.index') }}" class="block px-4 py-3 rounded-lg bg-gray-50 hover:bg-indigo-50 transition-colors group">
+                        <a href="{{ route('nominas.index') }}" wire:navigate class="block px-4 py-3 rounded-lg bg-gray-50 hover:bg-indigo-50 transition-colors group">
                             <span class="text-gray-700 group-hover:text-indigo-700 font-medium flex items-center">
                                 <span class="text-xl mr-3">💰</span>
                                 Nóminas
@@ -211,13 +211,13 @@
                         </h2>
                     </div>
                     <div class="p-4 space-y-2">
-                        <a href="{{ route('alertas.index') }}" class="block px-4 py-3 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors group">
+                        <a href="{{ route('alertas.index') }}" wire:navigate class="block px-4 py-3 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors group">
                             <span class="text-gray-700 group-hover:text-gray-800 font-medium flex items-center">
                                 <span class="text-xl mr-3">🔔</span>
                                 Alertas
                             </span>
                         </a>
-                        <a href="{{ route('papelera.index') }}" class="block px-4 py-3 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors group">
+                        <a href="{{ route('papelera.index') }}" wire:navigate class="block px-4 py-3 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors group">
                             <span class="text-gray-700 group-hover:text-gray-800 font-medium flex items-center">
                                 <span class="text-xl mr-3">🗑️</span>
                                 Papelera

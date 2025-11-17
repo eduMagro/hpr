@@ -96,7 +96,7 @@
                         <td class="px-2 py-3 text-center border">{{ $producto->id }}</td>
                         <td class="px-2 py-3 text-center border">
                             @if($producto->entrada)
-                                <a href="{{ route('entradas.index', ['albaran' => $producto->entrada->albaran]) }}" class="text-blue-600 hover:underline">
+                                <a href="{{ route('entradas.index', ['albaran' => $producto->entrada->albaran]) }}" wire:navigate class="text-blue-600 hover:underline">
                                     {{ $producto->entrada->albaran }}
                                 </a>
                             @else
@@ -144,23 +144,23 @@
                         <td class="px-2 py-3 text-center border">{{ $producto->created_at->format('d/m/Y') }}</td>
                         <td class="px-2 py-2 border text-xs font-bold">
                             <div class="flex items-center space-x-2 justify-center">
-                                <a href="{{ route('productos.edit', $producto->id) }}" class="w-6 h-6 bg-yellow-100 text-yellow-600 rounded hover:bg-yellow-200 flex items-center justify-center" title="Editar">
+                                <a href="{{ route('productos.edit', $producto->id) }}" wire:navigate class="w-6 h-6 bg-yellow-100 text-yellow-600 rounded hover:bg-yellow-200 flex items-center justify-center" title="Editar">
                                     <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                                         <path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" />
                                     </svg>
                                 </a>
-                                <a href="{{ route('productos.show', $producto->id) }}" class="w-6 h-6 bg-blue-100 text-blue-600 rounded hover:bg-blue-200 flex items-center justify-center" title="Ver">
+                                <a href="{{ route('productos.show', $producto->id) }}" wire:navigate class="w-6 h-6 bg-blue-100 text-blue-600 rounded hover:bg-blue-200 flex items-center justify-center" title="Ver">
                                     <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                                         <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                                         <path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                                     </svg>
                                 </a>
-                                <button type="button" onclick="abrirModalMovimientoLibre('{{ $producto->codigo }}')" wire:navigate wire:navigate class="w-6 h-6 bg-green-100 text-green-600 rounded hover:bg-green-200 flex items-center justify-center" title="Mover producto">
+                                <button type="button" onclick="abrirModalMovimientoLibre('{{ $producto->codigo }}')" wire:navigate class="w-6 h-6 bg-green-100 text-green-600 rounded hover:bg-green-200 flex items-center justify-center" title="Mover producto">
                                     <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
                                         <path d="M8.5 2A1.5 1.5 0 0 1 10 3.5V10h.5V4A1.5 1.5 0 0 1 13 4v6h.5V5.5a1.5 1.5 0 0 1 3 0V10h.5V7a1.5 1.5 0 0 1 3 0v9.5a3.5 3.5 0 0 1-7 0V18h-2a3 3 0 0 1-3-3v-4H8V3.5A1.5 1.5 0 0 1 8.5 2z" />
                                     </svg>
                                 </button>
-                                <a href="{{ route('productos.editarConsumir', $producto->id) }}" data-consumir="{{ route('productos.editarConsumir', $producto->id) }}" class="btn-consumir w-6 h-6 bg-red-100 text-red-600 rounded hover:bg-red-200 flex items-center justify-center" title="Consumir">
+                                <a href="{{ route('productos.editarConsumir', $producto->id) }}" wire:navigate data-consumir="{{ route('productos.editarConsumir', $producto->id) }}" class="btn-consumir w-6 h-6 bg-red-100 text-red-600 rounded hover:bg-red-200 flex items-center justify-center" title="Consumir">
                                     <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="currentColor" viewBox="0 0 24 24">
                                         <path d="M13.5 3.5c-2 2-1.5 4-3 5.5s-4 1-4 5a6 6 0 0012 0c0-2-1-3.5-2-4.5s-1-3-3-6z" />
                                     </svg>
@@ -192,7 +192,7 @@
 
     {{-- Paginación --}}
     <div class="mt-4">
-        {{ $productos->links('vendor.livewire.tailwind') }}
+        {{ $productos->links('vendor.livewire.tailwind') }} wire:navigate
     </div>
 
     {{-- Script para botón consumir con SweetAlert --}}

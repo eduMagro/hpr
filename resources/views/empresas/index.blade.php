@@ -7,11 +7,11 @@
             <!-- Botones de navegación y título alineados a la izquierda -->
             <div class="flex flex-col gap-4 mb-6">
                 <div class="flex gap-3 flex-wrap">
-                    <a href="{{ route('nominas.index') }}"
+                    <a href="{{ route('nominas.index') }}" wire:navigate
                         class="inline-block bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded shadow transition">
                         ➕ Nóminas
                     </a>
-                    <a href="{{ route('nomina.simulacion') }}"
+                    <a href="{{ route('nomina.simulacion') }}" wire:navigate
                         class="inline-block bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-4 rounded shadow transition">
                         🧮 Simulación Nóminas
                     </a>
@@ -89,10 +89,10 @@
                             <td class="px-4 py-2 border text-center">{{ $empresa->nif }}</td>
                             <td class="px-4 py-2 border text-center">{{ $empresa->numero_ss }}</td>
                             <td class="px-4 py-2 border text-center">
-                                <a href="{{ route('empresas.show', $empresa->id) }}"
+                                <a href="{{ route('empresas.show', $empresa->id) }}" wire:navigate
                                     class="text-blue-600 hover:underline">Ver</a>
                                 <span class="mx-1">|</span>
-                                <a href="{{ route('empresas.edit', $empresa->id) }}"
+                                <a href="{{ route('empresas.edit', $empresa->id) }}" wire:navigate
                                     class="text-green-600 hover:underline">Editar</a>
                             </td>
                         </tr>
@@ -128,10 +128,10 @@
                             <td class="px-4 py-2 border">{{ $turno->hora_salida }}</td>
                             <td class="px-4 py-2 border">{{ $turno->salida_offset }}</td>
                             <td class="px-4 py-2 border">
-                                <a href="{{ route('turnos.show', $turno->id) }}"
+                                <a href="{{ route('turnos.show', $turno->id) }}" wire:navigate
                                     class="text-blue-600 hover:underline">Ver</a>
                                 <span class="mx-1">|</span>
-                                <a href="{{ route('turnos.edit', $turno->id) }}"
+                                <a href="{{ route('turnos.edit', $turno->id) }}" wire:navigate
                                     class="text-green-600 hover:underline">Editar</a>
                             </td>
                         </tr>
@@ -189,7 +189,7 @@
                         <tr class="hover:bg-gray-50">
                             <td class="px-4 py-2 border text-center">{{ $tramo->id }}</td>
                             <td class="px-4 py-2 border text-right">
-                                {{ number_format($tramo->tramo_inicial, 2, ',', '.') }}
+                                {{ number_format($tramo->tramo_inicial, 2, ',', '.') }} wire:navigate
                             </td>
                             <td class="px-4 py-2 border text-right">
                                 {{ $tramo->tramo_final !== null ? number_format($tramo->tramo_final, 2, ',', '.') : 'Sin límite' }}

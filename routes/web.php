@@ -245,6 +245,11 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
     // Endpoints dinámicos para el calendario de máquinas
     Route::get('/api/produccion/maquinas/recursos', [ProduccionController::class, 'obtenerRecursos'])->name('api.produccion.recursos');
     Route::get('/api/produccion/maquinas/eventos', [ProduccionController::class, 'obtenerEventos'])->name('api.produccion.eventos');
+
+    // Endpoints de optimización de planillas
+    Route::get('/api/produccion/optimizar-analisis', [ProduccionController::class, 'optimizarAnalisis'])->name('api.produccion.optimizar.analisis');
+    Route::post('/api/produccion/optimizar-aplicar', [ProduccionController::class, 'optimizarAplicar'])->name('api.produccion.optimizar.aplicar');
+
     //MSR20 BVBS
     Route::get('/maquinas/{maquina}/exportar-bvbs', [MaquinaController::class, 'exportarBVBS'])
         ->name('maquinas.exportar-bvbs');

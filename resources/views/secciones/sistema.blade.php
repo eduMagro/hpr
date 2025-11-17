@@ -13,7 +13,7 @@
             <!-- Grid de opciones -->
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
 
-                <a href="{{ route('alertas.index') }}" class="bg-white rounded-lg shadow-md hover:shadow-xl transition-all duration-300 overflow-hidden group">
+                <a href="{{ route('alertas.index') }}" wire:navigate class="bg-white rounded-lg shadow-md hover:shadow-xl transition-all duration-300 overflow-hidden group">
                     <div class="bg-gradient-to-br from-gray-600 to-gray-700 p-6 text-center">
                         <span class="text-6xl">🔔</span>
                     </div>
@@ -23,7 +23,7 @@
                     </div>
                 </a>
 
-                <a href="{{ route('papelera.index') }}" class="bg-white rounded-lg shadow-md hover:shadow-xl transition-all duration-300 overflow-hidden group">
+                <a href="{{ route('papelera.index') }}" wire:navigate class="bg-white rounded-lg shadow-md hover:shadow-xl transition-all duration-300 overflow-hidden group">
                     <div class="bg-gradient-to-br from-gray-600 to-gray-700 p-6 text-center">
                         <span class="text-6xl">🗑️</span>
                     </div>
@@ -33,7 +33,7 @@
                     </div>
                 </a>
 
-                <a href="{{ route('ayuda.index') }}" class="bg-white rounded-lg shadow-md hover:shadow-xl transition-all duration-300 overflow-hidden group">
+                <a href="{{ route('ayuda.index') }}" wire:navigate class="bg-white rounded-lg shadow-md hover:shadow-xl transition-all duration-300 overflow-hidden group">
                     <div class="bg-gradient-to-br from-gray-600 to-gray-700 p-6 text-center">
                         <span class="text-6xl">❓</span>
                     </div>
@@ -43,7 +43,7 @@
                     </div>
                 </a>
 
-                <a href="{{ route('estadisticas.index') }}" class="bg-white rounded-lg shadow-md hover:shadow-xl transition-all duration-300 overflow-hidden group">
+                <a href="{{ route('estadisticas.index') }}" wire:navigate class="bg-white rounded-lg shadow-md hover:shadow-xl transition-all duration-300 overflow-hidden group">
                     <div class="bg-gradient-to-br from-gray-600 to-gray-700 p-6 text-center">
                         <span class="text-6xl">📊</span>
                     </div>
@@ -53,7 +53,7 @@
                     </div>
                 </a>
 
-                <a href="{{ route('asistente.index') }}" class="bg-white rounded-lg shadow-md hover:shadow-xl transition-all duration-300 overflow-hidden group">
+                <a href="{{ route('asistente.index') }}" wire:navigate class="bg-white rounded-lg shadow-md hover:shadow-xl transition-all duration-300 overflow-hidden group">
                     <div class="bg-gradient-to-br from-gray-800 to-gray-900 p-6 text-center">
                         <span class="text-6xl">⚡</span>
                     </div>
@@ -63,7 +63,7 @@
                     </div>
                 </a>
 
-                <a href="{{ route('departamentos.index') }}" class="bg-white rounded-lg shadow-md hover:shadow-xl transition-all duration-300 overflow-hidden group">
+                <a href="{{ route('departamentos.index') }}" wire:navigate class="bg-white rounded-lg shadow-md hover:shadow-xl transition-all duration-300 overflow-hidden group">
                     <div class="bg-gradient-to-br from-gray-600 to-gray-700 p-6 text-center">
                         <span class="text-6xl">🔐</span>
                     </div>

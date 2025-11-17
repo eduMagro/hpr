@@ -6,7 +6,7 @@
             </h2>
             <div class="flex gap-3 items-center">
                 <span class="text-sm text-gray-600" id="last-update">
-                    Última actualización: {{ now()->format('H:i:s') }}
+                    Última actualización: {{ now()->format('H:i:s') }} wire:navigate
                 </span>
                 <button id="toggle-auto-refresh" class="px-3 py-1.5 bg-green-600 text-white text-sm rounded hover:bg-green-700 transition">
                     ⏸ Pausar

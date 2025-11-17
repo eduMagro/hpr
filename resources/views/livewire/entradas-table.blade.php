@@ -104,7 +104,7 @@
 
                         <!-- Código Línea -->
                         <td class="px-3 py-2 text-center">
-                            <a href="{{ route('pedidos.index', ['pedido_producto_id' => $entrada->pedido_producto_id]) }}"
+                            <a href="{{ route('pedidos.index', ['pedido_producto_id' => $entrada->pedido_producto_id]) }}" wire:navigate
                                 class="text-blue-600 hover:underline font-medium">
                                 {{ $entrada->pedidoProducto->codigo ?? 'N/A' }}
                             </a>
@@ -151,7 +151,7 @@
                         <!-- Nº Productos -->
                         <td class="px-3 py-2">
                             @if ($entrada->productos_count > 0)
-                                <a href="{{ route('productos.index', ['entrada_id' => $entrada->id, 'mostrar_todos' => 1]) }}"
+                                <a href="{{ route('productos.index', ['entrada_id' => $entrada->id, 'mostrar_todos' => 1]) }}" wire:navigate
                                     class="text-blue-600 hover:underline">
                                     {{ $entrada->productos_count }}
                                 </a>
@@ -177,7 +177,7 @@
                         {{-- PDF adjunto --}}
                         <td class="px-3 py-2">
                             @if ($entrada->pdf_albaran)
-                                <a href="{{ route('entradas.crearDescargarPdf', $entrada->id) }}" target="_blank"
+                                <a href="{{ route('entradas.crearDescargarPdf', $entrada->id) }}" wire:navigate target="_blank"
                                     class="text-green-600 font-semibold hover:underline">
                                     {{ $entrada->pdf_albaran }}
                                 </a>
@@ -238,7 +238,7 @@
         </table>
     </div>
 
-    {{ $registrosEntradas->links() }}
+    {{ $registrosEntradas->links() }} wire:navigate
 
     {{-- Modal para adjuntar albarán --}}
     <div x-data="{ mostrar: false, entradaId: null }" @abrir-modal-adjuntar.window="mostrar = true; entradaId = $event.detail.entradaId"

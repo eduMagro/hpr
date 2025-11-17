@@ -2,7 +2,7 @@
     <x-slot name="title">Paquetes - {{ config('app.name') }}</x-slot>
     {{-- BOTÓN PARA IR AL MAPA DE LOCALIZACIONES --}}
     <div class="mb-4 flex justify-end">
-        <a href="{{ route('mapa.paquetes', ['obra' => request('nave')]) }}"
+        <a href="{{ route('mapa.paquetes', ['obra' => request('nave')]) }}" wire:navigate
             class="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white font-semibold rounded-lg shadow-md hover:from-blue-700 hover:to-blue-800 transition-all duration-200 transform hover:scale-105">
             <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none"
                 viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
