@@ -347,7 +347,7 @@ Inesperados: ${inesperados.join(', ') || '—'}
 <x-app-layout>
     <x-slot name="header">
         <h2 class="font-semibold text-xl text-gray-800 leading-tight">
-            <a href="{{ route('ubicaciones.index') }}" class="text-gray-600 hover:text-gray-800">
+            <a href="{{ route('ubicaciones.index') }}" wire:navigate class="text-gray-600 hover:text-gray-800">
                 {{ __('Ubicaciones') }}
             </a>
         </h2>

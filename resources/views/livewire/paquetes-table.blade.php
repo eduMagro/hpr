@@ -17,7 +17,8 @@
                                 {{ $order === 'asc' ? '▲' : '▼' }}
                             @endif
                         </th>
-                        <th class="p-2 border cursor-pointer" wire:click="wire:click="sortBy('planilla_id')" wire:navigate">
+                        <th class="p-2 border cursor-pointer" wire:click="wire:click="sortBy('planilla_id')"
+                            wire:navigate">
                             Planilla @if ($sort === 'planilla_id')
                                 {{ $order === 'asc' ? '▲' : '▼' }}
                             @endif
@@ -39,7 +40,8 @@
                                 {{ $order === 'asc' ? '▲' : '▼' }}
                             @endif
                         </th>
-                        <th class="p-2 border cursor-pointer" wire:click="wire:click="sortBy('created_at')" wire:navigate">
+                        <th class="p-2 border cursor-pointer" wire:click="wire:click="sortBy('created_at')"
+                            wire:navigate">
                             Fecha Creación @if ($sort === 'created_at')
                                 {{ $order === 'asc' ? '▲' : '▼' }}
                             @endif
@@ -138,8 +140,8 @@
                             <td class="p-2 text-center border">{{ $paquete->id }}</td>
                             <td class="p-2 text-center border">{{ $paquete->codigo }}</td>
                             <td class="p-2 text-center border">
-                                <a href="{{ route('planillas.index', ['planilla_id' => $paquete->planilla->id]) }}" wire:navigate
-                                    class="text-blue-500 hover:underline">
+                                <a href="{{ route('planillas.index', ['planilla_id' => $paquete->planilla->id]) }}"
+                                    wire:navigate class="text-blue-500 hover:underline">
                                     {{ $paquete->planilla->codigo_limpio }}
                                 </a>
                             </td>
@@ -193,8 +195,8 @@
                                 @if ($paquete->etiquetas->isNotEmpty())
                                     @foreach ($paquete->etiquetas as $etiqueta)
                                         <p class="font-semibold text-blue-700">
-                                            🏷️ <a href="{{ route('etiquetas.index', ['id' => $etiqueta->id]) }}" wire:navigate
-                                                class="hover:underline">
+                                            🏷️ <a href="{{ route('etiquetas.index', ['id' => $etiqueta->id]) }}"
+                                                wire:navigate class="hover:underline">
                                                 {{ $etiqueta->nombre }}{{ $etiqueta->etiqueta_sub_id }}
                                             </a> –
                                             {{ $etiqueta->peso_kg }}
@@ -203,8 +205,8 @@
                                             <ul class="ml-2 text-xs text-gray-700">
                                                 @foreach ($etiqueta->elementos as $elemento)
                                                     <li>
-                                                        <a href="{{ route('elementos.index', ['id' => $elemento->id]) }}" wire:navigate
-                                                            class="text-green-600 hover:underline">
+                                                        <a href="{{ route('elementos.index', ['id' => $elemento->id]) }}"
+                                                            wire:navigate class="text-green-600 hover:underline">
                                                             {{ $elemento->codigo }} – {{ $elemento->figura }}
                                                             – {{ $elemento->peso_kg }}
                                                         </a>
@@ -229,7 +231,8 @@
                                 <div class="flex flex-row justify-center items-center gap-3">
                                     {{-- Botón QR --}}
                                     <button
-                                        onclick="onclick="generateAndPrintQR('{{ $paquete->codigo }}', '{{ $paquete->planilla->codigo_limpio }}', 'PAQUETE')" wire:navigate"
+                                        onclick="onclick="generateAndPrintQR('{{ $paquete->codigo }}', '{{ $paquete->planilla->codigo_limpio }}'
+                                        , 'PAQUETE' )" wire:navigate"
                                         class="w-6 h-6 bg-green-100 text-green-600 rounded hover:bg-green-200 flex items-center justify-center"
                                         title="Generar QR">
                                         <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none"
@@ -267,7 +270,7 @@
         </div>
 
         <!-- Paginación Livewire -->
-        ${{ $paquetes->links() }}
+        {{ $paquetes->links() }}
     </div>
 
     {{-- Modal para visualizar elementos del paquete --}}

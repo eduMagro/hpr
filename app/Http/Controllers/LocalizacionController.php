@@ -921,6 +921,7 @@ class LocalizacionController extends Controller
                     'x2'                => (int) $loc->x2,
                     'y2'                => (int) $loc->y2,
                     'tipo_contenido'    => $paquete->getTipoContenido(), // 'barras', 'estribos', 'mixto'
+                    'cantidad_etiquetas' => $paquete->etiquetas->count(),
                     'cantidad_elementos' => $paquete->etiquetas->sum(fn($e) => $e->elementos->count()),
                     'planilla'          => $paquete->planilla?->codigo,
                     'obra'              => $paquete->planilla?->obra?->obra ?? '-',
@@ -1022,6 +1023,277 @@ class LocalizacionController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Error al actualizar la posición del paquete',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Obtener lista de naves (obras de HPR) para el selector
+     */
+    public function getNavesApi()
+    {
+        try {
+            $obras = Obra::with('cliente')
+                ->whereHas('cliente', fn($q) => $q->where('empresa', 'LIKE', '%hierros paco reyes%'))
+                ->orderBy('obra')
+                ->get()
+                ->map(function ($obra) {
+                    return [
+                        'id' => $obra->id,
+                        'obra' => $obra->obra,
+                        'nombre' => $obra->obra,
+                        'ancho_m' => $obra->ancho_m ?? 22,
+                        'largo_m' => $obra->largo_m ?? 115,
+                    ];
+                });
+
+            return response()->json($obras);
+        } catch (\Exception $e) {
+            Log::error("Error al obtener naves: " . $e->getMessage());
+            return response()->json(['error' => 'Error al cargar naves'], 500);
+        }
+    }
+
+    /**
+     * Obtener datos del mapa de una nave específica para renderizar en el modal
+     */
+    public function getMapaDataApi($naveId)
+    {
+        try {
+            $obra = Obra::findOrFail($naveId);
+
+            // Dimensiones de la nave
+            $anchoM = max(1, (int) ($obra->ancho_m ?? 22));
+            $largoM = max(1, (int) ($obra->largo_m ?? 115));
+            $anchoCeldas = $anchoM * 2; // 0.5m por celda
+            $largoCeldas = $largoM * 2;
+
+            // Localizaciones existentes (máquinas)
+            $localizaciones = Localizacion::with('maquina:id,nombre')
+                ->where('nave_id', $naveId)
+                ->get();
+
+            $maquinas = $localizaciones
+                ->where('tipo', 'maquina')
+                ->whereNotNull('maquina_id')
+                ->filter(fn($l) => $l->maquina)
+                ->values()
+                ->map(function ($l) {
+                    return [
+                        'id' => (int) $l->id,
+                        'x1' => (int) $l->x1,
+                        'y1' => (int) $l->y1,
+                        'x2' => (int) $l->x2,
+                        'y2' => (int) $l->y2,
+                        'nombre' => (string) ($l->nombre ?: $l->maquina->nombre),
+                    ];
+                });
+
+            // Paquetes existentes en la nave (a través del modelo Paquete que tiene nave_id)
+            $paquetes = Paquete::with('localizacionPaquete')
+                ->where('nave_id', $naveId)
+                ->whereHas('localizacionPaquete')
+                ->get()
+                ->map(function ($paquete) {
+                    $lp = $paquete->localizacionPaquete;
+                    return [
+                        'id' => (int) $lp->id,
+                        'paquete_id' => (int) $paquete->id,
+                        'codigo' => $paquete->codigo,
+                        'x1' => (int) $lp->x1,
+                        'y1' => (int) $lp->y1,
+                        'x2' => (int) $lp->x2,
+                        'y2' => (int) $lp->y2,
+                    ];
+                });
+
+            return response()->json([
+                'nave_id' => $naveId,
+                'obra' => $obra->obra,
+                'dimensiones' => [
+                    'ancho_m' => $anchoM,
+                    'largo_m' => $largoM,
+                    'ancho_celdas' => $anchoCeldas,
+                    'largo_celdas' => $largoCeldas,
+                ],
+                'maquinas' => $maquinas,
+                'paquetes' => $paquetes,
+            ]);
+        } catch (\Exception $e) {
+            Log::error("Error al obtener datos del mapa para nave {$naveId}: " . $e->getMessage());
+            return response()->json(['error' => 'Error al cargar datos del mapa: ' . $e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * Renderizar el componente de mapa para carga dinámica (AJAX)
+     */
+    public function renderMapaComponente($naveId)
+    {
+        try {
+            $obra = Obra::findOrFail($naveId);
+
+            // Dimensiones
+            $anchoM = max(1, (int) ($obra->ancho_m ?? 22));
+            $largoM = max(1, (int) ($obra->largo_m ?? 115));
+            $columnasReales = $anchoM * 2;
+            $filasReales = $largoM * 2;
+
+            // Contexto para el componente
+            $ctx = [
+                'columnasReales' => $columnasReales,
+                'filasReales' => $filasReales,
+                'estaGirado' => true, // vertical por defecto
+                'naveId' => $naveId,
+            ];
+
+            // Localizaciones de máquinas
+            $localizaciones = Localizacion::with('maquina:id,nombre')
+                ->where('nave_id', $naveId)
+                ->get();
+
+            $localizacionesMaquinas = $localizaciones
+                ->where('tipo', 'maquina')
+                ->whereNotNull('maquina_id')
+                ->filter(fn($l) => $l->maquina)
+                ->values()
+                ->map(function ($l) {
+                    return [
+                        'id' => (int) $l->id,
+                        'x1' => (int) $l->x1,
+                        'y1' => (int) $l->y1,
+                        'x2' => (int) $l->x2,
+                        'y2' => (int) $l->y2,
+                        'maquina_id' => (int) $l->maquina_id,
+                        'nombre' => (string) ($l->nombre ?: $l->maquina->nombre),
+                    ];
+                })->toArray();
+
+            // Zonas
+            $localizacionesZonas = $localizaciones
+                ->filter(fn($l) => $l->tipo !== 'maquina')
+                ->values()
+                ->map(function ($l) {
+                    return [
+                        'id' => (int) $l->id,
+                        'x1' => (int) $l->x1,
+                        'y1' => (int) $l->y1,
+                        'x2' => (int) $l->x2,
+                        'y2' => (int) $l->y2,
+                        'tipo' => $l->tipo ?? 'transitable',
+                        'nombre' => (string) $l->nombre,
+                    ];
+                })->toArray();
+
+            // Paquetes existentes
+            $paquetesConLocalizacion = Paquete::with(['localizacionPaquete', 'etiquetas.elementos'])
+                ->where('nave_id', $naveId)
+                ->whereHas('localizacionPaquete')
+                ->get()
+                ->map(function ($paquete) {
+                    $loc = $paquete->localizacionPaquete;
+                    return [
+                        'id' => (int) $paquete->id,
+                        'codigo' => (string) $paquete->codigo,
+                        'x1' => (int) $loc->x1,
+                        'y1' => (int) $loc->y1,
+                        'x2' => (int) $loc->x2,
+                        'y2' => (int) $loc->y2,
+                        'tipo_contenido' => $paquete->getTipoContenido(),
+                        'orientacion' => 'I',
+                    ];
+                })->toArray();
+
+            $dimensiones = [
+                'ancho' => $anchoM,
+                'largo' => $largoM,
+                'obra' => $obra->obra,
+            ];
+
+            // Renderizar el componente
+            return view('partials.mapa-component-ajax', [
+                'ctx' => $ctx,
+                'localizacionesZonas' => $localizacionesZonas,
+                'localizacionesMaquinas' => $localizacionesMaquinas,
+                'paquetesConLocalizacion' => $paquetesConLocalizacion,
+                'dimensiones' => $dimensiones,
+                'obraActualId' => $naveId,
+            ]);
+        } catch (\Exception $e) {
+            Log::error("Error al renderizar componente de mapa: " . $e->getMessage());
+            return response('<div class="text-red-500 p-4">Error al cargar el mapa: ' . $e->getMessage() . '</div>', 500);
+        }
+    }
+
+    /**
+     * Guardar nueva ubicación de un paquete (crear o actualizar)
+     */
+    public function guardarLocalizacionPaquete(Request $request)
+    {
+        try {
+            $validated = $request->validate([
+                'nave_id' => 'required|integer|exists:obras,id',
+                'paquete_id' => 'required|integer|exists:paquetes,id',
+                'x1' => 'required|integer|min:1',
+                'y1' => 'required|integer|min:1',
+                'x2' => 'required|integer|min:1',
+                'y2' => 'required|integer|min:1',
+            ]);
+
+            // Actualizar el nave_id en el paquete
+            $paquete = Paquete::findOrFail($validated['paquete_id']);
+            $paquete->update(['nave_id' => $validated['nave_id']]);
+
+            // Verificar si el paquete ya tiene una ubicación
+            $localizacionExistente = LocalizacionPaquete::where('paquete_id', $validated['paquete_id'])->first();
+
+            if ($localizacionExistente) {
+                // Actualizar ubicación existente
+                $localizacionExistente->update([
+                    'x1' => $validated['x1'],
+                    'y1' => $validated['y1'],
+                    'x2' => $validated['x2'],
+                    'y2' => $validated['y2'],
+                ]);
+
+                Log::info("✅ Ubicación del paquete {$validated['paquete_id']} actualizada en nave {$validated['nave_id']}");
+
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Ubicación del paquete actualizada correctamente',
+                    'localizacion' => $localizacionExistente
+                ]);
+            } else {
+                // Crear nueva ubicación
+                $nuevaLocalizacion = LocalizacionPaquete::create([
+                    'paquete_id' => $validated['paquete_id'],
+                    'x1' => $validated['x1'],
+                    'y1' => $validated['y1'],
+                    'x2' => $validated['x2'],
+                    'y2' => $validated['y2'],
+                ]);
+
+                Log::info("✅ Nueva ubicación creada para paquete {$validated['paquete_id']} en nave {$validated['nave_id']}");
+
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Paquete ubicado correctamente en el mapa',
+                    'localizacion' => $nuevaLocalizacion
+                ]);
+            }
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Datos inválidos',
+                'errors' => $e->errors()
+            ], 422);
+        } catch (\Exception $e) {
+            Log::error("❌ Error guardando ubicación de paquete: " . $e->getMessage());
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al guardar la ubicación del paquete',
                 'error' => $e->getMessage()
             ], 500);
         }

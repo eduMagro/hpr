@@ -2,7 +2,7 @@
     @if (auth()->user()->rol !== 'operario')
         <x-slot name="header">
             <h2 class="text-lg font-semibold text-gray-800">
-                <a href="{{ route('entradas.index') }}" class="text-blue-600">
+                <a href="{{ route('entradas.index') }}" wire:navigate class="text-blue-600">
                     {{ __('Entradas') }}
                 </a>
                 <span class="mx-2">/</span>
@@ -196,6 +196,7 @@
         }
 
         @media (max-width: 768px) {
+
             /* Contenedor fijo en la parte superior */
             .swal2-container {
                 align-items: flex-start !important;
@@ -304,7 +305,8 @@
                 this.currentStep = 0;
                 this.data = {};
                 this.steps = [];
-                this.isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || window.innerWidth <= 768;
+                this.isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator
+                    .userAgent) || window.innerWidth <= 768;
                 this.storageKey = 'registro_wizard_data';
                 this.setupSteps();
             }
@@ -343,8 +345,7 @@
             }
 
             setupSteps() {
-                this.steps = [
-                    {
+                this.steps = [{
                         name: 'paquetes',
                         title: '¿Cuántos paquetes?',
                         type: 'select',
@@ -629,7 +630,7 @@
                         }
                     });
 
-                    window.location.href = '{{ route("entradas.index") }}';
+                    window.location.href = '{{ route('entradas.index') }}';
                 } else {
                     await this.showStep();
                 }
@@ -662,7 +663,9 @@
                 const labelSize = this.isMobile ? '22px' : '20px';
 
                 let html = '<div style="text-align: left; margin: 0 auto; max-width: 90%;">';
-                html += '<label style="display: block; font-weight: 600; margin-bottom: 8px; color: #374151; font-size: ' + labelSize + ';">';
+                html +=
+                    '<label style="display: block; font-weight: 600; margin-bottom: 8px; color: #374151; font-size: ' +
+                    labelSize + ';">';
                 html += step.title;
                 if (step.required) html += ' <span style="color: #ef4444;">*</span>';
                 html += '</label>';
@@ -715,7 +718,9 @@
                     .filter(([id, u]) => u.almacen === code);
 
                 let html = '<div style="text-align: left; margin: 0 auto; max-width: 90%;">';
-                html += '<label style="display: block; font-weight: 600; margin-bottom: 8px; color: #374151; font-size: ' + labelSize + ';">';
+                html +=
+                    '<label style="display: block; font-weight: 600; margin-bottom: 8px; color: #374151; font-size: ' +
+                    labelSize + ';">';
                 html += 'Ubicación (' + code + ') <span style="color: #ef4444;">*</span>';
                 html += '</label>';
 
@@ -724,12 +729,15 @@
                     ubicacionesOptionsHTML += '<option value="' + id + '">' + u.nombre + '</option>';
                 }
 
-                html += '<select id="swal-ubicacion" class="swal2-input" style="width:100%; font-size: 16px; margin: 0 0 12px 0;">' +
+                html +=
+                    '<select id="swal-ubicacion" class="swal2-input" style="width:100%; font-size: 16px; margin: 0 0 12px 0;">' +
                     ubicacionesOptionsHTML +
                     '</select>';
 
-                html += '<label style="display:flex;align-items:center;gap:8px;font-size:' + (this.isMobile ? '16px' : '15px') + ';margin-top:8px;cursor:pointer;">' +
-                    '<input type="checkbox" id="swal-scan-checkbox" style="transform:scale(' + (this.isMobile ? '1.5' : '1.2') + ');cursor:pointer;">' +
+                html += '<label style="display:flex;align-items:center;gap:8px;font-size:' + (this.isMobile ? '16px' :
+                        '15px') + ';margin-top:8px;cursor:pointer;">' +
+                    '<input type="checkbox" id="swal-scan-checkbox" style="transform:scale(' + (this.isMobile ? '1.5' :
+                        '1.2') + ');cursor:pointer;">' +
                     '<span>Escanear ubicación en su lugar</span>' +
                     '</label>';
 
@@ -745,33 +753,46 @@
                 const labelSize = this.isMobile ? '24px' : '22px';
 
                 let html = '<div style="text-align: left; max-width: 400px; margin: 0 auto;">';
-                html += '<div style="font-weight: 600; font-size: ' + labelSize + '; color: #374151; margin-bottom: 16px; text-align: center;">';
+                html += '<div style="font-weight: 600; font-size: ' + labelSize +
+                    '; color: #374151; margin-bottom: 16px; text-align: center;">';
                 html += '📋 Revisar';
                 html += '</div>';
 
-                html += '<div class="resumen-item"><strong>Cantidad:</strong><span>' + this.data.paquetes + ' paquete(s)</span></div>';
-                html += '<div class="resumen-item"><strong>Código 1:</strong><span>' + this.data.codigo + '</span></div>';
-                html += '<div class="resumen-item"><strong>Fabricante:</strong><span>' + fabricantes[this.data.fabricante_id] + '</span></div>';
-                html += '<div class="resumen-item"><strong>Producto:</strong><span>' + productosBase[this.data.producto_base_id] + '</span></div>';
-                html += '<div class="resumen-item"><strong>Colada 1:</strong><span>' + this.data.n_colada + '</span></div>';
-                html += '<div class="resumen-item"><strong>Paquete 1:</strong><span>' + this.data.n_paquete + '</span></div>';
+                html += '<div class="resumen-item"><strong>Cantidad:</strong><span>' + this.data.paquetes +
+                    ' paquete(s)</span></div>';
+                html += '<div class="resumen-item"><strong>Código 1:</strong><span>' + this.data.codigo +
+                    '</span></div>';
+                html += '<div class="resumen-item"><strong>Fabricante:</strong><span>' + fabricantes[this.data
+                    .fabricante_id] + '</span></div>';
+                html += '<div class="resumen-item"><strong>Producto:</strong><span>' + productosBase[this.data
+                    .producto_base_id] + '</span></div>';
+                html += '<div class="resumen-item"><strong>Colada 1:</strong><span>' + this.data.n_colada +
+                    '</span></div>';
+                html += '<div class="resumen-item"><strong>Paquete 1:</strong><span>' + this.data.n_paquete +
+                    '</span></div>';
 
                 if (this.data.paquetes === '2') {
-                    html += '<div class="resumen-item"><strong>Código 2:</strong><span>' + this.data.codigo_2 + '</span></div>';
+                    html += '<div class="resumen-item"><strong>Código 2:</strong><span>' + this.data.codigo_2 +
+                        '</span></div>';
                     if (this.data.n_colada_2) {
-                        html += '<div class="resumen-item"><strong>Colada 2:</strong><span>' + this.data.n_colada_2 + '</span></div>';
+                        html += '<div class="resumen-item"><strong>Colada 2:</strong><span>' + this.data.n_colada_2 +
+                            '</span></div>';
                     }
                     if (this.data.n_paquete_2) {
-                        html += '<div class="resumen-item"><strong>Paquete 2:</strong><span>' + this.data.n_paquete_2 + '</span></div>';
+                        html += '<div class="resumen-item"><strong>Paquete 2:</strong><span>' + this.data.n_paquete_2 +
+                            '</span></div>';
                     }
                 }
 
-                html += '<div class="resumen-item"><strong>Peso total:</strong><span>' + this.data.peso + ' kg</span></div>';
-                html += '<div class="resumen-item"><strong>Almacén:</strong><span>' + obras[this.data.obra_id] + '</span></div>';
+                html += '<div class="resumen-item"><strong>Peso total:</strong><span>' + this.data.peso +
+                    ' kg</span></div>';
+                html += '<div class="resumen-item"><strong>Almacén:</strong><span>' + obras[this.data.obra_id] +
+                    '</span></div>';
 
                 const ubicacionId = this.data.ubicacion;
                 const ubicacionNombre = ubicacionesFull[ubicacionId]?.nombre || ubicacionId;
-                html += '<div class="resumen-item"><strong>Ubicación:</strong><span>' + ubicacionNombre + '</span></div>';
+                html += '<div class="resumen-item"><strong>Ubicación:</strong><span>' + ubicacionNombre +
+                    '</span></div>';
 
                 html += '</div>';
                 return html;

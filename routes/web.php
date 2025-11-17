@@ -329,13 +329,8 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
     Route::post('/planillas/completar', [PlanillaController::class, 'completar'])->name('planillas.completar');
     Route::get('/planificacion/index', [PlanificacionController::class, 'index'])->name('planificacion.index');
     Route::get('/planificacion/totales', [PlanificacionController::class, 'getTotalesAjax']);
-    Route::post('/planillas/completar-todas', function (PlanillaService $svc) {
-        $resultado = $svc->completarTodasPlanillas(); // llama al service
-        return back()->with(
-            $resultado['success'] ? 'success' : 'error',
-            "Procesadas OK: {$resultado['procesadas_ok']} | Omitidas por fecha: {$resultado['omitidas_fecha']} | Fallidas: {$resultado['fallidas']}"
-        );
-    })->name('planillas.completarTodas');
+    Route::post('/planillas/completar-todas', [PlanillaController::class, 'completarTodas'])
+        ->name('planillas.completarTodas');
     // === EMPRESAS TRANSPORTE ===
     Route::resource('empresas-transporte', EmpresaTransporteController::class);
     Route::resource('camiones', CamionController::class);
@@ -583,6 +578,18 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
     // API: Actualizar posición de paquete en el mapa
     Route::put('/localizaciones/paquete/{paqueteId}', [LocalizacionController::class, 'updatePaquetePosicion'])
         ->name('localizaciones.updatePaquetePosicion');
+
+    // API: Obtener lista de naves (obras HPR)
+    Route::get('/api/naves', [LocalizacionController::class, 'getNavesApi'])
+        ->name('api.naves.index');
+
+    // API: Obtener datos del mapa de una nave
+    Route::get('/api/naves/{naveId}/mapa-data', [LocalizacionController::class, 'getMapaDataApi'])
+        ->name('api.naves.mapaData');
+
+    // API: Renderizar componente de mapa (HTML)
+    Route::get('/api/naves/{naveId}/mapa-component', [LocalizacionController::class, 'renderMapaComponente'])
+        ->name('api.naves.mapaComponent');
 
     // API: Eliminar localización
     Route::delete('/localizaciones/{id}', [LocalizacionController::class, 'destroy'])

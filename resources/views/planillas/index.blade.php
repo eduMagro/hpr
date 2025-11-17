@@ -64,13 +64,10 @@
                 </div>
             </div>
 
-            <form action="{{ route('planillas.completarTodas') }}" method="POST"
-                onsubmit="return confirm('¿Completar todas las planillas pendientes?');">
-                @csrf
-                <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
-                    Completar todas las planillas
-                </button>
-            </form>
+            <button type="button" id="btn-completar-planillas" data-url="{{ route('planillas.completarTodas') }}"
+                class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
+                Completar todas las planillas
+            </button>
 
         </div>
 
@@ -208,20 +205,172 @@
             });
         }
 
-        // Inicializar al cargar el DOM
-        document.addEventListener('DOMContentLoaded', initModal);
+        function initCompletarTodas() {
+            const btnCompletar = document.getElementById('btn-completar-planillas');
+            if (!btnCompletar) {
+                return;
+            }
 
-        // Reinicializar después de actualizaciones de Livewire
-        document.addEventListener('livewire:navigated', function() {
-            console.log('🔄 Livewire navegó, reinicializando modal...');
-            modalInitialized = false;
-            initModal();
+            const url = btnCompletar.dataset.url;
+            const csrf = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+
+            async function solicitarConfirmacion() {
+                if (typeof Swal === 'undefined') {
+                    const confirmado = confirm(
+                        'Se completarán las planillas pendientes/fabricando con fecha vencida. ¿Continuar?');
+                    return {
+                        isConfirmed: confirmado
+                    };
+                }
+
+                return await Swal.fire({
+                    title: 'Completar todas las planillas',
+                    text: 'Se completarán las planillas pendientes/fabricando con fecha estimada de entrega vencida.',
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonText: 'Sí, completar',
+                    cancelButtonText: 'Cancelar',
+                });
+            }
+
+            btnCompletar.addEventListener('click', async (event) => {
+                event.preventDefault();
+
+                const confirmacion = await solicitarConfirmacion();
+                if (!confirmacion?.isConfirmed) {
+                    return;
+                }
+
+                try {
+                    if (typeof Swal !== 'undefined') {
+                        Swal.fire({
+                            title: 'Procesando...',
+                            text: 'Completando planillas elegibles, por favor espera.',
+                            allowOutsideClick: false,
+                            didOpen: () => {
+                                Swal.showLoading();
+                            },
+                        });
+                    }
+
+                    const response = await fetch(url, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Accept': 'application/json',
+                            'X-CSRF-TOKEN': csrf ?? '',
+                        },
+                        body: JSON.stringify({}),
+                    });
+
+                    let data = null;
+                    let rawText = '';
+                    try {
+                        data = await response.clone().json();
+                    } catch (parseError) {
+                        try {
+                            rawText = await response.text();
+                        } catch (_) {
+                            rawText = '';
+                        }
+                    }
+
+                    if (typeof Swal !== 'undefined') {
+                        Swal.close();
+                    }
+
+                    if (!data && !response.ok) {
+                        throw new Error('Respuesta no válida del servidor. ' + (rawText || ''));
+                    }
+
+                    console.groupCollapsed('📦 Completar todas las planillas');
+                    console.log('➡️ Estado HTTP:', response.status);
+                    console.log('📄 Payload bruto:', rawText);
+                    console.log('📦 Payload JSON:', data);
+                    console.groupEnd();
+
+                    const detalles = data?.detalles ?? data ?? {};
+                    const procesadasOk = Number(detalles.procesadas_ok ?? 0);
+                    const omitidasFecha = Number(detalles.omitidas_fecha ?? 0);
+                    const fallidas = Number(detalles.fallidas ?? 0);
+                    const errores = Array.isArray(detalles.errores) ? detalles.errores : [];
+                    const hayErrores = fallidas > 0 || errores.length > 0 || response.status >= 400;
+                    const mensaje = data?.message ?? (hayErrores ?
+                        'Proceso completado con incidencias.' :
+                        'Proceso finalizado correctamente.');
+
+                    let erroresHtml = '';
+                    if (errores.length > 0) {
+                        const maxMostrar = 5;
+                        const items = errores.slice(0, maxMostrar)
+                            .map((err, idx) => {
+                                const planillaTxt = err.planilla_id ? `Planilla ${err.planilla_id}` :
+                                    'Planilla sin ID';
+                                const subTxt = err.etiqueta_sub_id ? `Sub ${err.etiqueta_sub_id}` : '';
+                                return `<li class="mb-1"><strong>${idx + 1}.</strong> ${planillaTxt} ${subTxt} → ${err.error ?? 'Error desconocido'}</li>`;
+                            })
+                            .join('');
+                        const resto = errores.length > maxMostrar ?
+                            `<p class="text-xs text-gray-500 mt-1">... y ${errores.length - maxMostrar} errores adicionales.</p>` :
+                            '';
+                        erroresHtml = `
+                                <div class="text-left mt-3">
+                                    <p class="font-semibold mb-1">Detalles de errores:</p>
+                                    <ul class="list-disc ml-5 text-sm">${items}</ul>
+                                    ${resto}
+                                </div>
+                            `;
+                    }
+
+                    const resumenHtml = `
+                            <p>Procesadas OK: <strong>${procesadasOk}</strong></p>
+                            <p>Omitidas por fecha: <strong>${omitidasFecha}</strong></p>
+                            <p>Fallidas: <strong>${fallidas}</strong></p>
+                            <p class="mt-2">${mensaje}</p>
+                            ${erroresHtml}
+                        `;
+                    const iconoFinal = hayErrores ? 'warning' : 'success';
+                    const tituloFinal = hayErrores ? 'Proceso completado con incidencias' :
+                    'Proceso finalizado';
+
+                    if (typeof Swal !== 'undefined') {
+                        await Swal.fire({
+                            title: tituloFinal,
+                            html: resumenHtml,
+                            icon: iconoFinal,
+                            confirmButtonText: 'Recargar',
+                        });
+                    } else {
+                        alert(
+                            `Procesadas OK: ${procesadasOk}\nOmitidas por fecha: ${omitidasFecha}\nFallidas: ${fallidas}`);
+                    }
+
+                    window.location.reload();
+                } catch (error) {
+                    if (typeof Swal !== 'undefined') {
+                        await Swal.fire({
+                            title: 'Error',
+                            text: error?.message ?? 'Ocurrió un error al completar las planillas.',
+                            icon: 'error',
+                            confirmButtonText: 'Cerrar',
+                        });
+                    } else {
+                        alert(error?.message ?? 'Ocurrió un error al completar las planillas.');
+                    }
+                }
+            });
+        }
+
+        // Iniciar
+        initModal();
+        initCompletarTodas();
         });
 
         // Para Livewire v2 (si es el caso)
         document.addEventListener('livewire:load', function() {
             console.log('🔄 Livewire cargado, inicializando modal...');
             initModal();
+            initCompletarTodas();
         });
     </script>
 </x-app-layout>

@@ -1,7 +1,7 @@
 <x-app-layout>
     <x-slot name="header">
         <h2 class="text-lg font-semibold text-gray-800">
-            <a href="{{ route('maquinas.index') }}" class="text-blue-600">
+            <a href="{{ route('maquinas.index') }}" wire:navigate class="text-blue-600">
                 {{ __('Movimientos') }}
             </a>
             <span class="mx-2">/</span>
@@ -275,6 +275,7 @@
    OPTIMIZACIONES MÓVILES - MEJORADAS
    ============================================ */
         @media (max-width: 768px) {
+
             /* Contenedor fijo en la parte superior */
             .swal2-container {
                 align-items: flex-start !important;

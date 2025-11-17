@@ -27,9 +27,6 @@
     <!-- ✅ Vite Assets - Cache busting automático -->
     @vite(['resources/css/app.css', 'resources/js/app.js', 'resources/css/styles.css', 'resources/css/etiquetas-responsive.css'])
 
-    <!-- ⚠️ DESHABILITADO: Tailwind CDN duplicado causa conflictos -->
-    {{-- <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet"> --}}
-
     <!-- Alpine.js ya está incluido en Livewire 3, NO cargar desde CDN -->
 
     <!-- ✅ Librerías que no bloquean renderizado - Versionadas para evitar problemas de caché -->
@@ -173,7 +170,7 @@
             <!-- Alerts -->
             @include('layouts.alerts')
 
-            <!-- Page Content with Scroll -->
+            <!-- Page Content -->
             <main class="flex-1 overflow-y-auto bg-gray-50 dark:bg-gray-900 transition-colors">
                 <div class="py-6 px-4 sm:px-6 lg:px-8">
                     <!-- Breadcrumbs -->
@@ -200,7 +197,7 @@
     @stack('scripts')
 
     <!-- Livewire Scripts -->
-    @livewireScripts
+    @livewireScripts(['navigate' => true])
 
     <!-- Dark Mode Support Script -->
     <script data-navigate-once>

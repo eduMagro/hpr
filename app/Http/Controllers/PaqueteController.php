@@ -1008,7 +1008,6 @@ class PaqueteController extends Controller
                 'message' => "Paquete {$codigoPaquete} eliminado correctamente. {$etiquetasLiberadas} etiquetas liberadas",
                 'etiquetas_liberadas' => $etiquetasLiberadas
             ]);
-
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
             DB::rollBack();
             return response()->json([
@@ -1038,25 +1037,37 @@ class PaqueteController extends Controller
     {
         try {
             $paquete = \App\Models\Paquete::with([
-                'etiquetas.elementos' => function($query) {
+                'etiquetas.elementos' => function ($query) {
                     $query->orderBy('id');
                 }
             ])->findOrFail($paqueteId);
 
-            $elementos = [];
+            // Agrupar por etiquetas
+            $etiquetas = [];
 
             foreach ($paquete->etiquetas as $etiqueta) {
+                $elementosEtiqueta = [];
                 foreach ($etiqueta->elementos as $elemento) {
-                    $elementos[] = [
+                    $elementosEtiqueta[] = [
                         'id' => $elemento->id,
                         'codigo' => $elemento->codigo,
                         'dimensiones' => $elemento->dimensiones,
                         'peso_kg' => $elemento->peso_kg,
                         'diametro' => $elemento->diametro,
                         'barras' => $elemento->barras,
-                        'etiqueta_codigo' => $etiqueta->codigo,
                     ];
                 }
+
+                $etiquetas[] = [
+                    'id' => $etiqueta->id,
+                    'codigo' => $etiqueta->codigo ?? $etiqueta->etiqueta_sub_id,
+                    'etiqueta_sub_id' => $etiqueta->etiqueta_sub_id,
+                    'nombre' => $etiqueta->nombre,
+                    'peso' => $etiqueta->peso,
+                    'marca' => $etiqueta->marca,
+                    'elementos' => $elementosEtiqueta,
+                    'cantidad_elementos' => count($elementosEtiqueta),
+                ];
             }
 
             return response()->json([
@@ -1065,13 +1076,13 @@ class PaqueteController extends Controller
                     'id' => $paquete->id,
                     'codigo' => $paquete->codigo,
                 ],
-                'elementos' => $elementos,
+                'etiquetas' => $etiquetas,
+                'total_etiquetas' => count($etiquetas),
             ]);
-
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Error al obtener elementos: ' . $e->getMessage()
+                'message' => 'Error al obtener etiquetas: ' . $e->getMessage()
             ], 500);
         }
     }

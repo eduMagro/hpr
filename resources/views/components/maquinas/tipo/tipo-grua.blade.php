@@ -1,9 +1,13 @@
 <div class="w-full sm:col-span-8">
 
-    <div class="mb-4 flex justify-center">
+    <div class="mb-4 flex justify-center gap-3">
         <button onclick="abrirModalMovimientoLibre()"
             class="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-4 py-2 rounded-lg shadow">
-            ➕ Crear Movimiento Libre
+            🔧 Mover Materia Prima
+        </button>
+        <button onclick="abrirModalMoverPaquete()"
+            class="bg-green-600 hover:bg-green-700 text-white font-semibold px-4 py-2 rounded-lg shadow">
+            📦 Mover Paquete
         </button>
     </div>
     {{-- 🟢 PENDIENTES --}}
