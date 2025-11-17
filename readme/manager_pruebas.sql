@@ -1,11 +1,11 @@
 -- phpMyAdmin SQL Dump
--- version 5.2.1
+-- version 5.2.3
 -- https://www.phpmyadmin.net/
 --
--- Servidor: 127.0.0.1
--- Tiempo de generación: 17-11-2025 a las 09:20:40
--- Versión del servidor: 10.4.32-MariaDB
--- Versión de PHP: 8.2.12
+-- Servidor: db
+-- Tiempo de generación: 17-11-2025 a las 18:53:45
+-- Versión del servidor: 10.11.15-MariaDB-ubu2204
+-- Versión de PHP: 8.3.27
 
 SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";
 START TRANSACTION;
@@ -93,7 +93,7 @@ CREATE TABLE `alertas` (
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
   `deleted_at` timestamp NULL DEFAULT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb3 COLLATE=utf8mb3_general_ci;
 
 -- --------------------------------------------------------
 
@@ -108,7 +108,7 @@ CREATE TABLE `alertas_users` (
   `leida_en` timestamp NULL DEFAULT current_timestamp(),
   `created_at` timestamp NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
-) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb3 COLLATE=utf8mb3_general_ci;
 
 -- --------------------------------------------------------
 
@@ -129,7 +129,26 @@ CREATE TABLE `asignaciones_turnos` (
   `created_at` timestamp NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
   `deleted_at` timestamp NULL DEFAULT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb3 COLLATE=utf8mb3_general_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Estructura de tabla para la tabla `asistente_logs`
+--
+
+CREATE TABLE `asistente_logs` (
+  `id` bigint(20) UNSIGNED NOT NULL,
+  `user_id` bigint(20) UNSIGNED NOT NULL,
+  `pregunta` text NOT NULL,
+  `respuesta` text NOT NULL,
+  `tipo_consulta` varchar(50) DEFAULT NULL,
+  `coste` decimal(10,6) NOT NULL DEFAULT 0.000000,
+  `tokens_input` int(11) NOT NULL DEFAULT 0,
+  `tokens_output` int(11) NOT NULL DEFAULT 0,
+  `duracion_segundos` decimal(8,3) NOT NULL DEFAULT 0.000,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
 
@@ -170,7 +189,7 @@ CREATE TABLE `camiones` (
   `created_at` timestamp NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
   `deleted_at` timestamp NULL DEFAULT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb3 COLLATE=utf8mb3_general_ci;
 
 -- --------------------------------------------------------
 
@@ -194,7 +213,7 @@ CREATE TABLE `chat_consultas_sql` (
   `mensaje_id` bigint(20) UNSIGNED NOT NULL,
   `user_id` bigint(20) UNSIGNED NOT NULL,
   `consulta_sql` text NOT NULL,
-  `consulta_natural` text NOT NULL COMMENT 'La pregunta del usuario',
+  `consulta_natural` text NOT NULL,
   `resultados` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL CHECK (json_valid(`resultados`)),
   `filas_afectadas` int(11) NOT NULL DEFAULT 0,
   `exitosa` tinyint(1) NOT NULL DEFAULT 1,
@@ -229,7 +248,7 @@ CREATE TABLE `chat_mensajes` (
   `conversacion_id` bigint(20) UNSIGNED NOT NULL,
   `role` enum('user','assistant','system') NOT NULL DEFAULT 'user',
   `contenido` text NOT NULL,
-  `metadata` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL COMMENT 'Para guardar consultas SQL, resultados, etc.' CHECK (json_valid(`metadata`)),
+  `metadata` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL CHECK (json_valid(`metadata`)),
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -258,7 +277,7 @@ CREATE TABLE `clientes` (
   `created_at` timestamp NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
   `deleted_at` timestamp NULL DEFAULT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb3 COLLATE=utf8mb3_general_ci;
 
 -- --------------------------------------------------------
 
@@ -401,7 +420,7 @@ CREATE TABLE `elementos` (
   `created_at` datetime DEFAULT NULL,
   `updated_at` datetime DEFAULT NULL,
   `deleted_at` timestamp NULL DEFAULT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb3 COLLATE=utf8mb3_general_ci;
 
 -- --------------------------------------------------------
 
@@ -439,7 +458,7 @@ CREATE TABLE `empresas_transporte` (
   `created_at` timestamp NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
   `deleted_at` timestamp NULL DEFAULT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb3 COLLATE=utf8mb3_general_ci;
 
 -- --------------------------------------------------------
 
@@ -462,7 +481,7 @@ CREATE TABLE `entradas` (
   `created_at` timestamp NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
   `deleted_at` timestamp NULL DEFAULT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb3 COLLATE=utf8mb3_general_ci;
 
 -- --------------------------------------------------------
 
@@ -478,7 +497,7 @@ CREATE TABLE `entrada_producto` (
   `users_id` bigint(20) UNSIGNED NOT NULL,
   `created_at` timestamp NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
-) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb3 COLLATE=utf8mb3_general_ci;
 
 -- --------------------------------------------------------
 
@@ -678,7 +697,7 @@ CREATE TABLE `maquinas` (
   `created_at` timestamp NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
   `deleted_at` timestamp NULL DEFAULT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb3 COLLATE=utf8mb3_general_ci;
 
 -- --------------------------------------------------------
 
@@ -748,7 +767,7 @@ CREATE TABLE `movimientos` (
   `pedido_producto_id` bigint(20) UNSIGNED DEFAULT NULL,
   `salida_id` bigint(20) DEFAULT NULL,
   `salida_almacen_id` bigint(20) UNSIGNED DEFAULT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb3 COLLATE=utf8mb3_general_ci;
 
 -- --------------------------------------------------------
 
@@ -811,7 +830,7 @@ CREATE TABLE `obras` (
   `created_at` timestamp NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
   `deleted_at` timestamp NULL DEFAULT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb3 COLLATE=utf8mb3_general_ci;
 
 -- --------------------------------------------------------
 
@@ -841,11 +860,12 @@ CREATE TABLE `paquetes` (
   `planilla_id` bigint(20) DEFAULT NULL,
   `ubicacion_id` bigint(20) UNSIGNED DEFAULT NULL,
   `peso` decimal(10,2) NOT NULL,
+  `estado` enum('pendiente','asignado_a_salida','en_reparto','enviado') NOT NULL DEFAULT 'pendiente',
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
   `deleted_at` timestamp NULL DEFAULT NULL,
   `subido` tinyint(1) DEFAULT 0
-) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb3 COLLATE=utf8mb3_general_ci;
 
 -- --------------------------------------------------------
 
@@ -857,7 +877,7 @@ CREATE TABLE `password_reset_tokens` (
   `email` varchar(255) NOT NULL,
   `token` varchar(255) NOT NULL,
   `created_at` timestamp NULL DEFAULT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb3 COLLATE=utf8mb3_general_ci;
 
 -- --------------------------------------------------------
 
@@ -1032,7 +1052,7 @@ CREATE TABLE `planillas` (
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
   `deleted_at` timestamp NULL DEFAULT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb3 COLLATE=utf8mb3_general_ci;
 
 -- --------------------------------------------------------
 
@@ -1062,7 +1082,7 @@ CREATE TABLE `productos` (
   `deleted_at` timestamp NULL DEFAULT NULL,
   `entrada_id` bigint(20) UNSIGNED DEFAULT NULL,
   `updated_by` bigint(20) UNSIGNED DEFAULT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb3 COLLATE=utf8mb3_general_ci;
 
 -- --------------------------------------------------------
 
@@ -1120,7 +1140,7 @@ CREATE TABLE `salidas` (
   `created_at` timestamp NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
   `deleted_at` timestamp NULL DEFAULT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb3 COLLATE=utf8mb3_general_ci;
 
 -- --------------------------------------------------------
 
@@ -1152,7 +1172,7 @@ CREATE TABLE `salidas_paquetes` (
   `paquete_id` bigint(20) UNSIGNED DEFAULT NULL,
   `created_at` timestamp NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
-) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb3 COLLATE=utf8mb3_general_ci;
 
 -- --------------------------------------------------------
 
@@ -1173,7 +1193,7 @@ CREATE TABLE `salida_cliente` (
   `importe` decimal(10,2) DEFAULT 0.00,
   `created_at` timestamp NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
-) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb3 COLLATE=utf8mb3_general_ci;
 
 -- --------------------------------------------------------
 
@@ -1254,7 +1274,7 @@ CREATE TABLE `subpaquetes` (
   `descripcion` text DEFAULT NULL,
   `created_at` timestamp NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
-) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb3 COLLATE=utf8mb3_general_ci;
 
 -- --------------------------------------------------------
 
@@ -1298,14 +1318,17 @@ CREATE TABLE `tasas_seguridad_social` (
 CREATE TABLE `turnos` (
   `id` bigint(20) UNSIGNED NOT NULL,
   `nombre` varchar(50) NOT NULL,
-  `hora_entrada` time DEFAULT NULL,
-  `entrada_offset` tinyint(4) NOT NULL DEFAULT 0,
-  `hora_salida` time DEFAULT NULL,
-  `salida_offset` tinyint(4) NOT NULL DEFAULT 0,
+  `hora_inicio` time DEFAULT NULL COMMENT 'Hora de inicio del turno',
+  `hora_fin` time DEFAULT NULL COMMENT 'Hora de fin del turno',
+  `offset_dias_inicio` tinyint(4) NOT NULL DEFAULT 0 COMMENT 'Offset días inicio (-1, 0, 1)',
+  `offset_dias_fin` tinyint(4) NOT NULL DEFAULT 0 COMMENT 'Offset días fin (-1, 0, 1)',
+  `activo` tinyint(1) NOT NULL DEFAULT 1,
+  `orden` int(11) NOT NULL DEFAULT 0,
+  `color` varchar(7) DEFAULT NULL,
   `created_at` timestamp NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
   `deleted_at` timestamp NULL DEFAULT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb3 COLLATE=utf8mb3_general_ci;
 
 -- --------------------------------------------------------
 
@@ -1324,7 +1347,7 @@ CREATE TABLE `ubicaciones` (
   `created_at` timestamp NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
   `deleted_at` timestamp NULL DEFAULT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb3 COLLATE=utf8mb3_general_ci;
 
 -- --------------------------------------------------------
 
@@ -1363,7 +1386,7 @@ CREATE TABLE `users` (
   `updated_by` bigint(20) UNSIGNED DEFAULT NULL,
   `estado` enum('activo','despedido') NOT NULL DEFAULT 'activo' COMMENT 'Estado laboral del trabajador',
   `fecha_baja` datetime DEFAULT NULL COMMENT 'Fecha en la que el usuario fue despedido o dado de baja'
-) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb3 COLLATE=utf8mb3_general_ci;
 
 --
 -- Índices para tablas volcadas
@@ -1427,6 +1450,15 @@ ALTER TABLE `asignaciones_turnos`
   ADD KEY `fk_asignaciones_turnos_obra` (`obra_id`);
 
 --
+-- Indices de la tabla `asistente_logs`
+--
+ALTER TABLE `asistente_logs`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `idx_user_id` (`user_id`),
+  ADD KEY `idx_tipo_consulta` (`tipo_consulta`),
+  ADD KEY `idx_created_at` (`created_at`);
+
+--
 -- Indices de la tabla `cache`
 --
 ALTER TABLE `cache`
@@ -1457,18 +1489,16 @@ ALTER TABLE `categorias`
 ALTER TABLE `chat_consultas_sql`
   ADD PRIMARY KEY (`id`),
   ADD KEY `chat_consultas_sql_mensaje_id_foreign` (`mensaje_id`),
-  ADD KEY `chat_consultas_sql_user_id_foreign` (`user_id`),
   ADD KEY `chat_consultas_sql_user_id_created_at_index` (`user_id`,`created_at`),
   ADD KEY `idx_user` (`user_id`),
-  ADD KEY `idx_auditoria` (`user_id`,`exitosa`,`created_at`);
-ALTER TABLE `chat_consultas_sql` ADD FULLTEXT KEY `idx_consulta` (`consulta_sql`);
+  ADD KEY `idx_auditoria` (`user_id`,`exitosa`,`created_at`),
+  ADD KEY `idx_consulta` (`consulta_sql`(768));
 
 --
 -- Indices de la tabla `chat_conversaciones`
 --
 ALTER TABLE `chat_conversaciones`
   ADD PRIMARY KEY (`id`),
-  ADD KEY `chat_conversaciones_user_id_foreign` (`user_id`),
   ADD KEY `chat_conversaciones_user_id_ultima_actividad_index` (`user_id`,`ultima_actividad`),
   ADD KEY `idx_user_actividad` (`user_id`,`ultima_actividad`);
 
@@ -1477,7 +1507,6 @@ ALTER TABLE `chat_conversaciones`
 --
 ALTER TABLE `chat_mensajes`
   ADD PRIMARY KEY (`id`),
-  ADD KEY `chat_mensajes_conversacion_id_foreign` (`conversacion_id`),
   ADD KEY `chat_mensajes_conversacion_id_created_at_index` (`conversacion_id`,`created_at`),
   ADD KEY `idx_conversacion` (`conversacion_id`),
   ADD KEY `idx_conversacion_role` (`conversacion_id`,`role`),
@@ -1550,7 +1579,8 @@ ALTER TABLE `elementos`
   ADD KEY `fk_elementos_paquete` (`paquete_id`),
   ADD KEY `fk_elementos_maquina2` (`maquina_id_2`),
   ADD KEY `fk_elementos_maquina3` (`maquina_id_3`),
-  ADD KEY `fk_elementos_producto_3` (`producto_id_3`);
+  ADD KEY `fk_elementos_producto_3` (`producto_id_3`),
+  ADD KEY `elementos_orden_planilla_id_index` (`orden_planilla_id`);
 
 --
 -- Indices de la tabla `empresas`
@@ -1650,13 +1680,6 @@ ALTER TABLE `localizaciones`
   ADD KEY `fk_localizaciones_maquina` (`maquina_id`);
 
 --
--- Indices de la tabla `localizaciones_paquetes`
---
-ALTER TABLE `localizaciones_paquetes`
-  ADD PRIMARY KEY (`id`),
-  ADD KEY `fk_localizaciones_paquetes_paquete` (`paquete_id`);
-
---
 -- Indices de la tabla `maquinas`
 --
 ALTER TABLE `maquinas`
@@ -1744,10 +1767,10 @@ ALTER TABLE `pedidos`
   ADD PRIMARY KEY (`id`),
   ADD UNIQUE KEY `codigo_unico` (`codigo`),
   ADD KEY `fk_pedidos_compras_pedido_global` (`pedido_global_id`),
+  ADD KEY `pedidos_fabricante_id_foreign` (`fabricante_id`),
   ADD KEY `pedidos_distribuidor_id_foreign` (`distribuidor_id`),
   ADD KEY `fk_pedidos_created_by` (`created_by`),
-  ADD KEY `fk_pedidos_updated_by` (`updated_by`),
-  ADD KEY `pedidos_fabricante_id_foreign` (`fabricante_id`);
+  ADD KEY `fk_pedidos_updated_by` (`updated_by`);
 
 --
 -- Indices de la tabla `pedidos_almacen_venta`
@@ -1781,10 +1804,10 @@ ALTER TABLE `pedidos_globales`
 --
 ALTER TABLE `pedido_productos`
   ADD PRIMARY KEY (`id`),
-  ADD KEY `pedido_id` (`pedido_id`),
   ADD KEY `producto_base_id` (`producto_base_id`),
   ADD KEY `fk_pedido_productos_pedido_global` (`pedido_global_id`),
-  ADD KEY `idx_pedido_producto_obra_id` (`obra_id`);
+  ADD KEY `idx_pedido_producto_obra_id` (`obra_id`),
+  ADD KEY `fk_pedido_productos_pedido_id` (`pedido_id`);
 
 --
 -- Indices de la tabla `permisos_acceso`
@@ -1936,7 +1959,8 @@ ALTER TABLE `tasas_seguridad_social`
 -- Indices de la tabla `turnos`
 --
 ALTER TABLE `turnos`
-  ADD PRIMARY KEY (`id`);
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `idx_turnos_activo` (`activo`);
 
 --
 -- Indices de la tabla `ubicaciones`
@@ -1994,6 +2018,12 @@ ALTER TABLE `alertas_users`
 -- AUTO_INCREMENT de la tabla `asignaciones_turnos`
 --
 ALTER TABLE `asignaciones_turnos`
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT de la tabla `asistente_logs`
+--
+ALTER TABLE `asistente_logs`
   MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT;
 
 --
@@ -2138,12 +2168,6 @@ ALTER TABLE `jobs`
 -- AUTO_INCREMENT de la tabla `localizaciones`
 --
 ALTER TABLE `localizaciones`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT;
-
---
--- AUTO_INCREMENT de la tabla `localizaciones_paquetes`
---
-ALTER TABLE `localizaciones_paquetes`
   MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT;
 
 --
@@ -2457,7 +2481,6 @@ ALTER TABLE `elementos`
 -- Filtros para la tabla `entradas`
 --
 ALTER TABLE `entradas`
-  ADD CONSTRAINT `entradas_pedido_id_foreign` FOREIGN KEY (`pedido_id`) REFERENCES `pedidos` (`id`) ON DELETE SET NULL ON UPDATE CASCADE,
   ADD CONSTRAINT `fk_entrada_linea` FOREIGN KEY (`pedido_producto_id`) REFERENCES `pedido_productos` (`id`) ON DELETE SET NULL,
   ADD CONSTRAINT `fk_entradas_nave` FOREIGN KEY (`nave_id`) REFERENCES `obras` (`id`) ON DELETE SET NULL ON UPDATE CASCADE,
   ADD CONSTRAINT `fk_entradas_usuario` FOREIGN KEY (`usuario_id`) REFERENCES `users` (`id`) ON DELETE SET NULL;
@@ -2495,12 +2518,6 @@ ALTER TABLE `localizaciones`
   ADD CONSTRAINT `fk_localizaciones_nave` FOREIGN KEY (`nave_id`) REFERENCES `obras` (`id`) ON DELETE CASCADE ON UPDATE CASCADE;
 
 --
--- Filtros para la tabla `localizaciones_paquetes`
---
-ALTER TABLE `localizaciones_paquetes`
-  ADD CONSTRAINT `fk_localizaciones_paquetes_paquete` FOREIGN KEY (`paquete_id`) REFERENCES `paquetes` (`id`) ON DELETE CASCADE;
-
---
 -- Filtros para la tabla `maquinas`
 --
 ALTER TABLE `maquinas`
@@ -2526,7 +2543,6 @@ ALTER TABLE `movimientos`
   ADD CONSTRAINT `movimientos_ibfk_8` FOREIGN KEY (`ejecutado_por`) REFERENCES `users` (`id`) ON DELETE SET NULL,
   ADD CONSTRAINT `movimientos_maquina_destino_foreign` FOREIGN KEY (`maquina_destino`) REFERENCES `maquinas` (`id`) ON DELETE CASCADE,
   ADD CONSTRAINT `movimientos_nave_id_foreign` FOREIGN KEY (`nave_id`) REFERENCES `obras` (`id`) ON DELETE SET NULL ON UPDATE CASCADE,
-  ADD CONSTRAINT `movimientos_pedido_id_foreign` FOREIGN KEY (`pedido_id`) REFERENCES `pedidos` (`id`) ON DELETE SET NULL,
   ADD CONSTRAINT `movimientos_producto_base_id_foreign` FOREIGN KEY (`producto_base_id`) REFERENCES `productos_base` (`id`) ON DELETE SET NULL,
   ADD CONSTRAINT `movimientos_salida_almacen_id_foreign` FOREIGN KEY (`salida_almacen_id`) REFERENCES `salidas_almacen` (`id`) ON DELETE SET NULL ON UPDATE CASCADE,
   ADD CONSTRAINT `movimientos_salida_id_foreign` FOREIGN KEY (`salida_id`) REFERENCES `salidas` (`id`) ON DELETE SET NULL;
@@ -2567,7 +2583,7 @@ ALTER TABLE `pedidos`
   ADD CONSTRAINT `fk_pedidos_created_by` FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE SET NULL ON UPDATE CASCADE,
   ADD CONSTRAINT `fk_pedidos_updated_by` FOREIGN KEY (`updated_by`) REFERENCES `users` (`id`) ON DELETE SET NULL ON UPDATE CASCADE,
   ADD CONSTRAINT `pedidos_distribuidor_id_foreign` FOREIGN KEY (`distribuidor_id`) REFERENCES `distribuidores` (`id`) ON DELETE SET NULL,
-  ADD CONSTRAINT `pedidos_fabricante_id_foreign` FOREIGN KEY (`fabricante_id`) REFERENCES `fabricantes` (`id`) ON UPDATE CASCADE;
+  ADD CONSTRAINT `pedidos_fabricante_id_foreign` FOREIGN KEY (`fabricante_id`) REFERENCES `fabricantes` (`id`) ON DELETE SET NULL;
 
 --
 -- Filtros para la tabla `pedidos_almacen_venta`
@@ -2597,7 +2613,7 @@ ALTER TABLE `pedidos_globales`
 ALTER TABLE `pedido_productos`
   ADD CONSTRAINT `fk_pedido_producto_obra` FOREIGN KEY (`obra_id`) REFERENCES `obras` (`id`) ON DELETE SET NULL,
   ADD CONSTRAINT `fk_pedido_productos_pedido_global` FOREIGN KEY (`pedido_global_id`) REFERENCES `pedidos_globales` (`id`) ON DELETE SET NULL ON UPDATE CASCADE,
-  ADD CONSTRAINT `pedido_productos_ibfk_1` FOREIGN KEY (`pedido_id`) REFERENCES `pedidos` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `fk_pedido_productos_pedido_id` FOREIGN KEY (`pedido_id`) REFERENCES `pedidos` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
   ADD CONSTRAINT `pedido_productos_ibfk_2` FOREIGN KEY (`producto_base_id`) REFERENCES `productos_base` (`id`) ON DELETE CASCADE;
 
 --
