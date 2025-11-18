@@ -649,10 +649,11 @@
                 capture: true
             });
 
-            // Validación de posiciones de planillas en el header
-            document.addEventListener('DOMContentLoaded', function() {
+            // Validación de posiciones de planillas en el header (compatible con Livewire Navigate)
+            function initValidacionPosicionesPlanillasHeader() {
                 const form = document.getElementById('form-posiciones-planillas-header');
-                if (!form) return;
+                if (!form || form.dataset.validacionInit === '1') return;
+                form.dataset.validacionInit = '1';
 
                 const select1 = form.querySelector('select[name="posicion_1"]');
                 const select2 = form.querySelector('select[name="posicion_2"]');
@@ -678,7 +679,14 @@
                 select1.addEventListener('change', validar);
                 select2.addEventListener('change', validar);
                 form.addEventListener('submit', (e) => !validar() && e.preventDefault());
-            });
+            }
+
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', initValidacionPosicionesPlanillasHeader);
+            } else {
+                initValidacionPosicionesPlanillasHeader();
+            }
+            document.addEventListener('livewire:navigated', initValidacionPosicionesPlanillasHeader);
 
             // Función para completar planilla actual
             function completarPlanillaActual() {

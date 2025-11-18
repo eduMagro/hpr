@@ -54,7 +54,7 @@ window.DEBUG_DEADLINES = true; // ponlo en false para callar logs
 const dbg = (...a) => { if (window.DEBUG_DEADLINES) console.log("[DL]", ...a); };
 
 
-document.addEventListener("DOMContentLoaded", () => {
+function initPlanificacion() {
     planillas = Array.from(document.querySelectorAll("#todasPlanillas [data-planilla]")).map((div) => JSON.parse(div.dataset.planilla));
 
     elementos = Array.from(document.querySelectorAll("#todosElementos [data-elementos]")).map((div) => JSON.parse(div.dataset.elementos));
@@ -181,7 +181,15 @@ document.addEventListener("DOMContentLoaded", () => {
             modalMapa.classList.add("left-3");
         }
     });
-});
+}
+
+// Inicialización compatible con Livewire (navegación SPA)
+if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", initPlanificacion);
+} else {
+    initPlanificacion();
+}
+document.addEventListener("livewire:navigated", initPlanificacion);
 
 // renderizar obras en funcion del valor del input
 function renderObras() {

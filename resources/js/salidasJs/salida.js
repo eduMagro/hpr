@@ -1,4 +1,4 @@
-document.addEventListener("DOMContentLoaded", function () {
+function initSalidasActualizarEstado() {
     window.actualizarEstado = function (salidaId) {
         // Confirmar la acción antes de continuar
         Swal.fire({
@@ -52,4 +52,12 @@ document.addEventListener("DOMContentLoaded", function () {
             }
         });
     };
-});
+}
+
+// Inicialización compatible con Livewire Navigate
+if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", initSalidasActualizarEstado);
+} else {
+    initSalidasActualizarEstado();
+}
+document.addEventListener("livewire:navigated", initSalidasActualizarEstado);

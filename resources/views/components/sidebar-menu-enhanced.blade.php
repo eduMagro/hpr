@@ -7,7 +7,8 @@
 @if(auth()->user()->esOficina())
 <div x-data="{
     open: window.innerWidth >= 768 ? (localStorage.getItem('sidebar_open') !== 'false') : false,
-    activeSection: null,
+    activeSections: JSON.parse(localStorage.getItem('sidebar_active_sections') || '[]'),
+    currentSectionId: null,
     currentPath: window.location.pathname,
     searchOpen: false,
     searchQuery: '',
@@ -48,10 +49,17 @@
             localStorage.setItem('sidebar_open', 'false');
         }
 
-        // Restaurar sección activa desde localStorage
-        const savedActiveSection = localStorage.getItem('sidebar_active_section');
-        if (savedActiveSection) {
-            this.activeSection = savedActiveSection;
+        // Restaurar secciones activas desde localStorage (multi-acordeón)
+        const savedActiveSections = JSON.parse(localStorage.getItem('sidebar_active_sections') || '[]');
+        if (Array.isArray(savedActiveSections) && savedActiveSections.length) {
+            this.activeSections = savedActiveSections;
+        } else {
+            // Migración desde versión antigua con solo una sección
+            const legacySection = localStorage.getItem('sidebar_active_section');
+            if (legacySection) {
+                this.activeSections = [legacySection];
+                localStorage.setItem('sidebar_active_sections', JSON.stringify(this.activeSections));
+            }
         }
 
         // Detectar sección activa inicial
@@ -119,17 +127,25 @@
         // Actualizar la ruta actual
         this.currentPath = window.location.pathname;
 
-        // Resetear sección activa
-        this.activeSection = null;
+        // Resetear sección actual asociada a la ruta
+        this.currentSectionId = null;
 
         // Detectar sección activa basándose en la ruta
         @foreach($menuItems as $index => $section)
         @if(isset($section['submenu']))
         @foreach($section['submenu'] as $item)
         if (this.isRouteActive('{{ route($item['route']) }}')) {
-            this.activeSection = '{{ $section['id'] }}';
-            // Guardar en localStorage para persistencia
-            localStorage.setItem('sidebar_active_section', '{{ $section['id'] }}');
+            const id = '{{ $section['id'] }}';
+
+            // Sección asociada a la ruta actual (para resaltar visualmente)
+            this.currentSectionId = id;
+
+            // Asegurar que esa sección esté en el conjunto de acordeones abiertos
+            if (!this.activeSections.includes(id)) {
+                this.activeSections = [...this.activeSections, id];
+                localStorage.setItem('sidebar_active_sections', JSON.stringify(this.activeSections));
+            }
+
             // Agregar a recientes cuando navegamos
             this.addToRecent('{{ $item['route'] }}', '{{ $item['label'] }}', '{{ $section['label'] }}', '{{ $item['icon'] }}', '{{ route($item['route']) }}');
         }
@@ -461,20 +477,30 @@
                     <div class="relative">
                         <button
                             @click="if (open) {
-                                activeSection = activeSection === '{{ $section['id'] }}' ? null : '{{ $section['id'] }}';
-                                localStorage.setItem('sidebar_active_section', activeSection || '');
+                                const id = '{{ $section['id'] }}';
+                                if (activeSections.includes(id)) {
+                                    activeSections = activeSections.filter(s => s !== id);
+                                } else {
+                                    activeSections = [...activeSections, id];
+                                }
+                                localStorage.setItem('sidebar_active_sections', JSON.stringify(activeSections));
                             } else {
                                 // Cuando está cerrado, abrir el sidebar y expandir la sección
                                 // Usar toggleSidebar() para mantener la misma animación del logo
                                 toggleSidebar();
-                                // Después de la animación, expandir la sección
+                                // Después de la animación, expandir la sección sin cerrar otras
                                 setTimeout(() => {
-                                    activeSection = '{{ $section['id'] }}';
-                                    localStorage.setItem('sidebar_active_section', '{{ $section['id'] }}');
+                                    const id = '{{ $section['id'] }}';
+                                    if (!activeSections.includes(id)) {
+                                        activeSections = [...activeSections, id];
+                                        localStorage.setItem('sidebar_active_sections', JSON.stringify(activeSections));
+                                    }
                                 }, 400);
                             }"
-                            class="w-full flex items-center justify-between px-3 py-2.5 rounded-lg transition group
-                                   {{ $currentRoute === $section['route'] ? 'bg-' . $section['color'] . '-600 text-white shadow-lg' : 'text-gray-300 hover:bg-gray-800 hover:text-white' }}">
+                            class="w-full flex items-center justify-between px-3 py-2.5 rounded-lg transition group text-gray-300 hover:bg-gray-800 hover:text-white"
+                            :class="currentSectionId === '{{ $section['id'] }}'
+                                ? 'bg-{{ $section['color'] }}-600 text-white shadow-lg'
+                                : ''">
                             <div class="flex items-center space-x-3">
                                 <span
                                     class="text-xl flex-shrink-0">{{ $section['icon'] }}</span>
@@ -482,7 +508,7 @@
                                     class="font-medium">{{ $section['label'] }}</span>
                             </div>
                             <svg x-show="open"
-                                :class="activeSection === '{{ $section['id'] }}' ?
+                                :class="activeSections.includes('{{ $section['id'] }}') ?
                                     'rotate-180' : ''"
                                 class="w-4 h-4 flex-shrink-0 transition-transform"
                                 fill="none" stroke="currentColor"
@@ -496,7 +522,7 @@
 
                     <!-- Submenú -->
                     @if (isset($section['submenu']))
-                        <div x-show="open && activeSection === '{{ $section['id'] }}'"
+                        <div x-show="open && activeSections.includes('{{ $section['id'] }}')"
                             x-transition
                             class="mt-2 ml-4 space-y-1 border-l-2 border-gray-700 pl-4">
                             @foreach ($section['submenu'] as $item)

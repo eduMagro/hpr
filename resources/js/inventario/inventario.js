@@ -1,4 +1,4 @@
-document.addEventListener("DOMContentLoaded", () => {
+function initInventarioSectores() {
     const SECTORES = Array.from(document.getElementsByClassName("escondible"));
     const CONTENIDO = document.getElementById("contenido");
     const SUBCONTENIDOS = Array.from(document.getElementsByClassName("subcontenido"))
@@ -6,8 +6,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     aparecer(CONTENIDO);
     mostrarOcultarSectores(SECTORES, CONTENIDO, SUBCONTENIDOS);
-
-});
+}
 
 function mostrarOcultarSectores(sectores, contenido, subcontenidos) {
     sectores.forEach((e) => {
@@ -100,7 +99,7 @@ function reaparecer(contenido) {
 
 
 // DESPLEGAR SUBCONTENIDO COMO PERGAMINO
-document.addEventListener("DOMContentLoaded", () => {
+function initInventarioPergamino() {
     const TRIGGERS = Array.from(document.getElementsByClassName("desplegar-subcontenido"));
 
     TRIGGERS.forEach((trigger) => {
@@ -123,7 +122,20 @@ document.addEventListener("DOMContentLoaded", () => {
             togglePergamino(panel, trigger, 200);
         });
     });
-});
+}
+
+// Inicialización compatible con Livewire Navigate
+function initInventario() {
+    initInventarioSectores();
+    initInventarioPergamino();
+}
+
+if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", initInventario);
+} else {
+    initInventario();
+}
+document.addEventListener("livewire:navigated", initInventario);
 
 function togglePergamino(panel, trigger, durMs = 200) {
     if (panel.dataset.animating === "1") return; // debounce
@@ -187,4 +199,3 @@ function togglePergamino(panel, trigger, durMs = 200) {
         panel.addEventListener("transitionend", onOpenEnd);
     }
 }
-

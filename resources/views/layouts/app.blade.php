@@ -155,17 +155,13 @@
     </div>
 
     <div class="flex h-screen bg-gray-100 dark:bg-gray-900 overflow-hidden">
-        <!-- Sidebar Menu Enhanced - Persistente -->
-        @persist('sidebar')
+        <!-- Sidebar Menu Enhanced -->
             <x-sidebar-menu-enhanced />
-        @endpersist
 
         <!-- Main Content Area -->
         <div class="flex-1 flex flex-col overflow-hidden">
-            <!-- Top Header Enhanced - Persistente -->
-            @persist('header')
+            <!-- Top Header Enhanced -->
                 <x-top-header-enhanced />
-            @endpersist
 
             <!-- Alerts -->
             @include('layouts.alerts')
@@ -253,7 +249,7 @@
         });
 
         document.addEventListener('livewire:navigated', () => {
-            console.log('Navegación completada - Esperando renderizado completo...');
+            // console.log('Navegación completada - Esperando renderizado completo...');
 
             // Cancelar el timeout si la navegación fue muy rápida
             if (navigationTimeout) {

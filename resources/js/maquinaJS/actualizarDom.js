@@ -56,7 +56,7 @@
     // ⚠️ DESHABILITADO: Los colores ahora están en app.css para evitar reflows
     // La inyección dinámica causaba problemas de desplazamiento en los selects
     // inyectarColoresEstado();
-    console.log('ℹ️ Colores de estado cargados desde app.css (no inyectados dinámicamente)');
+    // console.log('ℹ️ Colores de estado cargados desde app.css (no inyectados dinámicamente)');
 
     // ========================================================================
     // CONFIGURACIÓN DE COLORES Y ESTADOS (según CSS del proyecto)
@@ -328,6 +328,4 @@
         obtenerColor: (estado) => COLORES_ESTADO[estado],
         todos: () => ({ ...COLORES_ESTADO }),
     };
-
-    console.log("✅ Sistema centralizado de DOM inicializado");
 })(window);

@@ -124,9 +124,8 @@
 
             li.innerHTML = `
                 <div>
-                    <div class="font-semibold">${
-                        item.id
-                    } === ${item.peso.toFixed(2)} kg</div>
+                    <div class="font-semibold">${item.id
+                } === ${item.peso.toFixed(2)} kg</div>
                 </div>
                 <button class="text-red-600 hover:text-red-800" title="Eliminar">❌</button>
             `;
@@ -138,9 +137,8 @@
         const total = calcularPesoTotal();
         const resumen = document.createElement("li");
         resumen.className = "py-3 px-3 bg-blue-50 border-t-2 mt-3 font-bold";
-        resumen.textContent = `Total: ${total.toFixed(2)} kg (${
-            items.length
-        } etiquetas)`;
+        resumen.textContent = `Total: ${total.toFixed(2)} kg (${items.length
+            } etiquetas)`;
         itemsList.appendChild(resumen);
     }
 
@@ -160,7 +158,7 @@
 
         const maquinaId = Number(
             document.getElementById("maquina-info")?.dataset?.maquinaId ||
-                window.maquinaId
+            window.maquinaId
         );
         const ubicacionId = Number(
             document.getElementById("ubicacion-id")?.value || window.ubicacionId
@@ -251,9 +249,8 @@
         await Swal.fire({
             icon: "success",
             title: "Paquete creado",
-            html: `<p><strong>${codigo}</strong> creado correctamente</p><p>${
-                etiquetas.length
-            } etiquetas · ${peso.toFixed(2)} kg</p>`,
+            html: `<p><strong>${codigo}</strong> creado correctamente</p><p>${etiquetas.length
+                } etiquetas · ${peso.toFixed(2)} kg</p>`,
         });
 
         limpiarCarro();
@@ -376,7 +373,7 @@
         if (isInitialized) return;
         isInitialized = true;
 
-        console.log("🚀 Inicializando TrabajoPaquete...");
+        // console.log("🚀 Inicializando TrabajoPaquete...");
 
         // Inicializar input QR
         const inputQR = document.getElementById("qrItem");
@@ -486,7 +483,7 @@
             }
         });
 
-        console.log("✅ TrabajoPaquete inicializado");
+        // console.log("✅ TrabajoPaquete inicializado");
     }
 
     // ============================================================================

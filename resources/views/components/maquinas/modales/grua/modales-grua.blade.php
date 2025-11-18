@@ -79,7 +79,7 @@
             input.addEventListener('keydown', function(e) {
                 if (e.key === 'Enter') {
                     e
-                .preventDefault(); // ⛔ Bloquea el enter automático del escáner
+                        .preventDefault(); // ⛔ Bloquea el enter automático del escáner
                     // No hace ni submit ni salta a otro campo
                 }
             });
@@ -94,7 +94,8 @@
         <h2 class="text-xl font-bold mb-4">Reubicar paquete</h2>
 
         <p class="mb-2 text-sm text-gray-700"><strong>Descripción:</strong>
-            <span id="descripcion_paquete"></span></p>
+            <span id="descripcion_paquete"></span>
+        </p>
 
         <form method="POST" action="{{ route('movimientos.store') }}">
             @csrf
@@ -211,7 +212,7 @@
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             const form = document.getElementById(
-            'form-ejecutar-movimiento');
+                'form-ejecutar-movimiento');
             const inputQR = document.getElementById('modal_producto_id');
             const hiddenLista = document.getElementById('modal_lista_qrs');
 
@@ -253,9 +254,9 @@
         document.getElementById('modal_tipo').value = tipo;
         document.getElementById('modal_maquina_id').value = maquinaId;
         document.getElementById('modal_producto_id').value =
-        productoCodigo; // ← aquí va el código
+            productoCodigo; // ← aquí va el código
         document.getElementById('modal_producto_base_id').value =
-        productoBaseId;
+            productoBaseId;
 
         document.getElementById('maquina-nombre-destino').textContent =
             maquinaNombre;
@@ -390,7 +391,7 @@
         const tipo = producto?.tipo ?? '—';
         const diametro = producto?.diametro ?? '—';
         const longitud = producto?.longitud ??
-        '—'; // suele venir en metros si es barra
+            '—'; // suele venir en metros si es barra
 
         const proveedor = (pedido.fabricante_id && pedido.fabricante?.nombre) ?
             pedido.fabricante.nombre :
@@ -398,7 +399,7 @@
 
         // Datos de línea
         const cantidadKg = Number(linea.cantidad ??
-        0); // total pedido para esa línea
+            0); // total pedido para esa línea
         const recepcionadoKg = Number(linea.cantidad_recepcionada ?? 0);
         const restanteKg = Math.max(0, cantidadKg - recepcionadoKg);
         const estadoLinea = linea.estado ?? '—';
@@ -570,7 +571,8 @@
                     class="hidden bg-green-50 border border-green-200 rounded-lg p-4">
                     <h3 class="font-semibold text-green-800 mb-3">✓ Paquete
                         Encontrado</h3>
-                    <div class="flex flex-col md:flex-row justify-start gap-3 text-sm">
+                    <div
+                        class="flex flex-col md:flex-row justify-start gap-3 text-sm">
                         <div class="bg-white p-2 rounded border">
                             <p class="text-gray-600 text-xs">Código Paquete</p>
                             <p id="paquete-codigo-info"
@@ -629,8 +631,9 @@
                                 :obra-actual-id="$mapaData['obraActualId'] ?? null" :map-id="$mapaData['mapaId'] ?? null"
                                 :show-controls="false" :mostrarObra="false"
                                 :show-scan-result="false" :ruta-paquete="route('paquetes.tamaño')"
-                                :ruta-guardar="route('localizaciones.storePaquete')" :modo-modal="false"
-                                height="100%" class="w-full h-[420px]" />
+                                :ruta-guardar="route('localizaciones.storePaquete')" :modo-modal="true"
+                                :enable-drag-paquetes="true" height="100%"
+                                class="w-full h-[420px]" />
                         </div>
                     </div>
                 @else
@@ -678,7 +681,7 @@
         const modal = document.getElementById('modal-mover-paquete');
         modal.classList.remove('hidden');
 
-        resetearModalMoverPaquete();
+        // resetearModalMoverPaquete();
 
         setTimeout(() => {
             document.getElementById('codigo_paquete_mover')?.focus();
@@ -695,13 +698,13 @@
         if (inputCodigo) inputCodigo.value = '';
 
         document.getElementById('info-paquete-validado').classList.add(
-        'hidden');
+            'hidden');
         document.getElementById('paso-mapa-paquete').classList.add('hidden');
         document.getElementById('paso-escanear-paquete').classList.remove(
             'hidden');
         document.getElementById('error-paquete-mover').classList.add('hidden');
         document.getElementById('loading-paquete-mover').classList.add(
-        'hidden');
+            'hidden');
         document.getElementById('coordenadas-seleccionadas').classList.add(
             'hidden');
         document.getElementById('coord-x1').value = '';
@@ -734,7 +737,33 @@
             'hidden');
         document.getElementById('paquete-codigo-mapa').textContent =
             paqueteMoverData?.codigo || '';
-        await mostrarGhostParaPaquete();
+        const idPaquete = document.getElementById("paquete-codigo-info")
+            .innerText;
+
+        // ocultar los demás paquetes en el mapa
+        // Obtenemos el canvas del mapa (el div con data-mapa-canvas)
+        const canvas = document.querySelector('[data-mapa-canvas]');
+        // La instancia JS del mapa la expone el componente en canvas.mapaInstance
+        const mapaInstance = canvas?.mapaInstance;
+
+        if (!mapaInstance) {
+            console.warn('No se encontró la instancia del mapa');
+            return;
+        }
+
+        let codigoPaquete = document.getElementById("paquete-codigo-info")
+            .innerText;
+        document.querySelectorAll('.loc-paquete').forEach(paquete => {
+            let id = paquete.dataset.codigo;
+
+            if (id != codigoPaquete) {
+                paquete.style.display = 'none';
+                paquete.classList.remove('loc-paquete--highlight');
+            } else {
+                paquete.click();
+                document.querySelector('[title="Mover paquete"]').click();
+            }
+        });
     }
 
     function volverPasoEscaneo() {
@@ -802,7 +831,6 @@
 
             document.getElementById('info-paquete-validado').classList
                 .remove('hidden');
-            mostrarGhostParaPaquete();
 
         } catch (error) {
             console.error('Error al buscar paquete:', error);
@@ -819,90 +847,6 @@
         errorDiv.textContent = mensaje;
         errorDiv.classList.remove('hidden');
     }
-
-    function esperarInstanciaMapaComponent(mapaId, timeout = 5000) {
-        return new Promise((resolve, reject) => {
-            const inicio = Date.now();
-
-            function revisar() {
-                const registro = window.mapaComponentInstances || {};
-                const instancia = registro[mapaId];
-                if (instancia) {
-                    resolve(instancia);
-                    return;
-                }
-
-                if (Date.now() - inicio >= timeout) {
-                    reject(new Error(
-                        'Instancia del mapa no disponible'));
-                    return;
-                }
-
-                setTimeout(revisar, 120);
-            }
-
-            revisar();
-        });
-    }
-
-    async function inicializarMapaModal() {
-        if (!MAPA_MODAL_ID) return null;
-        if (mapaModalApi) return mapaModalApi;
-
-        try {
-            const api = await esperarInstanciaMapaComponent(MAPA_MODAL_ID);
-            mapaModalApi = api;
-
-            if (mapaModalUnsubscribe) {
-                mapaModalUnsubscribe();
-            }
-
-            mapaModalUnsubscribe = api.onGhostMove(coords => {
-                actualizarCoordenadas(coords.x1, coords.y1, coords
-                    .x2, coords.y2);
-                document.getElementById('coordenadas-seleccionadas')
-                    .classList.remove('hidden');
-            });
-            api.hideAllPaquetes?.();
-
-            return api;
-        } catch (error) {
-            console.error('No se pudo inicializar el mapa del modal:',
-                error);
-            return null;
-        }
-    }
-
-    async function mostrarGhostParaPaquete() {
-        if (!paqueteMoverData || !MAPA_MODAL_ID) return;
-
-        const api = await inicializarMapaModal();
-        if (!api) return;
-
-        api.triggerGhost({
-            codigo: paqueteMoverData.codigo,
-            paquete_id: paqueteMoverData.paquete_id,
-            longitud: paqueteMoverData.longitud || 0,
-            ancho: paqueteMoverData.ancho || 1,
-        });
-        api.hideAllPaquetes?.();
-        if (paqueteMoverData.paquete_id) {
-            api.showPaquete?.(paqueteMoverData.paquete_id);
-        }
-    }
-
-    function actualizarCoordenadas(x1, y1, x2, y2) {
-        coordenadasPaquete = {
-            x1,
-            y1,
-            x2,
-            y2
-        };
-        document.getElementById('coord-x1').value = x1;
-        document.getElementById('coord-y1').value = y1;
-        document.getElementById('coord-x2').value = x2;
-        document.getElementById('coord-y2').value = y2;
-    }
-
-    // Las acciones de guardar/cancelar ahora se manejan con los botones del ghost en mapa-component
 </script>
+
+{{-- ETQ2511012.01 --}}

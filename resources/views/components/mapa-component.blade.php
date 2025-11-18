@@ -6,7 +6,6 @@
     'paquetesConLocalizacion' => [],
     'dimensiones' => null,
     'obraActualId' => null,
-    'mapId' => null,
 
     // Opciones visuales / comportamiento
     'showControls' => false, // botones Horizontal/Vertical + input QR
@@ -14,7 +13,6 @@
     'mostrarObra' => false,
     'height' => '',
     'enableDragPaquetes' => false, // habilitar arrastre de paquetes
-    'modoModal' => false, // renderizar ghost sin guardar automático
 
     // Rutas para AJAX
     'rutaPaquete' => null, // route('paquetes.tamaño')
@@ -22,7 +20,7 @@
 ])
 
 @php
-    $mapId = $mapId ?? ('mapa-' . uniqid());
+    $mapId = 'mapa-' . uniqid();
 
     $isVertical = !empty($ctx['estaGirado']);
     $colsReales = $ctx['columnasReales'] ?? 0;
@@ -163,16 +161,20 @@
 
             {{-- Botones de Zoom --}}
             <div id="zoom-controls" class="zoom-controls">
-                <button id="zoom-in-btn" type="button" title="Acercar zoom" class="zoom-btn zoom-btn-in">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                        <circle cx="11" cy="11" r="8"/>
-                        <path d="M11 8v6M8 11h6M21 21l-4.35-4.35"/>
+                <button id="zoom-in-btn" type="button" title="Acercar zoom"
+                    class="zoom-btn zoom-btn-in">
+                    <svg viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2.5">
+                        <circle cx="11" cy="11" r="8" />
+                        <path d="M11 8v6M8 11h6M21 21l-4.35-4.35" />
                     </svg>
                 </button>
-                <button id="zoom-out-btn" type="button" title="Alejar zoom" class="zoom-btn zoom-btn-out">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                        <circle cx="11" cy="11" r="8"/>
-                        <path d="M8 11h6M21 21l-4.35-4.35"/>
+                <button id="zoom-out-btn" type="button" title="Alejar zoom"
+                    class="zoom-btn zoom-btn-out">
+                    <svg viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2.5">
+                        <circle cx="11" cy="11" r="8" />
+                        <path d="M8 11h6M21 21l-4.35-4.35" />
                     </svg>
                 </button>
             </div>
@@ -205,7 +207,12 @@
             const escenario = document.getElementById('escenario-cuadricula');
             const grid = document.getElementById('cuadricula');
 
-            if (!escenario || !grid) return;
+            if (!escenario || !grid) {
+                console.error('No se encontró el escenario o la cuadrícula');
+                return;
+            };
+
+            console.log("tamo bien")
 
             const W = ctx.columnasReales;
             const H = ctx.filasReales;
@@ -287,8 +294,10 @@
                     if (el.classList.contains('loc-paquete--editing')) {
                         // Solo actualizar el tamaño basado en celdas, no la posición
                         // Mantener left y top intactos
-                        const currentLeft = parseFloat(el.style.left) || 0;
-                        const currentTop = parseFloat(el.style.top) || 0;
+                        const currentLeft = parseFloat(el.style.left) ||
+                            0;
+                        const currentTop = parseFloat(el.style.top) ||
+                            0;
 
                         // Recalcular width y height si es necesario
                         const {
@@ -300,13 +309,18 @@
                         );
 
                         // Mantener la posición actual pero ajustar dimensiones proporcionalmente
-                        const oldCeldaPx = parseFloat(el.dataset.currentCeldaPx) || celdaPx;
+                        const oldCeldaPx = parseFloat(el.dataset
+                            .currentCeldaPx) || celdaPx;
                         const scaleFactor = celdaPx / oldCeldaPx;
 
-                        el.style.left = (currentLeft * scaleFactor) + 'px';
-                        el.style.top = (currentTop * scaleFactor) + 'px';
-                        el.style.width = (parseFloat(el.style.width) * scaleFactor) + 'px';
-                        el.style.height = (parseFloat(el.style.height) * scaleFactor) + 'px';
+                        el.style.left = (currentLeft * scaleFactor) +
+                            'px';
+                        el.style.top = (currentTop * scaleFactor) +
+                            'px';
+                        el.style.width = (parseFloat(el.style.width) *
+                            scaleFactor) + 'px';
+                        el.style.height = (parseFloat(el.style.height) *
+                            scaleFactor) + 'px';
 
                         el.dataset.currentCeldaPx = celdaPx;
                         return;
@@ -476,7 +490,8 @@
 
             escenario.addEventListener('mousedown', (e) => {
                 // No activar pan si se hace clic en un elemento interactivo
-                if (e.target.closest('.loc-existente') || e.target.closest('button')) {
+                if (e.target.closest('.loc-existente') || e.target
+                    .closest('button')) {
                     return;
                 }
 
@@ -520,7 +535,8 @@
             let touchStartScrollTop = 0;
 
             escenario.addEventListener('touchstart', (e) => {
-                if (e.target.closest('.loc-existente') || e.target.closest('button')) {
+                if (e.target.closest('.loc-existente') || e.target
+                    .closest('button')) {
                     return;
                 }
 
@@ -530,17 +546,22 @@
                     touchStartScrollLeft = escenario.scrollLeft;
                     touchStartScrollTop = escenario.scrollTop;
                 }
-            }, { passive: true });
+            }, {
+                passive: true
+            });
 
             escenario.addEventListener('touchmove', (e) => {
                 if (e.touches.length === 1) {
                     const deltaX = e.touches[0].clientX - touchStartX;
                     const deltaY = e.touches[0].clientY - touchStartY;
 
-                    escenario.scrollLeft = touchStartScrollLeft - deltaX;
+                    escenario.scrollLeft = touchStartScrollLeft -
+                        deltaX;
                     escenario.scrollTop = touchStartScrollTop - deltaY;
                 }
-            }, { passive: true });
+            }, {
+                passive: true
+            });
 
 
             // ----------------- API para el panel lateral -----------------
@@ -609,20 +630,6 @@
                 });
             }
 
-            function hideAllPaquetes() {
-                grid.querySelectorAll('.loc-paquete').forEach(el => {
-                    el.style.display = 'none';
-                    el.classList.remove('loc-paquete--highlight');
-                });
-            }
-
-            function showAllPaquetes() {
-                grid.querySelectorAll('.loc-paquete').forEach(el => {
-                    el.style.display = '';
-                });
-                clearHighlight();
-            }
-
             /**
              * Muestra un paquete concreto (por id) en el mapa.
              * Se usará cuando el usuario “active” un paquete desde el listado lateral.
@@ -678,8 +685,6 @@
                 focusPaquete, // Mueve la “cámara” a un paquete
                 showPaquete, // Muestra un paquete concreto en el mapa
                 hidePaquete, // Oculta un paquete concreto del mapa
-                hideAllPaquetes,
-                showAllPaquetes,
             };
 
 
@@ -687,22 +692,25 @@
         })();
     </script>
 
-    {{-- Script de ghost + escaneo sólo si hay rutas configuradas --}}
-    @if ($rutaPaquete && $rutaGuardar)
+    {{-- Script de edición de paquetes (separado para poder usarlo sin showControls) --}}
+    @if ($enableDragPaquetes)
         <script>
             (() => {
                 const escenario = document.getElementById('escenario-cuadricula');
                 const grid = document.getElementById('cuadricula');
+                console.log("cuadricula:", grid);
 
-                if (!escenario || !grid) return;
+                if (!escenario || !grid) {
+                    console.error('No se encontró el escenario o la cuadrícula');
+                    return;
+                };
+
+                console.log("tamo bien")
 
                 const ctx = @json($ctx);
                 const isVertical = !!ctx.estaGirado;
                 const W = ctx.columnasReales;
                 const H = ctx.filasReales;
-
-                const viewCols = isVertical ? W : H;
-                const viewRows = isVertical ? H : W;
 
                 function getCeldaPx() {
                     const v = getComputedStyle(grid).getPropertyValue('--tam-celda')
@@ -724,898 +732,6 @@
                     };
                 }
 
-                const modoModal = {{ $modoModal ? 'true' : 'false' }};
-                const ghostSubscribers = new Set();
-
-                let ghost = null;
-                let ghostActions = null;
-                let celdaPx = getCeldaPx();
-                let gWidthCells = 1;
-                let gHeightCells = 2;
-                let gX = 1;
-                let gY = 1;
-                let paqueteMeta = null;
-
-                function ensureGhost() {
-                    if (ghost) return;
-
-                    ghost = document.createElement('div');
-                    ghost.id = '{{ $mapId }}-paquete-ghost';
-                    ghost.classList.add('ghost-paquete-mover');
-                    grid.appendChild(ghost);
-
-                    ghostActions = document.createElement('div');
-                    ghostActions.id = '{{ $mapId }}-ghost-actions';
-                    ghostActions.className = 'paquete-toolbar paquete-toolbar--edit';
-                    ghost.appendChild(ghostActions);
-
-                    const btnConfirmar = document.createElement('button');
-                    btnConfirmar.id = '{{ $mapId }}-btn-place-ghost';
-                    btnConfirmar.type = 'button';
-                    btnConfirmar.title = 'Guardar nueva posición';
-                    btnConfirmar.innerHTML = `
-                        <svg viewBox="0 0 24 24" fill="none">
-                            <path d="M5 13l4 4L19 7" stroke="currentColor" stroke-width="2"/>
-                        </svg>
-                    `;
-
-                    const btnCancelar = document.createElement('button');
-                    btnCancelar.id = '{{ $mapId }}-btn-cancel-ghost';
-                    btnCancelar.type = 'button';
-                    btnCancelar.title = 'Cancelar selección';
-                    btnCancelar.innerHTML = `
-                        <svg viewBox="0 0 24 24" fill="none">
-                            <path d="M6 6l12 12" stroke="currentColor" stroke-width="2"/>
-                            <path d="M18 6L6 18" stroke="currentColor" stroke-width="2"/>
-                        </svg>
-                    `;
-
-                    const btnRotar = document.createElement('button');
-                    btnRotar.id = '{{ $mapId }}-btn-rotate-ghost';
-                    btnRotar.type = 'button';
-                    btnRotar.title = 'Rotar paquete 90°';
-                    btnRotar.innerHTML = `
-                        <svg viewBox="0 0 24 24" fill="none">
-                            <path d="M21 12a9 9 0 0 1-9 9m9-9a9 9 0 0 0-9-9m9 9h-4m-5 9a9 9 0 0 1-9-9m9 9v-4m-9-5a9 9 0 0 1 9-9m-9 9h4m5-9v4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                        </svg>
-                    `;
-
-                    btnConfirmar.addEventListener('click', onPlaceGhost);
-
-                    btnCancelar.addEventListener('click', () => {
-                        ghost.remove();
-                        ghost = null;
-                        ghostActions.remove();
-                        ghostActions = null;
-                        paqueteMeta = null;
-                    });
-
-                    btnRotar.addEventListener('click', rotateGhostKeepCenter);
-
-                    ghostActions.appendChild(btnConfirmar);
-                    ghostActions.appendChild(btnCancelar);
-                    ghostActions.appendChild(btnRotar);
-
-                    enableDrag();
-                }
-
-                function layoutGhost() {
-                    if (!ghost) return;
-                    celdaPx = getCeldaPx();
-
-                    gX = Math.max(1, Math.min(viewCols - gWidthCells + 1, gX));
-                    gY = Math.max(1, Math.min(viewRows - gHeightCells + 1, gY));
-
-                    ghost.style.left = ((gX - 1) * celdaPx) + 'px';
-                    ghost.style.top = ((gY - 1) * celdaPx) + 'px';
-                    ghost.style.width = (gWidthCells * celdaPx) + 'px';
-                    ghost.style.height = (gHeightCells * celdaPx) + 'px';
-
-                    notifyGhostCoords();
-                }
-
-                function centerGhost() {
-                    gX = Math.floor((viewCols - gWidthCells) / 2) + 1;
-                    gY = Math.floor((viewRows - gHeightCells) / 2) + 1;
-                    layoutGhost();
-                }
-
-                function notifyGhostCoords() {
-                    if (!ghost) return;
-                    const x1v = gX;
-                    const y1v = gY;
-                    const x2v = gX + gWidthCells - 1;
-                    const y2v = gY + gHeightCells - 1;
-                    const p1 = mapViewToReal(x1v, y1v);
-                    const p2 = mapViewToReal(x2v, y2v);
-
-                    const coords = {
-                        x1: Math.min(p1.x, p2.x),
-                        y1: Math.min(p1.y, p2.y),
-                        x2: Math.max(p1.x, p2.x),
-                        y2: Math.max(p1.y, p2.y),
-                    };
-
-                    ghostSubscribers.forEach(cb => {
-                        try {
-                            cb(coords);
-                        } catch (error) {
-                            console.error('Error en callback de coordenadas del mapa', error);
-                        }
-                    });
-                }
-
-                function setGhostSizeFromPaquete(tamano) {
-                    const CELDA_M = 0.5;
-                    const anchoCells = Math.max(1, Math.round((tamano.ancho ?? 1) /
-                        CELDA_M));
-                    const largoCells = Math.max(1, Math.ceil((tamano.longitud ??
-                        0) / CELDA_M));
-                    gWidthCells = largoCells;
-                    gHeightCells = anchoCells;
-                }
-
-                function enableDrag() {
-                    if (!ghost) return;
-                    let dragging = false;
-                    let startMouseX = 0,
-                        startMouseY = 0;
-                    let startGX = 0,
-                        startGY = 0;
-
-                    function onDown(e) {
-                        if (e.target.closest('.paquete-toolbar')) {
-                            return;
-                        }
-                        dragging = true;
-                        ghost.classList.add('dragging');
-                        startMouseX = (e.touches ? e.touches[0].clientX : e
-                            .clientX);
-                        startMouseY = (e.touches ? e.touches[0].clientY : e
-                            .clientY);
-                        startGX = gX;
-                        startGY = gY;
-                        e.preventDefault();
-                    }
-
-                    function onMove(e) {
-                        if (!dragging) return;
-                        const mx = (e.touches ? e.touches[0].clientX : e.clientX);
-                        const my = (e.touches ? e.touches[0].clientY : e.clientY);
-                        const dx = mx - startMouseX;
-                        const dy = my - startMouseY;
-                        const dCol = Math.round(dx / celdaPx);
-                        const dRow = Math.round(dy / celdaPx);
-                        gX = startGX + dCol;
-                        gY = startGY + dRow;
-                        layoutGhost();
-                        e.preventDefault();
-                    }
-
-                    function onUp() {
-                        dragging = false;
-                        ghost.classList.remove('dragging');
-                    }
-
-                    ghost.addEventListener('mousedown', onDown);
-                    ghost.addEventListener('touchstart', onDown, {
-                        passive: false
-                    });
-                    window.addEventListener('mousemove', onMove, {
-                        passive: false
-                    });
-                    window.addEventListener('touchmove', onMove, {
-                        passive: false
-                    });
-                    window.addEventListener('mouseup', onUp, {
-                        passive: true
-                    });
-                    window.addEventListener('touchend', onUp, {
-                        passive: true
-                    });
-                }
-
-                function rotateGhostKeepCenter() {
-                    if (!ghost) return;
-                    const cx = gX + (gWidthCells - 1) / 2;
-                    const cy = gY + (gHeightCells - 1) / 2;
-
-                    const newW = gHeightCells;
-                    const newH = gWidthCells;
-
-                    let newGX = Math.round(cx - (newW - 1) / 2);
-                    let newGY = Math.round(cy - (newH - 1) / 2);
-
-                    newGX = Math.max(1, Math.min(viewCols - newW + 1, newGX));
-                    newGY = Math.max(1, Math.min(viewRows - newH + 1, newGY));
-
-                    gWidthCells = newW;
-                    gHeightCells = newH;
-                    gX = newGX;
-                    gY = newGY;
-
-                    layoutGhost();
-                }
-
-                function triggerGhost(paquete) {
-                    paqueteMeta = {
-                        codigo: paquete.codigo || paquete.nombre || 'PKG',
-                        paquete_id: paquete.paquete_id ?? paquete.id ?? null,
-                        longitud: Number(paquete.longitud ?? paquete.largo ?? 0),
-                        ancho: Number(paquete.ancho ?? paquete.altura ?? 1),
-                    };
-                    setGhostSizeFromPaquete({
-                        ancho: paqueteMeta.ancho,
-                        longitud: paqueteMeta.longitud,
-                    });
-                    ensureGhost();
-                    centerGhost();
-                    notifyGhostCoords();
-                }
-
-                async function onPlaceGhost() {
-                    if (!paqueteMeta) return;
-
-                    const x1v = gX,
-                        y1v = gY;
-                    const x2v = gX + gWidthCells - 1;
-                    const y2v = gY + gHeightCells - 1;
-
-                    const p1 = mapViewToReal(x1v, y1v);
-                    const p2 = mapViewToReal(x2v, y2v);
-
-                    const x1r = Math.min(p1.x, p2.x);
-                    const y1r = Math.min(p1.y, p2.y);
-                    const x2r = Math.max(p1.x, p2.x);
-                    const y2r = Math.max(p1.y, p2.y);
-
-                    if (x1r < 1 || y1r < 1 || x2r > W || y2r > H) {
-                        alert('Fuera de los límites de la nave.');
-                        return;
-                    }
-
-                    if (!confirm(
-                            `Asignar paquete ${paqueteMeta.codigo} en (${x1r},${y1r})–(${x2r},${y2r})?`
-                        ))
-                        return;
-
-                    const naveId = escenario.dataset.naveId || null;
-                    const urlGuardar = escenario.dataset.rutaGuardar;
-                    try {
-                        const resp = await fetch(urlGuardar, {
-                            method: 'POST',
-                            headers: {
-                                'Accept': 'application/json',
-                                'Content-Type': 'application/json',
-                                'X-CSRF-TOKEN': document.querySelector(
-                                        'meta[name="csrf-token"]')
-                                    ?.getAttribute('content') || ''
-                            },
-                            body: JSON.stringify({
-                                nave_id: naveId,
-                                tipo: 'paquete',
-                                nombre: paqueteMeta.codigo,
-                                paquete_id: paqueteMeta
-                                    .paquete_id,
-                                x1: x1r,
-                                y1: y1r,
-                                x2: x2r,
-                                y2: y2r,
-                            })
-                        });
-                        if (!resp.ok) {
-                            const t = await resp.text();
-                            throw new Error(t || `HTTP ${resp.status}`);
-                        }
-                        ghost.remove();
-                        ghost = null;
-                        if (ghostActions) {
-                            ghostActions.remove();
-                            ghostActions = null;
-                        }
-                        paqueteMeta = null;
-                        location.reload();
-                    } catch (err) {
-                        console.error(err);
-                        alert(
-                            'No se pudo guardar la localización del paquete.'
-                        );
-                    }
-                }
-
-                async function fetchPaqueteBySubId(subId) {
-                    const url = escenario.dataset.rutaPaquete;
-                    const resp = await fetch(url, {
-                        method: 'POST',
-                        headers: {
-                            'Accept': 'application/json',
-                            'X-CSRF-TOKEN': document.querySelector(
-                                    'meta[name="csrf-token"]')
-                                ?.getAttribute('content') || '',
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify({
-                            codigo: subId
-                        }),
-                    });
-                    if (!resp.ok) {
-                        const t = await resp.text();
-                        throw new Error(t || `HTTP ${resp.status}`);
-                    }
-                    return resp.json();
-                }
-
-                const input = document.getElementById(
-                    '{{ $mapId }}-input-etiqueta-sub');
-                input?.addEventListener('keydown', async (e) => {
-                    if (e.key !== 'Enter') return;
-                    const raw = (input.value || '').trim();
-                    if (!raw) return;
-
-                    try {
-                        const data = await fetchPaqueteBySubId(raw);
-                        paqueteMeta = {
-                            codigo: data.codigo,
-                            paquete_id: data.paquete_id,
-                            longitud: Number(data.longitud || 0),
-                            ancho: Number(data.ancho || 1),
-                        };
-                        ensureGhost();
-                        setGhostSizeFromPaquete({
-                            ancho: paqueteMeta.ancho,
-                            longitud: paqueteMeta.longitud,
-                        });
-                        centerGhost();
-                        input.select();
-                    } catch (err) {
-                        console.error(err);
-                        alert(
-                            'No se encontró el paquete para ese código.'
-                        );
-                    }
-                });
-
-                window.addEventListener('keydown', (e) => {
-                    if (!ghost) return;
-                    if (e.key === 'Escape') {
-                        document.getElementById(
-                                '{{ $mapId }}-btn-cancel-ghost')
-                            ?.click();
-                        return;
-                    }
-                    if (modoModal) return;
-                    if (e.key.toLowerCase() === 'r') {
-                        document.getElementById(
-                                '{{ $mapId }}-btn-rotate-ghost')
-                            ?.click();
-                    } else if (e.key === 'Enter') {
-                        document.getElementById(
-                                '{{ $mapId }}-btn-place-ghost')
-                            ?.click();
-                    }
-                });
-
-                window.addEventListener('resize', () => {
-                    if (!ghost) return;
-                    requestAnimationFrame(layoutGhost);
-                }, {
-                    passive: true
-                });
-
-                const externalControls = escenario.mapaInstance || {};
-                window.mapaComponentInstances = window.mapaComponentInstances || {};
-                window.mapaComponentInstances['{{ $mapId }}'] = {
-                    triggerGhost,
-                    onGhostMove(callback) {
-                        ghostSubscribers.add(callback);
-                        return () => ghostSubscribers.delete(callback);
-                    },
-                    showPaquete: externalControls.showPaquete ? externalControls.showPaquete.bind(externalControls) : undefined,
-                    hidePaquete: externalControls.hidePaquete ? externalControls.hidePaquete.bind(externalControls) : undefined,
-                    hideAllPaquetes: externalControls.hideAllPaquetes ? externalControls.hideAllPaquetes.bind(externalControls) : undefined,
-                    showAllPaquetes: externalControls.showAllPaquetes ? externalControls.showAllPaquetes.bind(externalControls) : undefined,
-                    setHighlight: externalControls.setHighlight ? externalControls.setHighlight.bind(externalControls) : undefined,
-                    clearHighlight: externalControls.clearHighlight ? externalControls.clearHighlight.bind(externalControls) : undefined,
-                    focusPaquete: externalControls.focusPaquete ? externalControls.focusPaquete.bind(externalControls) : undefined,
-                    mapId: '{{ $mapId }}',
-                };
-
-            })();
-
-            // ================================
-            //  MODO EDICIÓN DE PAQUETES
-            // ================================
-            // Estado: qué paquete se está editando ahora mismo (si hay alguno)
-            let paqueteEnEdicion = null;
-
-            // Estado del drag actual
-            let dragState = null;
-
-            /**
-             * Inicializa la interacción de clic/edición en todos los paquetes del mapa.
-             * - Click sobre el paquete: muestra un botón "editar" (SVG).
-             * - Click en botón editar: entra en modo edición (drag + toolbar completa).
-             */
-            function initPaqueteInteracciones() {
-                const paquetes = grid.querySelectorAll('.loc-paquete');
-
-                paquetes.forEach(paquete => {
-                    // Por si acaso, nos aseguramos de que el paquete es "position: absolute"
-                    // o relativo al grid, según como lo tengas montado.
-                    // Si ya lo tienes así, no hace falta tocar nada más.
-                    if (getComputedStyle(paquete).position === 'static') {
-                        paquete.style.position = 'absolute';
-                    }
-
-                    // Click en el paquete (no en los botones internos)
-                    paquete.addEventListener('click', function(ev) {
-                        // Si el click viene de la toolbar, no queremos volver a crearla
-                        if (ev.target.closest('.paquete-toolbar')) {
-                            return;
-                        }
-
-                        // Si ya está en modo edición, no hacemos nada extra
-                        if (this.classList.contains(
-                                'loc-paquete--editing')) {
-                            return;
-                        }
-
-                        // Si no tiene aún toolbar de preview, la creamos
-                        const yaTieneToolbarPreview = this
-                            .querySelector('.paquete-toolbar--preview');
-                        if (!yaTieneToolbarPreview) {
-                            crearToolbarPreview(this);
-                        }
-                    });
-                });
-            }
-
-            /**
-             * Crea la toolbar de "preview" con un único botón de editar (lápiz).
-             * Al pulsar ese botón se entra en modo edición completo.
-             */
-            function crearToolbarPreview(paquete) {
-                // Por limpieza: si hay otro paquete en edición, lo salimos sin guardar
-                if (paqueteEnEdicion && paqueteEnEdicion !== paquete) {
-                    salirDeEdicion(paqueteEnEdicion, true);
-                }
-
-                const toolbar = document.createElement('div');
-                toolbar.className = 'paquete-toolbar paquete-toolbar--preview';
-
-                // Botón de editar con SVG (lápiz)
-                const btnEditar = document.createElement('button');
-                btnEditar.type = 'button';
-                btnEditar.title = 'Editar posición';
-
-                btnEditar.innerHTML = `
-                    <svg viewBox="0 0 24 24" fill="none">
-                        <path d="M4 20h4l10.5-10.5-4-4L4 16v4z" />
-                        <path d="M14.5 5.5l4 4" />
-                    </svg>
-                `;
-
-                // Click en el botón de editar: entramos en modo edición
-                btnEditar.addEventListener('click', (ev) => {
-                    ev
-                        .stopPropagation(); // No queremos que salte el click del paquete
-                    entrarEnEdicion(paquete);
-                });
-
-                toolbar.appendChild(btnEditar);
-                paquete.appendChild(toolbar);
-            }
-
-            /**
-             * Entra en modo edición:
-             * - Marca el paquete como "editing".
-             * - Muestra label con el identificador.
-             * - Crea toolbar con 3 botones: confirmar, cancelar, orientación.
-             * - Activa drag sobre el paquete.
-             */
-            function entrarEnEdicion(paquete) {
-                // Si ya hay otro paquete en edición, lo cancelamos sin guardar cambios
-                if (paqueteEnEdicion && paqueteEnEdicion !== paquete) {
-                    salirDeEdicion(paqueteEnEdicion, true);
-                }
-
-                paqueteEnEdicion = paquete;
-
-                // Eliminamos la toolbar de preview si existe
-                const previewToolbar = paquete.querySelector(
-                    '.paquete-toolbar--preview');
-                if (previewToolbar) {
-                    previewToolbar.remove();
-                }
-
-                // Añadimos clase visual de edición
-                paquete.classList.add('loc-paquete--editing');
-
-                // Guardamos posición original por si el usuario cancela
-                if (!paquete.dataset.origLeft) {
-                    paquete.dataset.origLeft = paquete.style.left || '0px';
-                    paquete.dataset.origTop = paquete.style.top || '0px';
-                }
-
-                // ===================
-                // Label identificador
-                // ===================
-                let label = paquete.querySelector('.paquete-label');
-                if (!label) {
-                    label = document.createElement('div');
-                    label.className = 'paquete-label';
-                    label.textContent =
-                        paquete.dataset.identificador ||
-                        ('Paquete #' + (paquete.dataset.paqueteId ?? '?'));
-                    paquete.appendChild(label);
-                }
-
-                // ===================
-                // Toolbar completa
-                // ===================
-                const toolbar = document.createElement('div');
-                toolbar.className = 'paquete-toolbar paquete-toolbar--edit';
-
-                // 1) Botón confirmar (✔)
-                const btnConfirmar = document.createElement('button');
-                btnConfirmar.type = 'button';
-                btnConfirmar.title = 'Confirmar nueva posición';
-
-                btnConfirmar.innerHTML = `
-                    <svg viewBox="0 0 24 24" fill="none">
-                        <path d="M5 13l4 4L19 7" />
-                    </svg>
-                `;
-
-                btnConfirmar.addEventListener('click', async (ev) => {
-                    ev.stopPropagation();
-
-                    // Obtener el ID del paquete
-                    const paqueteId = paquete.dataset.paqueteId;
-                    if (!paqueteId) {
-                        alert('Error: No se encontró el ID del paquete');
-                        return;
-                    }
-
-                    // Convertir píxeles a coordenadas de celdas
-                    const celdaPx = getCeldaPx();
-                    const left = parseFloat(paquete.style.left) || 0;
-                    const top = parseFloat(paquete.style.top) || 0;
-                    const width = parseFloat(paquete.style.width) || celdaPx;
-                    const height = parseFloat(paquete.style.height) || celdaPx;
-
-                    // Coordenadas en la vista (1-indexed)
-                    const x1v = Math.round(left / celdaPx) + 1;
-                    const y1v = Math.round(top / celdaPx) + 1;
-                    const x2v = Math.round((left + width) / celdaPx);
-                    const y2v = Math.round((top + height) / celdaPx);
-
-                    // Convertir coordenadas de vista a coordenadas reales
-                    const p1 = mapViewToReal(x1v, y1v);
-                    const p2 = mapViewToReal(x2v, y2v);
-
-                    const x1r = Math.min(p1.x, p2.x);
-                    const y1r = Math.min(p1.y, p2.y);
-                    const x2r = Math.max(p1.x, p2.x);
-                    const y2r = Math.max(p1.y, p2.y);
-
-                    console.log('Guardando paquete:', {
-                        paqueteId,
-                        left,
-                        top,
-                        width,
-                        height,
-                        celdaPx,
-                        vista: {
-                            x1v,
-                            y1v,
-                            x2v,
-                            y2v
-                        },
-                        real: {
-                            x1r,
-                            y1r,
-                            x2r,
-                            y2r
-                        }
-                    });
-
-                    // Mostrar loading en el botón
-                    btnConfirmar.disabled = true;
-                    btnConfirmar.innerHTML = `
-                        <svg viewBox="0 0 24 24" fill="none" class="animate-spin">
-                            <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none" opacity="0.25"/>
-                            <path d="M12 2a10 10 0 0 1 10 10" stroke="currentColor" stroke-width="4" fill="none"/>
-                        </svg>
-                    `;
-
-                    try {
-                        // Enviar petición al servidor
-                        const response = await fetch(
-                            `/localizaciones/paquete/${paqueteId}`, {
-                                method: 'PUT',
-                                headers: {
-                                    'Content-Type': 'application/json',
-                                    'X-CSRF-TOKEN': document.querySelector(
-                                            'meta[name="csrf-token"]')
-                                        ?.content || '',
-                                    'Accept': 'application/json'
-                                },
-                                body: JSON.stringify({
-                                    x1: x1r,
-                                    y1: y1r,
-                                    x2: x2r,
-                                    y2: y2r
-                                })
-                            });
-
-                        const data = await response.json();
-
-                        if (!response.ok) {
-                            throw new Error(data.message ||
-                                'Error al guardar la posición');
-                        }
-
-                        // Actualizar los data attributes del paquete
-                        paquete.dataset.x1 = x1r;
-                        paquete.dataset.y1 = y1r;
-                        paquete.dataset.x2 = x2r;
-                        paquete.dataset.y2 = y2r;
-
-                        // Guardar la nueva posición como "original"
-                        paquete.dataset.origLeft = paquete.style.left;
-                        paquete.dataset.origTop = paquete.style.top;
-
-                        // Mostrar mensaje de éxito
-                        alert('✅ Posición guardada correctamente');
-
-                        // Salir del modo edición
-                        salirDeEdicion(paquete, false);
-
-                    } catch (error) {
-                        console.error('Error al guardar posición:', error);
-                        alert('❌ Error al guardar la posición: ' + error
-                            .message);
-
-                        // Restaurar el botón
-                        btnConfirmar.disabled = false;
-                        btnConfirmar.innerHTML = `
-                            <svg viewBox="0 0 24 24" fill="none">
-                                <path d="M5 13l4 4L19 7" />
-                            </svg>
-                        `;
-                    }
-                });
-
-                // 2) Botón cancelar (✖)
-                const btnCancelar = document.createElement('button');
-                btnCancelar.type = 'button';
-                btnCancelar.title = 'Cancelar cambios';
-
-                btnCancelar.innerHTML = `
-                    <svg viewBox="0 0 24 24" fill="none">
-                        <path d="M6 6l12 12" />
-                        <path d="M18 6L6 18" />
-                    </svg>
-                `;
-
-                btnCancelar.addEventListener('click', (ev) => {
-                    ev.stopPropagation();
-                    // Volvemos a la posición original
-                    paquete.style.left = paquete.dataset.origLeft || '0px';
-                    paquete.style.top = paquete.dataset.origTop || '0px';
-
-                    salirDeEdicion(paquete, true);
-                });
-
-                // 3) Botón orientación ("I" / "_")
-                const btnOrientacion = document.createElement('button');
-                btnOrientacion.type = 'button';
-                btnOrientacion.title = 'Cambiar orientación';
-
-                const orientacionActual = paquete.dataset.orientacion === '_' ? '_' :
-                    'I';
-
-                btnOrientacion.innerHTML = `
-                    <span>${orientacionActual}</span>
-                `;
-
-                // Aplicamos las clases de orientación iniciales
-                aplicarClasesOrientacion(paquete, orientacionActual);
-
-                btnOrientacion.addEventListener('click', (ev) => {
-                    ev.stopPropagation();
-                    cambiarOrientacion(paquete, btnOrientacion);
-                });
-
-                toolbar.appendChild(btnConfirmar);
-                toolbar.appendChild(btnCancelar);
-                toolbar.appendChild(btnOrientacion);
-
-                paquete.appendChild(toolbar);
-
-                // ===================
-                // Activar drag
-                // ===================
-                activarDragEnPaquete(paquete);
-            }
-
-            /**
-             * Sale del modo edición de un paquete.
-             * @param {HTMLElement} paquete
-             * @param {boolean} cancelar Si es true, entendemos que se ha cancelado.
-             */
-            function salirDeEdicion(paquete, cancelar = false) {
-                // Eliminamos label y toolbar de edición
-                const label = paquete.querySelector('.paquete-label');
-                if (label) label.remove();
-
-                const toolbarEdit = paquete.querySelector('.paquete-toolbar--edit');
-                if (toolbarEdit) toolbarEdit.remove();
-
-                // Quitamos clase de edición
-                paquete.classList.remove('loc-paquete--editing');
-
-                // Detenemos drag si estuviera activo
-                desactivarDragEnPaquete(paquete);
-
-                // Si había toolbar de preview antigua, la quitamos también
-                const preview = paquete.querySelector('.paquete-toolbar--preview');
-                if (preview) preview.remove();
-
-                if (paqueteEnEdicion === paquete) {
-                    paqueteEnEdicion = null;
-                }
-
-                // Si se cancela, la posición ya se habrá restaurado en el botón cancelar
-                // Si se confirma, ya hemos actualizado dataset.origLeft/origTop
-            }
-
-            /**
-             * Activa el drag sobre un paquete en modo edición.
-             * Se basa en cambiar left/top en píxeles relativos al grid.
-             */
-            function activarDragEnPaquete(paquete) {
-                // Por seguridad: nos aseguramos que está en modo edición
-                if (!paquete.classList.contains('loc-paquete--editing')) return;
-
-                const onMouseDown = (ev) => {
-                    // No queremos iniciar drag si el click es sobre la toolbar
-                    if (ev.target.closest('.paquete-toolbar')) return;
-
-                    ev.preventDefault();
-
-                    const gridRect = grid.getBoundingClientRect();
-                    const pkgRect = paquete.getBoundingClientRect();
-
-                    // Offset dentro del paquete desde donde se hace el click
-                    const offsetX = ev.clientX - pkgRect.left;
-                    const offsetY = ev.clientY - pkgRect.top;
-
-                    dragState = {
-                        offsetX,
-                        offsetY,
-                        gridRect,
-                    };
-
-                    document.addEventListener('mousemove', onMouseMove);
-                    document.addEventListener('mouseup', onMouseUp);
-                };
-
-                const onMouseMove = (ev) => {
-                    if (!dragState) return;
-
-                    // Posición del puntero relativa al grid
-                    const xDentroGrid = ev.clientX - dragState.gridRect.left;
-                    const yDentroGrid = ev.clientY - dragState.gridRect.top;
-
-                    // Nueva posición del paquete
-                    let nuevoLeft = xDentroGrid - dragState.offsetX;
-                    let nuevoTop = yDentroGrid - dragState.offsetY;
-
-                    // Opcional: limitar a los bordes del grid
-                    nuevoLeft = Math.max(0, Math.min(nuevoLeft, dragState.gridRect
-                        .width - paquete.offsetWidth));
-                    nuevoTop = Math.max(0, Math.min(nuevoTop, dragState.gridRect
-                        .height - paquete.offsetHeight));
-
-                    paquete.style.left = `${nuevoLeft}px`;
-                    paquete.style.top = `${nuevoTop}px`;
-                };
-
-                const onMouseUp = () => {
-                    dragState = null;
-                    document.removeEventListener('mousemove', onMouseMove);
-                    document.removeEventListener('mouseup', onMouseUp);
-                };
-
-                // Guardamos las referencias para poder quitarlas después
-                paquete._onMouseDownEditar = onMouseDown;
-                paquete._onMouseMoveEditar = onMouseMove;
-                paquete._onMouseUpEditar = onMouseUp;
-
-                paquete.addEventListener('mousedown', onMouseDown);
-            }
-
-            /**
-             * Desactiva el drag sobre un paquete (elimina listeners).
-             */
-            function desactivarDragEnPaquete(paquete) {
-                if (paquete._onMouseDownEditar) {
-                    paquete.removeEventListener('mousedown', paquete
-                        ._onMouseDownEditar);
-                    delete paquete._onMouseDownEditar;
-                }
-                if (paquete._onMouseMoveEditar) {
-                    document.removeEventListener('mousemove', paquete
-                        ._onMouseMoveEditar);
-                    delete paquete._onMouseMoveEditar;
-                }
-                if (paquete._onMouseUpEditar) {
-                    document.removeEventListener('mouseup', paquete._onMouseUpEditar);
-                    delete paquete._onMouseUpEditar;
-                }
-                dragState = null;
-            }
-
-            /**
-             * Cambia la orientación del paquete y actualiza el botón de texto ("I" / "_").
-             */
-            function cambiarOrientacion(paquete, btnOrientacion) {
-                const orientacionActual = paquete.dataset.orientacion === '_' ? '_' :
-                    'I';
-                const nuevaOrientacion = orientacionActual === 'I' ? '_' : 'I';
-
-                paquete.dataset.orientacion = nuevaOrientacion;
-                aplicarClasesOrientacion(paquete, nuevaOrientacion);
-
-                // Actualizamos el texto del botón
-                const span = btnOrientacion.querySelector('span');
-                if (span) {
-                    span.textContent = nuevaOrientacion;
-                }
-            }
-
-            /**
-             * Aplica las clases CSS segun la orientación actual.
-             */
-            function aplicarClasesOrientacion(paquete, orientacion) {
-                paquete.classList.toggle('loc-paquete--orient-I', orientacion === 'I');
-                paquete.classList.toggle('loc-paquete--orient-_', orientacion === '_');
-            }
-
-            // Llamamos a la inicialización de interacción de paquetes
-            initPaqueteInteracciones();
-        </script>
-    @endif
-
-    {{-- Script de edición de paquetes (separado para poder usarlo sin showControls) --}}
-    @if ($enableDragPaquetes)
-        <script>
-            (() => {
-                const escenario = document.getElementById('escenario-cuadricula');
-                const grid = document.getElementById('cuadricula');
-
-                if (!escenario || !grid) return;
-
-                const ctx = @json($ctx);
-                const isVertical = !!ctx.estaGirado;
-                const W = ctx.columnasReales;
-                const H = ctx.filasReales;
-
-                function getCeldaPx() {
-                    const v = getComputedStyle(grid).getPropertyValue('--tam-celda').trim();
-                    const n = parseInt(v, 10);
-                    return Number.isFinite(n) && n > 0 ? n : 8;
-                }
-
-                function mapViewToReal(xv, yv) {
-                    if (isVertical) {
-                        return { x: xv, y: (H - yv + 1) };
-                    }
-                    return { x: yv, y: xv };
-                }
-
                 // ================================
                 //  MODO EDICIÓN DE PAQUETES
                 // ================================
@@ -1626,23 +742,29 @@
                  * Inicializa la interacción de clic/edición en todos los paquetes del mapa.
                  */
                 function initPaqueteInteracciones() {
+                    console.log("Inicializando interacciones de paquetes...");
                     const paquetes = grid.querySelectorAll('.loc-paquete');
 
                     paquetes.forEach(paquete => {
-                        if (getComputedStyle(paquete).position === 'static') {
+                        if (getComputedStyle(paquete).position ===
+                            'static') {
                             paquete.style.position = 'absolute';
                         }
 
                         paquete.addEventListener('click', function(ev) {
-                            if (ev.target.closest('.paquete-toolbar')) {
+                            if (ev.target.closest(
+                                    '.paquete-toolbar')) {
                                 return;
                             }
 
-                            if (this.classList.contains('loc-paquete--editing')) {
+                            if (this.classList.contains(
+                                    'loc-paquete--editing')) {
                                 return;
                             }
 
-                            const yaTieneToolbarPreview = this.querySelector('.paquete-toolbar--preview');
+                            const yaTieneToolbarPreview = this
+                                .querySelector(
+                                    '.paquete-toolbar--preview');
                             if (!yaTieneToolbarPreview) {
                                 crearToolbarPreview(this);
                             }
@@ -1685,7 +807,8 @@
 
                     paqueteEnEdicion = paquete;
 
-                    const previewToolbar = paquete.querySelector('.paquete-toolbar--preview');
+                    const previewToolbar = paquete.querySelector(
+                        '.paquete-toolbar--preview');
                     if (previewToolbar) {
                         previewToolbar.remove();
                     }
@@ -1736,15 +859,20 @@
                         }
 
                         const celdaPx = getCeldaPx();
-                        const left = parseFloat(paquete.style.left) || 0;
+                        const left = parseFloat(paquete.style.left) ||
+                            0;
                         const top = parseFloat(paquete.style.top) || 0;
-                        const width = parseFloat(paquete.style.width) || celdaPx;
-                        const height = parseFloat(paquete.style.height) || celdaPx;
+                        const width = parseFloat(paquete.style.width) ||
+                            celdaPx;
+                        const height = parseFloat(paquete.style
+                            .height) || celdaPx;
 
                         const x1v = Math.round(left / celdaPx) + 1;
                         const y1v = Math.round(top / celdaPx) + 1;
-                        const x2v = Math.round((left + width) / celdaPx);
-                        const y2v = Math.round((top + height) / celdaPx);
+                        const x2v = Math.round((left + width) /
+                            celdaPx);
+                        const y2v = Math.round((top + height) /
+                            celdaPx);
 
                         const p1 = mapViewToReal(x1v, y1v);
                         const p2 = mapViewToReal(x2v, y2v);
@@ -1763,27 +891,38 @@
                         `;
 
                         try {
-                            const response = await fetch(`/localizaciones/paquete/${paqueteId}`, {
-                                method: 'PUT',
-                                headers: {
-                                    'Content-Type': 'application/json',
-                                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '',
-                                    'Accept': 'application/json'
-                                },
-                                body: JSON.stringify({ x1: x1r, y1: y1r, x2: x2r, y2: y2r })
-                            });
+                            const response = await fetch(
+                                `/localizaciones/paquete/${paqueteId}`, {
+                                    method: 'PUT',
+                                    headers: {
+                                        'Content-Type': 'application/json',
+                                        'X-CSRF-TOKEN': document
+                                            .querySelector(
+                                                'meta[name="csrf-token"]'
+                                            )?.content || '',
+                                        'Accept': 'application/json'
+                                    },
+                                    body: JSON.stringify({
+                                        x1: x1r,
+                                        y1: y1r,
+                                        x2: x2r,
+                                        y2: y2r
+                                    })
+                                });
 
                             const data = await response.json();
 
                             if (!response.ok) {
-                                throw new Error(data.message || 'Error al guardar la posición');
+                                throw new Error(data.message ||
+                                    'Error al guardar la posición');
                             }
 
                             paquete.dataset.x1 = x1r;
                             paquete.dataset.y1 = y1r;
                             paquete.dataset.x2 = x2r;
                             paquete.dataset.y2 = y2r;
-                            paquete.dataset.origLeft = paquete.style.left;
+                            paquete.dataset.origLeft = paquete.style
+                                .left;
                             paquete.dataset.origTop = paquete.style.top;
 
                             Swal.fire({
@@ -1795,14 +934,23 @@
                                 toast: true,
                                 position: 'top-end'
                             });
+                            try {
+                                let modalMoverPaquete = document
+                                    .getElementById(
+                                        "modal-mover-paquete")
+                                modalMoverPaquete.classList.add(
+                                    "hidden");
+                            } catch (e) {}
                             salirDeEdicion(paquete, false);
 
                         } catch (error) {
-                            console.error('Error al guardar posición:', error);
+                            console.error('Error al guardar posición:',
+                                error);
                             Swal.fire({
                                 icon: 'error',
                                 title: 'Error al guardar',
-                                text: error.message || 'No se pudo guardar la posición del paquete',
+                                text: error.message ||
+                                    'No se pudo guardar la posición del paquete',
                                 confirmButtonColor: '#ef4444'
                             });
 
@@ -1828,10 +976,14 @@
 
                     btnCancelar.addEventListener('click', (ev) => {
                         ev.stopPropagation();
-                        paquete.style.left = paquete.dataset.origLeft || '0px';
-                        paquete.style.top = paquete.dataset.origTop || '0px';
-                        paquete.style.width = paquete.dataset.origWidth || '';
-                        paquete.style.height = paquete.dataset.origHeight || '';
+                        paquete.style.left = paquete.dataset.origLeft ||
+                            '0px';
+                        paquete.style.top = paquete.dataset.origTop ||
+                            '0px';
+                        paquete.style.width = paquete.dataset.origWidth ||
+                            '';
+                        paquete.style.height = paquete.dataset.origHeight ||
+                            '';
                         salirDeEdicion(paquete, true);
                     });
 
@@ -1851,8 +1003,10 @@
                         const celdaPx = getCeldaPx();
 
                         // Obtener dimensiones actuales en píxeles
-                        const widthPx = parseFloat(paquete.style.width) || 0;
-                        const heightPx = parseFloat(paquete.style.height) || 0;
+                        const widthPx = parseFloat(paquete.style.width) ||
+                            0;
+                        const heightPx = parseFloat(paquete.style.height) ||
+                            0;
 
                         // Convertir a celdas (redondeando)
                         const widthCeldas = Math.round(widthPx / celdaPx);
@@ -1871,8 +1025,18 @@
                         paquete.style.height = `${newHeightPx}px`;
 
                         console.log('Rotación:', {
-                            antes: { widthCeldas, heightCeldas, widthPx, heightPx },
-                            despues: { newWidthCeldas, newHeightCeldas, newWidthPx, newHeightPx }
+                            antes: {
+                                widthCeldas,
+                                heightCeldas,
+                                widthPx,
+                                heightPx
+                            },
+                            despues: {
+                                newWidthCeldas,
+                                newHeightCeldas,
+                                newWidthPx,
+                                newHeightPx
+                            }
                         });
                     });
 
@@ -1888,13 +1052,15 @@
                     const label = paquete.querySelector('.paquete-label');
                     if (label) label.remove();
 
-                    const toolbarEdit = paquete.querySelector('.paquete-toolbar--edit');
+                    const toolbarEdit = paquete.querySelector(
+                        '.paquete-toolbar--edit');
                     if (toolbarEdit) toolbarEdit.remove();
 
                     paquete.classList.remove('loc-paquete--editing');
                     desactivarDragEnPaquete(paquete);
 
-                    const preview = paquete.querySelector('.paquete-toolbar--preview');
+                    const preview = paquete.querySelector(
+                        '.paquete-toolbar--preview');
                     if (preview) preview.remove();
 
                     if (paqueteEnEdicion === paquete) {
@@ -1914,7 +1080,11 @@
                         const offsetX = ev.clientX - pkgRect.left;
                         const offsetY = ev.clientY - pkgRect.top;
 
-                        dragState = { offsetX, offsetY, gridRect };
+                        dragState = {
+                            offsetX,
+                            offsetY,
+                            gridRect
+                        };
 
                         document.addEventListener('mousemove', onMouseMove);
                         document.addEventListener('mouseup', onMouseUp);
@@ -1923,14 +1093,17 @@
                     const onMouseMove = (ev) => {
                         if (!dragState) return;
 
-                        const xDentroGrid = ev.clientX - dragState.gridRect.left;
+                        const xDentroGrid = ev.clientX - dragState.gridRect
+                            .left;
                         const yDentroGrid = ev.clientY - dragState.gridRect.top;
 
                         let nuevoLeft = xDentroGrid - dragState.offsetX;
                         let nuevoTop = yDentroGrid - dragState.offsetY;
 
-                        nuevoLeft = Math.max(0, Math.min(nuevoLeft, dragState.gridRect.width - paquete.offsetWidth));
-                        nuevoTop = Math.max(0, Math.min(nuevoTop, dragState.gridRect.height - paquete.offsetHeight));
+                        nuevoLeft = Math.max(0, Math.min(nuevoLeft, dragState
+                            .gridRect.width - paquete.offsetWidth));
+                        nuevoTop = Math.max(0, Math.min(nuevoTop, dragState
+                            .gridRect.height - paquete.offsetHeight));
 
                         paquete.style.left = `${nuevoLeft}px`;
                         paquete.style.top = `${nuevoTop}px`;
@@ -1951,15 +1124,18 @@
 
                 function desactivarDragEnPaquete(paquete) {
                     if (paquete._onMouseDownEditar) {
-                        paquete.removeEventListener('mousedown', paquete._onMouseDownEditar);
+                        paquete.removeEventListener('mousedown', paquete
+                            ._onMouseDownEditar);
                         delete paquete._onMouseDownEditar;
                     }
                     if (paquete._onMouseMoveEditar) {
-                        document.removeEventListener('mousemove', paquete._onMouseMoveEditar);
+                        document.removeEventListener('mousemove', paquete
+                            ._onMouseMoveEditar);
                         delete paquete._onMouseMoveEditar;
                     }
                     if (paquete._onMouseUpEditar) {
-                        document.removeEventListener('mouseup', paquete._onMouseUpEditar);
+                        document.removeEventListener('mouseup', paquete
+                            ._onMouseUpEditar);
                         delete paquete._onMouseUpEditar;
                     }
                     dragState = null;
@@ -1971,3 +1147,197 @@
         </script>
     @endif
 @endpush
+
+<style>
+    /* Toolbar flotante debajo del paquete */
+    .paquete-toolbar {
+        position: absolute;
+        top: calc(100% + 30px);
+        left: 50%;
+        transform: translateX(-50%);
+        display: flex;
+        flex-direction: row;
+        gap: 1rem;
+        align-items: center;
+        justify-content: center;
+        z-index: 25;
+        background: rgba(15, 23, 42, 0.85);
+        padding: 0.35rem 0.5rem;
+        border-radius: 8px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+        backdrop-filter: blur(8px);
+    }
+
+    /* Botones de la toolbar */
+    .paquete-toolbar button {
+        width: 18px;
+        height: 18px;
+        border-radius: 9999px;
+        border: 1.5px solid rgba(255, 255, 255, 0.2);
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(15, 23, 42, 0.95);
+        cursor: pointer;
+        padding: 0;
+        transition: all 0.2s ease;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+    }
+
+    /* Tablets y móviles */
+    @media (max-width: 768px) {
+        .paquete-toolbar button {
+            width: 22px;
+            height: 22px;
+        }
+
+        .paquete-toolbar {
+            gap: 1.25rem;
+            padding: 0.5rem 0.75rem;
+        }
+    }
+
+    .paquete-toolbar button:hover {
+        transform: scale(1.2);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+    }
+
+    .paquete-toolbar button:active {
+        transform: scale(1.05);
+    }
+
+    .paquete-toolbar button:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+        transform: scale(1);
+    }
+
+    .paquete-toolbar button svg {
+        width: 10px;
+        height: 10px;
+        stroke: #fff;
+        stroke-width: 2.5;
+    }
+
+    @media (max-width: 768px) {
+        .paquete-toolbar button svg {
+            width: 12px;
+            height: 12px;
+        }
+    }
+
+    .paquete-toolbar button span {
+        font-size: 0.6rem;
+        color: #fff;
+        line-height: 1;
+    }
+
+    /* Toolbar preview (botón de lápiz) - debajo del paquete igual que los otros */
+    .paquete-toolbar--preview {
+        position: absolute;
+        top: calc(100% + 30px);
+        left: 50%;
+        transform: translateX(-50%);
+        background: rgba(15, 23, 42, 0.85);
+        padding: 0.35rem 0.5rem;
+        border-radius: 8px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+        backdrop-filter: blur(8px);
+    }
+
+    /* Color amarillo/naranja para el botón de lápiz */
+    .paquete-toolbar--preview button {
+        background: rgba(251, 146, 60, 0.95) !important;
+        border-color: rgba(251, 146, 60, 0.3) !important;
+    }
+
+    .paquete-toolbar--preview button:hover {
+        background: rgba(251, 146, 60, 1) !important;
+        border-color: rgba(251, 146, 60, 0.5) !important;
+    }
+
+    /* Botones con colores específicos para modo edición */
+    /* Botón 1: Confirmar (verde) */
+    .paquete-toolbar--edit button:nth-child(1) {
+        background: rgba(34, 197, 94, 0.95);
+        border-color: rgba(34, 197, 94, 0.3);
+    }
+
+    .paquete-toolbar--edit button:nth-child(1):hover {
+        background: rgba(34, 197, 94, 1);
+        border-color: rgba(34, 197, 94, 0.5);
+    }
+
+    /* Botón 2: Cancelar (rojo) */
+    .paquete-toolbar--edit button:nth-child(2) {
+        background: rgba(239, 68, 68, 0.95);
+        border-color: rgba(239, 68, 68, 0.3);
+    }
+
+    .paquete-toolbar--edit button:nth-child(2):hover {
+        background: rgba(239, 68, 68, 1);
+        border-color: rgba(239, 68, 68, 0.5);
+    }
+
+    /* Botón 3: Rotar (azul) */
+    .paquete-toolbar--edit button:nth-child(3) {
+        background: rgba(59, 130, 246, 0.95);
+        border-color: rgba(59, 130, 246, 0.3);
+    }
+
+    .paquete-toolbar--edit button:nth-child(3):hover {
+        background: rgba(59, 130, 246, 1);
+        border-color: rgba(59, 130, 246, 0.5);
+    }
+
+    /* Modo edición: resaltamos el borde del paquete */
+    .loc-paquete--editing {
+        outline: 2px dashed #0ea5e9;
+        outline-offset: 2px;
+        cursor: move !important;
+        z-index: 10;
+    }
+
+    /* Paquete al hacer hover (no en modo edición) */
+    .loc-paquete:not(.loc-paquete--editing):hover {
+        cursor: pointer;
+        opacity: 0.9;
+    }
+
+    /* Orientación por clases (ajusta a tu gusto) */
+    .loc-paquete--orient-I {
+        /* por ejemplo, más alto que ancho */
+    }
+
+    .loc-paquete--orient-_ {
+        /* por ejemplo, más ancho que alto */
+    }
+
+    /* Animación de spinner */
+    @keyframes spin {
+        from {
+            transform: rotate(0deg);
+        }
+
+        to {
+            transform: rotate(360deg);
+        }
+    }
+
+    .animate-spin {
+        animation: spin 1s linear infinite;
+    }
+
+    /* Cursor del mapa para indicar que se puede arrastrar */
+    #escenario-cuadricula {
+        cursor: grab;
+        user-select: none;
+        -webkit-user-select: none;
+        -moz-user-select: none;
+        -ms-user-select: none;
+    }
+
+    #escenario-cuadricula:active {
+        cursor: grabbing;
+    }
+</style>

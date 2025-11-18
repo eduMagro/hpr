@@ -3,13 +3,15 @@
  */
 
 export function initGridClasses() {
-    console.log('🎯 Inicializando control de clases del grid');
+    // Esperar a que Alpine esté listo
+    document.addEventListener('alpine:init', () => {
+        // console.log('🎯 Inicializando control de clases del grid');
 
-    // Función para actualizar clases
-    window.updateGridClasses = function(showLeft, showRight) {
+        // Función para actualizar clases
+        window.updateGridClasses = function (showLeft, showRight) {
             const grid = document.getElementById('grid-maquina');
             if (!grid) {
-                console.error('❌ No se encontró #grid-maquina');
+                // console.error('❌ No se encontró #grid-maquina');
                 return;
             }
 
@@ -94,9 +96,10 @@ export function initGridClasses() {
     applyInitialClasses();
 }
 
-// Auto-inicializar cuando el DOM esté listo
+// Auto-inicializar cuando el DOM esté listo o tras navegación Livewire
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', initGridClasses);
 } else {
     initGridClasses();
 }
+document.addEventListener('livewire:navigated', initGridClasses);
