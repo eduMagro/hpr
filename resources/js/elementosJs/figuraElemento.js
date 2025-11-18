@@ -1,4 +1,4 @@
-document.addEventListener("DOMContentLoaded", function () {
+function initFiguraElemento() {
     const modal = document.getElementById("modal-dibujo");
     const cerrarModal = document.getElementById("cerrar-modal");
     const canvasModal = document.getElementById("canvas-dibujo");
@@ -983,4 +983,12 @@ document.addEventListener("DOMContentLoaded", function () {
             }
         });
     }
-});
+}
+
+// Inicialización compatible con Livewire Navigate
+if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", initFiguraElemento);
+} else {
+    initFiguraElemento();
+}
+document.addEventListener("livewire:navigated", initFiguraElemento);

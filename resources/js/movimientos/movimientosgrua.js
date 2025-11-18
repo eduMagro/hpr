@@ -1,4 +1,4 @@
-document.addEventListener("DOMContentLoaded", () => {
+function initMovimientosGrua() {
     // variables
     const QRINPUT = document.getElementById("codigo_general_general"); // input donde escribe el escáner
     const LISTAQRS = document.getElementById("mostrar_qrs"); // contenedor visual de códigos
@@ -233,4 +233,12 @@ document.addEventListener("DOMContentLoaded", () => {
 
         vibrar(60);
     }
-});
+}
+
+// Inicialización compatible con Livewire Navigate
+if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", initMovimientosGrua);
+} else {
+    initMovimientosGrua();
+}
+document.addEventListener("livewire:navigated", initMovimientosGrua);

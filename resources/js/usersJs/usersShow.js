@@ -36,13 +36,15 @@ const optionsHtml = turnos
     )
     .join("");
 
-document.addEventListener("DOMContentLoaded", function () {
+function initUsersShowCalendario() {
     var calendarEl = document.getElementById("calendario");
     actualizarResumenAsistencia();
 
     const vistaGuardada =
         localStorage.getItem("ultimaVistaCalendario") || "dayGridMonth";
     const fechaGuardada = localStorage.getItem("fechaCalendario");
+
+    if (!calendarEl) return;
 
     var calendar = new FullCalendar.Calendar(calendarEl, {
         initialView: "dayGridMonth",
@@ -189,8 +191,16 @@ document.addEventListener("DOMContentLoaded", function () {
                                     title: "Error",
                                     text: "Ocurrió un problema al eliminar los turnos.",
                                     icon: "error",
-                                });
-                            });
+        });
+}
+
+// Inicialización compatible con Livewire Navigate
+if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", initUsersShowCalendario);
+} else {
+    initUsersShowCalendario();
+}
+document.addEventListener("livewire:navigated", initUsersShowCalendario);
                     } else {
                         fetch(storeUrl, {
                             method: "POST",

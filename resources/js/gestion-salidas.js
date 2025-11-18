@@ -2,7 +2,7 @@
 // GESTIÓN DE SALIDAS - CREAR Y ASIGNAR PAQUETES
 // ==============================================
 
-document.addEventListener('DOMContentLoaded', function() {
+function initGestionSalidas() {
     // Generar formularios para crear salidas
     const btnGenerarFormularios = document.getElementById('btn-generar-formularios');
     if (btnGenerarFormularios) {
@@ -26,7 +26,7 @@ document.addEventListener('DOMContentLoaded', function() {
         inicializarDragAndDrop();
         actualizarTotalesSalidas();
     }
-});
+}
 
 /* ===================== Generar formularios de salidas ===================== */
 function generarFormulariosSalidas() {
@@ -398,7 +398,7 @@ function mostrarDibujo(paqueteId) {
 window.mostrarDibujo = mostrarDibujo;
 
 // Event listener para cerrar modal
-document.addEventListener('DOMContentLoaded', function() {
+function initGestionSalidasModal() {
     const cerrarModal = document.getElementById('cerrar-modal');
     const modal = document.getElementById('modal-dibujo');
 
@@ -414,7 +414,20 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     }
-});
+}
+
+function initGestionSalidasPageJS() {
+    initGestionSalidas();
+    initGestionSalidasModal();
+}
+
+// Inicialización compatible con Livewire Navigate
+if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", initGestionSalidasPageJS);
+} else {
+    initGestionSalidasPageJS();
+}
+document.addEventListener("livewire:navigated", initGestionSalidasPageJS);
 
 /* ===================== Eliminar salida ===================== */
 async function eliminarSalida(salidaId) {
