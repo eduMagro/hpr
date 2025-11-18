@@ -5,13 +5,13 @@
 export function initGridClasses() {
     // Esperar a que Alpine esté listo
     document.addEventListener('alpine:init', () => {
-        console.log('🎯 Inicializando control de clases del grid');
+        // console.log('🎯 Inicializando control de clases del grid');
 
         // Función para actualizar clases
-        window.updateGridClasses = function(showLeft, showRight) {
+        window.updateGridClasses = function (showLeft, showRight) {
             const grid = document.getElementById('grid-maquina');
             if (!grid) {
-                console.error('❌ No se encontró #grid-maquina');
+                // console.error('❌ No se encontró #grid-maquina');
                 return;
             }
 

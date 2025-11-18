@@ -253,7 +253,7 @@
         });
 
         document.addEventListener('livewire:navigated', () => {
-            console.log('Navegación completada - Esperando renderizado completo...');
+            // console.log('Navegación completada - Esperando renderizado completo...');
 
             // Cancelar el timeout si la navegación fue muy rápida
             if (navigationTimeout) {

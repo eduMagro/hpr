@@ -12,7 +12,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (window.__trabajoEtiquetaInit) return;
     window.__trabajoEtiquetaInit = true;
 
-    console.log("🚀 Inicializando módulo trabajoEtiqueta.js");
+    // console.log("🚀 Inicializando módulo trabajoEtiqueta.js");
 
     // ============================================================================
     // CLICK EN BOTÓN FABRICAR
@@ -463,9 +463,8 @@ document.addEventListener("DOMContentLoaded", () => {
                 if (progresoTexto)
                     progresoTexto.textContent = `${producto.peso_stock} / ${producto.peso_inicial} kg`;
                 if (progresoBarra)
-                    progresoBarra.style.height = `${
-                        (producto.peso_stock / producto.peso_inicial) * 100
-                    }%`;
+                    progresoBarra.style.height = `${(producto.peso_stock / producto.peso_inicial) * 100
+                        }%`;
             });
         }
     }
@@ -636,8 +635,8 @@ document.addEventListener("DOMContentLoaded", () => {
             const proceso = contenedor.closest(".proceso");
             const svgBg = proceso
                 ? getComputedStyle(proceso)
-                      .getPropertyValue("--bg-estado")
-                      .trim() || "#e5e7eb"
+                    .getPropertyValue("--bg-estado")
+                    .trim() || "#e5e7eb"
                 : "#e5e7eb";
 
             // Crear nuevo SVG
@@ -765,5 +764,5 @@ document.addEventListener("DOMContentLoaded", () => {
     // ✅ EXPONER FUNCIONES PÚBLICAS
     window.actualizarDOMEtiqueta = actualizarDOMEtiqueta;
 
-    console.log("✅ Módulo trabajoEtiqueta.js inicializado correctamente");
+    // console.log("✅ Módulo trabajoEtiqueta.js inicializado correctamente");
 });

@@ -299,24 +299,20 @@ window.Cortes = (function () {
                 transition: all 0.2s;
             ">
                 <div>
-                    <span style="font-size: 20px; font-weight: bold;">${
-                        p.longitud_m
+                    <span style="font-size: 20px; font-weight: bold;">${p.longitud_m
                     }m</span>
         
                     <span style="font-size: 20px; font-weight: bold;">${esquemaLetras}</span>
         
-                    <span style="margin-left: 12px; color: #6b7280;">→ ${
-                        p.por_barra
+                    <span style="margin-left: 12px; color: #6b7280;">→ ${p.por_barra
                     } piezas</span>
-                    ${
-                        !p.disponible_en_maquina
-                            ? '<span style="margin-left: 8px; color: #ef4444; font-size: 12px;">(no disponible)</span>'
-                            : ""
+                    ${!p.disponible_en_maquina
+                        ? '<span style="margin-left: 8px; color: #ef4444; font-size: 12px;">(no disponible)</span>'
+                        : ""
                     }
                 </div>
                 <div style="text-align: right;">
-                    <div style="font-size: 24px; font-weight: bold; color: ${
-                        c.texto
+                    <div style="font-size: 24px; font-weight: bold; color: ${c.texto
                     };">
                         ${p.aprovechamiento.toFixed(1)}%
                     </div>
@@ -458,8 +454,8 @@ window.Cortes = (function () {
                 patronActual.aprovechamiento >= 90
                     ? "#10b981"
                     : patronActual.aprovechamiento >= 80
-                    ? "#f59e0b"
-                    : "#ef4444";
+                        ? "#f59e0b"
+                        : "#ef4444";
 
             document.getElementById("popup-patron-esquema").textContent =
                 esquema;
@@ -474,9 +470,8 @@ window.Cortes = (function () {
             document.getElementById(
                 "popup-patron-aprovechamiento"
             ).style.color = color;
-            document.getElementById("popup-patron-posicion").textContent = `${
-                indiceActual + 1
-            }/${top3.length}`;
+            document.getElementById("popup-patron-posicion").textContent = `${indiceActual + 1
+                }/${top3.length}`;
 
             document.getElementById("btn-prev").disabled = indiceActual === 0;
             document.getElementById("btn-next").disabled =
@@ -850,7 +845,7 @@ window.Cortes = (function () {
         config: CONFIG,
     };
 
-    console.log("✅ Módulo Cortes v3.0 Final cargado");
+    // console.log("✅ Módulo Cortes v3.0 Final cargado");
 
     return API;
 })();

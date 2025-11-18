@@ -327,5 +327,4 @@
         todos: () => ({ ...COLORES_ESTADO }),
     };
 
-    console.log("✅ Sistema centralizado de DOM inicializado");
 })(window);
