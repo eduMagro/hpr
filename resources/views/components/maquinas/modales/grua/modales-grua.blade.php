@@ -79,7 +79,7 @@
             input.addEventListener('keydown', function(e) {
                 if (e.key === 'Enter') {
                     e
-                .preventDefault(); // ⛔ Bloquea el enter automático del escáner
+                        .preventDefault(); // ⛔ Bloquea el enter automático del escáner
                     // No hace ni submit ni salta a otro campo
                 }
             });
@@ -94,7 +94,8 @@
         <h2 class="text-xl font-bold mb-4">Reubicar paquete</h2>
 
         <p class="mb-2 text-sm text-gray-700"><strong>Descripción:</strong>
-            <span id="descripcion_paquete"></span></p>
+            <span id="descripcion_paquete"></span>
+        </p>
 
         <form method="POST" action="{{ route('movimientos.store') }}">
             @csrf
@@ -211,7 +212,7 @@
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             const form = document.getElementById(
-            'form-ejecutar-movimiento');
+                'form-ejecutar-movimiento');
             const inputQR = document.getElementById('modal_producto_id');
             const hiddenLista = document.getElementById('modal_lista_qrs');
 
@@ -253,9 +254,9 @@
         document.getElementById('modal_tipo').value = tipo;
         document.getElementById('modal_maquina_id').value = maquinaId;
         document.getElementById('modal_producto_id').value =
-        productoCodigo; // ← aquí va el código
+            productoCodigo; // ← aquí va el código
         document.getElementById('modal_producto_base_id').value =
-        productoBaseId;
+            productoBaseId;
 
         document.getElementById('maquina-nombre-destino').textContent =
             maquinaNombre;
@@ -390,7 +391,7 @@
         const tipo = producto?.tipo ?? '—';
         const diametro = producto?.diametro ?? '—';
         const longitud = producto?.longitud ??
-        '—'; // suele venir en metros si es barra
+            '—'; // suele venir en metros si es barra
 
         const proveedor = (pedido.fabricante_id && pedido.fabricante?.nombre) ?
             pedido.fabricante.nombre :
@@ -398,7 +399,7 @@
 
         // Datos de línea
         const cantidadKg = Number(linea.cantidad ??
-        0); // total pedido para esa línea
+            0); // total pedido para esa línea
         const recepcionadoKg = Number(linea.cantidad_recepcionada ?? 0);
         const restanteKg = Math.max(0, cantidadKg - recepcionadoKg);
         const estadoLinea = linea.estado ?? '—';
@@ -570,7 +571,8 @@
                     class="hidden bg-green-50 border border-green-200 rounded-lg p-4">
                     <h3 class="font-semibold text-green-800 mb-3">✓ Paquete
                         Encontrado</h3>
-                    <div class="flex flex-col md:flex-row justify-start gap-3 text-sm">
+                    <div
+                        class="flex flex-col md:flex-row justify-start gap-3 text-sm">
                         <div class="bg-white p-2 rounded border">
                             <p class="text-gray-600 text-xs">Código Paquete</p>
                             <p id="paquete-codigo-info"
@@ -695,13 +697,13 @@
         if (inputCodigo) inputCodigo.value = '';
 
         document.getElementById('info-paquete-validado').classList.add(
-        'hidden');
+            'hidden');
         document.getElementById('paso-mapa-paquete').classList.add('hidden');
         document.getElementById('paso-escanear-paquete').classList.remove(
             'hidden');
         document.getElementById('error-paquete-mover').classList.add('hidden');
         document.getElementById('loading-paquete-mover').classList.add(
-        'hidden');
+            'hidden');
         document.getElementById('coordenadas-seleccionadas').classList.add(
             'hidden');
         document.getElementById('coord-x1').value = '';
@@ -727,6 +729,22 @@
         mapaModalApi = null;
     }
 
+    // ocultar aquellos paquetes que no sean el actual
+    // agregar opción de modificar sus coordenadas
+    function resaltarPaqueteSeleccionado(paqueteActual) {
+        console.log("ocultando paquetes")
+        const paquetes = document.querySelectorAll('.loc-paquete');
+        paquetes.forEach(paquete => {
+            if (paquete.dataset.codigo != paqueteActual) {
+                paquete.classList.add('loc-paquete', 'loc-existente');
+            } else {
+                paquete.classList.remove('loc-paquete',
+                'loc-existente');
+            }
+        });
+    }
+
+
     async function mostrarPasoMapa() {
         document.getElementById('paso-escanear-paquete').classList.add(
             'hidden');
@@ -734,6 +752,9 @@
             'hidden');
         document.getElementById('paquete-codigo-mapa').textContent =
             paqueteMoverData?.codigo || '';
+        const idPaquete = document.getElementById("paquete-codigo-info")
+            .innerText;
+        resaltarPaqueteSeleccionado(idPaquete);
         await mostrarGhostParaPaquete();
     }
 

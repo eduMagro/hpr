@@ -3,9 +3,9 @@
     <x-slot name="title">Mapa de Localizaciones -
         {{ config('app.name') }}</x-slot>
 
-    <div class="w-full p-4">
+    <div class="w-full p-4 flex flex-col gap-4">
         {{-- === Cabecera de la página === --}}
-        <div class="bg-white rounded-lg shadow-sm p-4">
+        <div class="bg-white rounded-lg shadow-sm p-4 border border-gray-300">
             <div class="flex justify-between items-center">
                 <div>
                     <h1 class="text-2xl font-bold text-gray-800">Mapa de
@@ -43,7 +43,7 @@
         <div class="flex gap-4 w-full" style="height: calc(100vh - 170px);">
 
             {{-- COMPONENTE DE MAPA (nuevo) --}}
-            <div class="flex-1 overflow-hidden border border-gray-300">
+            <div class="flex-1 overflow-hidden border border-gray-300 rounded-md">
                 <x-mapa-component :ctx="$ctx" :localizaciones-zonas="$localizacionesZonas"
                     :localizaciones-maquinas="$localizacionesMaquinas" :paquetes-con-localizacion="$paquetesConLocalizacion" :dimensiones="$dimensiones"
                     :obra-actual-id="$obraActualId" :show-controls="false" :mostrarObra="false"
