@@ -1,7 +1,7 @@
 <x-app-layout>
     <x-slot name="title">Salidas - {{ config('app.name') }}</x-slot>
 
-    <div class="w-full p-4 sm:p-4">
+    <div class="w-full p-4 sm:p-4" data-salidas-index>
 
         {{-- Si el usuario es de oficina, mostramos la tabla completa --}}
         {{-- Si el usuario es operario, mostramos un listado simplificado con opción de completar --}}
@@ -621,12 +621,18 @@
     </script>
 
     <script>
-        document.addEventListener('DOMContentLoaded', function() {
+        function initSalidasIndexCamiones() {
+            const container = document.querySelector('[data-salidas-index]');
+            if (!container || container.dataset.camionesInit === '1') {
+                return;
+            }
+            container.dataset.camionesInit = '1';
+
             const canEdit = !!window.canEdit;
 
             // Deshabilitar selects si no puede editar
             if (!canEdit) {
-                document.querySelectorAll('select.editable-select').forEach(s => s.disabled = true);
+                container.querySelectorAll('select.editable-select').forEach(s => s.disabled = true);
             }
 
             const csrf = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
@@ -657,11 +663,11 @@
             }
 
             function findCamionSelectByKey(key) {
-                return document.querySelector(`select.camion-select[data-key="${CSS.escape(key)}"]`);
+                return container.querySelector(`select.camion-select[data-key="${CSS.escape(key)}"]`);
             }
 
             // Inicializar "camión" para cada fila en base a la empresa seleccionada
-            document.querySelectorAll('select.empresa-select').forEach(selEmpresa => {
+            container.querySelectorAll('select.empresa-select').forEach(selEmpresa => {
                 const key = selEmpresa.dataset.key;
                 const empresaId = selEmpresa.value || selEmpresa.dataset.empresa || '';
                 const selCamion = findCamionSelectByKey(key);
@@ -673,15 +679,14 @@
             });
 
             // Handler de cambio de empresa: repoblar camiones y guardar empresa
-            document.querySelectorAll('select.empresa-select').forEach(selEmpresa => {
+            container.querySelectorAll('select.empresa-select').forEach(selEmpresa => {
                 selEmpresa.addEventListener('change', async (e) => {
                     const empresaId = e.target.value;
                     const key = e.target.dataset.key;
                     const selCamion = findCamionSelectByKey(key);
                     if (selCamion) {
                         selCamion.innerHTML = '';
-                        selCamion.appendChild(opcionesCamion(empresaId,
-                            null)); // limpia selección de camión
+                        selCamion.appendChild(opcionesCamion(empresaId, null)); // limpia selección de camión
                     }
                     if (!canEdit) return;
 
@@ -704,8 +709,7 @@
                         });
                         const data = await res.json();
                         if (!data.success) {
-                            console.error('Error actualizando empresa transporte:', data
-                                .message);
+                            console.error('Error actualizando empresa transporte:', data.message);
                             Swal?.fire?.({
                                 icon: 'error',
                                 title: 'Error',
@@ -738,7 +742,7 @@
             });
 
             // Handler de cambio de camión: guardar camión
-            document.querySelectorAll('select.camion-select').forEach(selCamion => {
+            container.querySelectorAll('select.camion-select').forEach(selCamion => {
                 selCamion.addEventListener('change', async (e) => {
                     if (!canEdit) return;
 
@@ -773,7 +777,15 @@
                     }
                 });
             });
-        });
+        }
+
+        // Ejecutar tanto en carga inicial como en navegaciones de Livewire
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initSalidasIndexCamiones);
+        } else {
+            initSalidasIndexCamiones();
+        }
+        document.addEventListener('livewire:navigated', initSalidasIndexCamiones);
     </script>
 
 </x-app-layout>

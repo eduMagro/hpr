@@ -77,9 +77,10 @@ export function initGridClasses() {
     });
 }
 
-// Auto-inicializar cuando el DOM esté listo
+// Auto-inicializar cuando el DOM esté listo o tras navegación Livewire
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', initGridClasses);
 } else {
     initGridClasses();
 }
+document.addEventListener('livewire:navigated', initGridClasses);

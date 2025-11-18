@@ -543,4 +543,5 @@
     } else {
         inicializar();
     }
+    document.addEventListener("livewire:navigated", inicializar);
 })(window);

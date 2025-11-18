@@ -1651,7 +1651,7 @@ window.renderizarGrupoSVG = function renderizarGrupoSVG(grupo, gidx) {
 // =======================
 // Script principal
 // =======================
-document.addEventListener("DOMContentLoaded", function () {
+function initCanvasMaquina() {
     if (window.setDataSources) {
         window.setDataSources({
             sugerencias: window.SUGERENCIAS || {},
@@ -1726,7 +1726,15 @@ document.addEventListener("DOMContentLoaded", function () {
 
         console.log(`✅ SVG actualizado con coladas para etiqueta ${etiquetaSubId}`, coladasPorElemento);
     };
-});
+}
+
+// Inicialización compatible con Livewire Navigate
+if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", initCanvasMaquina);
+} else {
+    initCanvasMaquina();
+}
+document.addEventListener("livewire:navigated", initCanvasMaquina);
 
 // =======================
 // Modal dividir elemento

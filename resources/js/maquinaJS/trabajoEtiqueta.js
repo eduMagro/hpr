@@ -8,7 +8,7 @@
  * ================================================================================
  */
 
-document.addEventListener("DOMContentLoaded", () => {
+function initTrabajoEtiqueta() {
     if (window.__trabajoEtiquetaInit) return;
     window.__trabajoEtiquetaInit = true;
 
@@ -765,4 +765,12 @@ document.addEventListener("DOMContentLoaded", () => {
     window.actualizarDOMEtiqueta = actualizarDOMEtiqueta;
 
     // console.log("✅ Módulo trabajoEtiqueta.js inicializado correctamente");
-});
+}
+
+// Inicialización compatible con Livewire Navigate
+if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", initTrabajoEtiqueta);
+} else {
+    initTrabajoEtiqueta();
+}
+document.addEventListener("livewire:navigated", initTrabajoEtiqueta);
