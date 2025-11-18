@@ -3,11 +3,12 @@
 
 return [
 
-    // Tipos “simples” => clase de servicio
+    // Tipos "simples" => clase de servicio
     'mapa_por_tipo' => [
         'cortadora'       => \App\Servicios\Etiquetas\Servicios\DobladoraEtiquetaServicio::class,
         'dobladora'       => \App\Servicios\Etiquetas\Servicios\EnsambladoraEtiquetaServicio::class,
         'ensambladora'    => \App\Servicios\Etiquetas\Servicios\SoldadoraEtiquetaServicio::class,
+        'cortadora_manual' => \App\Servicios\Etiquetas\Servicios\CortadoraDobladoraBarraEtiquetaServicio::class,
 
     ],
 

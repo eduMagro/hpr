@@ -337,7 +337,7 @@
 
                     {{-- Controles de vista para máquinas tipo normal --}}
                     <div class="flex items-center gap-2" x-data="{
-                        showLeft: JSON.parse(localStorage.getItem('showLeft') ?? 'false'),
+                        showLeft: JSON.parse(localStorage.getItem('showLeft') ?? 'true'),
                         showRight: JSON.parse(localStorage.getItem('showRight') ?? 'true'),
                         toggleLeft() {
                             this.showLeft = !this.showLeft;
@@ -501,7 +501,9 @@
             window.etiquetasData = @json($etiquetasData);
             window.pesosElementos = @json($pesosElementos);
             window.maquinaId = @json($maquina->id);
-            window.tipoMaquina = @json($maquina->tipo_material); // 👈 Añadido
+            window.MAQUINA_TIPO = @json($maquina->tipo_material);
+            window.MAQUINA_CODIGO = @json($maquina->codigo);
+            window.MAQUINA_TIPO_NOMBRE = @json($maquina->tipo);
             window.ubicacionId = @json(optional($ubicacion)->id);
             console.log('etiquetasData', window.etiquetasData);
 

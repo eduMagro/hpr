@@ -19,6 +19,10 @@
                     <input type="radio" name="accion_etiqueta" value="mover" onchange="toggleCamposDivision()">
                     <span>➡️ Pasar todo a una nueva etiqueta</span>
                 </label>
+                <label class="inline-flex items-center gap-2">
+                    <input type="radio" name="accion_etiqueta" value="ver_dimensiones" onchange="toggleCamposDivision()">
+                    <span>📐 Ver dimensiones del elemento</span>
+                </label>
             </div>
 
             <div id="campoDivision" class="block">
@@ -59,6 +63,19 @@
         }
 
         try {
+            if (accion === 'ver_dimensiones') {
+                // Cerrar el modal actual
+                document.getElementById('modalDividirElemento').classList.add('hidden');
+
+                // Abrir el modal de ver dimensiones
+                if (typeof window.abrirModalVerDimensiones === 'function') {
+                    window.abrirModalVerDimensiones(elementoId);
+                } else {
+                    alert('La función de ver dimensiones no está disponible');
+                }
+                return;
+            }
+
             if (accion === 'dividir') {
                 const num = parseInt(document.getElementById('num_nuevos').value || '0', 10);
                 if (!num || num < 1) {
@@ -78,7 +95,7 @@
                 });
                 const data = await resp.json();
                 if (!resp.ok || data.success === false) throw new Error(data.message || 'Error al dividir');
-            } else {
+            } else if (accion === 'mover') {
                 // mover todo a nueva subetiqueta
                 const resp = await fetch('{{ route('subetiquetas.moverTodo') }}', {
                     method: 'POST',

@@ -38,7 +38,7 @@ class ProductionLogger
             'Etiqueta' => $etiqueta->etiqueta_sub_id ?? $etiqueta->id,
             'Planilla' => $etiqueta->planilla->codigo ?? 'N/A',
             'Obra' => $etiqueta->planilla->obra->obra ?? 'N/A',
-            'Cliente' => $etiqueta->planilla->cliente->nombre ?? 'N/A',
+            'Cliente' => $etiqueta->planilla->cliente->empresa ?? 'N/A',
             'Nave' => $maquina->obra->obra ?? 'N/A',
             'Máquina' => $maquina->nombre,
             'Tipo Máquina' => $maquina->tipo_material ?? $maquina->tipo,
@@ -95,7 +95,7 @@ class ProductionLogger
             'Etiqueta' => $etiqueta->etiqueta_sub_id ?? $etiqueta->id,
             'Planilla' => $etiqueta->planilla->codigo ?? 'N/A',
             'Obra' => $etiqueta->planilla->obra->obra ?? 'N/A',
-            'Cliente' => $etiqueta->planilla->cliente->nombre ?? 'N/A',
+            'Cliente' => $etiqueta->planilla->cliente->empresa ?? 'N/A',
             'Nave' => $maquina->obra->obra ?? 'N/A',
             'Máquina' => $maquina->nombre,
             'Tipo Máquina' => $maquina->tipo_material ?? $maquina->tipo,
@@ -140,7 +140,7 @@ class ProductionLogger
             'Etiqueta' => implode(', ', $etiquetas->pluck('etiqueta_sub_id')->toArray()),
             'Planilla' => $paquete->planilla->codigo ?? 'N/A',
             'Obra' => $paquete->planilla->obra->obra ?? 'N/A',
-            'Cliente' => $paquete->planilla->cliente->nombre ?? 'N/A',
+            'Cliente' => $paquete->planilla->cliente->empresa ?? 'N/A',
             'Nave' => $maquina->obra->obra ?? 'N/A',
             'Máquina' => $maquina->nombre,
             'Tipo Máquina' => $maquina->tipo_material ?? $maquina->tipo,
@@ -174,6 +174,15 @@ class ProductionLogger
     ): void {
         $compañero = $usuario ? $usuario->compañeroDeTurno() : null;
 
+        // Obtener máquina desde la ubicación del paquete
+        // La ubicación tiene el código de la máquina en su descripción
+        $maquina = null;
+        if ($paquete->ubicacion) {
+            $descripcion = $paquete->ubicacion->descripcion ?? '';
+            // Buscar la máquina que tenga su código en la descripción de la ubicación
+            $maquina = \App\Models\Maquina::whereRaw('LOCATE(codigo, ?) > 0', [$descripcion])->first();
+        }
+
         $data = [
             'Fecha y Hora' => now()->format('Y-m-d H:i:s'),
             'Acción' => 'AÑADIR A PAQUETE',
@@ -182,10 +191,10 @@ class ProductionLogger
             'Etiqueta' => $etiqueta->etiqueta_sub_id ?? $etiqueta->id,
             'Planilla' => $paquete->planilla->codigo ?? 'N/A',
             'Obra' => $paquete->planilla->obra->obra ?? 'N/A',
-            'Cliente' => $paquete->planilla->cliente->nombre ?? 'N/A',
-            'Nave' => 'N/A',
-            'Máquina' => '',
-            'Tipo Máquina' => '',
+            'Cliente' => $paquete->planilla->cliente->empresa ?? 'N/A',
+            'Nave' => $maquina ? ($maquina->obra->obra ?? 'N/A') : 'N/A',
+            'Máquina' => $maquina ? $maquina->nombre : '',
+            'Tipo Máquina' => $maquina ? ($maquina->tipo_material ?? $maquina->tipo) : '',
             'Operario 1' => $usuario ? $usuario->nombre_completo : 'Sistema',
             'Operario 2' => '',
             'Estado Inicial' => $etiqueta->estado,
@@ -217,6 +226,15 @@ class ProductionLogger
     ): void {
         $compañero = $usuario ? $usuario->compañeroDeTurno() : null;
 
+        // Obtener máquina desde la ubicación del paquete
+        // La ubicación tiene el código de la máquina en su descripción
+        $maquina = null;
+        if ($paquete->ubicacion) {
+            $descripcion = $paquete->ubicacion->descripcion ?? '';
+            // Buscar la máquina que tenga su código en la descripción de la ubicación
+            $maquina = \App\Models\Maquina::whereRaw('LOCATE(codigo, ?) > 0', [$descripcion])->first();
+        }
+
         $data = [
             'Fecha y Hora' => now()->format('Y-m-d H:i:s'),
             'Acción' => 'QUITAR DE PAQUETE',
@@ -225,10 +243,10 @@ class ProductionLogger
             'Etiqueta' => $etiqueta->etiqueta_sub_id ?? $etiqueta->id,
             'Planilla' => $paquete->planilla->codigo ?? 'N/A',
             'Obra' => $paquete->planilla->obra->obra ?? 'N/A',
-            'Cliente' => $paquete->planilla->cliente->nombre ?? 'N/A',
-            'Nave' => 'N/A',
-            'Máquina' => '',
-            'Tipo Máquina' => '',
+            'Cliente' => $paquete->planilla->cliente->empresa ?? 'N/A',
+            'Nave' => $maquina ? ($maquina->obra->obra ?? 'N/A') : 'N/A',
+            'Máquina' => $maquina ? $maquina->nombre : '',
+            'Tipo Máquina' => $maquina ? ($maquina->tipo_material ?? $maquina->tipo) : '',
             'Operario 1' => $usuario ? $usuario->nombre_completo : 'Sistema',
             'Operario 2' => '',
             'Estado Inicial' => 'en-paquete',
@@ -259,6 +277,15 @@ class ProductionLogger
     ): void {
         $compañero = $usuario ? $usuario->compañeroDeTurno() : null;
 
+        // Obtener máquina desde la ubicación del paquete
+        // La ubicación tiene el código de la máquina en su descripción
+        $maquina = null;
+        if ($paquete->ubicacion) {
+            $descripcion = $paquete->ubicacion->descripcion ?? '';
+            // Buscar la máquina que tenga su código en la descripción de la ubicación
+            $maquina = \App\Models\Maquina::whereRaw('LOCATE(codigo, ?) > 0', [$descripcion])->first();
+        }
+
         $data = [
             'Fecha y Hora' => now()->format('Y-m-d H:i:s'),
             'Acción' => 'ELIMINAR PAQUETE',
@@ -267,10 +294,10 @@ class ProductionLogger
             'Etiqueta' => implode(', ', $etiquetasIds),
             'Planilla' => $paquete->planilla->codigo ?? 'N/A',
             'Obra' => $paquete->planilla->obra->obra ?? 'N/A',
-            'Cliente' => $paquete->planilla->cliente->nombre ?? 'N/A',
-            'Nave' => 'N/A',
-            'Máquina' => '',
-            'Tipo Máquina' => '',
+            'Cliente' => $paquete->planilla->cliente->empresa ?? 'N/A',
+            'Nave' => $maquina ? ($maquina->obra->obra ?? 'N/A') : 'N/A',
+            'Máquina' => $maquina ? $maquina->nombre : '',
+            'Tipo Máquina' => $maquina ? ($maquina->tipo_material ?? $maquina->tipo) : '',
             'Operario 1' => $usuario ? $usuario->nombre_completo : 'Sistema',
             'Operario 2' => '',
             'Estado Inicial' => 'en-paquete',
@@ -441,7 +468,7 @@ class ProductionLogger
             'Etiqueta' => $etiqueta->etiqueta_sub_id ?? $etiqueta->id,
             'Planilla' => $etiqueta->planilla->codigo ?? 'N/A',
             'Obra' => $etiqueta->planilla->obra->obra ?? 'N/A',
-            'Cliente' => $etiqueta->planilla->cliente->nombre ?? 'N/A',
+            'Cliente' => $etiqueta->planilla->cliente->empresa ?? 'N/A',
             'Nave' => $maquina->obra->obra ?? 'N/A',
             'Máquina' => $maquina->nombre,
             'Tipo Máquina' => $maquina->tipo_material ?? $maquina->tipo,
@@ -660,7 +687,7 @@ class ProductionLogger
             'Etiqueta' => $etiquetasIds,
             'Planilla' => $primeraEtiqueta ? ($primeraEtiqueta->planilla->codigo ?? 'N/A') : 'N/A',
             'Obra' => $primeraEtiqueta ? ($primeraEtiqueta->planilla->obra->obra ?? 'N/A') : 'N/A',
-            'Cliente' => $primeraEtiqueta ? ($primeraEtiqueta->planilla->cliente->nombre ?? 'N/A') : 'N/A',
+            'Cliente' => $primeraEtiqueta ? ($primeraEtiqueta->planilla->cliente->empresa ?? 'N/A') : 'N/A',
             'Nave' => $maquina->obra->obra ?? 'N/A',
             'Máquina' => $maquina->nombre,
             'Tipo Máquina' => $maquina->tipo_material ?? $maquina->tipo,
@@ -735,7 +762,7 @@ class ProductionLogger
             'Etiqueta' => $etiqueta->etiqueta_sub_id ?? $etiqueta->id,
             'Planilla' => $etiqueta->planilla->codigo ?? 'N/A',
             'Obra' => $etiqueta->planilla->obra->obra ?? 'N/A',
-            'Cliente' => $etiqueta->planilla->cliente->nombre ?? 'N/A',
+            'Cliente' => $etiqueta->planilla->cliente->empresa ?? 'N/A',
             'Nave' => $maquina->obra->obra ?? 'N/A',
             'Máquina' => $maquina->nombre,
             'Tipo Máquina' => $maquina->tipo_material ?? $maquina->tipo,

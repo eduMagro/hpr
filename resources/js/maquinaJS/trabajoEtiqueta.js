@@ -111,11 +111,15 @@ document.addEventListener("DOMContentLoaded", () => {
             (estadoActual || "").toLowerCase() === "fabricando";
         const esMaquinaBarra =
             (window.MAQUINA_TIPO || "").toLowerCase() === "barra";
+        const esSL28 =
+            (window.MAQUINA_CODIGO || "").toUpperCase() === "SL28";
+        const esCortadoraManual =
+            (window.MAQUINA_TIPO_NOMBRE || "").toLowerCase() === "cortadora_manual";
 
         // ────────────────────────────────────────────────
-        //  A) MÁQUINAS DE BARRA → SIEMPRE VÍA PATRONES
+        //  A) MÁQUINAS DE BARRA (SL28 O CORTADORA MANUAL) → VÍA PATRONES (SYNTAX LINE)
         // ────────────────────────────────────────────────
-        if (esMaquinaBarra) {
+        if ((esMaquinaBarra && esSL28) || esCortadoraManual) {
             if (esFabricando && window._decisionCortePorEtiqueta?.[id]) {
                 await Cortes.enviarAFabricacionOptimizada({
                     ...window._decisionCortePorEtiqueta[id],
@@ -247,11 +251,20 @@ document.addEventListener("DOMContentLoaded", () => {
     function actualizarDOMEtiqueta(id, data) {
         const safeId = id.replace(/\./g, "-");
 
+        // 🔍 DEBUG: Ver qué campos vienen en data
+        console.log('🔍 DEBUG actualizarDOMEtiqueta - Datos recibidos:', {
+            id,
+            estado: data.estado,
+            peso_etiqueta: data.peso_etiqueta,
+            nombre: data.nombre,
+            data_completa: data
+        });
+
         // ✅ USAR SISTEMA CENTRALIZADO
         if (typeof window.SistemaDOM !== "undefined") {
             window.SistemaDOM.actualizarEstadoEtiqueta(id, data.estado, {
-                peso: data.peso_etiqueta || data.peso_etiqueta_kg,
-                nombre: data.nombre,
+                peso: data.peso_etiqueta,
+                nombre: data.nombre || id,
             });
         } else {
             // Fallback: actualización legacy
@@ -302,9 +315,9 @@ document.addEventListener("DOMContentLoaded", () => {
                 if (typeof window.TrabajoPaquete !== "undefined") {
                     window.TrabajoPaquete.agregarItemEtiqueta(id, {
                         id: id,
-                        peso: data.peso_etiqueta || data.peso_etiqueta_kg || 0,
+                        peso_etiqueta: data.peso_etiqueta || 0,
                         estado: "fabricada",
-                        nombre: data.nombre || "Sin nombre",
+                        nombre: data.nombre || id,
                     });
                 }
                 // 🔥 VALIDACIÓN MEJORADA: Actualizar coladas en el SVG
@@ -362,9 +375,9 @@ document.addEventListener("DOMContentLoaded", () => {
                 if (typeof window.TrabajoPaquete !== "undefined") {
                     window.TrabajoPaquete.agregarItemEtiqueta(id, {
                         id: id,
-                        peso: data.peso_etiqueta || data.peso_etiqueta_kg || 0,
+                        peso_etiqueta: data.peso_etiqueta || 0,
                         estado: "completada",
-                        nombre: data.nombre || "Sin nombre",
+                        nombre: data.nombre || id,
                     });
                 }
                 // 🔥 VALIDACIÓN MEJORADA: Actualizar coladas en el SVG

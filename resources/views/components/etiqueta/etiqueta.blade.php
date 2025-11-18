@@ -59,7 +59,8 @@
         border: 0.2mm solid #000;
         padding: 1mm;
         background: #fff;
-        width: 18mm; /* 16mm del QR + 2mm de padding */
+        width: 18mm;
+        /* 16mm del QR + 2mm de padding */
         display: flex;
         flex-direction: column;
         align-items: center;
@@ -163,16 +164,14 @@
             <!-- Botón Añadir al carro -->
             <button type="button"
                 class="btn-agregar-carro bg-green-600 text-white px-3 py-1 rounded shadow-sm hover:bg-green-700 hover:shadow-md transition-all duration-200 flex items-center gap-1"
-                data-etiqueta-id="{{ $etiqueta->etiqueta_sub_id }}"
-                title="Añadir al carro">
+                data-etiqueta-id="{{ $etiqueta->etiqueta_sub_id }}" title="Añadir al carro">
                 <span class="text-lg">🛒</span>
             </button>
 
             <!-- Botón Fabricar -->
             <button type="button"
                 class="btn-fabricar bg-purple-600 text-white px-3 py-1 rounded shadow-sm hover:bg-purple-700 hover:shadow-md transition-all duration-200 flex items-center gap-1"
-                data-etiqueta-id="{{ $etiqueta->etiqueta_sub_id }}"
-                title="Fabricar esta etiqueta">
+                data-etiqueta-id="{{ $etiqueta->etiqueta_sub_id }}" title="Fabricar esta etiqueta">
                 <span class="text-lg">⚙️</span>
             </button>
         </div>
@@ -181,10 +180,11 @@
         <div>
             <h2 class="text-lg font-semibold text-gray-900">
                 {{ $planilla->obra->obra }} - {{ $planilla->cliente->empresa }}<br>
-                {{ $planilla->codigo_limpio }} - S:{{ $planilla->seccion }} - ID:{{ $etiqueta->etiqueta_sub_id }}
+                {{ $planilla->codigo_limpio }} - S:{{ $planilla->seccion }}
             </h2>
             <h3 class="text-lg font-semibold text-gray-900">
-                {{ $etiqueta->nombre ?? 'Sin nombre' }} - Cal:B500SD - {{ $etiqueta->peso_kg ?? 'N/A' }}
+                {{ $etiqueta->etiqueta_sub_id }} - {{ $etiqueta->nombre ?? 'Sin nombre' }} - Cal:B500SD -
+                {{ $etiqueta->peso_kg ?? 'N/A' }}
             </h3>
         </div>
 

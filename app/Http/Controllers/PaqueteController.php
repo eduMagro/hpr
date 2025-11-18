@@ -649,22 +649,28 @@ class PaqueteController extends Controller
      * 
      * GET /api/planillas/{planillaId}/paquetes
      */
-    public function obtenerPaquetesPorPlanilla($planillaId)
+    public function obtenerPaquetesPorPlanilla($planillaId, \Illuminate\Http\Request $request)
     {
         try {
             $planilla = \App\Models\Planilla::findOrFail($planillaId);
 
             // Obtener paquetes de esta planilla con sus etiquetas y elementos
-            $paquetes = Paquete::with(['etiquetas' => function ($query) {
+            $query = Paquete::with(['etiquetas' => function ($query) {
                 $query->select('id', 'etiqueta_sub_id', 'paquete_id', 'peso', 'estado')
                     ->withCount('elementos')
                     ->with(['elementos' => function ($q) {
                         $q->select('id', 'codigo', 'dimensiones', 'etiqueta_id');
                     }]);
             }, 'ubicacion:id,nombre'])
-                ->where('planilla_id', $planillaId)
-                ->orderBy('created_at', 'desc')
-                ->get();
+                ->where('planilla_id', $planillaId);
+
+            // Filtrar por máquina si se proporciona el parámetro
+            if ($request->has('maquina_id') && $request->maquina_id) {
+                $maquinaId = $request->maquina_id;
+                $query->where('ubicacion_id', $maquinaId);
+            }
+
+            $paquetes = $query->orderBy('created_at', 'desc')->get();
 
             $paquetesFormateados = $paquetes->map(function ($paquete) {
                 return [
@@ -757,10 +763,54 @@ class PaqueteController extends Controller
             // Validar que la etiqueta no esté ya en otro paquete
             if ($etiqueta->paquete_id && $etiqueta->paquete_id !== $paquete->id) {
                 $paqueteActual = Paquete::find($etiqueta->paquete_id);
-                return response()->json([
-                    'success' => false,
-                    'message' => "La etiqueta ya está en el paquete {$paqueteActual->codigo}"
-                ], 400);
+
+                // Si viene el parámetro forzar=true, permitir el movimiento
+                if (!$request->boolean('forzar')) {
+                    return response()->json([
+                        'success' => false,
+                        'requiere_confirmacion' => true,
+                        'paquete_actual' => [
+                            'id' => $paqueteActual->id,
+                            'codigo' => $paqueteActual->codigo,
+                        ],
+                        'paquete_destino' => [
+                            'id' => $paquete->id,
+                            'codigo' => $paquete->codigo,
+                        ],
+                        'message' => "La etiqueta pertenece al paquete {$paqueteActual->codigo}. ¿Deseas moverla al paquete {$paquete->codigo}?"
+                    ], 409); // 409 Conflict
+                }
+
+                // Si forzar=true, proceder a mover la etiqueta
+                // Primero quitar del paquete anterior
+                $pesoEtiqueta = $etiqueta->peso ?? 0;
+                $pesoAnteriorPaqueteOrigen = $paqueteActual->peso;
+                $paqueteActual->peso -= $pesoEtiqueta;
+                $paqueteActual->save();
+
+                // Registrar movimiento de salida
+                \App\Models\Movimiento::create([
+                    'tipo' => 'Movimiento paquete',
+                    'etiqueta_sub_id' => $etiqueta->etiqueta_sub_id,
+                    'paquete_id' => $paqueteActual->id,
+                    'descripcion' => "Etiqueta {$codigoEtiqueta} removida del paquete {$paqueteActual->codigo} (movimiento a {$paquete->codigo})",
+                    'estado' => 'completado',
+                    'fecha_solicitud' => now(),
+                    'ejecutado_por' => auth()->id(),
+                ]);
+
+                // 📊 LOG DE PRODUCCIÓN EN CSV - Remover etiqueta de paquete origen
+                // Recargar paquete para obtener etiquetas restantes
+                $paqueteActual->refresh();
+                $etiquetasRestantes = $paqueteActual->etiquetas()->count() - 1; // -1 porque aún no se ha removido
+
+                \App\Services\ProductionLogger::logEliminarEtiquetaPaquete(
+                    $paqueteActual,
+                    $etiqueta,
+                    $pesoAnteriorPaqueteOrigen,
+                    $etiquetasRestantes,
+                    auth()->user()
+                );
             }
 
             // Si ya está en este paquete, informar

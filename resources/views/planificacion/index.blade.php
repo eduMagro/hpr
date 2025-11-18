@@ -111,6 +111,7 @@
                 'informacionPaquetesSalida' => route('planificacion.informacionPaquetesSalida'),
                 'guardarPaquetesSalida' => route('planificacion.guardarPaquetesSalida'),
                 'comentario' => url('/planificacion/comentario/__ID__'),
+                'empresaTransporte' => url('/planificacion/empresa-transporte/__ID__'),
                 // para update por drag&drop: PUT /planificacion/{id}
                 'updateItem' => url('/planificacion/__ID__'),
                 'totales' => url('/planificacion/totales'), // GET ?fecha=YYYY-MM-DD
@@ -120,6 +121,7 @@
                 'actualizarFechasPlanillas' => route('planillas.editarActualizarFechasMasiva'), // PUT JSON
             ],
             'camiones' => $camiones ?? [],
+            'empresasTransporte' => $empresasTransporte ?? [],
             // si quieres precargar eventos/resources por servidor, podrías añadirlos aquí:
             // 'maquinas' => $maquinas ?? [],
             // 'eventos'  => $eventos ?? [],

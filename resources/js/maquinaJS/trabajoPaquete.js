@@ -13,6 +13,7 @@
 
     let items = [];
     let isInitialized = false;
+    let lastFocusedInput = null; // Trackear el último input de etiqueta que tuvo focus
 
     // ============================================================================
     // VALIDACIÓN DE ETIQUETAS VIA QR
@@ -431,6 +432,14 @@
             btnCrear.addEventListener("click", crearPaquete);
         }
 
+        // 🎯 Trackear focus en inputs de añadir etiqueta en gestión de paquetes
+        document.addEventListener("focus", function (e) {
+            if (e.target.id && e.target.id.startsWith('input-etiqueta-')) {
+                lastFocusedInput = e.target;
+                console.log("🎯 Focus en input:", e.target.id);
+            }
+        }, true); // Usar captura para asegurar que se ejecute
+
         // Event listener para botones de agregar al carro
         document.addEventListener("click", async function (e) {
             if (
@@ -455,12 +464,20 @@
                 const estaEnCrear = tabCrearActivo && window.getComputedStyle(tabCrearActivo).display !== 'none';
                 const estaEnGestion = tabGestionActivo && window.getComputedStyle(tabGestionActivo).display !== 'none';
 
-                // ✅ MODO GESTIÓN: Añadir al input de escanear etiqueta del primer paquete visible
+                // ✅ MODO GESTIÓN: Añadir al input de escanear etiqueta con focus activo
                 if (estaEnGestion) {
                     console.log("📦 Modo Gestión: Añadiendo al input de añadir etiqueta");
 
-                    // Buscar el primer input visible de añadir etiqueta en paquetes expandidos
-                    const inputEtiqueta = document.querySelector('input[id^="input-etiqueta-"]');
+                    // 🔍 Prioridad 1: Input que actualmente tiene focus
+                    let inputEtiqueta = document.activeElement;
+                    if (!inputEtiqueta || !inputEtiqueta.id?.startsWith('input-etiqueta-')) {
+                        // 🔍 Prioridad 2: Último input que tuvo focus
+                        inputEtiqueta = lastFocusedInput;
+                    }
+                    if (!inputEtiqueta || !document.body.contains(inputEtiqueta)) {
+                        // 🔍 Prioridad 3: Primer input visible (fallback)
+                        inputEtiqueta = document.querySelector('input[id^="input-etiqueta-"]');
+                    }
 
                     if (inputEtiqueta) {
                         inputEtiqueta.value = etiquetaId;
@@ -472,7 +489,7 @@
                             inputEtiqueta.classList.remove('ring-4', 'ring-green-400');
                         }, 1000);
 
-                        console.log(`✅ Etiqueta ${etiquetaId} añadida al input de gestión`);
+                        console.log(`✅ Etiqueta ${etiquetaId} añadida al input:`, inputEtiqueta.id);
                     } else {
                         await Swal.fire({
                             icon: "info",

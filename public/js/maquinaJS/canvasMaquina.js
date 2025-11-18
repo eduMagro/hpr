@@ -32,8 +32,8 @@ const TOP_BAND_PAD_X = 6;
 const SIDE_BAND_GAP = 12;
 const SIDE_BAND_PAD = 6;
 
-// Reserva mínima para “anillo de cotas”
-const DIM_RING_MARGIN = DIM_LINE_OFFSET + SIZE_DIM_TEXT + DIM_LABEL_LIFT + 6;
+// Reserva mínima para "anillo de cotas"
+const DIM_RING_MARGIN = DIM_LINE_OFFSET + SIZE_DIM_TEXT + DIM_LABEL_LIFT + 4;
 
 // === NUEVO: auto-escala para piezas pequeñas ===
 const SMALL_DIM_THRESHOLD = 50; // umbral "pieza pequeña"
@@ -136,7 +136,7 @@ function indexToLetters(n) {
 
 // ——— Padding exclusivo para la leyenda (0 = pegado al borde) ———
 const LEGEND_PAD_X = 0;
-const LEGEND_PAD_Y = 0;
+const LEGEND_PAD_Y = -25; // Negativo para bajar la leyenda (más cerca del borde inferior)
 
 /** Dibuja la leyenda SIEMPRE abajo-izquierda del SVG */
 function drawLegendBottomLeft(svg, entries, width, height) {
@@ -717,51 +717,261 @@ function assignColumnsFFD(items, k, gapRow) {
     return cols;
 }
 function planMasonryOptimal(medidas, svgW, svgH, opts = {}) {
-    const padding = opts.padding ?? 10,
-        gapCol = opts.gapCol ?? 10,
-        gapRow = opts.gapRow ?? 8,
+    const padding = opts.padding ?? 12,
+        gapCol = opts.gapCol ?? 12,
+        gapRow = opts.gapRow ?? 10,
         kMax = Math.max(1, Math.min(medidas.length, opts.kMax ?? 4));
+
+    // === CONSTANTES Y CONFIGURACIÓN ===
     const anchoUsable = Math.max(10, svgW - 2 * padding);
-    const altoUsable = Math.max(10, svgH - 2 * padding - DIM_RING_MARGIN);
-    let best = { S: 0, k: 1, cols: null };
+    const altoUsable = Math.max(10, svgH - 2 * padding);
+
+    // === ANÁLISIS PROFUNDO DE ELEMENTOS ===
+    const analysis = analyzeElements(medidas);
+
+    function analyzeElements(items) {
+        const aspectRatios = items.map(m => m.w / Math.max(m.h, 1));
+        const heights = items.map(m => m.h);
+        const widths = items.map(m => m.w);
+        const areas = items.map(m => m.w * m.h);
+
+        const avg = arr => arr.reduce((a, b) => a + b, 0) / arr.length;
+        const variance = (arr, mean) => arr.reduce((sum, val) => sum + Math.pow(val - mean, 2), 0) / arr.length;
+        const stdDev = (arr, mean) => Math.sqrt(variance(arr, mean));
+
+        const avgAspectRatio = avg(aspectRatios);
+        const avgHeight = avg(heights);
+        const avgWidth = avg(widths);
+        const totalArea = areas.reduce((a, b) => a + b, 0);
+
+        const heightStdDev = stdDev(heights, avgHeight);
+        const widthStdDev = stdDev(widths, avgWidth);
+
+        // Coeficiente de variación (CV) - medida de dispersión relativa
+        const heightCV = avgHeight > 0 ? heightStdDev / avgHeight : 0;
+        const widthCV = avgWidth > 0 ? widthStdDev / avgWidth : 0;
+
+        return {
+            avgAspectRatio,
+            avgHeight,
+            avgWidth,
+            totalArea,
+            heightCV,
+            widthCV,
+            isLinear: avgAspectRatio > 6 || avgHeight < avgWidth * 0.12,
+            isUniformHeight: heightCV < 0.15,
+            isUniformWidth: widthCV < 0.15,
+            isHighlyVariable: heightCV > 0.5 || widthCV > 0.5,
+            count: items.length
+        };
+    }
+
+    // === BÚSQUEDA INTELIGENTE DE CONFIGURACIÓN ÓPTIMA ===
+    let best = { S: 0, k: 1, cols: null, score: 0 };
+
     for (let k = 1; k <= kMax; k++) {
         const cols = assignColumnsFFD(medidas, k, gapRow);
-        const sumWCols =
-            cols.reduce((a, c) => a + c.maxW, 0) + gapCol * (k - 1);
+        const sumWCols = cols.reduce((a, c) => a + c.maxW, 0) + gapCol * (k - 1);
         const maxHCols = Math.max(...cols.map((c) => c.sumH));
         if (sumWCols <= 0 || maxHCols <= 0) continue;
-        const S = Math.max(
-            0.01,
-            Math.min(anchoUsable / sumWCols, altoUsable / maxHCols)
-        );
-        if (S > best.S) best = { S, k, cols };
-    }
-    const widthsEsc = best.cols.map((c) => c.maxW * best.S);
-    const totalW =
-        widthsEsc.reduce((a, w) => a + w, 0) +
-        (best.k - 1) * (opts.gapCol ?? 10);
-    let xStart = (svgW - totalW) / 2;
-    const centersX = [];
-    for (let c = 0; c < best.k; c++) {
-        const w = widthsEsc[c];
-        centersX[c] = xStart + w / 2;
-        xStart += w + (opts.gapCol ?? 10);
-    }
-    const centersYByCol = [];
-    for (let c = 0; c < best.k; c++) {
-        const col = best.cols[c];
-        const hEscTotal =
-            col.items.reduce((a, idx) => a + medidas[idx].h * best.S, 0) +
-            (col.items.length - 1) * (opts.gapRow ?? 8);
-        let y = (svgH - hEscTotal) / 2;
-        centersYByCol[c] = [];
-        for (let i = 0; i < col.items.length; i++) {
-            const idx = col.items[i];
-            const hEsc = medidas[idx].h * best.S;
-            centersYByCol[c].push(y + hEsc / 2);
-            y += hEsc + (opts.gapRow ?? 8);
+
+        // Calcular escala con un factor de reducción para dar más espacio
+        const scaleW = anchoUsable / sumWCols;
+        const scaleH = altoUsable / maxHCols;
+        const rawScale = Math.min(scaleW, scaleH);
+
+        // Aplicar factor de reducción del 92% para dar más margen
+        const S = Math.max(0.01, rawScale * 0.92);
+
+        // Métricas de calidad
+        const scaledArea = analysis.totalArea * S * S;
+        const containerArea = anchoUsable * altoUsable;
+        const efficiency = scaledArea / containerArea;
+
+        // Balance de columnas (penalizar distribuciones muy desbalanceadas)
+        const colHeights = cols.map(c => c.sumH * S);
+        const avgColHeight = colHeights.reduce((a, b) => a + b, 0) / k;
+        const heightDiff = Math.max(...colHeights) - Math.min(...colHeights);
+        const colBalance = avgColHeight > 0 ? 1 - (heightDiff / avgColHeight) : 1;
+
+        // Penalizar fuertemente configuraciones con muchas columnas
+        const columnPenalty = k === 1 ? 1.1 : k === 2 ? 0.9 : 0.7;
+
+        // Penalizar configuraciones con muchas columnas para pocos elementos
+        const densityPenalty = k > analysis.count * 0.5 ? 0.7 : 1;
+
+        // Bonus para configuraciones bien balanceadas
+        const balanceBonus = colBalance > 0.85 ? 1.05 : 1.0;
+
+        // Score compuesto: favorece escala grande, penaliza muchas columnas
+        const score = S * (1 + efficiency * 0.25) * (1 + colBalance * 0.1) * columnPenalty * densityPenalty * balanceBonus;
+
+        if (score > best.score) {
+            best = { S, k, cols, score, efficiency, colBalance };
         }
     }
+
+    // === DISTRIBUCIÓN HORIZONTAL MEJORADA ===
+    const widthsEsc = best.cols.map((c) => c.maxW * best.S);
+    const totalContentW = widthsEsc.reduce((a, w) => a + w, 0);
+    const horizontalFillRatio = totalContentW / anchoUsable;
+
+    let centersX = [];
+
+    if (best.k === 1) {
+        // Una sola columna: centrar
+        centersX[0] = svgW / 2;
+    } else {
+        // Para múltiples columnas: usar gap mínimo de gapCol y distribuir equitativamente
+        const totalMinGapSpace = (best.k - 1) * gapCol;
+        const totalUsedWidth = totalContentW + totalMinGapSpace;
+
+        if (totalUsedWidth < anchoUsable) {
+            // Si cabe con el gap mínimo, distribuir el espacio extra equitativamente
+            const extraSpace = anchoUsable - totalUsedWidth;
+            const gapColAdjusted = gapCol + (extraSpace / (best.k - 1));
+
+            let xStart = padding;
+            for (let c = 0; c < best.k; c++) {
+                centersX[c] = xStart + widthsEsc[c] / 2;
+                xStart += widthsEsc[c] + gapColAdjusted;
+            }
+        } else {
+            // Si no cabe, usar gap mínimo y centrar
+            let xStart = padding + Math.max(0, (anchoUsable - totalUsedWidth) / 2);
+            for (let c = 0; c < best.k; c++) {
+                centersX[c] = xStart + widthsEsc[c] / 2;
+                xStart += widthsEsc[c] + gapCol;
+            }
+        }
+    }
+
+    // === DISTRIBUCIÓN VERTICAL: USAR TODO EL ESPACIO DISPONIBLE ===
+    const centersYByCol = [];
+
+    // Calcular el ancho que ocupa la leyenda (se calcula después de dibujarla)
+    // Las columnas a la derecha de la leyenda pueden usar toda la altura del SVG
+    const getLegendWidth = () => {
+        if (!window.__legendBoxesGroup || window.__legendBoxesGroup.length === 0) {
+            return 0;
+        }
+        return Math.max(...window.__legendBoxesGroup.map(box => box.right));
+    };
+
+    for (let c = 0; c < best.k; c++) {
+        const col = best.cols[c];
+        centersYByCol[c] = [];
+
+        // Calcular alturas escaladas
+        const heights = col.items.map(idx => medidas[idx].h * best.S);
+        const totalItemsHeight = heights.reduce((a, b) => a + b, 0);
+
+        // Si no hay elementos en la columna, continuar
+        if (col.items.length === 0) continue;
+
+        // Determinar si esta columna solapa con la leyenda
+        const colCenterX = centersX[c];
+        const colWidth = best.cols[c].maxW * best.S;
+        const colLeftX = colCenterX - colWidth / 2;
+        const colRightX = colCenterX + colWidth / 2;
+
+        const legendWidth = getLegendWidth();
+
+        // Verificar si hay solape significativo con la leyenda
+        // Calculamos cuánto de la columna solapa con la leyenda
+        const overlapWidth = Math.max(0, Math.min(colRightX, legendWidth) - colLeftX);
+        const overlapPercentage = overlapWidth / colWidth;
+
+        // Si hay cualquier solape con la leyenda (> 5%), reducir altura
+        const hasSignificantOverlap = overlapPercentage > 0.05;
+
+        // Calcular altura disponible para esta columna
+        let availableHeight = altoUsable;
+
+        if (hasSignificantOverlap && window.__legendBoxesGroup && window.__legendBoxesGroup.length > 0) {
+            // Si más del 5% de la columna solapa con la leyenda, restar la altura de la leyenda
+            const legendTop = Math.min(...window.__legendBoxesGroup.map(box => box.top));
+            const maxYForThisCol = legendTop - 15; // 15px de margen de seguridad para evitar que elementos toquen la leyenda
+            availableHeight = Math.max(10, maxYForThisCol - padding);
+            console.log(`📏 Columna ${c}: X=${colLeftX.toFixed(0)}-${colRightX.toFixed(0)}, legendWidth=${legendWidth.toFixed(0)}, solape=${(overlapPercentage*100).toFixed(0)}%, altura reducida a ${availableHeight.toFixed(0)}px`);
+        } else {
+            console.log(`📏 Columna ${c}: X=${colLeftX.toFixed(0)}-${colRightX.toFixed(0)}, legendWidth=${legendWidth.toFixed(0)}, solape=${(overlapPercentage*100).toFixed(0)}%, altura completa ${availableHeight.toFixed(0)}px`);
+        }
+
+        // Si solo hay un elemento, centrarlo verticalmente
+        if (col.items.length === 1) {
+            const h = heights[0];
+            const centerY = padding + availableHeight / 2;
+            const validCenterY = Math.max(padding + h / 2, Math.min(centerY, svgH - padding - h / 2));
+            centersYByCol[c].push(validCenterY);
+            continue;
+        }
+
+        // Para múltiples elementos: DISTRIBUIR POR TODO EL ESPACIO VERTICAL DISPONIBLE
+
+        // Verificar si los elementos caben en el espacio disponible
+        if (totalItemsHeight > availableHeight) {
+            // No caben: necesitamos reducir la escala o apilar con gap mínimo
+            console.warn(`Columna ${c}: elementos no caben (${totalItemsHeight}px > ${availableHeight}px)`);
+
+            // Determinar gap mínimo según tipo de elementos
+            const avgHeight = totalItemsHeight / col.items.length;
+            const isVeryThin = avgHeight < 4;
+            const minGap = isVeryThin ? 20 : 5; // Barras rectas: mínimo 20px, otras: 5px
+
+            let y = padding;
+
+            for (let i = 0; i < col.items.length; i++) {
+                const h = Math.max(heights[i], 2); // Altura mínima de 2px para mejor visualización
+                const centerY = y + h / 2;
+                centersYByCol[c].push(centerY);
+                y += h + minGap;
+            }
+        } else {
+            // Sí caben: distribuir usando todo el espacio disponible
+
+            // Calcular espacio disponible para gaps
+            const spaceForGaps = availableHeight - totalItemsHeight;
+            const numberOfGaps = col.items.length - 1;
+
+            // Distribuir el espacio equitativamente entre todos los gaps
+            let gap = spaceForGaps / numberOfGaps;
+
+            // Para barras muy delgadas, necesitan MÁS espacio para ser visibles
+            const avgHeight = totalItemsHeight / col.items.length;
+            const isVeryThin = avgHeight < 4;
+
+            if (isVeryThin) {
+                // Para barras rectas: gap mínimo de 18px, máximo de 50px
+                gap = Math.max(18, Math.min(gap, 50));
+            } else {
+                // Para figuras normales: gap mínimo de 5px
+                gap = Math.max(5, gap);
+            }
+
+            // Recalcular la altura total con el gap ajustado
+            const actualTotalHeight = totalItemsHeight + (numberOfGaps * gap);
+
+            // Si hay espacio extra después del ajuste, centrarlo verticalmente
+            const extraSpace = availableHeight - actualTotalHeight;
+            let y = padding + Math.max(0, extraSpace / 2);
+
+            // Posicionar elementos
+            for (let i = 0; i < col.items.length; i++) {
+                const h = Math.max(heights[i], 2); // Altura mínima de 2px para mejor visualización
+                const centerY = y + h / 2;
+
+                // Validar que no exceda los límites
+                const maxAllowedY = padding + availableHeight - h / 2;
+                const validCenterY = Math.max(padding + h / 2, Math.min(centerY, maxAllowedY));
+
+                centersYByCol[c].push(validCenterY);
+
+                y += h + gap;
+            }
+        }
+    }
+
     return {
         S: best.S,
         k: best.k,
@@ -777,7 +987,7 @@ function planMasonryOptimal(medidas, svgW, svgH, opts = {}) {
 // =======================
 // Función para renderizar un grupo SVG
 // =======================
-function renderizarGrupoSVG(grupo, gidx) {
+window.renderizarGrupoSVG = function renderizarGrupoSVG(grupo, gidx) {
         const groupId =
             grupo && grupo.etiqueta && grupo.etiqueta.id != null
                 ? grupo.etiqueta.id
@@ -812,7 +1022,7 @@ function renderizarGrupoSVG(grupo, gidx) {
                 }
             }
 
-            // âœ… NUEVO: Construir texto de coladas
+            // ✅ NUEVO: Construir texto de coladas
             const coladas = [];
             if (elemento.coladas?.colada1)
                 coladas.push(elemento.coladas.colada1);
@@ -826,7 +1036,7 @@ function renderizarGrupoSVG(grupo, gidx) {
 
             return {
                 letter: indexToLetters(idx),
-                text: `Ø${diametro} x${barras}${textColadas}`, // âœ… AÃ±adimos las coladas aquÃ­
+                text: `Ø${diametro} x${barras}${textColadas}`,
             };
         });
         drawLegendBottomLeft(svg, legendEntries, ancho, alto); // ← primero, para evitar solapes con todo lo demás
@@ -851,10 +1061,10 @@ function renderizarGrupoSVG(grupo, gidx) {
 
         const medidas = preproc.map((p) => p.medida);
         const plan = planMasonryOptimal(medidas, ancho, alto, {
-            padding: 15,
-            gapCol: 10,
-            gapRow: 20,
-            kMax: 4,
+            padding: 20,
+            gapCol: 50,
+            gapRow: 22,
+            kMax: 3,
         });
 
         const indexInCol = new Map();
@@ -1017,38 +1227,49 @@ function renderizarGrupoSVG(grupo, gidx) {
                                 box.left < 0 ||
                                 box.right > ancho;
                             if (out) continue;
+
+                            // Margen completo con figuras (6px)
                             const collideFig = window.__figBoxesGroup.some(
                                 (b) => rectsOverlap(b, box, LABEL_CLEARANCE)
                             );
                             if (collideFig) continue;
+
+                            // Margen reducido con dimensiones (2px) - los ángulos pueden estar muy cerca de las cotas
                             const collideDims = (
                                 window.__dimBoxesGroup || []
-                            ).some((b) =>
-                                rectsOverlap(b, box, LABEL_CLEARANCE)
-                            );
+                            ).some((b) => rectsOverlap(b, box, 2));
                             if (collideDims) continue;
+
+                            // Margen reducido entre ángulos (2px)
                             const collideAngles = (
                                 window.__angleBoxesGroup || []
-                            ).some((b) =>
-                                rectsOverlap(b, box, LABEL_CLEARANCE)
-                            );
+                            ).some((b) => rectsOverlap(b, box, 2));
                             if (collideAngles) continue;
+
+                            // Margen reducido con letras (2px)
                             const collideLetters = (
                                 window.__placedLetterBoxes || []
-                            ).some((b) =>
-                                rectsOverlap(b, box, LABEL_CLEARANCE)
-                            );
+                            ).some((b) => rectsOverlap(b, box, 2));
                             if (collideLetters) continue;
+
+                            // Margen completo con leyenda (6px)
                             const collideLegend = (
                                 window.__legendBoxesGroup || []
-                            ).some((b) =>
-                                rectsOverlap(b, box, LABEL_CLEARANCE)
-                            );
+                            ).some((b) => rectsOverlap(b, box, LABEL_CLEARANCE));
                             if (collideLegend) continue;
+
                             placed = { x: lx, y: ly, box };
                         }
                     }
-                    if (!placed) return;
+
+                    // Si no encontramos posición válida, usar la posición base como último recurso
+                    if (!placed) {
+                        const fallbackX = P.x + bx * (R + ANGLE_LABEL_OFFSET);
+                        const fallbackY = P.y + by * (R + ANGLE_LABEL_OFFSET);
+                        const fallbackBox = makeBox(fallbackX, fallbackY);
+                        placed = { x: fallbackX, y: fallbackY, box: fallbackBox };
+                    }
+
                     window.__angleBoxesGroup.push(placed.box);
                     const txt = document.createElementNS(
                         "http://www.w3.org/2000/svg",
@@ -1195,16 +1416,22 @@ function renderizarGrupoSVG(grupo, gidx) {
                         0
                     );
                     if (collideFig) continue;
+
+                    // Margen reducido con ángulos (2px)
                     const collideAngles = (window.__angleBoxesGroup || []).some(
-                        (b) => rectsOverlap(b, labelBox, LABEL_CLEARANCE)
+                        (b) => rectsOverlap(b, labelBox, 2)
                     );
                     if (collideAngles) continue;
+
+                    // Margen completo con leyenda (6px)
                     const collideLegend = (
                         window.__legendBoxesGroup || []
                     ).some((b) => rectsOverlap(b, labelBox, LABEL_CLEARANCE));
                     if (collideLegend) continue;
+
+                    // Margen reducido entre cotas (2px)
                     const collideOth = placedBoxes.some((b) =>
-                        rectsOverlap(b, labelBox, LABEL_CLEARANCE)
+                        rectsOverlap(b, labelBox, 2)
                     );
                     if (collideOth) continue;
                     const outOfBounds =
@@ -1263,6 +1490,176 @@ function renderizarGrupoSVG(grupo, gidx) {
                 txt.addEventListener("blur", onLeave);
             });
 
+            // ========== COTAS DE RADIOS (ARCOS) ==========
+            (function drawArcDimensions() {
+                const arcs = [];
+                let x = 0, y = 0, a = 0;
+
+                for (let k = 0; k < dimsScaled.length; k++) {
+                    const d = dimsScaled[k];
+                    if (d.type === "line") {
+                        x += d.length * Math.cos(rad(a));
+                        y += d.length * Math.sin(rad(a));
+                    } else if (d.type === "turn") {
+                        a += d.angle;
+                    } else if (d.type === "arc") {
+                        const cx_arc = x + d.radius * Math.cos(rad(a + 90));
+                        const cy_arc = y + d.radius * Math.sin(rad(a + 90));
+                        const start = Math.atan2(y - cy_arc, x - cx_arc);
+                        const end = start + rad(d.arcAngle);
+
+                        let originalRadius = d.radius;
+                        for (let j = 0; j < dimsNoZero.length; j++) {
+                            const orig = dimsNoZero[j];
+                            if (orig.type === "arc" && Math.abs(orig.arcAngle - d.arcAngle) < 0.01) {
+                                originalRadius = orig.radius;
+                                break;
+                            }
+                        }
+
+                        arcs.push({
+                            center: { x: cx_arc, y: cy_arc },
+                            radius: d.radius,
+                            originalRadius: originalRadius,
+                            arcAngle: d.arcAngle,
+                            startAngle: start,
+                            endAngle: end
+                        });
+
+                        x = cx_arc + d.radius * Math.cos(end);
+                        y = cy_arc + d.radius * Math.sin(end);
+                        a += d.arcAngle;
+                    }
+                }
+
+                arcs.forEach(function(arc) {
+                    // Transform arc center to SVG coordinates
+                    const centerRot = rotatePoint(arc.center, m.cxModel, m.cyModel, m.rotDeg);
+                    const centerSvg = {
+                        x: cx + (centerRot.x - m.midX) * scale,
+                        y: cy + (centerRot.y - m.midY) * scale
+                    };
+
+                    const midAngle = (arc.startAngle + arc.endAngle) / 2;
+                    const radiusSvg = arc.radius * scale;
+                    const label = "R" + formatDimLabel(arc.originalRadius, { decimals: 0, step: null });
+                    const tb = approxTextBox(label, SIZE_DIM_TEXT);
+
+                    // Try multiple angles around the arc
+                    const angleOffsets = [0, 15, -15, 30, -30, 45, -45, 60, -60, 90, -90];
+                    let placed = false;
+                    let labelX, labelY, labelBox;
+
+                    for (let angleIdx = 0; angleIdx < angleOffsets.length && !placed; angleIdx++) {
+                        const angleOffset = angleOffsets[angleIdx];
+                        const adjustedAngle = midAngle + rad(angleOffset);
+
+                        // Calculate point on arc at adjusted angle
+                        const arcPtAdj = {
+                            x: arc.center.x + arc.radius * Math.cos(adjustedAngle),
+                            y: arc.center.y + arc.radius * Math.sin(adjustedAngle)
+                        };
+                        const arcPtRot = rotatePoint(arcPtAdj, m.cxModel, m.cyModel, m.rotDeg);
+                        const arcPtSvg = {
+                            x: cx + (arcPtRot.x - m.midX) * scale,
+                            y: cy + (arcPtRot.y - m.midY) * scale
+                        };
+
+                        // Calculate direction from center to arc point
+                        const dxAdj = arcPtSvg.x - centerSvg.x;
+                        const dyAdj = arcPtSvg.y - centerSvg.y;
+                        const distAdj = Math.hypot(dxAdj, dyAdj) || 1;
+                        const nxAdj = dxAdj / distAdj;
+                        const nyAdj = dyAdj / distAdj;
+
+                        // Try multiple distances from the arc
+                        for (let offset = 8; offset <= 60 && !placed; offset += 6) {
+                            const lineEnd = radiusSvg * 0.7;
+                            labelX = centerSvg.x + nxAdj * lineEnd + nxAdj * offset;
+                            labelY = centerSvg.y + nyAdj * lineEnd + nyAdj * offset;
+                            labelBox = {
+                                left: labelX - tb.w / 2,
+                                right: labelX + tb.w / 2,
+                                top: labelY - tb.h / 2,
+                                bottom: labelY + tb.h / 2
+                            };
+
+                            // Check bounds and collisions
+                            const outOfBounds = labelBox.top < 0 || labelBox.bottom > alto ||
+                                              labelBox.left < 0 || labelBox.right > ancho;
+                            if (outOfBounds) continue;
+
+                            const collideFig = window.__figBoxesGroup.some(b =>
+                                rectsOverlap(b, labelBox, 2)
+                            );
+                            if (collideFig) continue;
+
+                            const collideLegend = (window.__legendBoxesGroup || []).some(b =>
+                                rectsOverlap(b, labelBox, 2)
+                            );
+                            if (collideLegend) continue;
+
+                            placed = true;
+                            break;
+                        }
+                    }
+
+                    if (!placed) return;
+
+                    placedBoxes.push(labelBox);
+
+                    // Draw radial line
+                    const dirToLabel = {
+                        x: labelX - centerSvg.x,
+                        y: labelY - centerSvg.y
+                    };
+                    const distToLabel = Math.hypot(dirToLabel.x, dirToLabel.y) || 1;
+                    const nToLabel = {
+                        x: dirToLabel.x / distToLabel,
+                        y: dirToLabel.y / distToLabel
+                    };
+                    const finalLineEndX = centerSvg.x + nToLabel.x * radiusSvg * 0.6;
+                    const finalLineEndY = centerSvg.y + nToLabel.y * radiusSvg * 0.6;
+
+                    const rl = document.createElementNS("http://www.w3.org/2000/svg", "line");
+                    rl.setAttribute("x1", centerSvg.x);
+                    rl.setAttribute("y1", centerSvg.y);
+                    rl.setAttribute("x2", finalLineEndX);
+                    rl.setAttribute("y2", finalLineEndY);
+                    rl.setAttribute("stroke", "rgba(0,128,0,0.6)");
+                    rl.setAttribute("stroke-width", "4");
+                    rl.setAttribute("stroke-linecap", "round");
+                    rl.setAttribute("vector-effect", "non-scaling-stroke");
+                    rl.style.opacity = 0;
+                    rl.style.pointerEvents = "none";
+                    rl.style.transition = "opacity 120ms ease";
+                    svg.appendChild(rl);
+
+                    const txt = document.createElementNS("http://www.w3.org/2000/svg", "text");
+                    txt.setAttribute("x", labelX);
+                    txt.setAttribute("y", labelY);
+                    txt.setAttribute("fill", VALOR_COTA_COLOR);
+                    txt.setAttribute("font-size", SIZE_DIM_TEXT);
+                    txt.setAttribute("text-anchor", "middle");
+                    txt.setAttribute("alignment-baseline", "middle");
+                    txt.setAttribute("tabindex", "0");
+                    txt.style.cursor = "pointer";
+                    txt.textContent = label;
+                    svg.appendChild(txt);
+
+                    function onEnter() {
+                        rl.style.opacity = 1;
+                    }
+                    function onLeave() {
+                        rl.style.opacity = 0;
+                    }
+                    txt.addEventListener("mouseenter", onEnter);
+                    txt.addEventListener("mouseleave", onLeave);
+                    txt.addEventListener("focus", onEnter);
+                    txt.addEventListener("blur", onLeave);
+                });
+            })();
+
             // =========================
             // Letra (después de cotas)
             // =========================
@@ -1285,7 +1682,7 @@ function renderizarGrupoSVG(grupo, gidx) {
                     Math.min(centerYFig, alto - tb.h / 2)
                 );
                 function tryColumn(xPos) {
-                    const maxSpread = Math.max(60, alto * 0.6);
+                    const maxSpread = 30; // Reducido para mantener la letra cerca de su figura
                     for (let off = 0; off <= maxSpread; off += LABEL_STEP) {
                         const dir = off % 2 === 0 ? 1 : -1,
                             mult = Math.ceil(off / 2),
@@ -1296,26 +1693,35 @@ function renderizarGrupoSVG(grupo, gidx) {
                         );
                         const lx = xPos;
                         const box = makeBoxAt(lx, ly);
+
+                        // Margen completo con figuras (6px) - no queremos superposición
                         const collideFig = window.__figBoxesGroup.some((b) =>
                             rectsOverlap(b, box, LABEL_CLEARANCE)
                         );
                         if (collideFig) continue;
+
+                        // Margen reducido con dimensiones y ángulos (3px) - permitimos estar más cerca
                         const collideDims = (window.__dimBoxesGroup || []).some(
-                            (b) => rectsOverlap(b, box, LABEL_CLEARANCE)
+                            (b) => rectsOverlap(b, box, 3)
                         );
                         if (collideDims) continue;
                         const collideAngles = (
                             window.__angleBoxesGroup || []
-                        ).some((b) => rectsOverlap(b, box, LABEL_CLEARANCE));
+                        ).some((b) => rectsOverlap(b, box, 3));
                         if (collideAngles) continue;
+
+                        // Margen completo con leyenda (6px)
                         const collideLegend = (
                             window.__legendBoxesGroup || []
                         ).some((b) => rectsOverlap(b, box, LABEL_CLEARANCE));
                         if (collideLegend) continue;
+
+                        // Margen reducido entre letras (2px) - permitimos que estén más juntas
                         const collidePrev = (
                             window.__placedLetterBoxes || []
-                        ).some((b) => rectsOverlap(b, box, LABEL_CLEARANCE));
+                        ).some((b) => rectsOverlap(b, box, 2));
                         if (collidePrev) continue;
+
                         const out =
                             box.top < 0 ||
                             box.bottom > alto ||
@@ -1327,41 +1733,64 @@ function renderizarGrupoSVG(grupo, gidx) {
                     }
                     return false;
                 }
-                const baseRight = clampXInside(
-                    figBox.right + 10,
-                    tb.w,
-                    0,
-                    ancho
-                );
-                const baseLeft = clampXInside(
-                    figBox.left - 10 - tb.w,
-                    tb.w,
-                    0,
-                    ancho
-                );
-                let columnsTried = 0,
-                    xStep = 8;
-                while (!chosen && columnsTried < 8) {
-                    const xCol = clampXInside(
-                        baseRight + columnsTried * xStep,
-                        tb.w,
-                        0,
-                        ancho
-                    );
+                // Estrategia: buscar en círculos concéntricos, probando todas las posiciones cercanas primero
+                const positions = [
+                    // Prioridad 1: Inmediatamente a la derecha o izquierda de la figura
+                    { x: figBox.right + 10, priority: 1 },
+                    { x: figBox.left - 10 - tb.w, priority: 1 },
+                    // Prioridad 2: Ligeramente más alejado (5-15px)
+                    { x: figBox.right + 15, priority: 2 },
+                    { x: figBox.left - 15 - tb.w, priority: 2 },
+                    { x: figBox.right + 5, priority: 2 },
+                    { x: figBox.left - 5 - tb.w, priority: 2 },
+                    // Prioridad 3: Un poco más lejos (20-30px)
+                    { x: figBox.right + 20, priority: 3 },
+                    { x: figBox.left - 20 - tb.w, priority: 3 },
+                    { x: figBox.right + 25, priority: 3 },
+                    { x: figBox.left - 25 - tb.w, priority: 3 },
+                    { x: figBox.right + 30, priority: 3 },
+                    { x: figBox.left - 30 - tb.w, priority: 3 },
+                ];
+
+                // Ordenar por prioridad y probar cada posición
+                positions.sort((a, b) => a.priority - b.priority);
+
+                for (const pos of positions) {
+                    if (chosen) break;
+                    const xCol = clampXInside(pos.x, tb.w, 0, ancho);
                     if (tryColumn(xCol)) break;
-                    columnsTried++;
                 }
-                columnsTried = 0;
-                while (!chosen && columnsTried < 8) {
-                    const xColL = clampXInside(
-                        baseLeft - columnsTried * xStep,
-                        tb.w,
-                        0,
-                        ancho
-                    );
-                    if (tryColumn(xColL)) break;
-                    columnsTried++;
+
+                // Si no encontramos posición, intentar arriba/abajo de la figura centrada
+                if (!chosen) {
+                    const centerXFig = (figBox.left + figBox.right) / 2;
+                    const tryAboveBelow = [
+                        { x: centerXFig - tb.w / 2, y: figBox.top - tb.h - 5 },  // Arriba
+                        { x: centerXFig - tb.w / 2, y: figBox.bottom + tb.h + 5 }, // Abajo
+                    ];
+
+                    for (const pos of tryAboveBelow) {
+                        if (chosen) break;
+                        const lx = clampXInside(pos.x, tb.w, 0, ancho);
+                        const ly = Math.max(tb.h / 2, Math.min(alto - tb.h / 2, pos.y));
+                        const box = makeBoxAt(lx, ly);
+
+                        // Verificar colisiones con márgenes reducidos
+                        const noCollide =
+                            !window.__figBoxesGroup.some((b) => rectsOverlap(b, box, LABEL_CLEARANCE)) &&
+                            !(window.__dimBoxesGroup || []).some((b) => rectsOverlap(b, box, 3)) &&
+                            !(window.__angleBoxesGroup || []).some((b) => rectsOverlap(b, box, 3)) &&
+                            !(window.__legendBoxesGroup || []).some((b) => rectsOverlap(b, box, LABEL_CLEARANCE)) &&
+                            !(window.__placedLetterBoxes || []).some((b) => rectsOverlap(b, box, 2)) &&
+                            box.top >= 0 && box.bottom <= alto && box.left >= 0 && box.right <= ancho;
+
+                        if (noCollide) {
+                            chosen = { x: lx, y: ly, box };
+                        }
+                    }
                 }
+
+                // Último recurso: colocar a la derecha del canvas
                 if (!chosen) {
                     const lx = clampXInside(ancho - tb.w, tb.w, 0, ancho);
                     const ly = baseY;
@@ -1402,8 +1831,33 @@ document.addEventListener("DOMContentLoaded", function () {
     const grupos = window.elementosAgrupadosScript;
     if (!grupos) return;
 
+    // 🔥 PASO 1: Aplicar clases CSS ANTES de renderizar SVG
+    const gridMaquina = document.getElementById('grid-maquina');
+    if (gridMaquina && window.updateGridClasses) {
+        const showLeft = JSON.parse(localStorage.getItem('showLeft') ?? 'true');
+        const showRight = JSON.parse(localStorage.getItem('showRight') ?? 'true');
+        window.updateGridClasses(showLeft, showRight);
+        console.log('🎨 Clases aplicadas ANTES de renderizar SVG');
+    }
+
+    // 🔥 PASO 2: Renderizar todos los SVG
     grupos.forEach(function (grupo, gidx) {
         renderizarGrupoSVG(grupo, gidx);
+    });
+
+    // 🔥 PASO 3: Mostrar el grid con las clases ya aplicadas
+    requestAnimationFrame(() => {
+        if (gridMaquina) {
+            gridMaquina.style.opacity = '1';
+            gridMaquina.style.visibility = 'visible';
+            gridMaquina.style.transition = 'opacity 0.2s ease-in, visibility 0s 0s';
+            console.log('✅ Grid visible con clases:', gridMaquina.className);
+        }
+
+        // Mostrar las etiquetas
+        document.querySelectorAll('.proceso').forEach(el => {
+            el.style.opacity = '1';
+        });
     });
 
     // =======================
@@ -1455,7 +1909,7 @@ document.addEventListener("DOMContentLoaded", function () {
 // =======================
 // Modal dividir elemento
 // =======================
-function abrirModalDividirElemento(elementoId) {
+window.abrirModalDividirElemento = function abrirModalDividirElemento(elementoId) {
     const modal = document.getElementById("modalDividirElemento");
     const input = document.getElementById("dividir_elemento_id");
     const form = document.getElementById("formDividirElemento");
@@ -1465,7 +1919,7 @@ function abrirModalDividirElemento(elementoId) {
         form.setAttribute("action", window.rutaDividirElemento);
     modal.classList.remove("hidden");
 }
-async function enviarDivision() {
+window.enviarDivision = async function enviarDivision() {
     const form = document.getElementById("formDividirElemento");
     const url = form.getAttribute("action") || window.rutaDividirElemento;
     const fd = new FormData(form);

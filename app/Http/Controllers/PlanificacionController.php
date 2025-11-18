@@ -10,6 +10,7 @@ use App\Models\Obra;
 use App\Models\Camion;
 use App\Models\Festivo;
 use App\Models\User;
+use App\Models\EmpresaTransporte;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -71,11 +72,14 @@ class PlanificacionController extends Controller
             ->orderBy('obra')
             ->get(['id', 'obra']);
 
+        $empresasTransporte = EmpresaTransporte::orderBy('nombre')->get(['id', 'nombre']);
+
         return view('planificacion.index', [
             'fechas' => $fechas,
             'camiones' => $camiones,
             'obras' => $obras,
             'eventos' => $eventos,
+            'empresasTransporte' => $empresasTransporte,
         ]);
     }
     /**
@@ -287,28 +291,8 @@ class PlanificacionController extends Controller
             // Eliminar duplicados por obra_id
             $obrasClientes = $obrasClientes->unique('obra_id')->values();
 
-            // Construir el título con todas las obras y clientes
-            $titulo = "{$salida->codigo_salida}{$codigoSage}";
-
-            if ($obrasClientes->isNotEmpty()) {
-                // Formatear obras y clientes
-                $obrasTexto = $obrasClientes->map(function($oc) {
-                    $codObra = $oc['cod_obra'] ? "({$oc['cod_obra']})" : '';
-                    return "{$oc['obra']} {$codObra}";
-                })->join(', ');
-
-                $clientesUnicos = $obrasClientes->pluck('cliente')->filter()->unique()->values();
-                $clientesTexto = $clientesUnicos->join(', ');
-
-                if ($clientesTexto) {
-                    $titulo .= " - {$clientesTexto}";
-                }
-                $titulo .= " - {$obrasTexto}";
-            } else {
-                $titulo .= " - Sin obra/cliente asignado";
-            }
-
-            $titulo .= " - {$pesoTotal} kg";
+            // Construir el título solo con código de salida y peso (más compacto para el calendario)
+            $titulo = "{$salida->codigo_salida} - {$pesoTotal} kg";
 
             // Determinar resourceId (usar la primera obra, o _sin_obra_)
             $resourceId = '_sin_obra_';
@@ -338,6 +322,7 @@ class PlanificacionController extends Controller
                         'nombre' => $oc['cliente'],
                     ])->unique('id')->filter(fn($c) => $c['nombre'])->values()->toArray(),
                     'empresa'      => $empresa,
+                    'empresa_id'   => $salida->empresa_id,
                     'camion'       => $camion,
                     'comentario'   => $salida->comentario ?? '',
                     'peso_total'   => $pesoTotal,
@@ -630,6 +615,40 @@ class PlanificacionController extends Controller
         }
 
         return response()->json(['error' => 'Tipo no válido'], 400);
+    }
+
+    public function actualizarEmpresaTransporte(Request $request, $id, ActionLoggerService $logger)
+    {
+        $request->validate([
+            'empresa_id' => 'required|integer|exists:empresas_transporte,id'
+        ]);
+
+        $salida = Salida::findOrFail($id);
+        $empresaAnterior = $salida->empresa_id;
+        $empresaAnteriorNombre = $salida->empresaTransporte ? $salida->empresaTransporte->nombre : 'N/A';
+
+        $salida->empresa_id = $request->empresa_id;
+        $salida->save();
+
+        // Recargar la relación para obtener el nombre de la nueva empresa
+        $salida->load('empresaTransporte');
+        $nuevaEmpresaNombre = $salida->empresaTransporte->nombre;
+
+        $logger->logPlanificacion('empresa_transporte_actualizada', [
+            'salida_codigo' => $salida->codigo_salida ?? 'N/A',
+            'codigo_sage' => $salida->codigo_sage ?? 'N/A',
+            'empresa_anterior' => $empresaAnteriorNombre,
+            'empresa_nueva' => $nuevaEmpresaNombre,
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Empresa de transporte actualizada correctamente',
+            'empresa' => [
+                'id' => $salida->empresa_id,
+                'nombre' => $nuevaEmpresaNombre,
+            ]
+        ]);
     }
 
     public function show($id)

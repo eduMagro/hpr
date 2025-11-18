@@ -440,6 +440,82 @@ async function comentarSalida(salidaId, comentarioActual, calendar) {
     window._calendarRef = calendar;
 }
 
+/* ===================== Asignar empresa de transporte ===================== */
+async function asignarEmpresaTransporte(salidaId, empresaActualId = null, empresaActualNombre = "", calendar) {
+    try {
+        closeMenu();
+    } catch (_) {}
+    if (!salidaId) return Swal.fire("⚠️", "ID de salida inválido.", "warning");
+
+    const empresas = window.AppSalidas?.empresasTransporte || [];
+    if (!empresas.length) {
+        return Swal.fire("⚠️", "No hay empresas de transporte disponibles.", "warning");
+    }
+
+    // Crear opciones del select
+    const inputOptions = {};
+    empresas.forEach(empresa => {
+        inputOptions[empresa.id] = empresa.nombre;
+    });
+
+    const { value: empresaId, isConfirmed } = await Swal.fire({
+        title: "🚚 Asignar Empresa de Transporte",
+        input: "select",
+        inputOptions: inputOptions,
+        inputValue: empresaActualId || "",
+        inputPlaceholder: "Selecciona una empresa",
+        showCancelButton: true,
+        confirmButtonText: "💾 Guardar",
+        inputValidator: (value) => {
+            if (!value) {
+                return "Debes seleccionar una empresa";
+            }
+        }
+    });
+
+    if (!isConfirmed) return;
+
+    const routeTmpl = window.AppSalidas?.routes?.empresaTransporte || "";
+    if (!routeTmpl)
+        return Swal.fire(
+            "⚠️",
+            "No está configurada la ruta de empresa de transporte.",
+            "warning"
+        );
+
+    const url = routeTmpl.replace("__ID__", String(salidaId));
+    const payload = { empresa_id: parseInt(empresaId) };
+
+    try {
+        const res = await fetch(url, {
+            method: "PUT",
+            headers: {
+                "Content-Type": "application/json",
+                "X-CSRF-TOKEN": window.AppSalidas?.csrf,
+            },
+            body: JSON.stringify(payload),
+        });
+        if (!res.ok) {
+            const text = await res.text().catch(() => "");
+            throw new Error(`HTTP ${res.status} ${res.statusText} ${text}`);
+        }
+        const data = await res.json().catch(() => ({}));
+        await Swal.fire(
+            data.success ? "✅" : "⚠️",
+            data.message ||
+                (data.success ? "Empresa de transporte asignada" : "No se pudo asignar"),
+            data.success ? "success" : "warning"
+        );
+        if (data.success && calendar) {
+            calendar.refetchEvents?.();
+            calendar.refetchResources?.();
+        }
+    } catch (err) {
+        console.error(err);
+        Swal.fire("❌", "Ocurrió un error al guardar la empresa.", "error");
+    }
+}
+
 /* ===================== Asignar código SAGE ===================== */
 async function asignarCodigoSalida(salidaId, codigoActual = "", calendar) {
     try {
@@ -936,6 +1012,8 @@ export function attachEventoContextMenu(info, calendar) {
         } else if (tipo === "salida") {
             // El ID del evento ahora es directamente el salida_id
             const salidaId = p.salida_id || ev.id;
+            const empresaId = p.empresa_id || null;
+            const empresaNombre = p.empresa || "";
 
             items = [
                 {
@@ -947,6 +1025,12 @@ export function attachEventoContextMenu(info, calendar) {
                     label: "Gestionar paquetes",
                     icon: "📦",
                     onClick: () => gestionarPaquetesSalida(salidaId, calendar),
+                },
+                {
+                    label: "Asignar empresa de transporte",
+                    icon: "🚚",
+                    onClick: () =>
+                        asignarEmpresaTransporte(salidaId, empresaId, empresaNombre, calendar),
                 },
                 {
                     label: "Asignar código SAGE",

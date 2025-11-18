@@ -1315,6 +1315,9 @@ class EtiquetaController extends Controller
             $resultado = $servicio->actualizar($dto);
             $etiqueta = $resultado->etiqueta;
 
+            // 🔄 Refrescar la etiqueta desde la base de datos para obtener el peso actualizado
+            $etiqueta->refresh();
+
             // Extraer coladas únicas de los productos afectados
             $coladas = collect($resultado->productosAfectados)
                 ->pluck('n_colada')
@@ -1389,6 +1392,8 @@ class EtiquetaController extends Controller
             return response()->json([
                 'success' => true,
                 'estado' => $etiqueta->estado,
+                'peso_etiqueta' => $etiqueta->peso,
+                'nombre' => $etiqueta->etiqueta_sub_id,
                 'productos_afectados' => $resultado->productosAfectados,
                 'coladas' => $coladas,
                 'coladas_por_elemento' => $coladasPorElemento,

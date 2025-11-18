@@ -5,7 +5,7 @@
 </style>
 
 <div x-data="{
-    showLeft: JSON.parse(localStorage.getItem('showLeft') ?? 'false'),
+    showLeft: JSON.parse(localStorage.getItem('showLeft') ?? 'true'),
     showRight: JSON.parse(localStorage.getItem('showRight') ?? 'true'),
 
     toggleLeft() {
@@ -38,6 +38,14 @@
         });
         window.addEventListener('toggleRight', () => {
             this.showRight = JSON.parse(localStorage.getItem('showRight') ?? 'true');
+        });
+
+        // 🔥 Aplicar clases CSS inmediatamente después de que Alpine inicialice
+        this.$nextTick(() => {
+            if (window.updateGridClasses) {
+                window.updateGridClasses(this.showLeft, this.showRight);
+                console.log('✅ Clases aplicadas desde Alpine init:', this.showLeft, this.showRight);
+            }
         });
     }
 }" class="w-full">
@@ -467,3 +475,6 @@
         }
     });
 </script>
+
+{{-- Panel de información del elemento --}}
+<x-maquinas.paneles.info />

@@ -1490,6 +1490,176 @@ window.renderizarGrupoSVG = function renderizarGrupoSVG(grupo, gidx) {
                 txt.addEventListener("blur", onLeave);
             });
 
+            // ========== COTAS DE RADIOS (ARCOS) ==========
+            (function drawArcDimensions() {
+                const arcs = [];
+                let x = 0, y = 0, a = 0;
+
+                for (let k = 0; k < dimsScaled.length; k++) {
+                    const d = dimsScaled[k];
+                    if (d.type === "line") {
+                        x += d.length * Math.cos(rad(a));
+                        y += d.length * Math.sin(rad(a));
+                    } else if (d.type === "turn") {
+                        a += d.angle;
+                    } else if (d.type === "arc") {
+                        const cx_arc = x + d.radius * Math.cos(rad(a + 90));
+                        const cy_arc = y + d.radius * Math.sin(rad(a + 90));
+                        const start = Math.atan2(y - cy_arc, x - cx_arc);
+                        const end = start + rad(d.arcAngle);
+
+                        let originalRadius = d.radius;
+                        for (let j = 0; j < dimsNoZero.length; j++) {
+                            const orig = dimsNoZero[j];
+                            if (orig.type === "arc" && Math.abs(orig.arcAngle - d.arcAngle) < 0.01) {
+                                originalRadius = orig.radius;
+                                break;
+                            }
+                        }
+
+                        arcs.push({
+                            center: { x: cx_arc, y: cy_arc },
+                            radius: d.radius,
+                            originalRadius: originalRadius,
+                            arcAngle: d.arcAngle,
+                            startAngle: start,
+                            endAngle: end
+                        });
+
+                        x = cx_arc + d.radius * Math.cos(end);
+                        y = cy_arc + d.radius * Math.sin(end);
+                        a += d.arcAngle;
+                    }
+                }
+
+                arcs.forEach(function(arc) {
+                    // Transform arc center to SVG coordinates
+                    const centerRot = rotatePoint(arc.center, m.cxModel, m.cyModel, m.rotDeg);
+                    const centerSvg = {
+                        x: cx + (centerRot.x - m.midX) * scale,
+                        y: cy + (centerRot.y - m.midY) * scale
+                    };
+
+                    const midAngle = (arc.startAngle + arc.endAngle) / 2;
+                    const radiusSvg = arc.radius * scale;
+                    const label = "R" + formatDimLabel(arc.originalRadius, { decimals: 0, step: null });
+                    const tb = approxTextBox(label, SIZE_DIM_TEXT);
+
+                    // Try multiple angles around the arc
+                    const angleOffsets = [0, 15, -15, 30, -30, 45, -45, 60, -60, 90, -90];
+                    let placed = false;
+                    let labelX, labelY, labelBox;
+
+                    for (let angleIdx = 0; angleIdx < angleOffsets.length && !placed; angleIdx++) {
+                        const angleOffset = angleOffsets[angleIdx];
+                        const adjustedAngle = midAngle + rad(angleOffset);
+
+                        // Calculate point on arc at adjusted angle
+                        const arcPtAdj = {
+                            x: arc.center.x + arc.radius * Math.cos(adjustedAngle),
+                            y: arc.center.y + arc.radius * Math.sin(adjustedAngle)
+                        };
+                        const arcPtRot = rotatePoint(arcPtAdj, m.cxModel, m.cyModel, m.rotDeg);
+                        const arcPtSvg = {
+                            x: cx + (arcPtRot.x - m.midX) * scale,
+                            y: cy + (arcPtRot.y - m.midY) * scale
+                        };
+
+                        // Calculate direction from center to arc point
+                        const dxAdj = arcPtSvg.x - centerSvg.x;
+                        const dyAdj = arcPtSvg.y - centerSvg.y;
+                        const distAdj = Math.hypot(dxAdj, dyAdj) || 1;
+                        const nxAdj = dxAdj / distAdj;
+                        const nyAdj = dyAdj / distAdj;
+
+                        // Try multiple distances from the arc
+                        for (let offset = 8; offset <= 60 && !placed; offset += 6) {
+                            const lineEnd = radiusSvg * 0.7;
+                            labelX = centerSvg.x + nxAdj * lineEnd + nxAdj * offset;
+                            labelY = centerSvg.y + nyAdj * lineEnd + nyAdj * offset;
+                            labelBox = {
+                                left: labelX - tb.w / 2,
+                                right: labelX + tb.w / 2,
+                                top: labelY - tb.h / 2,
+                                bottom: labelY + tb.h / 2
+                            };
+
+                            // Check bounds and collisions
+                            const outOfBounds = labelBox.top < 0 || labelBox.bottom > alto ||
+                                              labelBox.left < 0 || labelBox.right > ancho;
+                            if (outOfBounds) continue;
+
+                            const collideFig = window.__figBoxesGroup.some(b =>
+                                rectsOverlap(b, labelBox, 2)
+                            );
+                            if (collideFig) continue;
+
+                            const collideLegend = (window.__legendBoxesGroup || []).some(b =>
+                                rectsOverlap(b, labelBox, 2)
+                            );
+                            if (collideLegend) continue;
+
+                            placed = true;
+                            break;
+                        }
+                    }
+
+                    if (!placed) return;
+
+                    placedBoxes.push(labelBox);
+
+                    // Draw radial line
+                    const dirToLabel = {
+                        x: labelX - centerSvg.x,
+                        y: labelY - centerSvg.y
+                    };
+                    const distToLabel = Math.hypot(dirToLabel.x, dirToLabel.y) || 1;
+                    const nToLabel = {
+                        x: dirToLabel.x / distToLabel,
+                        y: dirToLabel.y / distToLabel
+                    };
+                    const finalLineEndX = centerSvg.x + nToLabel.x * radiusSvg * 0.6;
+                    const finalLineEndY = centerSvg.y + nToLabel.y * radiusSvg * 0.6;
+
+                    const rl = document.createElementNS("http://www.w3.org/2000/svg", "line");
+                    rl.setAttribute("x1", centerSvg.x);
+                    rl.setAttribute("y1", centerSvg.y);
+                    rl.setAttribute("x2", finalLineEndX);
+                    rl.setAttribute("y2", finalLineEndY);
+                    rl.setAttribute("stroke", "rgba(0,128,0,0.6)");
+                    rl.setAttribute("stroke-width", "4");
+                    rl.setAttribute("stroke-linecap", "round");
+                    rl.setAttribute("vector-effect", "non-scaling-stroke");
+                    rl.style.opacity = 0;
+                    rl.style.pointerEvents = "none";
+                    rl.style.transition = "opacity 120ms ease";
+                    svg.appendChild(rl);
+
+                    const txt = document.createElementNS("http://www.w3.org/2000/svg", "text");
+                    txt.setAttribute("x", labelX);
+                    txt.setAttribute("y", labelY);
+                    txt.setAttribute("fill", VALOR_COTA_COLOR);
+                    txt.setAttribute("font-size", SIZE_DIM_TEXT);
+                    txt.setAttribute("text-anchor", "middle");
+                    txt.setAttribute("alignment-baseline", "middle");
+                    txt.setAttribute("tabindex", "0");
+                    txt.style.cursor = "pointer";
+                    txt.textContent = label;
+                    svg.appendChild(txt);
+
+                    function onEnter() {
+                        rl.style.opacity = 1;
+                    }
+                    function onLeave() {
+                        rl.style.opacity = 0;
+                    }
+                    txt.addEventListener("mouseenter", onEnter);
+                    txt.addEventListener("mouseleave", onLeave);
+                    txt.addEventListener("focus", onEnter);
+                    txt.addEventListener("blur", onLeave);
+                });
+            })();
+
             // =========================
             // Letra (después de cotas)
             // =========================
@@ -1661,22 +1831,30 @@ document.addEventListener("DOMContentLoaded", function () {
     const grupos = window.elementosAgrupadosScript;
     if (!grupos) return;
 
-    // Renderizar todos los SVG
+    // 🔥 PASO 1: Aplicar clases CSS ANTES de renderizar SVG
+    const gridMaquina = document.getElementById('grid-maquina');
+    if (gridMaquina && window.updateGridClasses) {
+        const showLeft = JSON.parse(localStorage.getItem('showLeft') ?? 'true');
+        const showRight = JSON.parse(localStorage.getItem('showRight') ?? 'true');
+        window.updateGridClasses(showLeft, showRight);
+        console.log('🎨 Clases aplicadas ANTES de renderizar SVG');
+    }
+
+    // 🔥 PASO 2: Renderizar todos los SVG
     grupos.forEach(function (grupo, gidx) {
         renderizarGrupoSVG(grupo, gidx);
     });
 
-    // Mostrar todas las etiquetas con una animación optimizada
+    // 🔥 PASO 3: Mostrar el grid con las clases ya aplicadas
     requestAnimationFrame(() => {
-        // 1. Mostrar el grid principal completo
-        const gridMaquina = document.getElementById('grid-maquina');
         if (gridMaquina) {
             gridMaquina.style.opacity = '1';
             gridMaquina.style.visibility = 'visible';
             gridMaquina.style.transition = 'opacity 0.2s ease-in, visibility 0s 0s';
+            console.log('✅ Grid visible con clases:', gridMaquina.className);
         }
 
-        // 2. Mostrar las etiquetas
+        // Mostrar las etiquetas
         document.querySelectorAll('.proceso').forEach(el => {
             el.style.opacity = '1';
         });
