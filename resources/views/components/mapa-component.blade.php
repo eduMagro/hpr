@@ -6,7 +6,6 @@
     'paquetesConLocalizacion' => [],
     'dimensiones' => null,
     'obraActualId' => null,
-    'mapId' => null,
 
     // Opciones visuales / comportamiento
     'showControls' => false, // botones Horizontal/Vertical + input QR
@@ -14,7 +13,6 @@
     'mostrarObra' => false,
     'height' => '',
     'enableDragPaquetes' => false, // habilitar arrastre de paquetes
-    'modoModal' => false, // renderizar ghost sin guardar automático
 
     // Rutas para AJAX
     'rutaPaquete' => null, // route('paquetes.tamaño')
@@ -22,7 +20,7 @@
 ])
 
 @php
-    $mapId = $mapId ?? ('mapa-' . uniqid());
+    $mapId = 'mapa-' . uniqid();
 
     $isVertical = !empty($ctx['estaGirado']);
     $colsReales = $ctx['columnasReales'] ?? 0;
@@ -609,20 +607,6 @@
                 });
             }
 
-            function hideAllPaquetes() {
-                grid.querySelectorAll('.loc-paquete').forEach(el => {
-                    el.style.display = 'none';
-                    el.classList.remove('loc-paquete--highlight');
-                });
-            }
-
-            function showAllPaquetes() {
-                grid.querySelectorAll('.loc-paquete').forEach(el => {
-                    el.style.display = '';
-                });
-                clearHighlight();
-            }
-
             /**
              * Muestra un paquete concreto (por id) en el mapa.
              * Se usará cuando el usuario “active” un paquete desde el listado lateral.
@@ -678,8 +662,6 @@
                 focusPaquete, // Mueve la “cámara” a un paquete
                 showPaquete, // Muestra un paquete concreto en el mapa
                 hidePaquete, // Oculta un paquete concreto del mapa
-                hideAllPaquetes,
-                showAllPaquetes,
             };
 
 
@@ -687,8 +669,8 @@
         })();
     </script>
 
-    {{-- Script de ghost + escaneo sólo si hay rutas configuradas --}}
-    @if ($rutaPaquete && $rutaGuardar)
+    {{-- Script de ghost + escaneo sólo si hay controles y rutas --}}
+    @if ($showControls && $rutaPaquete && $rutaGuardar)
         <script>
             (() => {
                 const escenario = document.getElementById('escenario-cuadricula');
@@ -724,9 +706,6 @@
                     };
                 }
 
-                const modoModal = {{ $modoModal ? 'true' : 'false' }};
-                const ghostSubscribers = new Set();
-
                 let ghost = null;
                 let ghostActions = null;
                 let celdaPx = getCeldaPx();
@@ -741,60 +720,45 @@
 
                     ghost = document.createElement('div');
                     ghost.id = '{{ $mapId }}-paquete-ghost';
-                    ghost.classList.add('ghost-paquete-mover');
+                    ghost.innerHTML = `<div class="ghost-label"></div>`;
                     grid.appendChild(ghost);
 
                     ghostActions = document.createElement('div');
                     ghostActions.id = '{{ $mapId }}-ghost-actions';
-                    ghostActions.className = 'paquete-toolbar paquete-toolbar--edit';
-                    ghost.appendChild(ghostActions);
+                    ghostActions.innerHTML = `
+          <button class="ghost-btn cancel" id="{{ $mapId }}-btn-cancel-ghost" title="Cancelar (Esc)" aria-label="Cancelar">
+            <svg class="icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path d="M6 6l12 12M18 6L6 18" stroke="#ef4444" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+          </button>
 
-                    const btnConfirmar = document.createElement('button');
-                    btnConfirmar.id = '{{ $mapId }}-btn-place-ghost';
-                    btnConfirmar.type = 'button';
-                    btnConfirmar.title = 'Guardar nueva posición';
-                    btnConfirmar.innerHTML = `
-                        <svg viewBox="0 0 24 24" fill="none">
-                            <path d="M5 13l4 4L19 7" stroke="currentColor" stroke-width="2"/>
-                        </svg>
-                    `;
+          <button class="ghost-btn rotate" id="{{ $mapId }}-btn-rotate-ghost" title="Voltear (R)" aria-label="Voltear">
+            <svg class="icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path d="M12 4v4l3-2-3-2zM4 12a8 8 0 1 1 8 8" stroke="#3b82f6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
 
-                    const btnCancelar = document.createElement('button');
-                    btnCancelar.id = '{{ $mapId }}-btn-cancel-ghost';
-                    btnCancelar.type = 'button';
-                    btnCancelar.title = 'Cancelar selección';
-                    btnCancelar.innerHTML = `
-                        <svg viewBox="0 0 24 24" fill="none">
-                            <path d="M6 6l12 12" stroke="currentColor" stroke-width="2"/>
-                            <path d="M18 6L6 18" stroke="currentColor" stroke-width="2"/>
-                        </svg>
-                    `;
+          <button class="ghost-btn confirm" id="{{ $mapId }}-btn-place-ghost" title="Asignar aquí (Enter)" aria-label="Asignar">
+            <svg class="icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <circle cx="12" cy="12" r="9" stroke="#22c55e" stroke-width="2"/>
+              <path d="M8 12l3 3 5-6" stroke="#22c55e" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+        `;
+                    grid.appendChild(ghostActions);
 
-                    const btnRotar = document.createElement('button');
-                    btnRotar.id = '{{ $mapId }}-btn-rotate-ghost';
-                    btnRotar.type = 'button';
-                    btnRotar.title = 'Rotar paquete 90°';
-                    btnRotar.innerHTML = `
-                        <svg viewBox="0 0 24 24" fill="none">
-                            <path d="M21 12a9 9 0 0 1-9 9m9-9a9 9 0 0 0-9-9m9 9h-4m-5 9a9 9 0 0 1-9-9m9 9v-4m-9-5a9 9 0 0 1 9-9m-9 9h4m5-9v4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                        </svg>
-                    `;
-
-                    btnConfirmar.addEventListener('click', onPlaceGhost);
-
-                    btnCancelar.addEventListener('click', () => {
-                        ghost.remove();
-                        ghost = null;
-                        ghostActions.remove();
-                        ghostActions = null;
-                        paqueteMeta = null;
-                    });
-
-                    btnRotar.addEventListener('click', rotateGhostKeepCenter);
-
-                    ghostActions.appendChild(btnConfirmar);
-                    ghostActions.appendChild(btnCancelar);
-                    ghostActions.appendChild(btnRotar);
+                    document.getElementById('{{ $mapId }}-btn-cancel-ghost')
+                        .addEventListener('click', () => {
+                            ghost.remove();
+                            ghost = null;
+                            ghostActions.remove();
+                            ghostActions = null;
+                            paqueteMeta = null;
+                        });
+                    document.getElementById('{{ $mapId }}-btn-place-ghost')
+                        .addEventListener('click', onPlaceGhost);
+                    document.getElementById('{{ $mapId }}-btn-rotate-ghost')
+                        .addEventListener('click', rotateGhostKeepCenter);
 
                     enableDrag();
                 }
@@ -811,38 +775,23 @@
                     ghost.style.width = (gWidthCells * celdaPx) + 'px';
                     ghost.style.height = (gHeightCells * celdaPx) + 'px';
 
-                    notifyGhostCoords();
+                    const label = ghost.querySelector('.ghost-label');
+                    if (label && paqueteMeta) {
+                        label.textContent =
+                            `${paqueteMeta.codigo} · ${paqueteMeta.longitud.toFixed(2)} m · ${gWidthCells}×${gHeightCells} celdas`;
+                    }
+
+                    if (ghostActions) {
+                        ghostActions.style.left = ghost.style.left;
+                        ghostActions.style.top = ghost.style.top;
+                        ghostActions.style.display = 'flex';
+                    }
                 }
 
                 function centerGhost() {
                     gX = Math.floor((viewCols - gWidthCells) / 2) + 1;
                     gY = Math.floor((viewRows - gHeightCells) / 2) + 1;
                     layoutGhost();
-                }
-
-                function notifyGhostCoords() {
-                    if (!ghost) return;
-                    const x1v = gX;
-                    const y1v = gY;
-                    const x2v = gX + gWidthCells - 1;
-                    const y2v = gY + gHeightCells - 1;
-                    const p1 = mapViewToReal(x1v, y1v);
-                    const p2 = mapViewToReal(x2v, y2v);
-
-                    const coords = {
-                        x1: Math.min(p1.x, p2.x),
-                        y1: Math.min(p1.y, p2.y),
-                        x2: Math.max(p1.x, p2.x),
-                        y2: Math.max(p1.y, p2.y),
-                    };
-
-                    ghostSubscribers.forEach(cb => {
-                        try {
-                            cb(coords);
-                        } catch (error) {
-                            console.error('Error en callback de coordenadas del mapa', error);
-                        }
-                    });
                 }
 
                 function setGhostSizeFromPaquete(tamano) {
@@ -864,9 +813,6 @@
                         startGY = 0;
 
                     function onDown(e) {
-                        if (e.target.closest('.paquete-toolbar')) {
-                            return;
-                        }
                         dragging = true;
                         ghost.classList.add('dragging');
                         startMouseX = (e.touches ? e.touches[0].clientX : e
@@ -937,22 +883,6 @@
                     layoutGhost();
                 }
 
-                function triggerGhost(paquete) {
-                    paqueteMeta = {
-                        codigo: paquete.codigo || paquete.nombre || 'PKG',
-                        paquete_id: paquete.paquete_id ?? paquete.id ?? null,
-                        longitud: Number(paquete.longitud ?? paquete.largo ?? 0),
-                        ancho: Number(paquete.ancho ?? paquete.altura ?? 1),
-                    };
-                    setGhostSizeFromPaquete({
-                        ancho: paqueteMeta.ancho,
-                        longitud: paqueteMeta.longitud,
-                    });
-                    ensureGhost();
-                    centerGhost();
-                    notifyGhostCoords();
-                }
-
                 async function onPlaceGhost() {
                     if (!paqueteMeta) return;
 
@@ -1009,10 +939,8 @@
                         }
                         ghost.remove();
                         ghost = null;
-                        if (ghostActions) {
-                            ghostActions.remove();
-                            ghostActions = null;
-                        }
+                        ghostActions.remove();
+                        ghostActions = null;
                         paqueteMeta = null;
                         location.reload();
                     } catch (err) {
@@ -1081,10 +1009,7 @@
                         document.getElementById(
                                 '{{ $mapId }}-btn-cancel-ghost')
                             ?.click();
-                        return;
-                    }
-                    if (modoModal) return;
-                    if (e.key.toLowerCase() === 'r') {
+                    } else if (e.key.toLowerCase() === 'r') {
                         document.getElementById(
                                 '{{ $mapId }}-btn-rotate-ghost')
                             ?.click();
@@ -1101,24 +1026,6 @@
                 }, {
                     passive: true
                 });
-
-                const externalControls = escenario.mapaInstance || {};
-                window.mapaComponentInstances = window.mapaComponentInstances || {};
-                window.mapaComponentInstances['{{ $mapId }}'] = {
-                    triggerGhost,
-                    onGhostMove(callback) {
-                        ghostSubscribers.add(callback);
-                        return () => ghostSubscribers.delete(callback);
-                    },
-                    showPaquete: externalControls.showPaquete ? externalControls.showPaquete.bind(externalControls) : undefined,
-                    hidePaquete: externalControls.hidePaquete ? externalControls.hidePaquete.bind(externalControls) : undefined,
-                    hideAllPaquetes: externalControls.hideAllPaquetes ? externalControls.hideAllPaquetes.bind(externalControls) : undefined,
-                    showAllPaquetes: externalControls.showAllPaquetes ? externalControls.showAllPaquetes.bind(externalControls) : undefined,
-                    setHighlight: externalControls.setHighlight ? externalControls.setHighlight.bind(externalControls) : undefined,
-                    clearHighlight: externalControls.clearHighlight ? externalControls.clearHighlight.bind(externalControls) : undefined,
-                    focusPaquete: externalControls.focusPaquete ? externalControls.focusPaquete.bind(externalControls) : undefined,
-                    mapId: '{{ $mapId }}',
-                };
 
             })();
 
