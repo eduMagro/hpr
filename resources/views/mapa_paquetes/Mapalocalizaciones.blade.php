@@ -5,7 +5,7 @@
 
     <div class="w-full p-4 flex flex-col gap-4">
         {{-- === Cabecera de la página === --}}
-        <div class="bg-white rounded-lg shadow-sm p-4 border border-gray-300">
+        <div class="bg-white rounded-lg shadow-sm p-4 ">
             <div class="flex justify-between items-center">
                 <div>
                     <h1 class="text-2xl font-bold text-gray-800">Mapa de
@@ -26,7 +26,7 @@
                     <label for="obra-select"
                         class="text-sm font-medium text-gray-700">Obra:</label>
                     <select id="obra-select"
-                        class="border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        class=" rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                         onchange="window.location.href = '{{ route('mapa.paquetes') }}?obra=' + this.value">
                         @foreach ($obras as $obra)
                             <option value="{{ $obra->id }}"
@@ -43,13 +43,13 @@
         <div class="flex gap-4 w-full" style="height: calc(100vh - 170px);">
 
             {{-- COMPONENTE DE MAPA (nuevo) --}}
-            <div class="flex-1 overflow-hidden border border-gray-300 rounded-md">
+            <div class="flex-1 overflow-hidden  rounded-md">
                 <x-mapa-simple :nave-id="$obraActualId" :modo-edicion="true" class="w-full h-full" />
             </div>
 
             {{-- PANEL LATERAL: Lista de paquetes (igual que lo tenías) --}}
             <div
-                class="bg-white rounded-lg shadow-sm overflow-hidden flex flex-col w-full max-w-xl flex-shrink-0 border border-gray-300">
+                class="bg-white rounded-lg shadow-sm overflow-hidden flex flex-col w-full max-w-xl flex-shrink-0 ">
                 <div
                     class="bg-gradient-to-r from-blue-600 to-blue-700 text-white p-4">
                     <h2 class="text-lg font-bold">Paquetes Ubicados</h2>
@@ -61,10 +61,10 @@
                 <div class="p-3 border-b border-gray-200 space-y-2">
                     <input type="text" id="search-paquetes"
                         placeholder="Buscar por código..."
-                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+                        class="w-full px-3 py-2  rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
 
                     <select id="filter-obra-paquetes"
-                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white">
+                        class="w-full px-3 py-2  rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white">
                         <option value="">Todas las obras</option>
                     </select>
 
@@ -160,4 +160,56 @@
 
 
 
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const listaPaquetes = document.getElementById('lista-paquetes');
+            const paquetesItems = listaPaquetes.querySelectorAll('.paquete-item');
+            let paqueteSeleccionadoCodigo = null;
+
+            // Función para obtener la instancia del mapa
+            function getMapaContainer() {
+                // Buscamos el contenedor del mapa por el atributo data-mapa-simple
+                // Como el ID es dinámico, buscamos el elemento que tenga ese atributo
+                return document.querySelector('[data-mapa-simple]');
+            }
+
+            paquetesItems.forEach(item => {
+                item.addEventListener('click', function() {
+                    const mapaContainer = getMapaContainer();
+                    if (!mapaContainer || !mapaContainer.mostrarPaquete) {
+                        console.warn('El componente de mapa no está listo o no expone las funciones necesarias.');
+                        return;
+                    }
+
+                    // Obtener código del paquete (limpiando el emoji y espacios)
+                    const codigoSpan = item.querySelector('span.font-bold');
+                    const codigo = codigoSpan.textContent.replace('📦', '').trim();
+
+                    // Si es el mismo paquete, no hacemos nada (o podríamos deseleccionar)
+                    if (paqueteSeleccionadoCodigo === codigo) {
+                        return;
+                    }
+
+                    // Deseleccionar anterior visualmente
+                    paquetesItems.forEach(p => {
+                        p.classList.remove('bg-blue-100', 'border-blue-500', 'ring-2', 'ring-blue-200');
+                        p.classList.add('bg-gray-50', 'border-gray-200');
+                    });
+
+                    // Ocultar anterior en mapa
+                    if (paqueteSeleccionadoCodigo) {
+                        mapaContainer.ocultarPaquete(paqueteSeleccionadoCodigo);
+                    }
+
+                    // Seleccionar nuevo visualmente
+                    item.classList.remove('bg-gray-50', 'border-gray-200');
+                    item.classList.add('bg-blue-100', 'border-blue-500', 'ring-2', 'ring-blue-200');
+
+                    // Mostrar nuevo en mapa
+                    mapaContainer.mostrarPaquete(codigo);
+                    paqueteSeleccionadoCodigo = codigo;
+                });
+            });
+        });
+    </script>
 </x-app-layout>

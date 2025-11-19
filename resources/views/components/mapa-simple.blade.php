@@ -258,6 +258,7 @@
                 div.dataset.paqueteId = paq.id;
                 div.dataset.codigo = paq.codigo;
                 div.dataset.orientacion = paq.orientacion || 'I';
+                div.style.display = 'none'; // Ocultar por defecto
                 grid.appendChild(div);
             });
         }
@@ -770,6 +771,60 @@
                     console.error('Error recargando mapa:', error);
                     mostrarError(error.message);
                 });
+        };
+
+        // Funciones expuestas para control de paquetes desde fuera
+        mapaContainer.mostrarPaquete = function(codigo) {
+            const grid = document.getElementById(`${mapId}-cuadricula`);
+            const paquete = grid.querySelector(`.loc-paquete[data-codigo="${codigo}"]`);
+            if (paquete) {
+                paquete.style.display = 'flex';
+                mapaContainer.moverMapaAPaquete(codigo);
+            }
+        };
+
+        mapaContainer.ocultarPaquete = function(codigo) {
+            const grid = document.getElementById(`${mapId}-cuadricula`);
+            const paquete = grid.querySelector(`.loc-paquete[data-codigo="${codigo}"]`);
+            if (paquete) {
+                paquete.style.display = 'none';
+            }
+        };
+
+        mapaContainer.moverMapaAPaquete = function(codigo) {
+            const grid = document.getElementById(`${mapId}-cuadricula`);
+            const escenario = document.getElementById(`${mapId}-escenario`);
+            const paquete = grid.querySelector(`.loc-paquete[data-codigo="${codigo}"]`);
+            if (!paquete) return;
+
+            // Asegurarse que el paquete sea visible para cálculos
+            const wasHidden = paquete.style.display === 'none';
+            if (wasHidden) paquete.style.display = 'flex';
+
+            const rect = paquete.getBoundingClientRect();
+            const escenarioRect = escenario.getBoundingClientRect();
+
+            // Calcular el centro del paquete relativo al escenario
+            // rect.left/top son relativos al viewport
+            // escenarioRect.left/top son relativos al viewport
+            // escenario.scrollLeft/Top es el scroll actual
+
+            // Posición del paquete relativa al contenido del escenario (incluyendo scroll)
+            const paqueteLeftRel = rect.left - escenarioRect.left + escenario.scrollLeft;
+            const paqueteTopRel = rect.top - escenarioRect.top + escenario.scrollTop;
+
+            // Centrar
+            const centerX = paqueteLeftRel - (escenarioRect.width / 2) + (rect.width / 2);
+            const centerY = paqueteTopRel - (escenarioRect.height / 2) + (rect.height / 2);
+
+            escenario.scrollTo({
+                left: centerX,
+                top: centerY,
+                behavior: 'smooth'
+            });
+            
+            // Restaurar visibilidad si estaba oculto (aunque moverMapaAPaquete suele llamarse para mostrarlo)
+            if (wasHidden) paquete.style.display = 'none';
         };
     }
 })();
