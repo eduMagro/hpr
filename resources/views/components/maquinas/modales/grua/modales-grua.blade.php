@@ -607,50 +607,10 @@
                     </div>
                 </div>
 
-                @if (!empty($mapaData))
-                    <div class="bg-white p-4 rounded-lg border space-y-3">
-                        <div class="space-y-1">
-                            <p
-                                class="text-xs uppercase tracking-wide text-gray-500">
-                                Nave</p>
-                            <p class="text-lg font-semibold text-gray-800">
-                                {{ $mapaData['dimensiones']['obra'] ?? 'Sin nave' }}
-                            </p>
-                        </div>
-
-                        <div class="rounded-xl border border-gray-200 overflow-hidden bg-white shadow-inner"
-                            style="min-height: 420px;">
-                            <x-mapa-component :ctx="$mapaData['ctx'] ?? []"
-                                :localizaciones-zonas="$mapaData['localizacionesZonas'] ??
-                                    []" :localizaciones-maquinas="$mapaData[
-                                    'localizacionesMaquinas'
-                                ] ?? []"
-                                :paquetes-con-localizacion="$mapaData[
-                                    'paquetesConLocalizacion'
-                                ] ?? []" :dimensiones="$mapaData['dimensiones'] ?? null"
-                                :obra-actual-id="$mapaData['obraActualId'] ?? null" :map-id="$mapaData['mapaId'] ?? null"
-                                :show-controls="false" :mostrarObra="false"
-                                :show-scan-result="false" :ruta-paquete="route('paquetes.tamaño')"
-                                :ruta-guardar="route('localizaciones.storePaquete')" :modo-modal="true"
-                                :enable-drag-paquetes="true" height="100%"
-                                class="w-full h-[420px]" />
-                        </div>
-                    </div>
-                @else
-                    <div id="contenedor-mapa-paquete"
-                        class="bg-gray-100 rounded-lg border-2 border-dashed border-gray-300 min-h-[400px] flex items-center justify-center">
-                        <div class="text-center text-gray-500">
-                            <svg class="w-16 h-16 mx-auto mb-3 text-gray-300"
-                                fill="none" stroke="currentColor"
-                                viewBox="0 0 24 24">
-                                <path stroke-linecap="round"
-                                    stroke-linejoin="round" stroke-width="2"
-                                    d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
-                            </svg>
-                            <p class="font-medium">Mapa no disponible</p>
-                        </div>
-                    </div>
-                @endif
+                {{-- Componente de mapa simplificado --}}
+                <div class="bg-white p-4 rounded-lg border">
+                    <x-mapa-simple :nave-id="1" />
+                </div>
             </div>
         </div>
 
@@ -667,21 +627,10 @@
 {{-- Scripts para el modal de mover paquete --}}
 <script>
     let paqueteMoverData = null;
-    let coordenadasPaquete = {
-        x1: null,
-        y1: null,
-        x2: null,
-        y2: null
-    };
-    const MAPA_MODAL_ID = '{{ $mapaData['mapaId'] ?? '' }}';
-    let mapaModalApi = null;
-    let mapaModalUnsubscribe = null;
 
     function abrirModalMoverPaquete() {
         const modal = document.getElementById('modal-mover-paquete');
         modal.classList.remove('hidden');
-
-        // resetearModalMoverPaquete();
 
         setTimeout(() => {
             document.getElementById('codigo_paquete_mover')?.focus();
@@ -697,79 +646,24 @@
         const inputCodigo = document.getElementById('codigo_paquete_mover');
         if (inputCodigo) inputCodigo.value = '';
 
-        document.getElementById('info-paquete-validado').classList.add(
-            'hidden');
-        document.getElementById('paso-mapa-paquete').classList.add('hidden');
-        document.getElementById('paso-escanear-paquete').classList.remove(
-            'hidden');
-        document.getElementById('error-paquete-mover').classList.add('hidden');
-        document.getElementById('loading-paquete-mover').classList.add(
-            'hidden');
-        document.getElementById('coordenadas-seleccionadas').classList.add(
-            'hidden');
-        document.getElementById('coord-x1').value = '';
-        document.getElementById('coord-y1').value = '';
-        document.getElementById('coord-x2').value = '';
-        document.getElementById('coord-y2').value = '';
+        document.getElementById('info-paquete-validado')?.classList.add('hidden');
+        document.getElementById('paso-mapa-paquete')?.classList.add('hidden');
+        document.getElementById('paso-escanear-paquete')?.classList.remove('hidden');
+        document.getElementById('error-paquete-mover')?.classList.add('hidden');
+        document.getElementById('loading-paquete-mover')?.classList.add('hidden');
 
         paqueteMoverData = null;
-        coordenadasPaquete = {
-            x1: null,
-            y1: null,
-            x2: null,
-            y2: null
-        };
-
-        if (mapaModalUnsubscribe) {
-            mapaModalUnsubscribe();
-            mapaModalUnsubscribe = null;
-        }
-        if (mapaModalApi?.showAllPaquetes) {
-            mapaModalApi.showAllPaquetes();
-        }
-        mapaModalApi = null;
     }
 
-    async function mostrarPasoMapa() {
-        document.getElementById('paso-escanear-paquete').classList.add(
-            'hidden');
-        document.getElementById('paso-mapa-paquete').classList.remove(
-            'hidden');
-        document.getElementById('paquete-codigo-mapa').textContent =
-            paqueteMoverData?.codigo || '';
-        const idPaquete = document.getElementById("paquete-codigo-info")
-            .innerText;
-
-        // ocultar los demás paquetes en el mapa
-        // Obtenemos el canvas del mapa (el div con data-mapa-canvas)
-        const canvas = document.querySelector('[data-mapa-canvas]');
-        // La instancia JS del mapa la expone el componente en canvas.mapaInstance
-        const mapaInstance = canvas?.mapaInstance;
-
-        if (!mapaInstance) {
-            console.warn('No se encontró la instancia del mapa');
-            return;
-        }
-
-        let codigoPaquete = document.getElementById("paquete-codigo-info")
-            .innerText;
-        document.querySelectorAll('.loc-paquete').forEach(paquete => {
-            let id = paquete.dataset.codigo;
-
-            if (id != codigoPaquete) {
-                paquete.style.display = 'none';
-                paquete.classList.remove('loc-paquete--highlight');
-            } else {
-                paquete.click();
-                document.querySelector('[title="Mover paquete"]').click();
-            }
-        });
+    function mostrarPasoMapa() {
+        document.getElementById('paso-escanear-paquete').classList.add('hidden');
+        document.getElementById('paso-mapa-paquete').classList.remove('hidden');
+        document.getElementById('paquete-codigo-mapa').textContent = paqueteMoverData?.codigo || '';
     }
 
     function volverPasoEscaneo() {
         document.getElementById('paso-mapa-paquete').classList.add('hidden');
-        document.getElementById('paso-escanear-paquete').classList.remove(
-            'hidden');
+        document.getElementById('paso-escanear-paquete').classList.remove('hidden');
     }
 
     document.addEventListener('DOMContentLoaded', function() {
@@ -889,17 +783,7 @@
         <div class="flex-1 overflow-hidden flex flex-col lg:flex-row">
             {{-- MAPA (Izquierda) --}}
             <div class="flex-1 p-4 overflow-auto">
-                <div class="bg-white rounded-lg border h-full min-h-[400px]" id="contenedor-mapa-salida">
-                    <div class="flex items-center justify-center h-full text-gray-400">
-                        <div class="text-center">
-                            <svg class="w-16 h-16 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
-                            </svg>
-                            <p class="text-gray-500">Cargando mapa...</p>
-                        </div>
-                    </div>
-                </div>
+                <x-mapa-simple :nave-id="1" class="h-full" />
             </div>
 
             {{-- LISTA DE PAQUETES (Derecha) --}}
@@ -940,9 +824,6 @@
     let paquetesSalida = [];
     let etiquetasEscaneadas = new Set();
     let paquetesCompletados = new Set();
-    let mapaEjecutarSalidaApi = null;
-    let navesSalida = [];
-    let naveSeleccionadaId = null;
 
     function abrirModalEjecutarSalida(movimientoId, salidaId) {
         console.log('=== Abriendo modal ejecutar salida ===');
@@ -965,8 +846,6 @@
             movimientoId: movimientoId,
             salidaId: salidaId
         };
-        navesSalida = [];
-        naveSeleccionadaId = null;
 
         // Cargar datos de la salida
         if (!salidaId) {
@@ -1010,30 +889,14 @@
     function resetearModalEjecutarSalida() {
         const inputCodigo = document.getElementById('codigo_etiqueta_salida');
         const listaPaquetes = document.getElementById('lista-paquetes-salida');
-        const contenedorMapa = document.getElementById('contenedor-mapa-salida');
 
         if (inputCodigo) inputCodigo.value = '';
         if (listaPaquetes) listaPaquetes.innerHTML = '';
-        if (contenedorMapa) {
-            contenedorMapa.innerHTML = `
-                <div class="flex items-center justify-center h-full text-gray-400">
-                    <div class="text-center">
-                        <svg class="w-16 h-16 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
-                        </svg>
-                        <p class="text-gray-500">Cargando mapa...</p>
-                    </div>
-                </div>
-            `;
-        }
 
         etiquetasEscaneadas.clear();
         paquetesCompletados.clear();
         paquetesSalida = [];
         salidaData = null;
-        navesSalida = [];
-        naveSeleccionadaId = null;
         actualizarContadores();
     }
 
@@ -1055,11 +918,6 @@
             };
             paquetesSalida = data.paquetes || [];
 
-            // Agrupar paquetes por nave (usando el backend si lo envía, o calculándolo aquí)
-            const navesDesdeApi = Array.isArray(data.paquetesPorNave) ? data.paquetesPorNave : [];
-            const navesDesdePaquetes = agruparNavesDesdePaquetes(paquetesSalida);
-            navesSalida = navesDesdeApi.length ? navesDesdeApi : navesDesdePaquetes;
-
             console.log('Paquetes cargados:', paquetesSalida.length);
 
             // Actualizar header
@@ -1071,11 +929,18 @@
             // Renderizar lista de paquetes
             renderizarListaPaquetes();
 
-            // Inicializar mapa en función de las naves detectadas
-            inicializarMapaSalida();
-
             // Actualizar contadores
             actualizarContadores();
+
+            // Recargar mapa con el salidaId actual
+            const contenedorMapa = document.getElementById('contenedor-mapa-ejecutar-salida');
+            if (contenedorMapa) {
+                const mapaComponent = contenedorMapa.querySelector('[data-mapa-simple]');
+                if (mapaComponent && typeof mapaComponent.recargarMapa === 'function') {
+                    mapaComponent.recargarMapa(salidaId);
+                    console.log('Mapa recargado con salida:', salidaId);
+                }
+            }
 
         } catch (error) {
             console.error('Error al cargar datos de salida:', error);
@@ -1104,7 +969,7 @@
                     ? 'bg-green-50 border-green-500'
                     : 'bg-white border-gray-200 hover:border-purple-300'
             }`;
-            div.onclick = () => togglePaqueteEnMapa(paquete.id);
+            // Eliminado: interacción con mapa desde fuera
 
             div.innerHTML = `
                 <div class="flex items-start justify-between gap-2">
@@ -1139,225 +1004,7 @@
         });
     }
 
-    function agruparNavesDesdePaquetes(paquetes) {
-        const mapa = new Map();
-
-        paquetes.forEach(paquete => {
-            const naveId = paquete.nave_id;
-            if (!naveId) return;
-
-            if (!mapa.has(naveId)) {
-                mapa.set(naveId, {
-                    nave_id: naveId,
-                    nave_nombre: paquete.obra || `Nave ${naveId}`,
-                });
-            }
-        });
-
-        return Array.from(mapa.values());
-    }
-
-    function inicializarMapaSalida() {
-        const contenedor = document.getElementById('contenedor-mapa-salida');
-        if (!contenedor) return;
-
-        if (!navesSalida || navesSalida.length === 0) {
-            contenedor.innerHTML = `
-                <div class="flex items-center justify-center h-full text-gray-400">
-                    <div class="text-center">
-                        <svg class="w-10 h-10 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
-                        </svg>
-                        <p class="text-gray-500">Los paquetes de esta salida no tienen nave con mapa asignado.</p>
-                    </div>
-                </div>
-            `;
-            return;
-        }
-
-        naveSeleccionadaId = navesSalida[0]?.nave_id || null;
-
-        const wrapper = document.createElement('div');
-        wrapper.className = 'h-full flex flex-col';
-
-        if (navesSalida.length > 1) {
-            const barra = document.createElement('div');
-            barra.className = 'border-b bg-gray-50 px-3 py-2 flex items-center gap-2';
-            barra.innerHTML = `
-                <label for="select-nave-salida" class="text-xs font-medium text-gray-600">Nave</label>
-                <select id="select-nave-salida"
-                    class="border border-gray-300 rounded px-2 py-1 text-sm focus:ring-1 focus:ring-purple-500 focus:border-purple-500">
-                    ${navesSalida.map(n => `
-                        <option value="${n.nave_id}">
-                            ${n.nave_nombre || `Nave ${n.nave_id}`}
-                        </option>
-                    `).join('')}
-                </select>
-            `;
-            wrapper.appendChild(barra);
-        } else {
-            const unica = navesSalida[0];
-            const barra = document.createElement('div');
-            barra.className = 'border-b bg-gray-50 px-3 py-2 text-sm text-gray-700';
-            barra.textContent = `Nave: ${unica.nave_nombre || `Nave ${unica.nave_id}`}`;
-            wrapper.appendChild(barra);
-        }
-
-        const cuerpo = document.createElement('div');
-        cuerpo.id = 'mapa-salida-body';
-        cuerpo.className = 'flex-1';
-        cuerpo.innerHTML = `
-            <div class="flex items-center justify-center h-full text-gray-400">
-                <div class="text-center">
-                    <svg class="w-10 h-10 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
-                    </svg>
-                    <p class="text-gray-500">Cargando mapa...</p>
-                </div>
-            </div>
-        `;
-        wrapper.appendChild(cuerpo);
-
-        contenedor.innerHTML = '';
-        contenedor.appendChild(wrapper);
-
-        const select = document.getElementById('select-nave-salida');
-        if (select) {
-            select.value = naveSeleccionadaId;
-            select.addEventListener('change', (e) => {
-                const value = parseInt(e.target.value, 10);
-                naveSeleccionadaId = Number.isFinite(value) ? value : null;
-                cargarMapaSalida();
-            });
-        }
-
-        cargarMapaSalida();
-    }
-
-    async function cargarMapaSalida() {
-        const contenedor = document.getElementById('contenedor-mapa-salida');
-        const cuerpo = document.getElementById('mapa-salida-body');
-        if (!contenedor || !cuerpo) return;
-
-        if (!naveSeleccionadaId || !salidaData?.salidaId) {
-            cuerpo.innerHTML = `
-                <div class="flex items-center justify-center h-full text-gray-400">
-                    <p class="text-gray-500 text-sm">No hay nave seleccionada para esta salida.</p>
-                </div>
-            `;
-            return;
-        }
-
-        cuerpo.innerHTML = `
-            <div class="flex items-center justify-center h-full text-gray-400">
-                <div class="text-center">
-                    <svg class="w-10 h-10 mx-auto mb-2 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <circle cx="12" cy="12" r="10" stroke-width="4" class="opacity-25"></circle>
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="4"
-                            d="M4 12a8 8 0 018-8" class="opacity-75"></path>
-                    </svg>
-                    <p class="text-gray-500">Cargando mapa de la nave...</p>
-                </div>
-            </div>
-        `;
-
-        try {
-            const response = await fetch(`/salidas/${salidaData.salidaId}/mapa/${naveSeleccionadaId}`);
-            const data = await response.json();
-
-            if (!data.success) {
-                throw new Error(data.message || 'Error al cargar el mapa');
-            }
-
-            cuerpo.innerHTML = data.html || `
-                <div class="flex items-center justify-center h-full text-gray-400">
-                    <p class="text-gray-500 text-sm">Mapa vacío para esta nave.</p>
-                </div>
-            `;
-
-            // Asegurarnos de que en el mapa solo se vean los paquetes de la salida actual
-            filtrarPaquetesEnMapaActual();
-        } catch (error) {
-            console.error('Error al cargar mapa de nave:', error);
-            cuerpo.innerHTML = `
-                <div class="flex items-center justify-center h-full text-red-500 text-sm">
-                    Error al cargar el mapa de la nave.
-                </div>
-            `;
-        }
-    }
-
-    function filtrarPaquetesEnMapaActual() {
-        const contenedor = document.getElementById('contenedor-mapa-salida');
-        if (!contenedor || !Array.isArray(paquetesSalida)) return;
-
-        const idsVisibles = new Set(
-            paquetesSalida
-                .filter(p => p.nave_id === naveSeleccionadaId)
-                .map(p => p.id)
-        );
-
-        contenedor.querySelectorAll('.loc-paquete').forEach(el => {
-            const idAttr = el.dataset.paqueteId || el.dataset.id;
-            const id = parseInt(idAttr || '0', 10);
-            if (idsVisibles.has(id)) {
-                el.style.display = '';
-            } else {
-                el.style.display = 'none';
-            }
-        });
-    }
-
-    async function togglePaqueteEnMapa(paqueteId) {
-        const paquete = paquetesSalida.find(p => p.id === paqueteId);
-        if (!paquete) return;
-
-        const naveId = paquete.nave_id;
-
-        // Si el paquete está en otra nave, cambiar la nave seleccionada y recargar mapa
-        if (naveId && naveId !== naveSeleccionadaId) {
-            naveSeleccionadaId = naveId;
-            const select = document.getElementById('select-nave-salida');
-            if (select && select.value !== String(naveId)) {
-                select.value = String(naveId);
-            }
-            await cargarMapaSalida();
-        }
-
-        const contenedor = document.getElementById('contenedor-mapa-salida');
-        if (!contenedor) return;
-
-        // Quitar highlight anterior
-        contenedor.querySelectorAll('.loc-paquete--highlight').forEach(el => {
-            el.classList.remove('loc-paquete--highlight');
-        });
-
-        const target = contenedor.querySelector(`.loc-paquete[data-paquete-id="${paqueteId}"]`);
-        if (!target) {
-            console.warn('No se encontró el paquete en el mapa para resaltar:', paqueteId);
-            return;
-        }
-
-        target.classList.add('loc-paquete--highlight');
-
-        const escenario = contenedor.querySelector('[data-mapa-canvas]');
-        if (!escenario) return;
-
-        // Centrar scroll del mapa alrededor del paquete
-        const rect = target.getBoundingClientRect();
-        const escRect = escenario.getBoundingClientRect();
-
-        const offsetX = rect.left - escRect.left - escRect.width / 2 + rect.width / 2;
-        const offsetY = rect.top - escRect.top - escRect.height / 2 + rect.height / 2;
-
-        escenario.scrollBy({
-            left: offsetX,
-            top: offsetY,
-            behavior: 'smooth',
-        });
-    }
+    // Funciones de manipulación del mapa eliminadas - el componente es auto-contenido
 
     async function validarYRegistrarEtiqueta(codigo) {
         // Verificar si ya fue escaneada

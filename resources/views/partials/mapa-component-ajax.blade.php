@@ -126,64 +126,192 @@
     const viewCols = isVertical ? W : H;
     const viewRows = isVertical ? H : W;
 
-    // Calcular tamaño de celda basado en el contenedor
-    let cellSize = 8; // tamaño base
-    const containerWidth = escenario.clientWidth - 40;
-    const containerHeight = 380;
+    let cellSize = 8;
+    let zoomLevel = 1;
 
-    // Ajustar para que quepa en el contenedor
-    const maxCellW = Math.floor(containerWidth / viewCols);
-    const maxCellH = Math.floor(containerHeight / viewRows);
-    cellSize = Math.max(4, Math.min(maxCellW, maxCellH, 12));
+    // Helper functions for coordinate mapping
+    function mapPointToView(x, y) {
+        if (isVertical) {
+            return { x: x, y: y };
+        } else {
+            return { x: y, y: x }; // Swap for horizontal
+        }
+    }
 
-    // Aplicar tamaño al grid
-    grid.style.width = `${viewCols * cellSize}px`;
-    grid.style.height = `${viewRows * cellSize}px`;
-    grid.style.backgroundSize = `${cellSize}px ${cellSize}px`;
-    grid.style.backgroundImage = `
-        linear-gradient(to right, #e5e7eb 1px, transparent 1px),
-        linear-gradient(to bottom, #e5e7eb 1px, transparent 1px)
-    `;
+    function viewPointToMap(vx, vy) {
+        if (isVertical) {
+            return { x: vx, y: vy };
+        } else {
+            return { x: vy, y: vx };
+        }
+    }
 
-    // Posicionar elementos existentes
-    grid.querySelectorAll('.loc-existente').forEach(el => {
-        const x1 = parseInt(el.dataset.x1) || 1;
-        const y1 = parseInt(el.dataset.y1) || 1;
-        const x2 = parseInt(el.dataset.x2) || x1;
-        const y2 = parseInt(el.dataset.y2) || y1;
+    function updateMap() {
+        const containerWidth = escenario.clientWidth - 40;
+        const containerHeight = 380;
 
-        const left = (x1 - 1) * cellSize;
-        const top = (y1 - 1) * cellSize;
-        const width = (x2 - x1 + 1) * cellSize;
-        const height = (y2 - y1 + 1) * cellSize;
+        // Calcular tamaño base para que quepa
+        const maxCellW = Math.floor(containerWidth / viewCols);
+        const maxCellH = Math.floor(containerHeight / viewRows);
+        const baseCellSize = Math.max(4, Math.min(maxCellW, maxCellH, 12));
 
-        el.style.position = 'absolute';
-        el.style.left = `${left}px`;
-        el.style.top = `${top}px`;
-        el.style.width = `${width}px`;
-        el.style.height = `${height}px`;
-    });
+        // Aplicar zoom
+        cellSize = Math.max(4, baseCellSize * zoomLevel);
+
+        // Calcular el tamaño total del grid
+        const gridWidth = viewCols * cellSize;
+        const gridHeight = viewRows * cellSize;
+
+        // Aplicar tamaño al grid
+        grid.style.width = `${gridWidth}px`;
+        grid.style.height = `${gridHeight}px`;
+        grid.style.minWidth = `${gridWidth}px`;
+        grid.style.minHeight = `${gridHeight}px`;
+
+        // Aplicar el background con el patrón de grid
+        grid.style.backgroundSize = `${cellSize}px ${cellSize}px`;
+        grid.style.backgroundImage = `
+            linear-gradient(to right, #e5e7eb 1px, transparent 1px),
+            linear-gradient(to bottom, #e5e7eb 1px, transparent 1px)
+        `;
+        grid.style.backgroundPosition = '0 0, 0 0';
+
+        // Eliminar transformaciones anteriores si las hubiera
+        grid.style.transform = '';
+
+        // Reposicionar elementos existentes
+        grid.querySelectorAll('.loc-existente').forEach(el => {
+            const x1 = parseInt(el.dataset.x1) || 1;
+            const y1 = parseInt(el.dataset.y1) || 1;
+            const x2 = parseInt(el.dataset.x2) || x1;
+            const y2 = parseInt(el.dataset.y2) || y1;
+
+            const p1 = mapPointToView(x1, y1);
+            const p2 = mapPointToView(x2, y2);
+
+            const minVX = Math.min(p1.x, p2.x);
+            const maxVX = Math.max(p1.x, p2.x);
+            const minVY = Math.min(p1.y, p2.y);
+            const maxVY = Math.max(p1.y, p2.y);
+
+            const left = (minVX - 1) * cellSize;
+            const top = (minVY - 1) * cellSize;
+            const width = (maxVX - minVX + 1) * cellSize;
+            const height = (maxVY - minVY + 1) * cellSize;
+
+            el.style.position = 'absolute';
+            el.style.left = `${left}px`;
+            el.style.top = `${top}px`;
+            el.style.width = `${width}px`;
+            el.style.height = `${height}px`;
+        });
+
+        // Actualizar instancia global
+        if (window.mapaAjaxInstance && window.mapaAjaxInstance[mapId]) {
+            window.mapaAjaxInstance[mapId].cellSize = cellSize;
+            
+            // Si el ghost está visible, actualizarlo también
+            const instance = window.mapaAjaxInstance[mapId];
+            if (!ghost.classList.contains('hidden') && instance.anchoCeldas) {
+                instance.mostrarGhost(
+                    ghost.querySelector('div').textContent, 
+                    instance.anchoCeldas, 
+                    instance.largoCeldas
+                );
+            }
+        }
+    }
+
+    // Inicializar mapa
+    updateMap();
 
     // Zoom
-    let zoomLevel = 1;
     const zoomInBtn = document.getElementById(`${mapId}-zoom-in`);
     const zoomOutBtn = document.getElementById(`${mapId}-zoom-out`);
 
     if (zoomInBtn) {
         zoomInBtn.addEventListener('click', () => {
             zoomLevel = Math.min(3, zoomLevel + 0.2);
-            grid.style.transform = `scale(${zoomLevel})`;
-            grid.style.transformOrigin = 'top left';
+            updateMap();
         });
     }
 
     if (zoomOutBtn) {
         zoomOutBtn.addEventListener('click', () => {
-            zoomLevel = Math.max(0.3, zoomLevel - 0.2);
-            grid.style.transform = `scale(${zoomLevel})`;
-            grid.style.transformOrigin = 'top left';
+            zoomLevel = Math.max(0.5, zoomLevel - 0.2);
+            updateMap();
         });
     }
+
+    // Pan/Drag para mover el mapa
+    let isPanning = false;
+    let panStartX = 0;
+    let panStartY = 0;
+    let panStartScrollLeft = 0;
+    let panStartScrollTop = 0;
+
+    escenario.addEventListener('mousedown', (e) => {
+        if (e.target.closest('.loc-existente') || 
+            e.target.closest('button') || 
+            e.target.closest('.ghost-paquete-mover')) {
+            return;
+        }
+
+        isPanning = true;
+        panStartX = e.clientX;
+        panStartY = e.clientY;
+        panStartScrollLeft = escenario.scrollLeft;
+        panStartScrollTop = escenario.scrollTop;
+        escenario.style.cursor = 'grabbing';
+        e.preventDefault();
+    });
+
+    escenario.addEventListener('mousemove', (e) => {
+        if (!isPanning) return;
+        const deltaX = e.clientX - panStartX;
+        const deltaY = e.clientY - panStartY;
+        escenario.scrollLeft = panStartScrollLeft - deltaX;
+        escenario.scrollTop = panStartScrollTop - deltaY;
+    });
+
+    escenario.addEventListener('mouseup', () => {
+        isPanning = false;
+        escenario.style.cursor = '';
+    });
+
+    escenario.addEventListener('mouseleave', () => {
+        isPanning = false;
+        escenario.style.cursor = '';
+    });
+    
+    // Touch support
+    let touchStartX = 0;
+    let touchStartY = 0;
+    let touchStartScrollLeft = 0;
+    let touchStartScrollTop = 0;
+
+    escenario.addEventListener('touchstart', (e) => {
+        if (e.target.closest('.loc-existente') || 
+            e.target.closest('button') || 
+            e.target.closest('.ghost-paquete-mover')) {
+            return;
+        }
+        if (e.touches.length === 1) {
+            touchStartX = e.touches[0].clientX;
+            touchStartY = e.touches[0].clientY;
+            touchStartScrollLeft = escenario.scrollLeft;
+            touchStartScrollTop = escenario.scrollTop;
+        }
+    }, { passive: true });
+
+    escenario.addEventListener('touchmove', (e) => {
+        if (e.touches.length === 1) {
+            const deltaX = e.touches[0].clientX - touchStartX;
+            const deltaY = e.touches[0].clientY - touchStartY;
+            escenario.scrollLeft = touchStartScrollLeft - deltaX;
+            escenario.scrollTop = touchStartScrollTop - deltaY;
+        }
+    }, { passive: true });
 
     // Exponer API para el ghost del paquete
     window.mapaAjaxInstance = window.mapaAjaxInstance || {};
@@ -195,18 +323,39 @@
         ghost: ghost,
         grid: grid,
         coordenadas: { x1: 1, y1: 1, x2: 1, y2: 1 },
+        anchoCeldas: 0,
+        largoCeldas: 0,
 
         mostrarGhost: function(codigo, anchoCeldas, largoCeldas) {
             ghost.classList.remove('hidden');
             ghost.querySelector('div').textContent = codigo;
-            ghost.style.width = `${largoCeldas * cellSize}px`;
-            ghost.style.height = `${anchoCeldas * cellSize}px`;
-            ghost.style.left = '0px';
-            ghost.style.top = '0px';
+            
+            let w, h;
+            if (isVertical) {
+                w = anchoCeldas;
+                h = largoCeldas;
+            } else {
+                w = largoCeldas;
+                h = anchoCeldas;
+            }
+
+            ghost.style.width = `${w * this.cellSize}px`;
+            ghost.style.height = `${h * this.cellSize}px`;
+            
+            // Si es la primera vez que se muestra, posicionar en 0,0
+            if (ghost.style.left === '' || ghost.style.left === '0px') {
+                ghost.style.left = '0px';
+                ghost.style.top = '0px';
+                this.actualizarCoordenadas(1, 1);
+            } else {
+                // Recalcular posición visual basada en coordenadas guardadas
+                const p = mapPointToView(this.coordenadas.x1, this.coordenadas.y1);
+                ghost.style.left = `${(p.x - 1) * this.cellSize}px`;
+                ghost.style.top = `${(p.y - 1) * this.cellSize}px`;
+            }
 
             this.anchoCeldas = anchoCeldas;
             this.largoCeldas = largoCeldas;
-            this.actualizarCoordenadas(1, 1);
             this.activarDrag();
         },
 
@@ -226,7 +375,6 @@
             if (inputX2) inputX2.value = x2;
             if (inputY2) inputY2.value = y2;
 
-            // Actualizar variable global
             if (typeof coordenadasPaquete !== 'undefined') {
                 coordenadasPaquete.x1 = x1;
                 coordenadasPaquete.y1 = y1;
@@ -256,25 +404,29 @@
                 const deltaX = e.clientX - startX;
                 const deltaY = e.clientY - startY;
 
-                let newLeft = ghostStartLeft + deltaX / zoomLevel;
-                let newTop = ghostStartTop + deltaY / zoomLevel;
+                // Ajustar delta por zoomLevel? No, porque ahora cambiamos el tamaño real
+                // El movimiento del mouse es 1:1 con pixeles de pantalla
+                let newLeft = ghostStartLeft + deltaX;
+                let newTop = ghostStartTop + deltaY;
 
                 const ghostWidth = parseFloat(ghost.style.width) || 0;
                 const ghostHeight = parseFloat(ghost.style.height) || 0;
 
-                newLeft = Math.max(0, Math.min(newLeft, (self.maxW * cellSize) - ghostWidth));
-                newTop = Math.max(0, Math.min(newTop, (self.maxH * cellSize) - ghostHeight));
+                newLeft = Math.max(0, Math.min(newLeft, (self.maxW * self.cellSize) - ghostWidth));
+                newTop = Math.max(0, Math.min(newTop, (self.maxH * self.cellSize) - ghostHeight));
 
                 // Snap to grid
-                newLeft = Math.round(newLeft / cellSize) * cellSize;
-                newTop = Math.round(newTop / cellSize) * cellSize;
+                newLeft = Math.round(newLeft / self.cellSize) * self.cellSize;
+                newTop = Math.round(newTop / self.cellSize) * self.cellSize;
 
                 ghost.style.left = `${newLeft}px`;
                 ghost.style.top = `${newTop}px`;
 
-                const x1 = Math.round(newLeft / cellSize) + 1;
-                const y1 = Math.round(newTop / cellSize) + 1;
-                self.actualizarCoordenadas(x1, y1);
+                const vx = Math.round(newLeft / self.cellSize) + 1;
+                const vy = Math.round(newTop / self.cellSize) + 1;
+                
+                const p = viewPointToMap(vx, vy);
+                self.actualizarCoordenadas(p.x, p.y);
             };
 
             document.onmouseup = function() {
