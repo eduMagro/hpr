@@ -848,6 +848,124 @@ class PedidoController extends Controller
         }
     }
 
+    public function activarConColadas(Request $request, $pedidoId, $lineaId)
+    {
+        /** @var Pedido $pedido */
+        $pedido = Pedido::findOrFail($pedidoId);
+        /** @var PedidoProducto $linea */
+        $linea = PedidoProducto::findOrFail($lineaId);
+
+        if ($linea->pedido_id !== $pedido->id) {
+            return response()->json([
+                'success' => false,
+                'message' => 'La línea no pertenece a este pedido.',
+            ], 422);
+        }
+
+        $data = $request->validate([
+            'coladas' => ['array'],
+            'coladas.*.colada' => ['nullable', 'string', 'max:255'],
+            'coladas.*.bulto' => ['nullable', 'numeric', 'min:0'],
+        ]);
+
+        $productoBase = $linea->productoBase;
+        if (!$productoBase) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Producto base no encontrado para la línea.',
+            ], 422);
+        }
+
+        $proveedor = $pedido->fabricante->nombre
+            ?? $pedido->distribuidor->nombre
+            ?? 'No especificado';
+
+        $fechaEntregaFmt = $linea->fecha_estimada_entrega
+            ? Carbon::parse($linea->fecha_estimada_entrega)->format('d/m/Y')
+            : '—';
+
+        $partes = [];
+        $partes[] = sprintf(
+            'Se solicita descarga para producto %s Ø%s%s',
+            $productoBase->tipo,
+            (string) $productoBase->diametro,
+            $productoBase->tipo === 'barra' ? (' de ' . (string) $productoBase->longitud . ' m') : ''
+        );
+        $partes[] = sprintf('Pedido %s', $pedido->codigo ?? $pedido->id);
+        $partes[] = sprintf('Proveedor: %s', $proveedor);
+        $partes[] = sprintf('Línea: %s', $linea->codigo);
+
+        if (!is_null($linea->cantidad)) {
+            $partes[] = sprintf(
+                'Cantidad solicitada: %s kg',
+                rtrim(
+                    rtrim(number_format((float) $linea->cantidad, 3, ',', '.'), '0'),
+                    ','
+                )
+            );
+        }
+        $partes[] = sprintf('Fecha prevista: %s', $fechaEntregaFmt);
+
+        $descripcion = implode(' | ', $partes);
+
+        try {
+            DB::beginTransaction();
+
+            if (!empty($data['coladas'])) {
+                foreach ($data['coladas'] as $fila) {
+                    $colada = $fila['colada'] ?? null;
+                    $bulto = $fila['bulto'] ?? null;
+
+                    if ($colada === null && $bulto === null) {
+                        continue;
+                    }
+
+                    \App\Models\PedidoProductoColada::create([
+                        'pedido_producto_id' => $linea->id,
+                        'colada' => $colada,
+                        'bulto' => $bulto,
+                    ]);
+                }
+            }
+
+            DB::table('pedido_productos')->where('id', $lineaId)->update([
+                'estado' => 'activo',
+                'updated_at' => now(),
+            ]);
+
+            Movimiento::create([
+                'tipo' => 'entrada',
+                'estado' => 'pendiente',
+                'descripcion' => $descripcion,
+                'fecha_solicitud' => now(),
+                'solicitado_por' => auth()->id(),
+                'pedido_id' => $pedidoId,
+                'producto_base_id' => $productoBase->id,
+                'pedido_producto_id' => $lineaId,
+                'prioridad' => 2,
+                'nave_id' => $linea->obra_id,
+            ]);
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Línea activada correctamente.',
+            ]);
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            Log::error('Error al activar línea del pedido con coladas: ' . $e->getMessage(), [
+                'pedido_id' => $pedidoId,
+                'linea_id' => $lineaId,
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al activar el producto.',
+            ], 500);
+        }
+    }
+
     public function desactivar($pedidoId, $lineaId)
     {
         DB::transaction(function () use ($pedidoId, $lineaId) {

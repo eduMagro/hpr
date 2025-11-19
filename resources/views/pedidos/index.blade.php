@@ -128,7 +128,10 @@
                                     };
                                 @endphp
 
-                                <tr class="text-xs {{ $claseFondo }}">
+                                <tr class="text-xs {{ $claseFondo }} fila-pedido-linea"
+                                    data-pedido-id="{{ $pedido->id }}"
+                                    data-linea-id="{{ $linea->id }}"
+                                    data-cliente-id="{{ $linea->obra?->cliente_id ?? '' }}">
                                     <td class="border px-2 py-1 text-center">
                                         <div class="flex flex-col">
                                             @if ($linea->codigo)
@@ -330,11 +333,15 @@
                                                         {{-- BOTÓN ACTIVAR --}}
                                                         @if (($estado === 'pendiente' || $estado === 'parcial') && $esNaveValida)
                                                             <form method="POST"
-                                                                action="{{ route('pedidos.lineas.editarActivar', [$pedido->id, $linea['id']]) }}">
+                                                                action="{{ route('pedidos.lineas.editarActivar', [$pedido->id, $linea['id']]) }}"
+                                                                class="form-activar-linea"
+                                                                data-pedido-id="{{ $pedido->id }}"
+                                                                data-linea-id="{{ $linea['id'] }}"
+                                                                data-cliente-id="{{ $linea->obra?->cliente_id ?? '' }}">
                                                                 @csrf
                                                                 @method('PUT')
                                                                 <button type="submit" title="Activar línea"
-                                                                    class="bg-yellow-500 hover:bg-yellow-600 text-white text-xs px-2 py-1 rounded shadow transition">
+                                                                    class="btn-activar-linea bg-yellow-500 hover:bg-yellow-600 text-white text-xs px-2 py-1 rounded shadow transition">
                                                                     Activar
                                                                 </button>
                                                             </form>
@@ -437,6 +444,52 @@
                     <x-estadisticas.stock :nombre-meses="$nombreMeses" :stock-data="$stockData" :pedidos-por-diametro="$pedidosPorDiametro" :necesario-por-diametro="$necesarioPorDiametro"
                         :total-general="$totalGeneral" :consumo-origen="$consumoOrigen" :consumos-por-mes="$consumosPorMes" :producto-base-info="$productoBaseInfo" :stock-por-producto-base="$stockPorProductoBase"
                         :kg-pedidos-por-producto-base="$kgPedidosPorProductoBase" :resumen-reposicion="$resumenReposicion" :recomendacion-reposicion="$recomendacionReposicion" :configuracion_vista_stock="$configuracion_vista_stock" />
+                </div>
+            </div>
+
+            {{-- MODAL COLADAS / BULTOS PARA ACTIVACIÓN --}}
+            <div id="modal-coladas-activacion"
+                class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+                <div class="bg-white p-6 rounded-lg w-full max-w-3xl shadow-xl">
+                    <h3 class="text-lg font-semibold mb-4 text-gray-800 text-left">
+                        Confirmar activación y coladas (opcional)
+                    </h3>
+
+                    <p class="text-sm text-gray-600 mb-3 text-left">
+                        Puedes añadir cero o más coladas y bultos asociadas a esta línea. Deja la tabla vacía si no necesitas registrar nada.
+                    </p>
+
+                    <div class="border rounded-lg mb-4 max-h-64 overflow-y-auto">
+                        <table class="w-full text-sm text-center">
+                            <thead class="bg-gray-100">
+                                <tr>
+                                    <th class="px-2 py-1 border">Colada (código)</th>
+                                    <th class="px-2 py-1 border">Bulto (cantidad)</th>
+                                    <th class="px-2 py-1 border w-10">Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tabla-coladas-body">
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="flex justify-between items-center mb-4">
+                        <button type="button" id="btn-agregar-colada"
+                            class="bg-blue-500 hover:bg-blue-600 text-white text-xs px-3 py-1 rounded shadow">
+                            + Añadir colada / bulto
+                        </button>
+                    </div>
+
+                    <div class="flex justify-end gap-2">
+                        <button type="button" id="btn-cancelar-coladas"
+                            class="bg-gray-500 hover:bg-gray-600 text-white text-xs px-3 py-1 rounded shadow">
+                            Cancelar
+                        </button>
+                        <button type="button" id="btn-confirmar-activacion-coladas"
+                            class="bg-green-600 hover:bg-green-700 text-white text-xs px-3 py-1 rounded shadow">
+                            Confirmar activación
+                        </button>
+                    </div>
                 </div>
             </div>
 
@@ -1333,6 +1386,212 @@
                         if (loadingIndicator) loadingIndicator.classList.add('hidden');
                         contenedorStock.style.pointerEvents = 'auto';
                     });
+            });
+        });
+    </script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const CLIENTE_ID_REQUIERE_COLADAS = 1;
+
+            const modal = document.getElementById('modal-coladas-activacion');
+            const cuerpoTabla = document.getElementById('tabla-coladas-body');
+            const btnAgregar = document.getElementById('btn-agregar-colada');
+            const btnCancelar = document.getElementById('btn-cancelar-coladas');
+            const btnConfirmar = document.getElementById('btn-confirmar-activacion-coladas');
+
+            let pedidoIdActual = null;
+            let lineaIdActual = null;
+
+            function abrirModalColadas(pedidoId, lineaId) {
+                pedidoIdActual = pedidoId;
+                lineaIdActual = lineaId;
+
+                cuerpoTabla.innerHTML = '';
+                agregarFilaColada();
+
+                modal.classList.remove('hidden');
+                modal.classList.add('flex');
+            }
+
+            function cerrarModalColadas() {
+                modal.classList.add('hidden');
+                modal.classList.remove('flex');
+                pedidoIdActual = null;
+                lineaIdActual = null;
+            }
+
+            function agregarFilaColada() {
+                const fila = document.createElement('tr');
+                fila.className = 'fila-colada';
+                fila.innerHTML = `
+                    <td class="border px-2 py-1">
+                        <input type="text" class="w-full border border-gray-300 rounded px-1 py-1 text-xs input-colada" placeholder="Colada">
+                    </td>
+                    <td class="border px-2 py-1">
+                        <input type="number" step="0.001" min="0" class="w-full border border-gray-300 rounded px-1 py-1 text-xs input-bulto" placeholder="Cantidad">
+                    </td>
+                    <td class="border px-2 py-1">
+                        <button type="button" class="btn-eliminar-colada bg-red-500 hover:bg-red-600 text-white text-xs rounded max-w-6 max-h-6">
+                            <svg
+    viewBox="0 0 24 24"
+    width="100%"
+    height="100%"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+>
+    <line x1="6" y1="6" x2="18" y2="18" stroke="white" stroke-width="2" stroke-linecap="round" />
+    <line x1="6" y1="18" x2="18" y2="6" stroke="white" stroke-width="2" stroke-linecap="round" />
+</svg>
+
+                        </button>
+                    </td>
+                `;
+                cuerpoTabla.appendChild(fila);
+            }
+
+            if (btnAgregar) {
+                btnAgregar.addEventListener('click', function() {
+                    agregarFilaColada();
+                });
+            }
+
+            if (cuerpoTabla) {
+                cuerpoTabla.addEventListener('click', function(ev) {
+                    const target = ev.target;
+                    if (target.classList.contains('btn-eliminar-colada')) {
+                        const fila = target.closest('tr');
+                        if (fila) {
+                            fila.remove();
+                        }
+                    }
+                });
+            }
+
+            if (btnCancelar) {
+                btnCancelar.addEventListener('click', function() {
+                    cerrarModalColadas();
+                });
+            }
+
+            function obtenerTokenCsrf() {
+                const meta = document.querySelector('meta[name="csrf-token"]');
+                if (meta) {
+                    return meta.getAttribute('content');
+                }
+                const input = document.querySelector('input[name="_token"]');
+                return input ? input.value : '';
+            }
+
+            function activarLineaConColadas() {
+                if (!pedidoIdActual || !lineaIdActual) {
+                    return;
+                }
+
+                const filas = cuerpoTabla.querySelectorAll('.fila-colada');
+                const coladas = [];
+
+                filas.forEach(fila => {
+                    const coladaInput = fila.querySelector('.input-colada');
+                    const bultoInput = fila.querySelector('.input-bulto');
+                    const colada = coladaInput ? coladaInput.value.trim() : '';
+                    const bultoValor = bultoInput ? bultoInput.value.trim() : '';
+
+                    if (colada !== '' || bultoValor !== '') {
+                        const bulto = bultoValor !== '' ? parseFloat(bultoValor.replace(',', '.')) : null;
+                        coladas.push({
+                            colada: colada !== '' ? colada : null,
+                            bulto: bulto,
+                        });
+                    }
+                });
+
+                const url = `{{ url('/pedidos') }}/${pedidoIdActual}/lineas/${lineaIdActual}/activar-con-coladas`;
+
+                fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'X-CSRF-TOKEN': obtenerTokenCsrf(),
+                        'Accept': 'application/json',
+                    },
+                    body: JSON.stringify({ coladas }),
+                })
+                    .then(response => response.json().then(data => ({ ok: response.ok, status: response.status, data })))
+                    .then(({ ok, data }) => {
+                        if (!ok || !data.success) {
+                            const mensaje = data && data.message ? data.message : 'Error al activar la línea.';
+                            throw new Error(mensaje);
+                        }
+
+                        cerrarModalColadas();
+
+                        const selectorFila = `.fila-pedido-linea[data-pedido-id="${pedidoIdActual}"][data-linea-id="${lineaIdActual}"]`;
+                        const fila = document.querySelector(selectorFila);
+                        if (fila) {
+                            fila.classList.remove('bg-green-500', 'bg-green-100', 'bg-gray-300', 'text-gray-500', 'opacity-70', 'cursor-not-allowed');
+                            fila.classList.add('bg-yellow-100');
+                        }
+
+                        const formSelector = `.form-activar-linea[data-pedido-id="${pedidoIdActual}"][data-linea-id="${lineaIdActual}"]`;
+                        const form = document.querySelector(formSelector);
+                        if (form) {
+                            const boton = form.querySelector('.btn-activar-linea');
+                            if (boton) {
+                                boton.textContent = 'Desactivar';
+                                boton.title = 'Desactivar línea';
+                                boton.classList.remove('bg-yellow-500', 'hover:bg-yellow-600');
+                                boton.classList.add('bg-red-600', 'hover:bg-red-700');
+                            }
+
+                            form.setAttribute('action', `{{ url('/pedidos') }}/${pedidoIdActual}/lineas/${lineaIdActual}/desactivar`);
+                            form.setAttribute('method', 'POST');
+                            form.setAttribute('data-cliente-id', '0');
+
+                            let methodInput = form.querySelector('input[name="_method"]');
+                            if (!methodInput) {
+                                methodInput = document.createElement('input');
+                                methodInput.type = 'hidden';
+                                methodInput.name = '_method';
+                                form.appendChild(methodInput);
+                            }
+                            methodInput.value = 'DELETE';
+                        }
+
+                        Swal.fire({
+                            icon: 'success',
+                            title: data.message || 'Línea activada correctamente.',
+                            showConfirmButton: false,
+                            timer: 1800,
+                        });
+                    })
+                    .catch(error => {
+                        console.error(error);
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Error',
+                            text: error.message || 'Error al activar la línea.',
+                        });
+                    });
+            }
+
+            if (btnConfirmar) {
+                btnConfirmar.addEventListener('click', function() {
+                    activarLineaConColadas();
+                });
+            }
+
+            document.querySelectorAll('.form-activar-linea').forEach(form => {
+                form.addEventListener('submit', function(ev) {
+                    const clienteId = parseInt(form.getAttribute('data-cliente-id') || '0', 10);
+
+                    if (clienteId === CLIENTE_ID_REQUIERE_COLADAS) {
+                        ev.preventDefault();
+                        const pedidoId = form.getAttribute('data-pedido-id');
+                        const lineaId = form.getAttribute('data-linea-id');
+                        abrirModalColadas(pedidoId, lineaId);
+                    }
+                });
             });
         });
     </script>

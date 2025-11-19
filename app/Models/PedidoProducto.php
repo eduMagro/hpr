@@ -124,4 +124,9 @@ class PedidoProducto extends Model
     {
         return $this->belongsTo(Obra::class, 'obra_id');
     }
+
+    public function coladas()
+    {
+        return $this->hasMany(PedidoProductoColada::class, 'pedido_producto_id');
+    }
 }
