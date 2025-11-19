@@ -354,6 +354,7 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
     Route::post('/salidas/crear-salidas-vacias-masivo', [SalidaFerrallaController::class, 'crearSalidasVaciasMasivo'])->name('salidas.crearSalidasVaciasMasivo');
     Route::put('/salidas/completar-desde-movimiento/{movimientoId}', [SalidaFerrallaController::class, 'completarDesdeMovimiento']);
     Route::get('/salidas/{salidaId}/paquetes', [SalidaFerrallaController::class, 'paquetesPorSalida'])->name('salidas.paquetes');
+    Route::get('/salidas/{salidaId}/mapa/{naveId}', [SalidaFerrallaController::class, 'obtenerMapaNave'])->name('salidas.mapaNave');
     Route::post('/salidas/validar-subetiqueta', [SalidaFerrallaController::class, 'validarSubetiquetaParaSalida'])->name('salidas.validarSubetiqueta');
     Route::put('/salidas/{salida}/codigo-sage', [SalidaFerrallaController::class, 'actualizarCodigoSage'])->name('salidas.editarCodigoSage');
 

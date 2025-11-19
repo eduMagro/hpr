@@ -618,7 +618,7 @@
     <style>
         
         /* Botones de Zoom - Fixed al contenedor del mapa */
-        #escenario-cuadricula {
+        [data-mapa-canvas] {
             position: relative;
         }
 
