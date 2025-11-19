@@ -266,6 +266,12 @@ class PaqueteController extends Controller
 
     public function store(Request $request, LocalizacionPaqueteService $localizacionPaqueteService)
     {
+        Log::info('🔍 DEBUG: Método store() iniciado', [
+            'maquina_id' => $request->input('maquina_id'),
+            'items_count' => count($request->input('items', [])),
+            'servicio_inyectado' => get_class($localizacionPaqueteService)
+        ]);
+
         // 1) Validación de la petición
         //    - items: array de cosas a paquetizar (etiquetas / elementos)
         //    - items.*.id: identificador de la etiqueta_sub_id o del elemento
@@ -401,10 +407,23 @@ class PaqueteController extends Controller
             //          - Calcula el tamaño del paquete según sus elementos
             //          - Inserta/actualiza en `localizaciones_paquetes` una posición
             //            centrada encima del div de la máquina.
-            $localizacionPaqueteService->asignarLocalizacionAutomatica(
+
+            Log::info('🔍 DEBUG: Antes de llamar al servicio de localización', [
+                'paquete_id' => $paquete->id,
+                'maquina_id' => $maquina->id,
+                'servicio_clase' => get_class($localizacionPaqueteService)
+            ]);
+
+            $resultadoLocalizacion = $localizacionPaqueteService->asignarLocalizacionAutomatica(
                 $paquete,          // paquete recién creado
                 $maquina->id       // máquina desde la que se ha creado el paquete
             );
+
+            Log::info('🔍 DEBUG: Resultado del servicio de localización', [
+                'paquete_id' => $paquete->id,
+                'resultado' => $resultadoLocalizacion ? 'SUCCESS' : 'NULL',
+                'localizacion_id' => $resultadoLocalizacion->id ?? null
+            ]);
 
             // 11) Borrar paquetes ANTERIORES que hayan quedado vacíos tras la reasignación
             foreach ($paquetesPrevios as $paqueteAnteriorId) {

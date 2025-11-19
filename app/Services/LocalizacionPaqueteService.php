@@ -197,14 +197,14 @@ class LocalizacionPaqueteService
 
     /**
      * Asigna automáticamente una localización a un paquete en el centro de la máquina
-     * 
+     *
      * Este es el método principal del servicio. Realiza los siguientes pasos:
-     * 1. Obtiene la localización de la máquina
+     * 1. Obtiene la localización de la máquina (o usa valores por defecto)
      * 2. Calcula el centro de la máquina
      * 3. Calcula el tamaño del paquete
      * 4. Calcula las coordenadas finales del paquete centrado
      * 5. Crea o actualiza el registro en localizaciones_paquetes
-     * 
+     *
      * @param Paquete $paquete Instancia del paquete a localizar
      * @param int $maquinaId ID de la máquina donde se creó el paquete
      * @return LocalizacionPaquete|null Instancia de LocalizacionPaquete si todo OK, null si error
@@ -221,30 +221,37 @@ class LocalizacionPaqueteService
             // Paso 1: Obtener la localización de la máquina
             $localizacionMaquina = $this->obtenerLocalizacionMaquina($maquinaId);
 
-            if (!$localizacionMaquina) {
-                // Si no se encuentra la localización de la máquina, no podemos continuar
-                Log::warning("No se pudo asignar localización: máquina sin localización", [
-                    'paquete_id' => $paquete->id,
-                    'maquina_id' => $maquinaId
-                ]);
-                return null;
-            }
+            // Variables para el centro de la máquina
+            $centroX = 5; // Valor por defecto: columna 5
+            $centroY = 5; // Valor por defecto: fila 5
 
-            // Paso 2: Calcular el centro de la máquina
-            $centro = $this->calcularCentroMaquina(
-                $localizacionMaquina->x1,
-                $localizacionMaquina->y1,
-                $localizacionMaquina->x2,
-                $localizacionMaquina->y2
-            );
+            if (!$localizacionMaquina) {
+                // Si no se encuentra la localización de la máquina, usar valores por defecto
+                // Colocamos el paquete en una zona por defecto (esquina superior izquierda)
+                Log::warning("Máquina sin localización, usando posición por defecto para el paquete", [
+                    'paquete_id' => $paquete->id,
+                    'maquina_id' => $maquinaId,
+                    'posicion_defecto' => "({$centroX},{$centroY})"
+                ]);
+            } else {
+                // Paso 2: Calcular el centro de la máquina si existe la localización
+                $centro = $this->calcularCentroMaquina(
+                    $localizacionMaquina->x1,
+                    $localizacionMaquina->y1,
+                    $localizacionMaquina->x2,
+                    $localizacionMaquina->y2
+                );
+                $centroX = $centro['x'];
+                $centroY = $centro['y'];
+            }
 
             // Paso 3: Calcular el tamaño del paquete en celdas
             $tamanoPaquete = $this->calcularTamanoPaqueteEnCeldas($paquete);
 
             // Paso 4: Calcular las coordenadas finales del paquete
             $coordenadas = $this->calcularCoordenadasPaquete(
-                $centro['x'],
-                $centro['y'],
+                $centroX,
+                $centroY,
                 $tamanoPaquete['ancho_celdas'],
                 $tamanoPaquete['largo_celdas']
             );
@@ -266,7 +273,8 @@ class LocalizacionPaqueteService
                 'paquete_id' => $paquete->id,
                 'localizacion_paquete_id' => $localizacionPaquete->id,
                 'coordenadas' => "({$coordenadas['x1']},{$coordenadas['y1']}) a ({$coordenadas['x2']},{$coordenadas['y2']})",
-                'centro_maquina' => "({$centro['x']},{$centro['y']})"
+                'centro_usado' => "({$centroX},{$centroY})",
+                'tiene_localizacion_maquina' => $localizacionMaquina ? 'sí' : 'no'
             ]);
 
             return $localizacionPaquete;
