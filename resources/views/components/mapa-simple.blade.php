@@ -163,6 +163,50 @@
             };
         }
 
+        function renderExistentes() {
+            grid.querySelectorAll('.loc-existente').forEach(el => {
+                // No reposicionar paquetes que están en modo edición
+                if (el.classList.contains('loc-paquete--editing')) {
+                    // Solo actualizar el tamaño basado en celdas, no la posición
+                    // Mantener left y top intactos
+                    const currentLeft = parseFloat(el.style.left) || 0;
+                    const currentTop = parseFloat(el.style.top) || 0;
+
+                    // Recalcular width y height si es necesario
+                    const rect = realToViewRect(
+                        +el.dataset.x1, +el.dataset.y1,
+                        +el.dataset.x2, +el.dataset.y2
+                    );
+
+                    // Mantener la posición actual pero ajustar dimensiones proporcionalmente
+                    const oldCeldaPx = parseFloat(el.dataset.currentCeldaPx) || cellSize;
+                    const scaleFactor = cellSize / oldCeldaPx;
+
+                    el.style.left = (currentLeft * scaleFactor) + 'px';
+                    el.style.top = (currentTop * scaleFactor) + 'px';
+                    el.style.width = (parseFloat(el.style.width) * scaleFactor) + 'px';
+                    el.style.height = (parseFloat(el.style.height) * scaleFactor) + 'px';
+
+                    el.dataset.currentCeldaPx = cellSize;
+                    return;
+                }
+
+                const rect = realToViewRect(
+                    +el.dataset.x1, +el.dataset.y1,
+                    +el.dataset.x2, +el.dataset.y2
+                );
+                
+                const width = rect.w * cellSize;
+                const height = rect.h * cellSize;
+
+                el.style.left = ((rect.x - 1) * cellSize) + 'px';
+                el.style.top = ((rect.y - 1) * cellSize) + 'px';
+                el.style.width = width + 'px';
+                el.style.height = height + 'px';
+                el.dataset.currentCeldaPx = cellSize;
+            });
+        }
+
         function updateMap() {
             const containerWidth = escenario.clientWidth - 40;
             const containerHeight = 450;
@@ -187,7 +231,7 @@
             `;
             grid.style.backgroundPosition = '0 0, 0 0';
 
-            renderizarElementos();
+            renderExistentes();
         }
 
         function renderizarElementos() {
@@ -326,7 +370,9 @@
         }, { passive: true });
 
         // Inicializar
+        renderizarElementos();
         updateMap();
+        initPaqueteInteracciones();
 
         // Resize
         let resizePending = false;
@@ -340,321 +386,362 @@
         }, { passive: true });
 
         // ================================
-        //  MODO EDICIÓN DE PAQUETES
+        //  MODO EDICIÓN DE PAQUETES (Funciones y Estado)
         // ================================
-        if (modoEdicion) {
-            let paqueteEnEdicion = null;
-            let dragState = null;
+        let paqueteEnEdicion = null;
+        let dragState = null;
 
-            function getCeldaPx() {
-                const computed = getComputedStyle(grid);
-                const width = parseFloat(computed.width);
-                return width / viewCols;
+        function getCeldaPx() {
+            const computed = getComputedStyle(grid);
+            const width = parseFloat(computed.width);
+            return width / viewCols;
+        }
+
+        function initPaqueteInteracciones() {
+            if (!modoEdicion) return;
+            
+            // Usar delegación de eventos en el grid para manejar clicks en paquetes
+            grid.addEventListener('click', function(ev) {
+                const paquete = ev.target.closest('.loc-paquete');
+                if (!paquete) return;
+
+                // Si el click fue en la toolbar, no hacer nada (ya tiene sus propios listeners)
+                if (ev.target.closest('.paquete-toolbar')) {
+                    return;
+                }
+
+                // Si ya está en edición, no hacer nada (el usuario interactúa con la toolbar de edición)
+                if (paquete.classList.contains('loc-paquete--editing')) {
+                    return;
+                }
+
+                // Si ya tiene la toolbar de preview, no hacer nada
+                const yaTieneToolbarPreview = paquete.querySelector('.paquete-toolbar--preview');
+                if (yaTieneToolbarPreview) {
+                    return;
+                }
+
+                console.log('Click en paquete:', paquete.dataset.paqueteId);
+                crearToolbarPreview(paquete);
+            });
+        }
+
+        function crearToolbarPreview(paquete) {
+            // Si hay otro paquete en edición o con preview, cerrarlo
+            if (paqueteEnEdicion && paqueteEnEdicion !== paquete) {
+                salirDeEdicion(paqueteEnEdicion, true);
+            }
+            
+            // Cerrar otros previews abiertos
+            grid.querySelectorAll('.paquete-toolbar--preview').forEach(tb => {
+                if (tb.parentElement !== paquete) {
+                    tb.parentElement.classList.remove('has-toolbar');
+                    tb.remove();
+                }
+            });
+
+            const toolbar = document.createElement('div');
+            toolbar.className = 'paquete-toolbar paquete-toolbar--preview';
+
+            const btnEditar = document.createElement('button');
+            btnEditar.type = 'button';
+            btnEditar.title = 'Mover paquete';
+            btnEditar.innerHTML = `
+                <svg viewBox="0 0 24 24" fill="none">
+                    <path d="M16.474 5.408l2.118 2.117m-.756-3.982L12.109 9.27a2.118 2.118 0 00-.58 1.082L11 13l2.648-.53c.41-.082.786-.283 1.082-.579l5.727-5.727a1.853 1.853 0 10-2.621-2.621z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+            `;
+
+            btnEditar.addEventListener('click', (ev) => {
+                ev.stopPropagation();
+                console.log('Entrando en edición paquete:', paquete.dataset.paqueteId);
+                entrarEnEdicion(paquete);
+            });
+
+            toolbar.appendChild(btnEditar);
+            paquete.appendChild(toolbar);
+            paquete.classList.add('has-toolbar');
+        }
+
+        function entrarEnEdicion(paquete) {
+            if (paqueteEnEdicion && paqueteEnEdicion !== paquete) {
+                salirDeEdicion(paqueteEnEdicion, true);
             }
 
-            function initPaqueteInteracciones() {
-                const paquetes = grid.querySelectorAll('.loc-paquete');
+            paqueteEnEdicion = paquete;
 
-                paquetes.forEach(paquete => {
-                    if (getComputedStyle(paquete).position === 'static') {
-                        paquete.style.position = 'absolute';
+            const previewToolbar = paquete.querySelector('.paquete-toolbar--preview');
+            if (previewToolbar) {
+                previewToolbar.remove();
+            }
+
+            paquete.classList.add('loc-paquete--editing');
+            paquete.classList.add('has-toolbar'); // Asegurar que tenga la clase
+
+            if (!paquete.dataset.origLeft) {
+                paquete.dataset.origLeft = paquete.style.left || '0px';
+                paquete.dataset.origTop = paquete.style.top || '0px';
+                paquete.dataset.origWidth = paquete.style.width || '';
+                paquete.dataset.origHeight = paquete.style.height || '';
+            }
+
+            const toolbar = document.createElement('div');
+            toolbar.className = 'paquete-toolbar paquete-toolbar--edit';
+
+            // Botón confirmar
+            const btnConfirmar = document.createElement('button');
+            btnConfirmar.type = 'button';
+            btnConfirmar.title = 'Guardar nueva posición';
+            btnConfirmar.innerHTML = `
+                <svg viewBox="0 0 24 24" fill="none">
+                    <path d="M5 13l4 4L19 7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+            `;
+
+            btnConfirmar.addEventListener('click', async (ev) => {
+                ev.stopPropagation();
+
+                const paqueteId = paquete.dataset.paqueteId;
+                if (!paqueteId) {
+                    alert('No se encontró el ID del paquete');
+                    return;
+                }
+
+                const celdaPx = getCeldaPx();
+                const left = parseFloat(paquete.style.left) || 0;
+                const top = parseFloat(paquete.style.top) || 0;
+                const width = parseFloat(paquete.style.width) || celdaPx;
+                const height = parseFloat(paquete.style.height) || celdaPx;
+
+                const x1v = Math.round(left / celdaPx) + 1;
+                const y1v = Math.round(top / celdaPx) + 1;
+                const x2v = Math.round((left + width) / celdaPx);
+                const y2v = Math.round((top + height) / celdaPx);
+
+                // Convertir de vista a real (inverso de realToViewRect)
+                function viewToReal(xv, yv) {
+                    if (isVertical) {
+                        return { x: xv, y: (H - yv + 1) };
                     }
-
-                    paquete.addEventListener('click', function(ev) {
-                        if (ev.target.closest('.paquete-toolbar')) {
-                            return;
-                        }
-
-                        if (this.classList.contains('loc-paquete--editing')) {
-                            return;
-                        }
-
-                        const yaTieneToolbarPreview = this.querySelector('.paquete-toolbar--preview');
-                        if (!yaTieneToolbarPreview) {
-                            crearToolbarPreview(this);
-                        }
-                    });
-                });
-            }
-
-            function crearToolbarPreview(paquete) {
-                if (paqueteEnEdicion && paqueteEnEdicion !== paquete) {
-                    salirDeEdicion(paqueteEnEdicion, true);
+                    return { x: yv, y: xv };
                 }
 
-                const toolbar = document.createElement('div');
-                toolbar.className = 'paquete-toolbar paquete-toolbar--preview';
+                const p1 = viewToReal(x1v, y1v);
+                const p2 = viewToReal(x2v, y2v);
 
-                const btnEditar = document.createElement('button');
-                btnEditar.type = 'button';
-                btnEditar.title = 'Mover paquete';
-                btnEditar.innerHTML = `
-                    <svg viewBox="0 0 24 24" fill="none">
-                        <path d="M4 20h4l10.5-10.5-4-4L4 16v4z" stroke="currentColor" stroke-width="2"/>
-                        <path d="M14.5 5.5l4 4" stroke="currentColor" stroke-width="2"/>
-                    </svg>
-                `;
+                const x1r = Math.min(p1.x, p2.x);
+                const y1r = Math.min(p1.y, p2.y);
+                const x2r = Math.max(p1.x, p2.x);
+                const y2r = Math.max(p1.y, p2.y);
 
-                btnEditar.addEventListener('click', (ev) => {
-                    ev.stopPropagation();
-                    entrarEnEdicion(paquete);
-                });
-
-                toolbar.appendChild(btnEditar);
-                paquete.appendChild(toolbar);
-            }
-
-            function entrarEnEdicion(paquete) {
-                if (paqueteEnEdicion && paqueteEnEdicion !== paquete) {
-                    salirDeEdicion(paqueteEnEdicion, true);
-                }
-
-                paqueteEnEdicion = paquete;
-
-                const previewToolbar = paquete.querySelector('.paquete-toolbar--preview');
-                if (previewToolbar) {
-                    previewToolbar.remove();
-                }
-
-                paquete.classList.add('loc-paquete--editing');
-
-                if (!paquete.dataset.origLeft) {
-                    paquete.dataset.origLeft = paquete.style.left || '0px';
-                    paquete.dataset.origTop = paquete.style.top || '0px';
-                    paquete.dataset.origWidth = paquete.style.width || '';
-                    paquete.dataset.origHeight = paquete.style.height || '';
-                }
-
-                const toolbar = document.createElement('div');
-                toolbar.className = 'paquete-toolbar paquete-toolbar--edit';
-
-                // Botón confirmar
-                const btnConfirmar = document.createElement('button');
-                btnConfirmar.type = 'button';
-                btnConfirmar.title = 'Guardar nueva posición';
+                btnConfirmar.disabled = true;
                 btnConfirmar.innerHTML = `
-                    <svg viewBox="0 0 24 24" fill="none">
-                        <path d="M5 13l4 4L19 7" stroke="currentColor" stroke-width="2"/>
+                    <svg viewBox="0 0 24 24" fill="none" class="animate-spin">
+                        <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none" opacity="0.25"/>
+                        <path d="M12 2a10 10 0 0 1 10 10" stroke="currentColor" stroke-width="4" fill="none"/>
                     </svg>
                 `;
 
-                btnConfirmar.addEventListener('click', async (ev) => {
-                    ev.stopPropagation();
+                try {
+                    const response = await fetch(`/localizaciones/paquete/${paqueteId}`, {
+                        method: 'PUT',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '',
+                            'Accept': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            x1: x1r,
+                            y1: y1r,
+                            x2: x2r,
+                            y2: y2r
+                        })
+                    });
 
-                    const paqueteId = paquete.dataset.paqueteId;
-                    if (!paqueteId) {
-                        alert('No se encontró el ID del paquete');
-                        return;
+                    const result = await response.json();
+
+                    if (!response.ok) {
+                        throw new Error(result.message || 'Error al guardar la posición');
                     }
 
-                    const celdaPx = getCeldaPx();
-                    const left = parseFloat(paquete.style.left) || 0;
-                    const top = parseFloat(paquete.style.top) || 0;
-                    const width = parseFloat(paquete.style.width) || celdaPx;
-                    const height = parseFloat(paquete.style.height) || celdaPx;
+                    paquete.dataset.x1 = x1r;
+                    paquete.dataset.y1 = y1r;
+                    paquete.dataset.x2 = x2r;
+                    paquete.dataset.y2 = y2r;
+                    paquete.dataset.origLeft = paquete.style.left;
+                    paquete.dataset.origTop = paquete.style.top;
 
-                    const x1v = Math.round(left / celdaPx) + 1;
-                    const y1v = Math.round(top / celdaPx) + 1;
-                    const x2v = Math.round((left + width) / celdaPx);
-                    const y2v = Math.round((top + height) / celdaPx);
+                    if (typeof Swal !== 'undefined') {
+                        Swal.fire({
+                            icon: 'success',
+                            title: '¡Guardado!',
+                            text: 'La posición del paquete se ha actualizado correctamente',
+                            toast: true,
+                            position: 'top-end',
+                            showConfirmButton: false,
+                            timer: 3000,
+                            timerProgressBar: true
+                        });
+                    } else {
+                        alert('¡Guardado! La posición del paquete se guardó correctamente');
+                    }
+                    
+                    salirDeEdicion(paquete, false);
 
-                    // Convertir de vista a real (inverso de realToViewRect)
-                    function viewToReal(xv, yv) {
-                        if (isVertical) {
-                            return { x: xv, y: (H - yv + 1) };
-                        }
-                        return { x: yv, y: xv };
+                } catch (error) {
+                    console.error('Error al guardar posición:', error);
+                    
+                    if (typeof Swal !== 'undefined') {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Error',
+                            text: 'No se pudo guardar la posición: ' + error.message,
+                            toast: true,
+                            position: 'top-end',
+                            showConfirmButton: false,
+                            timer: 4000
+                        });
+                    } else {
+                        alert('Error al guardar: ' + error.message);
                     }
 
-                    const p1 = viewToReal(x1v, y1v);
-                    const p2 = viewToReal(x2v, y2v);
-
-                    const x1r = Math.min(p1.x, p2.x);
-                    const y1r = Math.min(p1.y, p2.y);
-                    const x2r = Math.max(p1.x, p2.x);
-                    const y2r = Math.max(p1.y, p2.y);
-
-                    btnConfirmar.disabled = true;
+                    btnConfirmar.disabled = false;
                     btnConfirmar.innerHTML = `
-                        <svg viewBox="0 0 24 24" fill="none" class="animate-spin">
-                            <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none" opacity="0.25"/>
-                            <path d="M12 2a10 10 0 0 1 10 10" stroke="currentColor" stroke-width="4" fill="none"/>
+                        <svg viewBox="0 0 24 24" fill="none">
+                            <path d="M5 13l4 4L19 7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
                         </svg>
                     `;
+                }
+            });
 
-                    try {
-                        const response = await fetch(`/localizaciones/paquete/${paqueteId}`, {
-                            method: 'PUT',
-                            headers: {
-                                'Content-Type': 'application/json',
-                                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '',
-                                'Accept': 'application/json'
-                            },
-                            body: JSON.stringify({
-                                x1: x1r,
-                                y1: y1r,
-                                x2: x2r,
-                                y2: y2r
-                            })
-                        });
+            // Botón cancelar
+            const btnCancelar = document.createElement('button');
+            btnCancelar.type = 'button';
+            btnCancelar.title = 'Cancelar cambios';
+            btnCancelar.innerHTML = `
+                <svg viewBox="0 0 24 24" fill="none">
+                    <path d="M6 6l12 12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    <path d="M18 6L6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+            `;
 
-                        const result = await response.json();
+            btnCancelar.addEventListener('click', (ev) => {
+                ev.stopPropagation();
+                paquete.style.left = paquete.dataset.origLeft || '0px';
+                paquete.style.top = paquete.dataset.origTop || '0px';
+                paquete.style.width = paquete.dataset.origWidth || '';
+                paquete.style.height = paquete.dataset.origHeight || '';
+                salirDeEdicion(paquete, true);
+            });
 
-                        if (!response.ok) {
-                            throw new Error(result.message || 'Error al guardar la posición');
-                        }
+            // Botón rotar
+            const btnRotar = document.createElement('button');
+            btnRotar.type = 'button';
+            btnRotar.title = 'Rotar paquete 90°';
+            btnRotar.innerHTML = `
+                <svg viewBox="0 0 24 24" fill="none">
+                    <path d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+            `;
 
-                        paquete.dataset.x1 = x1r;
-                        paquete.dataset.y1 = y1r;
-                        paquete.dataset.x2 = x2r;
-                        paquete.dataset.y2 = y2r;
-                        paquete.dataset.origLeft = paquete.style.left;
-                        paquete.dataset.origTop = paquete.style.top;
+            btnRotar.addEventListener('click', (ev) => {
+                ev.stopPropagation();
 
-                        alert('¡Guardado! La posición del paquete se guardó correctamente');
-                        salirDeEdicion(paquete, false);
+                const currentWidth = paquete.style.width;
+                const currentHeight = paquete.style.height;
 
-                    } catch (error) {
-                        console.error('Error al guardar posición:', error);
-                        alert('Error al guardar: ' + error.message);
+                paquete.style.width = currentHeight;
+                paquete.style.height = currentWidth;
+            });
 
-                        btnConfirmar.disabled = false;
-                        btnConfirmar.innerHTML = `
-                            <svg viewBox="0 0 24 24" fill="none">
-                                <path d="M5 13l4 4L19 7" stroke="currentColor" stroke-width="2"/>
-                            </svg>
-                        `;
-                    }
-                });
+            toolbar.appendChild(btnConfirmar);
+            toolbar.appendChild(btnCancelar);
+            toolbar.appendChild(btnRotar);
+            paquete.appendChild(toolbar);
 
-                // Botón cancelar
-                const btnCancelar = document.createElement('button');
-                btnCancelar.type = 'button';
-                btnCancelar.title = 'Cancelar cambios';
-                btnCancelar.innerHTML = `
-                    <svg viewBox="0 0 24 24" fill="none">
-                        <path d="M6 6l12 12" stroke="currentColor" stroke-width="2"/>
-                        <path d="M18 6L6 18" stroke="currentColor" stroke-width="2"/>
-                    </svg>
-                `;
+            activarDragEnPaquete(paquete);
+        }
 
-                btnCancelar.addEventListener('click', (ev) => {
-                    ev.stopPropagation();
-                    paquete.style.left = paquete.dataset.origLeft || '0px';
-                    paquete.style.top = paquete.dataset.origTop || '0px';
-                    paquete.style.width = paquete.dataset.origWidth || '';
-                    paquete.style.height = paquete.dataset.origHeight || '';
-                    salirDeEdicion(paquete, true);
-                });
+        function salirDeEdicion(paquete, cancelar = false) {
+            const toolbarEdit = paquete.querySelector('.paquete-toolbar--edit');
+            if (toolbarEdit) toolbarEdit.remove();
 
-                // Botón rotar
-                const btnRotar = document.createElement('button');
-                btnRotar.type = 'button';
-                btnRotar.title = 'Rotar paquete 90°';
-                btnRotar.innerHTML = `
-                    <svg viewBox="0 0 24 24" fill="none">
-                        <path d="M21 12a9 9 0 0 1-9 9m9-9a9 9 0 0 0-9-9m9 9h-4m-5 9a9 9 0 0 1-9-9m9 9v-4m-9-5a9 9 0 0 1 9-9m-9 9h4m5-9v4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                    </svg>
-                `;
+            paquete.classList.remove('loc-paquete--editing');
+            paquete.classList.remove('has-toolbar'); // Remover clase
+            desactivarDragEnPaquete(paquete);
 
-                btnRotar.addEventListener('click', (ev) => {
-                    ev.stopPropagation();
+            const preview = paquete.querySelector('.paquete-toolbar--preview');
+            if (preview) preview.remove();
 
-                    const currentWidth = paquete.style.width;
-                    const currentHeight = paquete.style.height;
-
-                    paquete.style.width = currentHeight;
-                    paquete.style.height = currentWidth;
-                });
-
-                toolbar.appendChild(btnConfirmar);
-                toolbar.appendChild(btnCancelar);
-                toolbar.appendChild(btnRotar);
-                paquete.appendChild(toolbar);
-
-                activarDragEnPaquete(paquete);
+            if (paqueteEnEdicion === paquete) {
+                paqueteEnEdicion = null;
             }
+        }
 
-            function salirDeEdicion(paquete, cancelar = false) {
-                const toolbarEdit = paquete.querySelector('.paquete-toolbar--edit');
-                if (toolbarEdit) toolbarEdit.remove();
+        function activarDragEnPaquete(paquete) {
+            if (!paquete.classList.contains('loc-paquete--editing')) return;
 
-                paquete.classList.remove('loc-paquete--editing');
-                desactivarDragEnPaquete(paquete);
+            const onMouseDown = (ev) => {
+                if (ev.target.closest('.paquete-toolbar')) return;
+                ev.preventDefault();
 
-                const preview = paquete.querySelector('.paquete-toolbar--preview');
-                if (preview) preview.remove();
+                const gridRect = grid.getBoundingClientRect();
+                const pkgRect = paquete.getBoundingClientRect();
+                const offsetX = ev.clientX - pkgRect.left;
+                const offsetY = ev.clientY - pkgRect.top;
 
-                if (paqueteEnEdicion === paquete) {
-                    paqueteEnEdicion = null;
-                }
-            }
+                dragState = { offsetX, offsetY, gridRect };
 
-            function activarDragEnPaquete(paquete) {
-                if (!paquete.classList.contains('loc-paquete--editing')) return;
+                document.addEventListener('mousemove', onMouseMove);
+                document.addEventListener('mouseup', onMouseUp);
+            };
 
-                const onMouseDown = (ev) => {
-                    if (ev.target.closest('.paquete-toolbar')) return;
-                    ev.preventDefault();
+            const onMouseMove = (ev) => {
+                if (!dragState) return;
 
-                    const gridRect = grid.getBoundingClientRect();
-                    const pkgRect = paquete.getBoundingClientRect();
-                    const offsetX = ev.clientX - pkgRect.left;
-                    const offsetY = ev.clientY - pkgRect.top;
+                // gridRect.left ya es relativo al viewport, así que ev.clientX - gridRect.left
+                // nos da la posición X relativa al borde izquierdo del grid.
+                // No hay que restar scrollLeft porque getBoundingClientRect ya tiene en cuenta el scroll.
+                const xDentroGrid = ev.clientX - dragState.gridRect.left;
+                const yDentroGrid = ev.clientY - dragState.gridRect.top;
 
-                    dragState = { offsetX, offsetY, gridRect };
+                let nuevoLeft = xDentroGrid - dragState.offsetX;
+                let nuevoTop = yDentroGrid - dragState.offsetY;
 
-                    document.addEventListener('mousemove', onMouseMove);
-                    document.addEventListener('mouseup', onMouseUp);
-                };
+                nuevoLeft = Math.max(0, Math.min(nuevoLeft, grid.offsetWidth - paquete.offsetWidth));
+                nuevoTop = Math.max(0, Math.min(nuevoTop, grid.offsetHeight - paquete.offsetHeight));
 
-                const onMouseMove = (ev) => {
-                    if (!dragState) return;
+                paquete.style.left = `${nuevoLeft}px`;
+                paquete.style.top = `${nuevoTop}px`;
+            };
 
-                    const xDentroGrid = ev.clientX - dragState.gridRect.left - escenario.scrollLeft;
-                    const yDentroGrid = ev.clientY - dragState.gridRect.top - escenario.scrollTop;
-
-                    let nuevoLeft = xDentroGrid - dragState.offsetX;
-                    let nuevoTop = yDentroGrid - dragState.offsetY;
-
-                    nuevoLeft = Math.max(0, Math.min(nuevoLeft, grid.offsetWidth - paquete.offsetWidth));
-                    nuevoTop = Math.max(0, Math.min(nuevoTop, grid.offsetHeight - paquete.offsetHeight));
-
-                    paquete.style.left = `${nuevoLeft}px`;
-                    paquete.style.top = `${nuevoTop}px`;
-                };
-
-                const onMouseUp = () => {
-                    dragState = null;
-                    document.removeEventListener('mousemove', onMouseMove);
-                    document.removeEventListener('mouseup', onMouseUp);
-                };
-
-                paquete._onMouseDownEditar = onMouseDown;
-                paquete._onMouseMoveEditar = onMouseMove;
-                paquete._onMouseUpEditar = onMouseUp;
-
-                paquete.addEventListener('mousedown', onMouseDown);
-            }
-
-            function desactivarDragEnPaquete(paquete) {
-                if (paquete._onMouseDownEditar) {
-                    paquete.removeEventListener('mousedown', paquete._onMouseDownEditar);
-                    delete paquete._onMouseDownEditar;
-                }
-                if (paquete._onMouseMoveEditar) {
-                    document.removeEventListener('mousemove', paquete._onMouseMoveEditar);
-                    delete paquete._onMouseMoveEditar;
-                }
-                if (paquete._onMouseUpEditar) {
-                    document.removeEventListener('mouseup', paquete._onMouseUpEditar);
-                    delete paquete._onMouseUpEditar;
-                }
+            const onMouseUp = () => {
                 dragState = null;
-            }
+                document.removeEventListener('mousemove', onMouseMove);
+                document.removeEventListener('mouseup', onMouseUp);
+            };
 
-            // Inicializar interacciones
-            initPaqueteInteracciones();
+            paquete._onMouseDownEditar = onMouseDown;
+            paquete._onMouseMoveEditar = onMouseMove;
+            paquete._onMouseUpEditar = onMouseUp;
+
+            paquete.addEventListener('mousedown', onMouseDown);
+        }
+
+        function desactivarDragEnPaquete(paquete) {
+            if (paquete._onMouseDownEditar) {
+                paquete.removeEventListener('mousedown', paquete._onMouseDownEditar);
+                delete paquete._onMouseDownEditar;
+            }
+            if (paquete._onMouseMoveEditar) {
+                document.removeEventListener('mousemove', paquete._onMouseMoveEditar);
+                delete paquete._onMouseMoveEditar;
+            }
+            if (paquete._onMouseUpEditar) {
+                document.removeEventListener('mouseup', paquete._onMouseUpEditar);
+                delete paquete._onMouseUpEditar;
+            }
+            dragState = null;
         }
     }
 
@@ -691,10 +778,19 @@
 {{-- Estilos para el modo edición --}}
 @if($modoEdicion)
 <style>
+    /* Permitir que la toolbar se vea fuera del paquete */
+    .loc-paquete {
+        overflow: visible !important;
+    }
+    
+    .loc-paquete.has-toolbar {
+        z-index: 90;
+    }
+
     /* Toolbar flotante debajo del paquete */
     .paquete-toolbar {
         position: absolute;
-        top: calc(100% + 30px);
+        top: calc(100% + 5px);
         left: 50%;
         transform: translateX(-50%);
         display: flex;
@@ -708,6 +804,9 @@
         border-radius: 8px;
         box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
         backdrop-filter: blur(8px);
+        /* Asegurar dimensiones mínimas */
+        min-width: max-content;
+        min-height: 24px;
     }
 
     /* Botones de la toolbar */
@@ -724,6 +823,7 @@
         padding: 0;
         transition: all 0.2s ease;
         box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+        flex-shrink: 0; /* Evitar que se aplasten */
     }
 
     @media (max-width: 768px) {
@@ -757,6 +857,7 @@
         height: 10px;
         stroke: #fff;
         stroke-width: 2.5;
+        display: block; /* Asegurar renderizado */
     }
 
     @media (max-width: 768px) {
@@ -769,7 +870,7 @@
     /* Toolbar preview (botón de lápiz) */
     .paquete-toolbar--preview {
         position: absolute;
-        top: calc(100% + 30px);
+        top: calc(100% + 5px);
         left: 50%;
         transform: translateX(-50%);
         background: rgba(15, 23, 42, 0.85);
@@ -800,6 +901,7 @@
         border-color: rgba(34, 197, 94, 0.5);
     }
 
+    /* Botón 2: Cancelar (rojo) */
     .paquete-toolbar--edit button:nth-child(2) {
         background: rgba(239, 68, 68, 0.95);
         border-color: rgba(239, 68, 68, 0.3);
@@ -810,6 +912,7 @@
         border-color: rgba(239, 68, 68, 0.5);
     }
 
+    /* Botón 3: Rotar (azul) */
     .paquete-toolbar--edit button:nth-child(3) {
         background: rgba(59, 130, 246, 0.95);
         border-color: rgba(59, 130, 246, 0.3);
@@ -825,7 +928,7 @@
         outline: 2px dashed #0ea5e9;
         outline-offset: 2px;
         cursor: move !important;
-        z-index: 10;
+        z-index: 100; /* Elevado para que esté por encima de otros */
     }
 
     /* Paquete al hacer hover (no en modo edición) */
