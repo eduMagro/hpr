@@ -227,6 +227,156 @@ class SalidaFerrallaController extends Controller
         }
     }
 
+    /**
+     * Obtiene los paquetes de una salida con sus localizaciones y etiquetas
+     * para mostrar en el mapa durante la ejecución de salida
+     */
+    public function paquetesPorSalida($salidaId)
+    {
+        try {
+            $salida = Salida::with([
+                'paquetes.localizacionPaquete',
+                'paquetes.etiquetas',
+                'paquetes.planilla.obra',
+                'paquetes.planilla.cliente',
+                'paquetes.nave'
+            ])->findOrFail($salidaId);
+
+            // Obtener información de la nave (obra) para el contexto del mapa
+            $nave = $salida->paquetes->first()?->nave;
+
+            // Preparar contexto del mapa
+            $ctx = null;
+            if ($nave) {
+                $ctx = [
+                    'ancho' => $nave->ancho ?? 50,
+                    'alto' => $nave->alto ?? 30,
+                    'orientacion' => $nave->orientacion ?? 'horizontal'
+                ];
+            }
+
+            // Preparar paquetes con sus datos
+            $paquetes = $salida->paquetes->map(function ($paquete) {
+                $loc = $paquete->localizacionPaquete;
+
+                return [
+                    'id' => $paquete->id,
+                    'codigo' => $paquete->codigo,
+                    'peso' => $paquete->peso,
+                    'estado' => $paquete->estado,
+                    'obra' => $paquete->planilla?->obra?->obra ?? 'N/A',
+                    'cliente' => $paquete->planilla?->cliente?->empresa ?? 'N/A',
+                    'tipo' => $paquete->getTipoContenido(),
+                    'num_etiquetas' => $paquete->etiquetas->count(),
+                    'etiquetas' => $paquete->etiquetas->map(function ($etiqueta) {
+                        return [
+                            'id' => $etiqueta->id,
+                            'codigo' => $etiqueta->codigo,
+                            'numero_etiqueta' => $etiqueta->numero_etiqueta,
+                        ];
+                    }),
+                    'localizacion' => $loc ? [
+                        'x1' => $loc->x1,
+                        'y1' => $loc->y1,
+                        'x2' => $loc->x2,
+                        'y2' => $loc->y2,
+                    ] : null
+                ];
+            });
+
+            return response()->json([
+                'success' => true,
+                'salida' => [
+                    'id' => $salida->id,
+                    'codigo_salida' => $salida->codigo_salida,
+                    'estado' => $salida->estado,
+                ],
+                'ctx' => $ctx,
+                'paquetes' => $paquetes
+            ]);
+        } catch (\Exception $e) {
+            Log::error('❌ Error al obtener paquetes de salida', [
+                'salida_id' => $salidaId,
+                'error' => $e->getMessage(),
+                'line' => $e->getLine()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al cargar los paquetes: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Valida una subetiqueta escaneada para una salida
+     */
+    public function validarSubetiquetaParaSalida(Request $request)
+    {
+        try {
+            $request->validate([
+                'codigo' => 'required|string',
+                'salida_id' => 'required|exists:salidas,id'
+            ]);
+
+            $codigo = trim($request->codigo);
+            $salidaId = $request->salida_id;
+
+            // Buscar la etiqueta por código
+            $etiqueta = Etiqueta::where('codigo', $codigo)->first();
+
+            if (!$etiqueta) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Código no encontrado',
+                    'error' => true
+                ]);
+            }
+
+            // Verificar que la etiqueta pertenece a un paquete de esta salida
+            $paquete = Paquete::whereHas('salidas', function ($q) use ($salidaId) {
+                $q->where('salidas.id', $salidaId);
+            })
+            ->where('id', $etiqueta->paquete_id)
+            ->with(['planilla.obra', 'etiquetas'])
+            ->first();
+
+            if (!$paquete) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Esta etiqueta no pertenece a ningún paquete de la salida',
+                    'error' => true
+                ]);
+            }
+
+            return response()->json([
+                'success' => true,
+                'etiqueta' => [
+                    'id' => $etiqueta->id,
+                    'codigo' => $etiqueta->codigo,
+                    'numero_etiqueta' => $etiqueta->numero_etiqueta,
+                ],
+                'paquete' => [
+                    'id' => $paquete->id,
+                    'codigo' => $paquete->codigo,
+                    'peso' => $paquete->peso,
+                    'obra' => $paquete->planilla?->obra?->obra ?? 'N/A',
+                ]
+            ]);
+        } catch (\Exception $e) {
+            Log::error('❌ Error al validar subetiqueta', [
+                'error' => $e->getMessage(),
+                'line' => $e->getLine()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al validar la etiqueta',
+                'error' => true
+            ], 500);
+        }
+    }
+
     public function completarDesdeMovimiento($movimientoId)
     {
         try {

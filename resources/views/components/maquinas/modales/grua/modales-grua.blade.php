@@ -849,4 +849,445 @@
     }
 </script>
 
+{{-- 🚛 MODAL EJECUTAR SALIDA (con mapa y escaneo de paquetes) --}}
+<div id="modal-ejecutar-salida"
+    class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl shadow-xl w-full max-w-7xl max-h-[95vh] overflow-hidden flex flex-col">
+        {{-- Header --}}
+        <div class="bg-gradient-to-r from-purple-600 to-purple-700 text-white p-4 flex justify-between items-center">
+            <div>
+                <h2 class="text-lg sm:text-xl font-bold">🚛 Ejecutar Salida</h2>
+                <p class="text-sm text-purple-100" id="salida-codigo-header">Cargando...</p>
+            </div>
+            <button onclick="cerrarModalEjecutarSalida()"
+                class="text-white hover:text-gray-200 text-2xl">&times;</button>
+        </div>
+
+        {{-- Barra de escaneo --}}
+        <div class="bg-gray-50 border-b p-4">
+            <div class="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
+                <div class="flex-1 w-full">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">
+                        Escanear Etiqueta / Subetiqueta
+                    </label>
+                    <input type="text" id="codigo_etiqueta_salida"
+                        class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                        placeholder="Escanea el código de la etiqueta..."
+                        autocomplete="off">
+                </div>
+                <div class="flex items-end gap-2">
+                    <div class="text-sm">
+                        <p class="text-gray-600">Escaneadas: <span id="contador-escaneadas" class="font-bold text-purple-600">0</span></p>
+                        <p class="text-gray-600">Total: <span id="contador-total" class="font-bold">0</span></p>
+                    </div>
+                </div>
+            </div>
+            <div id="mensaje-escaneo" class="hidden mt-2 p-2 rounded-lg text-sm"></div>
+        </div>
+
+        {{-- Contenido principal: Mapa + Lista --}}
+        <div class="flex-1 overflow-hidden flex flex-col lg:flex-row">
+            {{-- MAPA (Izquierda) --}}
+            <div class="flex-1 p-4 overflow-auto">
+                <div class="bg-white rounded-lg border h-full min-h-[400px]" id="contenedor-mapa-salida">
+                    <div class="flex items-center justify-center h-full text-gray-400">
+                        <div class="text-center">
+                            <svg class="w-16 h-16 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+                            </svg>
+                            <p class="text-gray-500">Cargando mapa...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {{-- LISTA DE PAQUETES (Derecha) --}}
+            <div class="w-full lg:w-96 border-t lg:border-t-0 lg:border-l bg-gray-50 flex flex-col">
+                <div class="p-4 border-b bg-white">
+                    <h3 class="font-semibold text-gray-800">Paquetes de la Salida</h3>
+                    <p class="text-xs text-gray-500 mt-1">Haz clic para ver ubicación en el mapa</p>
+                </div>
+                <div class="flex-1 overflow-y-auto p-4 space-y-2" id="lista-paquetes-salida">
+                    {{-- Los paquetes se cargarán aquí dinámicamente --}}
+                </div>
+            </div>
+        </div>
+
+        {{-- Footer con botones --}}
+        <div class="border-t p-4 bg-gray-50 flex flex-col sm:flex-row justify-between gap-3">
+            <div class="text-sm text-gray-600">
+                <p id="mensaje-validacion" class="hidden"></p>
+            </div>
+            <div class="flex gap-3">
+                <button onclick="cerrarModalEjecutarSalida()"
+                    class="px-4 py-2 bg-gray-300 hover:bg-gray-400 rounded-lg font-medium">
+                    Cancelar
+                </button>
+                <button onclick="completarSalida()" id="btn-completar-salida"
+                    class="px-6 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                    disabled>
+                    Completar Salida
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{{-- Scripts para modal de ejecutar salida --}}
+<script>
+    let salidaData = null;
+    let paquetesSalida = [];
+    let etiquetasEscaneadas = new Set();
+    let paquetesCompletados = new Set();
+    let mapaEjecutarSalidaApi = null;
+
+    function abrirModalEjecutarSalida(movimientoId, salidaId) {
+        console.log('=== Abriendo modal ejecutar salida ===');
+        console.log('Movimiento ID:', movimientoId);
+        console.log('Salida ID:', salidaId);
+
+        const modal = document.getElementById('modal-ejecutar-salida');
+        if (!modal) {
+            console.error('No se encontró el modal modal-ejecutar-salida');
+            return;
+        }
+
+        modal.classList.remove('hidden');
+
+        // Resetear estado
+        etiquetasEscaneadas.clear();
+        paquetesCompletados.clear();
+        paquetesSalida = [];
+        salidaData = {
+            movimientoId: movimientoId,
+            salidaId: salidaId
+        };
+
+        // Cargar datos de la salida
+        if (!salidaId) {
+            console.error('SalidaId es null o undefined');
+            alert('Error: No se encontró el ID de la salida');
+            return;
+        }
+
+        cargarDatosSalida(salidaId);
+
+        // Configurar event listener para el input de escaneo
+        const inputEscaneo = document.getElementById('codigo_etiqueta_salida');
+        if (inputEscaneo) {
+            // Remover listener previo si existe
+            inputEscaneo.replaceWith(inputEscaneo.cloneNode(true));
+            const newInput = document.getElementById('codigo_etiqueta_salida');
+
+            newInput.addEventListener('keypress', async function(e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    const codigo = this.value.trim();
+                    if (codigo) {
+                        await validarYRegistrarEtiqueta(codigo);
+                        this.value = '';
+                    }
+                }
+            });
+
+            // Focus en input de escaneo
+            setTimeout(() => {
+                newInput.focus();
+            }, 300);
+        }
+    }
+
+    function cerrarModalEjecutarSalida() {
+        document.getElementById('modal-ejecutar-salida').classList.add('hidden');
+        resetearModalEjecutarSalida();
+    }
+
+    function resetearModalEjecutarSalida() {
+        const inputCodigo = document.getElementById('codigo_etiqueta_salida');
+        const listaPaquetes = document.getElementById('lista-paquetes-salida');
+        const contenedorMapa = document.getElementById('contenedor-mapa-salida');
+
+        if (inputCodigo) inputCodigo.value = '';
+        if (listaPaquetes) listaPaquetes.innerHTML = '';
+        if (contenedorMapa) {
+            contenedorMapa.innerHTML = `
+                <div class="flex items-center justify-center h-full text-gray-400">
+                    <div class="text-center">
+                        <svg class="w-16 h-16 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+                        </svg>
+                        <p class="text-gray-500">Cargando mapa...</p>
+                    </div>
+                </div>
+            `;
+        }
+
+        etiquetasEscaneadas.clear();
+        paquetesCompletados.clear();
+        paquetesSalida = [];
+        salidaData = null;
+        actualizarContadores();
+    }
+
+    async function cargarDatosSalida(salidaId) {
+        try {
+            console.log('Cargando datos de salida:', salidaId);
+            const response = await fetch(`/salidas/${salidaId}/paquetes`);
+            const data = await response.json();
+
+            console.log('Datos recibidos:', data);
+
+            if (!data.success) {
+                throw new Error(data.message || 'Error al cargar datos de la salida');
+            }
+
+            salidaData = {
+                ...salidaData,
+                ...data.salida
+            };
+            paquetesSalida = data.paquetes;
+
+            console.log('Paquetes cargados:', paquetesSalida.length);
+
+            // Actualizar header
+            const headerElement = document.getElementById('salida-codigo-header');
+            if (headerElement) {
+                headerElement.textContent = `Salida: ${data.salida.codigo_salida}`;
+            }
+
+            // Renderizar lista de paquetes
+            renderizarListaPaquetes();
+
+            // Cargar mapa si hay contexto
+            if (data.ctx) {
+                cargarMapaSalida(data.ctx, data.paquetes);
+            }
+
+            // Actualizar contadores
+            actualizarContadores();
+
+        } catch (error) {
+            console.error('Error al cargar datos de salida:', error);
+            mostrarMensajeEscaneo('Error al cargar la salida: ' + error.message, 'error');
+        }
+    }
+
+    function renderizarListaPaquetes() {
+        const lista = document.getElementById('lista-paquetes-salida');
+        if (!lista) {
+            console.error('No se encontró el elemento lista-paquetes-salida');
+            return;
+        }
+
+        lista.innerHTML = '';
+
+        paquetesSalida.forEach(paquete => {
+            const isCompletado = paquetesCompletados.has(paquete.id);
+            const etiquetasEscaneadasPaquete = paquete.etiquetas.filter(e =>
+                etiquetasEscaneadas.has(e.codigo)
+            ).length;
+
+            const div = document.createElement('div');
+            div.className = `p-3 rounded-lg border-2 cursor-pointer transition-all ${
+                isCompletado
+                    ? 'bg-green-50 border-green-500'
+                    : 'bg-white border-gray-200 hover:border-purple-300'
+            }`;
+            div.onclick = () => togglePaqueteEnMapa(paquete.id);
+
+            div.innerHTML = `
+                <div class="flex items-start justify-between gap-2">
+                    <div class="flex-1 min-w-0">
+                        <div class="flex items-center gap-2">
+                            ${isCompletado ?
+                                '<span class="text-green-600">✓</span>' :
+                                '<span class="text-gray-400">○</span>'
+                            }
+                            <p class="font-semibold text-gray-800 truncate">${paquete.codigo}</p>
+                        </div>
+                        <p class="text-xs text-gray-500 mt-1">${paquete.obra}</p>
+                        <div class="flex items-center gap-2 mt-1">
+                            <span class="text-xs px-2 py-0.5 rounded ${
+                                paquete.tipo === 'barras' ? 'bg-blue-100 text-blue-700' :
+                                paquete.tipo === 'estribos' ? 'bg-orange-100 text-orange-700' :
+                                'bg-purple-100 text-purple-700'
+                            }">${paquete.tipo}</span>
+                            <span class="text-xs text-gray-500">${paquete.peso} kg</span>
+                        </div>
+                    </div>
+                    <div class="text-right">
+                        <p class="text-xs font-medium ${isCompletado ? 'text-green-600' : 'text-gray-500'}">
+                            ${etiquetasEscaneadasPaquete}/${paquete.num_etiquetas}
+                        </p>
+                        <p class="text-xs text-gray-400">etiquetas</p>
+                    </div>
+                </div>
+            `;
+
+            lista.appendChild(div);
+        });
+    }
+
+    function cargarMapaSalida(ctx, paquetes) {
+        const contenedor = document.getElementById('contenedor-mapa-salida');
+        if (!contenedor) return;
+
+        // Aquí renderizarías el mapa component
+        // Por ahora, mostraremos un placeholder que luego se puede reemplazar con Livewire
+        contenedor.innerHTML = `
+            <div class="h-full flex items-center justify-center bg-gray-100">
+                <p class="text-gray-500">Mapa: ${ctx.ancho}x${ctx.alto} - ${paquetes.length} paquetes</p>
+            </div>
+        `;
+
+        // TODO: Integrar mapa-component aquí
+    }
+
+    function togglePaqueteEnMapa(paqueteId) {
+        const paquete = paquetesSalida.find(p => p.id === paqueteId);
+        if (!paquete || !paquete.localizacion) return;
+
+        // TODO: Implementar toggle en el mapa
+        console.log('Toggle paquete en mapa:', paqueteId, paquete.localizacion);
+    }
+
+    async function validarYRegistrarEtiqueta(codigo) {
+        // Verificar si ya fue escaneada
+        if (etiquetasEscaneadas.has(codigo)) {
+            mostrarMensajeEscaneo('⚠️ Esta etiqueta ya fue escaneada', 'warning');
+            return;
+        }
+
+        try {
+            const response = await fetch('/salidas/validar-subetiqueta', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                },
+                body: JSON.stringify({
+                    codigo: codigo,
+                    salida_id: salidaData.salidaId
+                })
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                // Registrar etiqueta escaneada
+                etiquetasEscaneadas.add(codigo);
+
+                // Verificar si el paquete está completo
+                const paquete = paquetesSalida.find(p => p.id === data.paquete.id);
+                if (paquete) {
+                    const etiquetasEscaneadasPaquete = paquete.etiquetas.filter(e =>
+                        etiquetasEscaneadas.has(e.codigo)
+                    ).length;
+
+                    if (etiquetasEscaneadasPaquete === paquete.num_etiquetas) {
+                        paquetesCompletados.add(paquete.id);
+                        mostrarMensajeEscaneo(`✓ Paquete ${paquete.codigo} completado`, 'success');
+                    } else {
+                        mostrarMensajeEscaneo(`✓ Etiqueta válida - ${data.paquete.codigo}`, 'success');
+                    }
+                }
+
+                // Actualizar UI
+                renderizarListaPaquetes();
+                actualizarContadores();
+                verificarSalidaCompleta();
+            } else {
+                mostrarMensajeEscaneo(`❌ ${data.message}`, 'error');
+            }
+        } catch (error) {
+            console.error('Error al validar etiqueta:', error);
+            mostrarMensajeEscaneo('❌ Error al validar la etiqueta', 'error');
+        }
+    }
+
+    function mostrarMensajeEscaneo(mensaje, tipo) {
+        const div = document.getElementById('mensaje-escaneo');
+        if (!div) return;
+
+        div.textContent = mensaje;
+        div.className = `mt-2 p-2 rounded-lg text-sm ${
+            tipo === 'success' ? 'bg-green-100 text-green-800' :
+            tipo === 'warning' ? 'bg-yellow-100 text-yellow-800' :
+            tipo === 'error' ? 'bg-red-100 text-red-800' :
+            'bg-gray-100 text-gray-800'
+        }`;
+        div.classList.remove('hidden');
+
+        setTimeout(() => {
+            if (div) div.classList.add('hidden');
+        }, 3000);
+    }
+
+    function actualizarContadores() {
+        const totalEtiquetas = paquetesSalida.reduce((sum, p) => sum + p.num_etiquetas, 0);
+        const contadorEscaneadas = document.getElementById('contador-escaneadas');
+        const contadorTotal = document.getElementById('contador-total');
+
+        if (contadorEscaneadas) contadorEscaneadas.textContent = etiquetasEscaneadas.size;
+        if (contadorTotal) contadorTotal.textContent = totalEtiquetas;
+    }
+
+    function verificarSalidaCompleta() {
+        const totalPaquetes = paquetesSalida.length;
+        const completados = paquetesCompletados.size;
+        const btnCompletar = document.getElementById('btn-completar-salida');
+        const mensajeValidacion = document.getElementById('mensaje-validacion');
+
+        if (!btnCompletar || !mensajeValidacion) return;
+
+        if (completados === totalPaquetes && totalPaquetes > 0) {
+            btnCompletar.disabled = false;
+            mensajeValidacion.textContent = '✓ Todos los paquetes han sido escaneados correctamente';
+            mensajeValidacion.className = 'text-sm text-green-600 font-medium';
+            mensajeValidacion.classList.remove('hidden');
+        } else {
+            btnCompletar.disabled = true;
+            mensajeValidacion.textContent = `Faltan ${totalPaquetes - completados} paquete(s) por escanear`;
+            mensajeValidacion.className = 'text-sm text-gray-600';
+            mensajeValidacion.classList.remove('hidden');
+        }
+    }
+
+    async function completarSalida() {
+        if (paquetesCompletados.size !== paquetesSalida.length) {
+            alert('Debes escanear todas las etiquetas de todos los paquetes antes de completar la salida.');
+            return;
+        }
+
+        if (!confirm('¿Confirmar que todos los paquetes han sido cargados y completar la salida?')) {
+            return;
+        }
+
+        try {
+            const response = await fetch(`/salidas/completar-desde-movimiento/${salidaData.movimientoId}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                }
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                alert('✓ Salida completada con éxito');
+                cerrarModalEjecutarSalida();
+                location.reload();
+            } else {
+                alert('Error al completar la salida: ' + data.message);
+            }
+        } catch (error) {
+            console.error('Error al completar salida:', error);
+            alert('Error al completar la salida');
+        }
+    }
+</script>
+
 {{-- ETQ2511012.01 --}}
