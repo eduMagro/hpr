@@ -10,6 +10,7 @@ use App\Models\PedidoGlobal;
 use App\Models\Pedido;
 use App\Models\Producto;
 use App\Models\PedidoProducto;
+use App\Models\PedidoProductoColada;
 use App\Models\Elemento;
 use App\Models\ProductoBase;
 use App\Models\Entrada;
@@ -966,39 +967,65 @@ class PedidoController extends Controller
         }
     }
 
-    public function desactivar($pedidoId, $lineaId)
+    public function desactivar(Request $request, $pedidoId, $lineaId)
     {
-        DB::transaction(function () use ($pedidoId, $lineaId) {
-            // Obtener la línea específica del pedido
-            $linea = DB::table('pedido_productos')
-                ->where('id', $lineaId)
-                ->lockForUpdate()
-                ->first();
+        try {
+            DB::transaction(function () use ($pedidoId, $lineaId) {
+                // Obtener la línea específica del pedido
+                $linea = DB::table('pedido_productos')
+                    ->where('id', $lineaId)
+                    ->lockForUpdate()
+                    ->first();
 
-            if (!$linea) {
-                throw new \RuntimeException('Línea de pedido no encontrada.');
+                if (!$linea) {
+                    throw new \RuntimeException('Línea de pedido no encontrada.');
+                }
+
+                PedidoProductoColada::where('pedido_producto_id', $lineaId)->delete();
+
+                // Eliminar movimiento pendiente relacionado
+                Movimiento::where('pedido_id', $pedidoId)
+                    ->where('producto_base_id', $linea->producto_base_id)
+                    ->where('estado', 'pendiente')
+                    ->delete();
+                Log::info('Movimiento eliminado para desactivar línea de pedido', [
+                    'linea_id'         => $lineaId,
+                    'pedido_id'        => $pedidoId,
+                    'producto_base_id' => $linea->producto_base_id,
+                ]);
+                // Marcar la línea como pendiente
+                DB::table('pedido_productos')
+                    ->where('id', $lineaId)
+                    ->update([
+                        'estado' => 'pendiente',
+                        'updated_at' => now(),
+                    ]);
+            });
+        } catch (\Throwable $e) {
+            Log::error('Error al desactivar línea de pedido', [
+                'pedido_id' => $pedidoId,
+                'linea_id' => $lineaId,
+                'mensaje' => $e->getMessage(),
+            ]);
+
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Error al desactivar la línea.',
+                ], 500);
             }
 
-            // Eliminar movimiento pendiente relacionado
-            Movimiento::where('pedido_id', $pedidoId)
-                ->where('producto_base_id', $linea->producto_base_id)
-                ->where('estado', 'pendiente')
-                ->delete();
-            Log::info('Movimiento eliminado para desactivar línea de pedido', [
-                'linea_id'         => $lineaId,
-                'pedido_id'        => $pedidoId,
-                'producto_base_id' => $linea->producto_base_id,
-            ]);
-            // Marcar la línea como pendiente
-            DB::table('pedido_productos')
-                ->where('id', $lineaId)
-                ->update([
-                    'estado' => 'pendiente',
-                    'updated_at' => now(),
-                ]);
-        });
+            return redirect()->back()->with('error', 'Error al desactivar la línea.');
+        }
 
-        return redirect()->back()->with('success');
+        if ($request->expectsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Línea desactivada correctamente.',
+            ]);
+        }
+
+        return redirect()->back()->with('success', 'Línea desactivada correctamente.');
     }
 
     public function cancelarLinea($pedidoId, $lineaId)
