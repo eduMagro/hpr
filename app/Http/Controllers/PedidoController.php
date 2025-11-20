@@ -683,6 +683,35 @@ class PedidoController extends Controller
             }
 
 
+            // --- Guardar colada en la tabla pedido_producto_coladas si no existe
+            $coladaRecord = null;
+            if ($request->filled('n_colada')) {
+                $coladaRecord = PedidoProductoColada::firstOrCreate(
+                    [
+                        'pedido_producto_id' => $pedidoProducto->id,
+                        'colada' => $request->n_colada,
+                    ],
+                    [
+                        'user_id' => auth()->id(), // Usuario que escribe la colada manualmente
+                    ]
+                );
+            }
+
+            // --- ⚠️ WARNING: Verificar si se excede el número de bultos de la colada
+            if ($coladaRecord && $coladaRecord->bulto) {
+                // Contar cuántos bultos ya se han recepcionado de esta colada
+                $bultosRecepcionados = Producto::where('n_colada', $request->n_colada)
+                    ->whereHas('entrada', fn($q) => $q->where('pedido_producto_id', $pedidoProducto->id))
+                    ->count();
+
+                // Sumar el bulto actual (1 o 2 si es doble)
+                $bultosTotales = $bultosRecepcionados + ($esDoble ? 2 : 1);
+
+                if ($bultosTotales > $coladaRecord->bulto) {
+                    session()->flash('warning', "⚠️ Atención: La colada {$request->n_colada} tiene {$coladaRecord->bulto} bulto(s) definido(s), pero ya se han recepcionado {$bultosTotales} bulto(s).");
+                }
+            }
+
             // --- Crear producto(s) en esa entrada
             Producto::create([
                 'codigo'            => $codigo,
@@ -701,6 +730,35 @@ class PedidoController extends Controller
             ]);
 
             if ($esDoble) {
+                // --- Guardar segunda colada en la tabla pedido_producto_coladas si no existe
+                $coladaRecord2 = null;
+                if ($request->filled('n_colada_2')) {
+                    $coladaRecord2 = PedidoProductoColada::firstOrCreate(
+                        [
+                            'pedido_producto_id' => $pedidoProducto->id,
+                            'colada' => $request->n_colada_2,
+                        ],
+                        [
+                            'user_id' => auth()->id(), // Usuario que escribe la colada manualmente
+                        ]
+                    );
+                }
+
+                // --- ⚠️ WARNING: Verificar si se excede el número de bultos de la segunda colada
+                if ($coladaRecord2 && $coladaRecord2->bulto) {
+                    // Contar cuántos bultos ya se han recepcionado de esta colada
+                    $bultosRecepcionados2 = Producto::where('n_colada', $request->n_colada_2)
+                        ->whereHas('entrada', fn($q) => $q->where('pedido_producto_id', $pedidoProducto->id))
+                        ->count();
+
+                    // Sumar el bulto actual
+                    $bultosTotales2 = $bultosRecepcionados2 + 1;
+
+                    if ($bultosTotales2 > $coladaRecord2->bulto) {
+                        session()->flash('warning', "⚠️ Atención: La colada {$request->n_colada_2} tiene {$coladaRecord2->bulto} bulto(s) definido(s), pero ya se han recepcionado {$bultosTotales2} bulto(s).");
+                    }
+                }
+
                 Producto::create([
                     'codigo'            => $codigo2,
                     'producto_base_id'  => $request->producto_base_id,
@@ -926,6 +984,7 @@ class PedidoController extends Controller
                         'pedido_producto_id' => $linea->id,
                         'colada' => $colada,
                         'bulto' => $bulto,
+                        'user_id' => auth()->id(), // Usuario que activa la línea
                     ]);
                 }
             }
@@ -982,6 +1041,7 @@ class PedidoController extends Controller
                     throw new \RuntimeException('Línea de pedido no encontrada.');
                 }
 
+                // Eliminar las coladas al desactivar la línea
                 PedidoProductoColada::where('pedido_producto_id', $lineaId)->delete();
 
                 // Eliminar movimiento pendiente relacionado

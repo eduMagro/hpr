@@ -12,11 +12,17 @@ class PedidoProductoColada extends Model
         'pedido_producto_id',
         'colada',
         'bulto',
+        'user_id',
     ];
 
     public function pedidoProducto()
     {
         return $this->belongsTo(PedidoProducto::class, 'pedido_producto_id');
+    }
+
+    public function user()
+    {
+        return $this->belongsTo(User::class, 'user_id');
     }
 }
 

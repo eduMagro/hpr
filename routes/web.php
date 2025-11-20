@@ -95,6 +95,7 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
 
     // === ENTRADAS Y PEDIDOS ===
     Route::resource('entradas', EntradaController::class)->names('entradas');
+    Route::get('/entradas/{id}/verificar-discrepancias', [EntradaController::class, 'verificarDiscrepancias'])->name('entradas.verificarDiscrepancias');
     Route::patch('/entradas/{id}/cerrar', [EntradaController::class, 'cerrar'])->name('entradas.cerrar');
     Route::post('/entradas/importar-albaran', [EntradaController::class, 'subirPdf'])
         ->name('entradas.crearImportarAlbaranPdf');
