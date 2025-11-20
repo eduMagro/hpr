@@ -1189,10 +1189,6 @@
             return;
         }
 
-        if (!confirm('¿Confirmar que todos los paquetes han sido cargados y completar la salida?')) {
-            return;
-        }
-
         try {
             const response = await fetch(`/salidas/completar-desde-movimiento/${salidaData.movimientoId}`, {
                 method: 'PUT',
@@ -1205,15 +1201,30 @@
             const data = await response.json();
 
             if (data.success) {
-                alert('✓ Salida completada con éxito');
+                mostrarToastSwal('Salida completada con éxito', 'success');
                 cerrarModalEjecutarSalida();
-                location.reload();
             } else {
-                alert('Error al completar la salida: ' + data.message);
+                mostrarToastSwal('Error al completar la salida: ' + (data.message || 'Respuesta no válida'), 'error');
             }
         } catch (error) {
             console.error('Error al completar salida:', error);
-            alert('Error al completar la salida');
+            mostrarToastSwal('Error al completar la salida', 'error');
+        }
+    }
+
+    function mostrarToastSwal(mensaje, icono = 'info') {
+        if (typeof Swal !== 'undefined') {
+            Swal.fire({
+                toast: true,
+                position: 'top-end',
+                timer: 3000,
+                timerProgressBar: true,
+                icon: icono,
+                title: mensaje,
+                showConfirmButton: false,
+            });
+        } else {
+            alert(mensaje);
         }
     }
     function mostrarMapaMovil() {

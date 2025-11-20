@@ -572,7 +572,15 @@ class SalidaFerrallaController extends Controller
             }
 
 
-            $this->generarYEnviarTrazabilidad($salida);
+            try {
+                $this->generarYEnviarTrazabilidad($salida);
+            } catch (\Throwable $e) {
+                Log::warning('⚠️ Trazabilidad no enviada, se continúa con la salida', [
+                    'salida_id' => $salida->id,
+                    'codigo_salida' => $salida->codigo_salida,
+                    'error' => $e->getMessage(),
+                ]);
+            }
             $salida->estado = 'completada';
             $salida->save();
             $movimiento->update([
@@ -582,7 +590,7 @@ class SalidaFerrallaController extends Controller
             ]);
             return response()->json([
                 'success' => true,
-                'message' => 'Movimiento y salida completados. Email enviado.'
+                'message' => 'Movimiento y salida completados.'
             ]);
         } catch (\Exception $e) {
             Log::error('❌ Error en completarDesdeMovimiento(): ' . $e->getMessage(), [
