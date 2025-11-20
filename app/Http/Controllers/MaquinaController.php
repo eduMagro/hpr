@@ -530,7 +530,7 @@ class MaquinaController extends Controller
             ->get();
 
 
-        // PENDIENTES: eager load estrecho + columns mínimos + misma nave
+        // PENDIENTES: eager load estrecho + columns mínimos + misma nave + coladas
         $movimientosPendientes = Movimiento::with([
             'solicitadoPor:id,name',
             'producto.ubicacion:id,nombre',
@@ -539,6 +539,7 @@ class MaquinaController extends Controller
             'pedido.fabricante:id,nombre',
             'pedido.distribuidor:id,nombre',
             'pedidoProducto:id,pedido_id,codigo,producto_base_id,cantidad,cantidad_recepcionada,obra_id,estado,fecha_estimada_entrega',
+            'pedidoProducto.coladas', // ✅ Cargar las coladas asociadas a la línea de pedido
         ])
             ->where('estado', 'pendiente')
             ->where('nave_id', $obraId)              // ⬅️ solo movimientos de la misma nave
