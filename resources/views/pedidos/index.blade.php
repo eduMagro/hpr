@@ -59,10 +59,10 @@
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                     d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                             </svg>
-                            Coladas
+                            Confirmar activación de línea
                         </h3>
                         <p class="text-sm text-slate-300 mt-2">
-                            Registra las coladas que trae el albarán del transportista
+                            Registrar coladas y bultos asociados (opcional)
                         </p>
                     </div>
 
@@ -70,7 +70,8 @@
                     <div class="p-6">
                         <div class="bg-blue-50 border-l-4 border-blue-500 px-4 py-3 rounded-r mb-5">
                             <p class="text-sm text-blue-800 leading-relaxed">
-                                Registra las coladas que trae el albarán del transportista. Si no hay coladas, deja la tabla vacía y confirma la activación.
+                                <strong class="font-semibold">Información:</strong> Puedes añadir cero o más coladas y bultos.
+                                Si no necesitas registrar información, deja la tabla vacía y confirma la activación.
                             </p>
                         </div>
 
@@ -83,10 +84,8 @@
                                 </colgroup>
                                 <thead class="bg-gradient-to-r from-gray-700 to-gray-800 text-white">
                                     <tr>
-                                        <th class="px-4 py-3 text-left font-semibold uppercase tracking-wider text-xs">
-                                            Coladas</th>
-                                        <th class="px-4 py-3 text-left font-semibold uppercase tracking-wider text-xs">
-                                            Bultos</th>
+                                        <th class="px-4 py-3 text-left font-semibold uppercase tracking-wider text-xs">Colada</th>
+                                        <th class="px-4 py-3 text-left font-semibold uppercase tracking-wider text-xs">Bulto</th>
                                         <th
                                             class="px-4 py-3 text-center font-semibold uppercase tracking-wider text-xs whitespace-nowrap">
                                             Acciones</th>
