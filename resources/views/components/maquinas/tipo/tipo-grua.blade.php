@@ -48,6 +48,22 @@
                                     <p class="text-sm"><strong>Proveedor:</strong> {{ $proveedor }}</p>
                                     <p class="text-sm"><strong>Producto:</strong> {{ $descripcionProducto }}</p>
                                     <p class="text-sm"><strong>Peso:</strong> {{ $cantidadPedido }} kg</p>
+
+                                    @if($mov->pedidoProducto && $mov->pedidoProducto->coladas->isNotEmpty())
+                                        <div class="mt-2 pt-2 border-t border-blue-300">
+                                            <p class="text-sm font-semibold text-blue-900">Coladas:</p>
+                                            <div class="flex flex-wrap gap-1 mt-1">
+                                                @foreach($mov->pedidoProducto->coladas as $coladaItem)
+                                                    <span class="inline-block bg-blue-600 text-white text-xs px-2 py-0.5 rounded">
+                                                        {{ $coladaItem->colada }}
+                                                        @if($coladaItem->bulto)
+                                                            - {{ (int)$coladaItem->bulto }} paquetes
+                                                        @endif
+                                                    </span>
+                                                @endforeach
+                                            </div>
+                                        </div>
+                                    @endif
                                 </div>
 
                                 <p><strong>Solicitado por:</strong>

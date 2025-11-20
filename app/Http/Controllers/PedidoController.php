@@ -10,6 +10,7 @@ use App\Models\PedidoGlobal;
 use App\Models\Pedido;
 use App\Models\Producto;
 use App\Models\PedidoProducto;
+use App\Models\PedidoProductoColada;
 use App\Models\Elemento;
 use App\Models\ProductoBase;
 use App\Models\Entrada;
@@ -508,6 +509,7 @@ class PedidoController extends Controller
         }
 
         $linea = $movimiento->pedidoProducto; // 🔒 Línea asociada al movimiento
+        $linea->load('coladas'); // Cargar las coladas asociadas
         $productoBase = $pedido->productos->firstWhere('id', $productoBaseId);
 
         // 🚨 CAMBIO: Cargar máquina desde el parámetro
@@ -681,6 +683,35 @@ class PedidoController extends Controller
             }
 
 
+            // --- Guardar colada en la tabla pedido_producto_coladas si no existe
+            $coladaRecord = null;
+            if ($request->filled('n_colada')) {
+                $coladaRecord = PedidoProductoColada::firstOrCreate(
+                    [
+                        'pedido_producto_id' => $pedidoProducto->id,
+                        'colada' => $request->n_colada,
+                    ],
+                    [
+                        'user_id' => auth()->id(), // Usuario que escribe la colada manualmente
+                    ]
+                );
+            }
+
+            // --- ⚠️ WARNING: Verificar si se excede el número de bultos de la colada
+            if ($coladaRecord && $coladaRecord->bulto) {
+                // Contar cuántos bultos ya se han recepcionado de esta colada
+                $bultosRecepcionados = Producto::where('n_colada', $request->n_colada)
+                    ->whereHas('entrada', fn($q) => $q->where('pedido_producto_id', $pedidoProducto->id))
+                    ->count();
+
+                // Sumar el bulto actual (1 o 2 si es doble)
+                $bultosTotales = $bultosRecepcionados + ($esDoble ? 2 : 1);
+
+                if ($bultosTotales > $coladaRecord->bulto) {
+                    session()->flash('warning', "⚠️ Atención: La colada {$request->n_colada} tiene {$coladaRecord->bulto} bulto(s) definido(s), pero ya se han recepcionado {$bultosTotales} bulto(s).");
+                }
+            }
+
             // --- Crear producto(s) en esa entrada
             Producto::create([
                 'codigo'            => $codigo,
@@ -699,6 +730,35 @@ class PedidoController extends Controller
             ]);
 
             if ($esDoble) {
+                // --- Guardar segunda colada en la tabla pedido_producto_coladas si no existe
+                $coladaRecord2 = null;
+                if ($request->filled('n_colada_2')) {
+                    $coladaRecord2 = PedidoProductoColada::firstOrCreate(
+                        [
+                            'pedido_producto_id' => $pedidoProducto->id,
+                            'colada' => $request->n_colada_2,
+                        ],
+                        [
+                            'user_id' => auth()->id(), // Usuario que escribe la colada manualmente
+                        ]
+                    );
+                }
+
+                // --- ⚠️ WARNING: Verificar si se excede el número de bultos de la segunda colada
+                if ($coladaRecord2 && $coladaRecord2->bulto) {
+                    // Contar cuántos bultos ya se han recepcionado de esta colada
+                    $bultosRecepcionados2 = Producto::where('n_colada', $request->n_colada_2)
+                        ->whereHas('entrada', fn($q) => $q->where('pedido_producto_id', $pedidoProducto->id))
+                        ->count();
+
+                    // Sumar el bulto actual
+                    $bultosTotales2 = $bultosRecepcionados2 + 1;
+
+                    if ($bultosTotales2 > $coladaRecord2->bulto) {
+                        session()->flash('warning', "⚠️ Atención: La colada {$request->n_colada_2} tiene {$coladaRecord2->bulto} bulto(s) definido(s), pero ya se han recepcionado {$bultosTotales2} bulto(s).");
+                    }
+                }
+
                 Producto::create([
                     'codigo'            => $codigo2,
                     'producto_base_id'  => $request->producto_base_id,
@@ -848,39 +908,185 @@ class PedidoController extends Controller
         }
     }
 
-    public function desactivar($pedidoId, $lineaId)
+    public function activarConColadas(Request $request, $pedidoId, $lineaId)
     {
-        DB::transaction(function () use ($pedidoId, $lineaId) {
-            // Obtener la línea específica del pedido
-            $linea = DB::table('pedido_productos')
-                ->where('id', $lineaId)
-                ->lockForUpdate()
-                ->first();
+        /** @var Pedido $pedido */
+        $pedido = Pedido::findOrFail($pedidoId);
+        /** @var PedidoProducto $linea */
+        $linea = PedidoProducto::findOrFail($lineaId);
 
-            if (!$linea) {
-                throw new \RuntimeException('Línea de pedido no encontrada.');
+        if ($linea->pedido_id !== $pedido->id) {
+            return response()->json([
+                'success' => false,
+                'message' => 'La línea no pertenece a este pedido.',
+            ], 422);
+        }
+
+        $data = $request->validate([
+            'coladas' => ['array'],
+            'coladas.*.colada' => ['nullable', 'string', 'max:255'],
+            'coladas.*.bulto' => ['nullable', 'numeric', 'min:0'],
+        ]);
+
+        $productoBase = $linea->productoBase;
+        if (!$productoBase) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Producto base no encontrado para la línea.',
+            ], 422);
+        }
+
+        $proveedor = $pedido->fabricante->nombre
+            ?? $pedido->distribuidor->nombre
+            ?? 'No especificado';
+
+        $fechaEntregaFmt = $linea->fecha_estimada_entrega
+            ? Carbon::parse($linea->fecha_estimada_entrega)->format('d/m/Y')
+            : '—';
+
+        $partes = [];
+        $partes[] = sprintf(
+            'Se solicita descarga para producto %s Ø%s%s',
+            $productoBase->tipo,
+            (string) $productoBase->diametro,
+            $productoBase->tipo === 'barra' ? (' de ' . (string) $productoBase->longitud . ' m') : ''
+        );
+        $partes[] = sprintf('Pedido %s', $pedido->codigo ?? $pedido->id);
+        $partes[] = sprintf('Proveedor: %s', $proveedor);
+        $partes[] = sprintf('Línea: %s', $linea->codigo);
+
+        if (!is_null($linea->cantidad)) {
+            $partes[] = sprintf(
+                'Cantidad solicitada: %s kg',
+                rtrim(
+                    rtrim(number_format((float) $linea->cantidad, 3, ',', '.'), '0'),
+                    ','
+                )
+            );
+        }
+        $partes[] = sprintf('Fecha prevista: %s', $fechaEntregaFmt);
+
+        $descripcion = implode(' | ', $partes);
+
+        try {
+            DB::beginTransaction();
+
+            if (!empty($data['coladas'])) {
+                foreach ($data['coladas'] as $fila) {
+                    $colada = $fila['colada'] ?? null;
+                    $bulto = $fila['bulto'] ?? null;
+
+                    if ($colada === null && $bulto === null) {
+                        continue;
+                    }
+
+                    \App\Models\PedidoProductoColada::create([
+                        'pedido_producto_id' => $linea->id,
+                        'colada' => $colada,
+                        'bulto' => $bulto,
+                        'user_id' => auth()->id(), // Usuario que activa la línea
+                    ]);
+                }
             }
 
-            // Eliminar movimiento pendiente relacionado
-            Movimiento::where('pedido_id', $pedidoId)
-                ->where('producto_base_id', $linea->producto_base_id)
-                ->where('estado', 'pendiente')
-                ->delete();
-            Log::info('Movimiento eliminado para desactivar línea de pedido', [
-                'linea_id'         => $lineaId,
-                'pedido_id'        => $pedidoId,
-                'producto_base_id' => $linea->producto_base_id,
+            DB::table('pedido_productos')->where('id', $lineaId)->update([
+                'estado' => 'activo',
+                'updated_at' => now(),
             ]);
-            // Marcar la línea como pendiente
-            DB::table('pedido_productos')
-                ->where('id', $lineaId)
-                ->update([
-                    'estado' => 'pendiente',
-                    'updated_at' => now(),
-                ]);
-        });
 
-        return redirect()->back()->with('success');
+            Movimiento::create([
+                'tipo' => 'entrada',
+                'estado' => 'pendiente',
+                'descripcion' => $descripcion,
+                'fecha_solicitud' => now(),
+                'solicitado_por' => auth()->id(),
+                'pedido_id' => $pedidoId,
+                'producto_base_id' => $productoBase->id,
+                'pedido_producto_id' => $lineaId,
+                'prioridad' => 2,
+                'nave_id' => $linea->obra_id,
+            ]);
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Línea activada correctamente.',
+            ]);
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            Log::error('Error al activar línea del pedido con coladas: ' . $e->getMessage(), [
+                'pedido_id' => $pedidoId,
+                'linea_id' => $lineaId,
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al activar el producto.',
+            ], 500);
+        }
+    }
+
+    public function desactivar(Request $request, $pedidoId, $lineaId)
+    {
+        try {
+            DB::transaction(function () use ($pedidoId, $lineaId) {
+                // Obtener la línea específica del pedido
+                $linea = DB::table('pedido_productos')
+                    ->where('id', $lineaId)
+                    ->lockForUpdate()
+                    ->first();
+
+                if (!$linea) {
+                    throw new \RuntimeException('Línea de pedido no encontrada.');
+                }
+
+                // Eliminar las coladas al desactivar la línea
+                PedidoProductoColada::where('pedido_producto_id', $lineaId)->delete();
+
+                // Eliminar movimiento pendiente relacionado
+                Movimiento::where('pedido_id', $pedidoId)
+                    ->where('producto_base_id', $linea->producto_base_id)
+                    ->where('estado', 'pendiente')
+                    ->delete();
+                Log::info('Movimiento eliminado para desactivar línea de pedido', [
+                    'linea_id'         => $lineaId,
+                    'pedido_id'        => $pedidoId,
+                    'producto_base_id' => $linea->producto_base_id,
+                ]);
+                // Marcar la línea como pendiente
+                DB::table('pedido_productos')
+                    ->where('id', $lineaId)
+                    ->update([
+                        'estado' => 'pendiente',
+                        'updated_at' => now(),
+                    ]);
+            });
+        } catch (\Throwable $e) {
+            Log::error('Error al desactivar línea de pedido', [
+                'pedido_id' => $pedidoId,
+                'linea_id' => $lineaId,
+                'mensaje' => $e->getMessage(),
+            ]);
+
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Error al desactivar la línea.',
+                ], 500);
+            }
+
+            return redirect()->back()->with('error', 'Error al desactivar la línea.');
+        }
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Línea desactivada correctamente.',
+            ]);
+        }
+
+        return redirect()->back()->with('success', 'Línea desactivada correctamente.');
     }
 
     public function cancelarLinea($pedidoId, $lineaId)

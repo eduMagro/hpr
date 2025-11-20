@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Models\EntradaProducto;
 use App\Models\Producto;
 use App\Models\PedidoProducto;
+use App\Models\PedidoProductoColada;
 use App\Models\Pedido;
 use App\Models\Elemento;
 use App\Models\ProductoBase;
@@ -756,6 +757,76 @@ class EntradaController extends Controller
         });
 
         return redirect()->route('maquinas.index')->with('success', 'Albarán cerrado correctamente.');
+    }
+
+    /**
+     * Verificar discrepancias de bultos vs coladas (AJAX antes de cerrar)
+     */
+    public function verificarDiscrepancias($entradaId)
+    {
+        $entrada = Entrada::with('pedidoProducto')->findOrFail($entradaId);
+        $pivot = $entrada->pedidoProducto;
+
+        if (!$pivot) {
+            return response()->json([
+                'discrepancias' => [],
+                'mensaje' => null,
+            ]);
+        }
+
+        // Obtener todas las coladas definidas para esta línea de pedido
+        $coladas = PedidoProductoColada::where('pedido_producto_id', $pivot->id)
+            ->whereNotNull('bulto')
+            ->get();
+
+        if ($coladas->isEmpty()) {
+            return response()->json([
+                'discrepancias' => [],
+                'mensaje' => null,
+            ]);
+        }
+
+        $discrepancias = [];
+
+        foreach ($coladas as $coladaDef) {
+            // Contar bultos recepcionados de esta colada en TODA la línea
+            $bultosRecepcionados = Producto::where('n_colada', $coladaDef->colada)
+                ->whereHas('entrada', fn($q) => $q->where('pedido_producto_id', $pivot->id))
+                ->count();
+
+            $bultosEsperados = (int) $coladaDef->bulto;
+
+            if ($bultosRecepcionados > $bultosEsperados) {
+                $discrepancias[] = [
+                    'colada' => $coladaDef->colada,
+                    'tipo' => 'exceso',
+                    'esperados' => $bultosEsperados,
+                    'recepcionados' => $bultosRecepcionados,
+                    'diferencia' => $bultosRecepcionados - $bultosEsperados,
+                    'mensaje' => "Colada {$coladaDef->colada}: se esperaban {$bultosEsperados} bulto(s) pero se recepcionaron {$bultosRecepcionados}",
+                ];
+            } elseif ($bultosRecepcionados < $bultosEsperados) {
+                $discrepancias[] = [
+                    'colada' => $coladaDef->colada,
+                    'tipo' => 'falta',
+                    'esperados' => $bultosEsperados,
+                    'recepcionados' => $bultosRecepcionados,
+                    'diferencia' => $bultosEsperados - $bultosRecepcionados,
+                    'mensaje' => "Colada {$coladaDef->colada}: faltan " . ($bultosEsperados - $bultosRecepcionados) . " bulto(s) (se recepcionaron {$bultosRecepcionados} de {$bultosEsperados})",
+                ];
+            }
+        }
+
+        $mensaje = null;
+        if (!empty($discrepancias)) {
+            $lineas = array_map(fn($d) => $d['mensaje'], $discrepancias);
+            $mensaje = implode("\n", $lineas);
+        }
+
+        return response()->json([
+            'discrepancias' => $discrepancias,
+            'mensaje' => $mensaje,
+        ]);
     }
 
     // Eliminar una entrada y sus productos asociados
