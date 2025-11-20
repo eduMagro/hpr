@@ -774,12 +774,16 @@
         };
 
         // Funciones expuestas para control de paquetes desde fuera
-        mapaContainer.mostrarPaquete = function(codigo) {
+        mapaContainer.mostrarPaquete = function(codigo, autoEditar) {
             const grid = document.getElementById(`${mapId}-cuadricula`);
             const paquete = grid.querySelector(`.loc-paquete[data-codigo="${codigo}"]`);
             if (paquete) {
                 paquete.style.display = 'flex';
                 mapaContainer.moverMapaAPaquete(codigo);
+                if (modoEdicion && autoEditar == true) {
+                    // Tras centrar el scroll, simular clic y pulsar el lápiz de edición
+                    setTimeout(() => mapaContainer.autoclickEditarPaquete(codigo), 300);
+                }
             }
         };
 
@@ -791,33 +795,75 @@
             }
         };
 
+        // Exponer función para entrar en modo edición directamente sobre un paquete
+        mapaContainer.editarPaquete = function(codigo) {
+            if (!modoEdicion) return;
+            const grid = document.getElementById(`${mapId}-cuadricula`);
+            const paquete = grid.querySelector(`.loc-paquete[data-codigo="${codigo}"]`);
+            if (!paquete) return;
+            paquete.style.display = 'flex';
+            // Simula el flujo como si se hubiera pulsado el lápiz: crea toolbar y entra en edición
+            entrarEnEdicion(paquete);
+        };
+
+        // Exponer función que simula clic sobre el paquete y luego el botón de mover (lápiz)
+        mapaContainer.autoclickEditarPaquete = function(codigo) {
+            if (!modoEdicion) return;
+            const grid = document.getElementById(`${mapId}-cuadricula`);
+            const paquete = grid.querySelector(`.loc-paquete[data-codigo="${codigo}"]`);
+            if (!paquete) return;
+            paquete.style.display = 'flex';
+            paquete.click();
+            // Pequeño retraso para asegurar que la toolbar se agregue al DOM
+            setTimeout(() => {
+                const btn = paquete.querySelector('[title="Mover paquete"]');
+                if (btn) btn.click();
+            }, 30);
+        };
+
         mapaContainer.moverMapaAPaquete = function(codigo) {
             const grid = document.getElementById(`${mapId}-cuadricula`);
             const escenario = document.getElementById(`${mapId}-escenario`);
             const paquete = grid.querySelector(`.loc-paquete[data-codigo="${codigo}"]`);
             if (!paquete) return;
 
+            const escenarioRect = escenario.getBoundingClientRect();
+            // Si aún no hay tamaño (p.ej., contenedor estaba oculto), reintentar en el siguiente frame
+            if (!escenarioRect.width || !escenarioRect.height) {
+                requestAnimationFrame(() => mapaContainer.moverMapaAPaquete(codigo));
+                return;
+            }
+
             // Asegurarse que el paquete sea visible para cálculos
             const wasHidden = paquete.style.display === 'none';
             if (wasHidden) paquete.style.display = 'flex';
 
             const rect = paquete.getBoundingClientRect();
-            const escenarioRect = escenario.getBoundingClientRect();
 
-            // Calcular el centro del paquete relativo al escenario
-            // rect.left/top son relativos al viewport
-            // escenarioRect.left/top son relativos al viewport
-            // escenario.scrollLeft/Top es el scroll actual
+            // Buscar el contenedor realmente scrollable (puede ser el escenario o un contenedor padre si el modal tiene overflow)
+            const contenedorScroll = (() => {
+                let el = escenario;
+                while (el && el !== document.body) {
+                    const style = getComputedStyle(el);
+                    const overflow = `${style.overflow}${style.overflowX}${style.overflowY}`;
+                    const tieneScroll = (el.scrollWidth > el.clientWidth + 1) || (el.scrollHeight > el.clientHeight + 1);
+                    if (tieneScroll && /auto|scroll/i.test(overflow)) return el;
+                    el = el.parentElement;
+                }
+                return escenario;
+            })();
 
-            // Posición del paquete relativa al contenido del escenario (incluyendo scroll)
-            const paqueteLeftRel = rect.left - escenarioRect.left + escenario.scrollLeft;
-            const paqueteTopRel = rect.top - escenarioRect.top + escenario.scrollTop;
+            const contRect = contenedorScroll.getBoundingClientRect();
+            if (!contRect.width || !contRect.height) {
+                requestAnimationFrame(() => mapaContainer.moverMapaAPaquete(codigo));
+                return;
+            }
 
-            // Centrar
-            const centerX = paqueteLeftRel - (escenarioRect.width / 2) + (rect.width / 2);
-            const centerY = paqueteTopRel - (escenarioRect.height / 2) + (rect.height / 2);
+            // Posición del paquete relativa al contenedor scrollable
+            const centerX = (rect.left - contRect.left + contenedorScroll.scrollLeft) - (contRect.width / 2) + (rect.width / 2);
+            const centerY = (rect.top - contRect.top + contenedorScroll.scrollTop) - (contRect.height / 2) + (rect.height / 2);
 
-            escenario.scrollTo({
+            contenedorScroll.scrollTo({
                 left: centerX,
                 top: centerY,
                 behavior: 'smooth'

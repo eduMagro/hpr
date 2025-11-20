@@ -470,7 +470,8 @@
                     const header = document.createElement('div');
                     header.className = 'flex justify-between items-start mb-2';
                     const titulo = document.createElement('div');
-                    titulo.innerHTML = `<p class="text-xs text-gray-500">Etiqueta</p><p class="font-semibold text-gray-800">🏷️ ${etiqueta.codigo || etiqueta.etiqueta_sub_id || etiqueta.id}</p>`;
+                    const subCodigo = etiqueta.etiqueta_sub_id || etiqueta.codigo || etiqueta.id;
+                    titulo.innerHTML = `<p class="text-xs text-gray-500">Subetiqueta</p><p class="font-semibold text-gray-800">🏷️ ${subCodigo}</p>`;
                     const badge = document.createElement('span');
                     badge.className = 'text-[11px] px-2 py-1 rounded-full bg-blue-100 text-blue-700 font-semibold';
                     badge.textContent = `${etiqueta.cantidad_elementos} elementos`;

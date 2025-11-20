@@ -527,7 +527,8 @@
 <div id="modal-mover-paquete"
     class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center p-4">
     <div
-        class="bg-white rounded-2xl shadow-xl w-full max-w-6xl max-h-[95vh] overflow-hidden flex flex-col">
+        class="bg-white rounded-2xl shadow-xl w-full max-w-6xl max-h-[95vh] overflow-hidden flex flex-col"
+        data-modal-ajustable-grid="true">
         {{-- Header --}}
         <div
             class="bg-gradient-to-r from-green-600 to-green-700 text-white p-4 flex justify-between items-center">
@@ -609,7 +610,7 @@
 
                 {{-- Componente de mapa simplificado --}}
                 <div class="bg-white p-4 rounded-lg border">
-                    <x-mapa-simple :nave-id="1" />
+                    <x-mapa-simple :nave-id="1" :modo-edicion="true" />
                 </div>
             </div>
         </div>
@@ -618,7 +619,7 @@
         <div class="border-t p-4 bg-gray-50 flex justify-end gap-3">
             <button onclick="cerrarModalMoverPaquete()"
                 class="px-4 py-2 bg-gray-300 hover:bg-gray-400 rounded-lg font-medium">
-                Cancelar
+                Cerrar
             </button>
         </div>
     </div>
@@ -627,10 +628,35 @@
 {{-- Scripts para el modal de mover paquete --}}
 <script>
     let paqueteMoverData = null;
+    function ajustarModalSegunGrid(modalId) {
+        const modal = document.getElementById(modalId);
+        if (!modal) return;
+        const cont = modal.querySelector('[data-modal-ajustable-grid]');
+        if (!cont) return;
+        const grid = modal.querySelector('.cuadricula-mapa');
+        if (!grid) return;
+
+        let reintentos = 0;
+        const ajustar = () => {
+            const gridWidth = grid.scrollWidth || grid.offsetWidth;
+            if (!gridWidth && reintentos < 10) {
+                reintentos += 1;
+                requestAnimationFrame(ajustar);
+                return;
+            }
+            if (!gridWidth) return;
+            const margen = 64;
+            const anchoDeseado = Math.min(gridWidth + margen, window.innerWidth - 32);
+            cont.style.width = `${Math.max(320, anchoDeseado)}px`;
+        };
+
+        requestAnimationFrame(ajustar);
+    }
 
     function abrirModalMoverPaquete() {
         const modal = document.getElementById('modal-mover-paquete');
         modal.classList.remove('hidden');
+        ajustarModalSegunGrid('modal-mover-paquete');
 
         setTimeout(() => {
             document.getElementById('codigo_paquete_mover')?.focus();
@@ -639,6 +665,8 @@
 
     function cerrarModalMoverPaquete() {
         document.getElementById('modal-mover-paquete').classList.add('hidden');
+        const cont = document.getElementById('modal-mover-paquete')?.querySelector('[data-modal-ajustable-grid]');
+        if (cont) cont.style.width = '';
         resetearModalMoverPaquete();
     }
 
@@ -658,7 +686,12 @@
     function mostrarPasoMapa() {
         document.getElementById('paso-escanear-paquete').classList.add('hidden');
         document.getElementById('paso-mapa-paquete').classList.remove('hidden');
-        document.getElementById('paquete-codigo-mapa').textContent = paqueteMoverData?.codigo || '';
+        const codigoPak = (paqueteMoverData?.codigo || '').toString().trim();
+        document.getElementById('paquete-codigo-mapa').textContent = codigoPak;
+        if (codigoPak) {
+            // Usar la función mostrarPaquete expuesta por el mapa-simple del modal
+            mostrarPaqueteEnMapaModal('modal-mover-paquete', codigoPak);
+        }
     }
 
     function volverPasoEscaneo() {
@@ -741,12 +774,43 @@
         errorDiv.textContent = mensaje;
         errorDiv.classList.remove('hidden');
     }
+
+    // Mostrar paquete en el mapa-simple que está dentro de un modal concreto
+    function mostrarPaqueteEnMapaModal(modalId, codigoPaquete) {
+        const modal = document.getElementById(modalId);
+        if (!modal) return;
+        const mapa = modal.querySelector('[data-mapa-simple]');
+        if (!mapa) return;
+
+        let intentos = 0;
+        const intentar = () => {
+            intentos += 1;
+            const fnMostrar = mapa.mostrarPaquete;
+            const fnAutoclick = mapa.autoclickEditarPaquete;
+            if (typeof fnMostrar === 'function') {
+                try {
+                    fnMostrar(codigoPaquete);
+                    if (typeof fnAutoclick === 'function') {
+                        // Asegurar flujo de clic tras mostrar y centrar
+                        setTimeout(() => fnAutoclick(codigoPaquete), 200);
+                    }
+                } catch (e) {
+                    console.warn('No se pudo mostrar paquete en el mapa:', e);
+                }
+                return;
+            }
+            if (intentos < 40) {
+                setTimeout(intentar, 200);
+            }
+        };
+        intentar();
+    }
 </script>
 
 {{-- 🚛 MODAL EJECUTAR SALIDA (con mapa y escaneo de paquetes) --}}
 <div id="modal-ejecutar-salida"
     class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center p-4">
-    <div class="bg-white rounded-2xl shadow-xl w-full max-w-7xl max-h-[95vh] overflow-hidden flex flex-col">
+    <div class="bg-white rounded-2xl shadow-xl w-[95vw] max-h-[95vh] overflow-hidden flex flex-col">
         {{-- Header --}}
         <div class="bg-gradient-to-r from-purple-600 to-purple-700 text-white p-4 flex justify-between items-center">
             <div>
@@ -771,8 +835,8 @@
                 </div>
                 <div class="flex items-end gap-2">
                     <div class="text-sm">
-                        <p class="text-gray-600">Escaneadas: <span id="contador-escaneadas" class="font-bold text-purple-600">0</span></p>
-                        <p class="text-gray-600">Total: <span id="contador-total" class="font-bold">0</span></p>
+                        <p class="text-gray-600">Paquetes validados: <span id="contador-escaneadas" class="font-bold text-purple-600">0</span></p>
+                        <p class="text-gray-600">Total paquetes: <span id="contador-total" class="font-bold">0</span></p>
                     </div>
                 </div>
             </div>
@@ -780,10 +844,10 @@
         </div>
 
         {{-- Contenido principal: Mapa + Lista --}}
-        <div class="flex-1 overflow-hidden flex flex-col lg:flex-row">
+        <div class="overflow-hidden flex">
             {{-- MAPA (Izquierda) --}}
-            <div class="flex-1 p-4 overflow-auto">
-                <x-mapa-simple :nave-id="1" class="h-full" />
+            <div id="contenedor-mapa-ejecutar-salida" class="flex-1 p-4 overflow-auto">
+                <x-mapa-simple :nave-id="1" :modo-edicion="false" class="h-full" />
             </div>
 
             {{-- LISTA DE PAQUETES (Derecha) --}}
@@ -823,7 +887,8 @@
     let salidaData = null;
     let paquetesSalida = [];
     let etiquetasEscaneadas = new Set();
-    let paquetesCompletados = new Set();
+    let paquetesLocalizados = new Set();
+    let paqueteSeleccionadoId = null;
 
     function abrirModalEjecutarSalida(movimientoId, salidaId) {
         console.log('=== Abriendo modal ejecutar salida ===');
@@ -840,7 +905,8 @@
 
         // Resetear estado
         etiquetasEscaneadas.clear();
-        paquetesCompletados.clear();
+        paquetesLocalizados.clear();
+        paqueteSeleccionadoId = null;
         paquetesSalida = [];
         salidaData = {
             movimientoId: movimientoId,
@@ -894,7 +960,8 @@
         if (listaPaquetes) listaPaquetes.innerHTML = '';
 
         etiquetasEscaneadas.clear();
-        paquetesCompletados.clear();
+        paquetesLocalizados.clear();
+        paqueteSeleccionadoId = null;
         paquetesSalida = [];
         salidaData = null;
         actualizarContadores();
@@ -958,27 +1025,34 @@
         lista.innerHTML = '';
 
         paquetesSalida.forEach(paquete => {
-            const isCompletado = paquetesCompletados.has(paquete.id);
-            const etiquetasEscaneadasPaquete = paquete.etiquetas.filter(e =>
-                etiquetasEscaneadas.has(e.codigo)
-            ).length;
+            const isLocalizado = paquetesLocalizados.has(paquete.id);
 
             const div = document.createElement('div');
-            div.className = `p-3 rounded-lg border-2 cursor-pointer transition-all ${
-                isCompletado
-                    ? 'bg-green-50 border-green-500'
-                    : 'bg-white border-gray-200 hover:border-purple-300'
-            }`;
-            // Eliminado: interacción con mapa desde fuera
+            const isSeleccionado = paqueteSeleccionadoId === paquete.id;
+            let claseEstado = 'bg-white border-gray-200 hover:border-purple-300';
+            if (isLocalizado) claseEstado = 'bg-purple-50 border-purple-500 shadow-[0_0_10px_rgba(126,34,206,0.2)]';
+            if (isSeleccionado) claseEstado = 'bg-purple-50 border-purple-500 shadow-[0_0_10px_rgba(126,34,206,0.2)]';
+
+            div.className = `p-3 rounded-lg border-2 cursor-pointer transition-all ${claseEstado}`;
+            // Click en paquete → mostrar/centrar y ocultar otros en el mapa, marcar selección
+            div.addEventListener('click', () => {
+                const mapa = document.querySelector('#contenedor-mapa-ejecutar-salida [data-mapa-simple]');
+                if (mapa) {
+                    const grid = mapa.querySelector('.cuadricula-mapa');
+                    if (grid) grid.querySelectorAll('.loc-paquete').forEach(p => p.style.display = 'none');
+                    if (typeof mapa.mostrarPaquete === 'function') {
+                        mapa.mostrarPaquete(paquete.codigo, false);
+                    }
+                }
+                paqueteSeleccionadoId = paquete.id;
+                renderizarListaPaquetes();
+            });
 
             div.innerHTML = `
                 <div class="flex items-start justify-between gap-2">
                     <div class="flex-1 min-w-0">
                         <div class="flex items-center gap-2">
-                            ${isCompletado ?
-                                '<span class="text-green-600">✓</span>' :
-                                '<span class="text-gray-400">○</span>'
-                            }
+                            <span class="w-3 h-3 inline-block rounded-full ${isLocalizado ? 'bg-purple-500 shadow-[0_0_10px_rgba(126,34,206,0.45)]' : 'bg-gray-300'}"></span>
                             <p class="font-semibold text-gray-800 truncate">${paquete.codigo}</p>
                         </div>
                         <p class="text-xs text-gray-500 mt-1">${paquete.obra}</p>
@@ -992,10 +1066,9 @@
                         </div>
                     </div>
                     <div class="text-right">
-                        <p class="text-xs font-medium ${isCompletado ? 'text-green-600' : 'text-gray-500'}">
-                            ${etiquetasEscaneadasPaquete}/${paquete.num_etiquetas}
+                        <p class="text-xs font-medium ${isLocalizado ? 'text-purple-600' : 'text-gray-500'}">
+                            ${paquete.num_etiquetas} etiquetas
                         </p>
-                        <p class="text-xs text-gray-400">etiquetas</p>
                     </div>
                 </div>
             `;
@@ -1013,51 +1086,39 @@
             return;
         }
 
-        try {
-            const response = await fetch('/salidas/validar-subetiqueta', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
-                },
-                body: JSON.stringify({
-                    codigo: codigo,
-                    salida_id: salidaData.salidaId
-                })
-            });
+        const norm = (v) => (v ?? '').toString().trim().toLowerCase();
+        const codigoNorm = norm(codigo);
 
-            const data = await response.json();
+        // Buscar si la subetiqueta pertenece a algún paquete de la salida usando etiqueta_sub_id como clave principal
+        const paquete = paquetesSalida.find(p => p.etiquetas.some(e => {
+            const sub = norm(e.etiqueta_sub_id);
+            return sub && sub === codigoNorm;
+        }));
 
-            if (data.success) {
-                // Registrar etiqueta escaneada
-                etiquetasEscaneadas.add(codigo);
-
-                // Verificar si el paquete está completo
-                const paquete = paquetesSalida.find(p => p.id === data.paquete.id);
-                if (paquete) {
-                    const etiquetasEscaneadasPaquete = paquete.etiquetas.filter(e =>
-                        etiquetasEscaneadas.has(e.codigo)
-                    ).length;
-
-                    if (etiquetasEscaneadasPaquete === paquete.num_etiquetas) {
-                        paquetesCompletados.add(paquete.id);
-                        mostrarMensajeEscaneo(`✓ Paquete ${paquete.codigo} completado`, 'success');
-                    } else {
-                        mostrarMensajeEscaneo(`✓ Etiqueta válida - ${data.paquete.codigo}`, 'success');
-                    }
-                }
-
-                // Actualizar UI
-                renderizarListaPaquetes();
-                actualizarContadores();
-                verificarSalidaCompleta();
-            } else {
-                mostrarMensajeEscaneo(`❌ ${data.message}`, 'error');
-            }
-        } catch (error) {
-            console.error('Error al validar etiqueta:', error);
-            mostrarMensajeEscaneo('❌ Error al validar la etiqueta', 'error');
+        if (!paquete) {
+            mostrarMensajeEscaneo('❌ Esta subetiqueta no pertenece a ningún paquete de la salida', 'error');
+            return;
         }
+
+        // Registrar escaneo y marcar paquete localizado
+        etiquetasEscaneadas.add(codigo);
+        paquetesLocalizados.add(paquete.id);
+        paqueteSeleccionadoId = paquete.id;
+        mostrarMensajeEscaneo(`✓ Paquete ${paquete.codigo} validado`, 'success');
+
+        // Mostrar paquete en el mapa y ocultar el resto
+        const mapa = document.querySelector('#contenedor-mapa-ejecutar-salida [data-mapa-simple]');
+        if (mapa) {
+            const grid = mapa.querySelector('.cuadricula-mapa');
+            if (grid) grid.querySelectorAll('.loc-paquete').forEach(p => p.style.display = 'none');
+            if (typeof mapa.mostrarPaquete === 'function') {
+                mapa.mostrarPaquete(paquete.codigo, false);
+            }
+        }
+
+        renderizarListaPaquetes();
+        actualizarContadores();
+        verificarSalidaCompleta();
     }
 
     function mostrarMensajeEscaneo(mensaje, tipo) {
@@ -1079,17 +1140,17 @@
     }
 
     function actualizarContadores() {
-        const totalEtiquetas = paquetesSalida.reduce((sum, p) => sum + p.num_etiquetas, 0);
+        const totalPaquetes = paquetesSalida.length;
         const contadorEscaneadas = document.getElementById('contador-escaneadas');
         const contadorTotal = document.getElementById('contador-total');
 
-        if (contadorEscaneadas) contadorEscaneadas.textContent = etiquetasEscaneadas.size;
-        if (contadorTotal) contadorTotal.textContent = totalEtiquetas;
+        if (contadorEscaneadas) contadorEscaneadas.textContent = paquetesLocalizados.size;
+        if (contadorTotal) contadorTotal.textContent = totalPaquetes;
     }
 
     function verificarSalidaCompleta() {
         const totalPaquetes = paquetesSalida.length;
-        const completados = paquetesCompletados.size;
+        const completados = paquetesLocalizados.size;
         const btnCompletar = document.getElementById('btn-completar-salida');
         const mensajeValidacion = document.getElementById('mensaje-validacion');
 
@@ -1109,8 +1170,8 @@
     }
 
     async function completarSalida() {
-        if (paquetesCompletados.size !== paquetesSalida.length) {
-            alert('Debes escanear todas las etiquetas de todos los paquetes antes de completar la salida.');
+        if (paquetesLocalizados.size !== paquetesSalida.length) {
+            alert('Debes escanear al menos una subetiqueta de cada paquete antes de completar la salida.');
             return;
         }
 
