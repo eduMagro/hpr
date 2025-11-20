@@ -1090,8 +1090,10 @@
         const codigoNorm = norm(codigo);
 
         // Buscar si la subetiqueta pertenece a algún paquete de la salida usando etiqueta_sub_id como clave principal
+        console.log('🔍 Buscando subetiqueta:', codigoNorm);
         const paquete = paquetesSalida.find(p => p.etiquetas.some(e => {
             const sub = norm(e.etiqueta_sub_id);
+            // console.log('   Comparando con:', sub);
             return sub && sub === codigoNorm;
         }));
 

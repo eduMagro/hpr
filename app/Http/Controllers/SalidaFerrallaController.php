@@ -280,6 +280,7 @@ class SalidaFerrallaController extends Controller
                             'id' => $etiqueta->id,
                             'codigo' => $etiqueta->codigo,
                             'numero_etiqueta' => $etiqueta->numero_etiqueta,
+                            'etiqueta_sub_id' => $etiqueta->etiqueta_sub_id,
                         ];
                     }),
                     'localizacion' => $loc ? [
