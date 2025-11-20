@@ -525,9 +525,9 @@
 
 {{-- 📦 MODAL MOVER PAQUETE (3 pasos: escanear, validar, ubicar en mapa) --}}
 <div id="modal-mover-paquete"
-    class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center p-4">
+    class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center sm:p-4">
     <div
-        class="bg-white rounded-2xl shadow-xl w-full max-w-6xl max-h-[95vh] overflow-hidden flex flex-col"
+        class="bg-white sm:rounded-2xl shadow-xl w-full max-w-6xl h-screen sm:max-h-[95vh] overflow-hidden flex flex-col"
         data-modal-ajustable-grid="true">
         {{-- Header --}}
         <div
@@ -541,17 +541,25 @@
         {{-- Contenido --}}
         <div class="flex-1 overflow-auto p-4">
             {{-- PASO 1: Escanear código --}}
-            <div id="paso-escanear-paquete" class="space-y-4">
+            <div id="paso-escanear-paquete" class="flex-1 overflow-y-auto p-4 space-y-4">
                 <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
                     <h3 class="font-semibold text-blue-800 mb-2">Paso 1:
                         Escanear Código del Paquete</h3>
                     <p class="text-sm text-blue-600 mb-3">Escanea o introduce
                         el código QR del paquete que deseas mover.</p>
 
-                    <x-tabla.input-movil type="text"
-                        id="codigo_paquete_mover" label="Código del Paquete"
-                        placeholder="Escanea o escribe el código (ej: ETQ123456.01)"
-                        autocomplete="off" inputmode="text" />
+                    <div class="flex flex-col gap-2">
+                        <div class="flex-1">
+                            <x-tabla.input-movil type="text"
+                                id="codigo_paquete_mover" label="Código del Paquete"
+                                placeholder="Escanea o escribe el código (ej: ETQ123456.01)"
+                                autocomplete="off" inputmode="text" />
+                        </div>
+                        <button onclick="buscarPaqueteParaMover()" 
+                            class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg shadow mb-[2px]">
+                            Buscar
+                        </button>
+                    </div>
 
                     <div id="error-paquete-mover"
                         class="hidden mt-2 text-sm text-red-600 bg-red-50 p-2 rounded">
@@ -594,9 +602,8 @@
             </div>
 
             {{-- PASO 2: Seleccionar ubicación en mapa --}}
-            <div id="paso-mapa-paquete" class="hidden space-y-4">
-                <div
-                    class="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+            <div id="paso-mapa-paquete" class="hidden space-y-4 h-full">
+                <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
                     <h3 class="font-semibold text-yellow-800 mb-2">Paso 2:
                         Seleccionar Nueva Ubicación</h3>
 
@@ -609,8 +616,8 @@
                 </div>
 
                 {{-- Componente de mapa simplificado --}}
-                <div class="bg-white p-4 rounded-lg border">
-                    <x-mapa-simple :nave-id="1" :modo-edicion="true" />
+                <div class="bg-white p-4 rounded-lg border h-[550px] overflow-hidden relative">
+                    <x-mapa-simple :nave-id="1" :modo-edicion="true" class="h-full w-full" />
                 </div>
             </div>
         </div>
@@ -809,8 +816,8 @@
 
 {{-- 🚛 MODAL EJECUTAR SALIDA (con mapa y escaneo de paquetes) --}}
 <div id="modal-ejecutar-salida"
-    class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center p-4">
-    <div class="bg-white rounded-2xl shadow-xl w-[95vw] max-h-[95vh] overflow-hidden flex flex-col">
+    class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center">
+    <div class="bg-white sm:rounded-2xl shadow-xl w-[100vw] h-[100vh] sm:w-[90vw] sm:h-[70vh] overflow-hidden flex flex-col">
         {{-- Header --}}
         <div class="bg-gradient-to-r from-purple-600 to-purple-700 text-white p-4 flex justify-between items-center">
             <div>
@@ -844,14 +851,18 @@
         </div>
 
         {{-- Contenido principal: Mapa + Lista --}}
-        <div class="overflow-hidden flex">
+        <div class="flex-1 overflow-hidden flex flex-col lg:flex-row relative">
             {{-- MAPA (Izquierda) --}}
-            <div id="contenedor-mapa-ejecutar-salida" class="flex-1 p-4 overflow-auto">
-                <x-mapa-simple :nave-id="1" :modo-edicion="false" class="h-full" />
+            <div id="contenedor-mapa-ejecutar-salida" class="hidden lg:block w-full lg:flex-1 h-full p-4 overflow-hidden bg-white absolute inset-0 lg:static z-20 lg:z-auto">
+                <button onclick="ocultarMapaMovil()" 
+                    class="lg:hidden absolute top-5 right-5 bg-white text-gray-800 px-4 py-2 rounded-full shadow-lg border z-50 font-bold flex items-center gap-2 hover:bg-gray-50">
+                    <span>✕</span> Volver
+                </button>
+                <x-mapa-simple :nave-id="1" :modo-edicion="false" class="h-full w-full" />
             </div>
 
             {{-- LISTA DE PAQUETES (Derecha) --}}
-            <div class="w-full lg:w-96 border-t lg:border-t-0 lg:border-l bg-gray-50 flex flex-col">
+            <div id="contenedor-lista-paquetes" class="w-full lg:w-96 border-t lg:border-t-0 lg:border-l bg-gray-50 flex flex-col h-full overflow-hidden">
                 <div class="p-4 border-b bg-white">
                     <h3 class="font-semibold text-gray-800">Paquetes de la Salida</h3>
                     <p class="text-xs text-gray-500 mt-1">Haz clic para ver ubicación en el mapa</p>
@@ -1046,6 +1057,7 @@
                 }
                 paqueteSeleccionadoId = paquete.id;
                 renderizarListaPaquetes();
+                mostrarMapaMovil();
             });
 
             div.innerHTML = `
@@ -1202,6 +1214,23 @@
         } catch (error) {
             console.error('Error al completar salida:', error);
             alert('Error al completar la salida');
+        }
+    }
+    function mostrarMapaMovil() {
+        const mapa = document.getElementById('contenedor-mapa-ejecutar-salida');
+        if (mapa) {
+            mapa.classList.remove('hidden');
+            // Disparar evento de resize para que el mapa se ajuste si estaba oculto
+            setTimeout(() => {
+                window.dispatchEvent(new Event('resize'));
+            }, 100);
+        }
+    }
+
+    function ocultarMapaMovil() {
+        const mapa = document.getElementById('contenedor-mapa-ejecutar-salida');
+        if (mapa) {
+            mapa.classList.add('hidden');
         }
     }
 </script>

@@ -20,19 +20,16 @@
     </div>
 
     {{-- Contenedor del mapa (oculto inicialmente) --}}
-    <div id="{{ $mapId }}-container" class="hidden overflow-auto flex flex-col h-full">
+    <div id="{{ $mapId }}-container" class="hidden overflow-hidden flex flex-col h-full">
         {{-- Información de la nave --}}
-        <div id="{{ $mapId }}-info" class="bg-white p-3 rounded-lg mb-3 text-sm border flex-shrink-0">
-            <p class="font-semibold text-gray-800" id="{{ $mapId }}-nombre"></p>
-            <p class="text-gray-600" id="{{ $mapId }}-dimensiones"></p>
-        </div>
+
 
         {{-- Escenario del mapa --}}
         <div id="{{ $mapId }}-escenario"
             data-mapa-canvas
             data-mapa-id="{{ $mapId }}"
-            class="orient-vertical overflow-auto relative bg-white border rounded-lg flex-1"
-            style="min-height: 0; height: 100%;">
+            class="orient-vertical overflow-hidden relative bg-white border rounded-lg flex-1"
+            style="min-height: 0; height: 100%; touch-action: none;">
 
             <div id="{{ $mapId }}-cuadricula" class="relative cuadricula-mapa">
                 {{-- Los elementos se insertarán dinámicamente vía JavaScript --}}
@@ -109,9 +106,7 @@
         document.getElementById(`${mapId}-container`).classList.remove('hidden');
 
         // Actualizar info
-        document.getElementById(`${mapId}-nombre`).textContent = dimensiones.obra;
-        document.getElementById(`${mapId}-dimensiones`).textContent =
-            `${dimensiones.ancho}m x ${dimensiones.largo}m (${ctx.columnasReales} x ${ctx.filasReales} celdas)`;
+
 
         // Obtener elementos
         const escenario = document.getElementById(`${mapId}-escenario`);
@@ -317,8 +312,19 @@
         let isPanning = false;
         let panStartX = 0, panStartY = 0;
         let panStartScrollLeft = 0, panStartScrollTop = 0;
+        let isDraggingPaquete = false;
+
+        const resetPanState = () => {
+            isPanning = false;
+            panStartX = 0;
+            panStartY = 0;
+            panStartScrollLeft = escenario.scrollLeft;
+            panStartScrollTop = escenario.scrollTop;
+            escenario.style.cursor = '';
+        };
 
         escenario.addEventListener('mousedown', (e) => {
+            if (isDraggingPaquete) return;
             if (e.target.closest('.loc-existente') || e.target.closest('button')) return;
             isPanning = true;
             panStartX = e.clientX;
@@ -330,7 +336,7 @@
         });
 
         escenario.addEventListener('mousemove', (e) => {
-            if (!isPanning) return;
+            if (isDraggingPaquete || !isPanning) return;
             const deltaX = e.clientX - panStartX;
             const deltaY = e.clientY - panStartY;
             escenario.scrollLeft = panStartScrollLeft - deltaX;
@@ -338,11 +344,13 @@
         });
 
         escenario.addEventListener('mouseup', () => {
+            if (isDraggingPaquete) return;
             isPanning = false;
             escenario.style.cursor = '';
         });
 
         escenario.addEventListener('mouseleave', () => {
+            if (isDraggingPaquete) return;
             isPanning = false;
             escenario.style.cursor = '';
         });
@@ -352,6 +360,7 @@
         let touchStartScrollLeft = 0, touchStartScrollTop = 0;
 
         escenario.addEventListener('touchstart', (e) => {
+            if (isDraggingPaquete) return;
             if (e.target.closest('.loc-existente') || e.target.closest('button')) return;
             if (e.touches.length === 1) {
                 touchStartX = e.touches[0].clientX;
@@ -362,6 +371,7 @@
         }, { passive: true });
 
         escenario.addEventListener('touchmove', (e) => {
+            if (isDraggingPaquete) return;
             if (e.touches.length === 1) {
                 const deltaX = e.touches[0].clientX - touchStartX;
                 const deltaY = e.touches[0].clientY - touchStartY;
@@ -391,6 +401,50 @@
         // ================================
         let paqueteEnEdicion = null;
         let dragState = null;
+        let scrollLockedByDrag = false;
+        let scrollLockHandlerAttached = false;
+
+        const preventScrollDuringDrag = (ev) => {
+            if (!scrollLockedByDrag) return;
+            ev.preventDefault();
+        };
+
+        // Bloquea el scroll global mientras se arrastra un paquete en móvil
+        const lockScrollForDrag = () => {
+            if (scrollLockedByDrag) return;
+            scrollLockedByDrag = true;
+            if (!scrollLockHandlerAttached) {
+                document.addEventListener('touchmove', preventScrollDuringDrag, { passive: false });
+                scrollLockHandlerAttached = true;
+            }
+            [document.body, document.documentElement].forEach(el => {
+                if (!el) return;
+                el.dataset.mapaScrollOverflow = el.style.overflow;
+                el.dataset.mapaScrollTouchAction = el.style.touchAction;
+                el.style.overflow = 'hidden';
+                el.style.touchAction = 'none';
+            });
+        };
+
+        const unlockScrollForDrag = () => {
+            if (!scrollLockedByDrag) return;
+            scrollLockedByDrag = false;
+            if (scrollLockHandlerAttached) {
+                document.removeEventListener('touchmove', preventScrollDuringDrag);
+                scrollLockHandlerAttached = false;
+            }
+            [document.body, document.documentElement].forEach(el => {
+                if (!el) return;
+                if (el.dataset.mapaScrollOverflow !== undefined) {
+                    el.style.overflow = el.dataset.mapaScrollOverflow;
+                    delete el.dataset.mapaScrollOverflow;
+                }
+                if (el.dataset.mapaScrollTouchAction !== undefined) {
+                    el.style.touchAction = el.dataset.mapaScrollTouchAction;
+                    delete el.dataset.mapaScrollTouchAction;
+                }
+            });
+        };
 
         function getCeldaPx() {
             const computed = getComputedStyle(grid);
@@ -478,6 +532,13 @@
 
             paquete.classList.add('loc-paquete--editing');
             paquete.classList.add('has-toolbar'); // Asegurar que tenga la clase
+
+            // Hitbox ampliada: overlay enorme para facilitar taps en móvil
+            if (!paquete.querySelector('.hitbox-ampliada')) {
+                const hitbox = document.createElement('div');
+                hitbox.className = 'hitbox-ampliada';
+                paquete.prepend(hitbox);
+            }
 
             if (!paquete.dataset.origLeft) {
                 paquete.dataset.origLeft = paquete.style.left || '0px';
@@ -666,6 +727,8 @@
         function salirDeEdicion(paquete, cancelar = false) {
             const toolbarEdit = paquete.querySelector('.paquete-toolbar--edit');
             if (toolbarEdit) toolbarEdit.remove();
+            const hitbox = paquete.querySelector('.hitbox-ampliada');
+            if (hitbox) hitbox.remove();
 
             paquete.classList.remove('loc-paquete--editing');
             paquete.classList.remove('has-toolbar'); // Remover clase
@@ -682,14 +745,22 @@
         function activarDragEnPaquete(paquete) {
             if (!paquete.classList.contains('loc-paquete--editing')) return;
 
+            const limitarOffset = (valor, maxBase) => {
+                // Permitimos offsets más grandes para la hitbox extendida
+                const max = maxBase * 2.5;
+                return Math.min(Math.max(valor, 0), max);
+            };
+
             const onMouseDown = (ev) => {
                 if (ev.target.closest('.paquete-toolbar')) return;
                 ev.preventDefault();
+                resetPanState();
+                isDraggingPaquete = true;
 
                 const gridRect = grid.getBoundingClientRect();
                 const pkgRect = paquete.getBoundingClientRect();
-                const offsetX = ev.clientX - pkgRect.left;
-                const offsetY = ev.clientY - pkgRect.top;
+                const offsetX = limitarOffset(ev.clientX - pkgRect.left, pkgRect.width);
+                const offsetY = limitarOffset(ev.clientY - pkgRect.top, pkgRect.height);
 
                 dragState = { offsetX, offsetY, gridRect };
 
@@ -720,6 +791,8 @@
                 dragState = null;
                 document.removeEventListener('mousemove', onMouseMove);
                 document.removeEventListener('mouseup', onMouseUp);
+                resetPanState();
+                isDraggingPaquete = false;
             };
 
             paquete._onMouseDownEditar = onMouseDown;
@@ -727,6 +800,60 @@
             paquete._onMouseUpEditar = onMouseUp;
 
             paquete.addEventListener('mousedown', onMouseDown);
+            
+            // Soporte Táctil
+            const onTouchStart = (ev) => {
+                if (ev.target.closest('.paquete-toolbar')) return;
+                // Prevenir scroll y selección
+                ev.preventDefault();
+                lockScrollForDrag();
+                resetPanState();
+                isDraggingPaquete = true;
+
+                const touch = ev.touches[0];
+                const gridRect = grid.getBoundingClientRect();
+                const pkgRect = paquete.getBoundingClientRect();
+                const offsetX = limitarOffset(touch.clientX - pkgRect.left, pkgRect.width);
+                const offsetY = limitarOffset(touch.clientY - pkgRect.top, pkgRect.height);
+
+                dragState = { offsetX, offsetY, gridRect };
+
+                document.addEventListener('touchmove', onTouchMove, { passive: false });
+                document.addEventListener('touchend', onTouchEnd);
+            };
+
+            const onTouchMove = (ev) => {
+                if (!dragState) return;
+                ev.preventDefault(); // Importante para evitar scroll
+
+                const touch = ev.touches[0];
+                const xDentroGrid = touch.clientX - dragState.gridRect.left;
+                const yDentroGrid = touch.clientY - dragState.gridRect.top;
+
+                let nuevoLeft = xDentroGrid - dragState.offsetX;
+                let nuevoTop = yDentroGrid - dragState.offsetY;
+
+                nuevoLeft = Math.max(0, Math.min(nuevoLeft, grid.offsetWidth - paquete.offsetWidth));
+                nuevoTop = Math.max(0, Math.min(nuevoTop, grid.offsetHeight - paquete.offsetHeight));
+
+                paquete.style.left = `${nuevoLeft}px`;
+                paquete.style.top = `${nuevoTop}px`;
+            };
+
+            const onTouchEnd = () => {
+                dragState = null;
+                document.removeEventListener('touchmove', onTouchMove);
+                document.removeEventListener('touchend', onTouchEnd);
+                unlockScrollForDrag();
+                resetPanState();
+                isDraggingPaquete = false;
+            };
+
+            paquete._onTouchStartEditar = onTouchStart;
+            paquete._onTouchMoveEditar = onTouchMove;
+            paquete._onTouchEndEditar = onTouchEnd;
+
+            paquete.addEventListener('touchstart', onTouchStart, { passive: false });
         }
 
         function desactivarDragEnPaquete(paquete) {
@@ -742,7 +869,25 @@
                 document.removeEventListener('mouseup', paquete._onMouseUpEditar);
                 delete paquete._onMouseUpEditar;
             }
+            
+            // Limpiar eventos táctiles
+            if (paquete._onTouchStartEditar) {
+                paquete.removeEventListener('touchstart', paquete._onTouchStartEditar);
+                delete paquete._onTouchStartEditar;
+            }
+            if (paquete._onTouchMoveEditar) {
+                document.removeEventListener('touchmove', paquete._onTouchMoveEditar);
+                delete paquete._onTouchMoveEditar;
+            }
+            if (paquete._onTouchEndEditar) {
+                document.removeEventListener('touchend', paquete._onTouchEndEditar);
+                delete paquete._onTouchEndEditar;
+            }
+            
             dragState = null;
+            unlockScrollForDrag();
+            resetPanState();
+            isDraggingPaquete = false;
         }
     }
 
@@ -884,6 +1029,15 @@
         overflow: visible !important;
     }
     
+    /* Hitbox enorme para modo edición (no afecta al tamaño visual) */
+    .loc-paquete--editing .hitbox-ampliada {
+        position: absolute;
+        inset: -200%;
+        background: transparent;
+        pointer-events: auto;
+        z-index: 1;
+    }
+
     .loc-paquete.has-toolbar {
         z-index: 90;
     }
@@ -1029,6 +1183,7 @@
         outline: 2px dashed #0ea5e9;
         outline-offset: 2px;
         cursor: move !important;
+        position: relative;
         z-index: 100; /* Elevado para que esté por encima de otros */
     }
 
