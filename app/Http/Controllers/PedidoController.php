@@ -509,6 +509,7 @@ class PedidoController extends Controller
         }
 
         $linea = $movimiento->pedidoProducto; // 🔒 Línea asociada al movimiento
+        $linea->load('coladas'); // Cargar las coladas asociadas
         $productoBase = $pedido->productos->firstWhere('id', $productoBaseId);
 
         // 🚨 CAMBIO: Cargar máquina desde el parámetro

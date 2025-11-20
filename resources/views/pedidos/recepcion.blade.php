@@ -481,6 +481,8 @@
         const ubicacionDefecto = '{{ $ubicacionPorDefecto }}';
 
         const coladaDefecto = '{{ $coladaPorDefecto }}';
+        const coladasDisponibles = @json($linea->coladas->pluck('colada', 'colada'));
+        const hasColadas = Object.keys(coladasDisponibles).length > 0;
 
         // 🎯 Sistema mejorado de recepción con navegación
         class RecepcionWizard {
@@ -578,6 +580,7 @@
                         name: 'n_colada',
                         title: 'Número de colada',
                         type: 'text',
+                        datalist: hasColadas ? coladasDisponibles : undefined,
                         defaultValue: coladaDefecto,
                         required: true,
                         validator: (value) => value ? null : 'Número de colada requerido'
@@ -611,6 +614,7 @@
                         name: 'n_colada_2',
                         title: 'Colada del segundo paquete',
                         type: 'text',
+                        datalist: hasColadas ? coladasDisponibles : undefined,
                         defaultValue: coladaDefecto,
                         condition: () => this.data.paquetes === '2',
                         required: false
@@ -899,6 +903,20 @@
                         if (step.type === 'text') inputMode = ' inputmode="text"';
                     }
 
+                    // Soporte para datalist (recomendaciones)
+                    let listAttr = '';
+                    let datalistHTML = '';
+                    if (step.datalist) {
+                        const listId = 'list-' + step.name;
+                        listAttr = ' list="' + listId + '"';
+                        
+                        datalistHTML = '<datalist id="' + listId + '">';
+                        for (const [value, label] of Object.entries(step.datalist)) {
+                            datalistHTML += '<option value="' + value + '">';
+                        }
+                        datalistHTML += '</datalist>';
+                    }
+
                     html += '<input id="swal-input" ' +
                         'type="' + step.type + '" ' +
                         'class="swal2-input" ' +
@@ -906,9 +924,10 @@
                         'value="' + defaultValue + '"' +
                         attrStr +
                         inputMode +
+                        listAttr +
                         ' style="width: 100%; font-size: 16px; margin: 0;"' +
                         (step.autofocus ? ' autofocus' : '') +
-                        '>';
+                        '>' + datalistHTML;
                 }
 
                 html += '</div>';
