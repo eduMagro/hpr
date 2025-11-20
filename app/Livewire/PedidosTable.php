@@ -231,7 +231,7 @@ class PedidosTable extends Component
             'pedidoGlobal',
             'fabricante',
             'distribuidor',
-            'lineas.obra',
+            'lineas.obra.cliente',
             'lineas.pedidoGlobal',
             'createdBy'
         ]);

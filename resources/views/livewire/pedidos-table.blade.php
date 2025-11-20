@@ -320,10 +320,19 @@
 
                                                 {{-- BOTÓN ACTIVAR --}}
                                                 @if(($estado === 'pendiente' || $estado === 'parcial') && $esNaveValida)
-                                                    <form method="POST" action="{{ route('pedidos.lineas.editarActivar', [$pedido->id, $linea['id']]) }}">
+                                                    @php
+                                                        $clienteId = $linea->obra && $linea->obra->cliente ? $linea->obra->cliente->id : 0;
+                                                    @endphp
+                                                    <form method="POST"
+                                                        action="{{ route('pedidos.lineas.editarActivar', [$pedido->id, $linea['id']]) }}"
+                                                        class="form-activar-linea"
+                                                        data-cliente-id="{{ $clienteId }}"
+                                                        data-pedido-id="{{ $pedido->id }}"
+                                                        data-linea-id="{{ $linea['id'] }}"
+                                                        wire:ignore>
                                                         @csrf
                                                         @method('PUT')
-                                                        <button type="submit" title="Activar línea" class="bg-yellow-500 hover:bg-yellow-600 text-white text-xs px-2 py-1 rounded shadow transition">
+                                                        <button type="submit" title="Activar línea" class="bg-yellow-500 hover:bg-yellow-600 text-white text-xs px-2 py-1 rounded shadow transition btn-activar-linea">
                                                             Activar
                                                         </button>
                                                     </form>

@@ -59,10 +59,10 @@
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                     d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                             </svg>
-                            Confirmar activación de línea
+                            Coladas
                         </h3>
                         <p class="text-sm text-slate-300 mt-2">
-                            Registrar coladas y bultos asociados (opcional)
+                            Registra las coladas que trae el albarán del transportista
                         </p>
                     </div>
 
@@ -70,9 +70,7 @@
                     <div class="p-6">
                         <div class="bg-blue-50 border-l-4 border-blue-500 px-4 py-3 rounded-r mb-5">
                             <p class="text-sm text-blue-800 leading-relaxed">
-                                <strong class="font-semibold">Información:</strong> Puedes añadir cero o más coladas y
-                                bultos.
-                                Si no necesitas registrar información, deja la tabla vacía y confirma la activación.
+                                Registra las coladas que trae el albarán del transportista. Si no hay coladas, deja la tabla vacía y confirma la activación.
                             </p>
                         </div>
 
@@ -86,9 +84,9 @@
                                 <thead class="bg-gradient-to-r from-gray-700 to-gray-800 text-white">
                                     <tr>
                                         <th class="px-4 py-3 text-left font-semibold uppercase tracking-wider text-xs">
-                                            Colada</th>
+                                            Coladas</th>
                                         <th class="px-4 py-3 text-left font-semibold uppercase tracking-wider text-xs">
-                                            Bulto</th>
+                                            Bultos</th>
                                         <th
                                             class="px-4 py-3 text-center font-semibold uppercase tracking-wider text-xs whitespace-nowrap">
                                             Acciones</th>
@@ -1344,8 +1342,14 @@
                     return;
                 }
 
+                console.log('🔍 Submit capturado:', {
+                    formClasses: form.className,
+                    hasActivarClass: form.classList.contains('form-activar-linea')
+                });
+
                 if (form.classList.contains('form-desactivar-linea')) {
                     ev.preventDefault();
+                    ev.stopImmediatePropagation();
                     desactivarLinea(form);
                     return;
                 }
@@ -1353,14 +1357,24 @@
                 if (form.classList.contains('form-activar-linea')) {
                     const clienteId = parseInt(form.getAttribute('data-cliente-id') || '0', 10);
 
+                    console.log('✅ Formulario activar detectado:', {
+                        clienteId: clienteId,
+                        CLIENTE_ID_REQUIERE_COLADAS: CLIENTE_ID_REQUIERE_COLADAS,
+                        coincide: clienteId === CLIENTE_ID_REQUIERE_COLADAS
+                    });
+
                     if (clienteId === CLIENTE_ID_REQUIERE_COLADAS) {
+                        console.log('🎯 Abriendo modal de coladas...');
                         ev.preventDefault();
+                        ev.stopImmediatePropagation();
                         const pedidoId = form.getAttribute('data-pedido-id');
                         const lineaId = form.getAttribute('data-linea-id');
                         abrirModalColadas(pedidoId, lineaId, form);
+                    } else {
+                        console.log('⚠️ Cliente ID no coincide, dejando submit normal');
                     }
                 }
-            });
+            }, true);
         });
     </script>
 </x-app-layout>
