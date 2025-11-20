@@ -1148,6 +1148,7 @@
                             html: `
                             <div class="flex flex-col gap-2 w-full py-1">
                                 <a href="/maquinas/${arg.resource.id}"
+                                   wire:navigate
                                    class="text-blue-600 hover:text-blue-800 hover:underline font-semibold maquina-nombre"
                                    data-maquina-id="${arg.resource.id}"
                                    data-maquina-titulo="${arg.resource.title}">${arg.resource.title}</a>

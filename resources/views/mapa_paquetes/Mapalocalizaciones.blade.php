@@ -40,18 +40,23 @@
         </div>
 
         {{-- === GRID principal: Mapa + Panel lateral === --}}
-        <div class="flex gap-4 w-full" style="height: calc(100vh - 170px);">
+        <div class="flex gap-4 w-full" style="height: calc(100vh - 180px);">
 
-            {{-- COMPONENTE DE MAPA (nuevo) --}}
-            <div class="flex-1 overflow-hidden  rounded-md">
-                <x-mapa-simple :nave-id="$obraActualId" :modo-edicion="true" class="w-full h-full" />
+            {{-- COMPONENTE DE MAPA --}}
+            {{-- 
+                aspect-ratio: define la forma basada en las dimensiones reales.
+                max-width: 65%: limita el ancho máximo (aprox 5/8 de pantalla).
+                min-width: 350px: asegura un tamaño mínimo legible.
+                flex: 0 0 auto: respeta el ancho calculado (o sus límites) sin encogerse ni crecer arbitrariamente.
+            --}}
+            <div class="relative overflow-hidden rounded-md shadow-sm border border-gray-200"
+                 style="height: 100%; aspect-ratio: {{ $dimensiones['ancho'] }} / {{ $dimensiones['largo'] }}; max-width: 65%; min-width: 350px; flex: 0 0 auto;">
+                <x-mapa-simple :nave-id="$obraActualId" :modo-edicion="true" class="w-full h-full absolute inset-0" />
             </div>
 
-            {{-- PANEL LATERAL: Lista de paquetes (igual que lo tenías) --}}
-            <div
-                class="bg-white rounded-lg shadow-sm overflow-hidden flex flex-col w-full max-w-xl flex-shrink-0 ">
-                <div
-                    class="bg-gradient-to-r from-blue-600 to-blue-700 text-white p-4">
+            {{-- PANEL LATERAL: Lista de paquetes --}}
+            <div class="flex-1 bg-white rounded-lg shadow-sm overflow-hidden flex flex-col min-w-[350px]">
+                <div class="bg-gradient-to-r from-blue-600 to-blue-700 text-white p-4">
                     <h2 class="text-lg font-bold">Paquetes Ubicados</h2>
                     <p class="text-sm text-blue-100 mt-1">
                         Total: {{ $paquetesConLocalizacion->count() }} paquetes
@@ -70,10 +75,12 @@
 
                 </div>
 
-                <div class="flex-1 overflow-y-auto p-3" id="lista-paquetes">
+                <div class="flex-1 overflow-y-auto p-3 grid gap-2 content-start" id="lista-paquetes"
+                     style="grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));">
                     @forelse($paquetesConLocalizacion as $paquete)
-                        <div class="paquete-item bg-gray-50 rounded-lg p-3 mb-2 border border-gray-200 hover:border-blue-400 hover:shadow-md transition cursor-pointer"
+                        <div class="paquete-item bg-gray-50 rounded-lg p-3 border border-gray-200 hover:border-blue-400 hover:shadow-md transition cursor-pointer h-full"
                             data-paquete-id="{{ $paquete['id'] }}"
+                            data-codigo="{{ $paquete['codigo'] }}"
                             data-obra="{{ $paquete['obra'] }}"
                             data-x1="{{ $paquete['x1'] }}"
                             data-y1="{{ $paquete['y1'] }}"
@@ -116,7 +123,7 @@
                             </div>
                         </div>
                     @empty
-                        <div class="text-center py-8 text-gray-500">
+                        <div class="col-span-full text-center py-8 text-gray-500">
                             <svg class="w-16 h-16 mx-auto mb-3 text-gray-300"
                                 fill="none" stroke="currentColor"
                                 viewBox="0 0 24 24">
@@ -134,7 +141,7 @@
                 <div class="border-t border-gray-200 p-3 bg-gray-50">
                     <h3 class="text-xs font-bold text-gray-700 mb-2">LEYENDA
                     </h3>
-                    <div class="space-y-1 text-xs">
+                    <div class="grid grid-cols-2 gap-2 text-xs">
                         <div class="flex items-center gap-2">
                             <div class="w-4 h-4 bg-blue-500 rounded"></div>
                             <span>Barras</span>
@@ -157,14 +164,174 @@
         </div>
     </div>
 
+    {{-- Panel flotante para detalle de etiquetas/elementos del paquete (se muestra al hacer click derecho) --}}
+    <div id="detalle-paquete-panel"
+         class="hidden fixed z-50 bg-white shadow-2xl border border-gray-200 rounded-lg w-full max-w-lg max-h-[400px] overflow-hidden flex flex-col"
+         style="top: 1.5rem; right: 1.5rem;">
+        <div class="flex items-start justify-between px-4 py-3 bg-gray-50 border-b border-gray-200">
+            <div>
+                <p class="text-[11px] uppercase tracking-wide text-gray-500 font-semibold">Detalle del paquete</p>
+                <p id="detalle-paquete-codigo" class="text-sm font-bold text-gray-800 mt-0.5">Selecciona un paquete</p>
+            </div>
+            <button id="detalle-paquete-cerrar" type="button"
+                class="text-gray-500 hover:text-gray-700 rounded-full p-1 transition"
+                aria-label="Cerrar detalle">
+                ✕
+            </button>
+        </div>
+        <div id="detalle-paquete-contenido" class="p-3 text-sm text-gray-700 space-y-3 overflow-y-auto flex-1">
+            <p class="text-gray-500">Haz click derecho sobre un paquete para ver sus etiquetas y elementos.</p>
+        </div>
+    </div>
 
 
 
     <script>
-        document.addEventListener('DOMContentLoaded', function() {
+            document.addEventListener('DOMContentLoaded', function() {
+            // === Utilidades para renderizar dimensiones como SVG (longitud + ángulo) ===
+            function parseDimensiones(dims) {
+                if (!dims) return null;
+                const tokens = dims.toString().trim().split(/\s+/).filter(Boolean);
+                const longitudes = [];
+                const angulos = [];
+                tokens.forEach(tok => {
+                    if (tok.toLowerCase().includes('d')) {
+                        const ang = parseFloat(tok.replace(/[^\d.-]/g, ''));
+                        if (!Number.isNaN(ang)) angulos.push(ang);
+                    } else {
+                        const lon = parseFloat(tok.replace(/[^\d.-]/g, ''));
+                        if (!Number.isNaN(lon)) longitudes.push(lon);
+                    }
+                });
+                if (!longitudes.length) return null;
+                return { longitudes, angulos };
+            }
+
+            function buildPuntosFigura(longitudes, angulos) {
+                const puntos = [{ x: 0, y: 0 }];
+                let anguloActual = 0;
+                let x = 0, y = 0;
+                longitudes.forEach((L, idx) => {
+                    const rad = anguloActual * Math.PI / 180;
+                    x += L * Math.cos(rad);
+                    y += L * Math.sin(rad);
+                    puntos.push({ x, y });
+                    anguloActual += angulos[idx] ?? 0;
+                });
+                return puntos;
+            }
+
+            function renderDimensionesSvg(dimensiones) {
+                const parsed = parseDimensiones(dimensiones);
+                if (!parsed) return null;
+
+                // Rotar -90° para que el primer tramo se dibuje hacia arriba
+                const puntos = buildPuntosFigura(parsed.longitudes, parsed.angulos)
+                    .map(p => ({ x: p.y, y: -p.x }));
+
+                let minX = 0, maxX = 0, minY = 0, maxY = 0;
+                puntos.forEach(p => {
+                    minX = Math.min(minX, p.x);
+                    maxX = Math.max(maxX, p.x);
+                    minY = Math.min(minY, p.y);
+                    maxY = Math.max(maxY, p.y);
+                });
+
+                const ancho = maxX - minX || 1;
+                const alto = maxY - minY || 1;
+                const viewW = 140, viewH = 80;
+                const padding = 8;
+                const scale = Math.min(
+                    (viewW - padding * 2) / ancho,
+                    (viewH - padding * 2) / alto
+                );
+
+                // Iniciar siempre hacia la derecha, sin rotaciones auto
+                const offsetX = padding + (-minX) * scale;
+                const offsetY = padding + (-minY) * scale;
+
+                const polyPoints = puntos
+                    .map(p => `${(p.x * scale + offsetX).toFixed(2)},${(p.y * scale + offsetY).toFixed(2)}`)
+                    .join(' ');
+
+                const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+                svg.setAttribute('viewBox', `0 0 ${viewW} ${viewH}`);
+                svg.setAttribute('class', 'w-full h-16');
+
+                const polyline = document.createElementNS('http://www.w3.org/2000/svg', 'polyline');
+                polyline.setAttribute('points', polyPoints);
+                polyline.setAttribute('fill', 'none');
+                polyline.setAttribute('stroke', '#2563eb');
+                polyline.setAttribute('stroke-width', '3');
+                polyline.setAttribute('stroke-linecap', 'round');
+                polyline.setAttribute('stroke-linejoin', 'round');
+
+                svg.appendChild(polyline);
+                return svg;
+            }
+
             const listaPaquetes = document.getElementById('lista-paquetes');
             const paquetesItems = listaPaquetes.querySelectorAll('.paquete-item');
+            const searchInput = document.getElementById('search-paquetes');
+            const filterObra = document.getElementById('filter-obra-paquetes');
+            const detallePanel = document.getElementById('detalle-paquete-panel');
+            const detalleContenido = document.getElementById('detalle-paquete-contenido');
+            const detalleCodigo = document.getElementById('detalle-paquete-codigo');
+            const cerrarDetalleBtn = document.getElementById('detalle-paquete-cerrar');
+            
             let paqueteSeleccionadoCodigo = null;
+            const cacheDetalles = new Map();
+            let ultimoPosDetalle = null;
+
+            // === 1. Lógica de Filtrado ===
+
+            // Obtener obras únicas de los paquetes listados
+            const obrasUnicas = new Set();
+            paquetesItems.forEach(item => {
+                const obra = item.dataset.obra;
+                if (obra) obrasUnicas.add(obra);
+            });
+
+            // Poblar el select de obras
+            // Limpiar opciones excepto la primera (Todas las obras)
+            while (filterObra.options.length > 1) {
+                filterObra.remove(1);
+            }
+            
+            obrasUnicas.forEach(obra => {
+                const option = document.createElement('option');
+                option.value = obra;
+                option.textContent = obra;
+                filterObra.appendChild(option);
+            });
+
+            // Función de filtrado
+            function filtrarPaquetes() {
+                const textoBusqueda = searchInput.value.toLowerCase().trim();
+                const obraSeleccionada = filterObra.value;
+
+                paquetesItems.forEach(item => {
+                    const codigoRaw = item.querySelector('span.font-bold').textContent;
+                    const codigo = codigoRaw.replace('📦', '').trim().toLowerCase();
+                    const obra = item.dataset.obra;
+
+                    const coincideTexto = codigo.includes(textoBusqueda);
+                    const coincideObra = obraSeleccionada === '' || obra === obraSeleccionada;
+
+                    if (coincideTexto && coincideObra) {
+                        item.style.display = ''; // Mostrar (usa el display por defecto o del CSS)
+                    } else {
+                        item.style.display = 'none'; // Ocultar
+                    }
+                });
+            }
+
+            // Event listeners para filtrado
+            if (searchInput) searchInput.addEventListener('input', filtrarPaquetes);
+            if (filterObra) filterObra.addEventListener('change', filtrarPaquetes);
+
+
+            // === 2. Lógica de Interacción con el Mapa ===
 
             // Función para obtener la instancia del mapa
             function getMapaContainer() {
@@ -209,7 +376,151 @@
                     mapaContainer.mostrarPaquete(codigo);
                     paqueteSeleccionadoCodigo = codigo;
                 });
+
+                // Click derecho: mostrar detalle de etiquetas/elementos
+                item.addEventListener('contextmenu', function(ev) {
+                    ev.preventDefault();
+                    const paqueteId = item.dataset.paqueteId;
+                    const codigo = item.dataset.codigo || item.querySelector('span.font-bold')?.textContent?.replace('📦', '').trim();
+                    if (!paqueteId) return;
+                    mostrarDetallePaquete(paqueteId, codigo, { x: ev.clientX, y: ev.clientY });
+                });
             });
+
+            // Delegar click derecho en los paquetes del mapa (divs generados dentro del componente)
+            document.addEventListener('contextmenu', function(ev) {
+                const paqueteMapa = ev.target.closest('.loc-paquete');
+                if (!paqueteMapa) return;
+                ev.preventDefault();
+                const paqueteId = paqueteMapa.dataset.paqueteId;
+                const codigo = paqueteMapa.dataset.codigo;
+                if (!paqueteId) return;
+                mostrarDetallePaquete(paqueteId, codigo, { x: ev.clientX, y: ev.clientY });
+            });
+
+            // Panel de detalle --------------------------------------------------
+            function cerrarDetalle() {
+                detallePanel.classList.add('hidden');
+                detalleContenido.innerHTML = '<p class="text-gray-500 text-sm">Haz click derecho sobre un paquete para ver sus etiquetas y elementos.</p>';
+            }
+
+            function posicionarPanel(posicion) {
+                if (!posicion) return;
+                const padding = 12;
+                const panelWidth = detallePanel.offsetWidth || 360;
+                const panelHeight = detallePanel.offsetHeight || 200;
+                let left = posicion.x + 10;
+                let top = posicion.y + 10;
+
+                if (left + panelWidth + padding > window.innerWidth) {
+                    left = window.innerWidth - panelWidth - padding;
+                }
+                if (top + panelHeight + padding > window.innerHeight) {
+                    top = window.innerHeight - panelHeight - padding;
+                }
+
+                detallePanel.style.left = `${Math.max(padding, left)}px`;
+                detallePanel.style.top = `${Math.max(padding, top)}px`;
+                detallePanel.style.right = 'auto';
+            }
+
+            cerrarDetalleBtn?.addEventListener('click', cerrarDetalle);
+            document.addEventListener('click', (ev) => {
+                if (detallePanel.classList.contains('hidden')) return;
+                if (!detallePanel.contains(ev.target)) {
+                    cerrarDetalle();
+                }
+            });
+
+            async function mostrarDetallePaquete(paqueteId, codigo, posicion = null) {
+                detallePanel.classList.remove('hidden');
+                detalleCodigo.textContent = codigo ? `Paquete ${codigo}` : `Paquete #${paqueteId}`;
+                detalleContenido.innerHTML = '<div class="flex items-center gap-2 text-blue-600 text-sm"><span class="animate-spin rounded-full h-4 w-4 border-2 border-current border-t-transparent"></span> Cargando etiquetas...</div>';
+                ultimoPosDetalle = posicion || ultimoPosDetalle;
+                posicionarPanel(ultimoPosDetalle);
+
+                try {
+                    let data = cacheDetalles.get(paqueteId);
+                    if (!data) {
+                        const resp = await fetch(`/paquetes/${paqueteId}/elementos`);
+                        if (!resp.ok) throw new Error('No se pudieron cargar las etiquetas del paquete.');
+                        data = await resp.json();
+                        if (!data.success) throw new Error(data.message || 'Error al obtener datos.');
+                        cacheDetalles.set(paqueteId, data);
+                    }
+                    renderDetalle(data);
+                } catch (error) {
+                    console.error('Error cargando detalle del paquete', error);
+                    detalleContenido.innerHTML = `<p class="text-red-600 text-sm">${error.message || 'Error inesperado al cargar el detalle.'}</p>`;
+                }
+            }
+
+            function renderDetalle(data) {
+                detalleContenido.innerHTML = '';
+                const etiquetas = data.etiquetas || [];
+                if (!etiquetas.length) {
+                    detalleContenido.innerHTML = '<p class="text-gray-600 text-sm">Este paquete no tiene etiquetas asociadas.</p>';
+                    return;
+                }
+
+                etiquetas.forEach((etiqueta) => {
+                    const etiquetaCard = document.createElement('div');
+                    etiquetaCard.className = 'border border-gray-200 rounded-lg p-3 bg-gray-50 shadow-sm';
+
+                    const header = document.createElement('div');
+                    header.className = 'flex justify-between items-start mb-2';
+                    const titulo = document.createElement('div');
+                    titulo.innerHTML = `<p class="text-xs text-gray-500">Etiqueta</p><p class="font-semibold text-gray-800">🏷️ ${etiqueta.codigo || etiqueta.etiqueta_sub_id || etiqueta.id}</p>`;
+                    const badge = document.createElement('span');
+                    badge.className = 'text-[11px] px-2 py-1 rounded-full bg-blue-100 text-blue-700 font-semibold';
+                    badge.textContent = `${etiqueta.cantidad_elementos} elementos`;
+                    header.appendChild(titulo);
+                    header.appendChild(badge);
+                    etiquetaCard.appendChild(header);
+
+                    const elementosList = document.createElement('div');
+                    elementosList.className = 'space-y-1';
+
+                    if (!etiqueta.elementos || !etiqueta.elementos.length) {
+                        const sinElementos = document.createElement('p');
+                        sinElementos.className = 'text-xs text-gray-500';
+                        sinElementos.textContent = 'Sin elementos en esta etiqueta.';
+                        elementosList.appendChild(sinElementos);
+                    } else {
+                        etiqueta.elementos.forEach((elem) => {
+                            const item = document.createElement('div');
+                            item.className = 'text-xs text-gray-700 border border-gray-200 rounded px-2 py-2 bg-white space-y-1';
+
+                            const header = document.createElement('div');
+                            header.className = 'flex items-center justify-between';
+                            const codigo = document.createElement('span');
+                            codigo.className = 'font-semibold';
+                            codigo.textContent = elem.codigo;
+                            const peso = document.createElement('span');
+                            peso.className = 'text-gray-500';
+                            peso.textContent = `${elem.peso_kg ?? '-'}`;
+                            header.appendChild(codigo);
+                            header.appendChild(peso);
+                            item.appendChild(header);
+
+                            const svg = renderDimensionesSvg(elem.dimensiones);
+                            if (svg) {
+                                item.appendChild(svg);
+                            } else {
+                                const dimensionesText = document.createElement('span');
+                                dimensionesText.className = 'text-gray-600 block';
+                                dimensionesText.textContent = elem.dimensiones || 'Dimensiones no disponibles';
+                                item.appendChild(dimensionesText);
+                            }
+
+                            elementosList.appendChild(item);
+                        });
+                    }
+
+                    etiquetaCard.appendChild(elementosList);
+                    detalleContenido.appendChild(etiquetaCard);
+                });
+            }
         });
     </script>
 </x-app-layout>

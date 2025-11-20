@@ -30,9 +30,9 @@
     <!-- Alpine.js ya está incluido en Livewire 3, NO cargar desde CDN -->
 
     <!-- ✅ Librerías que no bloquean renderizado - Versionadas para evitar problemas de caché -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" defer data-navigate-track="reload"></script>
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.14.5/dist/sweetalert2.all.min.js" defer data-navigate-track="reload"></script>
-    <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js" defer data-navigate-track="reload"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" defer></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.14.5/dist/sweetalert2.all.min.js" defer></script>
+    <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js" defer></script>
 
     <!-- ✅ FullCalendar (solo si es necesario en esta vista) -->
     @stack('calendar') {{-- así solo lo cargas si lo necesitas --}}
@@ -190,10 +190,10 @@
             </main>
         </div>
     </div>
-    @stack('scripts')
-
     <!-- Livewire Scripts -->
     @livewireScripts(['navigate' => true])
+
+    @stack('scripts')
 
     <!-- Dark Mode Support Script -->
     <script data-navigate-once>
@@ -249,39 +249,15 @@
         });
 
         document.addEventListener('livewire:navigated', () => {
-            // console.log('Navegación completada - Esperando renderizado completo...');
-
             // Cancelar el timeout si la navegación fue muy rápida
             if (navigationTimeout) {
                 clearTimeout(navigationTimeout);
                 navigationTimeout = null;
             }
 
-            // Esperar a que el DOM esté completamente renderizado
-            if (isNavigating) {
-                // Esperar múltiples frames para asegurar que todo esté renderizado
-                requestAnimationFrame(() => {
-                    requestAnimationFrame(() => {
-                        // Esperar a que todos los scripts se ejecuten
-                        setTimeout(() => {
-                            isNavigating = false;
-                            overlay.classList.remove('active');
-                            console.log('DOM completamente cargado y renderizado');
-
-                            // Reinicializar Alpine.js components si es necesario
-                            if (window.Alpine) {
-                                try {
-                                    window.Alpine.discoverUninitializedComponents(el => {
-                                        window.Alpine.initializeComponent(el);
-                                    });
-                                } catch (e) {
-                                    console.log('Alpine ya inicializado');
-                                }
-                            }
-                        }, 50); // Pequeño delay adicional para asegurar que los scripts se ejecuten
-                    });
-                });
-            }
+            // Remover overlay inmediatamente - Livewire ya se encarga de la sincronización
+            isNavigating = false;
+            overlay.classList.remove('active');
         });
 
         // Manejar errores de navegación
