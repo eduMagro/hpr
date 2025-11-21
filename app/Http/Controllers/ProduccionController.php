@@ -703,6 +703,10 @@ class ProduccionController extends Controller
             ->whereHas('planilla', fn($q) => $q->whereIn('estado', ['pendiente', 'fabricando']))
             ->get();
 
+        Log::info('🔍 DEBUG obtenerEventos: Elementos obtenidos', [
+            'count' => $elementos->count()
+        ]);
+
         $maquinaReal = function ($e) {
             $tipo1 = optional($e->maquina)->tipo;
             $tipo2 = optional($e->maquina_2)->tipo;
@@ -732,6 +736,10 @@ class ProduccionController extends Controller
                 ];
             })
             ->filter(fn($data) => !is_null($data['maquina_id']));
+
+        Log::info('🔍 DEBUG obtenerEventos: Planillas agrupadas', [
+            'count' => $planillasAgrupadas->count()
+        ]);
 
         // 3. Calcular colas iniciales de cada máquina
         $colasMaquinas = [];
@@ -1050,19 +1058,6 @@ class ProduccionController extends Controller
         $iter = 0;
 
         while ($iter < $maxIter) {
-            // Caso especial: domingo - puede tener turnos nocturnos que empiezan ese día
-            if ($x->dayOfWeek === Carbon::SUNDAY) {
-                $segmentosDomingo = $this->obtenerSegmentosLaborablesDia($x);
-
-                // Buscar si hay algún segmento que empiece el domingo (ej: turno noche 22:00)
-                foreach ($segmentosDomingo as $seg) {
-                    // Si el segmento empieza el domingo y el cursor está antes
-                    if ($seg['inicio']->dayOfWeek === Carbon::SUNDAY && $x->lt($seg['fin'])) {
-                        return $x->lt($seg['inicio']) ? $seg['inicio'] : $x;
-                    }
-                }
-            }
-
             // Si es día laborable (no festivo, no fin de semana)
             if (!$this->esNoLaborable($x, $festivosSet)) {
                 // Obtener segmentos del día
@@ -1123,19 +1118,15 @@ class ProduccionController extends Controller
         $esDomingo = $dia->dayOfWeek === Carbon::SUNDAY;
         $esSabado = $dia->dayOfWeek === Carbon::SATURDAY;
 
+        // 🚫 NO generar segmentos en sábados ni domingos
+        // Los eventos deben cortarse el viernes al final del último turno
+        // y reanudarse el lunes con el primer turno
+        if ($esSabado || $esDomingo) {
+            return $segmentos; // Array vacío
+        }
+
         foreach ($turnosActivos as $turno) {
             if (!$turno->hora_inicio || !$turno->hora_fin) {
-                continue;
-            }
-
-            // Para domingo: solo turnos que empiezan el domingo (offset_inicio < 0)
-            // esto significa turnos nocturnos que técnicamente son del lunes
-            if ($esDomingo && $turno->offset_dias_inicio >= 0) {
-                continue; // Saltar turnos normales (mañana, tarde) del domingo
-            }
-
-            // Para sábado: no generar ningún segmento
-            if ($esSabado) {
                 continue;
             }
 
@@ -1154,6 +1145,10 @@ class ProduccionController extends Controller
             if ($fin->lte($inicio)) {
                 $fin->addDay();
             }
+
+            // ✅ PERMITIR que turnos del viernes terminen el sábado
+            // (ej: turno noche viernes 22:00 → sábado 06:00 es válido)
+            // NO ajustar el fin si el inicio es viernes
 
             $segmentos[] = ['inicio' => $inicio, 'fin' => $fin];
         }
@@ -1746,6 +1741,11 @@ class ProduccionController extends Controller
         $planillasAgrupadasCol = collect($planillasAgrupadas);
         if ($ordenes instanceof Collection) $ordenes = $ordenes->all();
 
+        Log::info('🔍 DEBUG: Planillas agrupadas', [
+            'count' => $planillasAgrupadasCol->count(),
+            'ordenes_count' => is_array($ordenes) ? count($ordenes) : 0
+        ]);
+
         // 3) Índice estable
         $agrupadasIndex = $planillasAgrupadasCol
             ->values()
@@ -1753,11 +1753,19 @@ class ProduccionController extends Controller
                 $planilla   = Arr::get($data, 'planilla');
                 $planillaId = is_object($planilla) ? ($planilla->id ?? null) : Arr::get($planilla, 'id');
                 $maquinaId  = Arr::get($data, 'maquina_id');
-                if (!$planillaId || !$maquinaId) return [];
+                if (!$planillaId || !$maquinaId) {
+                    Log::warning('🔍 DEBUG: Datos inválidos en agrupadas', [
+                        'planillaId' => $planillaId,
+                        'maquinaId' => $maquinaId
+                    ]);
+                    return [];
+                }
                 return ["{$planillaId}-{$maquinaId}" => $data];
             });
 
-
+        Log::info('🔍 DEBUG: Índice creado', [
+            'count' => $agrupadasIndex->count()
+        ]);
 
         if ($agrupadasIndex->isEmpty()) {
             Log::warning('EVT E: índice vacío, devuelvo 0 eventos');
@@ -1899,25 +1907,54 @@ class ProduccionController extends Controller
                         }
 
                         // Determinar fecha de inicio y duración
-                        if ($fechaInicioMasAntigua) {
-                            // Si hay algún elemento fabricando/completado, usar su fecha de inicio
+                        // 🔒 ANTI-SOLAPAMIENTO: SOLO la primera planilla puede usar su fecha real de inicio
+                        // Todas las demás DEBEN usar inicioCola para evitar solapamiento
+                        $esPrimeraPlanilla = ($primeraId !== null && $primeraId === $planilla->id);
+
+                        if ($fechaInicioMasAntigua && $fechaInicioMasAntigua->lt($inicioCola) && $esPrimeraPlanilla) {
+                            // Caso especial: SOLO para la primera planilla en la cola
+                            // Esta planilla empezó antes y está actualmente en fabricación
                             $fechaInicio = $fechaInicioMasAntigua;
 
-                            // Duración = now() + tiempo de elementos pendientes + amarrado
+                            // Calcular duración: desde inicio real hasta now() + tiempo pendientes
                             $duracionPendientes = $elementosPendientes->sum(function ($elemento) {
                                 $tiempoFabricacion = (float)($elemento->tiempo_fabricacion ?? 1200);
                                 $tiempoAmarrado = 1200;
                                 return $tiempoFabricacion + $tiempoAmarrado;
                             });
 
-                            // El evento se alarga hasta now() + tiempo pendiente
-                            $tiempoTranscurrido = $fechaInicio->diffInSeconds(Carbon::now());
-                            $duracionSegundos = $tiempoTranscurrido + $duracionPendientes;
-                            $duracionSegundos = max($duracionSegundos, 3600);
+                            // Calcular dónde debería terminar el evento
+                            $finEstimado = Carbon::now()->addSeconds($duracionPendientes);
+
+                            // La duración es desde el inicio real hasta el fin estimado
+                            $duracionSegundos = max($fechaInicio->diffInSeconds($finEstimado), 3600);
+
+                            Log::info('🎯 Primera planilla con fecha real', [
+                                'planilla' => $planilla->codigo_limpio,
+                                'fecha_real' => $fechaInicio->toIso8601String(),
+                                'inicioCola' => $inicioCola->toIso8601String()
+                            ]);
                         } else {
-                            // Para sub-grupos completamente pendientes: usar siempre inicioCola
-                            // Esto asegura continuidad entre eventos consecutivos
+                            // Caso normal: usar SIEMPRE inicioCola para evitar solapamiento
+                            // Esto incluye planillas con elementos fabricando que NO sean la primera
                             $fechaInicio = $inicioCola->copy();
+
+                            // Duración = suma de tiempos de fabricación de TODOS los elementos
+                            $duracionSegundos = $subGrupo->sum(function ($elemento) {
+                                $tiempoFabricacion = (float)($elemento->tiempo_fabricacion ?? 1200);
+                                $tiempoAmarrado = 1200;
+                                return $tiempoFabricacion + $tiempoAmarrado;
+                            });
+                            $duracionSegundos = max($duracionSegundos, 3600);
+
+                            if ($fechaInicioMasAntigua && !$esPrimeraPlanilla) {
+                                Log::warning('⚠️ Planilla con elementos fabricando NO es la primera', [
+                                    'planilla' => $planilla->codigo_limpio,
+                                    'fecha_real_ignorada' => $fechaInicioMasAntigua->toIso8601String(),
+                                    'usando_inicioCola' => $inicioCola->toIso8601String(),
+                                    'es_primera' => $esPrimeraPlanilla
+                                ]);
+                            }
                         }
 
                         $tramos = $this->generarTramosLaborales($fechaInicio, $duracionSegundos, $festivosSet);
@@ -1926,6 +1963,23 @@ class ProduccionController extends Controller
                             Log::warning('EVT H1: sin tramos', ['planillaId' => $planillaId, 'maquinaId' => $maquinaId, 'ordenKey' => $ordenKey]);
                             continue;
                         }
+
+                        $primerTramoTemp = $tramos[0]['start'] instanceof Carbon ? $tramos[0]['start'] : Carbon::parse($tramos[0]['start']);
+                        $ultimoTramoTemp = end($tramos)['end'] instanceof Carbon ? end($tramos)['end'] : Carbon::parse(end($tramos)['end']);
+                        $duracionRealSegundos = $primerTramoTemp->diffInSeconds($ultimoTramoTemp);
+
+                        Log::info('📍 TRAMOS generados', [
+                            'planilla' => $planilla->codigo_limpio,
+                            'maquina_id' => $maquinaId,
+                            'fechaInicio_solicitada' => $fechaInicio->toIso8601String(),
+                            'primer_tramo_inicio' => $primerTramoTemp->toIso8601String(),
+                            'ultimo_tramo_fin' => $ultimoTramoTemp->toIso8601String(),
+                            'num_tramos' => count($tramos),
+                            'duracion_solicitada_segundos' => $duracionSegundos,
+                            'duracion_real_segundos' => $duracionRealSegundos,
+                            'discrepancia_segundos' => $duracionRealSegundos - $duracionSegundos,
+                            'discrepancia_horas' => round(($duracionRealSegundos - $duracionSegundos) / 3600, 2)
+                        ]);
 
                         $ultimoTramo  = end($tramos);
                         $fechaFinReal = $ultimoTramo['end'] instanceof Carbon
@@ -1980,10 +2034,14 @@ class ProduccionController extends Controller
                             'evento_id' => $eventoId,
                             'planilla' => $planilla->codigo_limpio,
                             'maquina_id' => $maquinaId,
+                            'posicion' => $posicion ?? '?',
                             'orden_key' => $ordenKey,
                             'inicio' => $eventoInicio->toIso8601String(),
                             'fin' => $eventoFin->toIso8601String(),
-                            'elementos' => $subGrupo->count()
+                            'inicioCola_antes' => $inicioCola->toIso8601String(),
+                            'elementos' => $subGrupo->count(),
+                            'elementos_fabricando' => $elementosFabricandoOCompletados->count(),
+                            'elementos_pendientes' => $elementosPendientes->count()
                         ]);
 
                         $planillasEventos->push([
@@ -2017,12 +2075,22 @@ class ProduccionController extends Controller
                         ]);
 
                         // Actualizar inicioCola para el siguiente sub-grupo
-                        $inicioCola = $fechaFinReal->copy();
+                        // 🔒 IMPORTANTE: Usar eventoFin (fin real del último tramo) en lugar de fechaFinReal
+                        // para garantizar que el siguiente evento empiece exactamente donde termina este
+                        $inicioCola = $eventoFin->copy();
+
+                        Log::info('🔄 COLA ACTUALIZADA después de evento', [
+                            'planilla' => $planilla->codigo_limpio,
+                            'maquina_id' => $maquinaId,
+                            'nueva_inicioCola' => $inicioCola->toIso8601String(),
+                            'eventoFin' => $eventoFin->toIso8601String()
+                        ]);
                     } // fin foreach subGrupos
 
-                    // Avanza cola (solo si fechaFinReal está definida)
-                    if (isset($fechaFinReal)) {
-                        $inicioCola = $fechaFinReal->copy();
+                    // Avanza cola (solo si eventoFin está definida)
+                    // Ya se actualiza dentro del foreach, pero mantenemos esto por compatibilidad
+                    if (isset($eventoFin)) {
+                        $inicioCola = $eventoFin->copy();
                     }
                 } catch (\Throwable $e) {
                     Log::error('EVT X: excepción en bucle planilla', [
