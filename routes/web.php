@@ -348,7 +348,7 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
     Route::resource('salidas-ferralla', SalidaFerrallaController::class);
     Route::delete('/salidas/{salida}/quitar-paquete/{paquete}', [SalidaFerrallaController::class, 'quitarPaquete'])->name('salidas.editarQuitarPaquete');
     Route::put('/salidas/{salida}/actualizar-estado', [SalidaFerrallaController::class, 'editarActualizarEstado']);
-    Route::post('/actualizar-fecha-salida', [SalidaFerrallaController::class, 'actualizarFechaSalida']);
+    Route::post('/actualizar-fecha-salida', [SalidaFerrallaController::class, 'actualizarFechaSalida'])->name('salidas.actualizarFechaSalida');
     Route::post('/escaneo', [SalidaFerrallaController::class, 'marcarSubido'])->name('escaneo.marcarSubido');
     Route::post('/planificacion/crear-salida-desde-calendario', [SalidaFerrallaController::class, 'crearSalidaDesdeCalendario'])->name('planificacion.crearSalidaDesdeCalendario');
     Route::post('/planificacion/guardar-asignaciones-paquetes', [SalidaFerrallaController::class, 'guardarAsignacionesPaquetes'])->name('planificacion.guardarAsignacionesPaquetes');

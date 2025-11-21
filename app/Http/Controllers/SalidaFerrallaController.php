@@ -1612,7 +1612,7 @@ class SalidaFerrallaController extends Controller
                     $q->whereIn('clientes.id', $clientesIds);
                 });
             })
-            ->orderBy('created_at', 'desc')
+            ->orderBy('fecha_salida', 'asc')
             ->get();
 
         Log::info('✅ Salidas encontradas (solo pendientes)', [
