@@ -1136,6 +1136,7 @@ class ProduccionController extends Controller
         $segmentos = [];
         $esDomingo = $dia->dayOfWeek === Carbon::SUNDAY;
         $esSabado = $dia->dayOfWeek === Carbon::SATURDAY;
+        $esViernes = $dia->dayOfWeek === Carbon::FRIDAY;
 
         // 🚫 Sábado: NO generar ningún segmento
         if ($esSabado) {
@@ -1156,6 +1157,12 @@ class ProduccionController extends Controller
             $horaInicio = \Carbon\Carbon::parse($turno->hora_inicio);
             $horaFin = \Carbon\Carbon::parse($turno->hora_fin);
 
+            // 🛑 Viernes: NO generar turno noche (que iría al sábado)
+            // El viernes termina a las 22:00 con el fin del turno tarde
+            if ($esViernes && $horaInicio->hour >= 22) {
+                continue; // Saltar turno noche del viernes
+            }
+
             $inicio = $dia->copy()->setTime($horaInicio->hour, $horaInicio->minute, 0);
             $fin = $dia->copy()->setTime($horaFin->hour, $horaFin->minute, 0);
 
@@ -1167,6 +1174,12 @@ class ProduccionController extends Controller
             // Si fin es antes que inicio, significa que cruza medianoche
             if ($fin->lte($inicio)) {
                 $fin->addDay();
+            }
+
+            // 🛑 Viernes: Si es el último turno (tarde, que termina a las 22:00)
+            // ajustar para que termine 1 segundo antes (21:59:59) para que NO ocupe la fila de las 22:00
+            if ($esViernes && $horaFin->hour == 22 && $horaFin->minute == 0) {
+                $fin->subSecond(); // 22:00:00 → 21:59:59
             }
 
             $segmentos[] = ['inicio' => $inicio, 'fin' => $fin];
@@ -1289,6 +1302,22 @@ class ProduccionController extends Controller
                         $cursor = $inicioSeg->copy();
                     }
 
+                    // ✅ CORTE VIERNES: Si estamos en viernes y el segmento pasa de las 22:00 (fin turno tarde)
+                    // limitar el finSeg a las 22:00 del viernes para que NO continúe al sábado
+                    if ($cursor->dayOfWeek === Carbon::FRIDAY) {
+                        $finViernesTarde = $cursor->copy()->setTime(22, 0, 0);
+
+                        // Si el segmento termina después de las 22:00 del viernes, cortarlo ahí
+                        if ($finSeg->gt($finViernesTarde) && $cursor->lt($finViernesTarde)) {
+                            Log::info('✂️ CORTE VIERNES: Limitando segmento a las 22:00', [
+                                'cursor' => $cursor->format('Y-m-d H:i:s'),
+                                'finSeg_original' => $finSeg->format('Y-m-d H:i:s'),
+                                'finSeg_ajustado' => $finViernesTarde->format('Y-m-d H:i:s'),
+                            ]);
+                            $finSeg = $finViernesTarde;
+                        }
+                    }
+
                     // Calcular cuánto podemos consumir de este segmento
                     $capacidadSeg = max(0, $cursor->diffInSeconds($finSeg, false));
                     $consume = min($restante, $capacidadSeg);
@@ -1303,6 +1332,16 @@ class ProduccionController extends Controller
                         $consumidoEnEsteDia = true;
                     }
 
+                    // ✅ Si llegamos a las 22:00 del viernes, FORZAR salida (fin de semana)
+                    if ($cursor->dayOfWeek === Carbon::FRIDAY && $cursor->hour >= 22) {
+                        Log::info('🛑 FIN SEMANA: Deteniendo en viernes 22:00', [
+                            'cursor' => $cursor->format('Y-m-d H:i:s'),
+                            'restante' => $restante,
+                        ]);
+                        // Salir del bucle - el evento terminará en viernes 22:00
+                        break 2; // Salir tanto del foreach como del while
+                    }
+
                     // Si no queda más tiempo, salir
                     if ($restante <= 0) {
                         break;
@@ -1311,6 +1350,17 @@ class ProduccionController extends Controller
 
                 // Si aún queda tiempo después de procesar todos los segmentos del día
                 if ($restante > 0) {
+                    // 🛑 CORTE FIN DE SEMANA: Si acabamos de procesar el viernes, DETENER
+                    // NO continuar al sábado/domingo, el evento quedará incompleto
+                    if ($diaActual->dayOfWeek === Carbon::FRIDAY) {
+                        Log::info('🛑 FIN SEMANA: Viernes procesado, deteniendo evento', [
+                            'cursor' => $cursor->format('Y-m-d H:i:s'),
+                            'restante_segundos' => $restante,
+                            'restante_horas' => round($restante / 3600, 2),
+                        ]);
+                        break; // Salir del while - el evento termina el viernes
+                    }
+
                     // ✅ MEJORA: Verificar si hay continuidad entre el último segmento de hoy y el primero de mañana
                     $ultimoSegmentoHoy = end($segmentos);
 
@@ -2063,12 +2113,17 @@ class ProduccionController extends Controller
                             'elementos_pendientes' => $elementosPendientes->count()
                         ]);
 
+                        // ✅ SOLUCIÓN: Sumar 1 hora a las fechas porque FullCalendar las renderiza 1 hora antes
+                        // Bug de interpretación de timezone entre backend y frontend
+                        $eventoInicioAjustado = $eventoInicio->copy()->addHour();
+                        $eventoFinAjustado = $eventoFin->copy()->addHour();
+
                         $planillasEventos->push([
                             'id'              => $eventoId,
                             'title'           => $tituloEvento,
                             'codigo'          => $planilla->codigo_limpio ?? ('Planilla #' . $planilla->id),
-                            'start'           => $eventoInicio->toIso8601String(),
-                            'end'             => $eventoFin->toIso8601String(),
+                            'start'           => $eventoInicioAjustado->format('Y-m-d\TH:i:s'),
+                            'end'             => $eventoFinAjustado->format('Y-m-d\TH:i:s'),
                             'resourceId'      => $maquinaId,
                             'backgroundColor' => $backgroundColor,
                             'borderColor'     => !$planilla->revisada ? '#757575' : null,

@@ -871,18 +871,32 @@
                 max-width: 100% !important;
                 overflow: hidden !important;
                 box-sizing: border-box !important;
+                margin: 0 !important;
+                padding: 0 !important;
             }
 
             /* Asegurar que los eventos se ajusten al contenedor de la celda */
             .fc-timegrid-event-harness {
                 left: 0 !important;
                 right: 0 !important;
+                margin: 0 !important;
+                padding: 0 !important;
             }
 
             .fc-timegrid-event {
                 left: 0 !important;
                 right: 0 !important;
                 width: 100% !important;
+                margin: 0 !important;
+            }
+
+            /* Eliminar espacios entre eventos */
+            .fc-timegrid-event-harness + .fc-timegrid-event-harness {
+                margin-top: 0 !important;
+            }
+
+            .fc-timegrid-event .fc-event-main {
+                padding: 4px 6px !important;
             }
 
             /* ===== EVENTOS SIN REVISAR ===== */
@@ -942,7 +956,29 @@
                 text-align: center;
             }
 
-            /* ===== ETIQUETAS DE TURNOS CON FECHA ===== */
+            /* ===== MARCADOR DE INICIO DE TURNO (sin deformar altura) ===== */
+            .slot-turno-inicio {
+                background: linear-gradient(90deg, #3b82f6 0%, rgba(59, 130, 246, 0.05) 100%);
+                position: relative;
+            }
+
+            .slot-turno-inicio::before {
+                content: '';
+                position: absolute;
+                left: 0;
+                top: 0;
+                bottom: 0;
+                width: 3px;
+                background: #3b82f6;
+            }
+
+            .hora-turno {
+                font-weight: 700 !important;
+                color: #1e40af !important;
+                font-size: 10px !important;
+            }
+
+            /* ===== ETIQUETAS DE TURNOS CON FECHA (OBSOLETO - YA NO SE USA) ===== */
             .turno-con-fecha {
                 position: relative;
                 padding: 3px 2px;
@@ -1192,7 +1228,7 @@
                         }
                     },
                     locale: 'es',
-                    timeZone: 'Europe/Madrid',
+                    timeZone: 'local', // ✅ Usar zona horaria local del navegador
                     initialDate: "{{ $initialDate }}",
                     // ✅ CAMBIO: Usar endpoints dinámicos en lugar de datos estáticos
                     resources: {
@@ -1216,6 +1252,7 @@
                     eventResizableFromStart: false,
                     eventDurationEditable: false,
                     droppable: true, // ✅ Habilitar drop de elementos externos
+                    slotEventOverlap: false, // ✅ Eventos NO se solapan (se apilan verticalmente sin espacios)
 
                     headerToolbar: {
                         left: '',
@@ -1524,35 +1561,10 @@
                     },
 
                     slotLabelContent: function(arg) {
-                        // Inicializar contador de slots si no existe
-                        if (!calendar._slotCounter) {
-                            calendar._slotCounter = 0;
-                            calendar._lastViewStart = null;
-                        }
-
-                        // Reiniciar contador si cambia la vista
-                        const currentViewStart = calendar.view.currentStart.getTime();
-                        if (calendar._lastViewStart !== currentViewStart) {
-                            calendar._slotCounter = 0;
-                            calendar._lastViewStart = currentViewStart;
-                        }
-
-                        // Obtener el inicio de la vista
-                        const viewStart = new Date(calendar.view.currentStart);
-
-                        // Calcular la hora absoluta desde el inicio basándose en el contador
-                        const horaAbsoluta = calendar._slotCounter;
-                        const diasCompletos = Math.floor(horaAbsoluta / 24);
-                        const horaDelDia = horaAbsoluta % 24;
-                        const minutos = 0; // Los slots son de hora en hora
-
-                        // Calcular la fecha real
-                        const fechaReal = new Date(viewStart);
-                        fechaReal.setDate(fechaReal.getDate() + diasCompletos);
-                        fechaReal.setHours(horaDelDia, minutos, 0, 0);
-
-                        // Incrementar contador para el siguiente slot
-                        calendar._slotCounter++;
+                        // ✅ Usar arg.date directamente - FullCalendar ya lo calcula correctamente
+                        const fechaReal = arg.date;
+                        const horaDelDia = fechaReal.getHours();
+                        const minutos = fechaReal.getMinutes();
 
                         // Formatear la hora para mostrar
                         const timeText =
@@ -1597,10 +1609,13 @@
                             }
                         }
 
+                        // ✅ TODAS las filas tienen la misma altura (solo hora)
+                        // El marcador de turno se hace con la línea azul (turno-inicio) y tooltip
                         let contenido = '';
+                        let tooltip = '';
 
                         if (esTurno) {
-                            // Formatear fecha para mostrar
+                            // Formatear fecha para tooltip
                             const dia = fechaMostrar.getDate().toString().padStart(2, '0');
                             const mes = (fechaMostrar.getMonth() + 1).toString().padStart(2, '0');
                             const año = fechaMostrar.getFullYear();
@@ -1609,14 +1624,15 @@
                             }).toUpperCase();
                             const fechaFormateada = `${dia}/${mes}/${año}`;
 
+                            tooltip = `${nombreTurno} - ${nombreDia} ${fechaFormateada}`;
+
+                            // Mostrar solo la hora con un pequeño indicador
                             contenido = `
-            <div class="turno-con-fecha">
-                <div class="fecha-turno">${nombreDia}<br>${fechaFormateada}</div>
-                <div class="hora-text">${timeText}</div>
-                <span class="turno-label">${nombreTurno}</span>
+            <div class="slot-label-wrapper slot-turno-inicio" title="${tooltip}">
+                <div class="hora-text hora-turno">${timeText}</div>
             </div>`;
                         } else {
-                            // Horas normales sin fecha
+                            // Horas normales
                             contenido = `
             <div class="slot-label-wrapper">
                 <div class="hora-text">${timeText}</div>
@@ -2036,6 +2052,8 @@
                     turnosActivos.forEach(turno => {
                         if (!turno.activo || !turno.hora_inicio) return;
 
+                        // ✅ Usar la hora directamente sin compensación
+                        // El backend envía fechas con timezone correcto (+01:00)
                         const horaInicio = turno.hora_inicio.substring(0, 5); // "06:00" de "06:00:00"
                         const selector = `.fc-timegrid-slot[data-time="${horaInicio}:00"]`;
                         const slots = document.querySelectorAll(selector);
