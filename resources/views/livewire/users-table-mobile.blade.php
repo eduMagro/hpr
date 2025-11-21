@@ -1,4 +1,14 @@
-<div x-data="agendaUsuarios(@js($contactosAgenda ?? collect()))" class="md:hidden mt-4 space-y-3">
+<style>
+    /* Evitar zoom en iOS al enfocar inputs en la vista móvil */
+    .users-mobile input,
+    .users-mobile textarea,
+    .users-mobile select,
+    .users-mobile button {
+        font-size: 16px;
+    }
+</style>
+
+<div x-data="agendaUsuarios(@js($contactosAgenda ?? collect()))" class="users-mobile md:hidden mt-4 space-y-3">
     <div class="sticky top-0 z-20 bg-white border border-gray-200 shadow-sm rounded-lg">
         <div class="flex items-center gap-2 px-4 py-3">
             <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-500" viewBox="0 0 20 20" fill="currentColor">
@@ -37,12 +47,24 @@
         </div>
     </div>
 
-    <div x-cloak x-show="modalAbierto" class="fixed inset-0 z-40 flex items-end sm:items-center justify-center overflow-hidden pt-16" x-transition.opacity>
+    <div x-cloak x-show="modalAbierto || cerrandoPorDrag" class="fixed inset-0 z-40 flex items-end sm:items-center justify-center overflow-hidden">
         <div class="absolute inset-0 bg-black/40" @click="cerrarModal"></div>
-        <div class="relative bg-white rounded-t-3xl sm:rounded-3xl w-full max-w-xl mx-auto p-0 shadow-2xl overflow-hidden flex flex-col"
-            x-transition
-            style="backdrop-filter: blur(10px); height: calc(100vh - 80px); max-height: calc(100vh - 80px);">
-            <div class="relative h-56 bg-gradient-to-b from-gray-900/90 via-gray-800/70 to-white">
+        <div x-show="modalAbierto || cerrandoPorDrag" class="bg-white rounded-t-3xl mx-auto p-0 shadow-2xl overflow-hidden flex flex-col h-[calc(100vh-110px)] bottom-0 absolute sm:w-[calc(95vw)] w-screen"
+            x-transition:enter="transform transition ease-out duration-150"
+            x-transition:enter-start="translate-y-full"
+            x-transition:enter-end="translate-y-0"
+            x-transition:leave="transform transition ease-in duration-150"
+            x-transition:leave-start="translate-y-0"
+            x-transition:leave-end="translate-y-full"
+            :class="{ 'transition-transform duration-150 ease-out': cerrandoPorDrag }"
+            :style="{
+                'backdrop-filter': 'blur(10px)',
+                transform: cerrandoPorDrag ? 'translateY(100vh)' : (offsetY > 0 ? `translateY(${offsetY}px)` : '')
+            }">
+            <div class="relative h-56 bg-gradient-to-b from-gray-900/90 via-gray-800/70 to-white"
+                @touchstart.passive="onTouchStart($event)"
+                @touchmove.passive="onTouchMove($event)"
+                @touchend="onTouchEnd">
                 <div class="absolute inset-0 opacity-10 bg-[radial-gradient(circle_at_20%_20%,_rgba(255,255,255,0.6),_transparent_40%),radial-gradient(circle_at_80%_30%,_rgba(255,255,255,0.35),_transparent_45%)]"></div>
                 <div class="absolute inset-0 flex flex-col items-center justify-center gap-3 px-4 pt-6">
                     <div class="w-28 h-28 rounded-full overflow-hidden ring-4 ring-white/40 shadow-lg bg-gray-200">
@@ -80,7 +102,10 @@
                 </div>
             </div>
 
-            <div class="px-5 pt-4 space-y-4">
+            <div class="px-5 pt-4 space-y-4"
+                @touchstart.passive="onTouchStart($event)"
+                @touchmove.passive="onTouchMove($event)"
+                @touchend="onTouchEnd">
                 <div class="flex items-center justify-center gap-4 pb-2">
                     <template x-if="seleccionado?.movil_personal">
                         <a :href="'tel:' + limpiarTelefono(seleccionado.movil_personal)"
@@ -225,6 +250,9 @@
             modalAbierto: false,
             seleccionado: {},
             editando: false,
+            touchStartY: null,
+            offsetY: 0,
+            cerrandoPorDrag: false,
             get filtrados() {
                 if (!this.filtro) return this.contactos;
                 const termino = this.filtro.toLowerCase();
@@ -240,10 +268,44 @@
                 this.modalAbierto = false;
                 this.seleccionado = {};
                 this.editando = false;
+                this.cerrandoPorDrag = false;
+                this.offsetY = 0;
+                this.touchStartY = null;
                 document.body.classList.remove('overflow-hidden');
             },
             limpiarTelefono(numero) {
                 return (numero || '').toString().replace(/\s+/g, '');
+            },
+            onTouchStart(e) {
+                this.touchStartY = e.touches?.[0]?.clientY ?? null;
+                this.offsetY = 0;
+            },
+            onTouchMove(e) {
+                if (this.touchStartY === null) return;
+                const currentY = e.touches?.[0]?.clientY ?? 0;
+                const delta = currentY - this.touchStartY;
+                this.offsetY = delta > 0 ? delta : 0;
+            },
+            onTouchEnd() {
+                if (this.offsetY > 80) {
+                    // Cerrar el modal sin animación de Alpine.js
+                    this.modalAbierto = false;
+                    // Activar animación CSS desde la posición actual
+                    this.cerrandoPorDrag = true;
+                    // Después de la animación, limpiar el estado
+                    setTimeout(() => {
+                        this.cerrandoPorDrag = false;
+                        this.offsetY = 0;
+                        this.touchStartY = null;
+                        this.seleccionado = {};
+                        this.editando = false;
+                        document.body.classList.remove('overflow-hidden');
+                    }, 150);
+                } else {
+                    // Volver a la posición original
+                    this.offsetY = 0;
+                    this.touchStartY = null;
+                }
             },
             async guardarSeleccionado() {
                 if (!this.seleccionado?.id) return;
