@@ -1058,7 +1058,26 @@ class ProduccionController extends Controller
         $iter = 0;
 
         while ($iter < $maxIter) {
-            // Si es día laborable (no festivo, no fin de semana)
+            // 🌙 Caso especial: domingo - verificar turno noche (22:00)
+            if ($x->dayOfWeek === Carbon::SUNDAY) {
+                $segmentosDomingo = $this->obtenerSegmentosLaborablesDia($x);
+
+                // Si hay segmentos en domingo (turno noche 22:00-06:00 lunes)
+                if (!empty($segmentosDomingo)) {
+                    $primerSegmento = $segmentosDomingo[0];
+                    // Si el cursor está antes del turno noche (antes de las 22:00)
+                    if ($x->lt($primerSegmento['inicio'])) {
+                        return $primerSegmento['inicio']; // Domingo 22:00
+                    }
+                    // Si está dentro del turno noche, continuar desde ahí
+                    if ($x->lt($primerSegmento['fin'])) {
+                        return $x;
+                    }
+                }
+            }
+
+            // Si es día laborable (no festivo, no sábado)
+            // Domingo se considera "no laborable" por isWeekend() pero ya lo manejamos arriba
             if (!$this->esNoLaborable($x, $festivosSet)) {
                 // Obtener segmentos del día
                 $segmentos = $this->obtenerSegmentosLaborablesDia($x);
@@ -1118,16 +1137,20 @@ class ProduccionController extends Controller
         $esDomingo = $dia->dayOfWeek === Carbon::SUNDAY;
         $esSabado = $dia->dayOfWeek === Carbon::SATURDAY;
 
-        // 🚫 NO generar segmentos en sábados ni domingos
-        // Los eventos deben cortarse el viernes al final del último turno
-        // y reanudarse el lunes con el primer turno
-        if ($esSabado || $esDomingo) {
+        // 🚫 Sábado: NO generar ningún segmento
+        if ($esSabado) {
             return $segmentos; // Array vacío
         }
 
         foreach ($turnosActivos as $turno) {
             if (!$turno->hora_inicio || !$turno->hora_fin) {
                 continue;
+            }
+
+            // 🌙 Domingo: SOLO turno noche (offset_dias_inicio < 0)
+            // El turno noche del lunes empieza el domingo a las 22:00
+            if ($esDomingo && $turno->offset_dias_inicio >= 0) {
+                continue; // Saltar turnos mañana/tarde del domingo
             }
 
             $horaInicio = \Carbon\Carbon::parse($turno->hora_inicio);
@@ -1145,10 +1168,6 @@ class ProduccionController extends Controller
             if ($fin->lte($inicio)) {
                 $fin->addDay();
             }
-
-            // ✅ PERMITIR que turnos del viernes terminen el sábado
-            // (ej: turno noche viernes 22:00 → sábado 06:00 es válido)
-            // NO ajustar el fin si el inicio es viernes
 
             $segmentos[] = ['inicio' => $inicio, 'fin' => $fin];
         }
