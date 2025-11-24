@@ -1,4 +1,4 @@
-<nav x-data="{
+<nav data-navigate-once x-data="{
     open: false,
     notificationsOpen: false,
     userMenuOpen: false,

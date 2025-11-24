@@ -186,8 +186,13 @@
 
 
 
-    <script>
-            document.addEventListener('DOMContentLoaded', function() {
+    <script data-navigate-reload>
+        (() => {
+            const listaPaquetes = document.getElementById('lista-paquetes');
+            if (!listaPaquetes || listaPaquetes.dataset.init === '1') return;
+            listaPaquetes.dataset.init = '1';
+
+            // === Utilidades para renderizar dimensiones como SVG (longitud + ángulo) ===
             // === Utilidades para renderizar dimensiones como SVG (longitud + ángulo) ===
             function parseDimensiones(dims) {
                 if (!dims) return null;
@@ -270,7 +275,6 @@
                 return svg;
             }
 
-            const listaPaquetes = document.getElementById('lista-paquetes');
             const paquetesItems = listaPaquetes.querySelectorAll('.paquete-item');
             const searchInput = document.getElementById('search-paquetes');
             const filterObra = document.getElementById('filter-obra-paquetes');
@@ -442,7 +446,12 @@
                 try {
                     let data = cacheDetalles.get(paqueteId);
                     if (!data) {
-                        const resp = await fetch(`/paquetes/${paqueteId}/elementos`);
+                        const resp = await fetch(`/paquetes/${paqueteId}/elementos`, {
+                            credentials: 'same-origin',
+                            headers: {
+                                'Accept': 'application/json'
+                            }
+                        });
                         if (!resp.ok) throw new Error('No se pudieron cargar las etiquetas del paquete.');
                         data = await resp.json();
                         if (!data.success) throw new Error(data.message || 'Error al obtener datos.');

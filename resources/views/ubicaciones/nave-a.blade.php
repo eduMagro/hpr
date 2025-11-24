@@ -7,7 +7,7 @@
                 class="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-lg shadow transition cursor-pointer">
                 ➕ Nueva Ubicación ({{ $nombreAlmacen }})
             </a>
-            <a href="{{ route('ubicaciones.verInventario', ['almacen' => $obraActualId]) }}" wire:navigate
+            <a href="{{ route('ubicaciones.verInventario', ['almacen' => $obraActualId]) }}"
                 class="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-lg shadow transition cursor-pointer">
                 📦 Inventario
             </a>
@@ -122,7 +122,5 @@
     <!-- SCRIPT PARA IMPRIMIR QR -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <!-- Vite: qr-bundle -->
-    @vite(['resources/js/qr/qr-bundle.js', 'resources/css/ubicaciones/mapaUbis.css'])
-    <!-- <script src="{{ asset('js/qr/ubicacionesQr.js') }}"></script>
-    <link rel="stylesheet" href="{{ asset('css/ubicaciones/mapaUbis.css') }}"> -->
+    @vite(['resources/js/qr/qr-bundle.js'])
 </x-app-layout>

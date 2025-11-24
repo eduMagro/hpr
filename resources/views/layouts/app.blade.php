@@ -171,6 +171,8 @@
             constructor() {
                 this.progressBar = this.createProgressBar();
                 this.isNavigating = false;
+                this.executedScripts = new Set();
+                this.collectExistingScripts();
                 this.init();
             }
 
@@ -228,11 +230,17 @@
             }
 
             async navigate(url, pushState = true) {
-                if (this.isNavigating) return;
+                if (this.isNavigating) {
+                    console.log('⏸️ Navegación ya en curso, ignorando...');
+                    return;
+                }
+
+                console.log('🚀 Iniciando SPA navigation a:', url);
                 this.isNavigating = true;
                 this.showProgress();
 
                 try {
+                    console.log('📡 Haciendo fetch...');
                     const response = await fetch(url, {
                         headers: {
                             'X-Requested-With': 'XMLHttpRequest',
@@ -240,8 +248,12 @@
                         }
                     });
 
-                    if (!response.ok) throw new Error('Navigation failed');
+                    if (!response.ok) {
+                        console.error('❌ Fetch failed:', response.status);
+                        throw new Error('Navigation failed');
+                    }
 
+                    console.log('✅ Fetch exitoso, parseando HTML...');
                     const html = await response.text();
                     const parser = new DOMParser();
                     const doc = parser.parseFromString(html, 'text/html');
@@ -249,44 +261,97 @@
                     // Reemplazar solo el contenido principal
                     const newMain = doc.querySelector('main');
                     const currentMain = document.querySelector('main');
+                    // Capturar scripts de la nueva vista antes de hacer morph
+                    const newScripts = newMain ? Array.from(newMain.querySelectorAll('script')) : [];
 
-                    if (newMain && currentMain) {
-                        // Guardar scroll position antes de reemplazar
-                        const scrollPos = window.scrollY;
-
-                        // Reemplazar contenido usando morphing de Alpine
-                        if (typeof Alpine !== 'undefined' && Alpine.morph) {
-                            Alpine.morph(currentMain, newMain);
-                        } else {
-                            currentMain.innerHTML = newMain.innerHTML;
-                        }
-
-                        // Actualizar título
-                        document.title = doc.title;
-
-                        // Scroll to top
-                        window.scrollTo({ top: 0, behavior: 'instant' });
-
-                        // Actualizar URL después de un delay para evitar conflictos con Livewire
-                        if (pushState) {
-                            setTimeout(() => {
-                                window.history.pushState({ spa: true }, '', url);
-                            }, 100);
-                        }
-
-                        // NO llamar Livewire.rescan() - Alpine se encarga automáticamente
-                    } else {
-                        // Si no encuentra main, hacer navegación normal
+                    if (!newMain) {
+                        console.error('❌ No se encontró <main> en la nueva página');
                         window.location.href = url;
+                        return;
                     }
+
+                    if (!currentMain) {
+                        console.error('❌ No se encontró <main> en la página actual');
+                        window.location.href = url;
+                        return;
+                    }
+
+                    console.log('🔄 Reemplazando contenido...');
+
+                    // Reemplazar contenido usando morphing de Alpine
+                    if (typeof Alpine !== 'undefined' && Alpine.morph) {
+                        console.log('✨ Usando Alpine.morph');
+                        Alpine.morph(currentMain, newMain);
+                    } else {
+                        console.log('⚠️ Alpine.morph no disponible, usando innerHTML');
+                        currentMain.innerHTML = newMain.innerHTML;
+                    }
+
+                    // Ejecutar scripts de la vista para que Alpine tenga sus factories disponibles
+                    this.executeScripts(newScripts);
+
+                    // Actualizar título
+                    document.title = doc.title;
+
+                    // Scroll to top
+                    window.scrollTo({ top: 0, behavior: 'instant' });
+
+                    // Actualizar URL después de un delay para evitar conflictos con Livewire
+                    if (pushState) {
+                        setTimeout(() => {
+                            console.log('🔗 Actualizando URL a:', url);
+                            window.history.pushState({ spa: true }, '', url);
+                        }, 100);
+                    }
+
+                    console.log('✅ Navegación SPA completada exitosamente');
                 } catch (error) {
-                    console.error('SPA navigation error:', error);
+                    console.error('❌ SPA navigation error:', error);
+                    console.log('🔄 Fallback a navegación normal');
                     // Fallback a navegación normal
                     window.location.href = url;
                 } finally {
                     this.hideProgress();
                     this.isNavigating = false;
                 }
+            }
+
+            executeScripts(scripts) {
+                scripts.forEach((oldScript) => {
+                    if (oldScript.hasAttribute('data-navigate-once')) return;
+
+                    const forceReload = oldScript.hasAttribute('data-navigate-reload');
+                    const signature = this.getScriptSignature(oldScript);
+                    if (!forceReload && this.executedScripts.has(signature)) return;
+
+                    const script = document.createElement('script');
+                    // Copiar atributos (src, type, etc)
+                    for (const { name, value } of Array.from(oldScript.attributes)) {
+                        script.setAttribute(name, value);
+                    }
+                    // Copiar contenido inline
+                    if (oldScript.textContent) {
+                        script.textContent = oldScript.textContent;
+                    }
+                    document.body.appendChild(script);
+                    // Remover para evitar duplicados en el DOM
+                    script.remove();
+                    if (!forceReload) {
+                        this.executedScripts.add(signature);
+                    }
+                });
+            }
+
+            collectExistingScripts() {
+                document.querySelectorAll('script').forEach((script) => {
+                    const signature = this.getScriptSignature(script);
+                    this.executedScripts.add(signature);
+                });
+            }
+
+            getScriptSignature(script) {
+                if (script.src) return `src:${script.src}`;
+                return `inline:${(script.textContent || '').trim()}`;
             }
         }
 

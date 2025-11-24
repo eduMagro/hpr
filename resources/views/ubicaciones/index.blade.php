@@ -1,128 +1,146 @@
 <x-app-layout>
     <x-menu.ubicaciones :obras="$obras" :obra-actual-id="$obraActualId" color-base="emerald" />
 
-    <div class="container mx-auto px-4 py-6">
-        <div x-data="{ openModal: false }">
-            <a @click="openModal = true"
-                class="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-lg shadow transition cursor-pointer">
-                ➕ Nueva Ubicación ({{ $nombreAlmacen }})
-            </a>
-            <a href="{{ route('ubicaciones.verInventario', ['almacen' => $obraActualId]) }}" wire:navigate
-                class="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-lg shadow transition cursor-pointer">
-                📦 Inventario
-            </a>
+    <div class="max-w-7xl mx-auto px-4 lg:px-6 py-6 space-y-6">
+        <div class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl shadow-sm p-4 lg:p-6">
+            <div class="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+                <div>
+                    <p class="text-sm uppercase tracking-wide text-gray-500 dark:text-gray-400">Ubicaciones | {{ $nombreAlmacen }}</p>
+                    <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Gestión de Ubicaciones</h1>
+                    <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">Crea, navega y revisa las ubicaciones del almacén con acceso rápido al inventario.</p>
+                </div>
 
-            <div x-show="openModal" x-transition
-                class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-                <div @click.away="openModal = false" class="bg-white w-full max-w-lg p-6 rounded-xl shadow-xl mx-4">
-                    <h2 class="text-center text-lg font-bold mb-4 text-gray-800">
-                        Crear Nueva Ubicación ({{ $nombreAlmacen }})
-                    </h2>
+                <div class="flex flex-wrap gap-3" x-data="{ openModal: false }">
+                    <button @click="openModal = true"
+                        class="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-600 text-white font-semibold shadow hover:bg-blue-700 transition">
+                        <span class="text-lg"></span> Nueva Ubicación
+                    </button>
+                    <a href="{{ route('ubicaciones.verInventario', ['almacen' => $obraActualId]) }}"
+                        class="inline-flex items-center gap-2 px-4 py-2 rounded-lg  text-white font-semibold shadow bg-gradient-to-tr from-gray-900 to-gray-700 hover:from-gray-800 hover:to-gray-900">
+                        <span class="text-lg">📦</span> Inventario
+                    </a>
 
-                    <form method="POST" action="{{ route('ubicaciones.store') }}" class="space-y-4">
-                        @csrf
+                    <!-- Modal crear ubicación -->
+                    <div x-show="openModal" x-transition
+                        class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 backdrop-blur">
+                        <div @click.away="openModal = false" class="bg-white dark:bg-gray-900 w-full max-w-lg p-6 rounded-xl shadow-2xl mx-4 border border-gray-200 dark:border-gray-800">
+                            <h2 class="text-center text-lg font-bold mb-4 text-gray-800 dark:text-white">
+                                Crear Nueva Ubicación ({{ $nombreAlmacen }})
+                            </h2>
 
-                        {{-- Campo oculto con el valor de la nave --}}
-                        <input type="hidden" name="almacen" value="{{ $obraActualId }}">
+                            <form method="POST" action="{{ route('ubicaciones.store') }}" class="space-y-4">
+                                @csrf
+                                <input type="hidden" name="almacen" value="{{ $obraActualId }}">
 
+                                <x-tabla.select name="sector" label="📍 Sector" :options="collect(range(1, 20))
+                                    ->mapWithKeys(
+                                        fn($i) => [str_pad($i, 2, '0', STR_PAD_LEFT) => str_pad($i, 2, '0', STR_PAD_LEFT)],
+                                    )
+                                    ->toArray()"
+                                    placeholder="Ej. 01, 02, 03..." />
 
-                        {{-- Sector --}}
-                        <x-tabla.select name="sector" label="📍 Sector" :options="collect(range(1, 20))
-                            ->mapWithKeys(
-                                fn($i) => [str_pad($i, 2, '0', STR_PAD_LEFT) => str_pad($i, 2, '0', STR_PAD_LEFT)],
-                            )
-                            ->toArray()"
-                            placeholder="Ej. 01, 02, 03..." />
+                                <x-tabla.select name="ubicacion" label="📦 Ubicación" :options="collect(range(1, 100))
+                                    ->mapWithKeys(
+                                        fn($i) => [str_pad($i, 2, '0', STR_PAD_LEFT) => str_pad($i, 2, '0', STR_PAD_LEFT)],
+                                    )
+                                    ->toArray()"
+                                    placeholder="Ej. 01 a 100" />
 
-                        {{-- Ubicación --}}
-                        <x-tabla.select name="ubicacion" label="📦 Ubicación" :options="collect(range(1, 100))
-                            ->mapWithKeys(
-                                fn($i) => [str_pad($i, 2, '0', STR_PAD_LEFT) => str_pad($i, 2, '0', STR_PAD_LEFT)],
-                            )
-                            ->toArray()"
-                            placeholder="Ej. 01 a 100" />
+                                <x-tabla.input name="descripcion" label="📝 Descripción"
+                                    placeholder="Ej. Entrada de barras largas" />
 
-                        {{-- Descripción --}}
-                        <x-tabla.input name="descripcion" label="📝 Descripción"
-                            placeholder="Ej. Entrada de barras largas" />
-
-                        <div class="flex justify-end gap-3 pt-4">
-                            <button type="button" @click="openModal = false"
-                                class="px-4 py-2 bg-gray-300 hover:bg-gray-400 rounded-lg">Cancelar</button>
-                            <button type="submit"
-                                class="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg shadow focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition">
-                                ➕ Crear
-                            </button>
+                                <div class="flex justify-end gap-3 pt-4">
+                                    <button type="button" @click="openModal = false"
+                                        class="px-4 py-2 bg-gray-200 hover:bg-gray-300 rounded-lg text-gray-800">Cancelar</button>
+                                    <button type="submit"
+                                        class="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg shadow focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition">
+                                        Crear
+                                    </button>
+                                </div>
+                            </form>
                         </div>
-                    </form>
+                    </div>
                 </div>
             </div>
         </div>
 
-        {{-- Aquí mantienes el mismo bloque de visualización de ubicaciones --}}
+        {{-- Sectores --}}
+        <div x-data="{
+            openSectors: {},
+            toggleAll() {
+                const values = Object.values(this.openSectors);
+                const allOpen = values.length && values.every(Boolean);
+                Object.keys(this.openSectors).forEach(k => this.openSectors[k] = !allOpen);
+            }
+        }" class="space-y-4">
+            <div class="flex justify-end">
+                <button @click="toggleAll()"
+                    class="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-tr from-gray-900 to-gray-700 hover:from-gray-800 hover:to-gray-900 text-white rounded-lg shadow text-sm font-semibold">
+                    <span x-text="Object.values(openSectors).length && Object.values(openSectors).every(Boolean) ? 'Cerrar todo' : 'Abrir todo'"></span>
+                </button>
+            </div>
 
-        @foreach ($ubicacionesPorSector as $sector => $ubicaciones)
-            <div class="mb-4 sector-card">
-                <h3 class="sector-header">Sector {{ $sector }}</h3>
-                <div class="mapa-sector">
-                    @foreach ($ubicaciones as $ubicacion)
-                        <div class="ubicacion">
-                            <span>
-                                <a href="{{ route('ubicaciones.show', $ubicacion->id) }}" wire:navigate>
-                                    {{ $ubicacion->id }}
-                                </a>
-                            </span>
-                            <small>{{ $ubicacion->descripcion }}</small>
-
-                            <!-- Productos -->
-                            <div>
-                                <h4 class="text-xs font-semibold text-gray-600 mt-2">Productos</h4>
-                                @if ($ubicacion->productos->isEmpty())
-                                    <p class="text-gray-500 italic text-xs">No hay productos.</p>
-                                @else
-                                    <div class="space-y-2">
-                                        @foreach ($ubicacion->productos as $producto)
-                                            <div class="bg-gray-100 rounded-lg p-1 shadow-md text-center">
-                                                <p class="text-xs text-gray-700 font-semibold">
-                                                    MP#{{ $producto->id }} | Ø {{ $producto->diametro }} mm
-                                                </p>
-                                            </div>
-                                        @endforeach
-                                    </div>
-                                @endif
-                            </div>
-
-                            <!-- Paquetes -->
-                            <div>
-                                <h4 class="text-xs font-semibold text-gray-600 mt-2">Paquetes</h4>
-                                @if ($ubicacion->paquetes->isEmpty())
-                                    <p class="text-gray-500 italic text-xs">No hay paquetes.</p>
-                                @else
-                                    <div class="space-y-2">
-                                        @foreach ($ubicacion->paquetes as $paquete)
-                                            <div class="bg-green-100 rounded-lg p-1 shadow-md text-center">
-                                                <p class="text-xs text-gray-700 font-semibold">
-                                                    Paquete#{{ $paquete->id }} |
-                                                    {{ $paquete->planilla->codigo_limpio }} |
-                                                    Peso: {{ number_format($paquete->peso, 2) }} kg
-                                                </p>
-                                            </div>
-                                        @endforeach
-                                    </div>
-                                @endif
-                            </div>
-
+            @foreach ($ubicacionesPorSector as $sector => $ubicaciones)
+            <div x-init="if (openSectors['{{ $sector }}'] === undefined) openSectors['{{ $sector }}'] = false"
+                class="border border-gray-200 dark:border-gray-800 rounded-2xl shadow-sm bg-white dark:bg-gray-900 overflow-hidden">
+                <button @click="openSectors['{{ $sector }}'] = !openSectors['{{ $sector }}']"
+                    class="w-full flex items-center justify-between px-5 py-4 bg-gradient-to-tr from-gray-900 to-gray-700 hover:from-gray-800 hover:to-gray-900 text-white">
+                    <div class="flex items-center gap-3">
+                        <span class="inline-flex items-center justify-center h-10 w-10 rounded-full bg-gray-600 text-white font-bold">S{{ $sector }}</span>
+                        <div>
+                            <p class="text-lg font-semibold">Sector {{ $sector }}</p>
                         </div>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <span class="text-sm text-white/70">{{ count($ubicaciones) }} ubicaciones</span>
+                        <svg :class="openSectors['{{ $sector }}'] ? 'rotate-180' : ''" class="w-5 h-5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                        </svg>
+                    </div>
+                </button>
+
+                <div x-show="openSectors['{{ $sector }}']" x-collapse
+                    class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 p-4">
+                    @foreach ($ubicaciones as $ubicacion)
+                    <div class="bg-slate-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-4 flex flex-col gap-2 shadow-sm hover:border-blue-500 hover:shadow-md transition">
+                        <div class="flex items-center justify-between w-full">
+                            <a href="{{ route('ubicaciones.show', $ubicacion->id) }}" wire:navigate
+                                class="text-sm font-semibold text-gray-900 dark:text-white hover:text-blue-700 dark:hover:text-blue-300 transition">
+                                {{ $ubicacion->codigo ?? $ubicacion->id }}
+                            </a>
+                        </div>
+                        <p class="text-xs text-gray-600 dark:text-gray-300">{{ $ubicacion->descripcion }}</p>
+
+                        @php
+                        $tieneProductos = $ubicacion->productos->isNotEmpty();
+                        $tienePaquetes = $ubicacion->paquetes->isNotEmpty();
+                        @endphp
+
+                        @if (! $tieneProductos && ! $tienePaquetes)
+                        <p class="text-[11px] text-gray-500 dark:text-gray-400">Ubicación sin material.</p>
+                        @else
+                        @if($tieneProductos)
+                        <div class="w-full mt-1 space-y-1">
+                            @foreach ($ubicacion->productos as $producto)
+                            <div class="bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-400 rounded-md px-2 py-1 text-center">
+                                <p class="text-[11px] text-gray-800 dark:text-gray-100 font-semibold">
+                                    MP#{{ $producto->id }} | Ø {{ $producto->productoBase->diametro ?? $producto->diametro ?? 'N/D' }} mm
+                                </p>
+                            </div>
+                            @endforeach
+                        </div>
+                        @endif
+                        @endif
+                    </div>
                     @endforeach
                 </div>
             </div>
-        @endforeach
+            @endforeach
+        </div>
     </div>
 
     <!-- SCRIPT PARA IMPRIMIR QR -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <!-- Vite: qr-bundle -->
-    @vite(['resources/js/qr/qr-bundle.js', 'resources/css/ubicaciones/mapaUbis.css'])
-    <!-- <script src="{{ asset('js/qr/ubicacionesQr.js') }}"></script>
-    <link rel="stylesheet" href="{{ asset('css/ubicaciones/mapaUbis.css') }}"> -->
+    @vite(['resources/js/qr/qr-bundle.js'])
 </x-app-layout>

@@ -1,11 +1,11 @@
 @php
-    use App\Services\MenuBuilder;
-    $menuItems = MenuBuilder::buildForUser(auth()->user());
-    $currentRoute = request()->route()->getName();
+use App\Services\MenuBuilder;
+$menuItems = MenuBuilder::buildForUser(auth()->user());
+$currentRoute = request()->route()->getName();
 @endphp
 
 @if(auth()->user()->esOficina())
-<div x-data="{
+<div data-navigate-once x-data="{
     open: window.innerWidth >= 768 ? (localStorage.getItem('sidebar_open') !== 'false') : false,
     activeSections: JSON.parse(localStorage.getItem('sidebar_active_sections') || '[]'),
     currentSectionId: null,
@@ -276,8 +276,7 @@
         }
         this.selectedIndex = 0;
     }
-}"
-    @dark-mode-changed.window="darkMode = $event.detail; applyDarkMode()"
+}" @dark-mode-changed.window="darkMode = $event.detail; applyDarkMode()"
     :class="darkMode ? 'dark' : ''" class="flex h-screen">
 
     <!-- Overlay para móvil -->
@@ -301,15 +300,15 @@
 
             <!-- Logo del Sidebar (visible cuando sidebar está abierto) -->
             <a x-show="open && !isToggling"
-               x-transition:enter="transition-all duration-200 delay-200"
-               x-transition:enter-start="opacity-0 transform -translate-y-16"
-               x-transition:enter-end="opacity-100 transform translate-y-0"
-               x-transition:leave="transition-all duration-200"
-               x-transition:leave-start="opacity-100 transform translate-y-0"
-               x-transition:leave-end="opacity-0 transform -translate-y-16"
-               href="{{ route('dashboard') }}" wire:navigate
-               wire:navigate
-               class="flex items-center space-x-3 group relative z-50">
+                x-transition:enter="transition-all duration-200 delay-200"
+                x-transition:enter-start="opacity-0 transform -translate-y-16"
+                x-transition:enter-end="opacity-100 transform translate-y-0"
+                x-transition:leave="transition-all duration-200"
+                x-transition:leave-start="opacity-100 transform translate-y-0"
+                x-transition:leave-end="opacity-0 transform -translate-y-16"
+                href="{{ route('dashboard') }}" wire:navigate
+                wire:navigate
+                class="flex items-center space-x-3 group relative z-50">
                 <x-application-logo
                     class="block h-8 w-auto fill-current text-gray-800 dark:text-gray-200 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition" />
             </a>
@@ -472,11 +471,11 @@
         <nav
             class="flex-1 overflow-y-auto px-2 py-4 space-y-1 scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-transparent">
             @foreach ($menuItems as $section)
-                <div class="mb-2">
-                    <!-- Sección Principal -->
-                    <div class="relative">
-                        <button
-                            @click="if (open) {
+            <div class="mb-2">
+                <!-- Sección Principal -->
+                <div class="relative">
+                    <button
+                        @click="if (open) {
                                 const id = '{{ $section['id'] }}';
                                 if (activeSections.includes(id)) {
                                     activeSections = activeSections.filter(s => s !== id);
@@ -497,78 +496,78 @@
                                     }
                                 }, 400);
                             }"
-                            class="w-full flex items-center justify-between px-3 py-2.5 rounded-lg transition group text-gray-300 hover:bg-gray-800 hover:text-white"
-                            :class="currentSectionId === '{{ $section['id'] }}'
+                        class="w-full flex items-center justify-between px-3 py-2.5 rounded-lg transition group text-gray-300 hover:bg-gray-800 hover:text-white"
+                        :class="currentSectionId === '{{ $section['id'] }}'
                                 ? 'bg-{{ $section['color'] }}-600 text-white shadow-lg'
                                 : ''">
-                            <div class="flex items-center space-x-3">
-                                <span
-                                    class="text-xl flex-shrink-0">{{ $section['icon'] }}</span>
-                                <span x-show="open" x-transition
-                                    class="font-medium">{{ $section['label'] }}</span>
-                            </div>
-                            <svg x-show="open"
-                                :class="activeSections.includes('{{ $section['id'] }}') ?
+                        <div class="flex items-center space-x-3">
+                            <span
+                                class="text-xl flex-shrink-0">{{ $section['icon'] }}</span>
+                            <span x-show="open" x-transition
+                                class="font-medium">{{ $section['label'] }}</span>
+                        </div>
+                        <svg x-show="open"
+                            :class="activeSections.includes('{{ $section['id'] }}') ?
                                     'rotate-180' : ''"
-                                class="w-4 h-4 flex-shrink-0 transition-transform"
-                                fill="none" stroke="currentColor"
-                                viewBox="0 0 24 24">
-                                <path stroke-linecap="round"
-                                    stroke-linejoin="round" stroke-width="2"
-                                    d="M19 9l-7 7-7-7"></path>
-                            </svg>
-                        </button>
-                    </div>
+                            class="w-4 h-4 flex-shrink-0 transition-transform"
+                            fill="none" stroke="currentColor"
+                            viewBox="0 0 24 24">
+                            <path stroke-linecap="round"
+                                stroke-linejoin="round" stroke-width="2"
+                                d="M19 9l-7 7-7-7"></path>
+                        </svg>
+                    </button>
+                </div>
 
-                    <!-- Submenú -->
-                    @if (isset($section['submenu']))
-                        <div x-show="open && activeSections.includes('{{ $section['id'] }}')"
-                            x-transition
-                            class="mt-2 ml-4 space-y-1 border-l-2 border-gray-700 pl-4">
-                            @foreach ($section['submenu'] as $item)
-                                <div class="flex items-center group">
-                                    <a href="{{ route($item['route']) }}" wire:navigate
-                                        wire:navigate
-                                        @click="if (window.innerWidth < 768) { open = false; localStorage.setItem('sidebar_open', 'false'); }"
-                                        :class="isRouteActive('{{ route($item['route']) }}')
+                <!-- Submenú -->
+                @if (isset($section['submenu']))
+                <div x-show="open && activeSections.includes('{{ $section['id'] }}')"
+                    x-transition
+                    class="mt-2 ml-4 space-y-1 border-l-2 border-gray-700 pl-4">
+                    @foreach ($section['submenu'] as $item)
+                    <div class="flex items-center group">
+                        <a href="{{ route($item['route']) }}" wire:navigate
+                            wire:navigate
+                            @click="if (window.innerWidth < 768) { open = false; localStorage.setItem('sidebar_open', 'false'); }"
+                            :class="isRouteActive('{{ route($item['route']) }}')
                                             ? 'bg-{{ $section['color'] }}-500 text-white font-medium'
                                             : 'text-gray-400 hover:text-white hover:bg-gray-800'"
-                                        class="flex-1 flex items-center justify-between px-3 py-2 rounded-lg text-sm transition">
-                                        <div
-                                            class="flex items-center space-x-2">
-                                            <span>{{ $item['icon'] }}</span>
-                                            <span>{{ $item['label'] }}</span>
-                                        </div>
-                                        @if (isset($item['badge']))
-                                            <span
-                                                class="bg-red-500 text-white text-xs px-2 py-0.5 rounded-full">3</span>
-                                        @endif
-                                    </a>
+                            class="flex-1 flex items-center justify-between px-3 py-2 rounded-lg text-sm transition">
+                            <div
+                                class="flex items-center space-x-2">
+                                <span>{{ $item['icon'] }}</span>
+                                <span>{{ $item['label'] }}</span>
+                            </div>
+                            @if (isset($item['badge']))
+                            <span
+                                class="bg-red-500 text-white text-xs px-2 py-0.5 rounded-full">3</span>
+                            @endif
+                        </a>
 
-                                    <!-- Botón de favorito -->
-                                    <button
-                                        @click="toggleFavorite('{{ $item['route'] }}', '{{ $item['label'] }}', '{{ $section['label'] }}', '{{ $item['icon'] }}', '{{ route($item['route']) }}')"
-                                        class="ml-2 p-1.5 rounded hover:bg-gray-800 transition opacity-0 group-hover:opacity-100">
-                                        <svg class="w-4 h-4 transition"
-                                            :class="isFavorite(
+                        <!-- Botón de favorito -->
+                        <button
+                            @click="toggleFavorite('{{ $item['route'] }}', '{{ $item['label'] }}', '{{ $section['label'] }}', '{{ $item['icon'] }}', '{{ route($item['route']) }}')"
+                            class="ml-2 p-1.5 rounded hover:bg-gray-800 transition opacity-0 group-hover:opacity-100">
+                            <svg class="w-4 h-4 transition"
+                                :class="isFavorite(
                                                     '{{ $item['route'] }}') ?
                                                 'text-yellow-500 fill-current' :
                                                 'text-gray-500'"
-                                            fill="none"
-                                            stroke="currentColor"
-                                            viewBox="0 0 24 24">
-                                            <path stroke-linecap="round"
-                                                stroke-linejoin="round"
-                                                stroke-width="2"
-                                                d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z">
-                                            </path>
-                                        </svg>
-                                    </button>
-                                </div>
-                            @endforeach
-                        </div>
-                    @endif
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24">
+                                <path stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                    stroke-width="2"
+                                    d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z">
+                                </path>
+                            </svg>
+                        </button>
+                    </div>
+                    @endforeach
                 </div>
+                @endif
+            </div>
             @endforeach
         </nav>
 

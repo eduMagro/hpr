@@ -76,8 +76,10 @@
     </div>
 
     <script>
-        // Variable global para evitar reinicialización múltiple
-        let modalInitialized = false;
+        // Variable global para evitar reinicialización múltiple (persistente entre navegaciones Livewire)
+        var modalInitialized = window.modalInitialized || false;
+        var modalInitAttempts = 0;
+        window.modalInitialized = modalInitialized;
 
         function initModal() {
             const btnAbrir = document.getElementById('btn-abrir-import');
@@ -89,7 +91,12 @@
 
             if (!btnAbrir || !modal || !overlay || !btnCancel || !form || !inputFecha) {
                 console.log('⏳ Esperando elementos del modal de importación...');
-                setTimeout(initModal, 100);
+                if (modalInitAttempts < 50) {
+                    modalInitAttempts++;
+                    setTimeout(initModal, 100);
+                } else {
+                    console.warn('⚠️ No se encontraron los elementos del modal tras varios intentos, deteniendo.');
+                }
                 return;
             }
 
@@ -148,7 +155,9 @@
             overlay.addEventListener('click', cerrar);
             btnCancel.addEventListener('click', cerrar);
 
-            let pollTimer = null;
+            // Persistir para evitar redeclaración en navegaciones Livewire
+            var pollTimer = window.planillasPollTimer || null;
+            window.planillasPollTimer = pollTimer;
 
             function startPolling(importId) {
                 wrap.classList.remove('hidden');

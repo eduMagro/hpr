@@ -24,7 +24,7 @@ export default defineConfig({
                 // Localizaciones
                 "resources/css/localizaciones/styleLocIndex.css",
                 "resources/css/localizaciones/styleLocCreate.css",
-                "resources/css/ubicaciones/mapaUbis.css",
+                
                 "resources/css/mapaLocalizaciones.css",
 
                 // Feature-specific bundles

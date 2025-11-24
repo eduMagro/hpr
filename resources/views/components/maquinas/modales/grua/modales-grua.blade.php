@@ -350,7 +350,9 @@
         });
     });
 
-    let paqueteEsperadoId = null;
+    // Usar var + fallback a window para evitar redeclaraciones en navegaciones Livewire
+    var paqueteEsperadoId = window.paqueteEsperadoId || null;
+    window.paqueteEsperadoId = paqueteEsperadoId;
 
     function abrirModalBajadaPaquete(data) {
         document.getElementById('movimiento_id').value = data.id;
@@ -634,7 +636,8 @@
 
 {{-- Scripts para el modal de mover paquete --}}
 <script>
-    let paqueteMoverData = null;
+    var paqueteMoverData = window.paqueteMoverData || null;
+    window.paqueteMoverData = paqueteMoverData;
     function ajustarModalSegunGrid(modalId) {
         const modal = document.getElementById(modalId);
         if (!modal) return;
@@ -895,11 +898,17 @@
 
 {{-- Scripts para modal de ejecutar salida --}}
 <script>
-    let salidaData = null;
-    let paquetesSalida = [];
-    let etiquetasEscaneadas = new Set();
-    let paquetesLocalizados = new Set();
-    let paqueteSeleccionadoId = null;
+    var salidaData = window.salidaData || null;
+    var paquetesSalida = window.paquetesSalida || [];
+    var etiquetasEscaneadas = window.etiquetasEscaneadas || new Set();
+    var paquetesLocalizados = window.paquetesLocalizados || new Set();
+    var paqueteSeleccionadoId = window.paqueteSeleccionadoId || null;
+
+    window.salidaData = salidaData;
+    window.paquetesSalida = paquetesSalida;
+    window.etiquetasEscaneadas = etiquetasEscaneadas;
+    window.paquetesLocalizados = paquetesLocalizados;
+    window.paqueteSeleccionadoId = paqueteSeleccionadoId;
 
     function abrirModalEjecutarSalida(movimientoId, salidaId) {
         console.log('=== Abriendo modal ejecutar salida ===');

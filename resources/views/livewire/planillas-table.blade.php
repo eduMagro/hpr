@@ -355,7 +355,9 @@
     @endif
 
     <script>
-        let planillaIdReimportar = null;
+        // Persistir entre navegaciones Livewire para evitar redeclaraciones
+        var planillaIdReimportar = window.planillaIdReimportar || null;
+        window.planillaIdReimportar = planillaIdReimportar;
 
         function abrirModalReimportar(planillaId) {
             planillaIdReimportar = planillaId;
