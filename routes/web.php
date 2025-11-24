@@ -151,10 +151,14 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
     // === PRODUCTOS Y UBICACIONES ===
     Route::resource('fabricantes', FabricanteController::class);
     Route::resource('productos-base', ProductoBaseController::class);
+
+    // Rutas específicas de productos (antes del resource)
+    Route::get('productos/{id}/edit-data', [ProductoController::class, 'getEditData'])->name('productos.getEditData');
+    Route::get('productos/{id}/consumir', [ProductoController::class, 'consumir'])->name('productos.editarConsumir');
+
     Route::resource('productos', ProductoController::class);
     // Route::post('/productos/crear-desde-recepcion', [PedidoController::class, 'crearDesdeRecepcion'])->name('productos.crear.desde.recepcion');
     // Route::post('/solicitar-stock', [ProductoController::class, 'solicitarStock'])->name('solicitar.stock');
-    Route::get('productos/{id}/consumir', [ProductoController::class, 'consumir'])->name('productos.editarConsumir');
     Route::post('productos/generar-exportar', [ProductoController::class, 'GenerarYExportar'])->name('productos.generar.crearExportar');
     Route::post('/productos/{codigo}/reasignar', [ProductoController::class, 'editarUbicacionInventario'])
         ->name('productos.editarUbicacionInventario');

@@ -116,11 +116,11 @@
 
                     <x-tabla.cell>
                         <div class="flex items-center space-x-2 justify-center">
-                            <a href="{{ route('productos.edit', $producto->id) }}" class="w-6 h-6 bg-yellow-100 text-yellow-600 rounded hover:bg-yellow-200 flex items-center justify-center" title="Editar">
+                            <button type="button" data-producto-id="{{ $producto->id }}" class="btn-editar-producto w-6 h-6 bg-yellow-100 text-yellow-600 rounded hover:bg-yellow-200 flex items-center justify-center" title="Editar">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" />
                                 </svg>
-                            </a>
+                            </button>
                             <a href="{{ route('productos.show', $producto->id) }}" class="w-6 h-6 bg-blue-100 text-blue-600 rounded hover:bg-blue-200 flex items-center justify-center" title="Ver">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
@@ -157,6 +157,339 @@
     <div class="mt-4">
         {{ $productos->links('vendor.livewire.tailwind') }}
     </div>
+
+    {{-- Modal Editar Producto --}}
+    <div id="modal-editar-producto" class="hidden fixed inset-0 bg-gray-900 bg-opacity-50 z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-lg shadow-xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
+            <div class="sticky top-0 bg-white border-b px-6 py-4 flex justify-between items-center">
+                <h3 class="text-lg font-semibold text-gray-900">Editar Material</h3>
+                <button type="button" id="btn-cerrar-modal" class="text-gray-400 hover:text-gray-600">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                    </svg>
+                </button>
+            </div>
+
+            <form id="form-editar-producto" class="p-6 space-y-4">
+                <input type="hidden" id="edit-producto-id">
+
+                <!-- Código (readonly) -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Código</label>
+                    <input type="text" id="edit-codigo" readonly class="w-full px-3 py-2 border rounded-lg bg-gray-100 text-gray-700">
+                </div>
+
+                <!-- Fabricante -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Fabricante</label>
+                    <select id="edit-fabricante_id" required class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500">
+                        <option value="">Seleccione un fabricante</option>
+                    </select>
+                </div>
+
+                <!-- Producto Base -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Producto Base</label>
+                    <select id="edit-producto_base_id" required class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500">
+                        <option value="">Seleccione un producto base</option>
+                    </select>
+                </div>
+
+                <!-- Colada -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Nº Colada</label>
+                    <input type="text" id="edit-n_colada" required class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500">
+                </div>
+
+                <!-- Paquete -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Nº Paquete</label>
+                    <input type="text" id="edit-n_paquete" required class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500">
+                </div>
+
+                <!-- Peso Inicial -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Peso Inicial (kg)</label>
+                    <input type="number" step="0.01" min="0" id="edit-peso_inicial" required class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500">
+                </div>
+
+                <!-- Ubicación -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Ubicación ID</label>
+                    <input type="number" id="edit-ubicacion_id" class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500">
+                </div>
+
+                <!-- Estado -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Estado</label>
+                    <select id="edit-estado" class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500">
+                        <option value="">— Ninguno —</option>
+                        <option value="almacenado">Almacenado</option>
+                        <option value="fabricando">Fabricando</option>
+                        <option value="consumido">Consumido</option>
+                    </select>
+                </div>
+
+                <!-- Otros -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Otros</label>
+                    <input type="text" id="edit-otros" class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500">
+                </div>
+
+                <!-- Botones -->
+                <div class="flex justify-end gap-3 pt-4 border-t">
+                    <button type="button" id="btn-cancelar-edit" class="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200">
+                        Cancelar
+                    </button>
+                    <button type="submit" id="btn-guardar-edit" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">
+                        Guardar Cambios
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    {{-- Script para modal de edición --}}
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const modal = document.getElementById('modal-editar-producto');
+            const form = document.getElementById('form-editar-producto');
+            const btnCerrar = document.getElementById('btn-cerrar-modal');
+            const btnCancelar = document.getElementById('btn-cancelar-edit');
+            const btnGuardar = document.getElementById('btn-guardar-edit');
+
+            // Abrir modal al hacer clic en el botón editar
+            document.body.addEventListener('click', async function(e) {
+                const btnEditar = e.target.closest('.btn-editar-producto');
+                if (!btnEditar) return;
+
+                const productoId = btnEditar.dataset.productoId;
+                await cargarProducto(productoId);
+            });
+
+            // Cerrar modal
+            btnCerrar.addEventListener('click', cerrarModal);
+            btnCancelar.addEventListener('click', cerrarModal);
+            modal.addEventListener('click', function(e) {
+                if (e.target === modal) cerrarModal();
+            });
+
+            function cerrarModal() {
+                modal.classList.add('hidden');
+                form.reset();
+            }
+
+            // Actualizar fila de la tabla dinámicamente
+            function actualizarFilaTabla(productoId, formData) {
+                // Buscar la fila que corresponde a este producto
+                const filas = document.querySelectorAll('tbody tr');
+
+                for (const fila of filas) {
+                    const celdas = fila.querySelectorAll('td');
+                    if (celdas.length === 0) continue; // Saltar empty state
+
+                    const idEnTabla = celdas[0]?.textContent.trim();
+                    if (idEnTabla == productoId) {
+                        // Actualizar celdas relevantes
+
+                        // Colada (columna 9)
+                        if (celdas[8]) celdas[8].textContent = formData.n_colada || '';
+
+                        // Paquete (columna 10)
+                        if (celdas[9]) celdas[9].textContent = formData.n_paquete || '';
+
+                        // Peso inicial (columna 11)
+                        if (celdas[10]) celdas[10].textContent = formData.peso_inicial + ' kg';
+
+                        // Estado (columna 13) - mantener tooltip si es consumido
+                        if (celdas[12]) {
+                            const estadoValue = formData.estado || '';
+                            if (estadoValue) {
+                                celdas[12].textContent = estadoValue.charAt(0).toUpperCase() + estadoValue.slice(1);
+                            } else {
+                                celdas[12].textContent = '';
+                            }
+                        }
+
+                        // Fabricante (columna 5) - actualizar con el nombre del select
+                        if (celdas[4]) {
+                            const selectFabricante = document.getElementById('edit-fabricante_id');
+                            const nombreFabricante = selectFabricante.options[selectFabricante.selectedIndex]?.text || '—';
+                            celdas[4].textContent = nombreFabricante;
+                        }
+
+                        // Producto Base (columnas 6, 7, 8: tipo, diámetro, longitud)
+                        const selectProductoBase = document.getElementById('edit-producto_base_id');
+                        const selectedOption = selectProductoBase.options[selectProductoBase.selectedIndex];
+                        if (selectedOption && selectedOption.value) {
+                            const textoProductoBase = selectedOption.text; // "BARRA | Ø12 | 12 m"
+                            const partes = textoProductoBase.split('|').map(p => p.trim());
+
+                            // Tipo (columna 6)
+                            if (celdas[5]) celdas[5].textContent = partes[0] || '—';
+
+                            // Diámetro (columna 7)
+                            if (celdas[6]) {
+                                const diametro = partes[1]?.replace('Ø', '') || '—';
+                                celdas[6].textContent = diametro;
+                            }
+
+                            // Longitud (columna 8)
+                            if (celdas[7]) {
+                                const longitud = partes[2]?.replace(' m', '') || '—';
+                                celdas[7].textContent = longitud;
+                            }
+                        }
+
+                        // Efecto visual de actualización
+                        fila.classList.add('bg-green-100');
+                        setTimeout(() => {
+                            fila.classList.remove('bg-green-100');
+                        }, 2000);
+
+                        break;
+                    }
+                }
+            }
+
+            // Cargar datos del producto
+            async function cargarProducto(id) {
+                try {
+                    const response = await fetch(`/productos/${id}/edit-data`);
+                    const data = await response.json();
+
+                    if (!data.success) {
+                        throw new Error(data.message || 'Error al cargar el producto');
+                    }
+
+                    // Llenar el formulario
+                    document.getElementById('edit-producto-id').value = data.producto.id;
+                    document.getElementById('edit-codigo').value = data.producto.codigo;
+                    document.getElementById('edit-n_colada').value = data.producto.n_colada || '';
+                    document.getElementById('edit-n_paquete').value = data.producto.n_paquete || '';
+                    document.getElementById('edit-peso_inicial').value = data.producto.peso_inicial || '';
+                    document.getElementById('edit-ubicacion_id').value = data.producto.ubicacion_id || '';
+                    document.getElementById('edit-estado').value = data.producto.estado || '';
+                    document.getElementById('edit-otros').value = data.producto.otros || '';
+
+                    // Llenar select de fabricantes
+                    const selectFabricante = document.getElementById('edit-fabricante_id');
+                    selectFabricante.innerHTML = '<option value="">Seleccione un fabricante</option>';
+                    data.fabricantes.forEach(fab => {
+                        const option = document.createElement('option');
+                        option.value = fab.id;
+                        option.textContent = fab.nombre;
+                        if (fab.id == data.producto.fabricante_id) option.selected = true;
+                        selectFabricante.appendChild(option);
+                    });
+
+                    // Llenar select de productos base
+                    const selectProductoBase = document.getElementById('edit-producto_base_id');
+                    selectProductoBase.innerHTML = '<option value="">Seleccione un producto base</option>';
+                    data.productosBase.forEach(base => {
+                        const option = document.createElement('option');
+                        option.value = base.id;
+                        option.textContent = `${base.tipo.toUpperCase()} | Ø${base.diametro}${base.longitud ? ' | ' + base.longitud + ' m' : ''}`;
+                        if (base.id == data.producto.producto_base_id) option.selected = true;
+                        selectProductoBase.appendChild(option);
+                    });
+
+                    // Mostrar modal
+                    modal.classList.remove('hidden');
+
+                } catch (error) {
+                    console.error('Error:', error);
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: error.message,
+                        toast: true,
+                        position: 'top-end',
+                        showConfirmButton: false,
+                        timer: 4000,
+                        timerProgressBar: true
+                    });
+                }
+            }
+
+            // Guardar cambios
+            form.addEventListener('submit', async function(e) {
+                e.preventDefault();
+
+                const productoId = document.getElementById('edit-producto-id').value;
+                const formData = {
+                    codigo: document.getElementById('edit-codigo').value,
+                    fabricante_id: document.getElementById('edit-fabricante_id').value,
+                    producto_base_id: document.getElementById('edit-producto_base_id').value,
+                    n_colada: document.getElementById('edit-n_colada').value,
+                    n_paquete: document.getElementById('edit-n_paquete').value,
+                    peso_inicial: document.getElementById('edit-peso_inicial').value,
+                    ubicacion_id: document.getElementById('edit-ubicacion_id').value || null,
+                    estado: document.getElementById('edit-estado').value || null,
+                    otros: document.getElementById('edit-otros').value || null,
+                };
+
+                // Deshabilitar botón mientras se guarda
+                btnGuardar.disabled = true;
+                btnGuardar.textContent = 'Guardando...';
+
+                try {
+                    const response = await fetch(`/productos/${productoId}`, {
+                        method: 'PUT',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                            'Accept': 'application/json',
+                        },
+                        body: JSON.stringify(formData)
+                    });
+
+                    const result = await response.json();
+
+                    if (!response.ok) {
+                        // Errores de validación
+                        if (result.error && typeof result.error === 'object') {
+                            const errores = Object.values(result.error).flat().join('\n');
+                            throw new Error(errores);
+                        }
+                        throw new Error(result.error || 'Error al guardar');
+                    }
+
+                    // Éxito - Actualizar la fila en la tabla dinámicamente
+                    actualizarFilaTabla(productoId, formData);
+
+                    Swal.fire({
+                        icon: 'success',
+                        title: '¡Guardado!',
+                        text: 'El material se ha actualizado correctamente',
+                        toast: true,
+                        position: 'top-end',
+                        showConfirmButton: false,
+                        timer: 3000,
+                        timerProgressBar: true
+                    });
+
+                    cerrarModal();
+
+                } catch (error) {
+                    console.error('Error:', error);
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: error.message || 'No se pudo guardar el material',
+                        toast: true,
+                        position: 'top-end',
+                        showConfirmButton: false,
+                        timer: 4000,
+                        timerProgressBar: true
+                    });
+
+                    btnGuardar.disabled = false;
+                    btnGuardar.textContent = 'Guardar Cambios';
+                }
+            });
+        });
+    </script>
 
     {{-- Script para botón consumir con SweetAlert --}}
     <script>

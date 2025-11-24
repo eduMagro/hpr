@@ -404,6 +404,30 @@ class ProductoController extends Controller
         return view('productos.edit', compact('producto', 'usuarios', 'productosBase', 'fabricantes'));
     }
 
+    /**
+     * Obtener datos del producto para el modal de edición (AJAX)
+     */
+    public function getEditData($id)
+    {
+        try {
+            $producto = Producto::with(['fabricante', 'productoBase', 'ubicacion', 'maquina'])->findOrFail($id);
+            $fabricantes = Fabricante::orderBy('nombre')->get(['id', 'nombre']);
+            $productosBase = ProductoBase::orderBy('tipo')->orderBy('diametro')->orderBy('longitud')->get(['id', 'tipo', 'diametro', 'longitud']);
+
+            return response()->json([
+                'success' => true,
+                'producto' => $producto,
+                'fabricantes' => $fabricantes,
+                'productosBase' => $productosBase,
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al cargar el producto: ' . $e->getMessage()
+            ], 404);
+        }
+    }
+
     public function update(Request $request, Producto $producto)
     {
         DB::beginTransaction();
