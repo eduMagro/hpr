@@ -107,53 +107,10 @@
             0% { transform: translateX(-100%); }
             100% { transform: translateX(100%); }
         }
-
-        /* Overlay de transición para navegación */
-        .navigation-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(255, 255, 255, 0.8);
-            backdrop-filter: blur(2px);
-            z-index: 9999;
-            opacity: 0;
-            pointer-events: none;
-            transition: opacity 0.2s ease;
-        }
-
-        .navigation-overlay.active {
-            opacity: 1;
-            pointer-events: all;
-        }
-
-        /* Spinner de carga */
-        .navigation-spinner {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            width: 40px;
-            height: 40px;
-            border: 3px solid #e5e7eb;
-            border-top-color: #3b82f6;
-            border-radius: 50%;
-            animation: spin 0.8s linear infinite;
-        }
-
-        @keyframes spin {
-            to { transform: translate(-50%, -50%) rotate(360deg); }
-        }
     </style>
 </head>
 
 <body class="font-sans antialiased transition-colors duration-200">
-    <!-- Overlay de navegación -->
-    <div id="navigation-overlay" class="navigation-overlay">
-        <div class="navigation-spinner"></div>
-    </div>
-
     <div class="flex h-screen bg-gray-100 dark:bg-gray-900 overflow-hidden">
         <!-- Sidebar Menu Enhanced -->
             <x-sidebar-menu-enhanced />
@@ -209,67 +166,136 @@
             }
         });
 
-        // Configurar la barra de progreso de Livewire Navigate
-        document.addEventListener('livewire:init', () => {
-            // Verificar que Livewire y navigate existan
-            if (typeof Livewire !== 'undefined' && Livewire.navigate && typeof Livewire.navigate.config === 'function') {
-                // Configurar Navigate para esperar a que el DOM esté completamente cargado
-                Livewire.navigate.config({
-                    showProgressBar: true,
-                    progressBarDuration: 1000, // Duración mínima de la barra en ms
-                    progressBarColor: '#3b82f6',
+        // Sistema SPA personalizado compatible con Vite
+        class CustomSPA {
+            constructor() {
+                this.progressBar = this.createProgressBar();
+                this.isNavigating = false;
+                this.init();
+            }
+
+            createProgressBar() {
+                const bar = document.createElement('div');
+                bar.className = 'livewire-progress-bar';
+                bar.style.width = '0%';
+                bar.style.display = 'none';
+                document.body.appendChild(bar);
+                return bar;
+            }
+
+            showProgress() {
+                this.progressBar.style.display = 'block';
+                this.progressBar.style.width = '0%';
+                setTimeout(() => this.progressBar.style.width = '70%', 50);
+            }
+
+            hideProgress() {
+                this.progressBar.style.width = '100%';
+                setTimeout(() => {
+                    this.progressBar.style.display = 'none';
+                    this.progressBar.style.width = '0%';
+                }, 300);
+            }
+
+            init() {
+                // Interceptar clicks en links con data-spa-link
+                document.addEventListener('click', (e) => {
+                    const link = e.target.closest('a[data-spa-link]');
+                    if (link && !this.isNavigating) {
+                        e.preventDefault();
+                        this.navigate(link.href);
+                    }
+                });
+
+                // Manejar botones back/forward del navegador
+                window.addEventListener('popstate', (e) => {
+                    // Solo navegar si es nuestra navegación SPA
+                    if (e.state && e.state.spa && !this.isNavigating) {
+                        this.navigate(window.location.href, false);
+                    }
+                });
+
+                // Prevenir que Livewire intente trackear URLs demasiado
+                document.addEventListener('livewire:init', () => {
+                    if (typeof Livewire !== 'undefined' && Livewire.hook) {
+                        // Deshabilitar el tracking de URL de Livewire para evitar conflictos
+                        Livewire.hook('url.changed', () => {
+                            // No hacer nada - dejamos que nuestro SPA maneje la URL
+                            return false;
+                        });
+                    }
                 });
             }
 
-            if (typeof Livewire !== 'undefined' && typeof Livewire.hook === 'function') {
-                Livewire.hook('navigate', ({url, history}) => {
-                    // Scroll to top on navigation
-                    setTimeout(() => {
+            async navigate(url, pushState = true) {
+                if (this.isNavigating) return;
+                this.isNavigating = true;
+                this.showProgress();
+
+                try {
+                    const response = await fetch(url, {
+                        headers: {
+                            'X-Requested-With': 'XMLHttpRequest',
+                            'Accept': 'text/html'
+                        }
+                    });
+
+                    if (!response.ok) throw new Error('Navigation failed');
+
+                    const html = await response.text();
+                    const parser = new DOMParser();
+                    const doc = parser.parseFromString(html, 'text/html');
+
+                    // Reemplazar solo el contenido principal
+                    const newMain = doc.querySelector('main');
+                    const currentMain = document.querySelector('main');
+
+                    if (newMain && currentMain) {
+                        // Guardar scroll position antes de reemplazar
+                        const scrollPos = window.scrollY;
+
+                        // Reemplazar contenido usando morphing de Alpine
+                        if (typeof Alpine !== 'undefined' && Alpine.morph) {
+                            Alpine.morph(currentMain, newMain);
+                        } else {
+                            currentMain.innerHTML = newMain.innerHTML;
+                        }
+
+                        // Actualizar título
+                        document.title = doc.title;
+
+                        // Scroll to top
                         window.scrollTo({ top: 0, behavior: 'instant' });
-                    }, 0);
-                });
-            }
-        });
 
-        // Control del overlay de navegación
-        const overlay = document.getElementById('navigation-overlay');
-        let isNavigating = false;
-        let navigationTimeout = null;
+                        // Actualizar URL después de un delay para evitar conflictos con Livewire
+                        if (pushState) {
+                            setTimeout(() => {
+                                window.history.pushState({ spa: true }, '', url);
+                            }, 100);
+                        }
 
-        document.addEventListener('livewire:navigating', () => {
-            console.log('Navegando...');
-            isNavigating = true;
-
-            // Mostrar overlay después de un pequeño delay para navegaciones rápidas
-            navigationTimeout = setTimeout(() => {
-                if (isNavigating) {
-                    overlay.classList.add('active');
+                        // NO llamar Livewire.rescan() - Alpine se encarga automáticamente
+                    } else {
+                        // Si no encuentra main, hacer navegación normal
+                        window.location.href = url;
+                    }
+                } catch (error) {
+                    console.error('SPA navigation error:', error);
+                    // Fallback a navegación normal
+                    window.location.href = url;
+                } finally {
+                    this.hideProgress();
+                    this.isNavigating = false;
                 }
-            }, 100);
-        });
-
-        document.addEventListener('livewire:navigated', () => {
-            // Cancelar el timeout si la navegación fue muy rápida
-            if (navigationTimeout) {
-                clearTimeout(navigationTimeout);
-                navigationTimeout = null;
             }
+        }
 
-            // Remover overlay inmediatamente - Livewire ya se encarga de la sincronización
-            isNavigating = false;
-            overlay.classList.remove('active');
-        });
-
-        // Manejar errores de navegación
-        document.addEventListener('livewire:navigate-failed', () => {
-            console.error('Navegación fallida');
-            isNavigating = false;
-            overlay.classList.remove('active');
-            if (navigationTimeout) {
-                clearTimeout(navigationTimeout);
-                navigationTimeout = null;
-            }
-        });
+        // Inicializar SPA solo después de que todo esté cargado
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', () => new CustomSPA());
+        } else {
+            new CustomSPA();
+        }
     </script>
 </body>
 

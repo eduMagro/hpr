@@ -1,90 +1,40 @@
 <div class="w-full">
     <x-tabla.filtros-aplicados :filtros="$filtrosActivos" />
 
-    <div class="bg-white shadow rounded-lg overflow-x-auto">
-        <table class="w-full border text-sm text-center">
-            <thead class="bg-blue-600 text-white uppercase text-xs">
-                <tr>
-                    <x-tabla.encabezado-ordenable campo="pedido_producto_id" :sortActual="$sort" :orderActual="$order" texto="Código Línea" padding="px-3 py-2" />
-                    <x-tabla.encabezado-ordenable campo="albaran" :sortActual="$sort" :orderActual="$order" texto="Albarán" padding="px-3 py-2" />
-                    <x-tabla.encabezado-ordenable campo="codigo_sage" :sortActual="$sort" :orderActual="$order" texto="Código SAGE" padding="px-3 py-2" />
-                    <x-tabla.encabezado-ordenable campo="nave_id" :sortActual="$sort" :orderActual="$order" texto="Nave" padding="px-3 py-2" />
-                    <th class="px-3 py-2 border">Producto Base</th>
-                    <x-tabla.encabezado-ordenable campo="created_at" :sortActual="$sort" :orderActual="$order" texto="Fecha" padding="px-3 py-2" />
-                    <th class="px-3 py-2 border">Nº Productos</th>
-                    <th class="px-3 py-2 border">Peso Total</th>
-                    <th class="px-3 py-2 border">Estado</th>
-                    <th class="px-3 py-2 border">Usuario</th>
-                    <th class="px-3 py-2 border">PDF Adjunto</th>
-                    <th class="px-3 py-2 border">Acciones</th>
-                </tr>
+    <x-tabla.wrapper minWidth="1200px">
+        <x-tabla.header>
+            <x-tabla.header-row>
+                <x-tabla.encabezado-ordenable campo="pedido_producto_id" :sortActual="$sort" :orderActual="$order" texto="Código Línea" />
+                <x-tabla.encabezado-ordenable campo="albaran" :sortActual="$sort" :orderActual="$order" texto="Albarán" />
+                <x-tabla.encabezado-ordenable campo="codigo_sage" :sortActual="$sort" :orderActual="$order" texto="Código SAGE" />
+                <x-tabla.encabezado-ordenable campo="nave_id" :sortActual="$sort" :orderActual="$order" texto="Nave" />
+                <th class="p-2 border">Producto Base</th>
+                <x-tabla.encabezado-ordenable campo="created_at" :sortActual="$sort" :orderActual="$order" texto="Fecha" />
+                <th class="p-2 border">Nº Productos</th>
+                <th class="p-2 border">Peso Total</th>
+                <th class="p-2 border">Estado</th>
+                <th class="p-2 border">Usuario</th>
+                <th class="p-2 border">PDF Adjunto</th>
+                <th class="p-2 border">Acciones</th>
+            </x-tabla.header-row>
 
-                <tr>
-                    {{-- Pedido Código --}}
-                    <th class="border p-1">
-                        <input type="text" wire:model.live.debounce.300ms="pedido_codigo"
-                            placeholder="PC25/0001"
-                            class="bg-white text-gray-800 border border-gray-300 rounded text-xs text-center w-full h-6">
-                    </th>
+            <x-tabla.filtro-row>
+                <x-tabla.filtro-input model="pedido_codigo" placeholder="PC25/0001" />
+                <x-tabla.filtro-vacio />
+                <x-tabla.filtro-vacio />
+                <x-tabla.filtro-input model="nave_id" placeholder="Nave" />
+                <x-tabla.filtro-producto-base />
+                <x-tabla.filtro-vacio />
+                <x-tabla.filtro-vacio />
+                <x-tabla.filtro-vacio />
+                <x-tabla.filtro-vacio />
+                <x-tabla.filtro-input model="usuario" placeholder="Usuario" />
+                <x-tabla.filtro-vacio />
+                <x-tabla.filtro-acciones />
+            </x-tabla.filtro-row>
+        </x-tabla.header>
 
-                    <th class="border p-1"></th>
-                    <th class="border p-1"></th>
-
-                    {{-- Nave --}}
-                    <th class="border p-1">
-                        <input type="text" wire:model.live.debounce.300ms="nave_id"
-                            placeholder="Nave"
-                            class="bg-white text-gray-800 border border-gray-300 rounded text-xs text-center w-full h-6">
-                    </th>
-
-                    {{-- FILTRO PARA PRODUCTO BASE CON 3 MINI INPUTS --}}
-                    <th class="py-1 px-0 border">
-                        <div class="flex gap-2 justify-center">
-                            <input type="text" wire:model.live.debounce.300ms="producto_tipo"
-                                placeholder="T"
-                                class="bg-white text-gray-800 border border-gray-300 rounded text-[10px] text-center w-14 h-6" />
-                            <input type="text" wire:model.live.debounce.300ms="producto_diametro"
-                                placeholder="Ø"
-                                class="bg-white text-gray-800 border border-gray-300 rounded text-[10px] text-center w-14 h-6" />
-                            <input type="text" wire:model.live.debounce.300ms="producto_longitud"
-                                placeholder="L"
-                                class="bg-white text-gray-800 border border-gray-300 rounded text-[10px] text-center w-14 h-6" />
-                        </div>
-                    </th>
-
-                    <th class="border p-1"></th>
-                    <th class="border p-1"></th>
-                    <th class="border p-1"></th>
-                    <th class="border p-1"></th>
-
-                    {{-- Usuario --}}
-                    <th class="border p-1">
-                        <input type="text" wire:model.live.debounce.300ms="usuario"
-                            placeholder="Usuario"
-                            class="bg-white text-gray-800 border border-gray-300 rounded text-xs text-center w-full h-6">
-                    </th>
-
-                    <th class="border p-1"></th>
-
-                    {{-- Botones filtro --}}
-                    <th class="p-1 border text-center align-middle">
-                        <div class="flex justify-center gap-2 items-center h-full">
-                            {{-- ♻️ Botón reset --}}
-                            <button wire:click="limpiarFiltros" type="button"
-                                class="bg-yellow-500 hover:bg-yellow-600 text-white px-2 py-1 rounded text-xs flex items-center justify-center"
-                                title="Restablecer filtros">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24"
-                                    stroke="currentColor" stroke-width="2">
-                                    <path stroke-linecap="round" stroke-linejoin="round"
-                                        d="M4 4v5h.582M20 20v-5h-.581M4.582 9A7.5 7.5 0 0112 4.5a7.5 7.5 0 016.418 3.418M19.418 15A7.5 7.5 0 0112 19.5a7.5 7.5 0 01-6.418-3.418" />
-                                </svg>
-                            </button>
-                        </div>
-                    </th>
-                </tr>
-
-            </thead>
-            <tbody>
+        <x-tabla.body>
                 @forelse ($registrosEntradas as $entrada)
                     <tr tabindex="0" x-data="{
                         editando: false,
@@ -228,17 +178,12 @@
                         </td>
                     </tr>
                 @empty
-                    <tr>
-                        <td colspan="12" class="py-4 text-gray-500">No hay entradas de material registradas.
-                        </td>
-                    </tr>
+                    <x-tabla.empty-state colspan="12" mensaje="No hay entradas de material registradas." />
                 @endforelse
+        </x-tabla.body>
+    </x-tabla.wrapper>
 
-            </tbody>
-        </table>
-    </div>
-
-    {{ $registrosEntradas->links() }}
+    <x-tabla.paginacion-livewire :paginador="$registrosEntradas" />
 
     {{-- Modal para adjuntar albarán --}}
     <div x-data="{ mostrar: false, entradaId: null }" @abrir-modal-adjuntar.window="mostrar = true; entradaId = $event.detail.entradaId"

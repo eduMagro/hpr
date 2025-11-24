@@ -1,0 +1,132 @@
+⏳ Esperando elementos del modal de importación... planillas:4306:25
+SPA navigation error: TypeError: Livewire.rescan is not a function
+    navigate http://app.test/planillas:4707
+    init http://app.test/planillas:4661
+    init http://app.test/planillas:4657
+    CustomSPA http://app.test/planillas:4629
+    <anonymous> http://app.test/planillas:4726
+    EventListener.handleEvent* http://app.test/planillas:4726
+<anonymous code>:1:147461
+✅ Modal de importación inicializado planillas:4317:21
+[vite] connecting... client:495:9
+✅ Modal de importación inicializado planillas:4317:21
+Demasiadas llamadas a las API de ubicación o historial en un período breve. livewire.js:8166:22
+DOMException: The operation is insecure.
+    replace http://app.test/livewire/livewire.js?id=df3a17f2:8166
+    track2 http://app.test/livewire/livewire.js?id=df3a17f2:8114
+    <anonymous> http://app.test/livewire/livewire.js?id=df3a17f2:9317
+    <anonymous> http://app.test/livewire/livewire.js?id=df3a17f2:9312
+    trigger2 http://app.test/livewire/livewire.js?id=df3a17f2:3959
+    processEffects http://app.test/livewire/livewire.js?id=df3a17f2:4591
+    Component http://app.test/livewire/livewire.js?id=df3a17f2:4544
+    initComponent http://app.test/livewire/livewire.js?id=df3a17f2:4643
+    start2 http://app.test/livewire/livewire.js?id=df3a17f2:8830
+    skipDuringClone http://app.test/livewire/livewire.js?id=df3a17f2:1909
+    initTree http://app.test/livewire/livewire.js?id=df3a17f2:1484
+    initTree http://app.test/livewire/livewire.js?id=df3a17f2:1484
+    walk http://app.test/livewire/livewire.js?id=df3a17f2:1399
+    initTree http://app.test/livewire/livewire.js?id=df3a17f2:1480
+    deferHandlingDirectives http://app.test/livewire/livewire.js?id=df3a17f2:1288
+    initTree http://app.test/livewire/livewire.js?id=df3a17f2:1479
+    start http://app.test/livewire/livewire.js?id=df3a17f2:1428
+    start http://app.test/livewire/livewire.js?id=df3a17f2:1427
+    start2 http://app.test/livewire/livewire.js?id=df3a17f2:8851
+    <anonymous> http://app.test/livewire/livewire.js?id=df3a17f2:10215
+    EventListener.handleEvent* http://app.test/livewire/livewire.js?id=df3a17f2:10211
+    <anonymous> http://app.test/livewire/livewire.js?id=df3a17f2:10218
+<anonymous code>:1:147461
+Demasiadas llamadas a las API de ubicación o historial en un período breve. livewire.js:8166:22
+DOMException: The operation is insecure.
+    replace http://app.test/livewire/livewire.js?id=df3a17f2:8166
+    update http://app.test/livewire/livewire.js?id=df3a17f2:8129
+    replace http://app.test/livewire/livewire.js?id=df3a17f2:8134
+    effectReference http://app.test/livewire/livewire.js?id=df3a17f2:9320
+    reactiveEffect http://app.test/livewire/livewire.js?id=df3a17f2:2432
+    effect2 http://app.test/livewire/livewire.js?id=df3a17f2:2407
+    effect http://app.test/livewire/livewire.js?id=df3a17f2:764
+    <anonymous> http://app.test/livewire/livewire.js?id=df3a17f2:9319
+    <anonymous> http://app.test/livewire/livewire.js?id=df3a17f2:9312
+    trigger2 http://app.test/livewire/livewire.js?id=df3a17f2:3959
+    processEffects http://app.test/livewire/livewire.js?id=df3a17f2:4591
+    Component http://app.test/livewire/livewire.js?id=df3a17f2:4544
+    initComponent http://app.test/livewire/livewire.js?id=df3a17f2:4643
+    start2 http://app.test/livewire/livewire.js?id=df3a17f2:8830
+    skipDuringClone http://app.test/livewire/livewire.js?id=df3a17f2:1909
+    initTree http://app.test/livewire/livewire.js?id=df3a17f2:1484
+    initTree http://app.test/livewire/livewire.js?id=df3a17f2:1484
+    walk http://app.test/livewire/livewire.js?id=df3a17f2:1399
+    initTree http://app.test/livewire/livewire.js?id=df3a17f2:1480
+    deferHandlingDirectives http://app.test/livewire/livewire.js?id=df3a17f2:1288
+    initTree http://app.test/livewire/livewire.js?id=df3a17f2:1479
+    start http://app.test/livewire/livewire.js?id=df3a17f2:1428
+    start http://app.test/livewire/livewire.js?id=df3a17f2:1427
+    start2 http://app.test/livewire/livewire.js?id=df3a17f2:8851
+    <anonymous> http://app.test/livewire/livewire.js?id=df3a17f2:10215
+    EventListener.handleEvent* http://app.test/livewire/livewire.js?id=df3a17f2:10211
+    <anonymous> http://app.test/livewire/livewire.js?id=df3a17f2:10218
+<anonymous code>:1:147461
+    overrideMethod <anonymous code>:1
+    replace http://app.test/livewire/livewire.js?id=df3a17f2:8168
+    update http://app.test/livewire/livewire.js?id=df3a17f2:8129
+    replace http://app.test/livewire/livewire.js?id=df3a17f2:8134
+    effectReference http://app.test/livewire/livewire.js?id=df3a17f2:9320
+    reactiveEffect http://app.test/livewire/livewire.js?id=df3a17f2:2432
+    effect2 http://app.test/livewire/livewire.js?id=df3a17f2:2407
+    effect http://app.test/livewire/livewire.js?id=df3a17f2:764
+    <anonymous> http://app.test/livewire/livewire.js?id=df3a17f2:9319
+    <anonymous> http://app.test/livewire/livewire.js?id=df3a17f2:9312
+    trigger2 http://app.test/livewire/livewire.js?id=df3a17f2:3959
+    processEffects http://app.test/livewire/livewire.js?id=df3a17f2:4591
+    Component http://app.test/livewire/livewire.js?id=df3a17f2:4544
+    initComponent http://app.test/livewire/livewire.js?id=df3a17f2:4643
+    start2 http://app.test/livewire/livewire.js?id=df3a17f2:8830
+    skipDuringClone http://app.test/livewire/livewire.js?id=df3a17f2:1909
+    initTree http://app.test/livewire/livewire.js?id=df3a17f2:1484
+    initTree http://app.test/livewire/livewire.js?id=df3a17f2:1484
+    walk http://app.test/livewire/livewire.js?id=df3a17f2:1399
+    initTree http://app.test/livewire/livewire.js?id=df3a17f2:1480
+    deferHandlingDirectives http://app.test/livewire/livewire.js?id=df3a17f2:1288
+    initTree http://app.test/livewire/livewire.js?id=df3a17f2:1479
+    start http://app.test/livewire/livewire.js?id=df3a17f2:1428
+    start http://app.test/livewire/livewire.js?id=df3a17f2:1427
+    start2 http://app.test/livewire/livewire.js?id=df3a17f2:8851
+    <anonymous> http://app.test/livewire/livewire.js?id=df3a17f2:10215
+    (Asíncrono: EventListener.handleEvent)
+    <anonymous> http://app.test/livewire/livewire.js?id=df3a17f2:10211
+    <anonymous> http://app.test/livewire/livewire.js?id=df3a17f2:10218
+Demasiadas llamadas a las API de ubicación o historial en un período breve. livewire.js:8166:22
+DOMException: The operation is insecure.
+    replace http://app.test/livewire/livewire.js?id=df3a17f2:8166
+    track2 http://app.test/livewire/livewire.js?id=df3a17f2:8114
+    <anonymous> http://app.test/livewire/livewire.js?id=df3a17f2:9317
+    <anonymous> http://app.test/livewire/livewire.js?id=df3a17f2:9312
+    trigger2 http://app.test/livewire/livewire.js?id=df3a17f2:3959
+    processEffects http://app.test/livewire/livewire.js?id=df3a17f2:4591
+    Component http://app.test/livewire/livewire.js?id=df3a17f2:4544
+    initComponent http://app.test/livewire/livewire.js?id=df3a17f2:4643
+    start2 http://app.test/livewire/livewire.js?id=df3a17f2:8830
+    skipDuringClone http://app.test/livewire/livewire.js?id=df3a17f2:1909
+    initTree http://app.test/livewire/livewire.js?id=df3a17f2:1484
+    initTree http://app.test/livewire/livewire.js?id=df3a17f2:1484
+    walk http://app.test/livewire/livewire.js?id=df3a17f2:1399
+    initTree http://app.test/livewire/livewire.js?id=df3a17f2:1480
+    deferHandlingDirectives http://app.test/livewire/livewire.js?id=df3a17f2:1288
+    initTree http://app.test/livewire/livewire.js?id=df3a17f2:1479
+    start http://app.test/livewire/livewire.js?id=df3a17f2:1428
+    start http://app.test/livewire/livewire.js?id=df3a17f2:1427
+    start2 http://app.test/livewire/livewire.js?id=df3a17f2:8851
+    <anonymous> http://app.test/livewire/livewire.js?id=df3a17f2:10215
+    EventListener.handleEvent* http://app.test/livewire/livewire.js?id=df3a17f2:10211
+    <anonymous> http://app.test/livewire/livewire.js?id=df3a17f2:10218
+<anonymous code>:1:147461
+🔄 Livewire navegó, reinicializando... planillas:4587:21
+✅ Modal de importación inicializado planillas:4317:21
+Ignorando entryTypes no compatibles: longtask. content.js:1:760057
+[vite] connected. client:618:15
+Error en el mapeo fuente: Error: request failed with status 404
+Stack in the worker:networkRequest@resource://devtools/client/shared/source-map-loader/utils/network-request.js:43:9
+
+URL del recurso: http://app.test/%3Canonymous%20code%3E
+URL del mapa fuente: installHook.js.map
+
+Ignorando entryTypes no compatibles: longtask.

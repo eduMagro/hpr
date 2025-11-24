@@ -8,8 +8,12 @@
                         class="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6 px-6 justify-items-center">
 
                         @foreach ($items as $item)
-                            <a href="{{ $item['route'] ? route($item['route']) : '#' }}" wire:navigate
-                                class="w-32 h-32 bg-white rounded-2xl shadow-md flex flex-col items-center justify-center text-center hover:shadow-xl transition duration-300 ease-in-out relative">
+                            <a href="{{ $item['route'] ? route($item['route']) : '#' }}"
+                                @if($item['route'])
+                                    data-spa-link
+                                @endif
+                                class="w-32 h-32 bg-white rounded-2xl shadow-md flex flex-col items-center justify-center text-center hover:shadow-xl transition duration-300 ease-in-out relative"
+                                @if(!$item['route']) onclick="event.preventDefault(); return false;" @endif>
 
                                 <img src="{{ $item['icon'] }}" alt="{{ $item['label'] }}" class="w-20 h-20 mb-2">
                                 <span class="text-sm font-medium text-gray-700">{{ $item['label'] }}</span>
@@ -239,15 +243,17 @@
 
     </div>
     <script>
+        // Solo ejecutar una vez al cargar el dashboard, no en cada navegación
         document.addEventListener('DOMContentLoaded', function() {
-            // Puedes usar esta condición desde el backend con una variable tipo Blade
             const debeAceptarPoliticas = {{ auth()->user()->acepta_politica_privacidad ? 'false' : 'true' }};
 
             if (debeAceptarPoliticas) {
                 const modal = document.getElementById('modal-politicas');
-                modal.classList.remove('hidden');
+                if (modal) {
+                    modal.classList.remove('hidden');
+                }
             }
-        });
+        }, { once: true });
     </script>
 
     <!-- Estilos CSS directos -->
