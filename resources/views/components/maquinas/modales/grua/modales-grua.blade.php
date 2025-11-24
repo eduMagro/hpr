@@ -525,9 +525,10 @@
 
 {{-- 📦 MODAL MOVER PAQUETE (3 pasos: escanear, validar, ubicar en mapa) --}}
 <div id="modal-mover-paquete"
-    class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center p-4">
+    class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center sm:p-4">
     <div
-        class="bg-white rounded-2xl shadow-xl w-full max-w-6xl max-h-[95vh] overflow-hidden flex flex-col">
+        class="bg-white sm:rounded-2xl shadow-xl w-full max-w-6xl h-screen sm:max-h-[95vh] overflow-hidden flex flex-col"
+        data-modal-ajustable-grid="true">
         {{-- Header --}}
         <div
             class="bg-gradient-to-r from-green-600 to-green-700 text-white p-4 flex justify-between items-center">
@@ -540,17 +541,25 @@
         {{-- Contenido --}}
         <div class="flex-1 overflow-auto p-4">
             {{-- PASO 1: Escanear código --}}
-            <div id="paso-escanear-paquete" class="space-y-4">
+            <div id="paso-escanear-paquete" class="flex-1 overflow-y-auto p-4 space-y-4">
                 <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
                     <h3 class="font-semibold text-blue-800 mb-2">Paso 1:
                         Escanear Código del Paquete</h3>
                     <p class="text-sm text-blue-600 mb-3">Escanea o introduce
                         el código QR del paquete que deseas mover.</p>
 
-                    <x-tabla.input-movil type="text"
-                        id="codigo_paquete_mover" label="Código del Paquete"
-                        placeholder="Escanea o escribe el código (ej: ETQ123456.01)"
-                        autocomplete="off" inputmode="text" />
+                    <div class="flex flex-col gap-2">
+                        <div class="flex-1">
+                            <x-tabla.input-movil type="text"
+                                id="codigo_paquete_mover" label="Código del Paquete"
+                                placeholder="Escanea o escribe el código (ej: ETQ123456.01)"
+                                autocomplete="off" inputmode="text" />
+                        </div>
+                        <button onclick="buscarPaqueteParaMover()" 
+                            class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg shadow mb-[2px]">
+                            Buscar
+                        </button>
+                    </div>
 
                     <div id="error-paquete-mover"
                         class="hidden mt-2 text-sm text-red-600 bg-red-50 p-2 rounded">
@@ -593,9 +602,8 @@
             </div>
 
             {{-- PASO 2: Seleccionar ubicación en mapa --}}
-            <div id="paso-mapa-paquete" class="hidden space-y-4">
-                <div
-                    class="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+            <div id="paso-mapa-paquete" class="hidden space-y-4 h-full">
+                <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
                     <h3 class="font-semibold text-yellow-800 mb-2">Paso 2:
                         Seleccionar Nueva Ubicación</h3>
 
@@ -607,50 +615,10 @@
                     </div>
                 </div>
 
-                @if (!empty($mapaData))
-                    <div class="bg-white p-4 rounded-lg border space-y-3">
-                        <div class="space-y-1">
-                            <p
-                                class="text-xs uppercase tracking-wide text-gray-500">
-                                Nave</p>
-                            <p class="text-lg font-semibold text-gray-800">
-                                {{ $mapaData['dimensiones']['obra'] ?? 'Sin nave' }}
-                            </p>
-                        </div>
-
-                        <div class="rounded-xl border border-gray-200 overflow-hidden bg-white shadow-inner"
-                            style="min-height: 420px;">
-                            <x-mapa-component :ctx="$mapaData['ctx'] ?? []"
-                                :localizaciones-zonas="$mapaData['localizacionesZonas'] ??
-                                    []" :localizaciones-maquinas="$mapaData[
-                                    'localizacionesMaquinas'
-                                ] ?? []"
-                                :paquetes-con-localizacion="$mapaData[
-                                    'paquetesConLocalizacion'
-                                ] ?? []" :dimensiones="$mapaData['dimensiones'] ?? null"
-                                :obra-actual-id="$mapaData['obraActualId'] ?? null" :map-id="$mapaData['mapaId'] ?? null"
-                                :show-controls="false" :mostrarObra="false"
-                                :show-scan-result="false" :ruta-paquete="route('paquetes.tamaño')"
-                                :ruta-guardar="route('localizaciones.storePaquete')" :modo-modal="true"
-                                :enable-drag-paquetes="true" height="100%"
-                                class="w-full h-[420px]" />
-                        </div>
-                    </div>
-                @else
-                    <div id="contenedor-mapa-paquete"
-                        class="bg-gray-100 rounded-lg border-2 border-dashed border-gray-300 min-h-[400px] flex items-center justify-center">
-                        <div class="text-center text-gray-500">
-                            <svg class="w-16 h-16 mx-auto mb-3 text-gray-300"
-                                fill="none" stroke="currentColor"
-                                viewBox="0 0 24 24">
-                                <path stroke-linecap="round"
-                                    stroke-linejoin="round" stroke-width="2"
-                                    d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
-                            </svg>
-                            <p class="font-medium">Mapa no disponible</p>
-                        </div>
-                    </div>
-                @endif
+                {{-- Componente de mapa simplificado --}}
+                <div class="bg-white p-4 rounded-lg border h-[550px] overflow-hidden relative">
+                    <x-mapa-simple :nave-id="1" :modo-edicion="true" class="h-full w-full" />
+                </div>
             </div>
         </div>
 
@@ -658,7 +626,7 @@
         <div class="border-t p-4 bg-gray-50 flex justify-end gap-3">
             <button onclick="cerrarModalMoverPaquete()"
                 class="px-4 py-2 bg-gray-300 hover:bg-gray-400 rounded-lg font-medium">
-                Cancelar
+                Cerrar
             </button>
         </div>
     </div>
@@ -667,21 +635,35 @@
 {{-- Scripts para el modal de mover paquete --}}
 <script>
     let paqueteMoverData = null;
-    let coordenadasPaquete = {
-        x1: null,
-        y1: null,
-        x2: null,
-        y2: null
-    };
-    const MAPA_MODAL_ID = '{{ $mapaData['mapaId'] ?? '' }}';
-    let mapaModalApi = null;
-    let mapaModalUnsubscribe = null;
+    function ajustarModalSegunGrid(modalId) {
+        const modal = document.getElementById(modalId);
+        if (!modal) return;
+        const cont = modal.querySelector('[data-modal-ajustable-grid]');
+        if (!cont) return;
+        const grid = modal.querySelector('.cuadricula-mapa');
+        if (!grid) return;
+
+        let reintentos = 0;
+        const ajustar = () => {
+            const gridWidth = grid.scrollWidth || grid.offsetWidth;
+            if (!gridWidth && reintentos < 10) {
+                reintentos += 1;
+                requestAnimationFrame(ajustar);
+                return;
+            }
+            if (!gridWidth) return;
+            const margen = 64;
+            const anchoDeseado = Math.min(gridWidth + margen, window.innerWidth - 32);
+            cont.style.width = `${Math.max(320, anchoDeseado)}px`;
+        };
+
+        requestAnimationFrame(ajustar);
+    }
 
     function abrirModalMoverPaquete() {
         const modal = document.getElementById('modal-mover-paquete');
         modal.classList.remove('hidden');
-
-        // resetearModalMoverPaquete();
+        ajustarModalSegunGrid('modal-mover-paquete');
 
         setTimeout(() => {
             document.getElementById('codigo_paquete_mover')?.focus();
@@ -690,6 +672,8 @@
 
     function cerrarModalMoverPaquete() {
         document.getElementById('modal-mover-paquete').classList.add('hidden');
+        const cont = document.getElementById('modal-mover-paquete')?.querySelector('[data-modal-ajustable-grid]');
+        if (cont) cont.style.width = '';
         resetearModalMoverPaquete();
     }
 
@@ -697,79 +681,29 @@
         const inputCodigo = document.getElementById('codigo_paquete_mover');
         if (inputCodigo) inputCodigo.value = '';
 
-        document.getElementById('info-paquete-validado').classList.add(
-            'hidden');
-        document.getElementById('paso-mapa-paquete').classList.add('hidden');
-        document.getElementById('paso-escanear-paquete').classList.remove(
-            'hidden');
-        document.getElementById('error-paquete-mover').classList.add('hidden');
-        document.getElementById('loading-paquete-mover').classList.add(
-            'hidden');
-        document.getElementById('coordenadas-seleccionadas').classList.add(
-            'hidden');
-        document.getElementById('coord-x1').value = '';
-        document.getElementById('coord-y1').value = '';
-        document.getElementById('coord-x2').value = '';
-        document.getElementById('coord-y2').value = '';
+        document.getElementById('info-paquete-validado')?.classList.add('hidden');
+        document.getElementById('paso-mapa-paquete')?.classList.add('hidden');
+        document.getElementById('paso-escanear-paquete')?.classList.remove('hidden');
+        document.getElementById('error-paquete-mover')?.classList.add('hidden');
+        document.getElementById('loading-paquete-mover')?.classList.add('hidden');
 
         paqueteMoverData = null;
-        coordenadasPaquete = {
-            x1: null,
-            y1: null,
-            x2: null,
-            y2: null
-        };
-
-        if (mapaModalUnsubscribe) {
-            mapaModalUnsubscribe();
-            mapaModalUnsubscribe = null;
-        }
-        if (mapaModalApi?.showAllPaquetes) {
-            mapaModalApi.showAllPaquetes();
-        }
-        mapaModalApi = null;
     }
 
-    async function mostrarPasoMapa() {
-        document.getElementById('paso-escanear-paquete').classList.add(
-            'hidden');
-        document.getElementById('paso-mapa-paquete').classList.remove(
-            'hidden');
-        document.getElementById('paquete-codigo-mapa').textContent =
-            paqueteMoverData?.codigo || '';
-        const idPaquete = document.getElementById("paquete-codigo-info")
-            .innerText;
-
-        // ocultar los demás paquetes en el mapa
-        // Obtenemos el canvas del mapa (el div con data-mapa-canvas)
-        const canvas = document.querySelector('[data-mapa-canvas]');
-        // La instancia JS del mapa la expone el componente en canvas.mapaInstance
-        const mapaInstance = canvas?.mapaInstance;
-
-        if (!mapaInstance) {
-            console.warn('No se encontró la instancia del mapa');
-            return;
+    function mostrarPasoMapa() {
+        document.getElementById('paso-escanear-paquete').classList.add('hidden');
+        document.getElementById('paso-mapa-paquete').classList.remove('hidden');
+        const codigoPak = (paqueteMoverData?.codigo || '').toString().trim();
+        document.getElementById('paquete-codigo-mapa').textContent = codigoPak;
+        if (codigoPak) {
+            // Usar la función mostrarPaquete expuesta por el mapa-simple del modal
+            mostrarPaqueteEnMapaModal('modal-mover-paquete', codigoPak);
         }
-
-        let codigoPaquete = document.getElementById("paquete-codigo-info")
-            .innerText;
-        document.querySelectorAll('.loc-paquete').forEach(paquete => {
-            let id = paquete.dataset.codigo;
-
-            if (id != codigoPaquete) {
-                paquete.style.display = 'none';
-                paquete.classList.remove('loc-paquete--highlight');
-            } else {
-                paquete.click();
-                document.querySelector('[title="Mover paquete"]').click();
-            }
-        });
     }
 
     function volverPasoEscaneo() {
         document.getElementById('paso-mapa-paquete').classList.add('hidden');
-        document.getElementById('paso-escanear-paquete').classList.remove(
-            'hidden');
+        document.getElementById('paso-escanear-paquete').classList.remove('hidden');
     }
 
     document.addEventListener('DOMContentLoaded', function() {
@@ -846,6 +780,469 @@
         const errorDiv = document.getElementById('error-paquete-mover');
         errorDiv.textContent = mensaje;
         errorDiv.classList.remove('hidden');
+    }
+
+    // Mostrar paquete en el mapa-simple que está dentro de un modal concreto
+    function mostrarPaqueteEnMapaModal(modalId, codigoPaquete) {
+        const modal = document.getElementById(modalId);
+        if (!modal) return;
+        const mapa = modal.querySelector('[data-mapa-simple]');
+        if (!mapa) return;
+
+        let intentos = 0;
+        const intentar = () => {
+            intentos += 1;
+            const fnMostrar = mapa.mostrarPaquete;
+            const fnAutoclick = mapa.autoclickEditarPaquete;
+            if (typeof fnMostrar === 'function') {
+                try {
+                    fnMostrar(codigoPaquete);
+                    if (typeof fnAutoclick === 'function') {
+                        // Asegurar flujo de clic tras mostrar y centrar
+                        setTimeout(() => fnAutoclick(codigoPaquete), 200);
+                    }
+                } catch (e) {
+                    console.warn('No se pudo mostrar paquete en el mapa:', e);
+                }
+                return;
+            }
+            if (intentos < 40) {
+                setTimeout(intentar, 200);
+            }
+        };
+        intentar();
+    }
+</script>
+
+{{-- 🚛 MODAL EJECUTAR SALIDA (con mapa y escaneo de paquetes) --}}
+<div id="modal-ejecutar-salida"
+    class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center">
+    <div class="bg-white sm:rounded-2xl shadow-xl w-[100vw] h-[100vh] sm:w-[90vw] sm:h-[70vh] overflow-hidden flex flex-col">
+        {{-- Header --}}
+        <div class="bg-gradient-to-r from-purple-600 to-purple-700 text-white p-4 flex justify-between items-center">
+            <div>
+                <h2 class="text-lg sm:text-xl font-bold">🚛 Ejecutar Salida</h2>
+                <p class="text-sm text-purple-100" id="salida-codigo-header">Cargando...</p>
+            </div>
+            <button onclick="cerrarModalEjecutarSalida()"
+                class="text-white hover:text-gray-200 text-2xl">&times;</button>
+        </div>
+
+        {{-- Barra de escaneo --}}
+        <div class="bg-gray-50 border-b p-4">
+            <div class="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
+                <div class="flex-1 w-full">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">
+                        Escanear Etiqueta / Subetiqueta
+                    </label>
+                    <input type="text" id="codigo_etiqueta_salida"
+                        class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                        placeholder="Escanea el código de la etiqueta..."
+                        autocomplete="off">
+                </div>
+                <div class="flex items-end gap-2">
+                    <div class="text-sm">
+                        <p class="text-gray-600">Paquetes validados: <span id="contador-escaneadas" class="font-bold text-purple-600">0</span></p>
+                        <p class="text-gray-600">Total paquetes: <span id="contador-total" class="font-bold">0</span></p>
+                    </div>
+                </div>
+            </div>
+            <div id="mensaje-escaneo" class="hidden mt-2 p-2 rounded-lg text-sm"></div>
+        </div>
+
+        {{-- Contenido principal: Mapa + Lista --}}
+        <div class="flex-1 overflow-hidden flex flex-col lg:flex-row relative">
+            {{-- MAPA (Izquierda) --}}
+            <div id="contenedor-mapa-ejecutar-salida" class="hidden lg:block w-full lg:flex-1 h-full p-4 overflow-hidden bg-white absolute inset-0 lg:static z-20 lg:z-auto">
+                <button onclick="ocultarMapaMovil()" 
+                    class="lg:hidden absolute top-5 right-5 bg-white text-gray-800 px-4 py-2 rounded-full shadow-lg border z-50 font-bold flex items-center gap-2 hover:bg-gray-50">
+                    <span>✕</span> Volver
+                </button>
+                <x-mapa-simple :nave-id="1" :modo-edicion="false" class="h-full w-full" />
+            </div>
+
+            {{-- LISTA DE PAQUETES (Derecha) --}}
+            <div id="contenedor-lista-paquetes" class="w-full lg:w-96 border-t lg:border-t-0 lg:border-l bg-gray-50 flex flex-col h-full overflow-hidden">
+                <div class="p-4 border-b bg-white">
+                    <h3 class="font-semibold text-gray-800">Paquetes de la Salida</h3>
+                    <p class="text-xs text-gray-500 mt-1">Haz clic para ver ubicación en el mapa</p>
+                </div>
+                <div class="flex-1 overflow-y-auto p-4 space-y-2" id="lista-paquetes-salida">
+                    {{-- Los paquetes se cargarán aquí dinámicamente --}}
+                </div>
+            </div>
+        </div>
+
+        {{-- Footer con botones --}}
+        <div class="border-t p-4 bg-gray-50 flex flex-col sm:flex-row justify-between gap-3">
+            <div class="text-sm text-gray-600">
+                <p id="mensaje-validacion" class="hidden"></p>
+            </div>
+            <div class="flex gap-3">
+                <button onclick="cerrarModalEjecutarSalida()"
+                    class="px-4 py-2 bg-gray-300 hover:bg-gray-400 rounded-lg font-medium">
+                    Cancelar
+                </button>
+                <button onclick="completarSalida()" id="btn-completar-salida"
+                    class="px-6 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                    disabled>
+                    Completar Salida
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{{-- Scripts para modal de ejecutar salida --}}
+<script>
+    let salidaData = null;
+    let paquetesSalida = [];
+    let etiquetasEscaneadas = new Set();
+    let paquetesLocalizados = new Set();
+    let paqueteSeleccionadoId = null;
+
+    function abrirModalEjecutarSalida(movimientoId, salidaId) {
+        console.log('=== Abriendo modal ejecutar salida ===');
+        console.log('Movimiento ID:', movimientoId);
+        console.log('Salida ID:', salidaId);
+
+        const modal = document.getElementById('modal-ejecutar-salida');
+        if (!modal) {
+            console.error('No se encontró el modal modal-ejecutar-salida');
+            return;
+        }
+
+        modal.classList.remove('hidden');
+
+        // Resetear estado
+        etiquetasEscaneadas.clear();
+        paquetesLocalizados.clear();
+        paqueteSeleccionadoId = null;
+        paquetesSalida = [];
+        salidaData = {
+            movimientoId: movimientoId,
+            salidaId: salidaId
+        };
+
+        // Cargar datos de la salida
+        if (!salidaId) {
+            console.error('SalidaId es null o undefined');
+            alert('Error: No se encontró el ID de la salida');
+            return;
+        }
+
+        cargarDatosSalida(salidaId);
+
+        // Configurar event listener para el input de escaneo
+        const inputEscaneo = document.getElementById('codigo_etiqueta_salida');
+        if (inputEscaneo) {
+            // Remover listener previo si existe
+            inputEscaneo.replaceWith(inputEscaneo.cloneNode(true));
+            const newInput = document.getElementById('codigo_etiqueta_salida');
+
+            newInput.addEventListener('keypress', async function(e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    const codigo = this.value.trim();
+                    if (codigo) {
+                        await validarYRegistrarEtiqueta(codigo);
+                        this.value = '';
+                    }
+                }
+            });
+
+            // Focus en input de escaneo
+            setTimeout(() => {
+                newInput.focus();
+            }, 300);
+        }
+    }
+
+    function cerrarModalEjecutarSalida() {
+        document.getElementById('modal-ejecutar-salida').classList.add('hidden');
+        resetearModalEjecutarSalida();
+    }
+
+    function resetearModalEjecutarSalida() {
+        const inputCodigo = document.getElementById('codigo_etiqueta_salida');
+        const listaPaquetes = document.getElementById('lista-paquetes-salida');
+
+        if (inputCodigo) inputCodigo.value = '';
+        if (listaPaquetes) listaPaquetes.innerHTML = '';
+
+        etiquetasEscaneadas.clear();
+        paquetesLocalizados.clear();
+        paqueteSeleccionadoId = null;
+        paquetesSalida = [];
+        salidaData = null;
+        actualizarContadores();
+    }
+
+    async function cargarDatosSalida(salidaId) {
+        try {
+            console.log('Cargando datos de salida:', salidaId);
+            const response = await fetch(`/salidas/${salidaId}/paquetes`);
+            const data = await response.json();
+
+            console.log('Datos recibidos:', data);
+
+            if (!data.success) {
+                throw new Error(data.message || 'Error al cargar datos de la salida');
+            }
+
+            salidaData = {
+                ...salidaData,
+                ...data.salida
+            };
+            paquetesSalida = data.paquetes || [];
+
+            console.log('Paquetes cargados:', paquetesSalida.length);
+
+            // Actualizar header
+            const headerElement = document.getElementById('salida-codigo-header');
+            if (headerElement) {
+                headerElement.textContent = `Salida: ${data.salida.codigo_salida}`;
+            }
+
+            // Renderizar lista de paquetes
+            renderizarListaPaquetes();
+
+            // Actualizar contadores
+            actualizarContadores();
+
+            // Recargar mapa con el salidaId actual
+            const contenedorMapa = document.getElementById('contenedor-mapa-ejecutar-salida');
+            if (contenedorMapa) {
+                const mapaComponent = contenedorMapa.querySelector('[data-mapa-simple]');
+                if (mapaComponent && typeof mapaComponent.recargarMapa === 'function') {
+                    mapaComponent.recargarMapa(salidaId);
+                    console.log('Mapa recargado con salida:', salidaId);
+                }
+            }
+
+        } catch (error) {
+            console.error('Error al cargar datos de salida:', error);
+            mostrarMensajeEscaneo('Error al cargar la salida: ' + error.message, 'error');
+        }
+    }
+
+    function renderizarListaPaquetes() {
+        const lista = document.getElementById('lista-paquetes-salida');
+        if (!lista) {
+            console.error('No se encontró el elemento lista-paquetes-salida');
+            return;
+        }
+
+        lista.innerHTML = '';
+
+        paquetesSalida.forEach(paquete => {
+            const isLocalizado = paquetesLocalizados.has(paquete.id);
+
+            const div = document.createElement('div');
+            const isSeleccionado = paqueteSeleccionadoId === paquete.id;
+            let claseEstado = 'bg-white border-gray-200 hover:border-purple-300';
+            if (isLocalizado) claseEstado = 'bg-purple-50 border-purple-500 shadow-[0_0_10px_rgba(126,34,206,0.2)]';
+            if (isSeleccionado) claseEstado = 'bg-purple-50 border-purple-500 shadow-[0_0_10px_rgba(126,34,206,0.2)]';
+
+            div.className = `p-3 rounded-lg border-2 cursor-pointer transition-all ${claseEstado}`;
+            // Click en paquete → mostrar/centrar y ocultar otros en el mapa, marcar selección
+            div.addEventListener('click', () => {
+                const mapa = document.querySelector('#contenedor-mapa-ejecutar-salida [data-mapa-simple]');
+                if (mapa) {
+                    const grid = mapa.querySelector('.cuadricula-mapa');
+                    if (grid) grid.querySelectorAll('.loc-paquete').forEach(p => p.style.display = 'none');
+                    if (typeof mapa.mostrarPaquete === 'function') {
+                        mapa.mostrarPaquete(paquete.codigo, false);
+                    }
+                }
+                paqueteSeleccionadoId = paquete.id;
+                renderizarListaPaquetes();
+                mostrarMapaMovil();
+            });
+
+            div.innerHTML = `
+                <div class="flex items-start justify-between gap-2">
+                    <div class="flex-1 min-w-0">
+                        <div class="flex items-center gap-2">
+                            <span class="w-3 h-3 inline-block rounded-full ${isLocalizado ? 'bg-purple-500 shadow-[0_0_10px_rgba(126,34,206,0.45)]' : 'bg-gray-300'}"></span>
+                            <p class="font-semibold text-gray-800 truncate">${paquete.codigo}</p>
+                        </div>
+                        <p class="text-xs text-gray-500 mt-1">${paquete.obra}</p>
+                        <div class="flex items-center gap-2 mt-1">
+                            <span class="text-xs px-2 py-0.5 rounded ${
+                                paquete.tipo === 'barras' ? 'bg-blue-100 text-blue-700' :
+                                paquete.tipo === 'estribos' ? 'bg-orange-100 text-orange-700' :
+                                'bg-purple-100 text-purple-700'
+                            }">${paquete.tipo}</span>
+                            <span class="text-xs text-gray-500">${paquete.peso} kg</span>
+                        </div>
+                    </div>
+                    <div class="text-right">
+                        <p class="text-xs font-medium ${isLocalizado ? 'text-purple-600' : 'text-gray-500'}">
+                            ${paquete.num_etiquetas} etiquetas
+                        </p>
+                    </div>
+                </div>
+            `;
+
+            lista.appendChild(div);
+        });
+    }
+
+    // Funciones de manipulación del mapa eliminadas - el componente es auto-contenido
+
+    async function validarYRegistrarEtiqueta(codigo) {
+        // Verificar si ya fue escaneada
+        if (etiquetasEscaneadas.has(codigo)) {
+            mostrarMensajeEscaneo('⚠️ Esta etiqueta ya fue escaneada', 'warning');
+            return;
+        }
+
+        const norm = (v) => (v ?? '').toString().trim().toLowerCase();
+        const codigoNorm = norm(codigo);
+
+        // Buscar si la subetiqueta pertenece a algún paquete de la salida usando etiqueta_sub_id como clave principal
+        console.log('🔍 Buscando subetiqueta:', codigoNorm);
+        const paquete = paquetesSalida.find(p => p.etiquetas.some(e => {
+            const sub = norm(e.etiqueta_sub_id);
+            // console.log('   Comparando con:', sub);
+            return sub && sub === codigoNorm;
+        }));
+
+        if (!paquete) {
+            mostrarMensajeEscaneo('❌ Esta subetiqueta no pertenece a ningún paquete de la salida', 'error');
+            return;
+        }
+
+        // Registrar escaneo y marcar paquete localizado
+        etiquetasEscaneadas.add(codigo);
+        paquetesLocalizados.add(paquete.id);
+        paqueteSeleccionadoId = paquete.id;
+        mostrarMensajeEscaneo(`✓ Paquete ${paquete.codigo} validado`, 'success');
+
+        // Mostrar paquete en el mapa y ocultar el resto
+        const mapa = document.querySelector('#contenedor-mapa-ejecutar-salida [data-mapa-simple]');
+        if (mapa) {
+            const grid = mapa.querySelector('.cuadricula-mapa');
+            if (grid) grid.querySelectorAll('.loc-paquete').forEach(p => p.style.display = 'none');
+            if (typeof mapa.mostrarPaquete === 'function') {
+                mapa.mostrarPaquete(paquete.codigo, false);
+            }
+        }
+
+        renderizarListaPaquetes();
+        actualizarContadores();
+        verificarSalidaCompleta();
+    }
+
+    function mostrarMensajeEscaneo(mensaje, tipo) {
+        const div = document.getElementById('mensaje-escaneo');
+        if (!div) return;
+
+        div.textContent = mensaje;
+        div.className = `mt-2 p-2 rounded-lg text-sm ${
+            tipo === 'success' ? 'bg-green-100 text-green-800' :
+            tipo === 'warning' ? 'bg-yellow-100 text-yellow-800' :
+            tipo === 'error' ? 'bg-red-100 text-red-800' :
+            'bg-gray-100 text-gray-800'
+        }`;
+        div.classList.remove('hidden');
+
+        setTimeout(() => {
+            if (div) div.classList.add('hidden');
+        }, 3000);
+    }
+
+    function actualizarContadores() {
+        const totalPaquetes = paquetesSalida.length;
+        const contadorEscaneadas = document.getElementById('contador-escaneadas');
+        const contadorTotal = document.getElementById('contador-total');
+
+        if (contadorEscaneadas) contadorEscaneadas.textContent = paquetesLocalizados.size;
+        if (contadorTotal) contadorTotal.textContent = totalPaquetes;
+    }
+
+    function verificarSalidaCompleta() {
+        const totalPaquetes = paquetesSalida.length;
+        const completados = paquetesLocalizados.size;
+        const btnCompletar = document.getElementById('btn-completar-salida');
+        const mensajeValidacion = document.getElementById('mensaje-validacion');
+
+        if (!btnCompletar || !mensajeValidacion) return;
+
+        if (completados === totalPaquetes && totalPaquetes > 0) {
+            btnCompletar.disabled = false;
+            mensajeValidacion.textContent = '✓ Todos los paquetes han sido escaneados correctamente';
+            mensajeValidacion.className = 'text-sm text-green-600 font-medium';
+            mensajeValidacion.classList.remove('hidden');
+        } else {
+            btnCompletar.disabled = true;
+            mensajeValidacion.textContent = `Faltan ${totalPaquetes - completados} paquete(s) por escanear`;
+            mensajeValidacion.className = 'text-sm text-gray-600';
+            mensajeValidacion.classList.remove('hidden');
+        }
+    }
+
+    async function completarSalida() {
+        if (paquetesLocalizados.size !== paquetesSalida.length) {
+            alert('Debes escanear al menos una subetiqueta de cada paquete antes de completar la salida.');
+            return;
+        }
+
+        try {
+            const response = await fetch(`/salidas/completar-desde-movimiento/${salidaData.movimientoId}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                }
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                mostrarToastSwal('Salida completada con éxito', 'success');
+                cerrarModalEjecutarSalida();
+            } else {
+                mostrarToastSwal('Error al completar la salida: ' + (data.message || 'Respuesta no válida'), 'error');
+            }
+        } catch (error) {
+            console.error('Error al completar salida:', error);
+            mostrarToastSwal('Error al completar la salida', 'error');
+        }
+    }
+
+    function mostrarToastSwal(mensaje, icono = 'info') {
+        if (typeof Swal !== 'undefined') {
+            Swal.fire({
+                toast: true,
+                position: 'top-end',
+                timer: 3000,
+                timerProgressBar: true,
+                icon: icono,
+                title: mensaje,
+                showConfirmButton: false,
+            });
+        } else {
+            alert(mensaje);
+        }
+    }
+    function mostrarMapaMovil() {
+        const mapa = document.getElementById('contenedor-mapa-ejecutar-salida');
+        if (mapa) {
+            mapa.classList.remove('hidden');
+            // Disparar evento de resize para que el mapa se ajuste si estaba oculto
+            setTimeout(() => {
+                window.dispatchEvent(new Event('resize'));
+            }, 100);
+        }
+    }
+
+    function ocultarMapaMovil() {
+        const mapa = document.getElementById('contenedor-mapa-ejecutar-salida');
+        if (mapa) {
+            mapa.classList.add('hidden');
+        }
     }
 </script>
 

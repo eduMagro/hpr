@@ -976,6 +976,139 @@ class LocalizacionController extends Controller
         ]);
     }
 
+    //------------------------------------------------------------------------------------ API: OBTENER DATOS DEL MAPA POR NAVE()
+    /**
+     * API endpoint para obtener todos los datos del mapa de una nave
+     * Retorna JSON con ctx, localizaciones, paquetes y dimensiones
+     * Opcionalmente filtra por salida_id
+     */
+    public function obtenerDatosMapaNave($naveId)
+    {
+        try {
+            $obra = Obra::findOrFail($naveId);
+            $salidaId = request('salida_id'); // Parámetro opcional
+
+            // Dimensiones de la nave en metros (convertidas a celdas de 0.5m)
+            $anchoM = max(1, (int) ($obra->ancho_m ?? 22));
+            $largoM = max(1, (int) ($obra->largo_m ?? 115));
+            $columnasReales = $anchoM * 2;
+            $filasReales    = $largoM * 2;
+
+            // Sin rotación
+            $estaGirado = false;
+            $columnasVista = $columnasReales;
+            $filasVista    = $filasReales;
+
+            // Cargar localizaciones
+            $localizaciones = Localizacion::with('maquina:id,nombre')
+                ->where('nave_id', $naveId)
+                ->get();
+
+            // Máquinas
+            $localizacionesMaquinas = $localizaciones
+                ->where('tipo', 'maquina')
+                ->whereNotNull('maquina_id')
+                ->filter(fn($l) => $l->maquina)
+                ->values()
+                ->map(function ($l) {
+                    return [
+                        'id'         => (int) $l->id,
+                        'x1'         => (int) $l->x1,
+                        'y1'         => (int) $l->y1,
+                        'x2'         => (int) $l->x2,
+                        'y2'         => (int) $l->y2,
+                        'tipo'       => 'maquina',
+                        'maquina_id' => (int) $l->maquina_id,
+                        'nombre'     => (string) ($l->nombre ?: $l->maquina->nombre),
+                        'nave_id'    => (int) $l->nave_id,
+                    ];
+                });
+
+            // Zonas
+            $localizacionesZonas = $localizaciones
+                ->filter(fn($l) => $l->tipo !== 'maquina')
+                ->values()
+                ->map(function ($l) {
+                    $tipoNorm = str_replace('-', '_', (string) $l->tipo);
+                    return [
+                        'id'      => (int) $l->id,
+                        'x1'      => (int) $l->x1,
+                        'y1'      => (int) $l->y1,
+                        'x2'      => (int) $l->x2,
+                        'y2'      => (int) $l->y2,
+                        'tipo'    => $tipoNorm,
+                        'nombre'  => (string) ($l->nombre ?: strtoupper(str_replace('_', ' ', $tipoNorm))),
+                        'nave_id' => (int) $l->nave_id,
+                    ];
+                });
+
+            // Paquetes con localización
+            $paquetesQuery = Paquete::with(['localizacionPaquete', 'etiquetas.elementos', 'planilla.obra'])
+                ->where('nave_id', $naveId)
+                ->whereHas('localizacionPaquete');
+
+            // Si se proporciona salida_id, filtrar solo paquetes de esa salida
+            if ($salidaId) {
+                $paquetesQuery->whereHas('salidas', function($q) use ($salidaId) {
+                    $q->where('salidas.id', $salidaId);
+                });
+            }
+
+            $paquetesConLocalizacion = $paquetesQuery->get()
+                ->map(function ($paquete) {
+                    $loc = $paquete->localizacionPaquete;
+                    return [
+                        'id'                => (int) $paquete->id,
+                        'codigo'            => (string) $paquete->codigo,
+                        'peso'              => (float) $paquete->peso,
+                        'x1'                => (int) $loc->x1,
+                        'y1'                => (int) $loc->y1,
+                        'x2'                => (int) $loc->x2,
+                        'y2'                => (int) $loc->y2,
+                        'tipo_contenido'    => $paquete->getTipoContenido(),
+                        'orientacion'       => $paquete->orientacion ?? 'I',
+                        'cantidad_etiquetas' => $paquete->etiquetas->count(),
+                        'cantidad_elementos' => $paquete->etiquetas->sum(fn($e) => $e->elementos->count()),
+                        'planilla'          => $paquete->planilla?->codigo,
+                        'obra'              => $paquete->planilla?->obra?->obra ?? '-',
+                    ];
+                });
+
+            $ctx = [
+                'naveId'         => (int) $naveId,
+                'estaGirado'     => false,
+                'columnasReales' => $columnasReales,
+                'filasReales'    => $filasReales,
+                'columnasVista'  => $columnasVista,
+                'filasVista'     => $filasVista,
+            ];
+
+            $dimensiones = [
+                'ancho' => $anchoM,
+                'largo' => $largoM,
+                'obra'  => $obra->obra,
+            ];
+
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'ctx'                      => $ctx,
+                    'localizacionesZonas'      => $localizacionesZonas->values(),
+                    'localizacionesMaquinas'   => $localizacionesMaquinas->values(),
+                    'paquetesConLocalizacion'  => $paquetesConLocalizacion->values(),
+                    'dimensiones'              => $dimensiones,
+                    'obraActualId'             => (int) $naveId,
+                ]
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al cargar datos del mapa: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
     //------------------------------------------------------------------------------------ UPDATE PAQUETE POSICION()
     /**
      * Actualiza la posición de un paquete en el mapa (arrastrar y soltar)

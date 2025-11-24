@@ -5,7 +5,7 @@
 
     <div class="w-full p-4 flex flex-col gap-4">
         {{-- === Cabecera de la página === --}}
-        <div class="bg-white rounded-lg shadow-sm p-4 border border-gray-300">
+        <div class="bg-white rounded-lg shadow-sm p-4 ">
             <div class="flex justify-between items-center">
                 <div>
                     <h1 class="text-2xl font-bold text-gray-800">Mapa de
@@ -26,7 +26,7 @@
                     <label for="obra-select"
                         class="text-sm font-medium text-gray-700">Obra:</label>
                     <select id="obra-select"
-                        class="border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        class=" rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                         onchange="window.location.href = '{{ route('mapa.paquetes') }}?obra=' + this.value">
                         @foreach ($obras as $obra)
                             <option value="{{ $obra->id }}"
@@ -40,23 +40,23 @@
         </div>
 
         {{-- === GRID principal: Mapa + Panel lateral === --}}
-        <div class="flex gap-4 w-full" style="height: calc(100vh - 170px);">
+        <div class="flex gap-4 w-full" style="height: calc(100vh - 180px);">
 
-            {{-- COMPONENTE DE MAPA (nuevo) --}}
-            <div class="flex-1 overflow-hidden border border-gray-300 rounded-md">
-                <x-mapa-component :ctx="$ctx" :localizaciones-zonas="$localizacionesZonas"
-                    :localizaciones-maquinas="$localizacionesMaquinas" :paquetes-con-localizacion="$paquetesConLocalizacion" :dimensiones="$dimensiones"
-                    :obra-actual-id="$obraActualId" :show-controls="false" :mostrarObra="false"
-                    :show-scan-result="false" :ruta-paquete="route('paquetes.tamaño')" :ruta-guardar="route('localizaciones.storePaquete')"
-                    :enable-drag-paquetes="true" height="100%"
-                    class='w-full h-full border-2 rounded-lg' />
+            {{-- COMPONENTE DE MAPA --}}
+            {{-- 
+                aspect-ratio: define la forma basada en las dimensiones reales.
+                max-width: 65%: limita el ancho máximo (aprox 5/8 de pantalla).
+                min-width: 350px: asegura un tamaño mínimo legible.
+                flex: 0 0 auto: respeta el ancho calculado (o sus límites) sin encogerse ni crecer arbitrariamente.
+            --}}
+            <div class="relative overflow-hidden rounded-md shadow-sm border border-gray-200"
+                 style="height: 100%; aspect-ratio: {{ $dimensiones['ancho'] }} / {{ $dimensiones['largo'] }}; max-width: 65%; min-width: 350px; flex: 0 0 auto;">
+                <x-mapa-simple :nave-id="$obraActualId" :modo-edicion="true" class="w-full h-full absolute inset-0" />
             </div>
 
-            {{-- PANEL LATERAL: Lista de paquetes (igual que lo tenías) --}}
-            <div
-                class="bg-white rounded-lg shadow-sm overflow-hidden flex flex-col w-full max-w-xl flex-shrink-0 border border-gray-300">
-                <div
-                    class="bg-gradient-to-r from-blue-600 to-blue-700 text-white p-4">
+            {{-- PANEL LATERAL: Lista de paquetes --}}
+            <div class="flex-1 bg-white rounded-lg shadow-sm overflow-hidden flex flex-col min-w-[350px]">
+                <div class="bg-gradient-to-r from-blue-600 to-blue-700 text-white p-4">
                     <h2 class="text-lg font-bold">Paquetes Ubicados</h2>
                     <p class="text-sm text-blue-100 mt-1">
                         Total: {{ $paquetesConLocalizacion->count() }} paquetes
@@ -66,19 +66,21 @@
                 <div class="p-3 border-b border-gray-200 space-y-2">
                     <input type="text" id="search-paquetes"
                         placeholder="Buscar por código..."
-                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+                        class="w-full px-3 py-2  rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
 
                     <select id="filter-obra-paquetes"
-                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white">
+                        class="w-full px-3 py-2  rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white">
                         <option value="">Todas las obras</option>
                     </select>
 
                 </div>
 
-                <div class="flex-1 overflow-y-auto p-3" id="lista-paquetes">
+                <div class="flex-1 overflow-y-auto p-3 grid gap-2 content-start" id="lista-paquetes"
+                     style="grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));">
                     @forelse($paquetesConLocalizacion as $paquete)
-                        <div class="paquete-item bg-gray-50 rounded-lg p-3 mb-2 border border-gray-200 hover:border-blue-400 hover:shadow-md transition cursor-pointer"
+                        <div class="paquete-item bg-gray-50 rounded-lg p-3 border border-gray-200 hover:border-blue-400 hover:shadow-md transition cursor-pointer h-full"
                             data-paquete-id="{{ $paquete['id'] }}"
+                            data-codigo="{{ $paquete['codigo'] }}"
                             data-obra="{{ $paquete['obra'] }}"
                             data-x1="{{ $paquete['x1'] }}"
                             data-y1="{{ $paquete['y1'] }}"
@@ -121,7 +123,7 @@
                             </div>
                         </div>
                     @empty
-                        <div class="text-center py-8 text-gray-500">
+                        <div class="col-span-full text-center py-8 text-gray-500">
                             <svg class="w-16 h-16 mx-auto mb-3 text-gray-300"
                                 fill="none" stroke="currentColor"
                                 viewBox="0 0 24 24">
@@ -139,7 +141,7 @@
                 <div class="border-t border-gray-200 p-3 bg-gray-50">
                     <h3 class="text-xs font-bold text-gray-700 mb-2">LEYENDA
                     </h3>
-                    <div class="space-y-1 text-xs">
+                    <div class="grid grid-cols-2 gap-2 text-xs">
                         <div class="flex items-center gap-2">
                             <div class="w-4 h-4 bg-blue-500 rounded"></div>
                             <span>Barras</span>
@@ -162,532 +164,364 @@
         </div>
     </div>
 
-    {{-- Context Menu para paquetes --}}
-    <div id="context-menu-paquete"
-        class="hidden fixed bg-white border border-gray-300 rounded-lg shadow-lg py-1"
-        style="min-width: 150px; z-index: 9999;">
-        <button id="context-menu-ver-elementos"
-            class="w-full px-4 py-2 text-left hover:bg-blue-50 text-sm text-gray-700 flex items-center gap-2">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor"
-                viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round"
-                    stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z">
-                </path>
-                <path stroke-linecap="round" stroke-linejoin="round"
-                    stroke-width="2"
-                    d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z">
-                </path>
-            </svg>
-            Ver etiquetas
-        </button>
-    </div>
-
-    {{-- Modal para mostrar etiquetas del paquete --}}
-    <div id="modal-elementos-paquete"
-        class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4"
-        style="z-index: 99999;">
-        <div
-            class="bg-white rounded-lg shadow-xl w-full max-w-6xl max-h-[90vh] overflow-hidden flex flex-col">
-            <!-- Header del modal -->
-            <div
-                class="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
-                <h2 class="text-xl font-bold text-gray-800">Etiquetas del
-                    Paquete <span id="modal-paquete-codigo"></span></h2>
-                <button id="cerrar-modal-elementos"
-                    class="text-gray-500 hover:text-gray-700">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor"
-                        viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round"
-                            stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                    </svg>
-                </button>
+    {{-- Panel flotante para detalle de etiquetas/elementos del paquete (se muestra al hacer click derecho) --}}
+    <div id="detalle-paquete-panel"
+         class="hidden fixed z-50 bg-white shadow-2xl border border-gray-200 rounded-lg w-full max-w-lg max-h-[400px] overflow-hidden flex flex-col"
+         style="top: 1.5rem; right: 1.5rem;">
+        <div class="flex items-start justify-between px-4 py-3 bg-gray-50 border-b border-gray-200">
+            <div>
+                <p class="text-[11px] uppercase tracking-wide text-gray-500 font-semibold">Detalle del paquete</p>
+                <p id="detalle-paquete-codigo" class="text-sm font-bold text-gray-800 mt-0.5">Selecciona un paquete</p>
             </div>
-
-            <!-- Contenido del modal -->
-            <div id="modal-elementos-contenido"
-                class="flex-1 overflow-y-auto p-6">
-                <div class="text-center text-gray-500">
-                    <div
-                        class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900">
-                    </div>
-                    <p class="mt-2">Cargando etiquetas...</p>
-                </div>
-            </div>
+            <button id="detalle-paquete-cerrar" type="button"
+                class="text-gray-500 hover:text-gray-700 rounded-full p-1 transition"
+                aria-label="Cerrar detalle">
+                ✕
+            </button>
+        </div>
+        <div id="detalle-paquete-contenido" class="p-3 text-sm text-gray-700 space-y-3 overflow-y-auto flex-1">
+            <p class="text-gray-500">Haz click derecho sobre un paquete para ver sus etiquetas y elementos.</p>
         </div>
     </div>
 
-    {{-- Script para dibujar figuras SVG de elementos --}}
-    <script src="{{ asset('js/elementosJs/figuraElemento.js') }}" defer></script>
 
-    {{-- Script para integrar el panel lateral con el componente del mapa --}}
-    @push('scripts')
-        <script>
-            // Limpiar estado al navegar con Livewire (evitar caché)
-            document.addEventListener('livewire:navigating', function() {
-                console.log('Limpiando estado del mapa antes de navegar...');
-                const canvas = document.querySelector('[data-mapa-canvas]');
-                if (canvas && canvas.mapaInstance) {
-                    canvas.mapaInstance = null;
-                }
+
+    <script>
+            document.addEventListener('DOMContentLoaded', function() {
+            // === Utilidades para renderizar dimensiones como SVG (longitud + ángulo) ===
+            function parseDimensiones(dims) {
+                if (!dims) return null;
+                const tokens = dims.toString().trim().split(/\s+/).filter(Boolean);
+                const longitudes = [];
+                const angulos = [];
+                tokens.forEach(tok => {
+                    if (tok.toLowerCase().includes('d')) {
+                        const ang = parseFloat(tok.replace(/[^\d.-]/g, ''));
+                        if (!Number.isNaN(ang)) angulos.push(ang);
+                    } else {
+                        const lon = parseFloat(tok.replace(/[^\d.-]/g, ''));
+                        if (!Number.isNaN(lon)) longitudes.push(lon);
+                    }
+                });
+                if (!longitudes.length) return null;
+                return { longitudes, angulos };
+            }
+
+            function buildPuntosFigura(longitudes, angulos) {
+                const puntos = [{ x: 0, y: 0 }];
+                let anguloActual = 0;
+                let x = 0, y = 0;
+                longitudes.forEach((L, idx) => {
+                    const rad = anguloActual * Math.PI / 180;
+                    x += L * Math.cos(rad);
+                    y += L * Math.sin(rad);
+                    puntos.push({ x, y });
+                    anguloActual += angulos[idx] ?? 0;
+                });
+                return puntos;
+            }
+
+            function renderDimensionesSvg(dimensiones) {
+                const parsed = parseDimensiones(dimensiones);
+                if (!parsed) return null;
+
+                // Rotar -90° para que el primer tramo se dibuje hacia arriba
+                const puntos = buildPuntosFigura(parsed.longitudes, parsed.angulos)
+                    .map(p => ({ x: p.y, y: -p.x }));
+
+                let minX = 0, maxX = 0, minY = 0, maxY = 0;
+                puntos.forEach(p => {
+                    minX = Math.min(minX, p.x);
+                    maxX = Math.max(maxX, p.x);
+                    minY = Math.min(minY, p.y);
+                    maxY = Math.max(maxY, p.y);
+                });
+
+                const ancho = maxX - minX || 1;
+                const alto = maxY - minY || 1;
+                const viewW = 140, viewH = 80;
+                const padding = 8;
+                const scale = Math.min(
+                    (viewW - padding * 2) / ancho,
+                    (viewH - padding * 2) / alto
+                );
+
+                // Iniciar siempre hacia la derecha, sin rotaciones auto
+                const offsetX = padding + (-minX) * scale;
+                const offsetY = padding + (-minY) * scale;
+
+                const polyPoints = puntos
+                    .map(p => `${(p.x * scale + offsetX).toFixed(2)},${(p.y * scale + offsetY).toFixed(2)}`)
+                    .join(' ');
+
+                const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+                svg.setAttribute('viewBox', `0 0 ${viewW} ${viewH}`);
+                svg.setAttribute('class', 'w-full h-16');
+
+                const polyline = document.createElementNS('http://www.w3.org/2000/svg', 'polyline');
+                polyline.setAttribute('points', polyPoints);
+                polyline.setAttribute('fill', 'none');
+                polyline.setAttribute('stroke', '#2563eb');
+                polyline.setAttribute('stroke-width', '3');
+                polyline.setAttribute('stroke-linecap', 'round');
+                polyline.setAttribute('stroke-linejoin', 'round');
+
+                svg.appendChild(polyline);
+                return svg;
+            }
+
+            const listaPaquetes = document.getElementById('lista-paquetes');
+            const paquetesItems = listaPaquetes.querySelectorAll('.paquete-item');
+            const searchInput = document.getElementById('search-paquetes');
+            const filterObra = document.getElementById('filter-obra-paquetes');
+            const detallePanel = document.getElementById('detalle-paquete-panel');
+            const detalleContenido = document.getElementById('detalle-paquete-contenido');
+            const detalleCodigo = document.getElementById('detalle-paquete-codigo');
+            const cerrarDetalleBtn = document.getElementById('detalle-paquete-cerrar');
+            
+            let paqueteSeleccionadoCodigo = null;
+            const cacheDetalles = new Map();
+            let ultimoPosDetalle = null;
+
+            // === 1. Lógica de Filtrado ===
+
+            // Obtener obras únicas de los paquetes listados
+            const obrasUnicas = new Set();
+            paquetesItems.forEach(item => {
+                const obra = item.dataset.obra;
+                if (obra) obrasUnicas.add(obra);
             });
 
-            document.addEventListener('DOMContentLoaded', function() {
-                // Obtenemos el canvas del mapa (el div con data-mapa-canvas)
-                const canvas = document.querySelector('[data-mapa-canvas]');
-                // La instancia JS del mapa la expone el componente en canvas.mapaInstance
-                const mapaInstance = canvas?.mapaInstance;
+            // Poblar el select de obras
+            // Limpiar opciones excepto la primera (Todas las obras)
+            while (filterObra.options.length > 1) {
+                filterObra.remove(1);
+            }
+            
+            obrasUnicas.forEach(obra => {
+                const option = document.createElement('option');
+                option.value = obra;
+                option.textContent = obra;
+                filterObra.appendChild(option);
+            });
 
-                if (!mapaInstance) {
-                    console.warn('No se encontró la instancia del mapa');
-                    return;
-                }
+            // Función de filtrado
+            function filtrarPaquetes() {
+                const textoBusqueda = searchInput.value.toLowerCase().trim();
+                const obraSeleccionada = filterObra.value;
 
-                // ==========================
-                // ESTADO INICIAL DEL MAPA
-                // ==========================
-                // Al principio queremos que no aparezca ningún paquete dibujado en el mapa.
-                // Sólo se verán los que el usuario vaya "activando" desde la lista lateral.
-                document.querySelectorAll('.paquete-item').forEach(item => {
-                    const id = parseInt(item.dataset.paqueteId);
+                paquetesItems.forEach(item => {
+                    const codigoRaw = item.querySelector('span.font-bold').textContent;
+                    const codigo = codigoRaw.replace('📦', '').trim().toLowerCase();
+                    const obra = item.dataset.obra;
 
-                    if (!Number.isNaN(id) && typeof mapaInstance
-                        .hidePaquete === 'function') {
-                        mapaInstance.hidePaquete(id);
+                    const coincideTexto = codigo.includes(textoBusqueda);
+                    const coincideObra = obraSeleccionada === '' || obra === obraSeleccionada;
+
+                    if (coincideTexto && coincideObra) {
+                        item.style.display = ''; // Mostrar (usa el display por defecto o del CSS)
+                    } else {
+                        item.style.display = 'none'; // Ocultar
                     }
                 });
+            }
 
-                // =========================================
-                // GESTIÓN DE CLIC/HOVER EN LOS PAQUETES
-                // =========================================
-                document.querySelectorAll('.paquete-item').forEach(item => {
+            // Event listeners para filtrado
+            if (searchInput) searchInput.addEventListener('input', filtrarPaquetes);
+            if (filterObra) filterObra.addEventListener('change', filtrarPaquetes);
 
-                    // CLIC: alterna el paquete como activo/inactivo
-                    item.addEventListener('click', function() {
-                        const id = parseInt(this.dataset
-                            .paqueteId);
-                        if (Number.isNaN(id)) return;
 
-                        // ¿Este paquete ya estaba seleccionado en el menú?
-                        const isSelected = this.classList
-                            .contains('border-blue-500');
+            // === 2. Lógica de Interacción con el Mapa ===
 
-                        if (isSelected) {
-                            // Caso 1: Ya estaba seleccionado → ahora se desactiva
+            // Función para obtener la instancia del mapa
+            function getMapaContainer() {
+                // Buscamos el contenedor del mapa por el atributo data-mapa-simple
+                // Como el ID es dinámico, buscamos el elemento que tenga ese atributo
+                return document.querySelector('[data-mapa-simple]');
+            }
 
-                            // 1) Quitar estilos de selección en el menú
-                            this.classList.remove(
-                                'border-blue-500',
-                                'bg-blue-100');
-
-                            this.classList.add(
-                                'border-gray-200',
-                                'bg-gray-50');
-
-                            // 2) Ocultar el paquete del mapa
-                            if (typeof mapaInstance
-                                .hidePaquete === 'function') {
-                                mapaInstance.hidePaquete(id);
-                            }
-
-                            // 3) Si estaba resaltado, limpiamos el highlight
-                            if (typeof mapaInstance
-                                .clearHighlight === 'function'
-                            ) {
-                                mapaInstance.clearHighlight();
-                            }
-                        } else {
-                            // Caso 2: No estaba seleccionado → ahora se activa
-
-                            // 1) Marcar visualmente el paquete como seleccionado en la lista
-                            this.classList.add(
-                                'border-blue-500',
-                                'bg-blue-100');
-
-                            this.classList.remove(
-                                'border-gray-200',
-                                'bg-gray-50');
-
-                            // 2) Mostrar el paquete en el mapa
-                            if (typeof mapaInstance
-                                .showPaquete === 'function') {
-                                mapaInstance.showPaquete(id);
-                            }
-
-                            // 3) Resaltar y centrar la "cámara" en su posición real
-                            const x1 = parseInt(this.dataset
-                                .x1);
-                            const y1 = parseInt(this.dataset
-                                .y1);
-
-                            if (typeof mapaInstance
-                                .setHighlight === 'function') {
-                                mapaInstance.setHighlight(id);
-                            }
-
-                            if (!Number.isNaN(x1) && !Number
-                                .isNaN(y1) &&
-                                typeof mapaInstance
-                                .focusPaquete === 'function') {
-                                mapaInstance.focusPaquete(x1,
-                                    y1);
-                            }
-                        }
-                    });
-
-                    // HOVER: sólo cambiamos el highlight si el paquete está activo en el mapa
-                    item.addEventListener('mouseenter', function() {
-                        const id = parseInt(this.dataset
-                            .paqueteId);
-                        if (Number.isNaN(id)) return;
-
-                        // Si el paquete está seleccionado en el menú, reforzamos su highlight al pasar el ratón
-                        if (this.classList.contains(
-                                'border-blue-500') &&
-                            typeof mapaInstance.setHighlight ===
-                            'function') {
-
-                            mapaInstance.setHighlight(id);
-                        }
-                    });
-
-                    item.addEventListener('mouseleave', function() {
-                        // Si NO está seleccionado de forma permanente, limpiamos el highlight
-                        if (!this.classList.contains(
-                                'border-blue-500') &&
-                            typeof mapaInstance
-                            .clearHighlight === 'function') {
-
-                            mapaInstance.clearHighlight();
-                        }
-                    });
-                });
-
-                // =====================
-                // FILTRO DE OBRAS
-                // =====================
-                const filterObra = document.getElementById('filter-obra');
-                if (filterObra) {
-                    filterObra.addEventListener('change', (e) => {
-                        const obraId = e.target.value;
-                        const url = new URL(window.location.href);
-                        if (obraId) {
-                            url.searchParams.set('obra', obraId);
-                        } else {
-                            url.searchParams.delete('obra');
-                        }
-                        window.location.href = url.toString();
-                    });
-                }
-
-                // =====================
-                // BUSCADOR DE PAQUETES
-                // =====================
-                const searchInput = document.getElementById('search-paquetes');
-
-                if (searchInput) {
-                    searchInput.addEventListener('input', (e) => {
-                        const query = e.target.value.toLowerCase();
-
-                        document.querySelectorAll('.paquete-item')
-                            .forEach(item => {
-                                const text = item.textContent
-                                    .toLowerCase();
-                                // Mostramos/ocultamos el item de la lista según coincida con la búsqueda
-                                item.style.display = text.includes(
-                                    query) ? 'block' : 'none';
-                            });
-                    });
-                }
-
-                // =====================
-                // FILTRO DE OBRAS PAQUETES (JS - sin recargar página)
-                // =====================
-                const filterObraPaquetes = document.getElementById(
-                    'filter-obra-paquetes');
-
-                if (filterObraPaquetes) {
-                    // Poblar el select con obras únicas de los paquetes
-                    const paqueteItems = document.querySelectorAll(
-                        '.paquete-item');
-                    const obrasUnicas = new Set();
-
-                    paqueteItems.forEach(item => {
-                        const obra = item.dataset.obra;
-                        if (obra && obra !== '-') {
-                            obrasUnicas.add(obra);
-                        }
-                    });
-
-                    // Ordenar obras alfabéticamente y agregar opciones al select
-                    Array.from(obrasUnicas).sort().forEach(obra => {
-                        const option = document.createElement('option');
-                        option.value = obra;
-                        option.textContent = obra;
-                        filterObraPaquetes.appendChild(option);
-                    });
-
-                    // Listener para filtrar paquetes por obra
-                    filterObraPaquetes.addEventListener('change', (e) => {
-                        const obraSeleccionada = e.target.value;
-
-                        paqueteItems.forEach(item => {
-                            const obraItem = item.dataset.obra;
-
-                            if (obraSeleccionada === '') {
-                                // Mostrar todos
-                                item.style.display = 'block';
-                            } else {
-                                // Mostrar solo los que coinciden
-                                item.style.display = (
-                                        obraItem ===
-                                        obraSeleccionada) ?
-                                    'block' : 'none';
-                            }
-                        });
-                    });
-                }
-
-                // =====================
-                // CONTEXT MENU Y MODAL DE ELEMENTOS
-                // =====================
-                const contextMenu = document.getElementById(
-                    'context-menu-paquete');
-                const modal = document.getElementById(
-                    'modal-elementos-paquete');
-                const modalContenido = document.getElementById(
-                    'modal-elementos-contenido');
-                const modalCodigo = document.getElementById(
-                    'modal-paquete-codigo');
-                const btnCerrarModal = document.getElementById(
-                    'cerrar-modal-elementos');
-                const btnVerElementos = document.getElementById(
-                    'context-menu-ver-elementos');
-                let paqueteIdActual = null;
-
-                console.log('Context menu element:', contextMenu);
-                console.log('Paquetes encontrados:', document.querySelectorAll(
-                    '.paquete-item').length);
-
-                // Agregar context menu a los paquetes de la lista
-                document.querySelectorAll('.paquete-item').forEach(item => {
-                    item.addEventListener('contextmenu', (e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-
-                        paqueteIdActual = item.dataset
-                            .paqueteId;
-                        console.log(
-                            'Context menu activado para paquete:',
-                            paqueteIdActual);
-
-                        // Posicionar context menu (usar clientX/clientY en lugar de pageX/pageY)
-                        contextMenu.style.left = e.clientX +
-                            'px';
-                        contextMenu.style.top = e.clientY +
-                            'px';
-                        contextMenu.classList.remove('hidden');
-                    });
-                });
-
-                // Ocultar context menu al hacer click fuera
-                document.addEventListener('click', (e) => {
-                    if (!contextMenu.contains(e.target)) {
-                        contextMenu.classList.add('hidden');
-                    }
-                });
-
-                // Botón "Ver elementos" del context menu
-                btnVerElementos.addEventListener('click', () => {
-                    contextMenu.classList.add('hidden');
-                    if (paqueteIdActual) {
-                        abrirModalElementos(paqueteIdActual);
-                    }
-                });
-
-                // Abrir modal y cargar etiquetas
-                async function abrirModalElementos(paqueteId) {
-                    modal.classList.remove('hidden');
-                    modalContenido.innerHTML =
-                        '<div class="text-center text-gray-500"><div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div><p class="mt-2">Cargando etiquetas...</p></div>';
-
-                    try {
-                        const response = await fetch(
-                            `/paquetes/${paqueteId}/elementos`);
-                        const data = await response.json();
-
-                        if (data.success) {
-                            modalCodigo.textContent = data.paquete.codigo;
-                            renderizarEtiquetas(data.etiquetas);
-                        } else {
-                            modalContenido.innerHTML =
-                                '<div class="text-center text-red-500"><p>Error al cargar etiquetas: ' +
-                                (data.message || 'Error desconocido') +
-                                '</p></div>';
-                        }
-                    } catch (error) {
-                        console.error('Error al cargar etiquetas:', error);
-                        modalContenido.innerHTML =
-                            '<div class="text-center text-red-500"><p>Error al cargar etiquetas del paquete</p></div>';
-                    }
-                }
-
-                // Renderizar etiquetas con sus elementos
-                function renderizarEtiquetas(etiquetas) {
-                    if (!etiquetas || etiquetas.length === 0) {
-                        modalContenido.innerHTML =
-                            '<div class="text-center text-gray-500"><p>Este paquete no tiene etiquetas</p></div>';
+            paquetesItems.forEach(item => {
+                item.addEventListener('click', function() {
+                    const mapaContainer = getMapaContainer();
+                    if (!mapaContainer || !mapaContainer.mostrarPaquete) {
+                        console.warn('El componente de mapa no está listo o no expone las funciones necesarias.');
                         return;
                     }
 
-                    let html = '<div class="space-y-6">';
+                    // Obtener código del paquete (limpiando el emoji y espacios)
+                    const codigoSpan = item.querySelector('span.font-bold');
+                    const codigo = codigoSpan.textContent.replace('📦', '').trim();
 
-                    console.log("ETIQUETAS====", etiquetas)
-                    etiquetas.forEach((etiqueta, etqIndex) => {
-                        html += `
-                            <div class="border border-gray-200 rounded-lg overflow-hidden">
-                                <div class="bg-gradient-to-r from-blue-50 to-blue-100 px-4 py-3 border-b border-gray-200">
-                                    <div class="flex justify-between items-center">
-                                        <h3 class="font-bold text-gray-800">
-                                            🏷️ ${etiqueta.etiqueta_sub_id || etiqueta.nombre}
-                                        </h3>
-                                        <div class="text-sm text-gray-600">
-                                            <span class="font-medium">${etiqueta.cantidad_elementos}</span> elementos
-                                            ${etiqueta.peso ? `· <span class="font-medium">${Number(etiqueta.peso).toFixed(2)} kg</span>` : ''}
-                                            ${etiqueta.marca ? `· Marca: <span class="font-medium">${etiqueta.marca}</span>` : ''}
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="p-4 bg-white">
-                                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3" id="grid-etiqueta-${etiqueta.id}">
-                        `;
+                    // Si es el mismo paquete, no hacemos nada (o podríamos deseleccionar)
+                    if (paqueteSeleccionadoCodigo === codigo) {
+                        return;
+                    }
 
-                        etiqueta.elementos.forEach((elemento) => {
-                            html += `
-                                <div class="border border-gray-200 rounded p-2 bg-gray-50">
-                                    <p class="text-xs font-semibold text-gray-600 mb-1 truncate" title="${elemento.codigo}">${elemento.codigo}</p>
-                                    <div id="svg-elemento-${elemento.id}" class="w-full bg-white rounded" style="height: 120px; border: 1px solid #e5e7eb;"></div>
-                                </div>
-                            `;
-                        });
-
-                        html += `
-                                    </div>
-                                </div>
-                            </div>
-                        `;
+                    // Deseleccionar anterior visualmente
+                    paquetesItems.forEach(p => {
+                        p.classList.remove('bg-blue-100', 'border-blue-500', 'ring-2', 'ring-blue-200');
+                        p.classList.add('bg-gray-50', 'border-gray-200');
                     });
 
-                    html += '</div>';
-                    modalContenido.innerHTML = html;
+                    // Ocultar anterior en mapa
+                    if (paqueteSeleccionadoCodigo) {
+                        mapaContainer.ocultarPaquete(paqueteSeleccionadoCodigo);
+                    }
 
-                    // Dibujar las figuras de los elementos
-                    let delayIndex = 0;
-                    etiquetas.forEach((etiqueta) => {
-                        etiqueta.elementos.forEach((elemento) => {
-                            setTimeout(() => {
-                                if (typeof window.dibujarFiguraElemento === 'function') {
-                                    window.dibujarFiguraElemento(
-                                        'svg-elemento-' + elemento.id,
-                                        elemento.dimensiones,
-                                        elemento.peso_kg,
-                                        elemento.diametro,
-                                        elemento.barras
-                                    );
-                                }
-                            }, 30 * delayIndex);
-                            delayIndex++;
-                        });
-                    });
-                }
+                    // Seleccionar nuevo visualmente
+                    item.classList.remove('bg-gray-50', 'border-gray-200');
+                    item.classList.add('bg-blue-100', 'border-blue-500', 'ring-2', 'ring-blue-200');
 
-                // Cerrar modal
-                btnCerrarModal.addEventListener('click', () => {
-                    modal.classList.add('hidden');
+                    // Mostrar nuevo en mapa
+                    mapaContainer.mostrarPaquete(codigo);
+                    paqueteSeleccionadoCodigo = codigo;
                 });
 
-                // Cerrar modal al hacer click fuera
-                modal.addEventListener('click', (e) => {
-                    if (e.target === modal) {
-                        modal.classList.add('hidden');
-                    }
+                // Click derecho: mostrar detalle de etiquetas/elementos
+                item.addEventListener('contextmenu', function(ev) {
+                    ev.preventDefault();
+                    const paqueteId = item.dataset.paqueteId;
+                    const codigo = item.dataset.codigo || item.querySelector('span.font-bold')?.textContent?.replace('📦', '').trim();
+                    if (!paqueteId) return;
+                    mostrarDetallePaquete(paqueteId, codigo, { x: ev.clientX, y: ev.clientY });
                 });
             });
-        </script>
-    @endpush
 
-    <style>
-        
-        /* Botones de Zoom - Fixed al contenedor del mapa */
-        #escenario-cuadricula {
-            position: relative;
-        }
+            // Delegar click derecho en los paquetes del mapa (divs generados dentro del componente)
+            document.addEventListener('contextmenu', function(ev) {
+                const paqueteMapa = ev.target.closest('.loc-paquete');
+                if (!paqueteMapa) return;
+                ev.preventDefault();
+                const paqueteId = paqueteMapa.dataset.paqueteId;
+                const codigo = paqueteMapa.dataset.codigo;
+                if (!paqueteId) return;
+                mostrarDetallePaquete(paqueteId, codigo, { x: ev.clientX, y: ev.clientY });
+            });
 
-        .zoom-controls {
-            position: fixed;
-            display: flex;
-            flex-direction: row;
-            gap: 0;
-            z-index: 50;
-        }
-
-        .zoom-btn {
-            width: 18px;
-            height: 18px;
-            border: 1px solid rgba(156, 163, 175, 0.4);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            background: rgba(75, 85, 99, 0.9);
-            cursor: pointer;
-            padding: 0;
-            transition: all 0.2s ease;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
-        }
-
-        .zoom-btn:hover {
-            background: rgba(107, 114, 128, 0.95);
-            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
-        }
-
-        .zoom-btn:active {
-            transform: scale(0.95);
-        }
-
-        .zoom-btn svg {
-            width: 11px;
-            height: 11px;
-            stroke: #fff;
-        }
-
-        /* Botón izquierdo (zoom in) - Redondeado a la izquierda */
-        .zoom-btn-in {
-            border-radius: 4px 0 0 4px;
-            border-right: none;
-        }
-
-        /* Botón derecho (zoom out) - Redondeado a la derecha */
-        .zoom-btn-out {
-            border-radius: 0 4px 4px 0;
-        }
-
-        /* Responsive para móvil */
-        @media (max-width: 768px) {
-            .zoom-controls {
-                top: 0.5rem;
-                left: 0.5rem;
+            // Panel de detalle --------------------------------------------------
+            function cerrarDetalle() {
+                detallePanel.classList.add('hidden');
+                detalleContenido.innerHTML = '<p class="text-gray-500 text-sm">Haz click derecho sobre un paquete para ver sus etiquetas y elementos.</p>';
             }
 
-            .zoom-btn {
-                width: 22px;
-                height: 22px;
+            function posicionarPanel(posicion) {
+                if (!posicion) return;
+                const padding = 12;
+                const panelWidth = detallePanel.offsetWidth || 360;
+                const panelHeight = detallePanel.offsetHeight || 200;
+                let left = posicion.x + 10;
+                let top = posicion.y + 10;
+
+                if (left + panelWidth + padding > window.innerWidth) {
+                    left = window.innerWidth - panelWidth - padding;
+                }
+                if (top + panelHeight + padding > window.innerHeight) {
+                    top = window.innerHeight - panelHeight - padding;
+                }
+
+                detallePanel.style.left = `${Math.max(padding, left)}px`;
+                detallePanel.style.top = `${Math.max(padding, top)}px`;
+                detallePanel.style.right = 'auto';
             }
 
-            .zoom-btn svg {
-                width: 13px;
-                height: 13px;
+            cerrarDetalleBtn?.addEventListener('click', cerrarDetalle);
+            document.addEventListener('click', (ev) => {
+                if (detallePanel.classList.contains('hidden')) return;
+                if (!detallePanel.contains(ev.target)) {
+                    cerrarDetalle();
+                }
+            });
+
+            async function mostrarDetallePaquete(paqueteId, codigo, posicion = null) {
+                detallePanel.classList.remove('hidden');
+                detalleCodigo.textContent = codigo ? `Paquete ${codigo}` : `Paquete #${paqueteId}`;
+                detalleContenido.innerHTML = '<div class="flex items-center gap-2 text-blue-600 text-sm"><span class="animate-spin rounded-full h-4 w-4 border-2 border-current border-t-transparent"></span> Cargando etiquetas...</div>';
+                ultimoPosDetalle = posicion || ultimoPosDetalle;
+                posicionarPanel(ultimoPosDetalle);
+
+                try {
+                    let data = cacheDetalles.get(paqueteId);
+                    if (!data) {
+                        const resp = await fetch(`/paquetes/${paqueteId}/elementos`);
+                        if (!resp.ok) throw new Error('No se pudieron cargar las etiquetas del paquete.');
+                        data = await resp.json();
+                        if (!data.success) throw new Error(data.message || 'Error al obtener datos.');
+                        cacheDetalles.set(paqueteId, data);
+                    }
+                    renderDetalle(data);
+                } catch (error) {
+                    console.error('Error cargando detalle del paquete', error);
+                    detalleContenido.innerHTML = `<p class="text-red-600 text-sm">${error.message || 'Error inesperado al cargar el detalle.'}</p>`;
+                }
             }
-        }
-    </style>
 
+            function renderDetalle(data) {
+                detalleContenido.innerHTML = '';
+                const etiquetas = data.etiquetas || [];
+                if (!etiquetas.length) {
+                    detalleContenido.innerHTML = '<p class="text-gray-600 text-sm">Este paquete no tiene etiquetas asociadas.</p>';
+                    return;
+                }
 
+                etiquetas.forEach((etiqueta) => {
+                    const etiquetaCard = document.createElement('div');
+                    etiquetaCard.className = 'border border-gray-200 rounded-lg p-3 bg-gray-50 shadow-sm';
+
+                    const header = document.createElement('div');
+                    header.className = 'flex justify-between items-start mb-2';
+                    const titulo = document.createElement('div');
+                    const subCodigo = etiqueta.etiqueta_sub_id || etiqueta.codigo || etiqueta.id;
+                    titulo.innerHTML = `<p class="text-xs text-gray-500">Subetiqueta</p><p class="font-semibold text-gray-800">🏷️ ${subCodigo}</p>`;
+                    const badge = document.createElement('span');
+                    badge.className = 'text-[11px] px-2 py-1 rounded-full bg-blue-100 text-blue-700 font-semibold';
+                    badge.textContent = `${etiqueta.cantidad_elementos} elementos`;
+                    header.appendChild(titulo);
+                    header.appendChild(badge);
+                    etiquetaCard.appendChild(header);
+
+                    const elementosList = document.createElement('div');
+                    elementosList.className = 'space-y-1';
+
+                    if (!etiqueta.elementos || !etiqueta.elementos.length) {
+                        const sinElementos = document.createElement('p');
+                        sinElementos.className = 'text-xs text-gray-500';
+                        sinElementos.textContent = 'Sin elementos en esta etiqueta.';
+                        elementosList.appendChild(sinElementos);
+                    } else {
+                        etiqueta.elementos.forEach((elem) => {
+                            const item = document.createElement('div');
+                            item.className = 'text-xs text-gray-700 border border-gray-200 rounded px-2 py-2 bg-white space-y-1';
+
+                            const header = document.createElement('div');
+                            header.className = 'flex items-center justify-between';
+                            const codigo = document.createElement('span');
+                            codigo.className = 'font-semibold';
+                            codigo.textContent = elem.codigo;
+                            const peso = document.createElement('span');
+                            peso.className = 'text-gray-500';
+                            peso.textContent = `${elem.peso_kg ?? '-'}`;
+                            header.appendChild(codigo);
+                            header.appendChild(peso);
+                            item.appendChild(header);
+
+                            const svg = renderDimensionesSvg(elem.dimensiones);
+                            if (svg) {
+                                item.appendChild(svg);
+                            } else {
+                                const dimensionesText = document.createElement('span');
+                                dimensionesText.className = 'text-gray-600 block';
+                                dimensionesText.textContent = elem.dimensiones || 'Dimensiones no disponibles';
+                                item.appendChild(dimensionesText);
+                            }
+
+                            elementosList.appendChild(item);
+                        });
+                    }
+
+                    etiquetaCard.appendChild(elementosList);
+                    detalleContenido.appendChild(etiquetaCard);
+                });
+            }
+        });
+    </script>
 </x-app-layout>

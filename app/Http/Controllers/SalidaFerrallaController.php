@@ -10,6 +10,8 @@ use App\Exports\SalidasExport;
 use App\Models\Paquete;
 use App\Models\Etiqueta;
 use App\Models\Elemento;
+use App\Models\Obra;
+use App\Models\Localizacion;
 use App\Models\EmpresaTransporte;
 use App\Models\Camion;
 use App\Models\Movimiento;
@@ -227,6 +229,318 @@ class SalidaFerrallaController extends Controller
         }
     }
 
+    /**
+     * Obtiene los paquetes de una salida con sus localizaciones y etiquetas
+     * para mostrar en el mapa durante la ejecución de salida
+     */
+    public function paquetesPorSalida($salidaId)
+    {
+        try {
+            $salida = Salida::with([
+                'paquetes.localizacionPaquete',
+                'paquetes.etiquetas',
+                'paquetes.planilla.obra',
+                'paquetes.planilla.cliente',
+                'paquetes.nave'
+            ])->findOrFail($salidaId);
+
+            // Agrupar paquetes por nave y obtener información de cada nave
+            $paquetesPorNave = [];
+
+            foreach ($salida->paquetes as $paquete) {
+                $naveId = $paquete->nave_id;
+                if ($naveId) {
+                    if (!isset($paquetesPorNave[$naveId])) {
+                        $nave = $paquete->nave;
+                        $paquetesPorNave[$naveId] = [
+                            'nave_id' => $naveId,
+                            'nave_nombre' => $nave ? ($nave->obra ?? "Nave {$nave->id}") : "Nave {$naveId}",
+                            'paquetes' => []
+                        ];
+                    }
+                }
+            }
+
+            // Preparar paquetes con sus datos
+            $paquetes = $salida->paquetes->map(function ($paquete) {
+                $loc = $paquete->localizacionPaquete;
+
+                return [
+                    'id' => $paquete->id,
+                    'codigo' => $paquete->codigo,
+                    'peso' => $paquete->peso,
+                    'estado' => $paquete->estado,
+                    'nave_id' => $paquete->nave_id,
+                    'obra' => $paquete->planilla?->obra?->obra ?? 'N/A',
+                    'cliente' => $paquete->planilla?->cliente?->empresa ?? 'N/A',
+                    'tipo' => $paquete->getTipoContenido(),
+                    'num_etiquetas' => $paquete->etiquetas->count(),
+                    'etiquetas' => $paquete->etiquetas->map(function ($etiqueta) {
+                        return [
+                            'id' => $etiqueta->id,
+                            'codigo' => $etiqueta->codigo,
+                            'numero_etiqueta' => $etiqueta->numero_etiqueta,
+                            'etiqueta_sub_id' => $etiqueta->etiqueta_sub_id,
+                        ];
+                    }),
+                    'localizacion' => $loc ? [
+                        'x1' => $loc->x1,
+                        'y1' => $loc->y1,
+                        'x2' => $loc->x2,
+                        'y2' => $loc->y2,
+                    ] : null
+                ];
+            });
+
+            return response()->json([
+                'success' => true,
+                'salida' => [
+                    'id' => $salida->id,
+                    'salidaId' => $salida->id,
+                    'codigo_salida' => $salida->codigo_salida,
+                    'estado' => $salida->estado,
+                ],
+                'paquetesPorNave' => array_values($paquetesPorNave),
+                'paquetes' => $paquetes
+            ]);
+        } catch (\Exception $e) {
+            Log::error('❌ Error al obtener paquetes de salida', [
+                'salida_id' => $salidaId,
+                'error' => $e->getMessage(),
+                'line' => $e->getLine()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al cargar los paquetes: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Obtiene el HTML del mapa renderizado para una nave específica en el contexto de una salida
+     */
+    public function obtenerMapaNave($salidaId, $naveId)
+    {
+        try {
+            $salida = Salida::with([
+                'paquetes.localizacionPaquete',
+                'paquetes.nave'
+            ])->findOrFail($salidaId);
+
+            $nave = Obra::find($naveId);
+            if (!$nave) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Nave no encontrada'
+                ], 404);
+            }
+
+            // Obtener datos del mapa similar a MaquinaController::obtenerDatosMapaParaNave
+            $mapaData = $this->obtenerDatosMapaParaNave($naveId, $salidaId);
+
+            // Renderizar el componente de mapa
+            $html = view('components.mapa-salida-renderizado', [
+                'mapaData' => $mapaData,
+                'naveId' => $naveId
+            ])->render();
+
+            return response()->json([
+                'success' => true,
+                'html' => $html,
+                'nave' => [
+                    'id' => $nave->id,
+                    'nombre' => $nave->obra,
+                ]
+            ]);
+        } catch (\Exception $e) {
+            Log::error('❌ Error al obtener mapa de nave', [
+                'salida_id' => $salidaId,
+                'nave_id' => $naveId,
+                'error' => $e->getMessage()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al cargar el mapa: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Obtiene los datos necesarios para renderizar el mapa de una nave
+     */
+    private function obtenerDatosMapaParaNave(?int $naveId, ?int $salidaId = null): array
+    {
+        if (!$naveId) {
+            return [];
+        }
+
+        $obra = Obra::find($naveId);
+        if (!$obra) {
+            return [];
+        }
+
+        $anchoM = max(1, (int) ($obra->ancho_m ?? 22));
+        $largoM = max(1, (int) ($obra->largo_m ?? 115));
+        $columnasReales = $anchoM * 2;
+        $filasReales = $largoM * 2;
+
+        $ctx = [
+            'naveId'         => $naveId,
+            'columnasReales' => $columnasReales,
+            'filasReales'    => $filasReales,
+            'estaGirado'     => false,
+            'columnasVista'  => $columnasReales,
+            'filasVista'     => $filasReales,
+        ];
+
+        $localizaciones = Localizacion::with('maquina:id,nombre')
+            ->where('nave_id', $naveId)
+            ->get();
+
+        $localizacionesMaquinas = $localizaciones
+            ->where('tipo', 'maquina')
+            ->whereNotNull('maquina_id')
+            ->filter(fn($loc) => $loc->maquina)
+            ->map(function ($loc) {
+                return [
+                    'id'         => (int) $loc->id,
+                    'x1'         => (int) $loc->x1,
+                    'y1'         => (int) $loc->y1,
+                    'x2'         => (int) $loc->x2,
+                    'y2'         => (int) $loc->y2,
+                    'maquina_id' => (int) $loc->maquina_id,
+                    'nombre'     => (string) ($loc->nombre ?: $loc->maquina->nombre),
+                ];
+            })->values()->toArray();
+
+        $localizacionesZonas = $localizaciones
+            ->where('tipo', '!=', 'maquina')
+            ->map(function ($loc) {
+                return [
+                    'id'    => (int) $loc->id,
+                    'x1'    => (int) $loc->x1,
+                    'y1'    => (int) $loc->y1,
+                    'x2'    => (int) $loc->x2,
+                    'y2'    => (int) $loc->y2,
+                    'tipo'  => $loc->tipo ?? 'transitable',
+                    'nombre'=> (string) $loc->nombre,
+                ];
+            })->values()->toArray();
+
+        // Si hay salidaId, filtrar solo paquetes de esa salida
+        $paquetesQuery = Paquete::with('localizacionPaquete')
+            ->where('nave_id', $naveId)
+            ->whereHas('localizacionPaquete');
+
+        if ($salidaId) {
+            $paquetesQuery->whereHas('salidas', function ($q) use ($salidaId) {
+                $q->where('salidas.id', $salidaId);
+            });
+        }
+
+        $paquetesConLocalizacion = $paquetesQuery->get()
+            ->map(function ($paquete) {
+                $loc = $paquete->localizacionPaquete;
+                return [
+                    'id'             => (int) $paquete->id,
+                    'codigo'         => (string) $paquete->codigo,
+                    'x1'             => (int) $loc->x1,
+                    'y1'             => (int) $loc->y1,
+                    'x2'             => (int) $loc->x2,
+                    'y2'             => (int) $loc->y2,
+                    'tipo_contenido' => $paquete->getTipoContenido(),
+                    'orientacion'    => $paquete->orientacion ?? 'I',
+                ];
+            })->values()->toArray();
+
+        $dimensiones = [
+            'ancho' => $anchoM,
+            'largo' => $largoM,
+            'obra'  => $obra->obra,
+        ];
+
+        return [
+            'ctx'                      => $ctx,
+            'localizacionesZonas'     => $localizacionesZonas,
+            'localizacionesMaquinas'   => $localizacionesMaquinas,
+            'paquetesConLocalizacion'  => $paquetesConLocalizacion,
+            'dimensiones'              => $dimensiones,
+            'obraActualId'             => $naveId,
+            'mapaId'                   => 'mapa-salida-nave-' . $naveId,
+        ];
+    }
+
+    /**
+     * Valida una subetiqueta escaneada para una salida
+     */
+    public function validarSubetiquetaParaSalida(Request $request)
+    {
+        try {
+            $request->validate([
+                'codigo' => 'required|string',
+                'salida_id' => 'required|exists:salidas,id'
+            ]);
+
+            $codigo = trim($request->codigo);
+            $salidaId = $request->salida_id;
+
+            // Buscar la etiqueta por código
+            $etiqueta = Etiqueta::where('codigo', $codigo)->first();
+
+            if (!$etiqueta) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Código no encontrado',
+                    'error' => true
+                ]);
+            }
+
+            // Verificar que la etiqueta pertenece a un paquete de esta salida
+            $paquete = Paquete::whereHas('salidas', function ($q) use ($salidaId) {
+                $q->where('salidas.id', $salidaId);
+            })
+            ->where('id', $etiqueta->paquete_id)
+            ->with(['planilla.obra', 'etiquetas'])
+            ->first();
+
+            if (!$paquete) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Esta etiqueta no pertenece a ningún paquete de la salida',
+                    'error' => true
+                ]);
+            }
+
+            return response()->json([
+                'success' => true,
+                'etiqueta' => [
+                    'id' => $etiqueta->id,
+                    'codigo' => $etiqueta->codigo,
+                    'numero_etiqueta' => $etiqueta->numero_etiqueta,
+                ],
+                'paquete' => [
+                    'id' => $paquete->id,
+                    'codigo' => $paquete->codigo,
+                    'peso' => $paquete->peso,
+                    'obra' => $paquete->planilla?->obra?->obra ?? 'N/A',
+                ]
+            ]);
+        } catch (\Exception $e) {
+            Log::error('❌ Error al validar subetiqueta', [
+                'error' => $e->getMessage(),
+                'line' => $e->getLine()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al validar la etiqueta',
+                'error' => true
+            ], 500);
+        }
+    }
+
     public function completarDesdeMovimiento($movimientoId)
     {
         try {
@@ -258,7 +572,15 @@ class SalidaFerrallaController extends Controller
             }
 
 
-            $this->generarYEnviarTrazabilidad($salida);
+            try {
+                $this->generarYEnviarTrazabilidad($salida);
+            } catch (\Throwable $e) {
+                Log::warning('⚠️ Trazabilidad no enviada, se continúa con la salida', [
+                    'salida_id' => $salida->id,
+                    'codigo_salida' => $salida->codigo_salida,
+                    'error' => $e->getMessage(),
+                ]);
+            }
             $salida->estado = 'completada';
             $salida->save();
             $movimiento->update([
@@ -268,7 +590,7 @@ class SalidaFerrallaController extends Controller
             ]);
             return response()->json([
                 'success' => true,
-                'message' => 'Movimiento y salida completados. Email enviado.'
+                'message' => 'Movimiento y salida completados.'
             ]);
         } catch (\Exception $e) {
             Log::error('❌ Error en completarDesdeMovimiento(): ' . $e->getMessage(), [

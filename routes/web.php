@@ -172,6 +172,7 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
 
     Route::post('/localizaciones-paquetes/{codigo}', [PaqueteController::class, 'update'])->name('localizaciones_paquetes.update');
     Route::post('/localizaciones/store-paquete', [LocalizacionController::class, 'storePaquete'])->name('localizaciones.storePaquete');
+    Route::get('/api/mapa-nave/{naveId}', [LocalizacionController::class, 'obtenerDatosMapaNave'])->name('api.mapaNave');
     // === USUARIOS Y VACACIONES ===
 
     Route::resource('users', ProfileController::class)->except(['create', 'store']);
@@ -356,6 +357,9 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
     Route::post('/planificacion/guardar-paquetes-salida', [SalidaFerrallaController::class, 'guardarPaquetesSalida'])->name('planificacion.guardarPaquetesSalida');
     Route::post('/salidas/crear-salidas-vacias-masivo', [SalidaFerrallaController::class, 'crearSalidasVaciasMasivo'])->name('salidas.crearSalidasVaciasMasivo');
     Route::put('/salidas/completar-desde-movimiento/{movimientoId}', [SalidaFerrallaController::class, 'completarDesdeMovimiento']);
+    Route::get('/salidas/{salidaId}/paquetes', [SalidaFerrallaController::class, 'paquetesPorSalida'])->name('salidas.paquetes');
+    Route::get('/salidas/{salidaId}/mapa/{naveId}', [SalidaFerrallaController::class, 'obtenerMapaNave'])->name('salidas.mapaNave');
+    Route::post('/salidas/validar-subetiqueta', [SalidaFerrallaController::class, 'validarSubetiquetaParaSalida'])->name('salidas.validarSubetiqueta');
     Route::put('/salidas/{salida}/codigo-sage', [SalidaFerrallaController::class, 'actualizarCodigoSage'])->name('salidas.editarCodigoSage');
 
     // === SALIDAS ALMACEN ===

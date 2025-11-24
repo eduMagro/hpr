@@ -335,10 +335,13 @@
                         +el.dataset.x1, +el.dataset.y1,
                         +el.dataset.x2, +el.dataset.y2
                     );
+                    const width = w * celdaPx;
+                    const height = h * celdaPx;
+
                     el.style.left = ((x - 1) * celdaPx) + 'px';
                     el.style.top = ((y - 1) * celdaPx) + 'px';
-                    el.style.width = (w * celdaPx) + 'px';
-                    el.style.height = (h * celdaPx) + 'px';
+                    el.style.width = width + 'px';
+                    el.style.height = height + 'px';
                     el.dataset.currentCeldaPx = celdaPx;
                 });
             }

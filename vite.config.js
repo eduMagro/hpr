@@ -34,7 +34,7 @@ export default defineConfig({
                 'resources/js/salidasJs/salidas-bundle.js',
                 'resources/js/qr/qr-bundle.js',
             ],
-            refresh: false,
+            refresh: true,
         }),
     ],
     build: {
@@ -52,7 +52,7 @@ export default defineConfig({
         host: '0.0.0.0',
         port: 5173,
         hmr: {
-            host: '192.168.0.132',
+            host: '192.168.18.235',
         },
     },
 });
