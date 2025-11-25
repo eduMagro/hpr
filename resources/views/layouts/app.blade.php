@@ -148,7 +148,7 @@
         </div>
     </div>
     <!-- Livewire Scripts -->
-    @livewireScripts(['navigate' => true])
+    @livewireScripts
 
     @stack('scripts')
 

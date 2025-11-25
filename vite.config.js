@@ -24,7 +24,7 @@ export default defineConfig({
                 // Localizaciones
                 "resources/css/localizaciones/styleLocIndex.css",
                 "resources/css/localizaciones/styleLocCreate.css",
-                
+
                 "resources/css/mapaLocalizaciones.css",
 
                 // Feature-specific bundles
@@ -52,7 +52,7 @@ export default defineConfig({
         host: "0.0.0.0",
         port: 5173,
         hmr: {
-            host: "172.23.208.1",
+            host: "172.18.224.1",
         },
     },
 });

@@ -331,13 +331,12 @@
         modal.classList.remove('flex');
     }
 
-    // Mostrar/ocultar campos según tipo
-    document.addEventListener('DOMContentLoaded', function() {
+    // Mostrar/ocultar campos según tipo (protegido si no existen en la vista)
+    const initTipoSelect = () => {
         const tipoSelect = document.getElementById('tipo');
-        const productoSection = document.getElementById(
-            'producto-section');
-        const paqueteSection = document.getElementById(
-            'paquete-section');
+        const productoSection = document.getElementById('producto-section');
+        const paqueteSection = document.getElementById('paquete-section');
+        if (!tipoSelect || !productoSection || !paqueteSection) return;
 
         tipoSelect.addEventListener('change', function() {
             if (this.value === 'producto') {
@@ -348,7 +347,9 @@
                 paqueteSection.classList.remove('hidden');
             }
         });
-    });
+    };
+    document.addEventListener('DOMContentLoaded', initTipoSelect);
+    document.addEventListener('livewire:navigated', initTipoSelect);
 
     // Usar var + fallback a window para evitar redeclaraciones en navegaciones Livewire
     var paqueteEsperadoId = window.paqueteEsperadoId || null;

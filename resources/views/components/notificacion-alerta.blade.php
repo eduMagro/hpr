@@ -72,25 +72,25 @@
                 },
                 credentials: 'same-origin'
             })
-            .then(response => response.json())
+            .then(async response => {
+                if (!response.ok) return null;
+                const contentType = response.headers.get('content-type') || '';
+                if (!contentType.includes('application/json')) return null;
+                return response.json();
+            })
             .then(data => {
-                if (data.cantidad > 0) {
-                    let notificacion = document.getElementById("notificacion-alerta");
-                    let notificacionTexto = document.getElementById("notificacion-alertas-texto");
+                if (!data || !data.cantidad || data.cantidad <= 0) return;
 
-                    let mensaje = data.cantidad === 1 ?
-                        `🔔 Tienes 1 mensaje sin leer` :
-                        `🔔 Tienes ${data.cantidad} mensajes sin leer`;
+                let notificacion = document.getElementById("notificacion-alerta");
+                let notificacionTexto = document.getElementById("notificacion-alertas-texto");
 
-                    notificacion.style.display = "block";
-                    notificacion.classList.add("visible");
-                    notificacionTexto.innerHTML = mensaje;
+                let mensaje = data.cantidad === 1 ?
+                    `🔔 Tienes 1 mensaje sin leer` :
+                    `🔔 Tienes ${data.cantidad} mensajes sin leer`;
 
-                    // if ("{{ auth()->user()->categoria }}" === "gruista") {
-                    //     let sonido = new Audio("/sonidos/alerta1.mp3");
-                    //     sonido.play().catch(error => console.error("Error al reproducir el sonido:", error));
-                    // }
-                }
+                notificacion.style.display = "block";
+                notificacion.classList.add("visible");
+                notificacionTexto.innerHTML = mensaje;
             })
             .catch(error => console.error("Error al obtener alertas:", error));
     });
