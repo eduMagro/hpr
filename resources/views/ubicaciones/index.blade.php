@@ -37,6 +37,50 @@
 <script data-navigate-reload>
     const RUTA_ALERTA = @json(route('alertas.store'));
 
+    const ensureSwal = () => new Promise((resolve) => {
+        if (window.Swal) return resolve(window.Swal);
+        let loader = document.getElementById('swal-inline-loader');
+        if (!loader) {
+            loader = document.createElement('script');
+            loader.id = 'swal-inline-loader';
+            loader.src = 'https://cdn.jsdelivr.net/npm/sweetalert2@11.14.5/dist/sweetalert2.all.min.js';
+            loader.onload = () => resolve(window.Swal || null);
+            loader.onerror = () => resolve(null);
+            document.head.appendChild(loader);
+        } else {
+            loader.addEventListener('load', () => resolve(window.Swal || null), {
+                once: true
+            });
+            loader.addEventListener('error', () => resolve(null), {
+                once: true
+            });
+        }
+    });
+
+    const swalToast = {
+        fire: (options = {}) => ensureSwal().then((swal) => {
+            if (!swal) return null;
+            return swal.mixin({
+                toast: true,
+                position: 'top-end',
+                showConfirmButton: false,
+                timer: 3000,
+                timerProgressBar: true
+            }).fire(options);
+        })
+    };
+
+    const swalDialog = (options = {}) => ensureSwal().then((swal) => {
+        if (!swal) return Promise.resolve({
+            isConfirmed: false
+        });
+        return swal.fire({
+            position: 'center',
+            timerProgressBar: true,
+            ...options
+        });
+    });
+
     window.AUDIO_INV_URLS = {
         ok: "{{ asset('sonidos/scan-ok.wav') }}",
         error: "{{ asset('sonidos/scan-error.mp3') }}",
@@ -320,7 +364,7 @@
             },
 
             resetear() {
-                Swal.fire({
+                swalDialog({
                     icon: 'warning',
                     title: '¿Limpiar esta ubicación?',
                     text: 'Se perderán los escaneos guardados.',
@@ -386,12 +430,10 @@
                             window.productosAsignados[codigo] = this.nombreUbicacion;
                             this.asignados[codigo] = this.nombreUbicacion;
 
-                            Swal.fire({
+                            swalToast.fire({
                                 icon: 'success',
                                 title: 'Reasignado',
-                                text: `El producto ${codigo} fue reasignado a esta ubicación.`,
-                                timer: 2000,
-                                showConfirmButton: false
+                                text: `El producto ${codigo} fue reasignado a esta ubicación.`
                             });
 
                             // 🚀 Emitimos evento global para que todas las ubicaciones se actualicen
@@ -406,7 +448,7 @@
                         }
                     })
                     .catch(err => {
-                        Swal.fire({
+                        swalToast.fire({
                             icon: 'error',
                             title: 'Error',
                             text: err.message
@@ -429,7 +471,7 @@
             <p><strong>Inesperados:</strong> ${inesperados.length ? inesperados.join(', ') : '—'}</p>
         `;
 
-        Swal.fire({
+        swalDialog({
             icon: 'warning',
             title: '¿Quieres reportar los errores al programador?',
             html: erroresHtml,
@@ -462,16 +504,14 @@ Inesperados: ${inesperados.join(', ') || '—'}
                             throw new Error(data.message ||
                                 'Error desconocido al enviar la alerta.');
                         }
-                        Swal.fire({
+                        swalToast.fire({
                             icon: 'success',
                             title: 'Reporte enviado',
-                            text: 'Gracias por notificar. El equipo ha sido avisado.',
-                            timer: 3000,
-                            showConfirmButton: false
+                            text: 'Gracias por notificar. El equipo ha sido avisado.'
                         });
                     })
                     .catch(error => {
-                        Swal.fire({
+                        swalToast.fire({
                             icon: 'error',
                             title: 'Error al enviar',
                             text: error.message
@@ -547,7 +587,7 @@ Inesperados: ${inesperados.join(', ') || '—'}
         borrarTodosEscaneos() {
             const ids = Array.isArray(window.ubicacionIdsInventario) ? window.ubicacionIdsInventario : [];
             if (!ids.length) {
-                Swal.fire({
+                swalToast.fire({
                     icon: 'info',
                     title: 'Sin ubicaciones',
                     text: 'No hay ubicaciones cargadas para limpiar.'
@@ -555,7 +595,7 @@ Inesperados: ${inesperados.join(', ') || '—'}
                 return;
             }
     
-            Swal.fire({
+            swalDialog({
                 icon: 'warning',
                 title: '¿Borrar todos los escaneos?',
                 text: 'Se limpiarán los escaneos y sospechosos de todas las ubicaciones.',
@@ -573,12 +613,10 @@ Inesperados: ${inesperados.join(', ') || '—'}
     
                 window.dispatchEvent(new CustomEvent('inventario-actualizado', {}));
     
-                Swal.fire({
+                swalToast.fire({
                     icon: 'success',
                     title: 'Escaneos borrados',
                     text: 'Todos los registros de inventario fueron limpiados.',
-                    timer: 2000,
-                    showConfirmButton: false
                 });
             });
         },
@@ -671,9 +709,9 @@ Inesperados: ${inesperados.join(', ') || '—'}
 
         {{-- Sectores (scroll en desktop para evitar scroll global) --}}
         <div class="space-y-4 lg:overflow-y-auto lg:pr-1"
-            :class="$store.inv && $store.inv.modoInventario
-                ? 'lg:max-h-[calc(100vh-450px)]'
-                : 'lg:max-h-[calc(100vh-385px)]'">
+            :class="$store.inv && $store.inv.modoInventario ?
+                'lg:max-h-[calc(100vh-450px)]' :
+                'lg:max-h-[calc(100vh-385px)]'">
             @foreach ($ubicacionesPorSector as $sector => $ubicaciones)
                 <div x-init="if (openSectors['{{ $sector }}'] === undefined) openSectors['{{ $sector }}'] = false"
                     class="border border-gray-200 dark:border-gray-800 rounded-2xl shadow-sm bg-white dark:bg-gray-900 overflow-hidden">
@@ -766,16 +804,21 @@ Inesperados: ${inesperados.join(', ') || '—'}
                                 ]"
                                 @click="abrirInventario('{{ $ubicacion->id }}', @js($ubicacion->productos->pluck('codigo')->values()), {{ json_encode($ubicacion->codigo ?? 'SIN-CODIGO') }})">
                                 <div class="flex items-center justify-between w-full">
-                                    <a href="{{ route('ubicaciones.show', $ubicacion->id) }}" wire:navigate
-                                        class="text-sm font-semibold text-gray-900 dark:text-white hover:text-blue-700 dark:hover:text-blue-300 transition"
-                                        @click.stop="if($store.inv && $store.inv.modoInventario) { $event.preventDefault(); }">
-                                        {{ $ubicacion->codigo ?? 'SIN-CODIGO' }} | {{ $ubicacion->id }}
-                                    </a>
+                                    <div class="flex items-center gap-2">
+                                        <a href="{{ route('ubicaciones.show', $ubicacion->id) }}" wire:navigate
+                                            class="text-sm font-semibold text-gray-900 dark:text-white hover:text-blue-700 dark:hover:text-blue-300 transition"
+                                            @click.stop="if($store.inv && $store.inv.modoInventario) { $event.preventDefault(); }">
+                                            {{ $ubicacion->codigo ?? 'SIN-CODIGO' }} | {{ $ubicacion->id }}
+                                        </a>
+                                        <p class="text-xs text-gray-600 dark:text-gray-300">
+                                            {{ $ubicacion->descripcion }}
+                                        </p>
+                                    </div>
+
                                     <span
                                         class="text-xs px-2 py-1 rounded-full bg-gradient-to-tr from-gray-900 to-gray-700 text-white font-semibold">Material:
                                         {{ $ubicacion->productos->count() }}</span>
                                 </div>
-                                <p class="text-xs text-gray-600 dark:text-gray-300">{{ $ubicacion->descripcion }}</p>
 
                                 @php
                                     $tieneProductos = $ubicacion->productos->isNotEmpty();
@@ -783,7 +826,8 @@ Inesperados: ${inesperados.join(', ') || '—'}
                                 @endphp
 
                                 @if (!$tieneProductos && !$tienePaquetes)
-                                    <p class="text-[11px] text-gray-500 dark:text-gray-400">Ubicación sin material.</p>
+                                    <p class="text-[11px] text-gray-500 dark:text-gray-400 max-md:hidden">Ubicación sin
+                                        material.</p>
                                 @else
                                     @if ($tieneProductos)
                                         <div class="w-full mt-1 space-y-1">
@@ -824,378 +868,402 @@ Inesperados: ${inesperados.join(', ') || '—'}
         </div>
 
         <!-- Modal crear ubicación -->
-        <div x-show="openModal" x-transition x-cloak
-            class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 backdrop-blur">
-            <div @click.away="openModal = false"
-                class="bg-white dark:bg-gray-900 w-full max-w-lg p-6 rounded-xl shadow-2xl mx-4 border border-gray-200 dark:border-gray-800">
-                <h2 class="text-center text-lg font-bold mb-4 text-gray-800 dark:text-white">
-                    Crear Nueva Ubicación ({{ $nombreAlmacen }})
-                </h2>
+        <template x-teleport="body">
+            <div x-show="openModal" x-transition x-cloak
+                class="fixed inset-0 z-[9999] flex items-center justify-center bg-black bg-opacity-60 backdrop-blur overflow-y-auto">
+                <div @click.away="openModal = false"
+                    class="bg-white dark:bg-gray-900 w-full max-w-lg p-6 rounded-xl shadow-2xl mx-4 my-4 border border-gray-200 dark:border-gray-800">
+                    <h2 class="text-center text-lg font-bold mb-4 text-gray-800 dark:text-white">
+                        Crear Nueva Ubicación ({{ $nombreAlmacen }})
+                    </h2>
 
-                <form method="POST" action="{{ route('ubicaciones.store') }}" class="space-y-4">
-                    @csrf
-                    <input type="hidden" name="almacen" value="{{ $obraActualId }}">
+                    <form method="POST" action="{{ route('ubicaciones.store') }}" class="space-y-4">
+                        @csrf
+                        <input type="hidden" name="almacen" value="{{ $obraActualId }}">
 
-                    <x-tabla.select name="sector" label="📍 Sector" :options="collect(range(1, 20))
-                        ->mapWithKeys(
-                            fn($i) => [str_pad($i, 2, '0', STR_PAD_LEFT) => str_pad($i, 2, '0', STR_PAD_LEFT)],
-                        )
-                        ->toArray()"
-                        placeholder="Ej. 01, 02, 03..." />
+                        <x-tabla.select name="sector" label="📍 Sector" :options="collect(range(1, 20))
+                            ->mapWithKeys(
+                                fn($i) => [str_pad($i, 2, '0', STR_PAD_LEFT) => str_pad($i, 2, '0', STR_PAD_LEFT)],
+                            )
+                            ->toArray()"
+                            placeholder="Ej. 01, 02, 03..." />
 
-                    <x-tabla.select name="ubicacion" label="📦 Ubicación" :options="collect(range(1, 100))
-                        ->mapWithKeys(
-                            fn($i) => [str_pad($i, 2, '0', STR_PAD_LEFT) => str_pad($i, 2, '0', STR_PAD_LEFT)],
-                        )
-                        ->toArray()"
-                        placeholder="Ej. 01 a 100" />
+                        <x-tabla.select name="ubicacion" label="📦 Ubicación" :options="collect(range(1, 100))
+                            ->mapWithKeys(
+                                fn($i) => [str_pad($i, 2, '0', STR_PAD_LEFT) => str_pad($i, 2, '0', STR_PAD_LEFT)],
+                            )
+                            ->toArray()"
+                            placeholder="Ej. 01 a 100" />
 
-                    <x-tabla.input name="descripcion" label="📝 Descripción"
-                        placeholder="Ej. Entrada de barras largas" />
+                        <x-tabla.input name="descripcion" label="📝 Descripción"
+                            placeholder="Ej. Entrada de barras largas" />
 
-                    <div class="flex justify-end gap-3 pt-4">
-                        <button type="button" @click="openModal = false"
-                            class="px-4 py-2 bg-gray-200 hover:bg-gray-300 rounded-lg text-gray-800">Cancelar</button>
-                        <button type="submit"
-                            class="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg shadow focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition">
-                            Crear
-                        </button>
-                    </div>
-                </form>
+                        <div class="flex justify-end gap-3 pt-4">
+                            <button type="button" @click="openModal = false"
+                                class="px-4 py-2 bg-gray-200 hover:bg-gray-300 rounded-lg text-gray-800">Cancelar</button>
+                            <button type="submit"
+                                class="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg shadow focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition">
+                                Crear
+                            </button>
+                        </div>
+                    </form>
+                </div>
             </div>
-        </div>
+        </template>
 
         <!-- Modal de Inventario -->
-        <div x-show="$store.inv.modalInventario" x-transition x-cloak
-            class="fixed inset-0 z-50 flex items-start md:items-center justify-center bg-black/60 backdrop-blur-sm p-3 sm:p-4 overflow-y-auto"
-            @keydown.escape.window="$store.inv.cerrarModalInventario()" wire:ignore>
-            <template x-if="$store.inv.modalInventario">
-                <div class="bg-white dark:bg-gray-900 w-full max-w-5xl h-[calc(100vh-1.5rem)] md:h-auto max-h-[calc(100vh-1.5rem)] md:max-h-[90vh] rounded-xl shadow-2xl border border-gray-200 dark:border-gray-800 overflow-hidden flex flex-col min-h-0"
-                    @click.away="$store.inv.cerrarModalInventario()" x-data="inventarioUbicacion($store.inv.productosActuales, $store.inv.ubicacionActual)"
-                    :key="$store.inv.ubicacionActual">
+        <template x-teleport="body">
+            <div x-show="$store.inv.modalInventario" x-transition x-cloak
+                class="fixed inset-0 z-[9999] flex items-center justify-center bg-black/70 backdrop-blur-sm overflow-y-auto pt-0"
+                @keydown.escape.window="$store.inv.cerrarModalInventario()" wire:ignore>
+                <template x-if="$store.inv.modalInventario">
+                    <div class="relative bg-white dark:bg-gray-900 max-w-5xl sm:h-auto sm:max-h-[90vh] rounded-xl shadow-2xl border border-gray-200 dark:border-gray-800 overflow-hidden flex flex-col min-h-0 m-4 h-[98vh] w-[98vw]"
+                        @click.away="$store.inv.cerrarModalInventario()" x-data="inventarioUbicacion($store.inv.productosActuales, $store.inv.ubicacionActual)"
+                        :key="$store.inv.ubicacionActual">
 
-                    <!-- Header del modal -->
-                    <div
-                        class="bg-gradient-to-tr from-gray-900 to-gray-700 text-white px-6 py-4 flex items-center justify-between">
-                        <div>
-                            <h2 class="text-xl font-bold">
-                                Inventario - Ubicación
-                                <span x-text="$store.inv.codigoActual || nombreUbicacion || '—'"></span>
-                                <span class="text-white/70 text-sm ml-2">ID: <span
-                                        x-text="nombreUbicacion || '—'"></span></span>
-                            </h2>
-                            <p class="text-sm text-white/80 mt-1">Escanea los productos de esta ubicación</p>
-                        </div>
-                        <button @click="$store.inv.cerrarModalInventario()"
-                            class="text-white hover:text-gray-300 transition">
-                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M6 18L18 6M6 6l12 12" />
-                            </svg>
-                        </button>
-                    </div>
-
-                    <!-- Input QR -->
-                    <div class="px-6 py-4 bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
-                        <input type="text"
-                            class="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-4 py-3 text-sm text-gray-900 dark:text-white placeholder-gray-400 bg-white dark:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm"
-                            placeholder="Escanea el código QR aquí..."
-                            x-on:keydown.enter.prevent="procesarQR($event.target.value); $event.target.value = ''"
-                            x-ref="inputQR" inputmode="none" autocomplete="off">
-                    </div>
-
-                    <!-- Barra de progreso -->
-                    <div class="px-6 py-3 bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
-                        <div class="flex items-center justify-between mb-2">
-                            <span class="text-xs font-semibold text-gray-600 dark:text-gray-300">Progreso</span>
-                            <span class="text-xs text-gray-500 dark:text-gray-400"
-                                x-text="`${escaneados.length} / ${productosEsperados.length} escaneados`"></span>
-                        </div>
-                        <div class="h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
-                            <div class="h-full bg-blue-500 transition-all duration-300"
-                                :style="`width: ${progreso()}%`"></div>
-                        </div>
-                    </div>
-
-                    <!-- Contenido scrollable -->
-                    <div class="flex-1 overflow-y-auto px-6 py-4 grid grid-cols-1 lg:grid-cols-2 gap-4 min-h-0">
-                        <!-- Tabla de productos esperados -->
+                        <!-- Header del modal -->
                         <div
-                            class="border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 shadow-sm flex flex-col">
-                            <div class="flex-1 overflow-y-auto max-h-[420px]">
-                                <!-- Vista desktop -->
-                                <div class="hidden sm:block">
-                                    <table
-                                        class="w-full text-xs divide-y divide-gray-200 dark:divide-gray-700 table-auto">
-                                        <thead class="bg-gray-100 dark:bg-gray-800">
-                                            <tr>
-                                                <th class="px-3 py-2 text-left text-gray-700 dark:text-gray-300">#</th>
-                                                <th class="px-3 py-2 text-left text-gray-700 dark:text-gray-300">Código
-                                                </th>
-                                                <th class="px-3 py-2 text-left text-gray-700 dark:text-gray-300">Colada
-                                                </th>
-                                                <th class="px-3 py-2 text-left text-gray-700 dark:text-gray-300">Tipo
-                                                </th>
-                                                <th class="px-3 py-2 text-left text-gray-700 dark:text-gray-300">
-                                                    Especificaciones</th>
-                                                <th class="px-3 py-2 text-center text-gray-700 dark:text-gray-300">
-                                                    Estado</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
-                                            <template x-for="(codigo, idx) in productosEsperados"
-                                                :key="codigo">
-                                                <tr
-                                                    :class="{
-                                                        'bg-green-50 dark:bg-green-900/20': productoEscaneado(codigo),
-                                                        'ring-2 ring-green-500 shadow-md scale-[1.01] transition-all duration-300': ultimoCodigo ===
-                                                            codigo
-                                                    }">
-                                                    <td class="px-3 py-2 text-gray-900 dark:text-gray-100"
-                                                        x-text="idx + 1"></td>
-                                                    <td class="px-3 py-2 font-mono text-gray-900 dark:text-gray-100"
-                                                        x-text="codigo"></td>
-                                                    <td class="px-3 py-2 text-gray-900 dark:text-gray-100"
-                                                        x-text="window.detallesProductos[codigo]?.colada || '—'"></td>
-                                                    <td class="px-3 py-2 capitalize text-gray-900 dark:text-gray-100"
-                                                        x-text="window.detallesProductos[codigo]?.tipo || '—'"></td>
-                                                    <td class="px-3 py-2 text-gray-900 dark:text-gray-100">
-                                                        <span
-                                                            x-show="window.detallesProductos[codigo]?.tipo === 'encarretado'">
-                                                            Ø <span
-                                                                x-text="window.detallesProductos[codigo]?.diametro || '—'"></span>
-                                                            mm
-                                                        </span>
-                                                        <span
-                                                            x-show="window.detallesProductos[codigo]?.tipo !== 'encarretado'">
-                                                            Ø <span
-                                                                x-text="window.detallesProductos[codigo]?.diametro || '—'"></span>
-                                                            mm /
-                                                            <span
-                                                                x-text="window.detallesProductos[codigo]?.longitud || '—'"></span>
-                                                            m
-                                                        </span>
-                                                    </td>
-                                                    <td class="px-3 py-2 text-center whitespace-nowrap">
-                                                        <span x-show="productoEscaneado(codigo)"
-                                                            class="inline-block px-2 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-800">✓
-                                                            OK</span>
-                                                        <span x-show="!productoEscaneado(codigo)"
-                                                            class="inline-block px-2 py-1 rounded-full text-xs font-semibold bg-yellow-100 text-yellow-800">Pendiente</span>
-                                                    </td>
-                                                </tr>
-                                            </template>
+                            class="bg-gradient-to-tr from-gray-900 to-gray-700 text-white px-6 py-4 flex items-center justify-between">
+                            <div>
+                                <h2 class="text-xl font-bold">
+                                    Inventario - Ubicación
+                                    <span x-text="$store.inv.codigoActual || nombreUbicacion || '—'"></span>
+                                    <span class="text-white/70 text-sm ml-2">ID: <span
+                                            x-text="nombreUbicacion || '—'"></span></span>
+                                </h2>
+                                <p class="text-sm text-white/80 mt-1">Escanea los productos de esta ubicación</p>
+                            </div>
+                            <button @click="$store.inv.cerrarModalInventario()"
+                                class="text-white hover:text-gray-300 transition">
+                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
+                        </div>
 
-                                            <!-- Productos añadidos dinámicamente -->
-                                            <template x-for="codigo in productosAnadidos()" :key="'added-' + codigo">
-                                                <tr class="bg-blue-50 dark:bg-blue-900/20">
-                                                    <td class="px-3 py-2 text-gray-900 dark:text-gray-100">+</td>
-                                                    <td class="px-3 py-2 font-mono text-gray-900 dark:text-gray-100"
-                                                        x-text="codigo"></td>
-                                                    <td class="px-3 py-2 text-gray-900 dark:text-gray-100"
-                                                        x-text="window.detallesProductos[codigo]?.colada || '—'"></td>
-                                                    <td class="px-3 py-2 capitalize text-gray-900 dark:text-gray-100"
-                                                        x-text="window.detallesProductos[codigo]?.tipo || '—'"></td>
-                                                    <td class="px-3 py-2 text-gray-900 dark:text-gray-100">
-                                                        <span
-                                                            x-show="window.detallesProductos[codigo]?.tipo === 'encarretado'">
-                                                            Ø <span
-                                                                x-text="window.detallesProductos[codigo]?.diametro || '—'"></span>
-                                                            mm
-                                                        </span>
-                                                        <span
-                                                            x-show="window.detallesProductos[codigo]?.tipo !== 'encarretado'">
-                                                            Ø <span
-                                                                x-text="window.detallesProductos[codigo]?.diametro || '—'"></span>
-                                                            mm /
-                                                            <span
-                                                                x-text="window.detallesProductos[codigo]?.longitud || '—'"></span>
-                                                            m
-                                                        </span>
-                                                    </td>
-                                                    <td class="px-3 py-2 text-center whitespace-nowrap">
-                                                        <span
-                                                            class="inline-block px-2 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-800">✓
-                                                            OK</span>
-                                                    </td>
-                                                </tr>
-                                            </template>
-                                        </tbody>
-                                    </table>
-                                </div>
+                        <!-- Input QR -->
+                        <div
+                            class="px-6 py-4 bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
+                            <input type="text"
+                                class="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-4 py-3 text-sm text-gray-900 dark:text-white placeholder-gray-400 bg-white dark:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm"
+                                placeholder="Escanea el código QR aquí..."
+                                x-on:keydown.enter.prevent="procesarQR($event.target.value); $event.target.value = ''"
+                                x-ref="inputQR" inputmode="none" autocomplete="off">
+                        </div>
 
-                                <!-- Vista mobile -->
-                                <div class="sm:hidden space-y-2 p-3">
-                                    <template x-for="(codigo, idx) in productosEsperados" :key="codigo">
-                                        <div class="border rounded-lg p-3"
-                                            :class="{
-                                                'bg-green-50 dark:bg-green-900/20 border-green-200': productoEscaneado(
-                                                    codigo),
-                                                'bg-white dark:bg-gray-800 border-gray-200': !productoEscaneado(codigo),
-                                                'ring-2 ring-green-500': ultimoCodigo === codigo
-                                            }">
-                                            <div class="flex justify-between items-start">
-                                                <div>
-                                                    <p class="font-mono font-semibold text-gray-900 dark:text-gray-100"
-                                                        x-text="codigo"></p>
-                                                    <p class="text-xs text-gray-600 dark:text-gray-400 capitalize"
-                                                        x-text="window.detallesProductos[codigo]?.tipo || '—'"></p>
-                                                    <p class="text-xs text-gray-500 dark:text-gray-500">
-                                                        Colada: <span
-                                                            x-text="window.detallesProductos[codigo]?.colada || '—'"></span>
-                                                    </p>
-                                                    <p class="text-xs text-gray-500 dark:text-gray-500">
-                                                        <span
-                                                            x-show="window.detallesProductos[codigo]?.tipo === 'encarretado'">
-                                                            Ø <span
-                                                                x-text="window.detallesProductos[codigo]?.diametro || '—'"></span>
-                                                            mm
-                                                        </span>
-                                                        <span
-                                                            x-show="window.detallesProductos[codigo]?.tipo !== 'encarretado'">
-                                                            Ø <span
-                                                                x-text="window.detallesProductos[codigo]?.diametro || '—'"></span>
-                                                            mm /
-                                                            <span
-                                                                x-text="window.detallesProductos[codigo]?.longitud || '—'"></span>
-                                                            m
-                                                        </span>
-                                                    </p>
-                                                </div>
-                                                <span x-show="productoEscaneado(codigo)"
-                                                    class="inline-block px-2 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-800">✓
-                                                    OK</span>
-                                                <span x-show="!productoEscaneado(codigo)"
-                                                    class="inline-block px-2 py-1 rounded-full text-xs font-semibold bg-yellow-100 text-yellow-800">Pend.</span>
-                                            </div>
-                                        </div>
-                                    </template>
-
-                                    <!-- Productos añadidos dinámicamente (mobile) -->
-                                    <template x-for="codigo in productosAnadidos()" :key="'added-mobile-' + codigo">
-                                        <div
-                                            class="border rounded-lg p-3 bg-blue-50 dark:bg-blue-900/20 border-blue-200">
-                                            <div class="flex justify-between items-start">
-                                                <div>
-                                                    <p class="font-mono font-semibold text-gray-900 dark:text-gray-100"
-                                                        x-text="codigo"></p>
-                                                    <p class="text-xs text-gray-600 dark:text-gray-400 capitalize"
-                                                        x-text="window.detallesProductos[codigo]?.tipo || '—'"></p>
-                                                    <p class="text-xs text-gray-500 dark:text-gray-500">
-                                                        Colada: <span
-                                                            x-text="window.detallesProductos[codigo]?.colada || '—'"></span>
-                                                    </p>
-                                                    <p class="text-xs text-gray-500 dark:text-gray-500">
-                                                        <span
-                                                            x-show="window.detallesProductos[codigo]?.tipo === 'encarretado'">
-                                                            Ø <span
-                                                                x-text="window.detallesProductos[codigo]?.diametro || '—'"></span>
-                                                            mm
-                                                        </span>
-                                                        <span
-                                                            x-show="window.detallesProductos[codigo]?.tipo !== 'encarretado'">
-                                                            Ø <span
-                                                                x-text="window.detallesProductos[codigo]?.diametro || '—'"></span>
-                                                            mm /
-                                                            <span
-                                                                x-text="window.detallesProductos[codigo]?.longitud || '—'"></span>
-                                                            m
-                                                        </span>
-                                                    </p>
-                                                </div>
-                                                <span
-                                                    class="inline-block px-2 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-800">✓
-                                                    OK</span>
-                                            </div>
-                                        </div>
-                                    </template>
-                                </div>
+                        <!-- Barra de progreso -->
+                        <div
+                            class="px-6 py-3 bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
+                            <div class="flex items-center justify-between mb-2">
+                                <span class="text-xs font-semibold text-gray-600 dark:text-gray-300">Progreso</span>
+                                <span class="text-xs text-gray-500 dark:text-gray-400"
+                                    x-text="`${escaneados.length} / ${productosEsperados.length} escaneados`"></span>
+                            </div>
+                            <div class="h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+                                <div class="h-full bg-blue-500 transition-all duration-300"
+                                    :style="`width: ${progreso()}%`"></div>
                             </div>
                         </div>
 
-                        <!-- Productos inesperados -->
+                        <!-- Contenido scrollable -->
                         <div
-                            class="border border-red-200 dark:border-red-700 rounded-lg bg-white dark:bg-gray-800 shadow-sm flex flex-col">
+                            class="flex-1 overflow-y-auto sm:px-6 sm:py-4 grid grid-cols-1 lg:grid-cols-2 gap-2 min-h-0">
+                            <!-- Tabla de productos esperados -->
                             <div
-                                class="px-4 py-3 border-b border-red-200 dark:border-red-700 flex items-center justify-between">
-                                <h3 class="text-sm font-semibold text-red-600 dark:text-red-400">Productos inesperados
-                                </h3>
-                                <span class="text-xs text-red-500" x-text="sospechosos.length"></span>
+                                class="border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 shadow-sm flex flex-col">
+                                <div class="flex-1 overflow-y-auto max-h-[420px]">
+                                    <!-- Vista desktop -->
+                                    <div class="hidden sm:block">
+                                        <table
+                                            class="w-full text-xs divide-y divide-gray-200 dark:divide-gray-700 table-auto">
+                                            <thead class="bg-gray-100 dark:bg-gray-800">
+                                                <tr>
+                                                    <th class="px-3 py-2 text-left text-gray-700 dark:text-gray-300">#
+                                                    </th>
+                                                    <th class="px-3 py-2 text-left text-gray-700 dark:text-gray-300">
+                                                        Código
+                                                    </th>
+                                                    <th class="px-3 py-2 text-left text-gray-700 dark:text-gray-300">
+                                                        Colada
+                                                    </th>
+                                                    <th class="px-3 py-2 text-left text-gray-700 dark:text-gray-300">
+                                                        Tipo
+                                                    </th>
+                                                    <th class="px-3 py-2 text-left text-gray-700 dark:text-gray-300">
+                                                        Detalles</th>
+                                                    <th class="px-3 py-2 text-center text-gray-700 dark:text-gray-300">
+                                                        Estado</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
+                                                <template x-for="(codigo, idx) in productosEsperados"
+                                                    :key="codigo">
+                                                    <tr
+                                                        :class="{
+                                                            'bg-green-50 dark:bg-green-900/20': productoEscaneado(
+                                                                codigo),
+                                                            'ring-2 ring-green-500 shadow-md scale-[1.01] transition-all duration-300': ultimoCodigo ===
+                                                                codigo
+                                                        }">
+                                                        <td class="px-3 py-2 text-gray-900 dark:text-gray-100"
+                                                            x-text="idx + 1"></td>
+                                                        <td class="px-3 py-2 font-mono text-gray-900 dark:text-gray-100"
+                                                            x-text="codigo"></td>
+                                                        <td class="px-3 py-2 text-gray-900 dark:text-gray-100"
+                                                            x-text="window.detallesProductos[codigo]?.colada || '—'">
+                                                        </td>
+                                                        <td class="px-3 py-2 capitalize text-gray-900 dark:text-gray-100"
+                                                            x-text="window.detallesProductos[codigo]?.tipo || '—'">
+                                                        </td>
+                                                        <td class="px-3 py-2 text-gray-900 dark:text-gray-100">
+                                                            <span
+                                                                x-show="window.detallesProductos[codigo]?.tipo === 'encarretado'">
+                                                                Ø <span
+                                                                    x-text="window.detallesProductos[codigo]?.diametro || '—'"></span>
+                                                                mm
+                                                            </span>
+                                                            <span
+                                                                x-show="window.detallesProductos[codigo]?.tipo !== 'encarretado'">
+                                                                Ø <span
+                                                                    x-text="window.detallesProductos[codigo]?.diametro || '—'"></span>
+                                                                mm /
+                                                                <span
+                                                                    x-text="window.detallesProductos[codigo]?.longitud || '—'"></span>
+                                                                m
+                                                            </span>
+                                                        </td>
+                                                        <td class="px-3 py-2 text-center whitespace-nowrap">
+                                                            <span x-show="productoEscaneado(codigo)"
+                                                                class="inline-block px-2 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-800">✓
+                                                                OK</span>
+                                                            <span x-show="!productoEscaneado(codigo)"
+                                                                class="inline-block px-2 py-1 rounded-full text-xs font-semibold bg-yellow-100 text-yellow-800">Pendiente</span>
+                                                        </td>
+                                                    </tr>
+                                                </template>
+
+                                                <!-- Productos añadidos dinámicamente -->
+                                                <template x-for="codigo in productosAnadidos()"
+                                                    :key="'added-' + codigo">
+                                                    <tr class="bg-blue-50 dark:bg-blue-900/20">
+                                                        <td class="px-3 py-2 text-gray-900 dark:text-gray-100">+</td>
+                                                        <td class="px-3 py-2 font-mono text-gray-900 dark:text-gray-100"
+                                                            x-text="codigo"></td>
+                                                        <td class="px-3 py-2 text-gray-900 dark:text-gray-100"
+                                                            x-text="window.detallesProductos[codigo]?.colada || '—'">
+                                                        </td>
+                                                        <td class="px-3 py-2 capitalize text-gray-900 dark:text-gray-100"
+                                                            x-text="window.detallesProductos[codigo]?.tipo || '—'">
+                                                        </td>
+                                                        <td class="px-3 py-2 text-gray-900 dark:text-gray-100">
+                                                            <span
+                                                                x-show="window.detallesProductos[codigo]?.tipo === 'encarretado'">
+                                                                Ø <span
+                                                                    x-text="window.detallesProductos[codigo]?.diametro || '—'"></span>
+                                                                mm
+                                                            </span>
+                                                            <span
+                                                                x-show="window.detallesProductos[codigo]?.tipo !== 'encarretado'">
+                                                                Ø <span
+                                                                    x-text="window.detallesProductos[codigo]?.diametro || '—'"></span>
+                                                                mm /
+                                                                <span
+                                                                    x-text="window.detallesProductos[codigo]?.longitud || '—'"></span>
+                                                                m
+                                                            </span>
+                                                        </td>
+                                                        <td class="px-3 py-2 text-center whitespace-nowrap">
+                                                            <span
+                                                                class="inline-block px-2 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-800">✓
+                                                                OK</span>
+                                                        </td>
+                                                    </tr>
+                                                </template>
+                                            </tbody>
+                                        </table>
+                                    </div>
+
+                                    <!-- Vista mobile -->
+                                    <div class="sm:hidden space-y-2 p-3">
+                                        <template x-for="(codigo, idx) in productosEsperados" :key="codigo">
+                                            <div class="border rounded-lg p-3"
+                                                :class="{
+                                                    'bg-green-50 dark:bg-green-900/20 border-green-200': productoEscaneado(
+                                                        codigo),
+                                                    'bg-white dark:bg-gray-800 border-gray-200': !productoEscaneado(
+                                                        codigo),
+                                                    'ring-2 ring-green-500': ultimoCodigo === codigo
+                                                }">
+                                                <div class="flex justify-between items-center">
+                                                    <div>
+                                                        <p class="font-mono font-semibold text-sm text-gray-900 dark:text-gray-100"
+                                                            x-text="codigo"></p>
+                                                        <div class="flex gap-2 text-[10px]">
+                                                            <p class="text-gray-600 dark:text-gray-400 capitalize"
+                                                                x-text="window.detallesProductos[codigo]?.tipo || '—'">
+                                                            </p>
+                                                            <p class="text-gray-500 dark:text-gray-500">
+                                                                <span
+                                                                    x-show="window.detallesProductos[codigo]?.tipo === 'encarretado'">
+                                                                    Ø <span
+                                                                        x-text="window.detallesProductos[codigo]?.diametro || '—'"></span>
+                                                                    mm
+                                                                </span>
+                                                                <span
+                                                                    x-show="window.detallesProductos[codigo]?.tipo !== 'encarretado'">
+                                                                    Ø <span
+                                                                        x-text="window.detallesProductos[codigo]?.diametro || '—'"></span>
+                                                                    mm /
+                                                                    <span
+                                                                        x-text="window.detallesProductos[codigo]?.longitud || '—'"></span>
+                                                                    m
+                                                                </span>
+                                                            </p>
+                                                            <p class="text-gray-500 dark:text-gray-500">~</p>
+                                                            <p class="text-gray-500 dark:text-gray-500">
+                                                                Col: <span
+                                                                    x-text="window.detallesProductos[codigo]?.colada || '—'"></span>
+                                                            </p>
+                                                        </div>
+                                                    </div>
+                                                    <span x-show="productoEscaneado(codigo)"
+                                                        class="inline-block px-2 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-800">✓
+                                                        OK</span>
+                                                    <span x-show="!productoEscaneado(codigo)"
+                                                        class="inline-block px-2 py-1 rounded-full text-xs font-semibold bg-yellow-100 text-yellow-800">Pend.</span>
+                                                </div>
+                                            </div>
+                                        </template>
+
+                                        <!-- Productos añadidos dinámicamente (mobile) -->
+                                        <template x-for="codigo in productosAnadidos()"
+                                            :key="'added-mobile-' + codigo">
+                                            <div
+                                                class="border rounded-lg p-2 bg-blue-50 dark:bg-blue-900/20 border-blue-200">
+                                                <div class="flex justify-between items-center">
+                                                    <div>
+                                                        <p class="font-mono font-semibold text-gray-900 dark:text-gray-100"
+                                                            x-text="codigo"></p>
+                                                        <p class="text-xs text-gray-600 dark:text-gray-400 capitalize"
+                                                            x-text="window.detallesProductos[codigo]?.tipo || '—'"></p>
+                                                        <p class="text-xs text-gray-500 dark:text-gray-500">
+                                                            Colada: <span
+                                                                x-text="window.detallesProductos[codigo]?.colada || '—'"></span>
+                                                        </p>
+                                                        <p class="text-xs text-gray-500 dark:text-gray-500">
+                                                            <span
+                                                                x-show="window.detallesProductos[codigo]?.tipo === 'encarretado'">
+                                                                Ø <span
+                                                                    x-text="window.detallesProductos[codigo]?.diametro || '—'"></span>
+                                                                mm
+                                                            </span>
+                                                            <span
+                                                                x-show="window.detallesProductos[codigo]?.tipo !== 'encarretado'">
+                                                                Ø <span
+                                                                    x-text="window.detallesProductos[codigo]?.diametro || '—'"></span>
+                                                                mm /
+                                                                <span
+                                                                    x-text="window.detallesProductos[codigo]?.longitud || '—'"></span>
+                                                                m
+                                                            </span>
+                                                        </p>
+                                                    </div>
+                                                    <span
+                                                        class="inline-block px-2 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-800">✓
+                                                        OK</span>
+                                                </div>
+                                            </div>
+                                        </template>
+                                    </div>
+                                </div>
                             </div>
-                            <div class="flex-1 overflow-y-auto max-h-[420px] p-3">
-                                <template x-for="(codigo, idx) in sospechosos" :key="'sosp-' + codigo">
-                                    <li class="flex items-center justify-between gap-3 rounded-lg border px-4 py-3 mb-2 list-none"
-                                        :class="idx % 2 === 0 ?
-                                            'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700' :
-                                            'bg-gray-50 dark:bg-gray-800/50 border-gray-200 dark:border-gray-700'"
-                                        x-data="{
-                                            ubic: null,
-                                            hasId: false,
-                                            misma: false,
-                                            estado: null,
-                                            esConsumido: false,
-                                            colada: null
-                                        }" x-init="ubic = (asignados && Object.prototype.hasOwnProperty.call(asignados, codigo)) ? asignados[codigo] : null;
-                                        hasId = (ubic !== null && ubic !== '' && ubic !== undefined);
-                                        misma = (hasId && nombreUbicacion !== null && nombreUbicacion !== undefined && ubic.toString() === nombreUbicacion.toString());
-                                        estado = (estados && Object.prototype.hasOwnProperty.call(estados, codigo)) ? (estados[codigo] ?? null) : null;
-                                        esConsumido = (estado === 'consumido');
-                                        colada = (window.detallesProductos && Object.prototype.hasOwnProperty.call(window.detallesProductos, codigo)) ?
-                                            (window.detallesProductos[codigo]?.colada ?? null) :
-                                            null;">
-                                        <div class="flex items-center gap-2 min-w-0">
-                                            <span class="inline-block h-2.5 w-2.5 rounded-full flex-shrink-0"
-                                                :class="esConsumido ? 'bg-blue-500/80' : (hasId ? 'bg-amber-500/80' :
-                                                    'bg-red-500/80')"></span>
-                                            <span class="font-mono text-sm font-semibold"
-                                                :class="esConsumido ? 'text-blue-600' : (hasId ? 'text-amber-600' :
-                                                    'text-red-800')"
-                                                x-text="codigo"></span>
-                                            <span
-                                                class="text-xs px-2 py-0.5 rounded bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300">
-                                                <span x-show="esConsumido">Consumido</span>
-                                                <span x-show="!esConsumido && hasId && !misma">Ubic: <span
-                                                        x-text="ubic"></span></span>
-                                                <span x-show="!esConsumido && !hasId">Sin registrar</span>
+
+                            <!-- Productos inesperados -->
+                            <div
+                                class="border border-red-200 dark:border-red-700 rounded-lg bg-white dark:bg-gray-800 shadow-sm flex flex-col">
+                                <div
+                                    class="px-4 py-3 border-b border-red-200 dark:border-red-700 flex items-center justify-between">
+                                    <h3 class="text-sm font-semibold text-red-600 dark:text-red-400">Productos
+                                        inesperados
+                                    </h3>
+                                    <span class="text-xs text-red-500" x-text="sospechosos.length"></span>
+                                </div>
+                                <div class="flex-1 overflow-y-auto max-h-[420px] p-3">
+                                    <template x-for="(codigo, idx) in sospechosos" :key="'sosp-' + codigo">
+                                        <li class="flex items-center justify-between gap-3 rounded-lg border px-4 py-3 mb-2 list-none"
+                                            :class="idx % 2 === 0 ?
+                                                'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700' :
+                                                'bg-gray-50 dark:bg-gray-800/50 border-gray-200 dark:border-gray-700'"
+                                            x-data="{
+                                                ubic: null,
+                                                hasId: false,
+                                                misma: false,
+                                                estado: null,
+                                                esConsumido: false,
+                                                colada: null
+                                            }" x-init="ubic = (asignados && Object.prototype.hasOwnProperty.call(asignados, codigo)) ? asignados[codigo] : null;
+                                            hasId = (ubic !== null && ubic !== '' && ubic !== undefined);
+                                            misma = (hasId && nombreUbicacion !== null && nombreUbicacion !== undefined && ubic.toString() === nombreUbicacion.toString());
+                                            estado = (estados && Object.prototype.hasOwnProperty.call(estados, codigo)) ? (estados[codigo] ?? null) : null;
+                                            esConsumido = (estado === 'consumido');
+                                            colada = (window.detallesProductos && Object.prototype.hasOwnProperty.call(window.detallesProductos, codigo)) ?
+                                                (window.detallesProductos[codigo]?.colada ?? null) :
+                                                null;">
+                                            <div class="flex items-center gap-2 min-w-0">
+                                                <span class="inline-block h-2.5 w-2.5 rounded-full flex-shrink-0"
+                                                    :class="esConsumido ? 'bg-blue-500/80' : (hasId ? 'bg-amber-500/80' :
+                                                        'bg-red-500/80')"></span>
+                                                <span class="font-mono text-sm font-semibold"
+                                                    :class="esConsumido ? 'text-blue-600' : (hasId ? 'text-amber-600' :
+                                                        'text-red-800')"
+                                                    x-text="codigo"></span>
+                                                <span
+                                                    class="text-xs px-2 py-0.5 rounded bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300">
+                                                    <span x-show="esConsumido">Consumido</span>
+                                                    <span x-show="!esConsumido && hasId && !misma">Ubic: <span
+                                                            x-text="ubic"></span></span>
+                                                    <span x-show="!esConsumido && !hasId">Sin registrar</span>
+                                                </span>
+                                                <span x-show="colada"
+                                                    class="text-[11px] text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded">
+                                                    Colada: <span x-text="colada"></span>
+                                                </span>
+                                            </div>
+                                            <button x-show="!esConsumido && hasId && !misma"
+                                                @click="reasignarProducto(codigo)"
+                                                class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-md text-xs font-semibold flex-shrink-0">
+                                                Asignar aquí
+                                            </button>
+                                            <span x-show="!esConsumido && !hasId"
+                                                class="text-gray-500 text-xs flex-shrink-0">
+                                                No asignable
                                             </span>
-                                            <span x-show="colada"
-                                                class="text-[11px] text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded">
-                                                Colada: <span x-text="colada"></span>
-                                            </span>
-                                        </div>
-                                        <button x-show="!esConsumido && hasId && !misma"
-                                            @click="reasignarProducto(codigo)"
-                                            class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-md text-xs font-semibold flex-shrink-0">
-                                            Asignar aquí
-                                        </button>
-                                        <span x-show="!esConsumido && !hasId"
-                                            class="text-gray-500 text-xs flex-shrink-0">
-                                            No asignable
-                                        </span>
-                                    </li>
-                                </template>
+                                        </li>
+                                    </template>
+                                </div>
                             </div>
                         </div>
-                    </div>
 
-                    <!-- Footer con botones -->
-                    <div
-                        class="bg-gray-50 dark:bg-gray-800 px-6 py-4 border-t border-gray-200 dark:border-gray-700 flex justify-end gap-3">
-                        <button @click="resetear()"
-                            class="bg-gray-500 hover:bg-gray-600 text-white font-semibold px-4 py-2 rounded-lg text-sm shadow">
-                            Limpiar escaneos
-                        </button>
-                        <button @click="reportarErrores()"
-                            class="bg-red-600 hover:bg-red-700 text-white font-semibold px-4 py-2 rounded-lg text-sm shadow">
-                            Reportar errores
-                        </button>
-                        <button @click="$store.inv.cerrarModalInventario()"
-                            class="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-4 py-2 rounded-lg text-sm shadow">
-                            Cerrar
-                        </button>
+                        <!-- Footer con botones -->
+                        <div
+                            class="bg-gray-50 dark:bg-gray-800 px-6 py-4 border-t border-gray-200 dark:border-gray-700 flex justify-end gap-3">
+                            <button @click="resetear()"
+                                class="bg-gray-500 hover:bg-gray-600 text-white font-semibold px-4 py-2 rounded-lg text-[10px] shadow">
+                                Limpiar escaneos
+                            </button>
+                            <button @click="reportarErrores()"
+                                class="bg-red-600 hover:bg-red-700 text-white font-semibold px-4 py-2 rounded-lg text-[10px] shadow">
+                                Reportar errores
+                            </button>
+                            <button @click="$store.inv.cerrarModalInventario()"
+                                class="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-4 py-2 rounded-lg text-[10px] shadow">
+                                Cerrar
+                            </button>
+                        </div>
                     </div>
-                </div>
-        </div>
+            </div>
+        </template>
     </div>
 
     <!-- SCRIPT PARA IMPRIMIR QR -->

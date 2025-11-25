@@ -31,7 +31,7 @@
 
     <!-- ✅ Librerías que no bloquean renderizado - Versionadas para evitar problemas de caché -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" defer></script>
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.14.5/dist/sweetalert2.all.min.js" defer></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.14.5/dist/sweetalert2.all.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js" defer></script>
 
     <!-- ✅ FullCalendar (solo si es necesario en esta vista) -->
@@ -104,8 +104,13 @@
         }
 
         @keyframes shimmer {
-            0% { transform: translateX(-100%); }
-            100% { transform: translateX(100%); }
+            0% {
+                transform: translateX(-100%);
+            }
+
+            100% {
+                transform: translateX(100%);
+            }
         }
     </style>
 </head>
@@ -113,19 +118,19 @@
 <body class="font-sans antialiased transition-colors duration-200">
     <div class="flex h-screen bg-gray-100 dark:bg-gray-900 overflow-hidden">
         <!-- Sidebar Menu Enhanced -->
-            <x-sidebar-menu-enhanced />
+        <x-sidebar-menu-enhanced />
 
         <!-- Main Content Area -->
         <div class="flex-1 flex flex-col overflow-hidden">
             <!-- Top Header Enhanced -->
-                <x-top-header-enhanced />
+            <x-top-header-enhanced />
 
             <!-- Alerts -->
             @include('layouts.alerts')
 
             <!-- Page Content -->
             <main class="flex-1 overflow-y-auto bg-neutral-100 dark:bg-gray-900 transition-colors">
-                <div class="py-6 px-4 sm:px-6 lg:px-8">
+                <div class="py-4 px-2 sm:px-6 lg:px-8">
                     <!-- Breadcrumbs -->
                     <x-breadcrumbs />
 
@@ -294,13 +299,18 @@
                     document.title = doc.title;
 
                     // Scroll to top
-                    window.scrollTo({ top: 0, behavior: 'instant' });
+                    window.scrollTo({
+                        top: 0,
+                        behavior: 'instant'
+                    });
 
                     // Actualizar URL después de un delay para evitar conflictos con Livewire
                     if (pushState) {
                         setTimeout(() => {
                             console.log('🔗 Actualizando URL a:', url);
-                            window.history.pushState({ spa: true }, '', url);
+                            window.history.pushState({
+                                spa: true
+                            }, '', url);
                         }, 100);
                     }
 
@@ -326,7 +336,11 @@
 
                     const script = document.createElement('script');
                     // Copiar atributos (src, type, etc)
-                    for (const { name, value } of Array.from(oldScript.attributes)) {
+                    for (const {
+                            name,
+                            value
+                        }
+                        of Array.from(oldScript.attributes)) {
                         script.setAttribute(name, value);
                     }
                     // Copiar contenido inline
