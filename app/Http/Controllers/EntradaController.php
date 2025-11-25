@@ -552,6 +552,12 @@ class EntradaController extends Controller
                 $entrada->pedidoProducto->update([
                     'estado' => $nuevoEstado,
                 ]);
+
+                // Recalcular estado del pedido por si todas las líneas están completadas/facturadas
+                $pedido = $entrada->pedidoProducto->pedido;
+                if ($pedido) {
+                    $this->recalcularEstadoPedido($pedido);
+                }
             }
 
             DB::commit();
@@ -737,16 +743,9 @@ class EntradaController extends Controller
                     'fecha_ejecucion' => now(),
                 ]);
 
-            // 7) ¿Pedido completo?
-            $lineas = PedidoProducto::where('pedido_id', $entrada->pedido_id)->get();
-            $todosCompletados = $lineas->every(fn($l) => $l->estado === 'completado');
-
-            if ($todosCompletados) {
-                $entrada->pedido->estado = 'completado';
-                $entrada->pedido->save();
-                Log::info('✅ Pedido completado automáticamente', ['pedido_id' => $entrada->pedido->id]);
-            } else {
-                Log::info('ℹ️ Pedido con líneas pendientes/parciales', ['pedido_id' => $entrada->pedido->id]);
+            // 7) Recalcular estado del pedido
+            if ($entrada->pedido) {
+                $this->recalcularEstadoPedido($entrada->pedido);
             }
 
             Log::info('✅ Línea de pedido actualizada (cierre desde movimiento)', [
@@ -848,5 +847,39 @@ class EntradaController extends Controller
             DB::rollBack();  // Si ocurre un error, revertimos la transacción
             return redirect()->back()->with('error', 'Ocurrió un error al eliminar la entrada: ' . $e->getMessage());
         }
+    }
+
+    /**
+     * Recalcula el estado del pedido basándose en el estado de todas sus líneas.
+     * Si TODAS las líneas relevantes están en {completado, facturado}, marca el pedido como completado.
+     * Las líneas canceladas son ignoradas.
+     *
+     * @param \App\Models\Pedido $pedido El pedido a recalcular
+     * @return void
+     */
+    private function recalcularEstadoPedido(\App\Models\Pedido $pedido): void
+    {
+        $estadosQueCierran = ['completado', 'facturado'];
+        $ignorar = ['cancelado'];
+
+        $todas = \App\Models\PedidoProducto::where('pedido_id', $pedido->id)->get();
+        $relevantes = $todas->reject(fn($l) => in_array(strtolower((string)$l->estado), $ignorar, true));
+        $todasCerradas = $relevantes->count() > 0
+            && $relevantes->every(fn($l) => in_array(strtolower((string)$l->estado), $estadosQueCierran, true));
+
+        $pedido->estado = $todasCerradas ? 'completado' : 'pendiente';
+        if ($todasCerradas && $pedido->isFillable('fecha_completado')) {
+            $pedido->fecha_completado = $pedido->fecha_completado ?? now();
+        }
+        if ($pedido->isFillable('updated_by')) {
+            $pedido->updated_by = auth()->id();
+        }
+        $pedido->save();
+
+        Log::info($todasCerradas ? '✅ Pedido marcado como completado' : 'ℹ️ Pedido con líneas pendientes', [
+            'pedido_id' => $pedido->id,
+            'total_lineas' => $todas->count(),
+            'lineas_relevantes' => $relevantes->count(),
+        ]);
     }
 }

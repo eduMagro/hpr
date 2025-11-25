@@ -798,17 +798,16 @@ class PedidoController extends Controller
         $año = now()->format('y');
         $prefix = "AC{$año}/";
 
-        $ultimoCodigo = Entrada::where('albaran', 'like', "{$prefix}%")
-            ->orderBy('albaran', 'desc')
-            ->value('albaran');
+        // Obtener todos los códigos con el prefijo y extraer el número más alto
+        $ultimoNumero = Entrada::where('albaran', 'like', "{$prefix}%")
+            ->get()
+            ->map(function ($entrada) {
+                $partes = explode('/', $entrada->albaran);
+                return isset($partes[1]) ? intval($partes[1]) : 0;
+            })
+            ->max();
 
-        $siguiente = 1;
-
-        if ($ultimoCodigo) {
-            $partes = explode('/', $ultimoCodigo);
-            $numeroActual = intval($partes[1]);
-            $siguiente = $numeroActual + 1;
-        }
+        $siguiente = $ultimoNumero ? $ultimoNumero + 1 : 1;
 
         $numeroFormateado = str_pad($siguiente, 4, '0', STR_PAD_LEFT);
 
@@ -1116,7 +1115,8 @@ class PedidoController extends Controller
                 $pedido->peso_total = max(0, (float)$pedido->peso_total - $cantidad);
                 $pedido->save();
 
-                // 3) Si todas las líneas del pedido están canceladas, cancelar el pedido
+                // 3) Si todas las líneas están canceladas, cancelar el pedido
+                //    Si no, recalcular por si las restantes están completadas/facturadas
                 $lineasActivas = PedidoProducto::where('pedido_id', $pedido->id)
                     ->where(function ($q) {
                         $q->whereNull('estado')
@@ -1127,6 +1127,9 @@ class PedidoController extends Controller
                 if ($lineasActivas === 0) {
                     $pedido->estado = 'cancelado';
                     $pedido->save();
+                } else {
+                    // Recalcular estado del pedido (puede que las líneas restantes estén completadas)
+                    $this->recalcularEstadoPedido($pedido);
                 }
 
                 // 4) Reabrir y recalcular el Pedido Global asociado a ESTA LÍNEA
@@ -1649,21 +1652,8 @@ class PedidoController extends Controller
                     $linea->save();
                 }
 
-                // Pedido = completado si TODAS las líneas están en {completado, facturado}
-                $estadosQueCierran = ['completado', 'facturado'];
-                $ignorar           = ['cancelado']; // quítalo si no usas ‘cancelado’ en líneas
-
-                $todas = PedidoProducto::where('pedido_id', $pedido->id)->get();
-                $relevantes   = $todas->reject(fn($l) => in_array(strtolower((string)$l->estado), $ignorar, true));
-                $todasCerradas = $relevantes->count() > 0
-                    && $relevantes->every(fn($l) => in_array(strtolower((string)$l->estado), $estadosQueCierran, true));
-
-                $pedido->estado = $todasCerradas ? 'completado' : 'pendiente';
-                if ($todasCerradas && $pedido->isFillable('fecha_completado')) {
-                    $pedido->fecha_completado = $pedido->fecha_completado ?? now();
-                }
-                if ($pedido->isFillable('updated_by')) $pedido->updated_by = auth()->id();
-                $pedido->save();
+                // Recalcular estado del pedido
+                $this->recalcularEstadoPedido($pedido);
             });
 
             return back()->with('success', 'Línea completada y pedido recalculado.');
@@ -1739,5 +1729,39 @@ class PedidoController extends Controller
 
             return back()->with('error', 'No se pudo eliminar el pedido. Consulta con administración.');
         }
+    }
+
+    /**
+     * Recalcula el estado del pedido basándose en el estado de todas sus líneas.
+     * Si TODAS las líneas relevantes están en {completado, facturado}, marca el pedido como completado.
+     * Las líneas canceladas son ignoradas.
+     *
+     * @param Pedido $pedido El pedido a recalcular
+     * @return void
+     */
+    private function recalcularEstadoPedido(Pedido $pedido): void
+    {
+        $estadosQueCierran = ['completado', 'facturado'];
+        $ignorar = ['cancelado'];
+
+        $todas = PedidoProducto::where('pedido_id', $pedido->id)->get();
+        $relevantes = $todas->reject(fn($l) => in_array(strtolower((string)$l->estado), $ignorar, true));
+        $todasCerradas = $relevantes->count() > 0
+            && $relevantes->every(fn($l) => in_array(strtolower((string)$l->estado), $estadosQueCierran, true));
+
+        $pedido->estado = $todasCerradas ? 'completado' : 'pendiente';
+        if ($todasCerradas && $pedido->isFillable('fecha_completado')) {
+            $pedido->fecha_completado = $pedido->fecha_completado ?? now();
+        }
+        if ($pedido->isFillable('updated_by')) {
+            $pedido->updated_by = auth()->id();
+        }
+        $pedido->save();
+
+        Log::info($todasCerradas ? '✅ Pedido marcado como completado' : 'ℹ️ Pedido con líneas pendientes', [
+            'pedido_id' => $pedido->id,
+            'total_lineas' => $todas->count(),
+            'lineas_relevantes' => $relevantes->count(),
+        ]);
     }
 }
