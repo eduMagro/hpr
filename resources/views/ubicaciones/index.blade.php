@@ -673,9 +673,9 @@ Inesperados: ${inesperados.join(', ') || '—'}
                         almacén con acceso rápido al inventario.</p>
                 </div>
 
-                <div class="flex justify-between md:flex-col gap-2">
+                <div class="flex justify-between md:flex-col gap-2 items-end h-fit">
                     <button @click="toggleAll()"
-                        class="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-tr from-gray-900 to-gray-700 hover:from-gray-800 hover:to-gray-900 text-white rounded-lg shadow text-sm font-semibold max-md:text-[12px]">
+                        class="inline-flex items-center justify-center gap-2 px-4 py-2 h-10 bg-gradient-to-tr from-gray-900 to-gray-700 hover:from-gray-800 hover:to-gray-900 text-white rounded-lg shadow text-xs md:text-sm font-semibold w-[130px] md:w-[160px]">
                         <span
                             x-text="Object.values(openSectors).length && Object.values(openSectors).every(Boolean) ? 'Cerrar todo' : 'Abrir todo'"></span>
                     </button>
@@ -696,11 +696,11 @@ Inesperados: ${inesperados.join(', ') || '—'}
                                 x-transition:leave="transition ease-in duration-150"
                                 x-transition:leave-start="opacity-100 translate-y-0"
                                 x-transition:leave-end="opacity-0 translate-y-1"
-                                class="absolute right-0 top-full mt-2 w-64 p-4 bg-white dark:bg-gray-800 rounded-xl shadow-xl border border-gray-200 dark:border-gray-700 z-50">
+                                class="absolute left-1/2 -translate-x-1/2 top-full w-64 max-w-[calc(100vw-2rem)] p-4 bg-white dark:bg-gray-800 rounded-xl shadow-xl border border-gray-200 dark:border-gray-700 z-50 mt-4">
 
                                 <!-- Flecha del bocadillo -->
                                 <div
-                                    class="absolute -top-2 right-3 w-4 h-4 bg-white dark:bg-gray-800 border-t border-l border-gray-200 dark:border-gray-700 transform rotate-45">
+                                    class="absolute -top-2 left-1/2 -translate-x-1/2 w-4 h-4 bg-white dark:bg-gray-800 border-t border-l border-gray-200 dark:border-gray-700 transform rotate-45">
                                 </div>
 
                                 <h3 class="font-bold text-gray-900 dark:text-white mb-3 text-sm relative z-10">Leyenda
@@ -729,12 +729,12 @@ Inesperados: ${inesperados.join(', ') || '—'}
                         </div>
 
                         <button @click="$store.inv.toggleModoInventario()"
-                            class="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-white font-semibold shadow transition-all max-md:text-[12px]"
+                            class="inline-flex items-center gap-2 px-4 py-2 h-10 rounded-lg text-white font-semibold shadow transition-all text-xs md:text-sm w-[160px] justify-center"
                             :class="$store.inv.modoInventario ?
                                 'bg-gradient-to-tr from-red-600 to-red-500 hover:from-red-700 hover:to-red-600' :
                                 'bg-gradient-to-tr from-gray-900 to-gray-700 hover:from-gray-800 hover:to-gray-900'">
-                            <span>📦</span>
-                            <span class="max-md:text-[12px]"
+                            <span class="text-xs md:text-sm">📦</span>
+                            <span class="text-xs md:text-sm"
                                 x-text="$store.inv.modoInventario ? 'Salir de inventario' : 'Hacer inventario'"></span>
                         </button>
 
