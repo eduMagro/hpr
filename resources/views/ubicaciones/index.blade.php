@@ -584,6 +584,7 @@ Inesperados: ${inesperados.join(', ') || '—'}
         openSectors: {},
         estadoUbicaciones: {},
         estadoSectores: {},
+        showLeyenda: false,
         borrarTodosEscaneos() {
             const ids = Array.isArray(window.ubicacionIdsInventario) ? window.ubicacionIdsInventario : [];
             if (!ids.length) {
@@ -672,20 +673,72 @@ Inesperados: ${inesperados.join(', ') || '—'}
                         almacén con acceso rápido al inventario.</p>
                 </div>
 
-                <div class="flex flex-wrap gap-3">
+                <div class="flex justify-between md:flex-col gap-2">
                     <button @click="toggleAll()"
-                        class="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-tr from-gray-900 to-gray-700 hover:from-gray-800 hover:to-gray-900 text-white rounded-lg shadow text-sm font-semibold">
+                        class="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-tr from-gray-900 to-gray-700 hover:from-gray-800 hover:to-gray-900 text-white rounded-lg shadow text-sm font-semibold max-md:text-[12px]">
                         <span
                             x-text="Object.values(openSectors).length && Object.values(openSectors).every(Boolean) ? 'Cerrar todo' : 'Abrir todo'"></span>
                     </button>
-                    <button @click="$store.inv.toggleModoInventario()"
-                        class="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-white font-semibold shadow transition-all"
-                        :class="$store.inv.modoInventario ?
-                            'bg-gradient-to-tr from-red-600 to-red-500 hover:from-red-700 hover:to-red-600' :
-                            'bg-gradient-to-tr from-gray-900 to-gray-700 hover:from-gray-800 hover:to-gray-900'">
-                        <span class="text-lg">📦</span>
-                        <span x-text="$store.inv.modoInventario ? 'Salir de inventario' : 'Hacer inventario'"></span>
-                    </button>
+
+                    <div class="flex gap-3 items-center">
+                        <!-- Botón Leyenda (Solo visible en modo inventario) -->
+                        <div x-data="{ showLeyenda: false }" class="relative" x-show="$store.inv.modoInventario" x-cloak>
+                            <button @click="showLeyenda = !showLeyenda"
+                                class="inline-flex items-center justify-center h-6 w-6 rounded-full bg-blue-600 hover:bg-blue-700 text-white font-bold text-xl shadow transition-all max-md:text-[12px]"
+                                title="Leyenda de colores">
+                                i
+                            </button>
+
+                            <div x-show="showLeyenda" @click.away="showLeyenda = false"
+                                x-transition:enter="transition ease-out duration-200"
+                                x-transition:enter-start="opacity-0 translate-y-1"
+                                x-transition:enter-end="opacity-100 translate-y-0"
+                                x-transition:leave="transition ease-in duration-150"
+                                x-transition:leave-start="opacity-100 translate-y-0"
+                                x-transition:leave-end="opacity-0 translate-y-1"
+                                class="absolute right-0 top-full mt-2 w-64 p-4 bg-white dark:bg-gray-800 rounded-xl shadow-xl border border-gray-200 dark:border-gray-700 z-50">
+
+                                <!-- Flecha del bocadillo -->
+                                <div
+                                    class="absolute -top-2 right-3 w-4 h-4 bg-white dark:bg-gray-800 border-t border-l border-gray-200 dark:border-gray-700 transform rotate-45">
+                                </div>
+
+                                <h3 class="font-bold text-gray-900 dark:text-white mb-3 text-sm relative z-10">Leyenda
+                                    de
+                                    estados</h3>
+
+                                <div class="space-y-2 text-xs text-gray-700 dark:text-gray-300 relative z-10">
+                                    <div class="flex items-center gap-2">
+                                        <span class="h-3 w-3 rounded-full bg-green-600"></span> <span>OK</span>
+                                    </div>
+                                    <div class="flex items-center gap-2">
+                                        <span class="h-3 w-3 rounded-full bg-blue-600"></span> <span>Consumido</span>
+                                    </div>
+                                    <div class="flex items-center gap-2">
+                                        <span class="h-3 w-3 rounded-full bg-amber-500"></span> <span>Asignado a otra
+                                            ubicación</span>
+                                    </div>
+                                    <div class="flex items-center gap-2">
+                                        <span class="h-3 w-3 rounded-full bg-red-600"></span> <span>Sin ubicación</span>
+                                    </div>
+                                    <div class="flex items-center gap-2">
+                                        <span class="h-3 w-3 rounded-full bg-gray-500"></span> <span>Pendiente</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <button @click="$store.inv.toggleModoInventario()"
+                            class="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-white font-semibold shadow transition-all max-md:text-[12px]"
+                            :class="$store.inv.modoInventario ?
+                                'bg-gradient-to-tr from-red-600 to-red-500 hover:from-red-700 hover:to-red-600' :
+                                'bg-gradient-to-tr from-gray-900 to-gray-700 hover:from-gray-800 hover:to-gray-900'">
+                            <span>📦</span>
+                            <span class="max-md:text-[12px]"
+                                x-text="$store.inv.modoInventario ? 'Salir de inventario' : 'Hacer inventario'"></span>
+                        </button>
+
+                    </div>
                 </div>
             </div>
         </div>
@@ -698,9 +751,11 @@ Inesperados: ${inesperados.join(', ') || '—'}
                     <span
                         class="inline-flex items-center justify-center h-9 w-9 rounded-lg bg-red-600 text-white font-bold text-lg shadow-sm">🗑️</span>
                     <div class="text-left">
-                        <p class="text-base font-semibold text-red-700 dark:text-red-300">Borrar escaneos de todas las
+                        <p class="md:text-base text-xs font-semibold text-red-700 dark:text-red-300">Borrar escaneos de
+                            todas las
                             ubicaciones</p>
-                        <p class="text-xs text-red-600 dark:text-red-400">Limpia escaneados y sospechosos guardados en
+                        <p class="md:text-sm text-[10px] text-red-600 dark:text-red-400">Limpia escaneados y sospechosos
+                            guardados en
                             este dispositivo.</p>
                     </div>
                 </div>
@@ -716,7 +771,7 @@ Inesperados: ${inesperados.join(', ') || '—'}
                 <div x-init="if (openSectors['{{ $sector }}'] === undefined) openSectors['{{ $sector }}'] = false"
                     class="border border-gray-200 dark:border-gray-800 rounded-2xl shadow-sm bg-white dark:bg-gray-900 overflow-hidden">
                     <button @click="openSectors['{{ $sector }}'] = !openSectors['{{ $sector }}']"
-                        class="w-full flex items-center justify-between px-5 py-4 bg-gradient-to-tr from-gray-900 to-gray-700 hover:from-gray-800 hover:to-gray-900 text-white">
+                        class="w-full flex items-center justify-between px-4 py-3 bg-gradient-to-tr from-gray-900 to-gray-700 hover:from-gray-800 hover:to-gray-900 text-white text-sm sm:text-base">
                         @php
                             $totalMP = $ubicaciones->reduce(
                                 fn($carry, $ubicacion) => $carry + $ubicacion->productos->count(),
@@ -725,7 +780,7 @@ Inesperados: ${inesperados.join(', ') || '—'}
                         @endphp
                         <div class="flex items-center gap-3">
                             <span
-                                class="inline-flex items-center justify-center h-10 w-10 rounded-full text-white font-bold"
+                                class="inline-flex items-center justify-center h-8 w-8 sm:h-10 sm:w-10 rounded-full text-white font-bold text-sm sm:text-base"
                                 :class="!($store.inv && $store.inv.modoInventario) ? 'bg-gray-600' : (
                                     estadoSectores['{{ $sector }}'] === 'ok' ? 'bg-green-600' :
                                     estadoSectores['{{ $sector }}'] === 'consumido' ? 'bg-blue-600' :
@@ -734,14 +789,16 @@ Inesperados: ${inesperados.join(', ') || '—'}
                                     'bg-gray-600'
                                 )">S{{ $sector }}</span>
                             <div class="flex flex-col gap-1 items-start">
-                                <p class="text-lg font-semibold">Sector {{ $sector }}</p>
-                                <p class="text-xs text-white/80">Material en sector: {{ $totalMP }}</p>
+                                <p class="text-base sm:text-lg font-semibold leading-tight">Sector {{ $sector }}
+                                </p>
+                                <p class="text-[11px] sm:text-xs text-white/80">Material en sector: {{ $totalMP }}
+                                </p>
                             </div>
                         </div>
                         <div class="flex items-center gap-3">
-                            <span class="text-sm text-white/70">{{ count($ubicaciones) }} ubicaciones</span>
+                            <span class="text-xs sm:text-sm text-white/70">{{ count($ubicaciones) }} ubicaciones</span>
                             <svg :class="openSectors['{{ $sector }}'] ? 'rotate-180' : ''"
-                                class="w-5 h-5 transition-transform" fill="none" stroke="currentColor"
+                                class="w-4 h-4 sm:w-5 sm:h-5 transition-transform" fill="none" stroke="currentColor"
                                 viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                     d="M19 9l-7 7-7-7" />
@@ -750,9 +807,9 @@ Inesperados: ${inesperados.join(', ') || '—'}
                     </button>
 
                     <div x-show="openSectors['{{ $sector }}']" x-collapse
-                        class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 p-4">
+                        class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2 p-2 md:gap-4 md:p-4">
                         @foreach ($ubicaciones as $ubicacion)
-                            <div class="bg-slate-50 dark:bg-gray-800 border rounded-xl p-4 flex flex-col gap-2 shadow-sm hover:shadow-md transition"
+                            <div class="bg-slate-50 dark:bg-gray-800 border rounded-xl p-2 md:p-4 flex flex-col gap-2 shadow-sm hover:shadow-md transition"
                                 x-data="{
                                     productos: @js($ubicacion->productos->pluck('codigo')->values()),
                                     ubicId: '{{ $ubicacion->id }}',
@@ -836,9 +893,11 @@ Inesperados: ${inesperados.join(', ') || '—'}
                                                     class="bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-400 rounded-md px-2 py-1 text-center">
                                                     <p
                                                         class="text-[11px] text-gray-800 dark:text-gray-100 font-semibold">
-                                                        {{ $producto->codigo ?? $producto->id }} | Ø
+                                                        {{ $producto->codigo ?? $producto->id }} |
+                                                        Ø
                                                         {{ $producto->productoBase->diametro ?? ($producto->diametro ?? 'N/D') }}
-                                                        mm
+                                                        mm |
+                                                        Col: {{ $producto->n_colada ?? '—' }}
                                                     </p>
                                                 </div>
                                             @endforeach
@@ -853,15 +912,15 @@ Inesperados: ${inesperados.join(', ') || '—'}
         </div>
 
         <div
-            class="border-2 border-dashed border-blue-200 dark:border-blue-700/70 rounded-2xl shadow-sm bg-white/70 dark:bg-gray-900/70 hover:border-blue-500 hover:shadow-md transition">
-            <button @click="openModal = true" class="w-full flex items-center justify-between px-5 py-3 text-left">
+            class="border border-blue-200 dark:border-blue-700/70 rounded-xl shadow-sm bg-white/80 dark:bg-gray-900/80 hover:border-blue-500 hover:shadow-md transition">
+            <button @click="openModal = true" class="w-full flex items-center justify-between px-4 py-2.5 text-left">
                 <div class="flex items-center gap-3">
                     <span
-                        class="inline-flex items-center justify-center h-10 w-10 rounded-full bg-blue-600 text-white font-bold text-xl shadow-sm">+</span>
+                        class="inline-flex items-center justify-center h-9 w-9 rounded-lg bg-blue-600 text-white font-bold text-lg shadow-sm">+</span>
                     <div class="text-left">
-                        <p class="text-lg font-semibold text-gray-900 dark:text-white">Nueva ubicación</p>
-                        <p class="text-sm text-gray-600 dark:text-gray-300">Añade rápidamente otra ubicación dentro del
-                            almacén.</p>
+                        <p class="md:text-base text-xs font-semibold text-gray-900 dark:text-white">Nueva ubicación</p>
+                        <p class="md:text-sm text-[10px] text-gray-600 dark:text-gray-300">Añade rápidamente otra
+                            ubicación.</p>
                     </div>
                 </div>
             </button>
@@ -933,6 +992,8 @@ Inesperados: ${inesperados.join(', ') || '—'}
                                 </h2>
                                 <p class="text-sm text-white/80 mt-1">Escanea los productos de esta ubicación</p>
                             </div>
+
+
                             <button @click="$store.inv.cerrarModalInventario()"
                                 class="text-white hover:text-gray-300 transition">
                                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
