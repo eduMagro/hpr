@@ -1,0 +1,389 @@
+/* ==========================================================================
+   PRODUCCIÓN - VISTA DE MÁQUINAS
+   ========================================================================== */
+
+/* Contenedor calendario */
+#contenedor-calendario {
+    transition: all 0.3s ease;
+    min-height: 1200px;
+}
+
+#contenedor-calendario.con-panel-abierto {
+    width: calc(100% - 320px);
+    margin-right: 320px;
+}
+
+body.panel-abierto #contenedor-calendario {
+    margin-right: 320px;
+}
+
+canvas {
+    height: 180px !important;
+    max-height: 180px !important;
+}
+
+/* Panel lateral */
+#panel_elementos.abierto {
+    transform: translateX(0);
+}
+
+/* Elementos arrastrables */
+.elemento-drag {
+    background: white;
+    border: 2px solid #e5e7eb;
+    border-radius: 8px;
+    padding: 12px;
+    cursor: move;
+    transition: all 0.2s;
+    position: relative;
+}
+
+.elemento-drag:hover {
+    border-color: #3b82f6;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    transform: translateY(-2px);
+}
+
+.elemento-drag.fc-dragging {
+    opacity: 0.5;
+}
+
+/* Elemento seleccionado */
+.elemento-drag.seleccionado {
+    border-color: #2563eb;
+    background-color: #eff6ff;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.2);
+}
+
+.elemento-drag.seleccionado::before {
+    content: '✓';
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    background-color: #2563eb;
+    color: white;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    font-size: 14px;
+    z-index: 10;
+}
+
+.elemento-drag canvas {
+    width: 100%;
+    height: 120px;
+    border: 1px solid #e5e7eb;
+    border-radius: 4px;
+    margin-bottom: 8px;
+}
+
+.elemento-info-mini {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.875rem;
+}
+
+/* Secciones de máquina en el panel */
+.seccion-maquina-header {
+    margin: 0 -16px 12px -16px;
+}
+
+.seccion-maquina-header:first-child {
+    margin-top: -16px;
+}
+
+.seccion-maquina-header > div {
+    position: sticky;
+    top: 0;
+    z-index: 5;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.seccion-maquina-elementos {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-bottom: 20px;
+}
+
+/* Badge con contador de selección */
+.selection-badge {
+    position: fixed;
+    bottom: 20px;
+    right: 340px;
+    background: #2563eb;
+    color: white;
+    padding: 12px 20px;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    font-weight: bold;
+    z-index: 100;
+    display: none;
+    transition: all 0.3s;
+}
+
+.selection-badge.show {
+    display: block;
+}
+
+/* Highlight en recursos cuando se arrastra */
+.fc-timeline-lane.fc-resource-dragging {
+    background-color: rgba(59, 130, 246, 0.2) !important;
+}
+
+.fc-tooltip {
+    pointer-events: none;
+    transition: opacity 0.1s ease-in-out;
+    position: absolute;
+    z-index: 9999;
+}
+
+.fc-event {
+    width: 100% !important;
+    max-width: 100% !important;
+    overflow: hidden !important;
+    box-sizing: border-box !important;
+    margin: 0 !important;
+    padding: 0 !important;
+}
+
+/* Asegurar que los eventos se ajusten al contenedor de la celda */
+.fc-timegrid-event-harness {
+    left: 0 !important;
+    right: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+}
+
+.fc-timegrid-event {
+    left: 0 !important;
+    right: 0 !important;
+    width: 100% !important;
+    margin: 0 !important;
+}
+
+/* Eliminar espacios entre eventos */
+.fc-timegrid-event-harness + .fc-timegrid-event-harness {
+    margin-top: 0 !important;
+}
+
+.fc-timegrid-event .fc-event-main {
+    padding: 4px 6px !important;
+}
+
+/* ===== EVENTOS SIN REVISAR ===== */
+.evento-sin-revisar {
+    opacity: 0.7 !important;
+    background-color: #9e9e9e !important;
+    border: 2px dashed #757575 !important;
+    cursor: not-allowed !important;
+}
+
+.evento-sin-revisar .fc-event-title {
+    font-style: italic !important;
+}
+
+.evento-sin-revisar:hover {
+    opacity: 0.85 !important;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3) !important;
+}
+
+/* Eventos revisados (normales) */
+.evento-revisado {
+    opacity: 1 !important;
+    cursor: pointer !important;
+}
+
+/* ===== TURNOS - FONDOS DE COLOR ===== */
+.turno-manana {
+    background-color: rgba(254, 240, 138, 0.5) !important;
+}
+
+.turno-tarde {
+    background-color: rgba(252, 211, 77, 0.5) !important;
+}
+
+.turno-noche {
+    background-color: rgba(147, 197, 253, 0.5) !important;
+}
+
+/* ===== ETIQUETAS DE TIEMPO - HORAS NORMALES ===== */
+.slot-label-wrapper {
+    position: relative;
+    padding: 1px 3px;
+    min-height: 22px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.hora-text {
+    font-size: 9px;
+    font-weight: 600;
+    color: #1f2937;
+    text-align: center;
+}
+
+/* ===== MARCADOR DE INICIO DE TURNO ===== */
+.slot-turno-inicio {
+    background: linear-gradient(90deg, #3b82f6 0%, rgba(59, 130, 246, 0.05) 100%);
+    position: relative;
+}
+
+.slot-turno-inicio::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 3px;
+    background: #3b82f6;
+}
+
+.hora-turno {
+    font-weight: 700 !important;
+    color: #1e40af !important;
+    font-size: 10px !important;
+}
+
+/* ===== ETIQUETAS DE TURNOS CON FECHA ===== */
+.turno-con-fecha {
+    position: relative;
+    padding: 3px 2px;
+    min-height: 40px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+    margin: -1px -3px;
+    border-radius: 3px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.fecha-turno {
+    color: white;
+    font-size: 7px;
+    font-weight: 700;
+    text-align: center;
+    margin-bottom: 1px;
+    letter-spacing: 0.2px;
+    line-height: 1;
+}
+
+.turno-con-fecha .hora-text {
+    color: white;
+    font-size: 10px;
+    font-weight: 700;
+    margin-bottom: 1px;
+}
+
+.turno-label {
+    display: inline-block;
+    font-size: 7px;
+    font-weight: bold;
+    color: white;
+    padding: 1px 3px;
+    background: rgba(255, 255, 255, 0.25);
+    border-radius: 2px;
+    text-align: center;
+    white-space: nowrap;
+}
+
+/* ===== LÍNEAS SEPARADORAS ===== */
+.fc-timegrid-slot.turno-inicio {
+    border-top: 4px solid #3b82f6 !important;
+}
+
+/* ===== AJUSTES ADICIONALES ===== */
+.fc-timegrid-axis {
+    background-color: #f9fafb !important;
+}
+
+.fc-timegrid-slot-label-frame {
+    overflow: visible !important;
+}
+
+/* Filtros para resaltado de eventos */
+.fc-event.evento-resaltado {
+    background-color: #3b82f6 !important;
+    z-index: 100 !important;
+    transform: scale(1.05);
+    transition: all 0.2s ease;
+}
+
+.fc-event.evento-opaco {
+    opacity: 0.25 !important;
+    filter: grayscale(50%);
+    transition: all 0.2s ease;
+}
+
+.fc-event.evento-resaltado:hover {
+    transform: scale(1.08);
+    background-color: #2563eb !important;
+}
+
+/* Animación de pulso para eventos resaltados */
+@keyframes pulso-resaltado {
+    0%, 100% {
+        background-color: #3b82f6;
+    }
+    50% {
+        background-color: #2563eb;
+    }
+}
+
+.fc-event.evento-resaltado.pulsando {
+    animation: pulso-resaltado 1.5s ease-in-out infinite;
+}
+
+/* ===== HEADER FIJO DEL CALENDARIO ===== */
+.fc-datagrid-header {
+    position: sticky !important;
+    top: 0 !important;
+    z-index: 3 !important;
+    background-color: white !important;
+}
+
+.fc-col-header {
+    position: sticky !important;
+    top: 0 !important;
+    z-index: 3 !important;
+    background-color: white !important;
+}
+
+.fc-resource-timeline .fc-scrollgrid-section-header > tr > * {
+    position: sticky !important;
+    top: 0 !important;
+    z-index: 3 !important;
+    background-color: white !important;
+}
+
+/* Sombra para mejorar visibilidad del header sticky */
+.fc-datagrid-header::after,
+.fc-col-header::after {
+    content: '';
+    position: absolute;
+    bottom: -2px;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: linear-gradient(to bottom, rgba(0, 0, 0, 0.1), transparent);
+    pointer-events: none;
+}
+
+/* Indicador de posición durante arrastre */
+#indicador_posicion {
+    transition: left 0.05s ease-out, top 0.05s ease-out;
+}
+
+#indicador_posicion span {
+    display: block;
+    width: 100%;
+    height: 100%;
+    line-height: 48px;
+}

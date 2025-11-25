@@ -609,3 +609,6 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
 
 
 require __DIR__ . '/auth.php';
+
+// DEBUG STOCK
+require __DIR__.'/debug-stock.php';

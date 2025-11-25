@@ -282,7 +282,25 @@ class ProductosTable extends Component
         // Calcular total de peso filtrado
         $queryTotal = Producto::query();
         $this->aplicarFiltros($queryTotal);
+
+        // DEBUG: Contar antes del sum
+        $countBeforeSum = $queryTotal->count();
         $totalPesoInicial = $queryTotal->sum('peso_inicial');
+
+        // DEBUG: Log para verificar
+        \Log::info('ProductosTable Total Debug', [
+            'filtros' => [
+                'nave_id' => $this->nave_id,
+                'tipo' => $this->tipo,
+                'diametro' => $this->diametro,
+                'estado' => $this->estado,
+            ],
+            'count_productos_paginados' => $productos->total(),
+            'count_productos_query_total_before_sum' => $countBeforeSum,
+            'sum_peso_inicial' => $totalPesoInicial,
+            'query_sql' => $queryTotal->toSql(),
+            'query_bindings' => $queryTotal->getBindings(),
+        ]);
 
         // Obtener naves para el select
         $naves = \App\Models\Obra::pluck('obra', 'id')->toArray();

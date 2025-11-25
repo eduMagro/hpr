@@ -183,6 +183,9 @@
                             <span class="text-base font-bold text-blue-800">
                                 {{ number_format($totalPesoInicial, 2, ',', '.') }} kg
                             </span>
+                            <span class="text-xs text-gray-500">
+                                ({{ $productos->total() }} productos)
+                            </span>
                         </div>
                     </td>
                 </tr>

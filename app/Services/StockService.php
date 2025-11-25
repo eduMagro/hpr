@@ -133,6 +133,7 @@ class StockService
 
         $productosAlmacenados = Producto::with('productoBase')
             ->where('estado', 'almacenado')
+            ->whereNotNull('obra_id')  // ✅ Excluir productos sin obra asignada
             ->when($idsObrasFiltradas, fn($q) => $q->whereIn('obra_id', $idsObrasFiltradas))
             ->get()
             ->filter(fn($producto) => $producto->productoBase);

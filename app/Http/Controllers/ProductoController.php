@@ -258,10 +258,27 @@ class ProductoController extends Controller
             'consumidoPor'
         ]);
 
-        // Aplicar filtros y ordenamiento de forma segura
+        // Aplicar filtros
         $query = $this->aplicarFiltros($query, $request);
+
+        // Si no se está filtrando por estado ni código, excluir consumido/fabricando
+        if ($request->filled('estado')) {
+            $query->where('estado', $request->estado);
+        } elseif (
+            !$request->filled('codigo') &&
+            !$request->filled('id') &&
+            !$request->boolean('mostrar_todos')
+        ) {
+            $query->whereNotIn('estado', ['consumido', 'fabricando']);
+        }
+
+        // ✅ CALCULAR TOTAL ANTES DE ORDENAMIENTO Y DISTINCT
+        $totalPesoInicial = (clone $query)->sum('peso_inicial');
+
+        // Aplicar ordenamiento y distinct para la paginación
         $query = $this->aplicarOrdenamiento($query, $request);
         $query->distinct('productos.id');
+
         $filtrosActivos = $this->filtrosActivos($request);
         $ordenables = [
             'id'             => $this->getOrdenamiento('id', 'ID Materia Prima'),
@@ -280,20 +297,6 @@ class ProductoController extends Controller
             'ubicacion'      => $this->getOrdenamiento('ubicacion', 'Ubicación'),
             'created_at'     => $this->getOrdenamiento('created_at', 'Fecha de Creación'),
         ];
-
-        // Si no se está filtrando por estado ni código, excluir consumido/fabricando
-        if ($request->filled('estado')) {
-            $query->where('estado', $request->estado);
-        } elseif (
-            !$request->filled('codigo') &&
-            !$request->filled('id') &&
-            !$request->boolean('mostrar_todos')
-        ) {
-            $query->whereNotIn('estado', ['consumido', 'fabricando']);
-        }
-
-
-        $totalPesoInicial = (clone $query)->sum('peso_inicial');
         // Paginación segura
         $perPage = is_numeric($request->input('per_page')) ? max(5, min((int)$request->input('per_page'), 100)) : 10;
         $registrosProductos = $query->paginate($perPage)->appends($request->except('page'));
