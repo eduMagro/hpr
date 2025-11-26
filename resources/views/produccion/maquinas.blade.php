@@ -1225,7 +1225,15 @@
                             dayHeaderContent: function(arg) {
                                 return '';
                             },
-                            buttonText: '15 días'
+                            buttonText: '15 días',
+                            // Extender el rango visible para incluir 15 días de eventos
+                            visibleRange: function(currentDate) {
+                                const start = new Date(currentDate);
+                                start.setHours(0, 0, 0, 0);
+                                const end = new Date(start);
+                                end.setDate(end.getDate() + 15);
+                                return { start: start, end: end };
+                            }
                         }
                     },
                     locale: 'es',
@@ -1247,6 +1255,53 @@
                             alert('Error al cargar los eventos. Revisa la consola.');
                         }
                     },
+
+                    // Transformar fechas de eventos para vista de 360 horas
+                    eventDataTransform: function(eventData) {
+                        const initialDateStr = "{{ $initialDate }}";
+                        const initialDate = new Date(initialDateStr);
+                        initialDate.setHours(0, 0, 0, 0);
+
+                        // Parsear fechas del evento
+                        const startDate = new Date(eventData.start);
+                        const endDate = new Date(eventData.end);
+
+                        // Calcular horas desde el inicio del calendario
+                        const msStart = startDate.getTime() - initialDate.getTime();
+                        const msEnd = endDate.getTime() - initialDate.getTime();
+                        const horasStart = msStart / (1000 * 60 * 60);
+                        const horasEnd = msEnd / (1000 * 60 * 60);
+
+                        // Solo procesar eventos dentro del rango de 360 horas
+                        if (horasStart >= 0 && horasStart < 360) {
+                            // Convertir a formato que FullCalendar entienda para vista extendida
+                            // Usar el initialDate como base y añadir las horas como minutos desde medianoche
+                            const nuevoStart = new Date(initialDate);
+                            nuevoStart.setTime(initialDate.getTime() + msStart);
+
+                            const nuevoEnd = new Date(initialDate);
+                            nuevoEnd.setTime(initialDate.getTime() + msEnd);
+
+                            // Debug
+                            if (!window._evtDebug) window._evtDebug = 0;
+                            if (window._evtDebug < 3) {
+                                console.log('📅 Transform:', {
+                                    title: eventData.title,
+                                    horasStart: horasStart.toFixed(1),
+                                    horasEnd: horasEnd.toFixed(1),
+                                    originalStart: eventData.start,
+                                    nuevoStart: nuevoStart.toISOString()
+                                });
+                                window._evtDebug++;
+                            }
+
+                            eventData.start = nuevoStart;
+                            eventData.end = nuevoEnd;
+                        }
+
+                        return eventData;
+                    },
+
                     height: 900, // Altura fija para permitir scroll en la página
                     scrollTime: '06:00:00',
                     editable: true,
@@ -1554,7 +1609,9 @@
                     },
 
                     slotLaneClassNames: function(arg) {
-                        const hour = arg.date.getHours();
+                        // Usar arg.text para obtener la hora (arg.date devuelve 1970 con slotMaxTime extendido)
+                        const horaSlot = parseInt(arg.text, 10) || 0;
+                        const hour = horaSlot % 24;
                         if (hour > 6 && hour <= 14) return ['turno-manana'];
                         if (hour >= 14 && hour <= 22) return ['turno-tarde'];
                         if (hour >= 22 || hour <= 6) return ['turno-noche'];
@@ -1562,10 +1619,24 @@
                     },
 
                     slotLabelContent: function(arg) {
-                        // ✅ Usar arg.date directamente - FullCalendar ya lo calcula correctamente
-                        const fechaReal = arg.date;
-                        const horaDelDia = fechaReal.getHours();
-                        const minutos = fechaReal.getMinutes();
+                        // Obtener la fecha inicial del calendario
+                        const initialDateStr = "{{ $initialDate }}";
+                        const calendarInitialDate = new Date(initialDateStr);
+                        calendarInitialDate.setHours(0, 0, 0, 0);
+
+                        // arg.text contiene la hora del slot ('0', '1', '2'... '359')
+                        // arg.date devuelve 1970 incorrectamente con slotMaxTime extendido
+                        const horaSlot = parseInt(arg.text, 10) || 0;
+
+                        // Calcular días adicionales y hora real del día
+                        const diasAdicionales = Math.floor(horaSlot / 24);
+                        const horaDelDia = horaSlot % 24;
+                        const minutos = 0; // Los slots son de 1 hora
+
+                        // Calcular la fecha real del slot
+                        const fechaReal = new Date(calendarInitialDate.getTime());
+                        fechaReal.setDate(fechaReal.getDate() + diasAdicionales);
+                        fechaReal.setHours(horaDelDia, minutos, 0, 0);
 
                         // Formatear la hora para mostrar
                         const timeText =

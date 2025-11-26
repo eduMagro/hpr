@@ -1,0 +1,107 @@
+<x-app-layout>
+    <x-slot name="title">Nueva Incorporación</x-slot>
+
+    <div class="w-full max-w-2xl mx-auto py-6 px-4 sm:px-6">
+        <!-- Cabecera -->
+        <div class="mb-6">
+            <a href="{{ route('incorporaciones.index') }}" class="text-blue-600 hover:text-blue-800 flex items-center mb-4">
+                <svg class="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+                </svg>
+                Volver al listado
+            </a>
+            <h1 class="text-2xl font-bold text-gray-800">Nueva Incorporación</h1>
+            <p class="text-gray-600 mt-1">Crea una nueva incorporación y genera el enlace para el candidato</p>
+        </div>
+
+        <!-- Formulario -->
+        <div class="bg-white rounded-lg shadow-sm border p-6">
+            <form method="POST" action="{{ route('incorporaciones.store') }}" class="space-y-6">
+                @csrf
+
+                <!-- Empresa destino -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                        Empresa destino <span class="text-red-500">*</span>
+                    </label>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <label class="relative flex items-center p-4 border rounded-lg cursor-pointer hover:bg-gray-50 transition
+                            {{ old('empresa_destino') === 'hpr_servicios' ? 'border-purple-500 bg-purple-50' : 'border-gray-200' }}">
+                            <input type="radio" name="empresa_destino" value="hpr_servicios"
+                                class="sr-only" {{ old('empresa_destino') === 'hpr_servicios' ? 'checked' : '' }}
+                                onchange="this.closest('form').querySelectorAll('label[class*=border]').forEach(l => l.classList.remove('border-purple-500', 'bg-purple-50', 'border-indigo-500', 'bg-indigo-50')); this.closest('label').classList.add('border-purple-500', 'bg-purple-50')">
+                            <div>
+                                <div class="font-medium text-gray-900">HPR Servicios</div>
+                                <div class="text-sm text-gray-500">Trabajo en obra</div>
+                            </div>
+                        </label>
+                        <label class="relative flex items-center p-4 border rounded-lg cursor-pointer hover:bg-gray-50 transition
+                            {{ old('empresa_destino') === 'hierros_paco_reyes' ? 'border-indigo-500 bg-indigo-50' : 'border-gray-200' }}">
+                            <input type="radio" name="empresa_destino" value="hierros_paco_reyes"
+                                class="sr-only" {{ old('empresa_destino') === 'hierros_paco_reyes' ? 'checked' : '' }}
+                                onchange="this.closest('form').querySelectorAll('label[class*=border]').forEach(l => l.classList.remove('border-purple-500', 'bg-purple-50', 'border-indigo-500', 'bg-indigo-50')); this.closest('label').classList.add('border-indigo-500', 'bg-indigo-50')">
+                            <div>
+                                <div class="font-medium text-gray-900">Hierros Paco Reyes</div>
+                                <div class="text-sm text-gray-500">Trabajo en nave</div>
+                            </div>
+                        </label>
+                    </div>
+                    @error('empresa_destino')
+                        <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                    @enderror
+                </div>
+
+                <!-- Nombre provisional -->
+                <div>
+                    <label for="nombre_provisional" class="block text-sm font-medium text-gray-700 mb-2">
+                        Nombre y apellidos <span class="text-red-500">*</span>
+                    </label>
+                    <input type="text" id="nombre_provisional" name="nombre_provisional" value="{{ old('nombre_provisional') }}"
+                        placeholder="Nombre y apellidos del candidato"
+                        class="w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500" required>
+                    @error('nombre_provisional')
+                        <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                    @enderror
+                </div>
+
+                <!-- Teléfono provisional -->
+                <div>
+                    <label for="telefono_provisional" class="block text-sm font-medium text-gray-700 mb-2">
+                        Teléfono <span class="text-red-500">*</span>
+                    </label>
+                    <input type="tel" id="telefono_provisional" name="telefono_provisional" value="{{ old('telefono_provisional') }}"
+                        placeholder="612345678"
+                        class="w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500" required>
+                    <p class="mt-1 text-xs text-gray-500">Para enviar el enlace por WhatsApp</p>
+                    @error('telefono_provisional')
+                        <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                    @enderror
+                </div>
+
+                <!-- Botones -->
+                <div class="flex justify-end gap-4 pt-4 border-t">
+                    <a href="{{ route('incorporaciones.index') }}"
+                        class="px-4 py-2 text-gray-700 hover:text-gray-900">
+                        Cancelar
+                    </a>
+                    <button type="submit"
+                        class="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition">
+                        Crear Incorporación
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Info -->
+        <div class="mt-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <h3 class="font-medium text-blue-800 mb-2">¿Cómo funciona?</h3>
+            <ol class="list-decimal list-inside text-sm text-blue-700 space-y-1">
+                <li>Crea la incorporación con los datos básicos del candidato</li>
+                <li>Se generará un enlace único para que el candidato complete sus datos</li>
+                <li>Envía el enlace por email o WhatsApp al candidato</li>
+                <li>Cuando el candidato complete el formulario, recibirás los documentos</li>
+                <li>Completa la documentación post-incorporación desde el panel</li>
+            </ol>
+        </div>
+    </div>
+</x-app-layout>

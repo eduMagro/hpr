@@ -605,7 +605,25 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
 
     Route::post('/paquetes/desde-maquina', [PaqueteController::class, 'store'])
         ->name('paquetes.store');
+
+    // === INCORPORACIONES DE TRABAJADORES ===
+    Route::resource('incorporaciones', \App\Http\Controllers\IncorporacionController::class)
+        ->parameters(['incorporaciones' => 'incorporacion']);
+    Route::post('/incorporaciones/{incorporacion}/subir-documento', [\App\Http\Controllers\IncorporacionController::class, 'subirDocumento'])
+        ->name('incorporaciones.subir-documento');
+    Route::delete('/incorporaciones/{incorporacion}/documento/{tipo}', [\App\Http\Controllers\IncorporacionController::class, 'eliminarDocumento'])
+        ->name('incorporaciones.eliminar-documento');
+    Route::post('/incorporaciones/{incorporacion}/cambiar-estado', [\App\Http\Controllers\IncorporacionController::class, 'cambiarEstado'])
+        ->name('incorporaciones.cambiar-estado');
+    Route::post('/incorporaciones/{incorporacion}/marcar-enviado', [\App\Http\Controllers\IncorporacionController::class, 'marcarEnlaceEnviado'])
+        ->name('incorporaciones.marcar-enviado');
 });
+
+// === RUTAS PÚBLICAS - FORMULARIO INCORPORACIÓN (sin autenticación) ===
+Route::get('/incorporacion/{token}', [\App\Http\Controllers\IncorporacionPublicaController::class, 'show'])
+    ->name('incorporacion.publica');
+Route::post('/incorporacion/{token}', [\App\Http\Controllers\IncorporacionPublicaController::class, 'store'])
+    ->name('incorporacion.publica.store');
 
 
 require __DIR__ . '/auth.php';

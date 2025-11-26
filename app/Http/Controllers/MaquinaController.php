@@ -840,45 +840,72 @@ class MaquinaController extends Controller
         // 👉 Fecha actual (sin hora)
         $hoy = Carbon::today();
 
-        // 🔎 Buscar todas las salidas programadas para hoy
-        $salidasHoy = Salida::whereDate('fecha_salida', $hoy)->get();
-        $naveA = Obra::buscarDeCliente('Paco Reyes', 'Nave A');
+        // 🔎 Buscar todas las salidas programadas para hoy con sus paquetes
+        $salidasHoy = Salida::with(['paquetes', 'camion', 'empresaTransporte', 'salidaClientes.obra', 'salidaClientes.cliente'])
+            ->whereDate('fecha_salida', $hoy)
+            ->get();
+
         foreach ($salidasHoy as $salida) {
-            // 🔎 Comprobar si ya existe un movimiento asociado a esta salida
-            $existeMovimiento = Movimiento::where('salida_id', $salida->id)
-                ->where('tipo', 'salida')
-                ->exists();
+            // 👉 Agrupar paquetes por nave_id
+            $paquetesPorNave = $salida->paquetes->groupBy('nave_id')->filter(function ($grupo, $naveId) {
+                return $naveId !== null; // Solo naves válidas
+            });
 
-            if (!$existeMovimiento) {
+            // Si no hay paquetes con nave, no crear movimiento
+            if ($paquetesPorNave->isEmpty()) {
+                continue;
+            }
 
-                // 👉 Datos básicos
-                $camion = optional($salida->camion)->modelo ?? 'Sin modelo';
-                $empresaTransporte = optional($salida->empresaTransporte)->nombre ?? 'Sin empresa';
-                $horaSalida = \Carbon\Carbon::parse($salida->fecha_salida)->format('H:i');
-                $codigoSalida = $salida->codigo_salida;
-                // 👉 Armar listado de obras y clientes relacionados
-                $obrasClientes = $salida->salidaClientes->map(function ($sc) {
-                    $obra = optional($sc->obra)->obra ?? 'Sin obra';
-                    $cliente = optional($sc->cliente)->empresa ?? 'Sin cliente';
-                    return "$obra - $cliente";
-                })->filter()->implode(', ');
+            // 👉 Datos básicos de la salida (comunes para todos los movimientos)
+            $camion = optional($salida->camion)->modelo ?? 'Sin modelo';
+            $empresaTransporte = optional($salida->empresaTransporte)->nombre ?? 'Sin empresa';
+            $horaSalida = \Carbon\Carbon::parse($salida->fecha_salida)->format('H:i');
+            $codigoSalida = $salida->codigo_salida;
 
-                // 👉 Construir la descripción final (sin usar optional de nuevo)
-                $descripcion = "$codigoSalida. Se solicita carga del camión ($camion) - ($empresaTransporte) para [$obrasClientes], tiene que estar listo a las $horaSalida";
+            // 👉 Armar listado de obras y clientes relacionados
+            $obrasClientes = $salida->salidaClientes->map(function ($sc) {
+                $obra = optional($sc->obra)->obra ?? 'Sin obra';
+                $cliente = optional($sc->cliente)->empresa ?? 'Sin cliente';
+                return "$obra - $cliente";
+            })->filter()->implode(', ');
 
+            // 👉 Crear un movimiento por cada nave donde haya paquetes
+            foreach ($paquetesPorNave as $naveId => $paquetesEnNave) {
+                // 🔎 Comprobar si ya existe un movimiento para esta salida Y esta nave
+                $existeMovimiento = Movimiento::where('salida_id', $salida->id)
+                    ->where('tipo', 'salida')
+                    ->where('nave_id', $naveId)
+                    ->exists();
 
-                // ⚡ Crear movimiento nuevo
-                Movimiento::create([
-                    'tipo' => 'salida',
-                    'salida_id' => $salida->id,
-                    'nave_id'         => $naveA?->id,
-                    'estado' => 'pendiente',
-                    'fecha_solicitud' => now(),
-                    'solicitado_por' => null,
-                    'prioridad' => 2,
-                    'descripcion' => $descripcion,
-                    // 👉 Rellena otros campos si lo necesitas, por ejemplo prioridad o descripción
-                ]);
+                if (!$existeMovimiento) {
+                    // 👉 Obtener nombre de la nave para la descripción
+                    $nave = Obra::find($naveId);
+                    $nombreNave = $nave->obra ?? 'Nave desconocida';
+                    $numPaquetes = $paquetesEnNave->count();
+                    $pesoTotal = $paquetesEnNave->sum('peso');
+
+                    // 👉 Construir la descripción con info de la nave
+                    $descripcion = "$codigoSalida. [$nombreNave] Cargar $numPaquetes paquete(s) (" . number_format($pesoTotal, 0) . " kg) - Camión ($camion) - ($empresaTransporte) para [$obrasClientes], listo a las $horaSalida";
+
+                    // ⚡ Crear movimiento para esta nave
+                    Movimiento::create([
+                        'tipo' => 'salida',
+                        'salida_id' => $salida->id,
+                        'nave_id' => $naveId,
+                        'estado' => 'pendiente',
+                        'fecha_solicitud' => now(),
+                        'solicitado_por' => null,
+                        'prioridad' => 2,
+                        'descripcion' => $descripcion,
+                    ]);
+
+                    Log::info("✅ Movimiento de salida creado para nave $nombreNave", [
+                        'salida_id' => $salida->id,
+                        'nave_id' => $naveId,
+                        'paquetes' => $numPaquetes,
+                        'peso' => $pesoTotal,
+                    ]);
+                }
             }
         }
     }

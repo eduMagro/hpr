@@ -1,0 +1,417 @@
+<x-app-layout>
+    <x-slot name="title">Incorporación - {{ $incorporacion->nombre_provisional }}</x-slot>
+
+    <div class="w-full max-w-5xl mx-auto py-6 px-4 sm:px-6">
+        <!-- Cabecera -->
+        <div class="flex flex-col sm:flex-row justify-between items-start gap-4 mb-6">
+            <div>
+                <a href="{{ route('incorporaciones.index') }}" class="text-blue-600 hover:text-blue-800 flex items-center mb-2">
+                    <svg class="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+                    </svg>
+                    Volver al listado
+                </a>
+                <h1 class="text-2xl font-bold text-gray-800">{{ $incorporacion->nombre_provisional }}</h1>
+                <div class="flex flex-wrap gap-2 mt-2">
+                    @php $badge = $incorporacion->estado_badge; @endphp
+                    <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium
+                        bg-{{ $badge['color'] }}-100 text-{{ $badge['color'] }}-800">
+                        {{ $badge['texto'] }}
+                    </span>
+                    <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium
+                        {{ $incorporacion->empresa_destino === 'hpr_servicios' ? 'bg-purple-100 text-purple-800' : 'bg-indigo-100 text-indigo-800' }}">
+                        {{ $incorporacion->empresa_nombre }}
+                    </span>
+                    @if($incorporacion->puesto)
+                        <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-gray-100 text-gray-800">
+                            {{ $incorporacion->puesto }}
+                        </span>
+                    @endif
+                </div>
+            </div>
+
+            <!-- Acciones -->
+            <div class="flex gap-2">
+                <button onclick="cambiarEstado()" class="inline-flex items-center px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium rounded-lg transition">
+                    Cambiar estado
+                </button>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <!-- Columna principal -->
+            <div class="lg:col-span-2 space-y-6">
+                <!-- Enlace del formulario -->
+                <div class="bg-white rounded-lg shadow-sm border p-6">
+                    <h2 class="text-lg font-semibold text-gray-800 mb-4">Enlace del formulario</h2>
+                    <div class="flex items-center gap-2">
+                        <input type="text" readonly value="{{ $incorporacion->url_formulario }}"
+                            id="enlaceFormulario"
+                            class="flex-1 rounded-lg border-gray-300 bg-gray-50 text-sm">
+                        <button onclick="copiarEnlace(this)" class="p-2 bg-gray-100 hover:bg-gray-200 text-gray-600 hover:text-gray-800 rounded-lg transition" title="Copiar al portapapeles">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                            </svg>
+                        </button>
+                    </div>
+                    @if($incorporacion->enlace_enviado_at)
+                        <p class="mt-2 text-sm text-green-600">
+                            Enlace marcado como enviado el {{ $incorporacion->enlace_enviado_at->format('d/m/Y H:i') }}
+                        </p>
+                    @else
+                        <button onclick="marcarEnviado()" class="mt-2 text-sm text-blue-600 hover:underline">
+                            Marcar como enviado
+                        </button>
+                    @endif
+                </div>
+
+                <!-- Datos del candidato -->
+                <div class="bg-white rounded-lg shadow-sm border p-6">
+                    <h2 class="text-lg font-semibold text-gray-800 mb-4">Datos Personales</h2>
+                    @if($incorporacion->datos_completados_at)
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div>
+                                <label class="text-sm text-gray-500">DNI</label>
+                                <p class="font-medium">{{ $incorporacion->dni }}</p>
+                            </div>
+                            <div>
+                                <label class="text-sm text-gray-500">N. Afiliación SS</label>
+                                <p class="font-medium">{{ $incorporacion->numero_afiliacion_ss }}</p>
+                            </div>
+                            <div>
+                                <label class="text-sm text-gray-500">Email</label>
+                                <p class="font-medium">{{ $incorporacion->email }}</p>
+                            </div>
+                            <div>
+                                <label class="text-sm text-gray-500">Teléfono</label>
+                                <p class="font-medium">{{ $incorporacion->telefono }}</p>
+                            </div>
+                            <div class="sm:col-span-2">
+                                <label class="text-sm text-gray-500">Certificado bancario</label>
+                                @if($incorporacion->certificado_bancario)
+                                    <a href="{{ asset('storage/incorporaciones/' . $incorporacion->certificado_bancario) }}"
+                                        target="_blank" class="text-blue-600 hover:underline flex items-center">
+                                        <svg class="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                        </svg>
+                                        Descargar certificado
+                                    </a>
+                                @endif
+                            </div>
+                        </div>
+                        <p class="mt-4 text-sm text-gray-500">
+                            Datos completados el {{ $incorporacion->datos_completados_at->format('d/m/Y H:i') }}
+                        </p>
+                    @else
+                        <div class="text-center py-8 text-gray-500">
+                            <svg class="w-12 h-12 mx-auto mb-2 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            <p>Esperando que el candidato complete el formulario</p>
+                        </div>
+                    @endif
+                </div>
+
+                <!-- Documentos de formación -->
+                @if($incorporacion->datos_completados_at)
+                <div class="bg-white rounded-lg shadow-sm border p-6">
+                    <h2 class="text-lg font-semibold text-gray-800 mb-4">Documentos de Formación</h2>
+                    @if($incorporacion->formaciones->isEmpty())
+                        <p class="text-gray-500">No hay documentos de formación</p>
+                    @else
+                        <div class="space-y-3">
+                            @foreach($incorporacion->formaciones as $formacion)
+                                <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                                    <div>
+                                        <p class="font-medium">{{ $formacion->tipo_nombre }}</p>
+                                        @if($formacion->nombre)
+                                            <p class="text-sm text-gray-500">{{ $formacion->nombre }}</p>
+                                        @endif
+                                    </div>
+                                    <a href="{{ asset('storage/incorporaciones/' . $formacion->archivo) }}"
+                                        target="_blank" class="text-blue-600 hover:text-blue-800">
+                                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                        </svg>
+                                    </a>
+                                </div>
+                            @endforeach
+                        </div>
+                    @endif
+                </div>
+                @endif
+
+                <!-- Documentos post-incorporación -->
+                <div class="bg-white rounded-lg shadow-sm border p-6">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-lg font-semibold text-gray-800">Documentos Post-Incorporación</h2>
+                        <span class="text-sm text-gray-500">{{ $incorporacion->porcentajeDocumentosPost() }}% completado</span>
+                    </div>
+
+                    <!-- Barra de progreso -->
+                    <div class="w-full bg-gray-200 rounded-full h-3 mb-6">
+                        <div class="bg-green-500 h-3 rounded-full transition-all" style="width: {{ $incorporacion->porcentajeDocumentosPost() }}%"></div>
+                    </div>
+
+                    <!-- Checklist -->
+                    <div class="space-y-3">
+                        @foreach($documentosPost as $tipo => $item)
+                            <div class="flex items-center justify-between p-4 border rounded-lg {{ $item['completado'] ? 'bg-green-50 border-green-200' : 'bg-white' }}"
+                                id="doc-{{ $tipo }}">
+                                <div class="flex items-center">
+                                    @if($item['completado'])
+                                        <svg class="w-6 h-6 text-green-500 mr-3" fill="currentColor" viewBox="0 0 20 20">
+                                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+                                        </svg>
+                                    @else
+                                        <div class="w-6 h-6 border-2 border-gray-300 rounded-full mr-3"></div>
+                                    @endif
+                                    <div>
+                                        <p class="font-medium {{ $item['completado'] ? 'text-green-800' : 'text-gray-800' }}">{{ $item['nombre'] }}</p>
+                                        @if($item['documento'] && $item['documento']->notas)
+                                            <p class="text-sm text-gray-500">{{ $item['documento']->notas }}</p>
+                                        @endif
+                                    </div>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    @if($item['completado'] && $item['documento'])
+                                        <a href="{{ asset('storage/incorporaciones/documentos/' . $item['documento']->archivo) }}"
+                                            target="_blank" class="text-blue-600 hover:text-blue-800" title="Ver documento">
+                                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                            </svg>
+                                        </a>
+                                        <button onclick="eliminarDocumento('{{ $tipo }}')" class="text-red-600 hover:text-red-800" title="Eliminar">
+                                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                            </svg>
+                                        </button>
+                                    @else
+                                        <button onclick="abrirModalSubir('{{ $tipo }}', '{{ $item['nombre'] }}')"
+                                            class="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-lg transition">
+                                            Subir
+                                        </button>
+                                    @endif
+                                </div>
+                            </div>
+                        @endforeach
+                    </div>
+                </div>
+            </div>
+
+            <!-- Columna lateral -->
+            <div class="space-y-6">
+                <!-- Info rápida -->
+                <div class="bg-white rounded-lg shadow-sm border p-6">
+                    <h3 class="font-semibold text-gray-800 mb-4">Información</h3>
+                    <dl class="space-y-3 text-sm">
+                        <div>
+                            <dt class="text-gray-500">Creada por</dt>
+                            <dd class="font-medium">{{ $incorporacion->creador?->nombre_completo ?? 'Sistema' }}</dd>
+                        </div>
+                        <div>
+                            <dt class="text-gray-500">Fecha de creación</dt>
+                            <dd class="font-medium">{{ $incorporacion->created_at?->format('d/m/Y H:i') ?? '-' }}</dd>
+                        </div>
+                        @if($incorporacion->datos_completados_at)
+                        <div>
+                            <dt class="text-gray-500">Datos completados</dt>
+                            <dd class="font-medium">{{ $incorporacion->datos_completados_at->format('d/m/Y H:i') }}</dd>
+                        </div>
+                        @endif
+                    </dl>
+                </div>
+
+                <!-- Historial -->
+                <div class="bg-white rounded-lg shadow-sm border p-6">
+                    <h3 class="font-semibold text-gray-800 mb-4">Historial</h3>
+                    <div class="space-y-4 max-h-96 overflow-y-auto">
+                        @forelse($incorporacion->logs->sortByDesc('created_at') as $log)
+                            <div class="border-l-2 border-gray-200 pl-4 pb-4">
+                                <p class="text-sm font-medium text-gray-800">{{ $log->accion_texto }}</p>
+                                @if($log->descripcion)
+                                    <p class="text-sm text-gray-500">{{ $log->descripcion }}</p>
+                                @endif
+                                <p class="text-xs text-gray-400 mt-1">
+                                    {{ $log->created_at?->format('d/m/Y H:i') ?? '' }}
+                                    @if($log->usuario)
+                                        por {{ $log->usuario->nombre_completo }}
+                                    @endif
+                                </p>
+                            </div>
+                        @empty
+                            <p class="text-sm text-gray-500">Sin actividad registrada</p>
+                        @endforelse
+                    </div>
+                </div>
+
+                <!-- Acciones peligrosas -->
+                <div class="bg-red-50 border border-red-200 rounded-lg p-4">
+                    <h3 class="font-semibold text-red-800 mb-2">Zona peligrosa</h3>
+                    <form method="POST" action="{{ route('incorporaciones.destroy', $incorporacion) }}"
+                        onsubmit="return confirm('¿Estás seguro de eliminar esta incorporación? Esta acción no se puede deshacer.')">
+                        @csrf
+                        @method('DELETE')
+                        <button type="submit" class="w-full px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-sm rounded-lg transition">
+                            Eliminar incorporación
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal subir documento -->
+    <div id="modalSubir" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
+            <h3 class="text-lg font-semibold mb-4" id="modalTitulo">Subir documento</h3>
+            <form id="formSubir" enctype="multipart/form-data">
+                @csrf
+                <input type="hidden" name="tipo" id="modalTipo">
+
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Archivo</label>
+                    <input type="file" name="archivo" accept=".pdf,.jpg,.jpeg,.png" required
+                        class="w-full border border-gray-300 rounded-lg p-2">
+                    <p class="text-xs text-gray-500 mt-1">PDF, JPG o PNG. Máximo 10MB.</p>
+                </div>
+
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Notas (opcional)</label>
+                    <textarea name="notas" rows="2" class="w-full border-gray-300 rounded-lg"
+                        placeholder="Observaciones sobre el documento..."></textarea>
+                </div>
+
+                <div class="flex justify-end gap-3">
+                    <button type="button" onclick="cerrarModal()" class="px-4 py-2 text-gray-600 hover:text-gray-800">
+                        Cancelar
+                    </button>
+                    <button type="submit" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg">
+                        Subir documento
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        function copiarEnlace(btn) {
+            const input = document.getElementById('enlaceFormulario');
+
+            // Copiar al portapapeles
+            input.select();
+            input.setSelectionRange(0, 99999);
+            document.execCommand('copy');
+
+            // Cambiar icono a check temporalmente
+            const originalHTML = btn.innerHTML;
+            btn.innerHTML = '<svg class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>';
+            btn.classList.add('bg-green-100');
+
+            setTimeout(() => {
+                btn.innerHTML = originalHTML;
+                btn.classList.remove('bg-green-100');
+            }, 1500);
+        }
+
+        function marcarEnviado() {
+            fetch('{{ route('incorporaciones.marcar-enviado', $incorporacion) }}', {
+                method: 'POST',
+                headers: {
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                    'Accept': 'application/json',
+                }
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    location.reload();
+                }
+            });
+        }
+
+        function abrirModalSubir(tipo, nombre) {
+            document.getElementById('modalTipo').value = tipo;
+            document.getElementById('modalTitulo').textContent = 'Subir: ' + nombre;
+            document.getElementById('modalSubir').classList.remove('hidden');
+        }
+
+        function cerrarModal() {
+            document.getElementById('modalSubir').classList.add('hidden');
+            document.getElementById('formSubir').reset();
+        }
+
+        document.getElementById('formSubir').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const formData = new FormData(this);
+
+            fetch('{{ route('incorporaciones.subir-documento', $incorporacion) }}', {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                    'Accept': 'application/json',
+                }
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    location.reload();
+                } else {
+                    alert(data.message || 'Error al subir el documento');
+                }
+            })
+            .catch(err => {
+                alert('Error al subir el documento');
+            });
+        });
+
+        function eliminarDocumento(tipo) {
+            if (!confirm('¿Eliminar este documento?')) return;
+
+            fetch('{{ url('incorporaciones/' . $incorporacion->id . '/documento') }}/' + tipo, {
+                method: 'DELETE',
+                headers: {
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                    'Accept': 'application/json',
+                }
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    location.reload();
+                }
+            });
+        }
+
+        function cambiarEstado() {
+            const estados = ['pendiente', 'datos_recibidos', 'en_proceso', 'completada', 'cancelada'];
+            const actual = '{{ $incorporacion->estado }}';
+            const nuevoEstado = prompt('Nuevo estado (' + estados.join(', ') + '):', actual);
+
+            if (nuevoEstado && estados.includes(nuevoEstado)) {
+                fetch('{{ route('incorporaciones.cambiar-estado', $incorporacion) }}', {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                    },
+                    body: JSON.stringify({ estado: nuevoEstado })
+                })
+                .then(r => r.json())
+                .then(data => {
+                    if (data.success) {
+                        location.reload();
+                    }
+                });
+            }
+        }
+
+        // Cerrar modal con Escape
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') cerrarModal();
+        });
+    </script>
+</x-app-layout>

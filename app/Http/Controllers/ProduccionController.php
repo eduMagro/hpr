@@ -30,11 +30,24 @@ function toCarbon($valor, $format = 'd/m/Y H:i')
     if ($valor instanceof Carbon) return $valor;
     if (empty($valor)) return null;
 
-    if (preg_match('/^\d{4}-\d{2}-\d{2}/', $valor)) {
-        return Carbon::parse($valor);
-    }
+    try {
+        if (preg_match('/^\d{4}-\d{2}-\d{2}/', $valor)) {
+            return Carbon::parse($valor);
+        }
 
-    return Carbon::createFromFormat(strlen($valor) === 19 ? 'd/m/Y H:i:s' : $format, $valor);
+        $result = Carbon::createFromFormat(strlen($valor) === 19 ? 'd/m/Y H:i:s' : $format, $valor);
+
+        // createFromFormat devuelve false si falla
+        if ($result === false) {
+            Log::warning('toCarbon: formato inválido', ['valor' => $valor, 'format' => $format]);
+            return null;
+        }
+
+        return $result;
+    } catch (\Throwable $e) {
+        Log::warning('toCarbon: excepción', ['valor' => $valor, 'error' => $e->getMessage()]);
+        return null;
+    }
 }
 class ProduccionController extends Controller
 {
@@ -532,13 +545,25 @@ class ProduccionController extends Controller
                 ->orderByDesc('fecha_inicio')
                 ->first();
 
-            $fechaInicioCola = optional($ultimaPlanillaFabricando)->fecha_inicio
-                ? toCarbon($ultimaPlanillaFabricando->fecha_inicio)
-                : Carbon::now();
+            $fechaInicioCola = null;
+            if (optional($ultimaPlanillaFabricando)->fecha_inicio) {
+                $fechaInicioCola = toCarbon($ultimaPlanillaFabricando->fecha_inicio);
+            }
+            // Si toCarbon devolvió null o no hay fecha_inicio, usar now()
+            if (!$fechaInicioCola instanceof Carbon) {
+                $fechaInicioCola = Carbon::now();
+            }
 
-            // Validar que la fecha no esté demasiado lejos en el futuro
+            // Validar que la fecha no esté demasiado lejos en el futuro o pasado
             $maxFecha = Carbon::now()->addYear();
-            if ($fechaInicioCola->gt($maxFecha)) {
+            $minFecha = Carbon::now()->subYears(2);
+            if ($fechaInicioCola->lt($minFecha)) {
+                Log::warning('COLA MAQUINA: fecha_inicio demasiado antigua (1970?), usando now()', [
+                    'maquina_id' => $m->id,
+                    'fecha_inicio' => $fechaInicioCola->toIso8601String(),
+                ]);
+                $fechaInicioCola = Carbon::now();
+            } elseif ($fechaInicioCola->gt($maxFecha)) {
                 Log::warning('COLA MAQUINA: fecha_inicio demasiado lejana, usando now()', [
                     'maquina_id' => $m->id,
                     'fecha_inicio' => $fechaInicioCola->toIso8601String(),
@@ -753,13 +778,25 @@ class ProduccionController extends Controller
                 ->orderByDesc('fecha_inicio')
                 ->first();
 
-            $fechaInicioCola = optional($ultimaPlanillaFabricando)->fecha_inicio
-                ? toCarbon($ultimaPlanillaFabricando->fecha_inicio)
-                : Carbon::now();
+            $fechaInicioCola = null;
+            if (optional($ultimaPlanillaFabricando)->fecha_inicio) {
+                $fechaInicioCola = toCarbon($ultimaPlanillaFabricando->fecha_inicio);
+            }
+            // Si toCarbon devolvió null o no hay fecha_inicio, usar now()
+            if (!$fechaInicioCola instanceof Carbon) {
+                $fechaInicioCola = Carbon::now();
+            }
 
-            // Validar que la fecha no esté demasiado lejos en el futuro
+            // Validar que la fecha no esté demasiado lejos en el futuro o pasado
             $maxFecha = Carbon::now()->addYear();
-            if ($fechaInicioCola->gt($maxFecha)) {
+            $minFecha = Carbon::now()->subYears(2);
+            if ($fechaInicioCola->lt($minFecha)) {
+                Log::warning('COLA MAQUINA: fecha_inicio demasiado antigua (1970?), usando now()', [
+                    'maquina_id' => $m->id,
+                    'fecha_inicio' => $fechaInicioCola->toIso8601String(),
+                ]);
+                $fechaInicioCola = Carbon::now();
+            } elseif ($fechaInicioCola->gt($maxFecha)) {
                 Log::warning('COLA MAQUINA: fecha_inicio demasiado lejana, usando now()', [
                     'maquina_id' => $m->id,
                     'fecha_inicio' => $fechaInicioCola->toIso8601String(),
@@ -2056,6 +2093,19 @@ class ProduccionController extends Controller
                                 ]);
                             }
                         }
+
+                        // DEBUG: Log antes de generar tramos
+                        Log::info('🔍 DEBUG ANTES generarTramosLaborales', [
+                            'planilla' => $planilla->codigo_limpio ?? $planillaId,
+                            'maquina_id' => $maquinaId,
+                            'fechaInicio' => $fechaInicio->toIso8601String(),
+                            'fechaInicio_timestamp' => $fechaInicio->timestamp,
+                            'duracionSegundos' => $duracionSegundos,
+                            'esPrimerEvento' => $esPrimerEvento,
+                            'ordenId' => $ordenId,
+                            'primeraOrdenId' => $primeraOrdenId,
+                            'posicion' => $posicion,
+                        ]);
 
                         $tramos = $this->generarTramosLaborales($fechaInicio, $duracionSegundos, $festivosSet);
 
