@@ -77,6 +77,7 @@
         return swal.fire({
             position: 'center',
             timerProgressBar: true,
+            zIndex: 99999,
             ...options
         });
     });
@@ -338,6 +339,7 @@
                     // Reproducimos sonido según caso
                     if (estadoProducto === 'consumido') {
                         this.reproducirConsumido();
+                        // this.confirmarRestablecerConsumido(codigo);
                     } else if (ubicacionAsignada !== undefined && ubicacionAsignada !== null && this
                         .nombreUbicacion &&
                         ubicacionAsignada.toString() !== this.nombreUbicacion.toString()) {
@@ -407,6 +409,102 @@
                     faltantes,
                     inesperados
                 });
+            },
+
+            confirmarRestablecerConsumido(codigo) {
+                this.$store?.inv && (this.$store.inv.bloquearCierre = true);
+                if (!this.nombreUbicacion) {
+                    swalDialog({
+                        icon: 'error',
+                        title: 'Sin ubicación',
+                        text: 'No se pudo detectar la ubicación actual para restablecer el producto.'
+                    }).finally(() => {
+                        this.$store?.inv && (this.$store.inv.bloquearCierre = false);
+                    });
+                    return;
+                }
+
+                swalDialog({
+                    icon: 'question',
+                    title: 'Producto consumido',
+                    text: `El producto ${codigo} está marcado como consumido. ¿Restablecerlo en esta ubicación?`,
+                    showCancelButton: true,
+                    confirmButtonText: 'Restablecer aquí',
+                    cancelButtonText: 'Cancelar',
+                    confirmButtonColor: '#16a34a'
+                }).then(result => {
+                    if (result.isConfirmed) {
+                        this.restablecerConsumido(codigo);
+                    } else {
+                        this.$store?.inv && (this.$store.inv.bloquearCierre = false);
+                    }
+                }).catch(() => {
+                    this.$store?.inv && (this.$store.inv.bloquearCierre = false);
+                });
+            },
+
+            restablecerConsumido(codigo) {
+                fetch("{{ route('productos.restablecerInventario', ['codigo' => '___CODIGO___']) }}".replace(
+                        '___CODIGO___', codigo), {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Accept': 'application/json',
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                        },
+                        body: JSON.stringify({
+                            ubicacion_id: this.nombreUbicacion
+                        })
+                    })
+                    .then(async res => {
+                        const data = await res.json();
+                        if (!res.ok || data.success === false) {
+                            throw new Error(data.message || 'Error desconocido al restablecer.');
+                        }
+
+                        window.productosEstados[codigo] = 'almacenado';
+                        this.estados[codigo] = 'almacenado';
+                        window.productosAsignados[codigo] = this.nombreUbicacion;
+                        this.asignados[codigo] = this.nombreUbicacion;
+
+                        this.sospechosos = this.sospechosos.filter(c => c !== codigo);
+                        if (!this.productosEsperados.includes(codigo)) this.productosEsperados.unshift(
+                            codigo);
+                        if (!this.originalEsperados.includes(codigo)) this.originalEsperados.unshift(
+                        codigo);
+                        if (!this.escaneados.includes(codigo)) this.escaneados.push(codigo);
+
+                        localStorage.setItem(claveLS, JSON.stringify(this.escaneados));
+                        localStorage.setItem(claveSospechosos, JSON.stringify(this.sospechosos));
+
+                        window.dispatchEvent(new CustomEvent('producto-reasignado', {
+                            detail: {
+                                codigo,
+                                nuevaUbicacion: this.nombreUbicacion
+                            }
+                        }));
+                        window.dispatchEvent(new CustomEvent('inventario-actualizado', {
+                            detail: {
+                                ubicacionId: this.nombreUbicacion
+                            }
+                        }));
+
+                        return swalToast.fire({
+                            icon: 'success',
+                            title: 'Producto restablecido',
+                            text: `El producto ${codigo} se marcó como almacenado en esta ubicación.`
+                        });
+                    })
+                    .catch(err => {
+                        swalDialog({
+                            icon: 'error',
+                            title: 'Error',
+                            text: err.message
+                        });
+                    })
+                    .finally(() => {
+                        this.$store?.inv && (this.$store.inv.bloquearCierre = false);
+                    });
             },
 
             // ⬇️ Reasignar producto
@@ -535,6 +633,7 @@ Inesperados: ${inesperados.join(', ') || '—'}
             ubicacionActual: null,
             codigoActual: null,
             productosActuales: [],
+            bloquearCierre: false,
 
             toggleModoInventario() {
                 this.modoInventario = !this.modoInventario;
@@ -807,17 +906,28 @@ Inesperados: ${inesperados.join(', ') || '—'}
                     </button>
 
                     <div x-show="openSectors['{{ $sector }}']" x-collapse
-                        class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2 p-2 md:gap-4 md:p-4">
+                        class="flex flex-wrap justify-center gap-2 p-2 md:gap-4 md:p-4">
                         @foreach ($ubicaciones as $ubicacion)
-                            <div class="bg-slate-50 dark:bg-gray-800 border rounded-xl p-2 md:p-4 flex flex-col gap-2 shadow-sm hover:shadow-md transition"
+                            <div class="bg-slate-50 dark:bg-gray-800 border rounded-xl p-2 md:p-4 flex flex-col gap-2 shadow-sm hover:shadow-md transition min-w-[282px] max-md:w-full"
                                 x-data="{
                                     productos: @js($ubicacion->productos->pluck('codigo')->values()),
+                                    paquetes: @js($ubicacion->paquetes->pluck('codigo')->values()),
                                     ubicId: '{{ $ubicacion->id }}',
                                     sector: '{{ $sector }}',
                                     estado: 'pendiente',
                                     init() {
                                         this.calcularEstado();
                                         window.addEventListener('inventario-actualizado', () => this.calcularEstado());
+                                        window.addEventListener('producto-reasignado', (e) => {
+                                            const { codigo, nuevaUbicacion } = e.detail || {};
+                                            if (!codigo) return;
+                                            if (nuevaUbicacion !== undefined && nuevaUbicacion !== null && nuevaUbicacion.toString() === this.ubicId.toString()) {
+                                                if (!this.productos.includes(codigo)) this.productos.push(codigo);
+                                            } else {
+                                                this.productos = this.productos.filter(c => c !== codigo);
+                                            }
+                                            this.calcularEstado();
+                                        });
                                     },
                                     calcularEstado() {
                                         const esperados = this.productos || [];
@@ -873,37 +983,30 @@ Inesperados: ${inesperados.join(', ') || '—'}
                                     </div>
 
                                     <span
-                                        class="text-xs px-2 py-1 rounded-full bg-gradient-to-tr from-gray-900 to-gray-700 text-white font-semibold">Material:
-                                        {{ $ubicacion->productos->count() }}</span>
+                                        class="text-xs px-2 py-1 rounded-full bg-gradient-to-tr from-gray-900 to-gray-700 text-white font-semibold"
+                                        x-text="`Material: ${ (productos?.length || 0) + (paquetes?.length || 0) }`"></span>
                                 </div>
 
-                                @php
-                                    $tieneProductos = $ubicacion->productos->isNotEmpty();
-                                    $tienePaquetes = $ubicacion->paquetes->isNotEmpty();
-                                @endphp
+                                <p class="text-[11px] text-gray-500 dark:text-gray-400 max-md:hidden"
+                                    x-show="!(productos && productos.length) && !(paquetes && paquetes.length)">
+                                    Ubicación sin material.
+                                </p>
 
-                                @if (!$tieneProductos && !$tienePaquetes)
-                                    <p class="text-[11px] text-gray-500 dark:text-gray-400 max-md:hidden">Ubicación sin
-                                        material.</p>
-                                @else
-                                    @if ($tieneProductos)
-                                        <div class="w-full mt-1 space-y-1">
-                                            @foreach ($ubicacion->productos as $producto)
-                                                <div
-                                                    class="bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-400 rounded-md px-2 py-1 text-center">
-                                                    <p
-                                                        class="text-[11px] text-gray-800 dark:text-gray-100 font-semibold">
-                                                        {{ $producto->codigo ?? $producto->id }} |
-                                                        Ø
-                                                        {{ $producto->productoBase->diametro ?? ($producto->diametro ?? 'N/D') }}
-                                                        mm |
-                                                        Col: {{ $producto->n_colada ?? '—' }}
-                                                    </p>
-                                                </div>
-                                            @endforeach
+                                <div class="w-full mt-1 space-y-1" x-show="productos && productos.length">
+                                    <template x-for="prod in productos" :key="prod">
+                                        <div
+                                            class="bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-400 rounded-md px-2 py-1 text-center">
+                                            <p class="text-[11px] text-gray-800 dark:text-gray-100 font-semibold">
+                                                <span x-text="prod"></span> |
+                                                Ø <span
+                                                    x-text="window.detallesProductos?.[prod]?.diametro ?? 'N/D'"></span>
+                                                mm |
+                                                Cosl: <span
+                                                    x-text="window.detallesProductos?.[prod]?.colada ?? '—'"></span>
+                                            </p>
                                         </div>
-                                    @endif
-                                @endif
+                                    </template>
+                                </div>
                             </div>
                         @endforeach
                     </div>
@@ -973,12 +1076,12 @@ Inesperados: ${inesperados.join(', ') || '—'}
         <!-- Modal de Inventario -->
         <template x-teleport="body">
             <div x-show="$store.inv.modalInventario" x-transition x-cloak
-                class="fixed inset-0 z-[9999] flex items-center justify-center bg-black/70 backdrop-blur-sm overflow-y-auto pt-0"
-                @keydown.escape.window="$store.inv.cerrarModalInventario()" wire:ignore>
+                class="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 backdrop-blur-sm overflow-y-auto pt-0"
+                @keydown.escape.window="!$store.inv.bloquearCierre && $store.inv.cerrarModalInventario()" wire:ignore>
                 <template x-if="$store.inv.modalInventario">
                     <div class="relative bg-white dark:bg-gray-900 max-w-5xl sm:h-auto sm:max-h-[90vh] rounded-xl shadow-2xl border border-gray-200 dark:border-gray-800 overflow-hidden flex flex-col min-h-0 m-4 h-[98vh] w-[98vw]"
-                        @click.away="$store.inv.cerrarModalInventario()" x-data="inventarioUbicacion($store.inv.productosActuales, $store.inv.ubicacionActual)"
-                        :key="$store.inv.ubicacionActual">
+                        @click.away="!$store.inv.bloquearCierre && $store.inv.cerrarModalInventario()"
+                        x-data="inventarioUbicacion($store.inv.productosActuales, $store.inv.ubicacionActual)" :key="$store.inv.ubicacionActual">
 
                         <!-- Header del modal -->
                         <div
@@ -1209,7 +1312,7 @@ Inesperados: ${inesperados.join(', ') || '—'}
                                                         <p class="text-xs text-gray-600 dark:text-gray-400 capitalize"
                                                             x-text="window.detallesProductos[codigo]?.tipo || '—'"></p>
                                                         <p class="text-xs text-gray-500 dark:text-gray-500">
-                                                            Colada: <span
+                                                            Col: <span
                                                                 x-text="window.detallesProductos[codigo]?.colada || '—'"></span>
                                                         </p>
                                                         <p class="text-xs text-gray-500 dark:text-gray-500">
@@ -1288,9 +1391,14 @@ Inesperados: ${inesperados.join(', ') || '—'}
                                                 </span>
                                                 <span x-show="colada"
                                                     class="text-[11px] text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded">
-                                                    Colada: <span x-text="colada"></span>
+                                                    Col: <span x-text="colada"></span>
                                                 </span>
                                             </div>
+                                            <button x-show="esConsumido"
+                                                @click="confirmarRestablecerConsumido(codigo)"
+                                                class="bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 rounded-md text-xs font-semibold flex-shrink-0">
+                                                Restablecer aquí
+                                            </button>
                                             <button x-show="!esConsumido && hasId && !misma"
                                                 @click="reasignarProducto(codigo)"
                                                 class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-md text-xs font-semibold flex-shrink-0">

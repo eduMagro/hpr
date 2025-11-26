@@ -542,6 +542,42 @@ class ProductoController extends Controller
         }
     }
 
+    public function restablecerDesdeInventario(Request $request, $codigo)
+    {
+        try {
+            $validated = $request->validate([
+                'ubicacion_id' => 'required|exists:ubicaciones,id',
+            ], [
+                'ubicacion_id.required' => 'Debes indicar una ubicaci�n.',
+                'ubicacion_id.exists'   => 'La ubicaci�n seleccionada no existe.',
+            ]);
+
+            $producto = Producto::where('codigo', $codigo)->firstOrFail();
+
+            $producto->estado          = 'almacenado';
+            $producto->ubicacion_id    = $validated['ubicacion_id'];
+            $producto->fecha_consumido = null;
+            $producto->consumido_by    = null;
+            $producto->save();
+
+            return response()->json([
+                'success'  => true,
+                'message'  => "Producto {$producto->codigo} restablecido a almacenado en la ubicaci�n {$producto->ubicacion_id}.",
+                'producto' => [
+                    'id'           => $producto->id,
+                    'codigo'       => $producto->codigo,
+                    'ubicacion_id' => $producto->ubicacion_id,
+                    'estado'       => $producto->estado,
+                ],
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al restablecer producto: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
     public function solicitarStock(Request $request)
     {
         // Aquí puedes obtener el diámetro o cualquier otro dato necesario de la solicitud

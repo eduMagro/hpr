@@ -162,6 +162,8 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
     Route::post('productos/generar-exportar', [ProductoController::class, 'GenerarYExportar'])->name('productos.generar.crearExportar');
     Route::post('/productos/{codigo}/reasignar', [ProductoController::class, 'editarUbicacionInventario'])
         ->name('productos.editarUbicacionInventario');
+    Route::post('/productos/{codigo}/restablecer', [ProductoController::class, 'restablecerDesdeInventario'])
+        ->name('productos.restablecerInventario');
 
     Route::get('/ubicaciones/inventario', [UbicacionController::class, 'inventario'])->name('ubicaciones.verInventario');
     Route::resource('ubicaciones', UbicacionController::class);
