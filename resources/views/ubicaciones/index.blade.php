@@ -1,4 +1,4 @@
-@php
+﻿@php
     $detalles = \App\Models\Producto::with('productoBase')
         ->get()
         ->mapWithKeys(function ($p) {
@@ -882,7 +882,7 @@ Inesperados: ${inesperados.join(', ') || '—'}
             });
             this.openModal = false;
         }
-    }" x-init="openModal = false" class="max-w-7xl mx-auto py-6 space-y-6">
+    }" x-init="openModal = false" class="max-w-7xl mx-auto space-y-4">
         <div
             class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl shadow-sm p-4 lg:p-6">
             <div class="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
@@ -1059,7 +1059,7 @@ Inesperados: ${inesperados.join(', ') || '—'}
                                         const estadosGlobal = window.productosEstados || {};
                                         const maquinasGlobal = window.productosMaquinas || {};
                                         let estado = esperados.length === 0 ? 'ok' : (escaneados.length === esperados.length ? 'ok' : 'pendiente');
-
+                                
                                         const hayFabricando = esperados.some(c => estadosGlobal[c] === 'fabricando' && maquinasGlobal[c]);
                                         if (hayFabricando) estado = 'fabricando';
                                 
@@ -1147,19 +1147,49 @@ Inesperados: ${inesperados.join(', ') || '—'}
             @endforeach
         </div>
 
-        <div
-            class="border border-blue-200 dark:border-blue-700/70 rounded-xl shadow-sm bg-white/80 dark:bg-gray-900/80 hover:border-blue-500 hover:shadow-md transition">
-            <button @click="openModal = true" class="w-full flex items-center justify-between px-4 py-2.5 text-left">
-                <div class="flex items-center gap-3">
-                    <span
-                        class="inline-flex items-center justify-center h-9 w-9 rounded-lg bg-blue-600 text-white font-bold text-lg shadow-sm">+</span>
-                    <div class="text-left">
-                        <p class="md:text-base text-xs font-semibold text-gray-900 dark:text-white">Nueva ubicación</p>
-                        <p class="md:text-sm text-[10px] text-gray-600 dark:text-gray-300">Añade rápidamente otra
-                            ubicación.</p>
+
+        <div class="flex max-md:flex-col gap-3">
+            <div
+                class="w-full h-14 md:h-16 flex flex-col items-center justify-center border border-blue-200 dark:border-blue-700/70 rounded-xl shadow-sm bg-white/80 dark:bg-gray-900/80 hover:border-blue-500 hover:shadow-md transition">
+                <button @click="openModal = true"
+                    class="w-full flex items-center justify-between px-4 py-2.5 text-left">
+                    <div class="flex items-center gap-3">
+                        <span
+                            class="inline-flex items-center justify-center h-9 w-9 rounded-full bg-blue-600 text-white font-bold text-lg shadow-sm">+</span>
+                        <div class="text-left">
+                            <p class="md:text-base text-xs font-semibold text-gray-900 dark:text-white">Nueva ubicación
+                            </p>
+                            <p class="md:text-sm text-[10px] text-gray-600 dark:text-gray-300">Añade rápidamente otra
+                                ubicación.</p>
+                        </div>
                     </div>
-                </div>
-            </button>
+                </button>
+            </div>
+
+            <div x-show="$store.inv && $store.inv.modoInventario" x-cloak
+                class="w-full h-14 md:h-16 flex flex-col items-center justify-center border border-orange-200 dark:border-orange-700/70 rounded-xl shadow-sm bg-white/80 dark:bg-gray-900/80 hover:border-orange-500 hover:shadow-md transition">
+                <button @click="openModal = true"
+                    class="w-full flex items-center justify-between px-4 py-2.5 text-left">
+                    <div class="flex items-center gap-3">
+                        <span
+                            class="inline-flex items-center justify-center h-9 w-9 rounded-full bg-orange-600 text-white font-bold text-lg shadow-sm">
+                            <svg class="h-5 w-5" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor"
+                                stroke-width="1.3" aria-hidden="true">
+                                <path fill-rule="evenodd"
+                                    d="M12.185 21.5c4.059 0 7.065-2.84 7.065-6.75 0-2.337-1.093-3.489-2.678-5.158l-.021-.023c-1.44-1.517-3.139-3.351-3.649-6.557a6.14 6.14 0 00-1.911 1.76c-.787 1.144-1.147 2.633-.216 4.495.603 1.205.777 2.74-.277 3.794-.657.657-1.762 1.1-2.956.586-.752-.324-1.353-.955-1.838-1.79-.567.706-.954 1.74-.954 2.893 0 3.847 3.288 6.75 7.435 6.75zm2.08-19.873c-.017-.345-.296-.625-.632-.543-2.337.575-6.605 4.042-4.2 8.854.474.946.392 1.675.004 2.062-.64.64-1.874.684-2.875-1.815-.131-.327-.498-.509-.803-.334-1.547.888-2.509 2.86-2.509 4.899 0 4.829 4.122 8.25 8.935 8.25 4.812 0 8.565-3.438 8.565-8.25 0-2.939-1.466-4.482-3.006-6.102-1.61-1.694-3.479-3.476-3.479-7.021z" />
+                            </svg>
+                        </span>
+                        <div class="text-left">
+                            <p class="md:text-base text-xs font-semibold text-gray-900 dark:text-white">Consumir
+                                materiales pendientes.
+                            </p>
+                            <p class="md:text-sm text-[10px] text-gray-600 dark:text-gray-300">Consumir rápidamente los
+                                materiales pendientes.</p>
+                        </div>
+                    </div>
+                </button>
+            </div>
+
         </div>
 
         <!-- Modal crear ubicación -->
@@ -1515,11 +1545,13 @@ Inesperados: ${inesperados.join(', ') || '—'}
                                                 <div>
 
                                                     <span class="inline-block h-2.5 w-2.5 rounded-full flex-shrink-0"
-                                                        :class="esConsumido ? 'bg-blue-500/80' : (esFabricando ? 'bg-purple-500/80' : (hasId ? 'bg-amber-500/80' :
-                                                            'bg-red-500/80'))"></span>
+                                                        :class="esConsumido ? 'bg-blue-500/80' : (esFabricando ?
+                                                            'bg-purple-500/80' : (hasId ? 'bg-amber-500/80' :
+                                                                'bg-red-500/80'))"></span>
                                                     <span class="font-mono text-sm font-semibold"
-                                                        :class="esConsumido ? 'text-blue-600' : (esFabricando ? 'text-purple-600' : (hasId ? 'text-amber-600' :
-                                                            'text-red-800'))"
+                                                        :class="esConsumido ? 'text-blue-600' : (esFabricando ?
+                                                            'text-purple-600' : (hasId ? 'text-amber-600' :
+                                                                'text-red-800'))"
                                                         x-text="codigo"></span>
                                                 </div>
                                                 <div
@@ -1528,9 +1560,11 @@ Inesperados: ${inesperados.join(', ') || '—'}
                                                     <span>
                                                         <span x-show="esConsumido">Consumido</span>
                                                         <span x-show="esFabricando">Fabricando</span>
-                                                        <span x-show="!esConsumido && !esFabricando && hasId && !misma">Ubic: <span
-                                                                x-text="ubic"></span></span>
-                                                        <span x-show="!esConsumido && !esFabricando && !hasId">Sin registrar</span>
+                                                        <span
+                                                            x-show="!esConsumido && !esFabricando && hasId && !misma">Ubic:
+                                                            <span x-text="ubic"></span></span>
+                                                        <span x-show="!esConsumido && !esFabricando && !hasId">Sin
+                                                            registrar</span>
                                                     </span>
                                                     <p>~</p>
                                                     <span x-show="colada">
@@ -1543,8 +1577,7 @@ Inesperados: ${inesperados.join(', ') || '—'}
                                                 class="bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 rounded-md text-xs font-semibold flex-shrink-0">
                                                 Restablecer aquí
                                             </button>
-                                            <button x-show="esFabricando"
-                                                @click="asignarDesdeFabricando(codigo)"
+                                            <button x-show="esFabricando" @click="asignarDesdeFabricando(codigo)"
                                                 class="bg-purple-600 hover:bg-purple-700 text-white px-3 py-1.5 rounded-md text-xs font-semibold flex-shrink-0">
                                                 Asignar aquí
                                             </button>
