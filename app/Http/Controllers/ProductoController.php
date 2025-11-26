@@ -547,14 +547,21 @@ class ProductoController extends Controller
         try {
             $validated = $request->validate([
                 'ubicacion_id' => 'required|exists:ubicaciones,id',
+                'peso_stock'   => 'required|numeric|min:0',
             ], [
                 'ubicacion_id.required' => 'Debes indicar una ubicaci�n.',
                 'ubicacion_id.exists'   => 'La ubicaci�n seleccionada no existe.',
+                'peso_stock.required'   => 'Debes indicar el peso en stock.',
+                'peso_stock.numeric'    => 'El peso debe ser num�rico.',
+                'peso_stock.min'        => 'El peso no puede ser negativo.',
             ]);
 
             $producto = Producto::where('codigo', $codigo)->firstOrFail();
+            $pesoInicial = $producto->peso_inicial ?? $validated['peso_stock'];
+            $pesoStock   = min($validated['peso_stock'], $pesoInicial);
 
             $producto->estado          = 'almacenado';
+            $producto->peso_stock      = $pesoStock;
             $producto->ubicacion_id    = $validated['ubicacion_id'];
             $producto->fecha_consumido = null;
             $producto->consumido_by    = null;
@@ -567,6 +574,7 @@ class ProductoController extends Controller
                     'id'           => $producto->id,
                     'codigo'       => $producto->codigo,
                     'ubicacion_id' => $producto->ubicacion_id,
+                    'peso_stock'   => $producto->peso_stock,
                     'estado'       => $producto->estado,
                 ],
             ]);
@@ -574,6 +582,41 @@ class ProductoController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Error al restablecer producto: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    public function liberarFabricandoInventario(Request $request, $codigo)
+    {
+        try {
+            $validated = $request->validate([
+                'ubicacion_id' => 'required|exists:ubicaciones,id',
+            ], [
+                'ubicacion_id.required' => 'Debes indicar una ubicación.',
+                'ubicacion_id.exists'   => 'La ubicación seleccionada no existe.',
+            ]);
+
+            $producto = Producto::where('codigo', $codigo)->firstOrFail();
+            $producto->maquina_id    = null;
+            $producto->estado        = 'almacenado';
+            $producto->ubicacion_id  = $validated['ubicacion_id'];
+            $producto->save();
+
+            return response()->json([
+                'success'  => true,
+                'message'  => "Producto {$producto->codigo} liberado de máquina y asignado a la ubicación {$producto->ubicacion_id}.",
+                'producto' => [
+                    'id'           => $producto->id,
+                    'codigo'       => $producto->codigo,
+                    'ubicacion_id' => $producto->ubicacion_id,
+                    'estado'       => $producto->estado,
+                    'maquina_id'   => $producto->maquina_id,
+                ],
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al liberar producto de máquina: ' . $e->getMessage(),
             ], 500);
         }
     }

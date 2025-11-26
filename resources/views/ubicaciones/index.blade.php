@@ -11,6 +11,7 @@
                     'longitud' => optional($p->productoBase)->longitud,
                     'colada' => $p->n_colada,
                     'peso_inicial' => $p->peso_inicial,
+                    'peso_stock' => $p->peso_stock,
                 ],
             ];
         });
@@ -30,6 +31,7 @@
     window.productosAsignados = @json(\App\Models\Producto::whereNotNull('ubicacion_id')->pluck('ubicacion_id', 'codigo'));
     window.detallesProductos = @json($detalles);
     window.productosEstados = @json(\App\Models\Producto::pluck('estado', 'codigo'));
+    window.productosMaquinas = @json(\App\Models\Producto::pluck('maquina_id', 'codigo'));
     window.ubicacionSectorMap = @json($ubicacionSectorMap);
     window.ubicacionIdsInventario = @json($ubicacionIds);
 </script>
@@ -112,6 +114,7 @@
 
             /* copia REACTIVA del mapa global para x-show */
             asignados: {},
+            maquinas: {},
 
             /* audio */
             audioOk: null,
@@ -191,6 +194,10 @@
 
                 this.estados = {
                     ...(window.productosEstados || {})
+                };
+
+                this.maquinas = {
+                    ...(window.productosMaquinas || {})
                 };
 
                 /* Escuchar reasignaciones globales */
@@ -434,7 +441,15 @@
                     confirmButtonColor: '#16a34a'
                 }).then(result => {
                     if (result.isConfirmed) {
-                        this.restablecerConsumido(codigo);
+                        this.solicitarPesoRestablecer(codigo).then(peso => {
+                            if (peso === null || peso === undefined) {
+                                this.$store?.inv && (this.$store.inv.bloquearCierre = false);
+                                return;
+                            }
+                            this.restablecerConsumido(codigo, peso);
+                        }).catch(() => {
+                            this.$store?.inv && (this.$store.inv.bloquearCierre = false);
+                        });
                     } else {
                         this.$store?.inv && (this.$store.inv.bloquearCierre = false);
                     }
@@ -443,7 +458,45 @@
                 });
             },
 
-            restablecerConsumido(codigo) {
+            solicitarPesoRestablecer(codigo) {
+                const detalles = (window.detallesProductos || {})[codigo] || {};
+                const pesoInicial = Number(detalles.peso_inicial || 0);
+                const pesoActual = Number(detalles.peso_stock || pesoInicial || 0);
+                const max = pesoInicial > 0 ? pesoInicial : (pesoActual || 0);
+                const start = max ? Math.min(Math.max(pesoActual, 0), max) : 0;
+
+                return swalDialog({
+                    icon: 'question',
+                    title: 'Peso en stock',
+                    input: 'range',
+                    inputAttributes: {
+                        min: 0,
+                        max: max || 0,
+                        step: 0.1
+                    },
+                    inputValue: start,
+                    inputLabel: `Stock: ${start} kg de ${max} kg`,
+                    showCancelButton: true,
+                    confirmButtonText: 'Guardar peso',
+                    cancelButtonText: 'Cancelar',
+                    allowOutsideClick: false,
+                    allowEscapeKey: false,
+                    didOpen: () => {
+                        const swal = window.Swal;
+                        const input = swal?.getInput?.();
+                        const label = swal?.getInputLabel?.();
+                        if (!input || !label) return;
+                        const sync = () => {
+                            const val = Number(input.value || 0);
+                            label.textContent = `Stock: ${val} kg de ${max} kg`;
+                        };
+                        input.addEventListener('input', sync);
+                        sync();
+                    }
+                }).then(res => res.isConfirmed ? Number(res.value || 0) : null);
+            },
+
+            restablecerConsumido(codigo, pesoStock) {
                 fetch("{{ route('productos.restablecerInventario', ['codigo' => '___CODIGO___']) }}".replace(
                         '___CODIGO___', codigo), {
                         method: 'POST',
@@ -453,7 +506,8 @@
                             'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
                         },
                         body: JSON.stringify({
-                            ubicacion_id: this.nombreUbicacion
+                            ubicacion_id: this.nombreUbicacion,
+                            peso_stock: pesoStock
                         })
                     })
                     .then(async res => {
@@ -466,12 +520,16 @@
                         this.estados[codigo] = 'almacenado';
                         window.productosAsignados[codigo] = this.nombreUbicacion;
                         this.asignados[codigo] = this.nombreUbicacion;
+                        if (!window.detallesProductos[codigo]) window.detallesProductos[codigo] = {};
+                        window.detallesProductos[codigo].peso_stock = pesoStock;
+                        if (window.productosMaquinas) window.productosMaquinas[codigo] = null;
+                        this.maquinas[codigo] = null;
 
                         this.sospechosos = this.sospechosos.filter(c => c !== codigo);
                         if (!this.productosEsperados.includes(codigo)) this.productosEsperados.unshift(
                             codigo);
                         if (!this.originalEsperados.includes(codigo)) this.originalEsperados.unshift(
-                        codigo);
+                            codigo);
                         if (!this.escaneados.includes(codigo)) this.escaneados.push(codigo);
 
                         localStorage.setItem(claveLS, JSON.stringify(this.escaneados));
@@ -504,6 +562,69 @@
                     })
                     .finally(() => {
                         this.$store?.inv && (this.$store.inv.bloquearCierre = false);
+                    });
+            },
+
+            asignarDesdeFabricando(codigo) {
+                fetch("{{ route('productos.liberarMaquinaInventario', ['codigo' => '___CODIGO___']) }}".replace(
+                        '___CODIGO___', codigo), {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Accept': 'application/json',
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                        },
+                        body: JSON.stringify({
+                            ubicacion_id: this.nombreUbicacion
+                        })
+                    })
+                    .then(async res => {
+                        const data = await res.json();
+                        if (!res.ok || data.success === false) {
+                            throw new Error(data.message || 'Error al asignar desde máquina.');
+                        }
+
+                        window.productosEstados[codigo] = 'almacenado';
+                        this.estados[codigo] = 'almacenado';
+                        window.productosAsignados[codigo] = this.nombreUbicacion;
+                        this.asignados[codigo] = this.nombreUbicacion;
+                        if (window.productosMaquinas) window.productosMaquinas[codigo] = null;
+                        this.maquinas[codigo] = null;
+
+                        this.sospechosos = this.sospechosos.filter(c => c !== codigo);
+                        if (!this.productosEsperados.includes(codigo)) this.productosEsperados.unshift(
+                            codigo);
+                        if (!this.originalEsperados.includes(codigo)) this.originalEsperados.unshift(
+                            codigo);
+                        if (!this.escaneados.includes(codigo)) this.escaneados.push(codigo);
+
+                        localStorage.setItem(claveLS, JSON.stringify(this.escaneados));
+                        localStorage.setItem(claveSospechosos, JSON.stringify(this.sospechosos));
+
+                        window.dispatchEvent(new CustomEvent('producto-reasignado', {
+                            detail: {
+                                codigo,
+                                nuevaUbicacion: this.nombreUbicacion
+                            }
+                        }));
+                        window.dispatchEvent(new CustomEvent('inventario-actualizado', {
+                            detail: {
+                                ubicacionId: this.nombreUbicacion
+                            }
+                        }));
+
+                        return swalToast.fire({
+                            icon: 'success',
+                            title: 'Asignado',
+                            text: `El producto ${codigo} fue liberado de máquina y asignado aquí.`
+                        });
+                    })
+                    .catch(err => {
+                        swalDialog({
+                            icon: 'error',
+                            title: 'Error',
+                            text: err.message
+                        });
                     });
             },
 
@@ -741,6 +862,7 @@ Inesperados: ${inesperados.join(', ') || '—'}
                 .map(([, est]) => est);
             let final = 'ok';
             if (estados.includes('consumido')) final = 'consumido';
+            else if (estados.includes('fabricando')) final = 'fabricando';
             else if (estados.includes('ambar')) final = 'ambar';
             else if (estados.includes('rojo')) final = 'rojo';
             else if (estados.includes('pendiente')) final = 'pendiente';
@@ -882,6 +1004,7 @@ Inesperados: ${inesperados.join(', ') || '—'}
                                 class="inline-flex items-center justify-center h-8 w-8 sm:h-10 sm:w-10 rounded-full text-white font-bold text-sm sm:text-base"
                                 :class="!($store.inv && $store.inv.modoInventario) ? 'bg-gray-600' : (
                                     estadoSectores['{{ $sector }}'] === 'ok' ? 'bg-green-600' :
+                                    estadoSectores['{{ $sector }}'] === 'fabricando' ? 'bg-purple-600' :
                                     estadoSectores['{{ $sector }}'] === 'consumido' ? 'bg-blue-600' :
                                     estadoSectores['{{ $sector }}'] === 'ambar' ? 'bg-amber-500' :
                                     estadoSectores['{{ $sector }}'] === 'rojo' ? 'bg-red-600' :
@@ -933,13 +1056,22 @@ Inesperados: ${inesperados.join(', ') || '—'}
                                         const esperados = this.productos || [];
                                         const escaneados = JSON.parse(localStorage.getItem(`inv-${this.ubicId}`) || '[]');
                                         const sospechosos = JSON.parse(localStorage.getItem(`sospechosos-${this.ubicId}`) || '[]');
+                                        const estadosGlobal = window.productosEstados || {};
+                                        const maquinasGlobal = window.productosMaquinas || {};
                                         let estado = esperados.length === 0 ? 'ok' : (escaneados.length === esperados.length ? 'ok' : 'pendiente');
+
+                                        const hayFabricando = esperados.some(c => estadosGlobal[c] === 'fabricando' && maquinasGlobal[c]);
+                                        if (hayFabricando) estado = 'fabricando';
                                 
                                         for (const codigo of sospechosos) {
                                             const estadoProd = (window.productosEstados || {})[codigo];
                                             const ubicAsign = (window.productosAsignados || {})[codigo];
                                             if (estadoProd === 'consumido') {
                                                 estado = 'consumido';
+                                                break;
+                                            }
+                                            if (estadoProd === 'fabricando' && maquinasGlobal[codigo]) {
+                                                estado = 'fabricando';
                                                 break;
                                             }
                                             if (ubicAsign && ubicAsign.toString() !== this.ubicId.toString()) {
@@ -963,6 +1095,7 @@ Inesperados: ${inesperados.join(', ') || '—'}
                                     'cursor-pointer hover:ring-2 hover:ring-blue-400' : '',
                                     $store.inv && $store.inv.modoInventario ?
                                     (estado === 'ok' ? 'border-green-400' :
+                                        estado === 'fabricando' ? 'border-purple-400' :
                                         estado === 'consumido' ? 'border-blue-400' :
                                         estado === 'ambar' ? 'border-amber-400' :
                                         estado === 'rojo' ? 'border-red-500' :
@@ -1135,7 +1268,7 @@ Inesperados: ${inesperados.join(', ') || '—'}
                             class="flex-1 overflow-y-auto sm:px-6 sm:py-4 grid grid-cols-1 lg:grid-cols-2 gap-2 min-h-0">
                             <!-- Tabla de productos esperados -->
                             <div
-                                class="border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 shadow-sm flex flex-col">
+                                class="border border-gray-200 dark:border-gray-700 md:rounded-lg bg-white dark:bg-gray-800 shadow-sm flex flex-col">
                                 <div class="flex-1 overflow-y-auto max-h-[420px]">
                                     <!-- Vista desktop -->
                                     <div class="hidden sm:block">
@@ -1345,7 +1478,7 @@ Inesperados: ${inesperados.join(', ') || '—'}
 
                             <!-- Productos inesperados -->
                             <div
-                                class="border border-red-200 dark:border-red-700 rounded-lg bg-white dark:bg-gray-800 shadow-sm flex flex-col">
+                                class="border border-red-200 dark:border-red-700 md:rounded-lg bg-white dark:bg-gray-800 shadow-sm flex flex-col">
                                 <div
                                     class="px-4 py-3 border-b border-red-200 dark:border-red-700 flex items-center justify-between">
                                     <h3 class="text-sm font-semibold text-red-600 dark:text-red-400">Productos
@@ -1365,39 +1498,55 @@ Inesperados: ${inesperados.join(', ') || '—'}
                                                 misma: false,
                                                 estado: null,
                                                 esConsumido: false,
+                                                esFabricando: false,
+                                                maquinaId: null,
                                                 colada: null
                                             }" x-init="ubic = (asignados && Object.prototype.hasOwnProperty.call(asignados, codigo)) ? asignados[codigo] : null;
                                             hasId = (ubic !== null && ubic !== '' && ubic !== undefined);
                                             misma = (hasId && nombreUbicacion !== null && nombreUbicacion !== undefined && ubic.toString() === nombreUbicacion.toString());
                                             estado = (estados && Object.prototype.hasOwnProperty.call(estados, codigo)) ? (estados[codigo] ?? null) : null;
                                             esConsumido = (estado === 'consumido');
+                                            maquinaId = (window.productosMaquinas && Object.prototype.hasOwnProperty.call(window.productosMaquinas, codigo)) ? window.productosMaquinas[codigo] : null;
+                                            esFabricando = (estado === 'fabricando' && maquinaId);
                                             colada = (window.detallesProductos && Object.prototype.hasOwnProperty.call(window.detallesProductos, codigo)) ?
                                                 (window.detallesProductos[codigo]?.colada ?? null) :
                                                 null;">
-                                            <div class="flex items-center gap-2 min-w-0">
-                                                <span class="inline-block h-2.5 w-2.5 rounded-full flex-shrink-0"
-                                                    :class="esConsumido ? 'bg-blue-500/80' : (hasId ? 'bg-amber-500/80' :
-                                                        'bg-red-500/80')"></span>
-                                                <span class="font-mono text-sm font-semibold"
-                                                    :class="esConsumido ? 'text-blue-600' : (hasId ? 'text-amber-600' :
-                                                        'text-red-800')"
-                                                    x-text="codigo"></span>
-                                                <span
-                                                    class="text-xs px-2 py-0.5 rounded bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300">
-                                                    <span x-show="esConsumido">Consumido</span>
-                                                    <span x-show="!esConsumido && hasId && !misma">Ubic: <span
-                                                            x-text="ubic"></span></span>
-                                                    <span x-show="!esConsumido && !hasId">Sin registrar</span>
-                                                </span>
-                                                <span x-show="colada"
-                                                    class="text-[11px] text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded">
-                                                    Col: <span x-text="colada"></span>
-                                                </span>
+                                            <div class="flex flex-col items-start min-w-0">
+                                                <div>
+
+                                                    <span class="inline-block h-2.5 w-2.5 rounded-full flex-shrink-0"
+                                                        :class="esConsumido ? 'bg-blue-500/80' : (esFabricando ? 'bg-purple-500/80' : (hasId ? 'bg-amber-500/80' :
+                                                            'bg-red-500/80'))"></span>
+                                                    <span class="font-mono text-sm font-semibold"
+                                                        :class="esConsumido ? 'text-blue-600' : (esFabricando ? 'text-purple-600' : (hasId ? 'text-amber-600' :
+                                                            'text-red-800'))"
+                                                        x-text="codigo"></span>
+                                                </div>
+                                                <div
+                                                    class="text-[10px] md:text-xs text-gray-600 px-2 py-0.5 rounded flex gap-2">
+
+                                                    <span>
+                                                        <span x-show="esConsumido">Consumido</span>
+                                                        <span x-show="esFabricando">Fabricando</span>
+                                                        <span x-show="!esConsumido && !esFabricando && hasId && !misma">Ubic: <span
+                                                                x-text="ubic"></span></span>
+                                                        <span x-show="!esConsumido && !esFabricando && !hasId">Sin registrar</span>
+                                                    </span>
+                                                    <p>~</p>
+                                                    <span x-show="colada">
+                                                        Col: <span x-text="colada"></span>
+                                                    </span>
+                                                </div>
                                             </div>
                                             <button x-show="esConsumido"
                                                 @click="confirmarRestablecerConsumido(codigo)"
                                                 class="bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 rounded-md text-xs font-semibold flex-shrink-0">
                                                 Restablecer aquí
+                                            </button>
+                                            <button x-show="esFabricando"
+                                                @click="asignarDesdeFabricando(codigo)"
+                                                class="bg-purple-600 hover:bg-purple-700 text-white px-3 py-1.5 rounded-md text-xs font-semibold flex-shrink-0">
+                                                Asignar aquí
                                             </button>
                                             <button x-show="!esConsumido && hasId && !misma"
                                                 @click="reasignarProducto(codigo)"
