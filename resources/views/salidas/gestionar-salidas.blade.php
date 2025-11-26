@@ -224,6 +224,9 @@
                                             <div class="text-xs text-gray-500 mt-1 border-t border-gray-200 pt-1">
                                                 <div class="truncate" title="{{ $paquete->planilla->obra->obra ?? 'N/A' }}">🏗️ {{ $paquete->planilla->obra->obra ?? 'N/A' }}</div>
                                                 <div class="truncate" title="{{ $paquete->planilla->cliente->empresa ?? 'N/A' }}">👤 {{ $paquete->planilla->cliente->empresa ?? 'N/A' }}</div>
+                                                @if($paquete->nave)
+                                                    <div class="truncate text-blue-600 font-medium" title="{{ $paquete->nave->obra }}">📍 {{ $paquete->nave->obra }}</div>
+                                                @endif
                                             </div>
                                         </div>
                                     @endforeach
@@ -320,7 +323,9 @@
                                         data-cliente="{{ $paquete->planilla->cliente->empresa ?? '' }}"
                                         data-cliente-id="{{ $paquete->planilla->cliente_id ?? '' }}"
                                         data-planilla="{{ $paquete->planilla->codigo ?? '' }}"
-                                        data-planilla-id="{{ $paquete->planilla_id ?? '' }}">
+                                        data-planilla-id="{{ $paquete->planilla_id ?? '' }}"
+                                        data-nave="{{ $paquete->nave->obra ?? '' }}"
+                                        data-nave-id="{{ $paquete->nave_id ?? '' }}">
                                         <div class="flex items-center justify-between text-xs">
                                             <span class="font-medium">📦 {{ $paquete->codigo }}</span>
                                             <button onclick="mostrarDibujo({{ $paquete->id }}); event.stopPropagation();"
@@ -335,6 +340,9 @@
                                         <div class="text-xs text-gray-500 mt-1 border-t border-gray-200 pt-1">
                                             <div class="truncate" title="{{ $paquete->planilla->obra->obra ?? 'N/A' }}">🏗️ {{ $paquete->planilla->obra->obra ?? 'N/A' }}</div>
                                             <div class="truncate" title="{{ $paquete->planilla->cliente->empresa ?? 'N/A' }}">👤 {{ $paquete->planilla->cliente->empresa ?? 'N/A' }}</div>
+                                            @if($paquete->nave)
+                                                <div class="truncate text-blue-600 font-medium" title="{{ $paquete->nave->obra }}">📍 {{ $paquete->nave->obra }}</div>
+                                            @endif
                                         </div>
                                     </div>
                                 @endforeach

@@ -554,7 +554,11 @@ class ProduccionController extends Controller
         $ordenes = OrdenPlanilla::orderBy('posicion')
             ->get()
             ->groupBy('maquina_id')
-            ->map(fn($ordenesMaquina) => $ordenesMaquina->pluck('planilla_id')->all());
+            ->map(fn($ordenesMaquina) => $ordenesMaquina->map(fn($o) => [
+                'id' => $o->id,
+                'planilla_id' => $o->planilla_id,
+                'posicion' => $o->posicion
+            ])->all());
 
         // 🔹 5. Generar eventos del calendario
         try {
@@ -771,7 +775,11 @@ class ProduccionController extends Controller
         $ordenes = OrdenPlanilla::orderBy('posicion')
             ->get()
             ->groupBy('maquina_id')
-            ->map(fn($ordenesMaquina) => $ordenesMaquina->pluck('planilla_id')->all());
+            ->map(fn($ordenesMaquina) => $ordenesMaquina->map(fn($o) => [
+                'id' => $o->id,
+                'planilla_id' => $o->planilla_id,
+                'posicion' => $o->posicion
+            ])->all());
 
         // 5. Generar eventos usando el mismo método que maquinas()
         try {
@@ -1864,10 +1872,17 @@ class ProduccionController extends Controller
                 }
             }
 
-            // Safeguard: validar que inicioCola no esté demasiado lejos en el futuro
+            // Safeguard: validar que inicioCola no esté demasiado lejos en el futuro o en el pasado
             $maxFecha = Carbon::now()->addYear();
+            $minFecha = Carbon::now()->subYears(2);
             if ($inicioCola->gt($maxFecha)) {
-                Log::error('EVT: inicioCola inesperadamente lejana (debería haberse validado antes)', [
+                Log::error('EVT: inicioCola inesperadamente lejana', [
+                    'maquinaId' => $maquinaId,
+                    'inicioCola' => $inicioCola->toIso8601String(),
+                ]);
+                $inicioCola = Carbon::now();
+            } elseif ($inicioCola->lt($minFecha)) {
+                Log::error('EVT: inicioCola inesperadamente antigua (posible fecha inválida)', [
                     'maquinaId' => $maquinaId,
                     'inicioCola' => $inicioCola->toIso8601String(),
                 ]);
@@ -1876,6 +1891,8 @@ class ProduccionController extends Controller
 
             $primeraOrden = $planillasOrdenadas[0] ?? null;
             $primeraId = is_array($primeraOrden) ? ($primeraOrden['planilla_id'] ?? null) : $primeraOrden;
+            // ID del orden_planilla en posición 1 (para determinar qué evento específico es el primero)
+            $primeraOrdenId = is_array($primeraOrden) ? ($primeraOrden['id'] ?? null) : null;
 
             foreach ($planillasOrdenadas as $ordenData) {
                 // Soporte para ambos formatos: array con datos o solo ID
@@ -1964,25 +1981,38 @@ class ProduccionController extends Controller
 
                         // Buscar la fecha_inicio más antigua de las etiquetas fabricando/completadas
                         $fechaInicioMasAntigua = null;
+                        $minFechaValida = Carbon::now()->subYears(2);
                         if ($elementosFabricandoOCompletados->isNotEmpty()) {
                             $fechasInicio = collect();
                             foreach ($elementosFabricandoOCompletados as $elem) {
                                 $etiqueta = $elem->subetiquetas->first();
                                 if ($etiqueta && !empty($etiqueta->fecha_inicio)) {
-                                    $fechasInicio->push(toCarbon($etiqueta->fecha_inicio));
+                                    $fecha = toCarbon($etiqueta->fecha_inicio);
+                                    // Solo agregar fechas válidas (no null y no demasiado antiguas como 1970)
+                                    if ($fecha instanceof Carbon && $fecha->gt($minFechaValida)) {
+                                        $fechasInicio->push($fecha);
+                                    }
                                 }
                             }
-                            $fechaInicioMasAntigua = $fechasInicio->min();
+                            $fechaInicioMasAntigua = $fechasInicio->isNotEmpty() ? $fechasInicio->min() : null;
                         }
 
                         // Determinar fecha de inicio y duración
-                        // 🔒 ANTI-SOLAPAMIENTO: SOLO la primera planilla puede usar su fecha real de inicio
-                        // Todas las demás DEBEN usar inicioCola para evitar solapamiento
-                        $esPrimeraPlanilla = ($primeraId !== null && $primeraId === $planilla->id);
+                        // 🔒 ANTI-SOLAPAMIENTO: SOLO el evento en posición 1 puede usar su fecha real de inicio
+                        // Todos los demás DEBEN usar inicioCola para evitar solapamiento
+                        // Comparamos el id del registro orden_planillas actual con el id del primero en la cola
+                        // Si no hay orden_id (datos antiguos), comparamos por planilla_id + posición 1
+                        $esPrimerEvento = false;
+                        if ($ordenId !== null && $primeraOrdenId !== null) {
+                            $esPrimerEvento = ((int)$ordenId === (int)$primeraOrdenId);
+                        } elseif ($posicion !== null && (int)$posicion === 1) {
+                            // Fallback: si es posición 1, es el primer evento
+                            $esPrimerEvento = true;
+                        }
 
-                        if ($fechaInicioMasAntigua && $fechaInicioMasAntigua->lt($inicioCola) && $esPrimeraPlanilla) {
-                            // Caso especial: SOLO para la primera planilla en la cola
-                            // Esta planilla empezó antes y está actualmente en fabricación
+                        if ($fechaInicioMasAntigua && $fechaInicioMasAntigua->lt($inicioCola) && $esPrimerEvento) {
+                            // Caso especial: SOLO para el evento en posición 1 de la cola
+                            // Este evento empezó antes y está actualmente en fabricación
                             $fechaInicio = $fechaInicioMasAntigua;
 
                             // Calcular duración: desde inicio real hasta now() + tiempo pendientes
@@ -2016,12 +2046,13 @@ class ProduccionController extends Controller
                             });
                             $duracionSegundos = max($duracionSegundos, 3600);
 
-                            if ($fechaInicioMasAntigua && !$esPrimeraPlanilla) {
-                                Log::warning('⚠️ Planilla con elementos fabricando NO es la primera', [
+                            if ($fechaInicioMasAntigua && !$esPrimerEvento) {
+                                Log::warning('⚠️ Evento con elementos fabricando NO es el primero en cola', [
                                     'planilla' => $planilla->codigo_limpio,
+                                    'orden_planilla_id' => $ordenKey,
                                     'fecha_real_ignorada' => $fechaInicioMasAntigua->toIso8601String(),
                                     'usando_inicioCola' => $inicioCola->toIso8601String(),
-                                    'es_primera' => $esPrimeraPlanilla
+                                    'es_primer_evento' => $esPrimerEvento
                                 ]);
                             }
                         }
@@ -2055,9 +2086,9 @@ class ProduccionController extends Controller
                             ? $ultimoTramo['end']->copy()
                             : Carbon::parse($ultimoTramo['end']);
 
-                        // Progreso (calculado por sub-grupo)
+                        // Progreso (calculado por sub-grupo, solo para el evento en posición 1)
                         $progreso = null;
-                        if ($primeraId !== null && $primeraId === $planilla->id) {
+                        if ($esPrimerEvento) {
                             $completados = $subGrupo->where('estado', 'fabricado')->count();
                             $total = $subGrupo->count();
                             $progreso = $total > 0 ? round(($completados / $total) * 100) : 0;

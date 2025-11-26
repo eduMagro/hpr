@@ -1208,7 +1208,7 @@ class SalidaFerrallaController extends Controller
             ])->findOrFail($salidaId);
 
             // Obtener paquetes asignados a esta salida
-            $paquetesAsignados = Paquete::with(['planilla.obra:id,obra,cod_obra'])
+            $paquetesAsignados = Paquete::with(['planilla.obra:id,obra,cod_obra', 'nave:id,obra'])
                 ->whereHas('salidas', function ($q) use ($salidaId) {
                     $q->where('salidas.id', $salidaId);
                 })
@@ -1219,6 +1219,10 @@ class SalidaFerrallaController extends Controller
                         'codigo' => $paquete->codigo,
                         'planilla_id' => $paquete->planilla_id,
                         'peso' => $paquete->peso,
+                        'nave' => [
+                            'id' => $paquete->nave->id ?? null,
+                            'obra' => $paquete->nave->obra ?? null,
+                        ],
                         'planilla' => [
                             'id' => $paquete->planilla->id ?? null,
                             'codigo' => $paquete->planilla->codigo ?? null,
@@ -1235,7 +1239,7 @@ class SalidaFerrallaController extends Controller
             $planillasIds = $paquetesAsignados->pluck('planilla_id')->unique()->filter();
 
             // Obtener paquetes disponibles: de las mismas planillas pero sin salida asignada
-            $paquetesDisponibles = Paquete::with(['planilla.obra:id,obra,cod_obra'])
+            $paquetesDisponibles = Paquete::with(['planilla.obra:id,obra,cod_obra', 'nave:id,obra'])
                 ->whereIn('planilla_id', $planillasIds)
                 ->whereDoesntHave('salidas')
                 ->get()
@@ -1245,6 +1249,10 @@ class SalidaFerrallaController extends Controller
                         'codigo' => $paquete->codigo,
                         'planilla_id' => $paquete->planilla_id,
                         'peso' => $paquete->peso,
+                        'nave' => [
+                            'id' => $paquete->nave->id ?? null,
+                            'obra' => $paquete->nave->obra ?? null,
+                        ],
                         'planilla' => [
                             'id' => $paquete->planilla->id ?? null,
                             'codigo' => $paquete->planilla->codigo ?? null,
@@ -1915,6 +1923,7 @@ class SalidaFerrallaController extends Controller
         $salidasExistentes = Salida::with([
                 'paquetes.planilla.obra',
                 'paquetes.planilla.cliente',
+                'paquetes.nave',
                 'paquetes.etiquetas.elementos',
                 'empresaTransporte',
                 'camion',
@@ -1944,13 +1953,13 @@ class SalidaFerrallaController extends Controller
 
         // Obtener AMBOS conjuntos de paquetes para filtrado dinámico sin recarga
         // 1. Paquetes de las planillas seleccionadas (obra/cliente específico)
-        $paquetesFiltrados = Paquete::with(['planilla.obra', 'planilla.cliente', 'etiquetas.elementos'])
+        $paquetesFiltrados = Paquete::with(['planilla.obra', 'planilla.cliente', 'nave', 'etiquetas.elementos'])
             ->whereIn('planilla_id', $planillasIds)
             ->where('estado', 'pendiente')
             ->get();
 
         // 2. TODOS los paquetes pendientes disponibles
-        $paquetesTodos = Paquete::with(['planilla.obra', 'planilla.cliente', 'etiquetas.elementos'])
+        $paquetesTodos = Paquete::with(['planilla.obra', 'planilla.cliente', 'nave', 'etiquetas.elementos'])
             ->where('estado', 'pendiente')
             ->whereDoesntHave('salidas') // No asignados a ninguna salida
             ->get();

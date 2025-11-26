@@ -294,8 +294,9 @@ function construirPaquetesHTMLSalida(paquetes) {
             </div>
             <div class="text-xs text-gray-500 mt-1">
                 <div>Planilla: ${paquete.planilla?.codigo || paquete.planilla_id}</div>
-                <div>Obra: ${paquete.planilla?.obra?.obra || "N/A"}</div>
+                <div>🏗️ ${paquete.planilla?.obra?.obra || "N/A"}</div>
                 ${paquete.planilla?.obra?.cod_obra ? `<div>Código: ${paquete.planilla.obra.cod_obra}</div>` : ""}
+                ${paquete.nave?.obra ? `<div class="text-blue-600 font-medium">📍 ${paquete.nave.obra}</div>` : ""}
             </div>
         </div>
     `
