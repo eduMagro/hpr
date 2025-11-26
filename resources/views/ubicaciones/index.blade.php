@@ -24,6 +24,16 @@
     }
 
     $ubicacionIds = collect($ubicacionesPorSector)->flatten()->pluck('id')->filter()->values();
+
+    $productosPorUbicacion = [];
+    foreach ($ubicacionesPorSector as $ubicacionesSector) {
+        foreach ($ubicacionesSector as $ubi) {
+            $productosPorUbicacion[$ubi->id] = [
+                'ubicacion' => $ubi->codigo ?? 'SIN-CODIGO',
+                'productos' => $ubi->productos->pluck('codigo')->filter()->values(),
+            ];
+        }
+    }
 @endphp
 
 <script data-navigate-reload>
@@ -34,6 +44,7 @@
     window.productosMaquinas = @json(\App\Models\Producto::pluck('maquina_id', 'codigo'));
     window.ubicacionSectorMap = @json($ubicacionSectorMap);
     window.ubicacionIdsInventario = @json($ubicacionIds);
+    window.productosPorUbicacion = @json($productosPorUbicacion);
 </script>
 
 <script data-navigate-reload>
@@ -801,10 +812,12 @@ Inesperados: ${inesperados.join(', ') || '—'}
 
     <div x-data="{
         openModal: false,
+        modalConsumo: false,
         openSectors: {},
         estadoUbicaciones: {},
         estadoSectores: {},
         showLeyenda: false,
+        listaConsumos: [],
         borrarTodosEscaneos() {
             const ids = Array.isArray(window.ubicacionIdsInventario) ? window.ubicacionIdsInventario : [];
             if (!ids.length) {
@@ -840,6 +853,31 @@ Inesperados: ${inesperados.join(', ') || '—'}
                     text: 'Todos los registros de inventario fueron limpiados.',
                 });
             });
+        },
+        abrirConsumos() {
+            const mapa = window.productosPorUbicacion || {};
+            const acumulado = [];
+            Object.entries(mapa).forEach(([ubicId, info]) => {
+                const escaneados = JSON.parse(localStorage.getItem(`inv-${ubicId}`) || '[]');
+                const productos = Array.isArray(info?.productos) ? info.productos.filter(Boolean) : [];
+                productos.forEach(codigo => {
+                    const ok = escaneados.includes(codigo);
+                    if (!ok) {
+                        acumulado.push({
+                            codigo,
+                            ubicacion: info?.ubicacion || ubicId,
+                            estado: 'Pend.'
+                        });
+                    }
+                });
+            });
+
+            this.listaConsumos = acumulado.sort((a, b) => {
+                const byUbic = (a.ubicacion || '').toString().localeCompare((b.ubicacion || '').toString());
+                if (byUbic !== 0) return byUbic;
+                return (a.codigo || '').toString().localeCompare((b.codigo || '').toString());
+            });
+            this.modalConsumo = true;
         },
         toggleAll() {
             const values = Object.values(this.openSectors);
@@ -1168,7 +1206,7 @@ Inesperados: ${inesperados.join(', ') || '—'}
 
             <div x-show="$store.inv && $store.inv.modoInventario" x-cloak
                 class="w-full h-14 md:h-16 flex flex-col items-center justify-center border border-orange-200 dark:border-orange-700/70 rounded-xl shadow-sm bg-white/80 dark:bg-gray-900/80 hover:border-orange-500 hover:shadow-md transition">
-                <button @click="openModal = true"
+                <button @click="abrirConsumos()"
                     class="w-full flex items-center justify-between px-4 py-2.5 text-left">
                     <div class="flex items-center gap-3">
                         <span
@@ -1232,6 +1270,85 @@ Inesperados: ${inesperados.join(', ') || '—'}
                             </button>
                         </div>
                     </form>
+                </div>
+            </div>
+        </template>
+
+        <!-- Modal consumo materiales -->
+        <template x-teleport="body">
+            <div x-show="modalConsumo" x-transition x-cloak
+                class="fixed inset-0 z-[9999] flex items-center justify-center bg-black bg-opacity-60 backdrop-blur overflow-y-auto">
+                <div @click.away="modalConsumo = false"
+                    class="bg-white dark:bg-gray-900 w-full max-w-4xl p-6 rounded-xl shadow-2xl mx-4 my-4 border border-gray-200 dark:border-gray-800">
+                    <div class="flex items-center justify-between mb-4">
+                        <h2 class="text-lg font-bold text-gray-800 dark:text-white">
+                            Materiales pendientes de la nave
+                        </h2>
+                        <button @click="modalConsumo = false"
+                            class="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">
+                            ✕
+                        </button>
+                    </div>
+
+                    <div class="bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
+                        <div class="max-h-[70vh] overflow-y-auto">
+                            <table class="min-w-full text-sm">
+                                <thead class="bg-gray-100 dark:bg-gray-800/60 text-gray-700 dark:text-gray-200">
+                                    <tr>
+                                        <th class="px-4 py-2 text-left font-semibold">Ubicación</th>
+                                        <th class="px-4 py-2 text-left font-semibold">Código</th>
+                                        <th class="px-4 py-2 text-left font-semibold">Estado</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
+                                    <template x-if="!listaConsumos.length">
+                                        <tr>
+                                            <td colspan="3" class="px-4 py-6 text-center text-gray-500 dark:text-gray-400">
+                                                No hay materiales cargados en la nave.
+                                            </td>
+                                        </tr>
+                                    </template>
+                                    <template x-for="item in listaConsumos" :key="`${item.ubicacion}-${item.codigo}`">
+                                        <tr>
+                                            <td class="px-4 py-2 font-semibold text-gray-800 dark:text-gray-100"
+                                                x-text="item.ubicacion"></td>
+                                            <td class="px-4 py-2 font-mono text-gray-700 dark:text-gray-200"
+                                                x-text="item.codigo"></td>
+                                            <td class="px-4 py-2">
+                                                <span x-text="item.estado"
+                                                    :class="item.estado === 'OK'
+                                                        ? 'bg-green-100 text-green-700'
+                                                        : 'bg-amber-100 text-amber-700'"
+                                                    class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold"></span>
+                                            </td>
+                                        </tr>
+                                    </template>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div class="mt-6 flex justify-center">
+                        <div
+                            class="relative w-full max-w-2xl h-12 rounded-full bg-gradient-to-r from-red-600 via-orange-500 to-amber-400 shadow-xl overflow-hidden">
+                            <div
+                                class="absolute inset-0 bg-white/10 blur-md opacity-60 pointer-events-none"></div>
+                            <div class="relative h-full flex items-center pl-2 pr-4 gap-3">
+                                <div
+                                    class="h-10 w-10 rounded-full bg-white text-red-600 flex items-center justify-center shadow-md">
+                                    <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                        stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                                        aria-hidden="true">
+                                        <path d="M12 4v8" />
+                                        <path d="M6.5 7.5a7 7 0 1011 0" />
+                                    </svg>
+                                </div>
+                                <p class="text-sm md:text-base font-semibold text-white tracking-wide select-none">
+                                    Deslizar para confirmar
+                                </p>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </template>
