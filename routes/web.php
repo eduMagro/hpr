@@ -95,6 +95,7 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
 
     // === ENTRADAS Y PEDIDOS ===
     Route::resource('entradas', EntradaController::class)->names('entradas');
+    Route::get('/entradas/{id}/verificar-discrepancias', [EntradaController::class, 'verificarDiscrepancias'])->name('entradas.verificarDiscrepancias');
     Route::patch('/entradas/{id}/cerrar', [EntradaController::class, 'cerrar'])->name('entradas.cerrar');
     Route::post('/entradas/importar-albaran', [EntradaController::class, 'subirPdf'])
         ->name('entradas.crearImportarAlbaranPdf');
@@ -117,6 +118,7 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
     // Route::put('/pedidos/{pedido}/activar', [PedidoController::class, 'activar']) ->name('pedidos.activar');
     // Activar una línea concreta del pedido
     Route::put('/pedidos/{pedido}/lineas/{linea}/activar', [PedidoController::class, 'activar'])->name('pedidos.lineas.editarActivar');
+    Route::post('/pedidos/{pedido}/lineas/{linea}/activar-con-coladas', [PedidoController::class, 'activarConColadas'])->name('pedidos.lineas.activarConColadas');
 
     // Desactivar una línea concreta del pedido
     Route::delete('/pedidos/{pedido}/lineas/{linea}/desactivar', [PedidoController::class, 'desactivar'])->name('pedidos.lineas.editarDesactivar');

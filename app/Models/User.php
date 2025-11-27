@@ -280,4 +280,9 @@ class User extends Authenticatable
     {
         return $this->hasMany(Pedido::class, 'updated_by');
     }
+
+    public function coladasCreadas()
+    {
+        return $this->hasMany(PedidoProductoColada::class, 'user_id');
+    }
 }

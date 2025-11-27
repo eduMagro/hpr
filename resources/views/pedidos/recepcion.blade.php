@@ -284,6 +284,25 @@
                 justify-content: center !important;
             }
 
+            /* Select de coladas en móvil */
+            .colada-select {
+                font-size: 16px !important;
+                min-height: 48px !important;
+                padding: 12px 14px !important;
+            }
+
+            .colada-custom-input {
+                font-size: 16px !important;
+                min-height: 48px !important;
+                padding: 12px 14px !important;
+            }
+
+            .volver-select-btn {
+                font-size: 15px !important;
+                min-height: 44px !important;
+                padding: 12px 16px !important;
+            }
+
             /* Modal sin altura fija - se ajusta al contenido */
             .swal2-popup {
                 position: relative !important;
@@ -457,6 +476,71 @@
             outline-offset: 2px !important;
         }
 
+        /* ============================================
+           ESTILOS PARA SELECT DE COLADAS
+           ============================================ */
+
+        /* Select de coladas */
+        .colada-select {
+            border: 2px solid #e5e7eb !important;
+            transition: all 0.2s ease !important;
+            font-weight: 500 !important;
+        }
+
+        .colada-select:focus {
+            border-color: #3b82f6 !important;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1) !important;
+        }
+
+        /* Input personalizado para colada */
+        .colada-custom-input {
+            border: 2px solid #10b981 !important;
+            background: #f0fdf4 !important;
+            transition: all 0.2s ease !important;
+        }
+
+        .colada-custom-input:focus {
+            border-color: #059669 !important;
+            box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1) !important;
+            background: white !important;
+        }
+
+        .colada-custom-input::placeholder {
+            color: #6b7280;
+            font-style: italic;
+        }
+
+        /* Botón volver al select */
+        .volver-select-btn:hover {
+            background: #e5e7eb !important;
+            border-color: #9ca3af !important;
+        }
+
+        .volver-select-btn:active {
+            transform: scale(0.98);
+        }
+
+        /* Animaciones */
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-8px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+            to {
+                opacity: 1;
+            }
+        }
+
         /* Animaciones más suaves en móvil */
         @media (prefers-reduced-motion: reduce) {
 
@@ -481,6 +565,8 @@
         const ubicacionDefecto = '{{ $ubicacionPorDefecto }}';
 
         const coladaDefecto = '{{ $coladaPorDefecto }}';
+        const coladasDisponibles = @json($linea->coladas->pluck('colada', 'colada'));
+        const hasColadas = Object.keys(coladasDisponibles).length > 0;
 
         // 🎯 Sistema mejorado de recepción con navegación
         class RecepcionWizard {
@@ -578,6 +664,7 @@
                         name: 'n_colada',
                         title: 'Número de colada',
                         type: 'text',
+                        datalist: hasColadas ? coladasDisponibles : undefined,
                         defaultValue: coladaDefecto,
                         required: true,
                         validator: (value) => value ? null : 'Número de colada requerido'
@@ -611,6 +698,7 @@
                         name: 'n_colada_2',
                         title: 'Colada del segundo paquete',
                         type: 'text',
+                        datalist: hasColadas ? coladasDisponibles : undefined,
                         defaultValue: coladaDefecto,
                         condition: () => this.data.paquetes === '2',
                         required: false
@@ -873,6 +961,18 @@
                     labelSize + ';">';
                 html += step.title;
                 if (step.required) html += ' <span style="color: #ef4444;">*</span>';
+
+                // Contador de coladas disponibles (solo para campos con datalist)
+                if (step.datalist) {
+                    const coladasCount = Object.keys(step.datalist).length;
+                    if (coladasCount > 0) {
+                        html += '<span style="margin-left: 8px; font-size: 12px; color: #6b7280; font-weight: 500; ' +
+                            'background: #f3f4f6; padding: 2px 8px; border-radius: 12px;">' +
+                            coladasCount + ' disponible' + (coladasCount > 1 ? 's' : '') +
+                            '</span>';
+                    }
+                }
+
                 html += '</label>';
 
                 if (step.type === 'select') {
@@ -885,6 +985,69 @@
                     html += '<select id="swal-input" class="swal2-input" style="width: 100%; margin: 0;">' +
                         optionsHTML +
                         '</select>';
+                } else if (step.datalist && step.type === 'text') {
+                    // 🎯 SELECT CON OPCIÓN "OTRA COLADA"
+                    const selectId = 'swal-select-' + step.name;
+                    const inputId = 'swal-input';
+                    const containerId = 'colada-container-' + step.name;
+
+                    html += '<div id="' + containerId + '">';
+
+                    // Select principal con las coladas disponibles
+                    let optionsHTML = '';
+                    let hasDefaultInList = false;
+
+                    // Agregar opciones de coladas existentes
+                    for (const [value, label] of Object.entries(step.datalist)) {
+                        const selected = value == defaultValue ? ' selected' : '';
+                        if (value == defaultValue) hasDefaultInList = true;
+                        optionsHTML += '<option value="' + value + '"' + selected + '>' + value + '</option>';
+                    }
+
+                    // ⚠️ NO agregar el valor por defecto si no está en la lista (nuevo comportamiento)
+
+                    // Separador visual si hay opciones
+                    if (Object.keys(step.datalist).length > 0) {
+                        optionsHTML += '<option disabled style="font-size: 1px;">───────────────────</option>';
+                    }
+
+                    // Opción "Otra colada..." al final
+                    optionsHTML += '<option value="__otra__">✍️ Escribir otra colada...</option>';
+
+                    html += '<select id="' + selectId + '" class="swal2-input colada-select" ' +
+                        'style="width: 100%; font-size: 16px; margin: 0;">' +
+                        optionsHTML +
+                        '</select>';
+
+                    // Input SIEMPRE oculto al inicio (sustituye al select cuando se elige "Otra colada...")
+                    html += '<div id="input-wrapper-' + step.name + '" style="display: none;">';
+
+                    html += '<input id="' + inputId + '" ' +
+                        'type="text" ' +
+                        'class="swal2-input colada-custom-input" ' +
+                        'placeholder="Escribe el número de colada" ' +
+                        'value="" ' +
+                        'style="width: 100%; font-size: 16px; margin: 0;">';
+
+                    // Botón para volver al select
+                    html += '<button type="button" id="volver-select-' + step.name + '" ' +
+                        'class="volver-select-btn" ' +
+                        'style="margin-top: 10px; padding: 8px 14px; font-size: 14px; ' +
+                        'background: #f3f4f6; border: 1px solid #d1d5db; border-radius: 6px; ' +
+                        'color: #374151; cursor: pointer; transition: all 0.2s; width: 100%; ' +
+                        'font-weight: 500;">' +
+                        '← Volver a seleccionar de la lista' +
+                        '</button>';
+
+                    // Mensaje de ayuda
+                    html += '<div id="colada-help-' + step.name + '" ' +
+                        'style="margin-top: 8px; font-size: 13px; color: #059669; animation: fadeIn 0.3s ease;">' +
+                        '💡 Esta colada se guardará para futuras recepciones' +
+                        '</div>';
+
+                    html += '</div>'; // fin input-wrapper
+
+                    html += '</div>'; // fin container
                 } else {
                     const attrs = step.inputAttributes || {};
                     let attrStr = '';
@@ -1107,6 +1270,53 @@
             }
 
             setupStepSpecificBehavior(step) {
+                // 🎯 Setup para SELECT con opción "Otra colada..."
+                if (step.datalist && step.type === 'text') {
+                    setTimeout(() => {
+                        const select = document.getElementById('swal-select-' + step.name);
+                        const inputWrapper = document.getElementById('input-wrapper-' + step.name);
+                        const input = document.getElementById('swal-input');
+                        const volverBtn = document.getElementById('volver-select-' + step.name);
+
+                        if (!select || !inputWrapper || !input) return;
+
+                        // Función para mostrar el input (ocultar select)
+                        const mostrarInput = () => {
+                            select.style.display = 'none';
+                            inputWrapper.style.display = 'block';
+                            inputWrapper.style.animation = 'slideDown 0.2s ease';
+                            setTimeout(() => input.focus(), 50);
+                        };
+
+                        // Función para mostrar el select (ocultar input)
+                        const mostrarSelect = () => {
+                            inputWrapper.style.display = 'none';
+                            select.style.display = 'block';
+                            input.value = '';
+                            // Resetear el select a la primera opción válida
+                            select.selectedIndex = 0;
+                        };
+
+                        // Evento cuando cambia el select
+                        select.addEventListener('change', () => {
+                            if (select.value === '__otra__') {
+                                mostrarInput();
+                            }
+                        });
+
+                        // Evento del botón "Volver"
+                        if (volverBtn) {
+                            volverBtn.addEventListener('click', (e) => {
+                                e.preventDefault();
+                                mostrarSelect();
+                            });
+                        }
+
+                        // Inicializar: siempre mostrar el select al inicio
+                        mostrarSelect();
+                    }, 100);
+                }
+
                 if (step.name === 'ubicacion') {
                     const sectorSelect = document.getElementById('swal-sector');
                     const ubicacionSelect = document.getElementById('swal-ubicacion');
@@ -1184,6 +1394,23 @@
                     return document.getElementById('swal-ubicacion').value;
                 }
 
+                // Para campos de colada con datalist
+                if (step.datalist && step.type === 'text') {
+                    const select = document.getElementById('swal-select-' + step.name);
+                    const input = document.getElementById('swal-input');
+
+                    if (select && select.value === '__otra__') {
+                        // Si seleccionó "Otra colada...", devolver el valor del input
+                        return input ? input.value : '';
+                    } else if (select) {
+                        // Si seleccionó una colada existente, devolver esa
+                        return select.value;
+                    }
+
+                    // Fallback
+                    return input ? input.value : null;
+                }
+
                 const input = document.getElementById('swal-input');
                 return input ? input.value : null;
             }
@@ -1245,21 +1472,83 @@
             wizard.start();
         }
 
-        function confirmarCerrarAlbaran() {
-            Swal.fire({
-                title: '¿Cerrar albarán?',
-                text: "No podrás volver a editarlo después.",
-                icon: 'warning',
-                showCancelButton: true,
-                confirmButtonColor: '#e3342f',
-                cancelButtonColor: '#6c757d',
-                confirmButtonText: 'Sí, cerrar',
-                cancelButtonText: 'Cancelar'
-            }).then((result) => {
+        async function confirmarCerrarAlbaran() {
+            @if($entradaAbierta)
+            // Primero verificar discrepancias
+            try {
+                const response = await fetch('{{ route('entradas.verificarDiscrepancias', $entradaAbierta->id) }}');
+                const data = await response.json();
+
+                if (data.discrepancias && data.discrepancias.length > 0) {
+                    // Construir lista HTML con discrepancias
+                    let discrepanciasHTML = '<div style="text-align: left; font-size: 14px;">';
+
+                    data.discrepancias.forEach(disc => {
+                        const emoji = disc.tipo === 'exceso' ? '🔴' : '🟡';
+                        const colorClass = disc.tipo === 'exceso' ? 'color: #dc2626;' : 'color: #d97706;';
+                        discrepanciasHTML += `<div style="margin-bottom: 12px; padding: 8px; border-left: 3px solid ${disc.tipo === 'exceso' ? '#dc2626' : '#d97706'}; background: #f9fafb;">`;
+                        discrepanciasHTML += `<div style="${colorClass} font-weight: 600; margin-bottom: 4px;">${emoji} Colada ${disc.colada}</div>`;
+                        discrepanciasHTML += `<div style="font-size: 13px;">Esperados: <strong>${disc.esperados}</strong> | Recepcionados: <strong>${disc.recepcionados}</strong></div>`;
+                        discrepanciasHTML += '</div>';
+                    });
+
+                    discrepanciasHTML += '</div>';
+
+                    // Mostrar modal con discrepancias
+                    const result = await Swal.fire({
+                        title: '⚠️ Discrepancias detectadas',
+                        html: discrepanciasHTML,
+                        icon: 'warning',
+                        showCancelButton: true,
+                        confirmButtonColor: '#e3342f',
+                        cancelButtonColor: '#6c757d',
+                        confirmButtonText: 'Cerrar de todas formas',
+                        cancelButtonText: 'Seguir recepcionando',
+                        width: '400px'
+                    });
+
+                    if (result.isConfirmed) {
+                        document.getElementById('cerrar-albaran-form').submit();
+                    }
+                } else {
+                    // No hay discrepancias, mostrar confirmación normal
+                    const result = await Swal.fire({
+                        title: '¿Cerrar albarán?',
+                        text: "No podrás volver a editarlo después.",
+                        icon: 'warning',
+                        showCancelButton: true,
+                        confirmButtonColor: '#e3342f',
+                        cancelButtonColor: '#6c757d',
+                        confirmButtonText: 'Sí, cerrar',
+                        cancelButtonText: 'Cancelar'
+                    });
+
+                    if (result.isConfirmed) {
+                        document.getElementById('cerrar-albaran-form').submit();
+                    }
+                }
+            } catch (error) {
+                console.error('Error al verificar discrepancias:', error);
+                // Si hay error en la verificación, continuar con confirmación normal
+                const result = await Swal.fire({
+                    title: '¿Cerrar albarán?',
+                    text: "No podrás volver a editarlo después.",
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#e3342f',
+                    cancelButtonColor: '#6c757d',
+                    confirmButtonText: 'Sí, cerrar',
+                    cancelButtonText: 'Cancelar'
+                });
+
                 if (result.isConfirmed) {
                     document.getElementById('cerrar-albaran-form').submit();
                 }
-            });
+            }
+            @else
+            // No hay entrada abierta
+            Swal.fire('Error', 'No hay entrada abierta para cerrar.', 'error');
+            @endif
         }
 
         // Función de edición de productos
@@ -1275,20 +1564,38 @@
             }
 
             const formHtml =
+                '<div style="text-align: left; margin-bottom: 10px;">' +
+                '<label for="swal-codigo" style="display: block; margin-bottom: 5px; font-weight: 600; font-size: 14px;">Código:</label>' +
                 '<input id="swal-codigo" class="swal2-input" placeholder="Código" value="' + (prod.codigo || '') +
-                '" style="font-size: 16px;">' +
+                '" style="font-size: 16px; margin-top: 0;">' +
+                '</div>' +
+                '<div style="text-align: left; margin-bottom: 10px;">' +
+                '<label for="swal-colada" style="display: block; margin-bottom: 5px; font-weight: 600; font-size: 14px;">Nº Colada:</label>' +
                 '<input id="swal-colada" class="swal2-input" placeholder="Nº Colada" value="' + (prod.n_colada || '') +
-                '" style="font-size: 16px;">' +
+                '" style="font-size: 16px; margin-top: 0;">' +
+                '</div>' +
+                '<div style="text-align: left; margin-bottom: 10px;">' +
+                '<label for="swal-paquete" style="display: block; margin-bottom: 5px; font-weight: 600; font-size: 14px;">Nº Paquete:</label>' +
                 '<input id="swal-paquete" class="swal2-input" placeholder="Nº Paquete" value="' + (prod.n_paquete ||
-                    '') + '" style="font-size: 16px;">' +
+                    '') + '" style="font-size: 16px; margin-top: 0;">' +
+                '</div>' +
+                '<div style="text-align: left; margin-bottom: 10px;">' +
+                '<label for="swal-peso" style="display: block; margin-bottom: 5px; font-weight: 600; font-size: 14px;">Peso inicial (kg):</label>' +
                 '<input id="swal-peso" class="swal2-input" type="number" step="0.01" placeholder="Peso inicial (kg)" value="' +
-                (prod.peso_inicial || '') + '" style="font-size: 16px;">' +
+                (prod.peso_inicial || '') + '" style="font-size: 16px; margin-top: 0;">' +
+                '</div>' +
+                '<div style="text-align: left; margin-bottom: 10px;">' +
+                '<label for="swal-ubicacion" style="display: block; margin-bottom: 5px; font-weight: 600; font-size: 14px;">Ubicación:</label>' +
                 '<input id="swal-ubicacion" class="swal2-input" placeholder="Ubicación" value="' + (prod.ubicacion_id ||
-                    '') + '" style="font-size: 16px;">' +
-                '<select id="swal-fabricante" class="swal2-input" style="font-size: 16px;">' +
+                    '') + '" style="font-size: 16px; margin-top: 0;">' +
+                '</div>' +
+                '<div style="text-align: left; margin-bottom: 10px;">' +
+                '<label for="swal-fabricante" style="display: block; margin-bottom: 5px; font-weight: 600; font-size: 14px;">Fabricante:</label>' +
+                '<select id="swal-fabricante" class="swal2-input" style="font-size: 16px; margin-top: 0;">' +
                 '<option value="">Sin fabricante</option>' +
                 fabricanteOptionsHTML +
-                '</select>';
+                '</select>' +
+                '</div>';
 
             const {
                 value: formValues
