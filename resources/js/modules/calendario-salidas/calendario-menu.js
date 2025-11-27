@@ -579,9 +579,12 @@ function inicializarNavegacionTecladoModal() {
         // Solo funcionar dentro del modal de SweetAlert
         if (!document.querySelector('.swal2-container')) return;
 
-        // Ignorar si estamos en un input/select
         const tag = e.target.tagName.toLowerCase();
-        if (tag === 'input' || tag === 'textarea' || tag === 'select') return;
+        const enSelect = tag === 'select';
+        const enInput = tag === 'input' || tag === 'textarea';
+
+        // Si estamos en un input de texto, ignorar todo excepto Escape
+        if (enInput && e.key !== 'Escape') return;
 
         const zonaAsignados = document.querySelector('[data-zona="asignados"]');
         const zonaDisponibles = document.querySelector('[data-zona="disponibles"]');
@@ -593,71 +596,167 @@ function inicializarNavegacionTecladoModal() {
 
         let handled = false;
 
-        switch (e.key) {
-            case 'ArrowDown':
-                if (totalPaquetes > 0) {
-                    modalKeyboardNav.indiceFocused = (modalKeyboardNav.indiceFocused + 1) % totalPaquetes;
-                    actualizarFocoPaqueteModal();
-                    handled = true;
-                }
-                break;
-
-            case 'ArrowUp':
-                if (totalPaquetes > 0) {
-                    modalKeyboardNav.indiceFocused = modalKeyboardNav.indiceFocused <= 0
-                        ? totalPaquetes - 1
-                        : modalKeyboardNav.indiceFocused - 1;
-                    actualizarFocoPaqueteModal();
-                    handled = true;
-                }
-                break;
-
-            case 'ArrowLeft':
-            case 'ArrowRight':
-                // Cambiar de zona
-                modalKeyboardNav.zonaActiva = modalKeyboardNav.zonaActiva === 'asignados' ? 'disponibles' : 'asignados';
-                modalKeyboardNav.indiceFocused = 0;
-                actualizarFocoPaqueteModal();
-                handled = true;
-                break;
-
-            case 'Tab':
-                // Cambiar de zona con Tab
-                e.preventDefault();
-                modalKeyboardNav.zonaActiva = modalKeyboardNav.zonaActiva === 'asignados' ? 'disponibles' : 'asignados';
-                modalKeyboardNav.indiceFocused = 0;
-                actualizarFocoPaqueteModal();
-                handled = true;
-                break;
-
-            case 'Enter':
-                // Mover paquete al otro lado
-                if (totalPaquetes > 0 && modalKeyboardNav.indiceFocused >= 0) {
-                    const paqueteFocused = paquetesVisibles[modalKeyboardNav.indiceFocused];
-                    if (paqueteFocused) {
-                        moverPaqueteAlOtroLado(paqueteFocused);
-                        // Ajustar índice si es necesario
-                        const nuevosVisibles = Array.from(zonaActual.querySelectorAll('.paquete-item-salida:not([style*="display: none"])'));
-                        if (modalKeyboardNav.indiceFocused >= nuevosVisibles.length) {
-                            modalKeyboardNav.indiceFocused = Math.max(0, nuevosVisibles.length - 1);
-                        }
+        // Navegación de paquetes - solo si NO estamos en un select
+        if (!enSelect) {
+            switch (e.key) {
+                case 'ArrowDown':
+                    if (totalPaquetes > 0) {
+                        modalKeyboardNav.indiceFocused = (modalKeyboardNav.indiceFocused + 1) % totalPaquetes;
                         actualizarFocoPaqueteModal();
+                        handled = true;
+                    }
+                    break;
+
+                case 'ArrowUp':
+                    if (totalPaquetes > 0) {
+                        modalKeyboardNav.indiceFocused = modalKeyboardNav.indiceFocused <= 0
+                            ? totalPaquetes - 1
+                            : modalKeyboardNav.indiceFocused - 1;
+                        actualizarFocoPaqueteModal();
+                        handled = true;
+                    }
+                    break;
+
+                case 'ArrowLeft':
+                case 'ArrowRight':
+                    // Cambiar de zona
+                    modalKeyboardNav.zonaActiva = modalKeyboardNav.zonaActiva === 'asignados' ? 'disponibles' : 'asignados';
+                    modalKeyboardNav.indiceFocused = 0;
+                    actualizarFocoPaqueteModal();
+                    handled = true;
+                    break;
+
+                case 'Tab':
+                    // Cambiar de zona con Tab
+                    e.preventDefault();
+                    modalKeyboardNav.zonaActiva = modalKeyboardNav.zonaActiva === 'asignados' ? 'disponibles' : 'asignados';
+                    modalKeyboardNav.indiceFocused = 0;
+                    actualizarFocoPaqueteModal();
+                    handled = true;
+                    break;
+
+                case 'Enter': {
+                    // Mover paquete al otro lado
+                    if (totalPaquetes > 0 && modalKeyboardNav.indiceFocused >= 0) {
+                        const paqueteFocused = paquetesVisibles[modalKeyboardNav.indiceFocused];
+                        if (paqueteFocused) {
+                            moverPaqueteAlOtroLado(paqueteFocused);
+                            // Ajustar índice si es necesario
+                            const nuevosVisibles = Array.from(zonaActual.querySelectorAll('.paquete-item-salida:not([style*="display: none"])'));
+                            if (modalKeyboardNav.indiceFocused >= nuevosVisibles.length) {
+                                modalKeyboardNav.indiceFocused = Math.max(0, nuevosVisibles.length - 1);
+                            }
+                            actualizarFocoPaqueteModal();
+                            handled = true;
+                        }
+                    }
+                    break;
+                }
+
+                case 'Home':
+                    modalKeyboardNav.indiceFocused = 0;
+                    actualizarFocoPaqueteModal();
+                    handled = true;
+                    break;
+
+                case 'End':
+                    modalKeyboardNav.indiceFocused = Math.max(0, totalPaquetes - 1);
+                    actualizarFocoPaqueteModal();
+                    handled = true;
+                    break;
+            }
+        }
+
+        // Si ya se manejó, salir
+        if (handled) {
+            e.preventDefault();
+            e.stopPropagation();
+            return;
+        }
+
+        // Atajos para filtros - funcionan incluso desde un select
+        switch (e.key) {
+            case 'o':
+            case 'O': {
+                // Enfocar filtro de obra
+                const filtroObra = document.getElementById('filtro-obra-modal');
+                if (filtroObra) {
+                    filtroObra.focus();
+                    handled = true;
+                }
+                break;
+            }
+
+            case 'p':
+            case 'P': {
+                // Enfocar filtro de planilla
+                const filtroPlanilla = document.getElementById('filtro-planilla-modal');
+                if (filtroPlanilla) {
+                    filtroPlanilla.focus();
+                    handled = true;
+                }
+                break;
+            }
+
+            case 'l':
+            case 'L': {
+                // Limpiar filtros
+                const btnLimpiar = document.getElementById('btn-limpiar-filtros-modal');
+                if (btnLimpiar) {
+                    btnLimpiar.click();
+                    // Volver a navegación de paquetes
+                    document.activeElement?.blur();
+                    actualizarFocoPaqueteModal();
+                    handled = true;
+                }
+                break;
+            }
+
+            case '+':
+            case 't':
+            case 'T': {
+                // Toggle incluir otros paquetes
+                const btnToggle = document.getElementById('btn-toggle-todos-modal');
+                if (btnToggle) {
+                    btnToggle.click();
+                    handled = true;
+                }
+                break;
+            }
+
+            case '/':
+            case 'f':
+            case 'F': {
+                // Enfocar primer filtro (obra)
+                const primerFiltro = document.getElementById('filtro-obra-modal');
+                if (primerFiltro) {
+                    primerFiltro.focus();
+                    handled = true;
+                }
+                break;
+            }
+
+            case 'Escape':
+                // Si estamos en un filtro, volver a navegación de paquetes
+                if (enSelect) {
+                    document.activeElement.blur();
+                    actualizarFocoPaqueteModal();
+                    handled = true;
+                }
+                break;
+
+            case 's':
+            case 'S': {
+                // Guardar (clic en botón confirmar)
+                if (e.ctrlKey || e.metaKey) {
+                    const btnGuardar = document.querySelector('.swal2-confirm');
+                    if (btnGuardar) {
+                        btnGuardar.click();
                         handled = true;
                     }
                 }
                 break;
-
-            case 'Home':
-                modalKeyboardNav.indiceFocused = 0;
-                actualizarFocoPaqueteModal();
-                handled = true;
-                break;
-
-            case 'End':
-                modalKeyboardNav.indiceFocused = Math.max(0, totalPaquetes - 1);
-                actualizarFocoPaqueteModal();
-                handled = true;
-                break;
+            }
         }
 
         if (handled) {
@@ -754,7 +853,7 @@ function actualizarIndicadorZonaModal() {
     if (!indicator) {
         indicator = document.createElement('div');
         indicator.id = 'modal-keyboard-indicator';
-        indicator.className = 'fixed bottom-20 right-4 bg-gray-900 text-white px-3 py-2 rounded-lg shadow-lg z-[10000] text-xs';
+        indicator.className = 'fixed bottom-20 right-4 bg-gray-900 text-white px-3 py-2 rounded-lg shadow-lg z-[10000] text-xs max-w-xs';
         document.body.appendChild(indicator);
     }
 
@@ -769,13 +868,25 @@ function actualizarIndicadorZonaModal() {
         : `📋 Disponibles (${paquetesDisponibles})`;
 
     indicator.innerHTML = `
-        <div class="flex items-center gap-2 mb-1">
+        <div class="flex items-center gap-2 mb-2">
             <span class="${modalKeyboardNav.zonaActiva === 'asignados' ? 'bg-green-500' : 'bg-gray-500'} text-white text-xs px-2 py-0.5 rounded">${zonaTexto}</span>
         </div>
-        <div class="text-gray-400 flex gap-2">
-            <span>↑↓ Navegar</span>
-            <span>←→ Zona</span>
-            <span>Enter Mover</span>
+        <div class="text-gray-400 space-y-1">
+            <div class="flex gap-3">
+                <span>↑↓ Navegar</span>
+                <span>←→ Zona</span>
+                <span>Enter Mover</span>
+            </div>
+            <div class="flex gap-3 border-t border-gray-700 pt-1 mt-1">
+                <span>O Obra</span>
+                <span>P Planilla</span>
+                <span>L Limpiar</span>
+            </div>
+            <div class="flex gap-3">
+                <span>T Todos</span>
+                <span>Esc Salir filtro</span>
+                <span>Ctrl+S Guardar</span>
+            </div>
         </div>
     `;
 
