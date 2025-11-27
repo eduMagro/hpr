@@ -285,6 +285,7 @@
                                                     : false;
                                                 $esNaveValida = $esNaveA || $esNaveB;
                                                 $pedidoCompletado = strtolower($pedido->estado) === 'completado';
+                                                $esObraManual = !empty($linea->obra_manual);
                                             @endphp
 
                                             <div class="flex items-center justify-center gap-1 flex-wrap"
@@ -302,7 +303,7 @@
                                                     <div
                                                         class="botones-estado-{{ $linea->id }} flex items-center gap-1 flex-wrap">
                                                         {{-- BOTÓN COMPLETAR (Entrega directa) --}}
-                                                        @if (($esEntregaDirecta || $esAlmacen) && !$pedidoCompletado)
+                                                        @if (($esEntregaDirecta || $esAlmacen || $esObraManual) && !$pedidoCompletado)
                                                             <form method="POST"
                                                                 action="{{ route('pedidos.editarCompletarLineaManual', ['pedido' => $pedido->id, 'linea' => $linea['id']]) }}"
                                                                 onsubmit="return confirmarCompletarLinea(this);">
