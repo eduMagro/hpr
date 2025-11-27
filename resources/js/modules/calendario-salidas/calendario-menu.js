@@ -113,7 +113,7 @@ function extraerPlanillasIds(event) {
 }
 
 /* ===================== Gestionar paquetes de una salida ===================== */
-async function gestionarPaquetesSalida(salidaId, calendar) {
+export async function gestionarPaquetesSalida(salidaId, calendar) {
     try {
         closeMenu();
     } catch (_) {}
@@ -135,13 +135,15 @@ async function gestionarPaquetesSalida(salidaId, calendar) {
             throw new Error("Error al cargar información de la salida");
         }
 
-        const { salida, paquetesAsignados, paquetesDisponibles } = await infoRes.json();
+        const { salida, paquetesAsignados, paquetesDisponibles, paquetesTodos, filtros } = await infoRes.json();
 
         // Construir y mostrar interfaz
         mostrarInterfazGestionPaquetesSalida(
             salida,
             paquetesAsignados,
             paquetesDisponibles,
+            paquetesTodos || [],
+            filtros || { obras: [], planillas: [], obrasRelacionadas: [] },
             calendar
         );
     } catch (err) {
@@ -159,12 +161,25 @@ function mostrarInterfazGestionPaquetesSalida(
     salida,
     paquetesAsignados,
     paquetesDisponibles,
+    paquetesTodos,
+    filtros,
     calendar
 ) {
+    // Guardar datos globalmente para los filtros
+    window._gestionPaquetesData = {
+        salida,
+        paquetesAsignados,
+        paquetesDisponibles,
+        paquetesTodos,
+        filtros,
+        mostrarTodos: false,
+    };
+
     const html = construirInterfazGestionPaquetesSalida(
         salida,
         paquetesAsignados,
-        paquetesDisponibles
+        paquetesDisponibles,
+        filtros
     );
 
     Swal.fire({
@@ -181,6 +196,21 @@ function mostrarInterfazGestionPaquetesSalida(
         },
         didOpen: () => {
             inicializarDragAndDropSalida();
+            inicializarFiltrosModal(filtros);
+            // Inicializar navegación por teclado
+            inyectarEstilosModalKeyboard();
+            setTimeout(() => {
+                inicializarNavegacionTecladoModal();
+            }, 100);
+        },
+        willClose: () => {
+            // Limpiar navegación por teclado
+            if (modalKeyboardNav.cleanup) {
+                modalKeyboardNav.cleanup();
+            }
+            // Limpiar indicador
+            const indicator = document.getElementById('modal-keyboard-indicator');
+            if (indicator) indicator.remove();
         },
         preConfirm: () => {
             return recolectarPaquetesSalida();
@@ -196,7 +226,8 @@ function mostrarInterfazGestionPaquetesSalida(
 function construirInterfazGestionPaquetesSalida(
     salida,
     paquetesAsignados,
-    paquetesDisponibles
+    paquetesDisponibles,
+    filtros
 ) {
     // Calcular totales de la salida
     const totalKgAsignados = paquetesAsignados.reduce(
@@ -234,6 +265,16 @@ function construirInterfazGestionPaquetesSalida(
         </div>
     `;
 
+    // Construir opciones de obras
+    const obrasOptions = (filtros?.obras || []).map(o =>
+        `<option value="${o.id}">${o.cod_obra || ''} - ${o.obra || 'Sin nombre'}</option>`
+    ).join('');
+
+    // Construir opciones de planillas
+    const planillasOptions = (filtros?.planillas || []).map(p =>
+        `<option value="${p.id}" data-obra-id="${p.obra_id || ''}">${p.codigo || 'Sin código'}</option>`
+    ).join('');
+
     return `
         <div class="text-left">
             ${infoSalida}
@@ -250,9 +291,9 @@ function construirInterfazGestionPaquetesSalida(
                         <span class="text-xs bg-green-200 px-2 py-1 rounded" id="peso-asignados">${totalKgAsignados.toFixed(2)} kg</span>
                     </div>
                     <div
-                        class="paquetes-zona-salida drop-zone"
+                        class="paquetes-zona-salida drop-zone overflow-y-auto"
                         data-zona="asignados"
-                        style="min-height: 400px; border: 2px dashed #10b981; border-radius: 8px; padding: 8px;"
+                        style="min-height: 350px; max-height: 450px; border: 2px dashed #10b981; border-radius: 8px; padding: 8px;"
                     >
                         ${construirPaquetesHTMLSalida(paquetesAsignados)}
                     </div>
@@ -260,11 +301,54 @@ function construirInterfazGestionPaquetesSalida(
 
                 <!-- Paquetes disponibles -->
                 <div class="bg-gray-50 border-2 border-gray-300 rounded-lg p-3">
-                    <div class="font-semibold text-gray-900 mb-2">📋 Paquetes Disponibles</div>
+                    <div class="font-semibold text-gray-900 mb-2 flex items-center justify-between">
+                        <span>📋 Paquetes Disponibles</span>
+                        <button type="button" id="btn-toggle-todos-modal"
+                                class="text-xs px-3 py-1.5 rounded-md transition-colors shadow-sm font-medium bg-blue-500 hover:bg-blue-600 text-white">
+                            <span class="flex items-center gap-1">
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                                </svg>
+                                Incluir otros paquetes
+                            </span>
+                        </button>
+                    </div>
+
+                    <!-- Info del modo actual -->
+                    <div id="info-modo-paquetes" class="bg-blue-50 border border-blue-200 rounded-md px-3 py-2 mb-3">
+                        <p class="text-xs text-blue-800">
+                            <strong>📋 Mostrando:</strong> Solo paquetes de las obras de esta salida
+                        </p>
+                    </div>
+
+                    <!-- Filtros -->
+                    <div class="space-y-2 mb-3">
+                        <div class="grid grid-cols-2 gap-2">
+                            <div>
+                                <label class="block text-xs font-medium text-gray-700 mb-1">🏗️ Filtrar por Obra</label>
+                                <select id="filtro-obra-modal" class="w-full text-xs border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                                    <option value="">-- Todas las obras --</option>
+                                    ${obrasOptions}
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-gray-700 mb-1">📄 Filtrar por Planilla</label>
+                                <select id="filtro-planilla-modal" class="w-full text-xs border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                                    <option value="">-- Todas las planillas --</option>
+                                    ${planillasOptions}
+                                </select>
+                            </div>
+                        </div>
+                        <button type="button" id="btn-limpiar-filtros-modal"
+                                class="w-full text-xs px-2 py-1.5 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-md transition-colors">
+                            🔄 Limpiar Filtros
+                        </button>
+                    </div>
+
                     <div
-                        class="paquetes-zona-salida drop-zone"
+                        class="paquetes-zona-salida drop-zone overflow-y-auto"
                         data-zona="disponibles"
-                        style="min-height: 400px; border: 2px dashed #6b7280; border-radius: 8px; padding: 8px;"
+                        style="min-height: 250px; max-height: 350px; border: 2px dashed #6b7280; border-radius: 8px; padding: 8px;"
                     >
                         ${construirPaquetesHTMLSalida(paquetesDisponibles)}
                     </div>
@@ -277,7 +361,7 @@ function construirInterfazGestionPaquetesSalida(
 /* ===================== Construir HTML paquetes salida ===================== */
 function construirPaquetesHTMLSalida(paquetes) {
     if (!paquetes || paquetes.length === 0) {
-        return '<div class="text-gray-400 text-sm text-center py-4">Sin paquetes</div>';
+        return '<div class="text-gray-400 text-sm text-center py-4 placeholder-sin-paquetes">Sin paquetes</div>';
     }
 
     return paquetes
@@ -287,15 +371,21 @@ function construirPaquetesHTMLSalida(paquetes) {
             class="paquete-item-salida bg-white border border-gray-300 rounded p-2 mb-2 cursor-move hover:shadow-md transition-shadow"
             draggable="true"
             data-paquete-id="${paquete.id}"
+            data-peso="${paquete.peso || 0}"
+            data-obra-id="${paquete.planilla?.obra?.id || ''}"
+            data-obra="${paquete.planilla?.obra?.obra || ''}"
+            data-planilla-id="${paquete.planilla?.id || ''}"
+            data-planilla="${paquete.planilla?.codigo || ''}"
+            data-cliente="${paquete.planilla?.cliente?.empresa || ''}"
         >
             <div class="flex items-center justify-between text-xs">
-                <span class="font-medium">📦 Paquete #${paquete.id}</span>
+                <span class="font-medium">📦 ${paquete.codigo || 'Paquete #' + paquete.id}</span>
                 <span class="text-gray-600">${parseFloat(paquete.peso || 0).toFixed(2)} kg</span>
             </div>
             <div class="text-xs text-gray-500 mt-1">
-                <div>Planilla: ${paquete.planilla?.codigo || paquete.planilla_id}</div>
-                <div>🏗️ ${paquete.planilla?.obra?.obra || "N/A"}</div>
-                ${paquete.planilla?.obra?.cod_obra ? `<div>Código: ${paquete.planilla.obra.cod_obra}</div>` : ""}
+                <div>📄 ${paquete.planilla?.codigo || paquete.planilla_id}</div>
+                <div>🏗️ ${paquete.planilla?.obra?.cod_obra || ''} - ${paquete.planilla?.obra?.obra || "N/A"}</div>
+                <div>👤 ${paquete.planilla?.cliente?.empresa || "Sin cliente"}</div>
                 ${paquete.nave?.obra ? `<div class="text-blue-600 font-medium">📍 ${paquete.nave.obra}</div>` : ""}
             </div>
         </div>
@@ -304,21 +394,456 @@ function construirPaquetesHTMLSalida(paquetes) {
         .join("");
 }
 
-/* ===================== Inicializar drag and drop salida ===================== */
-function inicializarDragAndDropSalida() {
-    let draggedElement = null;
+/* ===================== Inicializar filtros del modal ===================== */
+function inicializarFiltrosModal(filtros) {
+    const btnToggle = document.getElementById('btn-toggle-todos-modal');
+    const filtroObra = document.getElementById('filtro-obra-modal');
+    const filtroPlanilla = document.getElementById('filtro-planilla-modal');
+    const btnLimpiar = document.getElementById('btn-limpiar-filtros-modal');
 
+    // Toggle mostrar todos los paquetes
+    if (btnToggle) {
+        btnToggle.addEventListener('click', () => {
+            const data = window._gestionPaquetesData;
+            if (!data) return;
+
+            data.mostrarTodos = !data.mostrarTodos;
+
+            // Actualizar botón
+            if (data.mostrarTodos) {
+                btnToggle.classList.remove('bg-blue-500', 'hover:bg-blue-600');
+                btnToggle.classList.add('bg-orange-500', 'hover:bg-orange-600');
+                btnToggle.innerHTML = `
+                    <span class="flex items-center gap-1">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"/>
+                        </svg>
+                        Solo esta salida
+                    </span>
+                `;
+            } else {
+                btnToggle.classList.remove('bg-orange-500', 'hover:bg-orange-600');
+                btnToggle.classList.add('bg-blue-500', 'hover:bg-blue-600');
+                btnToggle.innerHTML = `
+                    <span class="flex items-center gap-1">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                        </svg>
+                        Incluir otros paquetes
+                    </span>
+                `;
+            }
+
+            // Actualizar info
+            const infoModo = document.getElementById('info-modo-paquetes');
+            if (infoModo) {
+                const numPaquetes = data.mostrarTodos ? data.paquetesTodos.length : data.paquetesDisponibles.length;
+                infoModo.innerHTML = `
+                    <p class="text-xs text-blue-800">
+                        <strong>${data.mostrarTodos ? '🌐' : '📋'} Mostrando:</strong>
+                        ${data.mostrarTodos ? 'Todos los paquetes disponibles' : 'Solo paquetes de las obras de esta salida'}
+                        (${numPaquetes} paquetes)
+                    </p>
+                `;
+            }
+
+            // Limpiar filtros
+            if (filtroObra) filtroObra.value = '';
+            if (filtroPlanilla) filtroPlanilla.value = '';
+
+            // Actualizar paquetes
+            actualizarPaquetesDisponiblesModal();
+        });
+    }
+
+    // Filtro por obra
+    if (filtroObra) {
+        filtroObra.addEventListener('change', () => {
+            aplicarFiltrosModal();
+        });
+    }
+
+    // Filtro por planilla
+    if (filtroPlanilla) {
+        filtroPlanilla.addEventListener('change', () => {
+            aplicarFiltrosModal();
+        });
+    }
+
+    // Limpiar filtros
+    if (btnLimpiar) {
+        btnLimpiar.addEventListener('click', () => {
+            if (filtroObra) filtroObra.value = '';
+            if (filtroPlanilla) filtroPlanilla.value = '';
+            aplicarFiltrosModal();
+        });
+    }
+}
+
+/* ===================== Actualizar paquetes disponibles en modal ===================== */
+function actualizarPaquetesDisponiblesModal() {
+    const data = window._gestionPaquetesData;
+    if (!data) return;
+
+    const zonaDisponibles = document.querySelector('[data-zona="disponibles"]');
+    if (!zonaDisponibles) return;
+
+    // Obtener paquetes según el modo
+    const paquetes = data.mostrarTodos ? data.paquetesTodos : data.paquetesDisponibles;
+
+    // Filtrar los que ya están asignados (en la zona de asignados)
+    const zonaAsignados = document.querySelector('[data-zona="asignados"]');
+    const idsAsignados = new Set();
+    if (zonaAsignados) {
+        zonaAsignados.querySelectorAll('.paquete-item-salida').forEach(item => {
+            idsAsignados.add(parseInt(item.dataset.paqueteId));
+        });
+    }
+
+    const paquetesFiltrados = paquetes.filter(p => !idsAsignados.has(p.id));
+
+    // Actualizar HTML
+    zonaDisponibles.innerHTML = construirPaquetesHTMLSalida(paquetesFiltrados);
+
+    // Re-inicializar drag and drop
+    inicializarDragAndDropSalida();
+
+    // Aplicar filtros actuales
+    aplicarFiltrosModal();
+}
+
+/* ===================== Aplicar filtros en modal ===================== */
+function aplicarFiltrosModal() {
+    const filtroObra = document.getElementById('filtro-obra-modal');
+    const filtroPlanilla = document.getElementById('filtro-planilla-modal');
+
+    const obraId = filtroObra?.value || '';
+    const planillaId = filtroPlanilla?.value || '';
+
+    const zonaDisponibles = document.querySelector('[data-zona="disponibles"]');
+    if (!zonaDisponibles) return;
+
+    const paquetes = zonaDisponibles.querySelectorAll('.paquete-item-salida');
+    let visibles = 0;
+
+    paquetes.forEach(paquete => {
+        let mostrar = true;
+
+        if (obraId && paquete.dataset.obraId !== obraId) {
+            mostrar = false;
+        }
+
+        if (planillaId && paquete.dataset.planillaId !== planillaId) {
+            mostrar = false;
+        }
+
+        paquete.style.display = mostrar ? '' : 'none';
+        if (mostrar) visibles++;
+    });
+
+    // Mostrar/ocultar placeholder
+    let placeholder = zonaDisponibles.querySelector('.placeholder-sin-paquetes');
+    if (visibles === 0) {
+        if (!placeholder) {
+            placeholder = document.createElement('div');
+            placeholder.className = 'text-gray-400 text-sm text-center py-4 placeholder-sin-paquetes';
+            placeholder.textContent = 'No hay paquetes que coincidan con el filtro';
+            zonaDisponibles.appendChild(placeholder);
+        }
+        placeholder.style.display = '';
+    } else if (placeholder) {
+        placeholder.style.display = 'none';
+    }
+}
+
+/* ===================== Navegación por teclado en modal de paquetes ===================== */
+let modalKeyboardNav = {
+    zonaActiva: 'asignados', // 'asignados' o 'disponibles'
+    indiceFocused: -1,
+    cleanup: null
+};
+
+function inicializarNavegacionTecladoModal() {
+    // Limpiar listener anterior si existe
+    if (modalKeyboardNav.cleanup) {
+        modalKeyboardNav.cleanup();
+    }
+
+    modalKeyboardNav.zonaActiva = 'asignados';
+    modalKeyboardNav.indiceFocused = 0;
+
+    // Enfocar primer paquete si existe
+    actualizarFocoPaqueteModal();
+
+    function handleKeydown(e) {
+        // Solo funcionar dentro del modal de SweetAlert
+        if (!document.querySelector('.swal2-container')) return;
+
+        // Ignorar si estamos en un input/select
+        const tag = e.target.tagName.toLowerCase();
+        if (tag === 'input' || tag === 'textarea' || tag === 'select') return;
+
+        const zonaAsignados = document.querySelector('[data-zona="asignados"]');
+        const zonaDisponibles = document.querySelector('[data-zona="disponibles"]');
+        if (!zonaAsignados || !zonaDisponibles) return;
+
+        const zonaActual = modalKeyboardNav.zonaActiva === 'asignados' ? zonaAsignados : zonaDisponibles;
+        const paquetesVisibles = Array.from(zonaActual.querySelectorAll('.paquete-item-salida:not([style*="display: none"])'));
+        const totalPaquetes = paquetesVisibles.length;
+
+        let handled = false;
+
+        switch (e.key) {
+            case 'ArrowDown':
+                if (totalPaquetes > 0) {
+                    modalKeyboardNav.indiceFocused = (modalKeyboardNav.indiceFocused + 1) % totalPaquetes;
+                    actualizarFocoPaqueteModal();
+                    handled = true;
+                }
+                break;
+
+            case 'ArrowUp':
+                if (totalPaquetes > 0) {
+                    modalKeyboardNav.indiceFocused = modalKeyboardNav.indiceFocused <= 0
+                        ? totalPaquetes - 1
+                        : modalKeyboardNav.indiceFocused - 1;
+                    actualizarFocoPaqueteModal();
+                    handled = true;
+                }
+                break;
+
+            case 'ArrowLeft':
+            case 'ArrowRight':
+                // Cambiar de zona
+                modalKeyboardNav.zonaActiva = modalKeyboardNav.zonaActiva === 'asignados' ? 'disponibles' : 'asignados';
+                modalKeyboardNav.indiceFocused = 0;
+                actualizarFocoPaqueteModal();
+                handled = true;
+                break;
+
+            case 'Tab':
+                // Cambiar de zona con Tab
+                e.preventDefault();
+                modalKeyboardNav.zonaActiva = modalKeyboardNav.zonaActiva === 'asignados' ? 'disponibles' : 'asignados';
+                modalKeyboardNav.indiceFocused = 0;
+                actualizarFocoPaqueteModal();
+                handled = true;
+                break;
+
+            case 'Enter':
+                // Mover paquete al otro lado
+                if (totalPaquetes > 0 && modalKeyboardNav.indiceFocused >= 0) {
+                    const paqueteFocused = paquetesVisibles[modalKeyboardNav.indiceFocused];
+                    if (paqueteFocused) {
+                        moverPaqueteAlOtroLado(paqueteFocused);
+                        // Ajustar índice si es necesario
+                        const nuevosVisibles = Array.from(zonaActual.querySelectorAll('.paquete-item-salida:not([style*="display: none"])'));
+                        if (modalKeyboardNav.indiceFocused >= nuevosVisibles.length) {
+                            modalKeyboardNav.indiceFocused = Math.max(0, nuevosVisibles.length - 1);
+                        }
+                        actualizarFocoPaqueteModal();
+                        handled = true;
+                    }
+                }
+                break;
+
+            case 'Home':
+                modalKeyboardNav.indiceFocused = 0;
+                actualizarFocoPaqueteModal();
+                handled = true;
+                break;
+
+            case 'End':
+                modalKeyboardNav.indiceFocused = Math.max(0, totalPaquetes - 1);
+                actualizarFocoPaqueteModal();
+                handled = true;
+                break;
+        }
+
+        if (handled) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+    }
+
+    document.addEventListener('keydown', handleKeydown, true);
+
+    modalKeyboardNav.cleanup = () => {
+        document.removeEventListener('keydown', handleKeydown, true);
+        limpiarFocoPaquetesModal();
+    };
+}
+
+function actualizarFocoPaqueteModal() {
+    // Limpiar foco anterior
+    limpiarFocoPaquetesModal();
+
+    const zonaAsignados = document.querySelector('[data-zona="asignados"]');
+    const zonaDisponibles = document.querySelector('[data-zona="disponibles"]');
+    if (!zonaAsignados || !zonaDisponibles) return;
+
+    // Marcar zona activa
+    if (modalKeyboardNav.zonaActiva === 'asignados') {
+        zonaAsignados.classList.add('zona-activa-keyboard');
+        zonaDisponibles.classList.remove('zona-activa-keyboard');
+    } else {
+        zonaDisponibles.classList.add('zona-activa-keyboard');
+        zonaAsignados.classList.remove('zona-activa-keyboard');
+    }
+
+    const zonaActual = modalKeyboardNav.zonaActiva === 'asignados' ? zonaAsignados : zonaDisponibles;
+    const paquetesVisibles = Array.from(zonaActual.querySelectorAll('.paquete-item-salida:not([style*="display: none"])'));
+
+    if (paquetesVisibles.length > 0 && modalKeyboardNav.indiceFocused >= 0) {
+        const idx = Math.min(modalKeyboardNav.indiceFocused, paquetesVisibles.length - 1);
+        const paquete = paquetesVisibles[idx];
+        if (paquete) {
+            paquete.classList.add('paquete-focused-keyboard');
+            paquete.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+    }
+
+    // Mostrar indicador de zona
+    actualizarIndicadorZonaModal();
+}
+
+function limpiarFocoPaquetesModal() {
+    document.querySelectorAll('.paquete-focused-keyboard').forEach(el => {
+        el.classList.remove('paquete-focused-keyboard');
+    });
+    document.querySelectorAll('.zona-activa-keyboard').forEach(el => {
+        el.classList.remove('zona-activa-keyboard');
+    });
+}
+
+function moverPaqueteAlOtroLado(paqueteEl) {
+    const zonaAsignados = document.querySelector('[data-zona="asignados"]');
+    const zonaDisponibles = document.querySelector('[data-zona="disponibles"]');
+    if (!zonaAsignados || !zonaDisponibles) return;
+
+    const zonaActual = paqueteEl.closest('[data-zona]');
+    const zonaDestino = zonaActual.dataset.zona === 'asignados' ? zonaDisponibles : zonaAsignados;
+
+    // Remover placeholder si existe en destino
+    const placeholder = zonaDestino.querySelector('.placeholder-sin-paquetes');
+    if (placeholder) placeholder.remove();
+
+    // Mover el paquete
+    zonaDestino.appendChild(paqueteEl);
+
+    // Agregar placeholder en origen si queda vacío
+    const paquetesRestantes = zonaActual.querySelectorAll('.paquete-item-salida');
+    if (paquetesRestantes.length === 0) {
+        const newPlaceholder = document.createElement('div');
+        newPlaceholder.className = 'text-gray-400 text-sm text-center py-4 placeholder-sin-paquetes';
+        newPlaceholder.textContent = 'Sin paquetes';
+        zonaActual.appendChild(newPlaceholder);
+    }
+
+    // Re-inicializar drag and drop para el elemento movido
+    inicializarDragEnPaquete(paqueteEl);
+
+    // Actualizar totales
+    actualizarTotalesSalida();
+}
+
+function actualizarIndicadorZonaModal() {
+    // Crear o actualizar indicador
+    let indicator = document.getElementById('modal-keyboard-indicator');
+
+    if (!indicator) {
+        indicator = document.createElement('div');
+        indicator.id = 'modal-keyboard-indicator';
+        indicator.className = 'fixed bottom-20 right-4 bg-gray-900 text-white px-3 py-2 rounded-lg shadow-lg z-[10000] text-xs';
+        document.body.appendChild(indicator);
+    }
+
+    const zonaAsignados = document.querySelector('[data-zona="asignados"]');
+    const zonaDisponibles = document.querySelector('[data-zona="disponibles"]');
+
+    const paquetesAsignados = zonaAsignados?.querySelectorAll('.paquete-item-salida').length || 0;
+    const paquetesDisponibles = zonaDisponibles?.querySelectorAll('.paquete-item-salida:not([style*="display: none"])').length || 0;
+
+    const zonaTexto = modalKeyboardNav.zonaActiva === 'asignados'
+        ? `📦 Asignados (${paquetesAsignados})`
+        : `📋 Disponibles (${paquetesDisponibles})`;
+
+    indicator.innerHTML = `
+        <div class="flex items-center gap-2 mb-1">
+            <span class="${modalKeyboardNav.zonaActiva === 'asignados' ? 'bg-green-500' : 'bg-gray-500'} text-white text-xs px-2 py-0.5 rounded">${zonaTexto}</span>
+        </div>
+        <div class="text-gray-400 flex gap-2">
+            <span>↑↓ Navegar</span>
+            <span>←→ Zona</span>
+            <span>Enter Mover</span>
+        </div>
+    `;
+
+    // Ocultar cuando se cierre el modal
+    clearTimeout(indicator._checkTimeout);
+    indicator._checkTimeout = setTimeout(() => {
+        if (!document.querySelector('.swal2-container')) {
+            indicator.remove();
+        }
+    }, 500);
+}
+
+function inyectarEstilosModalKeyboard() {
+    if (document.getElementById('modal-keyboard-styles')) return;
+
+    const styles = document.createElement('style');
+    styles.id = 'modal-keyboard-styles';
+    styles.textContent = `
+        .paquete-focused-keyboard {
+            outline: 3px solid #3b82f6 !important;
+            outline-offset: 2px;
+            background-color: #eff6ff !important;
+            transform: scale(1.02);
+            z-index: 10;
+            position: relative;
+        }
+
+        .paquete-focused-keyboard::before {
+            content: '►';
+            position: absolute;
+            left: -16px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #3b82f6;
+            font-size: 12px;
+        }
+
+        .zona-activa-keyboard {
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.3) !important;
+        }
+
+        [data-zona="asignados"].zona-activa-keyboard {
+            box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.3) !important;
+        }
+
+        [data-zona="disponibles"].zona-activa-keyboard {
+            box-shadow: 0 0 0 3px rgba(107, 114, 128, 0.3) !important;
+        }
+    `;
+    document.head.appendChild(styles);
+}
+
+/* ===================== Inicializar drag and drop salida ===================== */
+function inicializarDragEnPaquete(item) {
+    item.addEventListener("dragstart", (e) => {
+        item.style.opacity = "0.5";
+        e.dataTransfer.setData('text/plain', item.dataset.paqueteId);
+    });
+
+    item.addEventListener("dragend", (e) => {
+        item.style.opacity = "1";
+    });
+}
+
+function inicializarDragAndDropSalida() {
     // Eventos de drag para los paquetes
     document.querySelectorAll(".paquete-item-salida").forEach((item) => {
-        item.addEventListener("dragstart", (e) => {
-            draggedElement = item;
-            item.style.opacity = "0.5";
-        });
-
-        item.addEventListener("dragend", (e) => {
-            item.style.opacity = "1";
-            draggedElement = null;
-        });
+        inicializarDragEnPaquete(item);
     });
 
     // Eventos de drop para las zonas
@@ -337,9 +862,12 @@ function inicializarDragAndDropSalida() {
             e.preventDefault();
             zone.style.backgroundColor = "";
 
+            const paqueteId = e.dataTransfer.getData('text/plain');
+            const draggedElement = document.querySelector(`.paquete-item-salida[data-paquete-id="${paqueteId}"]`);
+
             if (draggedElement) {
                 // Remover placeholder si existe
-                const placeholder = zone.querySelector(".text-gray-400");
+                const placeholder = zone.querySelector(".placeholder-sin-paquetes");
                 if (placeholder) placeholder.remove();
 
                 // Agregar elemento a la nueva zona
@@ -359,14 +887,30 @@ function actualizarTotalesSalida() {
 
     let totalKg = 0;
     paquetes?.forEach((p) => {
-        const pesoText = p.querySelector(".text-gray-600")?.textContent;
-        const peso = parseFloat(pesoText) || 0;
+        const peso = parseFloat(p.dataset.peso) || 0;
         totalKg += peso;
     });
 
     const badge = document.getElementById("peso-asignados");
     if (badge) {
         badge.textContent = `${totalKg.toFixed(2)} kg`;
+    }
+
+    // Actualizar info del modo
+    const data = window._gestionPaquetesData;
+    if (data) {
+        const infoModo = document.getElementById('info-modo-paquetes');
+        if (infoModo) {
+            const zonaDisponibles = document.querySelector('[data-zona="disponibles"]');
+            const numVisibles = zonaDisponibles?.querySelectorAll('.paquete-item-salida:not([style*="display: none"])').length || 0;
+            infoModo.innerHTML = `
+                <p class="text-xs text-blue-800">
+                    <strong>${data.mostrarTodos ? '🌐' : '📋'} Mostrando:</strong>
+                    ${data.mostrarTodos ? 'Todos los paquetes disponibles' : 'Solo paquetes de las obras de esta salida'}
+                    (${numVisibles} paquetes)
+                </p>
+            `;
+        }
     }
 }
 
@@ -1026,18 +1570,6 @@ export function attachEventoContextMenu(info, calendar) {
                     label: "Gestionar paquetes",
                     icon: "📦",
                     onClick: () => gestionarPaquetesSalida(salidaId, calendar),
-                },
-                {
-                    label: "Asignar empresa de transporte",
-                    icon: "🚚",
-                    onClick: () =>
-                        asignarEmpresaTransporte(salidaId, empresaId, empresaNombre, calendar),
-                },
-                {
-                    label: "Asignar código SAGE",
-                    icon: "🏷️",
-                    onClick: () =>
-                        asignarCodigoSalida(salidaId, p.codigo_sage || "", calendar),
                 },
                 {
                     label: "Agregar comentario",

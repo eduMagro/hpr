@@ -20,12 +20,39 @@
     showFavorites: false,
     showRecent: false,
     isToggling: false,
+    focusedSectionId: null,
+    focusedItemIndex: -1, // -1 = sección, 0+ = item del submenú
+    menuSectionIds: [@foreach($menuItems as $section)'{{ $section['id'] }}'@if(!$loop->last), @endif @endforeach],
+    menuItemCounts: { @foreach($menuItems as $section)'{{ $section['id'] }}': {{ isset($section['submenu']) ? count($section['submenu']) : 0 }}@if(!$loop->last), @endif @endforeach },
 
     // Cerrar paneles desplegables en navegación
     closePanels() {
         this.showFavorites = false;
         this.showRecent = false;
         this.searchOpen = false;
+    },
+
+    // Scroll suave a la sección o item enfocado
+    scrollToFocused() {
+        let el;
+        if (this.focusedItemIndex >= 0) {
+            el = document.getElementById('menu-item-' + this.focusedSectionId + '-' + this.focusedItemIndex);
+        } else {
+            el = document.getElementById('menu-section-' + this.focusedSectionId);
+        }
+        if (el) {
+            el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+    },
+
+    // Navegar a la URL del item enfocado
+    navigateToFocusedItem() {
+        if (this.focusedItemIndex >= 0 && this.focusedSectionId) {
+            const link = document.querySelector('#menu-item-' + this.focusedSectionId + '-' + this.focusedItemIndex + ' a');
+            if (link) {
+                link.click();
+            }
+        }
     },
 
     init() {
@@ -72,6 +99,10 @@
 
         // Atajos de teclado
         document.addEventListener('keydown', (e) => {
+            // Ignorar si estamos en un input/textarea
+            const tag = e.target.tagName.toLowerCase();
+            const isInput = tag === 'input' || tag === 'textarea' || e.target.isContentEditable;
+
             // Cmd/Ctrl + K: Búsqueda
             if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
                 e.preventDefault();
@@ -93,6 +124,12 @@
                 this.showRecent = !this.showRecent;
             }
 
+            // ? (Shift + /): Abrir página de atajos
+            if (e.key === '?' && !isInput) {
+                e.preventDefault();
+                window.location.href = '{{ route("atajos.index") }}';
+            }
+
             // Navegación en búsqueda con flechas
             if (this.searchOpen) {
                 if (e.key === 'ArrowDown') {
@@ -104,6 +141,109 @@
                 } else if (e.key === 'Enter' && this.searchResults[this.selectedIndex]) {
                     e.preventDefault();
                     window.location.href = this.searchResults[this.selectedIndex].url;
+                }
+                return;
+            }
+
+            // Navegación del sidebar con flechas (solo si no estamos en input y sidebar está abierto)
+            if (!isInput && this.open && !this.searchOpen) {
+                const sectionIds = this.menuSectionIds;
+                const currentSectionIdx = sectionIds.indexOf(this.focusedSectionId);
+                const currentItemCount = this.menuItemCounts[this.focusedSectionId] || 0;
+                const isSectionExpanded = this.activeSections.includes(this.focusedSectionId);
+
+                if (e.key === 'ArrowDown') {
+                    e.preventDefault();
+
+                    // Si no hay sección enfocada, empezar por la primera
+                    if (!this.focusedSectionId) {
+                        this.focusedSectionId = sectionIds[0];
+                        this.focusedItemIndex = -1;
+                    }
+                    // Si estamos en la sección (no en item) y está expandida, ir al primer item
+                    else if (this.focusedItemIndex === -1 && isSectionExpanded && currentItemCount > 0) {
+                        this.focusedItemIndex = 0;
+                    }
+                    // Si estamos en un item y hay más items, ir al siguiente
+                    else if (this.focusedItemIndex >= 0 && this.focusedItemIndex < currentItemCount - 1) {
+                        this.focusedItemIndex++;
+                    }
+                    // Si estamos en el último item o sección colapsada, ir a la siguiente sección
+                    else {
+                        const nextIdx = currentSectionIdx < sectionIds.length - 1 ? currentSectionIdx + 1 : 0;
+                        this.focusedSectionId = sectionIds[nextIdx];
+                        this.focusedItemIndex = -1;
+                    }
+                    this.scrollToFocused();
+
+                } else if (e.key === 'ArrowUp') {
+                    e.preventDefault();
+
+                    // Si no hay sección enfocada, empezar por la última
+                    if (!this.focusedSectionId) {
+                        this.focusedSectionId = sectionIds[sectionIds.length - 1];
+                        this.focusedItemIndex = -1;
+                    }
+                    // Si estamos en el primer item, volver a la sección
+                    else if (this.focusedItemIndex === 0) {
+                        this.focusedItemIndex = -1;
+                    }
+                    // Si estamos en un item, ir al anterior
+                    else if (this.focusedItemIndex > 0) {
+                        this.focusedItemIndex--;
+                    }
+                    // Si estamos en la sección, ir a la sección anterior
+                    else {
+                        const prevIdx = currentSectionIdx > 0 ? currentSectionIdx - 1 : sectionIds.length - 1;
+                        this.focusedSectionId = sectionIds[prevIdx];
+                        const prevItemCount = this.menuItemCounts[this.focusedSectionId] || 0;
+                        const prevExpanded = this.activeSections.includes(this.focusedSectionId);
+                        // Si la sección anterior está expandida, ir al último item
+                        this.focusedItemIndex = (prevExpanded && prevItemCount > 0) ? prevItemCount - 1 : -1;
+                    }
+                    this.scrollToFocused();
+
+                } else if (e.key === 'Enter' && this.focusedSectionId) {
+                    e.preventDefault();
+                    // Si estamos en un item, navegar a esa página
+                    if (this.focusedItemIndex >= 0) {
+                        this.navigateToFocusedItem();
+                    } else {
+                        // Expandir/colapsar sección
+                        const id = this.focusedSectionId;
+                        if (this.activeSections.includes(id)) {
+                            this.activeSections = this.activeSections.filter(s => s !== id);
+                        } else {
+                            this.activeSections = [...this.activeSections, id];
+                        }
+                        localStorage.setItem('sidebar_active_sections', JSON.stringify(this.activeSections));
+                    }
+
+                } else if (e.key === 'ArrowRight' && this.focusedSectionId) {
+                    e.preventDefault();
+                    // Si estamos en la sección, expandirla
+                    if (this.focusedItemIndex === -1 && !isSectionExpanded) {
+                        this.activeSections = [...this.activeSections, this.focusedSectionId];
+                        localStorage.setItem('sidebar_active_sections', JSON.stringify(this.activeSections));
+                    }
+                    // Si está expandida y hay items, ir al primer item
+                    else if (this.focusedItemIndex === -1 && isSectionExpanded && currentItemCount > 0) {
+                        this.focusedItemIndex = 0;
+                        this.scrollToFocused();
+                    }
+
+                } else if (e.key === 'ArrowLeft' && this.focusedSectionId) {
+                    e.preventDefault();
+                    // Si estamos en un item, volver a la sección
+                    if (this.focusedItemIndex >= 0) {
+                        this.focusedItemIndex = -1;
+                        this.scrollToFocused();
+                    }
+                    // Si estamos en la sección, colapsarla
+                    else if (isSectionExpanded) {
+                        this.activeSections = this.activeSections.filter(s => s !== this.focusedSectionId);
+                        localStorage.setItem('sidebar_active_sections', JSON.stringify(this.activeSections));
+                    }
                 }
             }
         });
@@ -474,7 +614,7 @@
             @foreach ($menuItems as $section)
                 <div class="mb-2">
                     <!-- Sección Principal -->
-                    <div class="relative">
+                    <div class="relative" id="menu-section-{{ $section['id'] }}">
                         <button
                             @click="if (open) {
                                 const id = '{{ $section['id'] }}';
@@ -497,10 +637,12 @@
                                     }
                                 }, 400);
                             }"
+                            @focus="focusedSectionId = '{{ $section['id'] }}'"
                             class="w-full flex items-center justify-between px-3 py-2.5 rounded-lg transition group text-gray-300 hover:bg-gray-800 hover:text-white"
-                            :class="currentSectionId === '{{ $section['id'] }}'
-                                ? 'bg-{{ $section['color'] }}-600 text-white shadow-lg'
-                                : ''">
+                            :class="{
+                                'bg-{{ $section['color'] }}-600 text-white shadow-lg': currentSectionId === '{{ $section['id'] }}',
+                                'ring-2 ring-blue-400 ring-offset-1 ring-offset-gray-900': focusedSectionId === '{{ $section['id'] }}' && currentSectionId !== '{{ $section['id'] }}'
+                            }">
                             <div class="flex items-center space-x-3">
                                 <span
                                     class="text-xl flex-shrink-0">{{ $section['icon'] }}</span>
@@ -525,14 +667,15 @@
                         <div x-show="open && activeSections.includes('{{ $section['id'] }}')"
                             x-transition
                             class="mt-2 ml-4 space-y-1 border-l-2 border-gray-700 pl-4">
-                            @foreach ($section['submenu'] as $item)
-                                <div class="flex items-center group">
+                            @foreach ($section['submenu'] as $itemIndex => $item)
+                                <div class="flex items-center group" id="menu-item-{{ $section['id'] }}-{{ $itemIndex }}">
                                     <a href="{{ route($item['route']) }}" wire:navigate
-                                        wire:navigate
                                         @click="if (window.innerWidth < 768) { open = false; localStorage.setItem('sidebar_open', 'false'); }"
-                                        :class="isRouteActive('{{ route($item['route']) }}')
-                                            ? 'bg-{{ $section['color'] }}-500 text-white font-medium'
-                                            : 'text-gray-400 hover:text-white hover:bg-gray-800'"
+                                        :class="{
+                                            'bg-{{ $section['color'] }}-500 text-white font-medium': isRouteActive('{{ route($item['route']) }}'),
+                                            'text-gray-400 hover:text-white hover:bg-gray-800': !isRouteActive('{{ route($item['route']) }}'),
+                                            'ring-2 ring-blue-400 ring-offset-1 ring-offset-gray-900': focusedSectionId === '{{ $section['id'] }}' && focusedItemIndex === {{ $itemIndex }} && !isRouteActive('{{ route($item['route']) }}')
+                                        }"
                                         class="flex-1 flex items-center justify-between px-3 py-2 rounded-lg text-sm transition">
                                         <div
                                             class="flex items-center space-x-2">

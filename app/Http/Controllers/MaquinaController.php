@@ -197,16 +197,12 @@ class MaquinaController extends Controller
         $posicion1 = request('posicion_1');
         $posicion2 = request('posicion_2');
 
-        // Si no hay posiciones en el request, buscar las primeras dos posiciones con planillas revisadas
+        // Si no hay posiciones en el request, buscar solo la primera posición con planilla revisada
         if (is_null($posicion1) && is_null($posicion2)) {
             foreach ($ordenesPlanillas as $orden) {
                 if ($orden->planilla && $orden->planilla->revisada) {
-                    if (is_null($posicion1)) {
-                        $posicion1 = $orden->posicion;
-                    } elseif (is_null($posicion2)) {
-                        $posicion2 = $orden->posicion;
-                        break; // Ya tenemos las dos posiciones
-                    }
+                    $posicion1 = $orden->posicion;
+                    break; // Solo la primera posición revisada por defecto
                 }
             }
         }
@@ -416,17 +412,23 @@ class MaquinaController extends Controller
         $posicionAPlanilla = $ordenManual->flip();
 
         // 4) Obtener todas las posiciones disponibles (solo planillas REVISADAS)
-        $posicionesDisponibles = [];
-        foreach ($ordenManual as $planillaId => $posicion) {
-            if ($porPlanilla->has($planillaId)) {
-                $planilla = $porPlanilla[$planillaId]->first()->planilla;
-                // Solo incluir posiciones con planillas revisadas
-                if ($planilla && $planilla->revisada) {
-                    $posicionesDisponibles[] = $posicion;
-                }
-            }
-        }
-        sort($posicionesDisponibles);
+        // Consultamos directamente OrdenPlanilla con la relación planilla cargada
+        // para incluir TODAS las planillas revisadas en la cola, no solo las que tienen elementos
+        $posicionesDisponibles = OrdenPlanilla::where('maquina_id', $maquina->id)
+            ->with('planilla')
+            ->orderBy('posicion', 'asc')
+            ->get()
+            ->filter(function ($orden) use ($porPlanilla) {
+                // Incluir solo si:
+                // 1. La planilla existe y está revisada
+                // 2. Y tiene elementos en esta máquina (está en $porPlanilla)
+                return $orden->planilla
+                    && $orden->planilla->revisada
+                    && $porPlanilla->has($orden->planilla_id);
+            })
+            ->pluck('posicion')
+            ->values()
+            ->toArray();
 
         // 5) Seleccionar planillas según las posiciones solicitadas
         // ⚠️ SOLO planillas REVISADAS pueden ser mostradas

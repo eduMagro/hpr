@@ -123,8 +123,8 @@ export function crearCalendario() {
             dayMaxEvents: false,
 
             /* timeline */
-            slotMinTime: "06:00:00",
-            slotMaxTime: "18:00:00",
+            slotMinTime: "05:00:00",
+            slotMaxTime: "20:00:00",
             buttonText: {
                 today: "Hoy",
                 resourceTimeGridDay: "Día",
@@ -565,28 +565,46 @@ export function crearCalendario() {
                 },
                 resourceTimeGridDay: {
                     slotDuration: "01:00:00",
+                    slotLabelFormat: {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                        hour12: false,
+                    },
+                    slotLabelInterval: "01:00:00",
+                    allDaySlot: false,
                 },
             },
-            // slotLabelContent para vista semanal timeline - solo muestra fecha
+            // slotLabelContent para formatear etiquetas de tiempo según vista
             slotLabelContent: (arg) => {
                 const viewType = calendar?.view?.type;
 
-                // Solo aplicar en vista timeline semanal
-                if (viewType !== "resourceTimelineWeek") {
-                    return null; // Usar formato por defecto
+                // Vista diaria: mostrar horas
+                if (viewType === "resourceTimeGridDay") {
+                    const hora = arg.date.toLocaleTimeString("es-ES", {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                        hour12: false,
+                    });
+                    return {
+                        html: `<div class="text-sm font-medium text-gray-700 py-1">${hora}</div>`,
+                    };
                 }
 
-                const fecha = new Date(arg.date);
-                const diaTexto = fecha.toLocaleDateString("es-ES", {
-                    weekday: "short",
-                    day: "numeric",
-                    month: "short",
-                });
+                // Vista timeline semanal: mostrar fecha
+                if (viewType === "resourceTimelineWeek") {
+                    const fecha = new Date(arg.date);
+                    const diaTexto = fecha.toLocaleDateString("es-ES", {
+                        weekday: "short",
+                        day: "numeric",
+                        month: "short",
+                    });
+                    return {
+                        html: `<div class="text-center font-bold text-sm py-2">${diaTexto}</div>`,
+                    };
+                }
 
-                // Mostrar solo la fecha (el resumen aparece como evento en fila especial)
-                return {
-                    html: `<div class="text-center font-bold text-sm py-2">${diaTexto}</div>`,
-                };
+                // Otras vistas: usar formato por defecto
+                return null;
             },
             dayHeaderContent: (arg) => {
                 // dayHeaderContent solo se usa en vista diaria para columnas de recursos

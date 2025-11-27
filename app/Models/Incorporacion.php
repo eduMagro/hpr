@@ -14,7 +14,6 @@ class Incorporacion extends Model
         'estado',
         'empresa_destino',
         'puesto',
-        'nombre_provisional',
         'name',
         'primer_apellido',
         'segundo_apellido',
@@ -111,9 +110,12 @@ class Incorporacion extends Model
     // Accessors
     public function getNombreCompletoAttribute()
     {
+        $nombre = trim(($this->name ?? '') . ' ' . ($this->primer_apellido ?? '') . ' ' . ($this->segundo_apellido ?? ''));
+        $nombre = $nombre ?: 'Sin nombre';
+
         return $this->dni
-            ? ($this->nombre_provisional ?: 'Sin nombre') . ' (' . $this->dni . ')'
-            : ($this->nombre_provisional ?: 'Sin nombre');
+            ? $nombre . ' (' . $this->dni . ')'
+            : $nombre;
     }
 
     public function getEmpresaNombreAttribute()

@@ -13,11 +13,13 @@ class SalidasExport implements FromCollection, WithHeadings, WithEvents
 {
     protected $salidas;
     protected $empresaSummary;
+    protected $clienteObraSummary;
 
-    public function __construct(Collection $salidas, array $empresaSummary)
+    public function __construct(Collection $salidas, array $empresaSummary, array $clienteObraSummary = [])
     {
         $this->salidas = $salidas;
         $this->empresaSummary = $empresaSummary;
+        $this->clienteObraSummary = $clienteObraSummary;
     }
 
     public function collection()
@@ -37,7 +39,7 @@ class SalidasExport implements FromCollection, WithHeadings, WithEvents
                     $clienteNombre,
                     $obraNombre,
                     $empresaTransporte,
-                    $salida->camion->modelo . ' - ' . $salida->camion->matricula,
+                    $salida->camion ? ($salida->camion->modelo . ' - ' . $salida->camion->matricula) : 'Sin camión',
                     $registro->horas_paralizacion ?? 0,
                     number_format($registro->importe_paralizacion ?? 0, 2) . ' €',
                     $registro->horas_grua ?? 0,
@@ -45,7 +47,7 @@ class SalidasExport implements FromCollection, WithHeadings, WithEvents
                     $registro->horas_almacen ?? 0,
                     number_format($registro->importe ?? 0, 2) . ' €',
                     $salida->fecha_salida ?? 'Sin fecha',
-                    ucfirst($salida->estado),
+                    ucfirst($salida->estado ?? 'pendiente'),
                 ];
             });
         })->toArray();
@@ -78,8 +80,41 @@ class SalidasExport implements FromCollection, WithHeadings, WithEvents
             ], $numColumns, '');
         }
 
-        // 🔹 Combinar la tabla principal con el resumen
-        $allRows = array_merge($mainRows, [$blankRow, $titleRow, $summaryHeader], $summaryRows);
+        // 🔹 Construcción del resumen por cliente y obra
+        $titleRowClienteObra = array_pad(['Resumen por Cliente y Obra'], $numColumns, '');
+        $summaryHeaderClienteObra = array_pad([
+            'Cliente - Obra',
+            'Horas Paralización',
+            'Importe Paralización',
+            'Horas Grua',
+            'Importe Grua',
+            'Horas Almacén',
+            'Importe',
+            'Total'
+        ], $numColumns, '');
+
+        $summaryRowsClienteObra = [];
+        foreach ($this->clienteObraSummary as $clienteObra => $data) {
+            $summaryRowsClienteObra[] = array_pad([
+                $clienteObra,
+                $data['horas_paralizacion'] ?? 0,
+                number_format($data['importe_paralizacion'] ?? 0, 2) . ' €',
+                $data['horas_grua'] ?? 0,
+                number_format($data['importe_grua'] ?? 0, 2) . ' €',
+                $data['horas_almacen'] ?? 0,
+                number_format($data['importe'] ?? 0, 2) . ' €',
+                number_format($data['total'] ?? 0, 2) . ' €'
+            ], $numColumns, '');
+        }
+
+        // 🔹 Combinar la tabla principal con los dos resúmenes
+        $allRows = array_merge(
+            $mainRows,
+            [$blankRow, $titleRow, $summaryHeader],
+            $summaryRows,
+            [$blankRow, $titleRowClienteObra, $summaryHeaderClienteObra],
+            $summaryRowsClienteObra
+        );
 
         return collect($allRows);
     }
@@ -124,7 +159,7 @@ class SalidasExport implements FromCollection, WithHeadings, WithEvents
                 // 🔹 Aplicar estilo a la cabecera principal (A1:M1)
                 $sheet->getStyle('A1:M1')->applyFromArray($headerStyle);
 
-                // 🔹 Calcular la fila del título del resumen
+                // 🔹 Calcular la fila del título del primer resumen (Empresa Transporte)
                 // Se asume que hay 1 fila de cabecera + las filas generadas por las salidas
                 $mainRowsCount = count($this->salidas->flatMap(function ($salida) {
                     return $salida->salidaClientes;
@@ -133,11 +168,29 @@ class SalidasExport implements FromCollection, WithHeadings, WithEvents
                 $summaryTitleRow = $blankRowNum + 1;
                 $summaryHeaderRow = $summaryTitleRow + 1;
 
-                // 🔹 Aplicar negrita al título del resumen
+                // 🔹 Aplicar negrita al título del primer resumen
                 $sheet->getStyle("A{$summaryTitleRow}")->applyFromArray(['font' => ['bold' => true]]);
 
                 // 🔹 Aplicar estilo al encabezado del resumen por empresa
                 $sheet->getStyle("A{$summaryHeaderRow}:H{$summaryHeaderRow}")->applyFromArray([
+                    'font' => ['bold' => true],
+                    'fill' => [
+                        'fillType'   => Fill::FILL_SOLID,
+                        'startColor' => ['rgb' => 'ADD8E6'],
+                    ],
+                ]);
+
+                // 🔹 Calcular la fila del título del segundo resumen (Cliente y Obra)
+                $empresaSummaryRowsCount = count($this->empresaSummary);
+                $secondBlankRowNum = $summaryHeaderRow + $empresaSummaryRowsCount + 1;
+                $secondSummaryTitleRow = $secondBlankRowNum + 1;
+                $secondSummaryHeaderRow = $secondSummaryTitleRow + 1;
+
+                // 🔹 Aplicar negrita al título del segundo resumen
+                $sheet->getStyle("A{$secondSummaryTitleRow}")->applyFromArray(['font' => ['bold' => true]]);
+
+                // 🔹 Aplicar estilo al encabezado del resumen por cliente y obra
+                $sheet->getStyle("A{$secondSummaryHeaderRow}:H{$secondSummaryHeaderRow}")->applyFromArray([
                     'font' => ['bold' => true],
                     'fill' => [
                         'fillType'   => Fill::FILL_SOLID,

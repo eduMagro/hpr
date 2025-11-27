@@ -49,6 +49,7 @@ use App\Http\Controllers\ClaveSeccionController;
 use App\Http\Controllers\PedidoAlmacenVentaController;
 use App\Http\Controllers\ClienteAlmacenController;
 use App\Http\Controllers\FabricacionLogController;
+use App\Http\Controllers\AtajosController;
 use App\Services\PlanillaService;
 use Illuminate\Support\Facades\Log;
 
@@ -61,6 +62,9 @@ Route::get('/logistica', [PageController::class, 'logistica'])->middleware(['aut
 Route::get('/recursos-humanos', [PageController::class, 'recursosHumanos'])->middleware(['auth', 'verified'])->name('secciones.recursos-humanos');
 Route::get('/comercial', [PageController::class, 'comercial'])->middleware(['auth', 'verified'])->name('secciones.comercial');
 Route::get('/sistema', [PageController::class, 'sistema'])->middleware(['auth', 'verified'])->name('secciones.sistema');
+
+// Atajos de teclado
+Route::get('/atajos', [AtajosController::class, 'index'])->middleware(['auth', 'verified'])->name('atajos.index');
 
 // Rutas antiguas redirigidas (compatibilidad)
 Route::get('/inventario', function() {

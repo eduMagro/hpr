@@ -1,5 +1,5 @@
 <x-app-layout>
-    <x-slot name="title">Incorporación - {{ $incorporacion->nombre_provisional }}</x-slot>
+    <x-slot name="title">Incorporación - {{ $incorporacion->name }} {{ $incorporacion->primer_apellido }}</x-slot>
 
     <div class="w-full max-w-5xl mx-auto py-6 px-4 sm:px-6">
         <!-- Cabecera -->
@@ -11,7 +11,7 @@
                     </svg>
                     Volver al listado
                 </a>
-                <h1 class="text-2xl font-bold text-gray-800">{{ $incorporacion->nombre_provisional }}</h1>
+                <h1 class="text-2xl font-bold text-gray-800">{{ $incorporacion->name }} {{ $incorporacion->primer_apellido }} {{ $incorporacion->segundo_apellido }}</h1>
                 <div class="flex flex-wrap gap-2 mt-2">
                     @php $badge = $incorporacion->estado_badge; @endphp
                     <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium
@@ -250,11 +250,10 @@
                 <!-- Acciones peligrosas -->
                 <div class="bg-red-50 border border-red-200 rounded-lg p-4">
                     <h3 class="font-semibold text-red-800 mb-2">Zona peligrosa</h3>
-                    <form method="POST" action="{{ route('incorporaciones.destroy', $incorporacion) }}"
-                        onsubmit="return confirm('¿Estás seguro de eliminar esta incorporación? Esta acción no se puede deshacer.')">
+                    <form id="formEliminarIncorporacion" method="POST" action="{{ route('incorporaciones.destroy', $incorporacion) }}">
                         @csrf
                         @method('DELETE')
-                        <button type="submit" class="w-full px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-sm rounded-lg transition">
+                        <button type="button" onclick="confirmarEliminarIncorporacion()" class="w-full px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-sm rounded-lg transition">
                             Eliminar incorporación
                         </button>
                     </form>
@@ -367,56 +366,129 @@
             .then(r => r.json())
             .then(data => {
                 if (data.success) {
-                    location.reload();
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Documento subido',
+                        text: 'El documento se ha subido correctamente.',
+                        timer: 1500,
+                        showConfirmButton: false
+                    }).then(() => location.reload());
                 } else {
-                    alert(data.message || 'Error al subir el documento');
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: data.message || 'Error al subir el documento'
+                    });
                 }
             })
             .catch(err => {
-                alert('Error al subir el documento');
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: 'Error al subir el documento'
+                });
             });
         });
 
         function eliminarDocumento(tipo) {
-            if (!confirm('¿Eliminar este documento?')) return;
-
-            fetch('{{ url('incorporaciones/' . $incorporacion->id . '/documento') }}/' + tipo, {
-                method: 'DELETE',
-                headers: {
-                    'X-CSRF-TOKEN': '{{ csrf_token() }}',
-                    'Accept': 'application/json',
-                }
-            })
-            .then(r => r.json())
-            .then(data => {
-                if (data.success) {
-                    location.reload();
+            Swal.fire({
+                title: '¿Eliminar documento?',
+                text: 'Esta acción no se puede deshacer.',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#dc2626',
+                cancelButtonColor: '#6b7280',
+                confirmButtonText: 'Sí, eliminar',
+                cancelButtonText: 'Cancelar'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    fetch('{{ url('incorporaciones/' . $incorporacion->id . '/documento') }}/' + tipo, {
+                        method: 'DELETE',
+                        headers: {
+                            'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                            'Accept': 'application/json',
+                        }
+                    })
+                    .then(r => r.json())
+                    .then(data => {
+                        if (data.success) {
+                            Swal.fire({
+                                icon: 'success',
+                                title: 'Eliminado',
+                                text: 'El documento ha sido eliminado.',
+                                timer: 1500,
+                                showConfirmButton: false
+                            }).then(() => location.reload());
+                        }
+                    });
                 }
             });
         }
 
         function cambiarEstado() {
-            const estados = ['pendiente', 'datos_recibidos', 'en_proceso', 'completada', 'cancelada'];
             const actual = '{{ $incorporacion->estado }}';
-            const nuevoEstado = prompt('Nuevo estado (' + estados.join(', ') + '):', actual);
 
-            if (nuevoEstado && estados.includes(nuevoEstado)) {
-                fetch('{{ route('incorporaciones.cambiar-estado', $incorporacion) }}', {
-                    method: 'POST',
-                    headers: {
-                        'X-CSRF-TOKEN': '{{ csrf_token() }}',
-                        'Content-Type': 'application/json',
-                        'Accept': 'application/json',
-                    },
-                    body: JSON.stringify({ estado: nuevoEstado })
-                })
-                .then(r => r.json())
-                .then(data => {
-                    if (data.success) {
-                        location.reload();
+            Swal.fire({
+                title: 'Cambiar estado',
+                input: 'select',
+                inputOptions: {
+                    'pendiente': 'Pendiente',
+                    'datos_recibidos': 'Datos recibidos',
+                    'en_proceso': 'En proceso',
+                    'completada': 'Completada',
+                    'cancelada': 'Cancelada'
+                },
+                inputValue: actual,
+                showCancelButton: true,
+                confirmButtonText: 'Cambiar',
+                cancelButtonText: 'Cancelar',
+                confirmButtonColor: '#2563eb',
+                inputValidator: (value) => {
+                    if (!value) {
+                        return 'Debes seleccionar un estado';
                     }
-                });
-            }
+                }
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    fetch('{{ route('incorporaciones.cambiar-estado', $incorporacion) }}', {
+                        method: 'POST',
+                        headers: {
+                            'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                            'Content-Type': 'application/json',
+                            'Accept': 'application/json',
+                        },
+                        body: JSON.stringify({ estado: result.value })
+                    })
+                    .then(r => r.json())
+                    .then(data => {
+                        if (data.success) {
+                            Swal.fire({
+                                icon: 'success',
+                                title: 'Estado actualizado',
+                                timer: 1500,
+                                showConfirmButton: false
+                            }).then(() => location.reload());
+                        }
+                    });
+                }
+            });
+        }
+
+        function confirmarEliminarIncorporacion() {
+            Swal.fire({
+                title: '¿Eliminar incorporación?',
+                text: 'Esta acción no se puede deshacer. Se eliminarán todos los documentos asociados.',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#dc2626',
+                cancelButtonColor: '#6b7280',
+                confirmButtonText: 'Sí, eliminar',
+                cancelButtonText: 'Cancelar'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    document.getElementById('formEliminarIncorporacion').submit();
+                }
+            });
         }
 
         // Cerrar modal con Escape
