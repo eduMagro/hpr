@@ -617,6 +617,10 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
         ->name('incorporaciones.cambiar-estado');
     Route::post('/incorporaciones/{incorporacion}/marcar-enviado', [\App\Http\Controllers\IncorporacionController::class, 'marcarEnlaceEnviado'])
         ->name('incorporaciones.marcar-enviado');
+    Route::get('/incorporaciones/{incorporacion}/archivo/{archivo}', [\App\Http\Controllers\IncorporacionController::class, 'verArchivo'])
+        ->name('incorporaciones.ver-archivo');
+    Route::get('/incorporaciones/{incorporacion}/descargar/{archivo}', [\App\Http\Controllers\IncorporacionController::class, 'descargarArchivo'])
+        ->name('incorporaciones.descargar-archivo');
 });
 
 // === RUTAS PÚBLICAS - FORMULARIO INCORPORACIÓN (sin autenticación) ===

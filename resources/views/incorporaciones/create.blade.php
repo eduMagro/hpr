@@ -51,17 +51,41 @@
                     @enderror
                 </div>
 
-                <!-- Nombre provisional -->
-                <div>
-                    <label for="nombre_provisional" class="block text-sm font-medium text-gray-700 mb-2">
-                        Nombre y apellidos <span class="text-red-500">*</span>
-                    </label>
-                    <input type="text" id="nombre_provisional" name="nombre_provisional" value="{{ old('nombre_provisional') }}"
-                        placeholder="Nombre y apellidos del candidato"
-                        class="w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500" required>
-                    @error('nombre_provisional')
-                        <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
-                    @enderror
+                <!-- Nombre -->
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div>
+                        <label for="name" class="block text-sm font-medium text-gray-700 mb-2">
+                            Nombre <span class="text-red-500">*</span>
+                        </label>
+                        <input type="text" id="name" name="name" value="{{ old('name') }}"
+                            placeholder="Nombre"
+                            class="w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500" required>
+                        @error('name')
+                            <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                        @enderror
+                    </div>
+                    <div>
+                        <label for="primer_apellido" class="block text-sm font-medium text-gray-700 mb-2">
+                            Primer apellido <span class="text-red-500">*</span>
+                        </label>
+                        <input type="text" id="primer_apellido" name="primer_apellido" value="{{ old('primer_apellido') }}"
+                            placeholder="Primer apellido"
+                            class="w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500" required>
+                        @error('primer_apellido')
+                            <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                        @enderror
+                    </div>
+                    <div>
+                        <label for="segundo_apellido" class="block text-sm font-medium text-gray-700 mb-2">
+                            Segundo apellido
+                        </label>
+                        <input type="text" id="segundo_apellido" name="segundo_apellido" value="{{ old('segundo_apellido') }}"
+                            placeholder="Segundo apellido"
+                            class="w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500">
+                        @error('segundo_apellido')
+                            <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                        @enderror
+                    </div>
                 </div>
 
                 <!-- Teléfono provisional -->

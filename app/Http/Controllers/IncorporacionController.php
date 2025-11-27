@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Incorporacion;
 use App\Models\IncorporacionDocumento;
 use App\Models\IncorporacionLog;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -57,10 +58,14 @@ class IncorporacionController extends Controller
     {
         $validated = $request->validate([
             'empresa_destino' => 'required|in:hpr_servicios,hierros_paco_reyes',
-            'nombre_provisional' => 'required|string|max:255',
+            'name' => 'required|string|max:255',
+            'primer_apellido' => 'required|string|max:255',
+            'segundo_apellido' => 'nullable|string|max:255',
             'telefono_provisional' => 'required|string|max:20',
         ]);
 
+        // Generar nombre_provisional combinando los campos
+        $validated['nombre_provisional'] = trim($validated['name'] . ' ' . $validated['primer_apellido'] . ' ' . ($validated['segundo_apellido'] ?? ''));
         $validated['created_by'] = auth()->id();
         $validated['token'] = Str::random(64);
 
@@ -115,21 +120,13 @@ class IncorporacionController extends Controller
 
     public function destroy(Incorporacion $incorporacion)
     {
-        // Eliminar archivos asociados
-        foreach ($incorporacion->formaciones as $formacion) {
-            if ($formacion->archivo) {
-                Storage::disk('public')->delete('incorporaciones/' . $formacion->archivo);
-            }
-        }
+        // Obtener carpeta del usuario
+        $carpetaUsuario = $this->obtenerCarpetaUsuario($incorporacion);
+        $rutaCarpeta = "private/documentos/{$carpetaUsuario}";
 
-        foreach ($incorporacion->documentos as $documento) {
-            if ($documento->archivo) {
-                Storage::disk('public')->delete('incorporaciones/documentos/' . $documento->archivo);
-            }
-        }
-
-        if ($incorporacion->certificado_bancario) {
-            Storage::disk('public')->delete('incorporaciones/' . $incorporacion->certificado_bancario);
+        // Eliminar toda la carpeta del usuario si existe
+        if (Storage::exists($rutaCarpeta)) {
+            Storage::deleteDirectory($rutaCarpeta);
         }
 
         $incorporacion->delete();
@@ -147,10 +144,13 @@ class IncorporacionController extends Controller
             'notas' => 'nullable|string|max:500',
         ]);
 
-        // Guardar archivo
+        // Guardar archivo en carpeta privada del usuario
         $archivo = $request->file('archivo');
-        $nombreArchivo = 'doc_' . $incorporacion->id . '_' . $validated['tipo'] . '_' . time() . '.' . $archivo->getClientOriginalExtension();
-        $archivo->storeAs('incorporaciones/documentos', $nombreArchivo, 'public');
+        $nombreArchivo = $validated['tipo'] . '_' . time() . '.' . $archivo->getClientOriginalExtension();
+
+        // Obtener carpeta del usuario
+        $carpetaUsuario = $this->obtenerCarpetaUsuario($incorporacion);
+        $archivo->storeAs("private/documentos/{$carpetaUsuario}", $nombreArchivo);
 
         // Crear o actualizar documento
         $documento = $incorporacion->documentos()->updateOrCreate(
@@ -195,9 +195,10 @@ class IncorporacionController extends Controller
             return response()->json(['success' => false, 'message' => 'Documento no encontrado'], 404);
         }
 
-        // Eliminar archivo
+        // Eliminar archivo de la carpeta privada
         if ($documento->archivo) {
-            Storage::disk('public')->delete('incorporaciones/documentos/' . $documento->archivo);
+            $carpetaUsuario = $this->obtenerCarpetaUsuario($incorporacion);
+            Storage::delete("private/documentos/{$carpetaUsuario}/" . $documento->archivo);
         }
 
         $documento->delete();
@@ -261,5 +262,58 @@ class IncorporacionController extends Controller
             'success' => true,
             'url' => $incorporacion->url_formulario,
         ]);
+    }
+
+    /**
+     * Descargar archivo privado de incorporación
+     */
+    public function descargarArchivo(Incorporacion $incorporacion, string $archivo)
+    {
+        $carpetaUsuario = $this->obtenerCarpetaUsuario($incorporacion);
+        $rutaArchivo = "private/documentos/{$carpetaUsuario}/{$archivo}";
+
+        if (!Storage::exists($rutaArchivo)) {
+            abort(404, 'Archivo no encontrado');
+        }
+
+        return Storage::download($rutaArchivo);
+    }
+
+    /**
+     * Ver archivo privado de incorporación (inline)
+     */
+    public function verArchivo(Incorporacion $incorporacion, string $archivo)
+    {
+        $carpetaUsuario = $this->obtenerCarpetaUsuario($incorporacion);
+        $rutaArchivo = "private/documentos/{$carpetaUsuario}/{$archivo}";
+
+        if (!Storage::exists($rutaArchivo)) {
+            abort(404, 'Archivo no encontrado');
+        }
+
+        $mimeType = Storage::mimeType($rutaArchivo);
+
+        return response(Storage::get($rutaArchivo))
+            ->header('Content-Type', $mimeType)
+            ->header('Content-Disposition', 'inline; filename="' . $archivo . '"');
+    }
+
+    /**
+     * Obtener la carpeta del usuario para una incorporación
+     */
+    private function obtenerCarpetaUsuario(Incorporacion $incorporacion): string
+    {
+        // Si tiene usuario vinculado, usar su carpeta
+        if ($incorporacion->user_id) {
+            $usuario = User::withoutGlobalScopes()->find($incorporacion->user_id);
+            if ($usuario) {
+                $nombre = Str::slug($usuario->name, '_');
+                $apellido = Str::slug($usuario->primer_apellido, '_');
+                return "{$nombre}_{$apellido}_{$usuario->id}";
+            }
+        }
+
+        // Fallback: usar el ID de la incorporación
+        return "incorporacion_{$incorporacion->id}";
     }
 }

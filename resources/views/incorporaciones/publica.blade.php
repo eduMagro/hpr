@@ -18,6 +18,29 @@
             height: 100%;
             cursor: pointer;
         }
+        /* Estilos mejorados para inputs */
+        .input-styled {
+            width: 100%;
+            padding: 0.625rem 0.875rem;
+            border: 1px solid #d1d5db;
+            border-radius: 0.5rem;
+            font-size: 0.875rem;
+            line-height: 1.25rem;
+            color: #374151;
+            background-color: #fff;
+            transition: all 0.2s ease;
+        }
+        .input-styled::placeholder {
+            color: #9ca3af;
+        }
+        .input-styled:focus {
+            outline: none;
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+        }
+        .input-styled:hover:not(:focus) {
+            border-color: #9ca3af;
+        }
     </style>
 </head>
 <body class="bg-gray-100 min-h-screen">
@@ -74,47 +97,47 @@
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <!-- DNI -->
                     <div>
-                        <label for="dni" class="block text-sm font-medium text-gray-700 mb-1">
+                        <label for="dni" class="block text-sm font-medium text-gray-700 mb-1.5">
                             DNI / NIE <span class="text-red-500">*</span>
                         </label>
                         <input type="text" id="dni" name="dni" value="{{ old('dni') }}"
                             placeholder="12345678A" maxlength="9"
-                            class="w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500 uppercase"
+                            class="input-styled uppercase"
                             required>
-                        <p class="text-xs text-gray-500 mt-1">8 números + letra (o NIE)</p>
+                        <p class="text-xs text-gray-500 mt-1.5">8 números + letra (o NIE)</p>
                     </div>
 
                     <!-- Número afiliación -->
                     <div>
-                        <label for="numero_afiliacion_ss" class="block text-sm font-medium text-gray-700 mb-1">
+                        <label for="numero_afiliacion_ss" class="block text-sm font-medium text-gray-700 mb-1.5">
                             N. Afiliación Seg. Social <span class="text-red-500">*</span>
                         </label>
                         <input type="text" id="numero_afiliacion_ss" name="numero_afiliacion_ss" value="{{ old('numero_afiliacion_ss') }}"
                             placeholder="123456789012" maxlength="12"
-                            class="w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                            class="input-styled"
                             required>
-                        <p class="text-xs text-gray-500 mt-1">12 dígitos (tarjeta sanitaria antigua)</p>
+                        <p class="text-xs text-gray-500 mt-1.5">12 dígitos (tarjeta sanitaria antigua)</p>
                     </div>
 
                     <!-- Email -->
                     <div>
-                        <label for="email" class="block text-sm font-medium text-gray-700 mb-1">
+                        <label for="email" class="block text-sm font-medium text-gray-700 mb-1.5">
                             Correo electrónico <span class="text-red-500">*</span>
                         </label>
                         <input type="email" id="email" name="email" value="{{ old('email', $incorporacion->email_provisional) }}"
                             placeholder="tu@email.com"
-                            class="w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                            class="input-styled"
                             required>
                     </div>
 
                     <!-- Teléfono -->
                     <div>
-                        <label for="telefono" class="block text-sm font-medium text-gray-700 mb-1">
+                        <label for="telefono" class="block text-sm font-medium text-gray-700 mb-1.5">
                             Teléfono <span class="text-red-500">*</span>
                         </label>
                         <input type="tel" id="telefono" name="telefono" value="{{ old('telefono', $incorporacion->telefono_provisional) }}"
                             placeholder="612345678" maxlength="9"
-                            class="w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                            class="input-styled"
                             required>
                     </div>
 
@@ -156,14 +179,14 @@
                         <!-- Curso 20H -->
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-1">
-                                Curso 20H modalidad genérica <span class="text-red-500">*</span>
+                                Curso 20H modalidad genérica <span class="text-gray-400 text-xs">(opcional)</span>
                             </label>
                             <p class="text-xs text-gray-500 mb-2">Albañilería, ferralla, encofrador, etc.</p>
                             <div class="file-input-wrapper">
                                 <div class="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center hover:border-blue-400 transition cursor-pointer">
                                     <p class="text-sm text-gray-600" id="text-20h">Seleccionar archivo...</p>
                                 </div>
-                                <input type="file" name="formacion_curso_20h" accept=".pdf,.jpg,.jpeg,.png" required
+                                <input type="file" name="formacion_curso_20h" accept=".pdf,.jpg,.jpeg,.png"
                                     onchange="updateFileName(this, 'text-20h')">
                             </div>
                         </div>
@@ -171,13 +194,13 @@
                         <!-- Curso 6H -->
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-1">
-                                Curso 6H modalidad específica (FERRALLA) <span class="text-red-500">*</span>
+                                Curso 6H modalidad específica (FERRALLA) <span class="text-gray-400 text-xs">(opcional)</span>
                             </label>
                             <div class="file-input-wrapper">
                                 <div class="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center hover:border-blue-400 transition cursor-pointer">
                                     <p class="text-sm text-gray-600" id="text-6h">Seleccionar archivo...</p>
                                 </div>
-                                <input type="file" name="formacion_curso_6h" accept=".pdf,.jpg,.jpeg,.png" required
+                                <input type="file" name="formacion_curso_6h" accept=".pdf,.jpg,.jpeg,.png"
                                     onchange="updateFileName(this, 'text-6h')">
                             </div>
                         </div>
@@ -191,10 +214,10 @@
                             <div id="otros-cursos-container" class="space-y-3">
                                 <div class="flex gap-2 items-start otro-curso">
                                     <input type="text" name="formacion_otros_nombres[]" placeholder="Nombre del curso"
-                                        class="flex-1 rounded-lg border-gray-300 text-sm">
+                                        class="input-styled flex-1">
                                     <div class="file-input-wrapper flex-1">
-                                        <div class="border border-gray-300 rounded-lg p-2 text-center cursor-pointer text-sm">
-                                            <span class="text-gray-600" id="text-otro-0">Seleccionar...</span>
+                                        <div class="border border-gray-300 rounded-lg p-2.5 text-center cursor-pointer text-sm hover:border-gray-400 transition">
+                                            <span class="text-gray-500" id="text-otro-0">Seleccionar...</span>
                                         </div>
                                         <input type="file" name="formacion_otros[]" accept=".pdf,.jpg,.jpeg,.png"
                                             onchange="updateFileName(this, 'text-otro-0')">
@@ -216,14 +239,14 @@
                         <!-- Formación genérica -->
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-1">
-                                Formación genérica del puesto <span class="text-red-500">*</span>
+                                Formación genérica del puesto <span class="text-gray-400 text-xs">(opcional)</span>
                             </label>
                             <p class="text-xs text-gray-500 mb-2">Estructuras metálicas genérico</p>
                             <div class="file-input-wrapper">
                                 <div class="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center hover:border-blue-400 transition cursor-pointer">
                                     <p class="text-sm text-gray-600" id="text-generica">Seleccionar archivo...</p>
                                 </div>
-                                <input type="file" name="formacion_generica" accept=".pdf,.jpg,.jpeg,.png" required
+                                <input type="file" name="formacion_generica" accept=".pdf,.jpg,.jpeg,.png"
                                     onchange="updateFileName(this, 'text-generica')">
                             </div>
                         </div>
@@ -231,14 +254,14 @@
                         <!-- Formación específica -->
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-1">
-                                Formación específica del puesto <span class="text-red-500">*</span>
+                                Formación específica del puesto <span class="text-gray-400 text-xs">(opcional)</span>
                             </label>
                             <p class="text-xs text-gray-500 mb-2">Soldador, puente grúa, etc.</p>
                             <div class="file-input-wrapper">
                                 <div class="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center hover:border-blue-400 transition cursor-pointer">
                                     <p class="text-sm text-gray-600" id="text-especifica">Seleccionar archivo...</p>
                                 </div>
-                                <input type="file" name="formacion_especifica" accept=".pdf,.jpg,.jpeg,.png" required
+                                <input type="file" name="formacion_especifica" accept=".pdf,.jpg,.jpeg,.png"
                                     onchange="updateFileName(this, 'text-especifica')">
                             </div>
                         </div>
@@ -284,10 +307,10 @@
             div.className = 'flex gap-2 items-start otro-curso';
             div.innerHTML = `
                 <input type="text" name="formacion_otros_nombres[]" placeholder="Nombre del curso"
-                    class="flex-1 rounded-lg border-gray-300 text-sm">
+                    class="input-styled flex-1">
                 <div class="file-input-wrapper flex-1">
-                    <div class="border border-gray-300 rounded-lg p-2 text-center cursor-pointer text-sm">
-                        <span class="text-gray-600" id="text-otro-${otrosCursosCount}">Seleccionar...</span>
+                    <div class="border border-gray-300 rounded-lg p-2.5 text-center cursor-pointer text-sm hover:border-gray-400 transition">
+                        <span class="text-gray-500" id="text-otro-${otrosCursosCount}">Seleccionar...</span>
                     </div>
                     <input type="file" name="formacion_otros[]" accept=".pdf,.jpg,.jpeg,.png"
                         onchange="updateFileName(this, 'text-otro-${otrosCursosCount}')">

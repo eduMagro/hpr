@@ -15,6 +15,9 @@ class Incorporacion extends Model
         'empresa_destino',
         'puesto',
         'nombre_provisional',
+        'name',
+        'primer_apellido',
+        'segundo_apellido',
         'email_provisional',
         'telefono_provisional',
         'dni',
@@ -27,6 +30,7 @@ class Incorporacion extends Model
         'recordatorio_enviado_at',
         'created_by',
         'updated_by',
+        'user_id',
     ];
 
     public $timestamps = true;
@@ -97,6 +101,11 @@ class Incorporacion extends Model
     public function actualizador()
     {
         return $this->belongsTo(User::class, 'updated_by');
+    }
+
+    public function usuario()
+    {
+        return $this->belongsTo(User::class, 'user_id');
     }
 
     // Accessors

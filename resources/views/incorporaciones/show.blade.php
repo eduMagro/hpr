@@ -47,7 +47,8 @@
                     <div class="flex items-center gap-2">
                         <input type="text" readonly value="{{ $incorporacion->url_formulario }}"
                             id="enlaceFormulario"
-                            class="flex-1 rounded-lg border-gray-300 bg-gray-50 text-sm">
+                            class="flex-1 rounded-lg border border-gray-300 bg-gray-50 px-3 py-2.5 text-sm text-gray-600
+                            focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200">
                         <button onclick="copiarEnlace(this)" class="p-2 bg-gray-100 hover:bg-gray-200 text-gray-600 hover:text-gray-800 rounded-lg transition" title="Copiar al portapapeles">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
@@ -89,7 +90,7 @@
                             <div class="sm:col-span-2">
                                 <label class="text-sm text-gray-500">Certificado bancario</label>
                                 @if($incorporacion->certificado_bancario)
-                                    <a href="{{ asset('storage/incorporaciones/' . $incorporacion->certificado_bancario) }}"
+                                    <a href="{{ route('incorporaciones.ver-archivo', [$incorporacion, $incorporacion->certificado_bancario]) }}"
                                         target="_blank" class="text-blue-600 hover:underline flex items-center">
                                         <svg class="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -128,7 +129,7 @@
                                             <p class="text-sm text-gray-500">{{ $formacion->nombre }}</p>
                                         @endif
                                     </div>
-                                    <a href="{{ asset('storage/incorporaciones/' . $formacion->archivo) }}"
+                                    <a href="{{ route('incorporaciones.ver-archivo', [$incorporacion, $formacion->archivo]) }}"
                                         target="_blank" class="text-blue-600 hover:text-blue-800">
                                         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -175,7 +176,7 @@
                                 </div>
                                 <div class="flex items-center gap-2">
                                     @if($item['completado'] && $item['documento'])
-                                        <a href="{{ asset('storage/incorporaciones/documentos/' . $item['documento']->archivo) }}"
+                                        <a href="{{ route('incorporaciones.ver-archivo', [$incorporacion, $item['documento']->archivo]) }}"
                                             target="_blank" class="text-blue-600 hover:text-blue-800" title="Ver documento">
                                             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
@@ -273,13 +274,22 @@
                 <div class="mb-4">
                     <label class="block text-sm font-medium text-gray-700 mb-2">Archivo</label>
                     <input type="file" name="archivo" accept=".pdf,.jpg,.jpeg,.png" required
-                        class="w-full border border-gray-300 rounded-lg p-2">
-                    <p class="text-xs text-gray-500 mt-1">PDF, JPG o PNG. Máximo 10MB.</p>
+                        class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm text-gray-700
+                        file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0
+                        file:text-sm file:font-medium file:bg-blue-50 file:text-blue-700
+                        hover:file:bg-blue-100 file:cursor-pointer
+                        focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500
+                        transition-all duration-200">
+                    <p class="text-xs text-gray-500 mt-1.5">PDF, JPG o PNG. Máximo 10MB.</p>
                 </div>
 
                 <div class="mb-4">
                     <label class="block text-sm font-medium text-gray-700 mb-2">Notas (opcional)</label>
-                    <textarea name="notas" rows="2" class="w-full border-gray-300 rounded-lg"
+                    <textarea name="notas" rows="2"
+                        class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm text-gray-700
+                        placeholder-gray-400 resize-none
+                        focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500
+                        transition-all duration-200"
                         placeholder="Observaciones sobre el documento..."></textarea>
                 </div>
 
