@@ -28,9 +28,6 @@ logger = logging.getLogger(__name__)
 app = Flask(__name__)
 CORS(app)  # Permitir peticiones desde el navegador
 
-# Instancia del printer
-printer = BrotherPrinter()
-
 
 @app.route('/')
 def index():
@@ -79,6 +76,9 @@ def print_labels():
 
         logger.info(f"Recibida solicitud de impresión para {len(codigos)} etiquetas")
 
+        # Crear nueva instancia del printer para este thread
+        printer = BrotherPrinter()
+
         # Imprimir etiquetas
         resultado = printer.print_qr_labels(codigos)
 
@@ -101,6 +101,7 @@ def print_labels():
 def test_printer():
     """Endpoint para probar la conexión con la impresora"""
     try:
+        printer = BrotherPrinter()
         resultado = printer.test_connection()
         return jsonify(resultado)
     except Exception as e:

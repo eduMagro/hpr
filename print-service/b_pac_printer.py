@@ -5,6 +5,7 @@ Usa COM para controlar P-Touch Editor y generar etiquetas QR
 """
 
 import win32com.client
+import pythoncom
 import logging
 import os
 from typing import List, Dict
@@ -25,6 +26,9 @@ class BrotherPrinter:
         try:
             if self.bpac is None:
                 logger.info("Inicializando Brother b-PAC SDK...")
+                # Inicializar COM en este thread (necesario para Flask multi-threaded)
+                pythoncom.CoInitialize()
+                logger.info("COM inicializado, creando objeto bpac.Document...")
                 self.bpac = win32com.client.Dispatch("bpac.Document")
                 logger.info("b-PAC SDK inicializado correctamente")
             return True
@@ -39,11 +43,18 @@ class BrotherPrinter:
         """Prueba la conexión con b-PAC SDK"""
         try:
             self._initialize_bpac()
+            # Liberar recursos después de probar
+            self.bpac = None
+            pythoncom.CoUninitialize()
             return {
                 'success': True,
                 'message': 'Conexión con Brother b-PAC SDK exitosa'
             }
         except Exception as e:
+            try:
+                pythoncom.CoUninitialize()
+            except:
+                pass
             return {
                 'success': False,
                 'error': str(e)
@@ -62,17 +73,19 @@ class BrotherPrinter:
         try:
             self._initialize_bpac()
 
-            # Crear nueva etiqueta (tamaño 29mm x 90mm - ajusta según tu impresora)
-            logger.info("Creando nueva etiqueta...")
+            # Buscar plantilla en la carpeta del servicio o usar plantilla del sistema
+            template_path = self._get_template_path()
+            logger.info(f"Usando plantilla: {template_path}")
 
-            # Usar plantilla en blanco de 29x90mm (tamaño común para P-Touch)
-            # Si tienes una plantilla personalizada, cambia esta línea
-            if not self.bpac.Open(""):  # "" = etiqueta en blanco
-                raise Exception("No se pudo crear una nueva etiqueta")
+            # Abrir plantilla
+            if not self.bpac.Open(template_path):
+                raise Exception(f"No se pudo abrir la plantilla: {template_path}")
 
-            # Configurar tamaño de etiqueta (en milímetros)
-            # Ajusta estos valores según tu modelo de impresora
-            self.bpac.SetMediaById(self.bpac.GetMediaId(), True)
+            logger.info("Plantilla abierta correctamente")
+
+            # Obtener nombre de la impresora
+            printer_name = self.bpac.GetPrinterName()
+            logger.info(f"Impresora: {printer_name}")
 
             cantidad_impresa = 0
 
@@ -85,25 +98,27 @@ class BrotherPrinter:
                 logger.info(f"Procesando código: {codigo}")
 
                 try:
-                    # Limpiar objetos anteriores si existen
-                    self._limpiar_etiqueta()
+                    # Establecer el texto del objeto (buscar objeto de texto en la plantilla)
+                    obj = self.bpac.GetObject("objText")
+                    if obj:
+                        obj.Text = codigo
 
-                    # Agregar objeto QR
-                    qr_obj = self._agregar_qr_code(codigo)
-                    if qr_obj:
-                        logger.info(f"QR generado para: {codigo}")
-
-                    # Agregar texto del código debajo del QR
-                    texto_obj = self._agregar_texto_codigo(codigo)
-                    if texto_obj:
-                        logger.info(f"Texto agregado para: {codigo}")
+                    # También intentar con el objeto de código de barras/QR
+                    barcode_obj = self.bpac.GetObject("objBarcode")
+                    if barcode_obj:
+                        barcode_obj.Text = codigo
 
                     # Imprimir la etiqueta
-                    if self.bpac.DoPrint(1, 0):  # Imprimir 1 copia, sin opciones
-                        logger.info(f"Etiqueta impresa: {codigo}")
-                        cantidad_impresa += 1
+                    if self.bpac.StartPrint("", 0):  # Usar impresora predeterminada
+                        if self.bpac.PrintOut(1, 0):  # 1 copia
+                            self.bpac.EndPrint()
+                            logger.info(f"Etiqueta impresa: {codigo}")
+                            cantidad_impresa += 1
+                        else:
+                            self.bpac.EndPrint()
+                            logger.error(f"Error en PrintOut para: {codigo}")
                     else:
-                        logger.error(f"Error imprimiendo etiqueta: {codigo}")
+                        logger.error(f"Error en StartPrint para: {codigo}")
 
                 except Exception as e:
                     logger.error(f"Error procesando código {codigo}: {str(e)}")
@@ -111,6 +126,9 @@ class BrotherPrinter:
 
             # Cerrar documento
             self.bpac.Close()
+            self.bpac = None
+            # Liberar recursos COM
+            pythoncom.CoUninitialize()
 
             return {
                 'success': True,
@@ -124,12 +142,44 @@ class BrotherPrinter:
             if self.bpac:
                 try:
                     self.bpac.Close()
+                    self.bpac = None
+                    pythoncom.CoUninitialize()
                 except:
                     pass
             return {
                 'success': False,
                 'error': str(e)
             }
+
+    def _get_template_path(self) -> str:
+        """Obtiene la ruta de la plantilla a usar"""
+        # Buscar plantilla en la carpeta del servicio
+        service_dir = os.path.dirname(os.path.abspath(__file__))
+        local_template = os.path.join(service_dir, "etiqueta_qr.lbx")
+
+        if os.path.exists(local_template):
+            return local_template
+
+        # Buscar en carpeta de plantillas de P-Touch Editor
+        ptouch_templates = [
+            r"C:\Program Files (x86)\Brother\P-touch Editor 6\Templates",
+            r"C:\Program Files\Brother\P-touch Editor 6\Templates",
+            r"C:\Program Files (x86)\Brother\P-touch Editor 5.4\Templates",
+        ]
+
+        for template_dir in ptouch_templates:
+            if os.path.exists(template_dir):
+                # Buscar cualquier plantilla .lbx
+                for f in os.listdir(template_dir):
+                    if f.endswith('.lbx'):
+                        return os.path.join(template_dir, f)
+
+        # Si no hay plantilla, usar string vacío (intentará crear una nueva)
+        raise Exception(
+            "No se encontró plantilla .lbx. Por favor crea una plantilla llamada 'etiqueta_qr.lbx' "
+            f"en la carpeta {service_dir} usando P-Touch Editor con un objeto de texto llamado 'objText' "
+            "y un objeto de código QR llamado 'objBarcode'."
+        )
 
     def _limpiar_etiqueta(self):
         """Elimina todos los objetos de la etiqueta actual"""
