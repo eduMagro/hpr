@@ -355,6 +355,13 @@ function dirKey(dx, dy, prec) {
 function agruparPorDireccionYEtiquetaRobusto(segsAdj, segsOrig, opt) {
     const dirPrecision = (opt && opt.dirPrecision) || 1e-2;
     const labelFormat = (opt && opt.labelFormat) || { decimals: 0, step: null };
+
+    // Detectar factor de escala comparando longitudes totales
+    const totalAdj = segsAdj.reduce((sum, s) => sum + Math.hypot(s.end.x - s.start.x, s.end.y - s.start.y), 0);
+    const totalOrig = segsOrig.reduce((sum, s) => sum + (s.length || Math.hypot(s.end.x - s.start.x, s.end.y - s.start.y)), 0);
+    const scaleFactor = totalOrig > 0 ? totalAdj / totalOrig : 1;
+
+    // Crear buckets de longitudes originales por dirección
     const buckets = new Map();
     for (let i = 0; i < segsOrig.length; i++) {
         const s = segsOrig[i];
@@ -362,11 +369,17 @@ function agruparPorDireccionYEtiquetaRobusto(segsAdj, segsOrig, opt) {
             dy = s.end.y - s.start.y;
         const key = dirKey(dx, dy, dirPrecision);
         const arr = buckets.get(key) || [];
-        arr.push(s.length || Math.hypot(dx, dy));
+        arr.push({ length: s.length || Math.hypot(dx, dy), index: i });
         buckets.set(key, arr);
     }
+
+    // También crear un mapa indexado para fallback directo
+    const origByIndex = segsOrig.map(s => s.length || Math.hypot(s.end.x - s.start.x, s.end.y - s.start.y));
+
     const seen = new Set();
+    const usedIndices = new Set();
     const res = [];
+
     for (let i = 0; i < segsAdj.length; i++) {
         const s = segsAdj[i];
         const dx = s.end.x - s.start.x,
@@ -375,18 +388,31 @@ function agruparPorDireccionYEtiquetaRobusto(segsAdj, segsOrig, opt) {
         const candidates = buckets.get(key) || [];
         const adjLen = Math.hypot(dx, dy);
         let chosen = adjLen;
+
         if (candidates.length) {
-            let best = candidates[0],
-                bestD = Math.abs(best - adjLen);
-            for (let j = 1; j < candidates.length; j++) {
-                const d = Math.abs(candidates[j] - adjLen);
-                if (d < bestD) {
-                    best = candidates[j];
-                    bestD = d;
+            // Calcular la longitud original esperada (desescalando)
+            const expectedOrig = adjLen / scaleFactor;
+
+            // Buscar la longitud original más cercana a la esperada (no a la escalada)
+            let best = null, bestD = Infinity;
+            for (const c of candidates) {
+                // Preferir índices no usados para mejor correspondencia
+                const d = Math.abs(c.length - expectedOrig);
+                const penalty = usedIndices.has(c.index) ? 0.1 : 0; // Pequeña penalización por reusar
+                if (d + penalty < bestD) {
+                    best = c;
+                    bestD = d + penalty;
                 }
             }
-            chosen = best;
+            if (best) {
+                chosen = best.length;
+                usedIndices.add(best.index);
+            }
+        } else if (i < origByIndex.length) {
+            // Fallback: usar longitud original por índice si no hay match por dirección
+            chosen = origByIndex[i];
         }
+
         const label = formatDimLabel(chosen, labelFormat);
         const k2 = key + "|" + label;
         if (seen.has(k2)) continue;

@@ -18,10 +18,10 @@
                         <label>📋 Planillas:</label>
 
                         <select id="posicion_1" name="posicion_1" onchange="cambiarPosicionesPlanillas()">
-                            <option value="">-- Pos. 1 --</option>
+                            <option value="0" {{ empty($posicion1) ? 'selected' : '' }}>0</option>
                             @foreach ($posicionesDisponibles as $pos)
                                 <option value="{{ $pos }}"
-                                    {{ request('posicion_1') == $pos ? 'selected' : '' }}>
+                                    {{ $posicion1 == $pos ? 'selected' : '' }}>
                                     Pos. {{ $pos }}
                                 </option>
                             @endforeach
@@ -30,10 +30,10 @@
                         <span class="separador">+</span>
 
                         <select id="posicion_2" name="posicion_2" onchange="cambiarPosicionesPlanillas()">
-                            <option value="">-- Pos. 2 --</option>
+                            <option value="0" {{ empty($posicion2) ? 'selected' : '' }}>0</option>
                             @foreach ($posicionesDisponibles as $pos)
                                 <option value="{{ $pos }}"
-                                    {{ request('posicion_2') == $pos ? 'selected' : '' }}>
+                                    {{ $posicion2 == $pos ? 'selected' : '' }}>
                                     Pos. {{ $pos }}
                                 </option>
                             @endforeach
@@ -159,8 +159,8 @@
                             const pos1 = document.getElementById('posicion_1').value;
                             const pos2 = document.getElementById('posicion_2').value;
 
-                            // Validar que no sean la misma posición
-                            if (pos1 && pos2 && pos1 === pos2) {
+                            // Validar que no sean la misma posición (ignorar si ambas son "0")
+                            if (pos1 && pos2 && pos1 !== '0' && pos2 !== '0' && pos1 === pos2) {
                                 Swal.fire({
                                     icon: 'warning',
                                     title: 'Posiciones duplicadas',
@@ -168,7 +168,7 @@
                                     confirmButtonColor: '#3085d6',
                                 });
                                 // Resetear el segundo selector
-                                document.getElementById('posicion_2').value = '';
+                                document.getElementById('posicion_2').value = '0';
                                 return;
                             }
 
@@ -190,14 +190,14 @@
 
                             console.log('🔄 Cambiando planillas a posiciones:', pos1, pos2);
 
-                            // Construir URL con parámetros
+                            // Construir URL con parámetros (0 = ninguna selección)
                             const params = new URLSearchParams(window.location.search);
-                            if (pos1) {
+                            if (pos1 && pos1 !== '0') {
                                 params.set('posicion_1', pos1);
                             } else {
                                 params.delete('posicion_1');
                             }
-                            if (pos2) {
+                            if (pos2 && pos2 !== '0') {
                                 params.set('posicion_2', pos2);
                             } else {
                                 params.delete('posicion_2');

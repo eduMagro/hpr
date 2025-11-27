@@ -219,6 +219,15 @@ return [
                     ]
                 ],
                 [
+                    'label' => 'Incorporaciones',
+                    'route' => 'incorporaciones.index',
+                    'icon' => '📋',
+                    'actions' => [
+                        ['label' => 'Ver todas', 'route' => 'incorporaciones.index', 'permission' => 'ver'],
+                        ['label' => 'Nueva incorporación', 'route' => 'incorporaciones.create', 'permission' => 'crear'],
+                    ]
+                ],
+                [
                     'label' => 'Registrar Usuario',
                     'route' => 'register',
                     'icon' => '➕',
@@ -310,6 +319,14 @@ return [
                     'icon' => '❓',
                     'actions' => [
                         ['label' => 'Centro de ayuda', 'route' => 'ayuda.index', 'permission' => 'ver'],
+                    ]
+                ],
+                [
+                    'label' => 'Atajos de Teclado',
+                    'route' => 'atajos.index',
+                    'icon' => '⌨️',
+                    'actions' => [
+                        ['label' => 'Ver atajos', 'route' => 'atajos.index', 'permission' => 'ver'],
                     ]
                 ],
                 [
@@ -568,6 +585,18 @@ return [
                 'style' => 'tabs',
                 'mobileLabel' => 'Usuarios',
                 'checkRole' => 'oficina',
+            ]
+        ],
+
+        'incorporaciones' => [
+            'items' => [
+                ['label' => 'Todas', 'route' => 'incorporaciones.index', 'icon' => '📋'],
+                ['label' => 'Nueva Incorporación', 'route' => 'incorporaciones.create', 'icon' => '➕'],
+            ],
+            'config' => [
+                'colorBase' => 'indigo',
+                'style' => 'tabs',
+                'mobileLabel' => 'Incorporaciones',
             ]
         ],
 

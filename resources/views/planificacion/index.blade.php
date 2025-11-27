@@ -232,4 +232,90 @@
     <!-- Componente Livewire para comentarios -->
     @livewire('planificacion.comentario-salida')
 
+    <!-- Botón de ayuda de atajos flotante -->
+    <div id="shortcuts-help-btn" class="fixed bottom-4 left-4 z-50 group">
+        <button class="w-10 h-10 bg-blue-600 hover:bg-blue-700 text-white rounded-full shadow-lg flex items-center justify-center transition-all duration-200 hover:scale-110">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+            </svg>
+        </button>
+
+        <!-- Tooltip con atajos -->
+        <div class="absolute bottom-12 left-0 w-80 bg-gray-900 text-white rounded-lg shadow-2xl p-4 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 transform translate-y-2 group-hover:translate-y-0">
+            <div class="flex items-center justify-between mb-3 pb-2 border-b border-gray-700">
+                <h3 class="font-semibold text-sm">⌨️ Atajos de Planificación</h3>
+                <a href="{{ route('atajos.index') }}" class="text-xs text-blue-400 hover:text-blue-300">Ver todos →</a>
+            </div>
+
+            <!-- Modo Días -->
+            <div class="mb-3">
+                <div class="flex items-center gap-2 mb-2">
+                    <span class="bg-blue-500 text-white text-xs px-2 py-0.5 rounded">DÍAS</span>
+                </div>
+                <div class="grid grid-cols-2 gap-1 text-xs">
+                    <div class="flex items-center gap-2">
+                        <kbd class="px-1.5 py-0.5 bg-gray-700 rounded text-gray-300">← → ↑ ↓</kbd>
+                        <span class="text-gray-400">Navegar</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <kbd class="px-1.5 py-0.5 bg-gray-700 rounded text-gray-300">Enter</kbd>
+                        <span class="text-gray-400">Vista día</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <kbd class="px-1.5 py-0.5 bg-gray-700 rounded text-gray-300">T</kbd>
+                        <span class="text-gray-400">Hoy</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <kbd class="px-1.5 py-0.5 bg-gray-700 rounded text-gray-300">PgUp/Dn</kbd>
+                        <span class="text-gray-400">Mes ±</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Modo Eventos -->
+            <div class="mb-3">
+                <div class="flex items-center gap-2 mb-2">
+                    <span class="bg-green-500 text-white text-xs px-2 py-0.5 rounded">EVENTOS</span>
+                    <span class="text-xs text-gray-500">(Tab para cambiar)</span>
+                </div>
+                <div class="grid grid-cols-2 gap-1 text-xs">
+                    <div class="flex items-center gap-2">
+                        <kbd class="px-1.5 py-0.5 bg-gray-700 rounded text-gray-300">↑ ↓</kbd>
+                        <span class="text-gray-400">Navegar</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <kbd class="px-1.5 py-0.5 bg-gray-700 rounded text-gray-300">Enter</kbd>
+                        <span class="text-gray-400">Abrir</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <kbd class="px-1.5 py-0.5 bg-gray-700 rounded text-gray-300">E</kbd>
+                        <span class="text-gray-400">Menú</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <kbd class="px-1.5 py-0.5 bg-gray-700 rounded text-gray-300">I</kbd>
+                        <span class="text-gray-400">Info</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Generales -->
+            <div class="pt-2 border-t border-gray-700">
+                <div class="text-xs text-gray-500 mb-2">Generales</div>
+                <div class="grid grid-cols-2 gap-1 text-xs">
+                    <div class="flex items-center gap-2">
+                        <kbd class="px-1.5 py-0.5 bg-gray-700 rounded text-gray-300">F11</kbd>
+                        <span class="text-gray-400">Pantalla completa</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <kbd class="px-1.5 py-0.5 bg-gray-700 rounded text-gray-300">Esc</kbd>
+                        <span class="text-gray-400">Salir/Cerrar</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Flecha del tooltip -->
+            <div class="absolute -bottom-2 left-4 w-4 h-4 bg-gray-900 transform rotate-45"></div>
+        </div>
+    </div>
+
 </x-app-layout>

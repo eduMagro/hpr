@@ -14,6 +14,9 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Mail;
+use App\Mail\IncorporacionCompletada;
+use App\Models\Departamento;
 
 class IncorporacionPublicaController extends Controller
 {
@@ -65,7 +68,7 @@ class IncorporacionPublicaController extends Controller
             $rules['formacion_otros'] = 'nullable|array';
             $rules['formacion_otros.*'] = 'file|mimes:pdf,jpg,jpeg,png|max:5120';
             $rules['formacion_otros_nombres'] = 'nullable|array';
-            $rules['formacion_otros_nombres.*'] = 'string|max:255';
+            $rules['formacion_otros_nombres.*'] = 'nullable|string|max:255';
         } else {
             $rules['formacion_generica'] = 'nullable|file|mimes:pdf,jpg,jpeg,png|max:5120';
             $rules['formacion_especifica'] = 'nullable|file|mimes:pdf,jpg,jpeg,png|max:5120';
@@ -73,19 +76,31 @@ class IncorporacionPublicaController extends Controller
 
         $messages = [
             'dni.required' => 'El DNI es obligatorio.',
+            'dni.size' => 'El DNI debe tener exactamente 9 caracteres.',
             'dni.regex' => 'El formato del DNI no es válido (8 números + letra o NIE).',
             'numero_afiliacion_ss.required' => 'El número de afiliación es obligatorio.',
-            'numero_afiliacion_ss.regex' => 'El número de afiliación debe tener 12 dígitos.',
+            'numero_afiliacion_ss.size' => 'El número de afiliación debe tener exactamente 12 dígitos.',
+            'numero_afiliacion_ss.regex' => 'El número de afiliación debe contener solo números.',
             'email.required' => 'El correo electrónico es obligatorio.',
+            'email.email' => 'El correo electrónico no tiene un formato válido.',
             'telefono.required' => 'El teléfono es obligatorio.',
             'telefono.regex' => 'El teléfono debe tener 9 dígitos.',
             'certificado_bancario.required' => 'El certificado bancario es obligatorio.',
+            'certificado_bancario.file' => 'El certificado bancario debe ser un archivo.',
             'certificado_bancario.mimes' => 'El certificado bancario debe ser PDF, JPG o PNG.',
             'certificado_bancario.max' => 'El certificado bancario no puede superar 5MB.',
-            'formacion_curso_20h.required' => 'El curso de 20H es obligatorio.',
-            'formacion_curso_6h.required' => 'El curso de 6H Ferralla es obligatorio.',
-            'formacion_generica.required' => 'La formación genérica del puesto es obligatoria.',
-            'formacion_especifica.required' => 'La formación específica del puesto es obligatoria.',
+            'formacion_curso_20h.mimes' => 'El curso de 20H debe ser PDF, JPG o PNG.',
+            'formacion_curso_20h.max' => 'El curso de 20H no puede superar 5MB.',
+            'formacion_curso_6h.mimes' => 'El curso de 6H Ferralla debe ser PDF, JPG o PNG.',
+            'formacion_curso_6h.max' => 'El curso de 6H Ferralla no puede superar 5MB.',
+            'formacion_otros.*.mimes' => 'Los archivos de otros cursos deben ser PDF, JPG o PNG.',
+            'formacion_otros.*.max' => 'Los archivos de otros cursos no pueden superar 5MB.',
+            'formacion_otros_nombres.*.string' => 'El nombre del curso debe ser texto.',
+            'formacion_otros_nombres.*.max' => 'El nombre del curso no puede superar 255 caracteres.',
+            'formacion_generica.mimes' => 'La formación genérica debe ser PDF, JPG o PNG.',
+            'formacion_generica.max' => 'La formación genérica no puede superar 5MB.',
+            'formacion_especifica.mimes' => 'La formación específica debe ser PDF, JPG o PNG.',
+            'formacion_especifica.max' => 'La formación específica no puede superar 5MB.',
         ];
 
         $validated = $request->validate($rules, $messages);
@@ -149,6 +164,9 @@ class IncorporacionPublicaController extends Controller
 
             DB::commit();
 
+            // Enviar correo a departamentos de programador y recursos humanos
+            $this->notificarDepartamentos($incorporacion);
+
             return redirect()->route('incorporacion.publica', $token)
                 ->with('success', 'Datos enviados correctamente. Gracias por completar el formulario.');
 
@@ -206,7 +224,6 @@ class IncorporacionPublicaController extends Controller
             'empresa_id' => $empresaId,
             'categoria_id' => $categoriaId,
             'estado' => 'activo',
-            'dias_vacaciones' => 0,
             // rol y turno se dejan null para que se asignen manualmente desde users
         ]);
     }
@@ -253,5 +270,35 @@ class IncorporacionPublicaController extends Controller
             'nombre' => $nombre,
             'archivo' => $nombreArchivo,
         ]);
+    }
+
+    /**
+     * Notificar a los departamentos de programador y recursos humanos
+     */
+    private function notificarDepartamentos(Incorporacion $incorporacion): void
+    {
+        try {
+            // Obtener emails de usuarios en departamentos de programador y recursos humanos
+            $emails = User::whereHas('departamentos', function ($query) {
+                $query->whereIn('nombre', ['programador', 'recursos humanos', 'Programador', 'Recursos Humanos', 'RRHH', 'rrhh']);
+            })
+            ->where('estado', 'activo')
+            ->whereNotNull('email')
+            ->pluck('email')
+            ->unique()
+            ->toArray();
+
+            if (empty($emails)) {
+                Log::warning('No se encontraron destinatarios para notificar la incorporación completada.');
+                return;
+            }
+
+            Mail::to($emails)->send(new IncorporacionCompletada($incorporacion));
+
+            Log::info('Notificación de incorporación enviada a: ' . implode(', ', $emails));
+
+        } catch (\Exception $e) {
+            Log::error('Error al enviar notificación de incorporación: ' . $e->getMessage());
+        }
     }
 }

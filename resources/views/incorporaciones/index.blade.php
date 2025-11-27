@@ -103,7 +103,7 @@
                             @foreach($incorporaciones as $inc)
                                 <tr class="hover:bg-gray-50">
                                     <td class="px-6 py-4">
-                                        <div class="font-medium text-gray-900">{{ $inc->nombre_provisional }}</div>
+                                        <div class="font-medium text-gray-900">{{ $inc->name }} {{ $inc->primer_apellido }} {{ $inc->segundo_apellido }}</div>
                                         <div class="text-sm text-gray-500">
                                             @if($inc->dni)
                                                 {{ $inc->dni }} &middot;

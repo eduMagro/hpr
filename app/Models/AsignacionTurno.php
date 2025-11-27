@@ -11,7 +11,16 @@ class AsignacionTurno extends Model
     use HasFactory, SoftDeletes;
 
     protected $table = 'asignaciones_turnos'; // Asegúrate de que coincide con la tabla en la BD
-    protected $fillable = ['user_id', 'obra_id', 'turno_id', 'estado', 'maquina_id', 'entrada', 'salida', 'fecha'];
+    protected $fillable = [
+        'user_id', 'obra_id', 'turno_id', 'estado', 'maquina_id', 'entrada', 'salida', 'fecha',
+        'justificante_ruta', 'horas_justificadas', 'justificante_observaciones', 'justificante_subido_at'
+    ];
+
+    protected $casts = [
+        'fecha' => 'date',
+        'justificante_subido_at' => 'datetime',
+        'horas_justificadas' => 'decimal:2',
+    ];
 
     /**
      * Relación con el turno (cada asignación pertenece a un turno).

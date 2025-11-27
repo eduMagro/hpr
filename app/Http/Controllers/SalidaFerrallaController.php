@@ -1195,79 +1195,111 @@ class SalidaFerrallaController extends Controller
     {
         try {
             $salidaId = $request->input('salida_id');
+            $mostrarTodos = $request->boolean('mostrar_todos', false);
 
             Log::info('🔍 Obteniendo información de paquetes para salida', [
                 'salida_id' => $salidaId,
+                'mostrar_todos' => $mostrarTodos,
             ]);
 
             // Obtener la salida con sus relaciones
             $salida = Salida::with([
                 'salidaClientes.obra:id,obra,cod_obra',
+                'salidaClientes.cliente:id,empresa',
                 'empresaTransporte:id,nombre',
                 'camion:id,modelo',
             ])->findOrFail($salidaId);
 
+            // Función helper para mapear paquetes
+            $mapPaquete = function ($paquete) {
+                return [
+                    'id' => $paquete->id,
+                    'codigo' => $paquete->codigo,
+                    'planilla_id' => $paquete->planilla_id,
+                    'peso' => $paquete->peso,
+                    'nave' => [
+                        'id' => $paquete->nave->id ?? null,
+                        'obra' => $paquete->nave->obra ?? null,
+                    ],
+                    'planilla' => [
+                        'id' => $paquete->planilla->id ?? null,
+                        'codigo' => $paquete->planilla->codigo ?? null,
+                        'obra' => [
+                            'id' => $paquete->planilla->obra->id ?? null,
+                            'obra' => $paquete->planilla->obra->obra ?? null,
+                            'cod_obra' => $paquete->planilla->obra->cod_obra ?? null,
+                        ],
+                        'cliente' => [
+                            'id' => $paquete->planilla->cliente->id ?? null,
+                            'empresa' => $paquete->planilla->cliente->empresa ?? null,
+                        ],
+                    ],
+                ];
+            };
+
             // Obtener paquetes asignados a esta salida
-            $paquetesAsignados = Paquete::with(['planilla.obra:id,obra,cod_obra', 'nave:id,obra'])
+            $paquetesAsignados = Paquete::with(['planilla.obra:id,obra,cod_obra', 'planilla.cliente:id,empresa', 'nave:id,obra'])
                 ->whereHas('salidas', function ($q) use ($salidaId) {
                     $q->where('salidas.id', $salidaId);
                 })
                 ->get()
-                ->map(function ($paquete) {
-                    return [
-                        'id' => $paquete->id,
-                        'codigo' => $paquete->codigo,
-                        'planilla_id' => $paquete->planilla_id,
-                        'peso' => $paquete->peso,
-                        'nave' => [
-                            'id' => $paquete->nave->id ?? null,
-                            'obra' => $paquete->nave->obra ?? null,
-                        ],
-                        'planilla' => [
-                            'id' => $paquete->planilla->id ?? null,
-                            'codigo' => $paquete->planilla->codigo ?? null,
-                            'obra' => [
-                                'id' => $paquete->planilla->obra->id ?? null,
-                                'obra' => $paquete->planilla->obra->obra ?? null,
-                                'cod_obra' => $paquete->planilla->obra->cod_obra ?? null,
-                            ],
-                        ],
-                    ];
-                });
+                ->map($mapPaquete);
 
-            // Obtener las planillas relacionadas con los paquetes de esta salida
-            $planillasIds = $paquetesAsignados->pluck('planilla_id')->unique()->filter();
+            // Obtener obras relacionadas con esta salida (desde salidaClientes y paquetes asignados)
+            $obrasIds = collect();
 
-            // Obtener paquetes disponibles: de las mismas planillas pero sin salida asignada
-            $paquetesDisponibles = Paquete::with(['planilla.obra:id,obra,cod_obra', 'nave:id,obra'])
-                ->whereIn('planilla_id', $planillasIds)
+            // Obras desde salidaClientes
+            $obrasIds = $obrasIds->merge($salida->salidaClientes->pluck('obra_id'));
+
+            // Obras desde paquetes asignados
+            $obrasIds = $obrasIds->merge($paquetesAsignados->pluck('planilla.obra.id'));
+
+            $obrasIds = $obrasIds->filter()->unique()->values();
+
+            // Obtener paquetes disponibles según el filtro (solo estado pendiente)
+            $queryDisponibles = Paquete::with(['planilla.obra:id,obra,cod_obra', 'planilla.cliente:id,empresa', 'nave:id,obra'])
                 ->whereDoesntHave('salidas')
-                ->get()
-                ->map(function ($paquete) {
-                    return [
-                        'id' => $paquete->id,
-                        'codigo' => $paquete->codigo,
-                        'planilla_id' => $paquete->planilla_id,
-                        'peso' => $paquete->peso,
-                        'nave' => [
-                            'id' => $paquete->nave->id ?? null,
-                            'obra' => $paquete->nave->obra ?? null,
-                        ],
-                        'planilla' => [
-                            'id' => $paquete->planilla->id ?? null,
-                            'codigo' => $paquete->planilla->codigo ?? null,
-                            'obra' => [
-                                'id' => $paquete->planilla->obra->id ?? null,
-                                'obra' => $paquete->planilla->obra->obra ?? null,
-                                'cod_obra' => $paquete->planilla->obra->cod_obra ?? null,
-                            ],
-                        ],
-                    ];
+                ->where('estado', 'pendiente');
+
+            if (!$mostrarTodos && $obrasIds->isNotEmpty()) {
+                // Solo paquetes de las obras de esta salida
+                $queryDisponibles->whereHas('planilla', function ($q) use ($obrasIds) {
+                    $q->whereIn('obra_id', $obrasIds);
                 });
+            }
+
+            $paquetesDisponibles = $queryDisponibles->get()->map($mapPaquete);
+
+            // Obtener todos los paquetes disponibles (para el toggle) - solo estado pendiente
+            $paquetesTodos = Paquete::with(['planilla.obra:id,obra,cod_obra', 'planilla.cliente:id,empresa', 'nave:id,obra'])
+                ->whereDoesntHave('salidas')
+                ->where('estado', 'pendiente')
+                ->get()
+                ->map($mapPaquete);
+
+            // Extraer listas únicas de obras y planillas para los filtros (de paquetes con estado pendiente)
+            $todasObras = $paquetesTodos
+                ->pluck('planilla.obra')
+                ->filter(fn($o) => !empty($o['id']))
+                ->unique(fn($o) => $o['id'])
+                ->values();
+
+            $todasPlanillas = $paquetesTodos
+                ->pluck('planilla')
+                ->filter(fn($p) => !empty($p['id']))
+                ->unique(fn($p) => $p['id'])
+                ->map(function ($p) {
+                    return [
+                        'id' => $p['id'],
+                        'codigo' => $p['codigo'],
+                        'obra_id' => $p['obra']['id'] ?? null,
+                    ];
+                })->values();
 
             Log::info('✅ Información de paquetes de salida obtenida', [
                 'num_paquetes_asignados' => $paquetesAsignados->count(),
                 'num_paquetes_disponibles' => $paquetesDisponibles->count(),
+                'num_paquetes_todos' => $paquetesTodos->count(),
             ]);
 
             return response()->json([
@@ -1283,9 +1315,28 @@ class SalidaFerrallaController extends Controller
                     'camion' => [
                         'modelo' => $salida->camion->modelo ?? null,
                     ],
+                    'salida_clientes' => $salida->salidaClientes->map(function ($sc) {
+                        return [
+                            'obra' => [
+                                'id' => $sc->obra->id ?? null,
+                                'obra' => $sc->obra->obra ?? null,
+                                'cod_obra' => $sc->obra->cod_obra ?? null,
+                            ],
+                            'cliente' => [
+                                'id' => $sc->cliente->id ?? null,
+                                'empresa' => $sc->cliente->empresa ?? null,
+                            ],
+                        ];
+                    }),
                 ],
                 'paquetesAsignados' => $paquetesAsignados,
                 'paquetesDisponibles' => $paquetesDisponibles,
+                'paquetesTodos' => $paquetesTodos,
+                'filtros' => [
+                    'obras' => $todasObras,
+                    'planillas' => $todasPlanillas,
+                    'obrasRelacionadas' => $obrasIds,
+                ],
             ]);
         } catch (\Exception $e) {
             Log::error('❌ Error al obtener información de paquetes de salida', [
@@ -1381,6 +1432,9 @@ class SalidaFerrallaController extends Controller
                     'paquetes_ids' => $paquetesIds,
                     'estado' => 'asignado_a_salida',
                 ]);
+
+                // Sincronizar salida_clientes con las obras/clientes de los paquetes asignados
+                $this->sincronizarSalidaClientes($salidaId, $paquetesIds);
             }
 
             Log::info('✅ Paquetes de salida guardados', [
@@ -2105,6 +2159,67 @@ class SalidaFerrallaController extends Controller
                 'success' => false,
                 'message' => 'Error al crear las salidas: ' . $e->getMessage()
             ], 500);
+        }
+    }
+
+    /**
+     * Sincroniza la tabla salida_clientes con las obras/clientes de los paquetes asignados.
+     * Crea registros nuevos si no existen para las combinaciones cliente/obra de los paquetes.
+     *
+     * @param int $salidaId
+     * @param array $paquetesIds
+     * @return void
+     */
+    private function sincronizarSalidaClientes(int $salidaId, array $paquetesIds): void
+    {
+        if (empty($paquetesIds)) {
+            return;
+        }
+
+        // Obtener las combinaciones únicas de cliente/obra de los paquetes asignados
+        $paquetes = Paquete::with('planilla.obra', 'planilla.cliente')
+            ->whereIn('id', $paquetesIds)
+            ->get();
+
+        $obrasClientesUnicos = [];
+        foreach ($paquetes as $paquete) {
+            if ($paquete->planilla && $paquete->planilla->obra_id && $paquete->planilla->cliente_id) {
+                $clave = $paquete->planilla->cliente_id . '-' . $paquete->planilla->obra_id;
+                if (!isset($obrasClientesUnicos[$clave])) {
+                    $obrasClientesUnicos[$clave] = [
+                        'cliente_id' => $paquete->planilla->cliente_id,
+                        'obra_id' => $paquete->planilla->obra_id,
+                    ];
+                }
+            }
+        }
+
+        // Obtener los registros existentes en salida_clientes para esta salida
+        $existentes = SalidaCliente::where('salida_id', $salidaId)
+            ->get()
+            ->keyBy(function ($item) {
+                return $item->cliente_id . '-' . $item->obra_id;
+            });
+
+        // Crear registros nuevos para las combinaciones que no existen
+        $nuevosRegistros = 0;
+        foreach ($obrasClientesUnicos as $clave => $datos) {
+            if (!$existentes->has($clave)) {
+                SalidaCliente::create([
+                    'salida_id' => $salidaId,
+                    'cliente_id' => $datos['cliente_id'],
+                    'obra_id' => $datos['obra_id'],
+                ]);
+                $nuevosRegistros++;
+            }
+        }
+
+        if ($nuevosRegistros > 0) {
+            Log::info('🔄 Sincronizados salida_clientes', [
+                'salida_id' => $salidaId,
+                'nuevos_registros' => $nuevosRegistros,
+                'obras_clientes' => array_values($obrasClientesUnicos),
+            ]);
         }
     }
 }

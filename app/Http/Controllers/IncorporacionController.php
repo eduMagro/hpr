@@ -29,7 +29,9 @@ class IncorporacionController extends Controller
         if ($request->filled('buscar')) {
             $buscar = $request->buscar;
             $query->where(function ($q) use ($buscar) {
-                $q->where('nombre_provisional', 'like', "%{$buscar}%")
+                $q->where('name', 'like', "%{$buscar}%")
+                    ->orWhere('primer_apellido', 'like', "%{$buscar}%")
+                    ->orWhere('segundo_apellido', 'like', "%{$buscar}%")
                     ->orWhere('email_provisional', 'like', "%{$buscar}%")
                     ->orWhere('dni', 'like', "%{$buscar}%")
                     ->orWhere('email', 'like', "%{$buscar}%");
@@ -64,17 +66,16 @@ class IncorporacionController extends Controller
             'telefono_provisional' => 'required|string|max:20',
         ]);
 
-        // Generar nombre_provisional combinando los campos
-        $validated['nombre_provisional'] = trim($validated['name'] . ' ' . $validated['primer_apellido'] . ' ' . ($validated['segundo_apellido'] ?? ''));
         $validated['created_by'] = auth()->id();
         $validated['token'] = Str::random(64);
 
         $incorporacion = Incorporacion::create($validated);
 
         // Registrar log
+        $nombreCompleto = trim($validated['name'] . ' ' . $validated['primer_apellido'] . ' ' . ($validated['segundo_apellido'] ?? ''));
         $incorporacion->registrarLog(
             IncorporacionLog::ACCION_CREADA,
-            'Incorporación creada para ' . $validated['nombre_provisional']
+            'Incorporación creada para ' . $nombreCompleto
         );
 
         return redirect()
@@ -104,7 +105,9 @@ class IncorporacionController extends Controller
     {
         $validated = $request->validate([
             'puesto' => 'nullable|string|max:255',
-            'nombre_provisional' => 'required|string|max:255',
+            'name' => 'required|string|max:255',
+            'primer_apellido' => 'required|string|max:255',
+            'segundo_apellido' => 'nullable|string|max:255',
             'email_provisional' => 'nullable|email|max:255',
             'telefono_provisional' => 'nullable|string|max:20',
         ]);

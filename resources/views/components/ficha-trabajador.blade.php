@@ -1,56 +1,66 @@
 @props(['user', 'resumen'])
 
-<div class="bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 py-4 sm:py-6 lg:py-8" x-data="{ mostrarDetalles: false }">
-    <div class="max-w-7xl mx-auto px-3 sm:px-4 lg:px-6">
+<div class="bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50" x-data="{
+    mostrarDetalles: false,
+    seccionContacto: false,
+    seccionLaboral: false,
+    seccionDepartamentos: false,
+    seccionNomina: false,
+    seccionJustificante: false
+}">
+    <div class="max-w-7xl mx-auto">
 
         {{-- Header con banner degradado --}}
-        <div class="bg-gray-900 dark:bg-gray-950 rounded-xl sm:rounded-2xl shadow-2xl mb-12 overflow-visible relative">
+        <div class="bg-gray-900 dark:bg-gray-950 rounded-xl sm:rounded-2xl shadow-2xl mb-8 overflow-visible relative">
             <div class="relative bg-gradient-to-br from-gray-800/50 to-gray-900/50 backdrop-blur-sm">
                 <div class="absolute inset-0 bg-black/10"></div>
-                <div class="relative p-4 sm:p-6 md:p-8">
-                    <div
-                        class="flex flex-col items-center text-center gap-4 sm:flex-row sm:items-center sm:text-left sm:gap-6">
-                        {{-- Avatar grande --}}
+                <div class="relative p-4 sm:p-6">
+                    <div class="flex flex-col items-center text-center gap-4 sm:flex-row sm:items-center sm:text-left sm:gap-6">
+                        {{-- Avatar --}}
                         <div class="relative z-10 flex-shrink-0">
                             @if ($user->ruta_imagen)
-                                <div
-                                    class="w-24 h-24 sm:w-28 sm:h-28 md:w-32 md:h-32 rounded-xl sm:rounded-2xl ring-4 ring-gray-700 shadow-2xl overflow-hidden bg-white">
-                                    <img src="{{ $user->ruta_imagen }}" alt="Foto de perfil"
-                                        class="w-full h-full object-cover">
+                                <div class="w-20 h-20 sm:w-24 sm:h-24 rounded-xl ring-4 ring-gray-700 shadow-2xl overflow-hidden bg-white">
+                                    <img src="{{ $user->ruta_imagen }}" alt="Foto de perfil" class="w-full h-full object-cover">
                                 </div>
                             @else
-                                <div
-                                    class="w-24 h-24 sm:w-28 sm:h-28 md:w-32 md:h-32 bg-gradient-to-br from-gray-700 to-gray-800 rounded-xl sm:rounded-2xl flex items-center justify-center text-4xl sm:text-5xl font-bold text-white shadow-2xl ring-4 ring-gray-700">
+                                <div class="w-20 h-20 sm:w-24 sm:h-24 bg-gradient-to-br from-gray-700 to-gray-800 rounded-xl flex items-center justify-center text-3xl sm:text-4xl font-bold text-white shadow-2xl ring-4 ring-gray-700">
                                     {{ strtoupper(substr($user->name, 0, 1)) }}
                                 </div>
                             @endif
 
                             {{-- Botón cambiar foto --}}
-                            <form method="POST" action="{{ route('usuarios.editarSubirImagen') }}"
-                                enctype="multipart/form-data"
-                                class="absolute -bottom-1 -right-1 sm:-bottom-2 sm:-right-2 z-20">
+                            <form method="POST" action="{{ route('usuarios.editarSubirImagen') }}" enctype="multipart/form-data" class="absolute -bottom-1 -right-1 z-20">
                                 @csrf
-                                <label
-                                    class="flex items-center justify-center bg-white rounded-full p-2 sm:p-2.5 shadow-lg cursor-pointer hover:bg-gray-100 transition-all hover:scale-110 border-2 border-gray-700 active:scale-95">
-                                    <svg class="w-4 h-4 sm:w-5 sm:h-5 text-gray-900" fill="none"
-                                        stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                            d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                            d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                                <label class="flex items-center justify-center bg-white rounded-full p-1.5 shadow-lg cursor-pointer hover:bg-gray-100 transition-all hover:scale-110 border-2 border-gray-700 active:scale-95">
+                                    <svg class="w-3.5 h-3.5 text-gray-900" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
                                     </svg>
-                                    <input type="file" name="imagen" accept="image/*" class="hidden"
-                                        onchange="this.form.submit()">
+                                    <input type="file" name="imagen" accept="image/*" class="hidden" onchange="this.form.submit()">
                                 </label>
                             </form>
                         </div>
 
-                        {{-- Nombre en el banner --}}
+                        {{-- Nombre y categoría --}}
                         <div class="flex-1 w-full sm:w-auto">
-                            <h1 class="text-xl sm:text-2xl md:text-3xl font-bold text-white drop-shadow-lg break-words">
-                                {{ $user->nombre_completo }}</h1>
-                            <p class="text-sm sm:text-base text-gray-300 mt-1">{{ $user->categoria->nombre ?? 'N/A' }}
-                            </p>
+                            <h1 class="text-lg sm:text-xl md:text-2xl font-bold text-white drop-shadow-lg break-words">{{ $user->nombre_completo }}</h1>
+                            <p class="text-xs sm:text-sm text-gray-300 mt-1">{{ $user->categoria->nombre ?? 'N/A' }}</p>
+                        </div>
+
+                        {{-- Estadísticas en el header --}}
+                        <div class="flex gap-3 sm:gap-4">
+                            <div class="text-center px-3 py-1.5 bg-white/10 rounded-lg">
+                                <p class="text-lg sm:text-xl font-bold text-green-400">{{ $resumen['diasVacaciones'] }}</p>
+                                <p class="text-[10px] text-gray-300">Vacaciones</p>
+                            </div>
+                            <div class="text-center px-3 py-1.5 bg-white/10 rounded-lg">
+                                <p class="text-lg sm:text-xl font-bold text-red-400">{{ $resumen['faltasInjustificadas'] }}</p>
+                                <p class="text-[10px] text-gray-300">Injustif.</p>
+                            </div>
+                            <div class="text-center px-3 py-1.5 bg-white/10 rounded-lg">
+                                <p class="text-lg sm:text-xl font-bold text-yellow-400">{{ $resumen['faltasJustificadas'] }}</p>
+                                <p class="text-[10px] text-gray-300">Justif.</p>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -59,7 +69,7 @@
             {{-- Botón toggle para mostrar/ocultar detalles --}}
             <div class="relative">
                 <button @click="mostrarDetalles = !mostrarDetalles"
-                    class="absolute left-1/2 -translate-x-1/2 -bottom-4 z-10 group bg-white hover:bg-gray-50 rounded-full shadow-sm hover:shadow-md transition-all duration-300 transform hover:scale-110 active:scale-95 px-3 py-1.5 flex items-center gap-1 border border-gray-200">
+                    class="absolute left-1/2 -translate-x-1/2 -bottom-3 z-10 bg-white hover:bg-gray-50 rounded-full shadow-md hover:shadow-lg transition-all duration-300 px-3 py-1 flex items-center gap-1 border border-gray-200">
                     <span class="text-[10px] font-medium text-gray-600" x-text="mostrarDetalles ? 'Ocultar' : 'Ver más'"></span>
                     <svg class="w-2.5 h-2.5 text-gray-500 transition-transform duration-300" :class="{ 'rotate-180': mostrarDetalles }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
@@ -68,344 +78,207 @@
             </div>
         </div>
 
-        {{-- Grid de contenido --}}
+        {{-- Contenido desplegable --}}
         <div x-show="mostrarDetalles"
              x-transition:enter="transition ease-out duration-300"
-             x-transition:enter-start="opacity-0 transform -translate-y-4"
-             x-transition:enter-end="opacity-100 transform translate-y-0"
+             x-transition:enter-start="opacity-0 -translate-y-4"
+             x-transition:enter-end="opacity-100 translate-y-0"
              x-transition:leave="transition ease-in duration-200"
-             x-transition:leave-start="opacity-100 transform translate-y-0"
-             x-transition:leave-end="opacity-0 transform -translate-y-4"
-             class="mt-8">
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
+             x-transition:leave-start="opacity-100 translate-y-0"
+             x-transition:leave-end="opacity-0 -translate-y-4"
+             class="space-y-2 mt-6">
 
-            {{-- Columna izquierda: Información personal --}}
-            <div class="lg:col-span-1 space-y-4 sm:space-y-6">
-
-                {{-- Card de contacto --}}
-                <div
-                    class="bg-white rounded-xl sm:rounded-2xl shadow-lg overflow-hidden border border-gray-200 hover:shadow-xl transition-shadow duration-300">
-                    <div class="bg-gray-900 dark:bg-gray-950 p-3 sm:p-4">
-                        <h3 class="text-base sm:text-lg font-bold text-white flex items-center gap-2">
-                            <svg class="w-4 h-4 sm:w-5 sm:h-5 text-white flex-shrink-0" fill="none"
-                                stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+            {{-- Información de contacto --}}
+            <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                <button @click="seccionContacto = !seccionContacto" class="w-full flex items-center justify-between p-3 hover:bg-gray-50 transition-colors">
+                    <div class="flex items-center gap-2">
+                        <div class="bg-blue-100 rounded-lg p-1.5">
+                            <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                             </svg>
-                            <span class="truncate">Información de contacto</span>
-                        </h3>
+                        </div>
+                        <span class="text-sm font-semibold text-gray-900">Información de contacto</span>
                     </div>
-                    <div class="p-4 sm:p-5 md:p-6">
-
-                        <div class="space-y-2 sm:space-y-3">
-                            <div
-                                class="flex items-start gap-2 sm:gap-3 p-2.5 sm:p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors duration-200">
-                                <svg class="w-4 h-4 sm:w-5 sm:h-5 text-gray-500 mt-0.5 flex-shrink-0" fill="none"
-                                    stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                        d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                    <svg class="w-4 h-4 text-gray-400 transition-transform duration-200" :class="{ 'rotate-180': seccionContacto }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                    </svg>
+                </button>
+                <div x-show="seccionContacto" x-collapse>
+                    <div class="px-3 pb-3 space-y-2">
+                        <div class="flex items-center gap-3 p-2 bg-gray-50 rounded-lg">
+                            <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                            </svg>
+                            <div>
+                                <p class="text-[10px] text-gray-500">Email</p>
+                                <p class="text-xs text-gray-900">{{ $user->email }}</p>
+                            </div>
+                        </div>
+                        @if ($user->movil_empresa)
+                            <div class="flex items-center gap-3 p-2 bg-gray-50 rounded-lg">
+                                <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
                                 </svg>
-                                <div class="flex-1 min-w-0">
-                                    <p class="text-[10px] sm:text-xs text-gray-500 mb-0.5 sm:mb-1">Email</p>
-                                    <p class="text-xs sm:text-sm text-gray-900 break-all">{{ $user->email }}</p>
+                                <div>
+                                    <p class="text-[10px] text-gray-500">Teléfono empresa</p>
+                                    <p class="text-xs text-gray-900">{{ $user->movil_empresa }}</p>
                                 </div>
                             </div>
-
-                            @if ($user->movil_empresa)
-                                <div
-                                    class="flex items-start gap-2 sm:gap-3 p-2.5 sm:p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors duration-200">
-                                    <svg class="w-4 h-4 sm:w-5 sm:h-5 text-gray-500 mt-0.5 flex-shrink-0" fill="none"
-                                        stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                            d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
-                                    </svg>
-                                    <div class="flex-1 min-w-0">
-                                        <p class="text-[10px] sm:text-xs text-gray-500 mb-0.5 sm:mb-1">Teléfono empresa
-                                        </p>
-                                        <p class="text-xs sm:text-sm text-gray-900 break-all">{{ $user->movil_empresa }}
-                                        </p>
-                                    </div>
+                        @endif
+                        @if ($user->movil_personal)
+                            <div class="flex items-center gap-3 p-2 bg-gray-50 rounded-lg">
+                                <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                                </svg>
+                                <div>
+                                    <p class="text-[10px] text-gray-500">Teléfono personal</p>
+                                    <p class="text-xs text-gray-900">{{ $user->movil_personal }}</p>
                                 </div>
-                            @endif
-
-                            @if ($user->movil_personal)
-                                <div
-                                    class="flex items-start gap-2 sm:gap-3 p-2.5 sm:p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors duration-200">
-                                    <svg class="w-4 h-4 sm:w-5 sm:h-5 text-gray-500 mt-0.5 flex-shrink-0" fill="none"
-                                        stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                            d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
-                                    </svg>
-                                    <div class="flex-1 min-w-0">
-                                        <p class="text-[10px] sm:text-xs text-gray-500 mb-0.5 sm:mb-1">Teléfono personal
-                                        </p>
-                                        <p class="text-xs sm:text-sm text-gray-900 break-all">
-                                            {{ $user->movil_personal }}</p>
-                                    </div>
-                                </div>
-                            @endif
-
-                            @if (!$user->movil_empresa && !$user->movil_personal)
-                                <p class="text-xs sm:text-sm text-gray-500 italic text-center py-2">Sin teléfonos
-                                    registrados</p>
-                            @endif
-                        </div>
+                            </div>
+                        @endif
                     </div>
                 </div>
-
-                {{-- Card de información laboral --}}
-                <div
-                    class="bg-white rounded-xl sm:rounded-2xl shadow-lg overflow-hidden border border-gray-200 hover:shadow-xl transition-shadow duration-300">
-                    <div class="bg-gray-900 dark:bg-gray-950 p-3 sm:p-4">
-                        <h3 class="text-base sm:text-lg font-bold text-white flex items-center gap-2">
-                            <svg class="w-4 h-4 sm:w-5 sm:h-5 text-white flex-shrink-0" fill="none"
-                                stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                            </svg>
-                            <span class="truncate">Información laboral</span>
-                        </h3>
-                    </div>
-                    <div class="p-4 sm:p-5 md:p-6">
-
-                        <div class="space-y-2 sm:space-y-3">
-                            <div
-                                class="p-2.5 sm:p-3 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border-l-4 border-blue-500 hover:shadow-md transition-shadow duration-200">
-                                <p class="text-[10px] sm:text-xs text-gray-600 mb-0.5 sm:mb-1">Empresa</p>
-                                <p class="text-xs sm:text-sm font-semibold text-gray-900 break-words">
-                                    {{ $user->empresa->nombre ?? 'N/A' }}</p>
-                            </div>
-
-                            <div
-                                class="p-2.5 sm:p-3 bg-gradient-to-r from-purple-50 to-pink-50 rounded-lg border-l-4 border-purple-500 hover:shadow-md transition-shadow duration-200">
-                                <p class="text-[10px] sm:text-xs text-gray-600 mb-0.5 sm:mb-1">Categoría</p>
-                                <p class="text-xs sm:text-sm font-semibold text-gray-900 break-words">
-                                    {{ $user->categoria->nombre ?? 'N/A' }}</p>
-                            </div>
-
-                            @if ($user->rol == 'operario')
-                                <div
-                                    class="p-2.5 sm:p-3 bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg border-l-4 border-green-500 hover:shadow-md transition-shadow duration-200">
-                                    <p class="text-[10px] sm:text-xs text-gray-600 mb-0.5 sm:mb-1">Especialidad</p>
-                                    <p class="text-xs sm:text-sm font-semibold text-gray-900 break-words">
-                                        {{ optional($user->maquina)->nombre ?? 'N/A' }}</p>
-                                </div>
-                            @endif
-                        </div>
-                    </div>
-                </div>
-
-                {{-- Departamentos --}}
-                @if ($user->rol == 'oficina' && $user->departamentos->count() > 0)
-                    <div
-                        class="bg-white rounded-xl sm:rounded-2xl shadow-lg overflow-hidden border border-gray-200 hover:shadow-xl transition-shadow duration-300">
-                        <div class="bg-gray-900 dark:bg-gray-950 p-3 sm:p-4">
-                            <h3 class="text-base sm:text-lg font-bold text-white flex items-center gap-2">
-                                <svg class="w-4 h-4 sm:w-5 sm:h-5 text-white flex-shrink-0" fill="none"
-                                    stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                        d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-                                </svg>
-                                <span class="truncate">Departamentos</span>
-                            </h3>
-                        </div>
-                        <div class="p-4 sm:p-5 md:p-6">
-
-                            <div class="flex flex-wrap gap-1.5 sm:gap-2">
-                                @foreach ($user->departamentos as $dep)
-                                    <span
-                                        class="inline-flex items-center px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-full text-[10px] sm:text-xs font-medium bg-gradient-to-r from-blue-500 to-indigo-500 text-white shadow-md hover:shadow-lg transition-shadow duration-200">
-                                        <span class="truncate max-w-[120px] sm:max-w-none">{{ $dep->nombre }}</span>
-                                        @if ($dep->pivot && $dep->pivot->rol_departamental)
-                                            <span
-                                                class="ml-1 opacity-75 text-[9px] sm:text-[10px]">({{ $dep->pivot->rol_departamental }})</span>
-                                        @endif
-                                    </span>
-                                @endforeach
-                            </div>
-                        </div>
-                    </div>
-                @endif
-
             </div>
 
-            {{-- Columna derecha: Estadísticas y acciones --}}
-            <div class="lg:col-span-2 space-y-4 sm:space-y-6">
-
-                {{-- Cards de estadísticas --}}
-                <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-                    <div
-                        class="bg-white rounded-xl sm:rounded-2xl shadow-lg p-3 sm:p-4 md:p-6 border-t-4 border-green-500 hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
-                        <div class="flex flex-col sm:flex-row items-center sm:items-start sm:justify-between gap-2">
-                            <div class="text-center sm:text-left flex-1">
-                                <p class="text-xs sm:text-sm text-gray-600 mb-1">Vacaciones</p>
-                                <p class="text-2xl sm:text-3xl font-bold text-gray-900">
-                                    {{ $resumen['diasVacaciones'] }}</p>
-                            </div>
-                            <div class="bg-green-100 rounded-full p-2 sm:p-2.5 md:p-3 flex-shrink-0">
-                                <svg class="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6 text-green-600" fill="none"
-                                    stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                        d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
-                                </svg>
-                            </div>
+            {{-- Información laboral --}}
+            <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                <button @click="seccionLaboral = !seccionLaboral" class="w-full flex items-center justify-between p-3 hover:bg-gray-50 transition-colors">
+                    <div class="flex items-center gap-2">
+                        <div class="bg-purple-100 rounded-lg p-1.5">
+                            <svg class="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                            </svg>
                         </div>
+                        <span class="text-sm font-semibold text-gray-900">Información laboral</span>
                     </div>
-
-                    <div
-                        class="bg-white rounded-xl sm:rounded-2xl shadow-lg p-3 sm:p-4 md:p-6 border-t-4 border-red-500 hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
-                        <div class="flex flex-col sm:flex-row items-center sm:items-start sm:justify-between gap-2">
-                            <div class="text-center sm:text-left flex-1">
-                                <p class="text-xs sm:text-sm text-gray-600 mb-1">F. Injustificadas</p>
-                                <p class="text-2xl sm:text-3xl font-bold text-gray-900">
-                                    {{ $resumen['faltasInjustificadas'] }}</p>
-                            </div>
-                            <div class="bg-red-100 rounded-full p-2 sm:p-2.5 md:p-3 flex-shrink-0">
-                                <svg class="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6 text-red-600" fill="none"
-                                    stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                        d="M6 18L18 6M6 6l12 12" />
-                                </svg>
-                            </div>
+                    <svg class="w-4 h-4 text-gray-400 transition-transform duration-200" :class="{ 'rotate-180': seccionLaboral }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                    </svg>
+                </button>
+                <div x-show="seccionLaboral" x-collapse>
+                    <div class="px-3 pb-3 space-y-2">
+                        <div class="p-2 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border-l-3 border-blue-500">
+                            <p class="text-[10px] text-gray-500">Empresa</p>
+                            <p class="text-xs font-semibold text-gray-900">{{ $user->empresa->nombre ?? 'N/A' }}</p>
                         </div>
-                    </div>
-
-                    <div
-                        class="bg-white rounded-xl sm:rounded-2xl shadow-lg p-3 sm:p-4 md:p-6 border-t-4 border-yellow-500 hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
-                        <div class="flex flex-col sm:flex-row items-center sm:items-start sm:justify-between gap-2">
-                            <div class="text-center sm:text-left flex-1">
-                                <p class="text-xs sm:text-sm text-gray-600 mb-1">F. Justificadas</p>
-                                <p class="text-2xl sm:text-3xl font-bold text-gray-900">
-                                    {{ $resumen['faltasJustificadas'] }}</p>
+                        <div class="p-2 bg-gradient-to-r from-purple-50 to-pink-50 rounded-lg border-l-3 border-purple-500">
+                            <p class="text-[10px] text-gray-500">Categoría</p>
+                            <p class="text-xs font-semibold text-gray-900">{{ $user->categoria->nombre ?? 'N/A' }}</p>
+                        </div>
+                        @if ($user->rol == 'operario')
+                            <div class="p-2 bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg border-l-3 border-green-500">
+                                <p class="text-[10px] text-gray-500">Especialidad</p>
+                                <p class="text-xs font-semibold text-gray-900">{{ optional($user->maquina)->nombre ?? 'N/A' }}</p>
                             </div>
-                            <div class="bg-yellow-100 rounded-full p-2 sm:p-2.5 md:p-3 flex-shrink-0">
-                                <svg class="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6 text-yellow-600" fill="none"
-                                    stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                        d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                        @endif
+                    </div>
+                </div>
+            </div>
+
+            {{-- Departamentos --}}
+            @if ($user->rol == 'oficina' && $user->departamentos->count() > 0)
+                <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                    <button @click="seccionDepartamentos = !seccionDepartamentos" class="w-full flex items-center justify-between p-3 hover:bg-gray-50 transition-colors">
+                        <div class="flex items-center gap-2">
+                            <div class="bg-indigo-100 rounded-lg p-1.5">
+                                <svg class="w-4 h-4 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
                                 </svg>
                             </div>
+                            <span class="text-sm font-semibold text-gray-900">Departamentos</span>
+                            <span class="text-xs bg-indigo-100 text-indigo-700 px-1.5 py-0.5 rounded-full">{{ $user->departamentos->count() }}</span>
+                        </div>
+                        <svg class="w-4 h-4 text-gray-400 transition-transform duration-200" :class="{ 'rotate-180': seccionDepartamentos }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                        </svg>
+                    </button>
+                    <div x-show="seccionDepartamentos" x-collapse>
+                        <div class="px-3 pb-3 flex flex-wrap gap-1.5">
+                            @foreach ($user->departamentos as $dep)
+                                <span class="inline-flex items-center px-2 py-1 rounded-full text-[10px] font-medium bg-gradient-to-r from-blue-500 to-indigo-500 text-white">
+                                    {{ $dep->nombre }}
+                                    @if ($dep->pivot && $dep->pivot->rol_departamental)
+                                        <span class="ml-1 opacity-75">({{ $dep->pivot->rol_departamental }})</span>
+                                    @endif
+                                </span>
+                            @endforeach
                         </div>
                     </div>
                 </div>
+            @endif
 
-                {{-- Solicitar nóminas por email --}}
-                @if (auth()->check() && auth()->id() === $user->id)
-                    <div class="bg-white rounded-xl sm:rounded-2xl shadow-lg overflow-hidden border border-gray-200 hover:shadow-xl transition-shadow duration-300">
-                        <div class="bg-gray-900 dark:bg-gray-950 p-3 sm:p-4">
-                            <h3 class="text-base sm:text-lg font-bold text-white flex items-center gap-2">
-                                <svg class="w-4 h-4 sm:w-5 sm:h-5 text-white flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                        d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z">
-                                    </path>
+            {{-- Solicitar nómina --}}
+            @if (auth()->check() && auth()->id() === $user->id)
+                <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                    <button @click="seccionNomina = !seccionNomina" class="w-full flex items-center justify-between p-3 hover:bg-gray-50 transition-colors">
+                        <div class="flex items-center gap-2">
+                            <div class="bg-green-100 rounded-lg p-1.5">
+                                <svg class="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                                 </svg>
-                                <span class="truncate">Solicitar Nómina</span>
-                            </h3>
+                            </div>
+                            <span class="text-sm font-semibold text-gray-900">Solicitar Nómina</span>
                         </div>
-                        <div class="p-4 sm:p-5 md:p-6">
-                            <p class="text-sm text-gray-600 mb-4">
-                                Selecciona el mes y recibirás tu nómina en el correo:
-                                <span class="font-semibold text-blue-700">{{ $user->email }}</span>
+                        <svg class="w-4 h-4 text-gray-400 transition-transform duration-200" :class="{ 'rotate-180': seccionNomina }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                        </svg>
+                    </button>
+                    <div x-show="seccionNomina" x-collapse>
+                        <div class="px-3 pb-3">
+                            <p class="text-xs text-gray-600 mb-3">
+                                Selecciona el mes y recibirás tu nómina en: <span class="font-semibold text-blue-700">{{ $user->email }}</span>
                             </p>
 
                             @if ($errors->has('mes_anio'))
-                                <div class="mb-4 bg-red-50 border-l-4 border-red-500 p-4 rounded-r-lg">
-                                    <div class="flex items-start">
-                                        <div class="flex-shrink-0">
-                                            <svg class="h-5 w-5 text-red-500" fill="currentColor"
-                                                viewBox="0 0 20 20">
-                                                <path fill-rule="evenodd"
-                                                    d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
-                                                    clip-rule="evenodd"></path>
-                                            </svg>
-                                        </div>
-                                        <div class="ml-3">
-                                            <p class="text-sm font-medium text-red-800">
-                                                {{ $errors->first('mes_anio') }}
-                                            </p>
-                                        </div>
-                                    </div>
+                                <div class="mb-3 bg-red-50 border-l-4 border-red-500 p-2 rounded-r-lg">
+                                    <p class="text-xs text-red-800">{{ $errors->first('mes_anio') }}</p>
                                 </div>
                             @endif
 
                             <form action="{{ route('nominas.crearDescargarMes') }}" method="POST"
                                 x-data="{ cargando: false }"
-                                x-on:submit="cargando = true; setTimeout(() => cargando = false, 3000)"
-                                x-init="$watch('cargando', value => document.body.style.cursor = value ? 'wait' : 'default')"
-                                class="flex flex-col sm:flex-row sm:items-end gap-3 relative">
+                                @submit="cargando = true"
+                                class="flex gap-2">
                                 @csrf
-
-                                <div class="flex-1">
-                                    <label for="mes_anio" class="block text-sm font-medium text-gray-700 mb-1.5">
-                                        Mes y Año <span class="text-red-500">*</span>
-                                    </label>
-                                    <input type="month" id="mes_anio" name="mes_anio" required
-                                        value="{{ old('mes_anio') }}"
-                                        class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-300 transition px-4 py-2.5 text-gray-700 @error('mes_anio') border-red-500 @enderror"
-                                        x-bind:class="{ 'opacity-50 cursor-not-allowed': cargando }"
-                                        x-bind:readonly="cargando">
-                                    @error('mes_anio')
-                                        <p class="mt-1 text-sm text-red-600 flex items-center gap-1">
-                                            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                                                <path fill-rule="evenodd"
-                                                    d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z"
-                                                    clip-rule="evenodd"></path>
-                                            </svg>
-                                            {{ $message }}
-                                        </p>
-                                    @enderror
-                                </div>
-
+                                <input type="month" name="mes_anio" required value="{{ old('mes_anio') }}"
+                                    class="flex-1 rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-300 text-xs py-2"
+                                    :disabled="cargando">
                                 <button type="submit"
-                                    class="sm:w-auto w-full inline-flex justify-center items-center gap-2.5 rounded-lg px-6 py-2.5 font-semibold text-white shadow-md
-                           bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700
-                           focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2
-                           disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 transform hover:scale-105 active:scale-95"
-                                    x-bind:disabled="cargando">
-                                    <svg x-show="!cargando" class="w-5 h-5" fill="none" stroke="currentColor"
-                                        viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                            d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z">
-                                        </path>
-                                    </svg>
-                                    <svg x-show="cargando" class="animate-spin w-5 h-5" fill="none"
-                                        viewBox="0 0 24 24">
-                                        <circle class="opacity-25" cx="12" cy="12" r="10"
-                                            stroke="currentColor" stroke-width="4"></circle>
-                                        <path class="opacity-75" fill="currentColor"
-                                            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
-                                        </path>
-                                    </svg>
-                                    <span x-show="!cargando" class="font-bold">Enviar a mi correo</span>
-                                    <span x-show="cargando" class="font-bold">Enviando...</span>
+                                    class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-lg transition-colors disabled:opacity-50"
+                                    :disabled="cargando">
+                                    <span x-show="!cargando">Enviar</span>
+                                    <span x-show="cargando">...</span>
                                 </button>
-
-                                {{-- Overlay bloqueante --}}
-                                <div x-show="cargando" x-transition.opacity class="fixed inset-0 bg-black/0 z-50"
-                                    style="cursor: wait" x-cloak>
-                                </div>
                             </form>
-
-                            <div class="mt-3 flex items-start gap-2 text-xs text-gray-500">
-                                <svg class="w-4 h-4 text-gray-400 flex-shrink-0 mt-0.5" fill="currentColor"
-                                    viewBox="0 0 20 20">
-                                    <path fill-rule="evenodd"
-                                        d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"
-                                        clip-rule="evenodd"></path>
-                                </svg>
-                                <p>
-                                    Por seguridad, tu nómina se enviará únicamente al correo electrónico registrado
-                                    en el sistema.
-                                    Este documento es confidencial y de uso personal.
-                                </p>
-                            </div>
                         </div>
                     </div>
-                @endif
+                </div>
+            @endif
 
-            </div>
+            {{-- Subir justificante --}}
+            @if ($user->rol === 'operario')
+                <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                    <button @click="seccionJustificante = !seccionJustificante" class="w-full flex items-center justify-between p-3 hover:bg-gray-50 transition-colors">
+                        <div class="flex items-center gap-2">
+                            <div class="bg-orange-100 rounded-lg p-1.5">
+                                <svg class="w-4 h-4 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                </svg>
+                            </div>
+                            <span class="text-sm font-semibold text-gray-900">Subir Justificante</span>
+                        </div>
+                        <svg class="w-4 h-4 text-gray-400 transition-transform duration-200" :class="{ 'rotate-180': seccionJustificante }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                        </svg>
+                    </button>
+                    <div x-show="seccionJustificante" x-collapse>
+                        <div class="p-3 pt-0">
+                            @livewire('subir-justificante', ['userId' => $user->id])
+                        </div>
+                    </div>
+                </div>
+            @endif
 
-        </div>
         </div>
     </div>
 </div>

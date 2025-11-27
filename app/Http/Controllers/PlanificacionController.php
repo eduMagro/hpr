@@ -291,19 +291,43 @@ class PlanificacionController extends Controller
             // Eliminar duplicados por obra_id
             $obrasClientes = $obrasClientes->unique('obra_id')->values();
 
-            // Construir el título solo con código de salida y peso (más compacto para el calendario)
-            $titulo = "{$salida->codigo_salida} - {$pesoTotal} kg";
+            // Determinar si es vista diaria
+            $isDayView = in_array($viewType, ['resourceTimeGridDay', 'timeGridDay', 'resourceTimelineDay']);
+
+            // Construir el título según la vista
+            if ($isDayView) {
+                // Vista diaria: título completo con obras, clientes y empresa de transporte
+                $obrasTexto = $obrasClientes->pluck('cod_obra')->filter()->implode(', ') ?: 'Sin obra';
+                $clientesTexto = $obrasClientes->pluck('cliente')->unique()->filter()->implode(', ') ?: 'Sin cliente';
+                $empresaTexto = $empresa ?: 'Sin transporte';
+
+                $titulo = "{$salida->codigo_salida} | {$pesoTotal} kg\n";
+                $titulo .= "📍 {$obrasTexto}\n";
+                $titulo .= "👤 {$clientesTexto}\n";
+                $titulo .= "🚚 {$empresaTexto}";
+            } else {
+                // Otras vistas: título compacto
+                $titulo = "{$salida->codigo_salida} - {$pesoTotal} kg";
+            }
 
             // Determinar resourceId (usar la primera obra, o _sin_obra_)
             $resourceId = '_sin_obra_';
             if ($obrasClientes->isNotEmpty()) {
                 $resourceId = (string) $obrasClientes->first()['obra_id'];
             }
+            if ($isDayView) {
+                $hora = $fechaInicio->hour;
+                // Si la hora está fuera del rango visible, ajustar a las 8:00
+                if ($hora < 6 || $hora >= 18) {
+                    $fechaInicio = $fechaInicio->copy()->setTime(8, 0, 0);
+                }
+                $fechaFin = $fechaInicio->copy()->addHours(2);
+            }
 
             $evento = [
                 'title'        => $titulo,
                 'id'           => (string) $salida->id,
-                'start'        => $isMonthView ? $fechaInicio->toDateString() : $fechaInicio->toDateTimeString(),
+                'start'        => $isMonthView ? $fechaInicio->toDateString() : $fechaInicio->toIso8601String(),
                 'tipo'         => 'salida',
                 'backgroundColor' => $color,
                 'borderColor'     => $color,
@@ -331,16 +355,14 @@ class PlanificacionController extends Controller
 
             // Solo agregar 'end' si no es vista mensual
             if (!$isMonthView && $fechaFin) {
-                $evento['end'] = $fechaFin->toDateTimeString();
+                $evento['end'] = $fechaFin->toIso8601String();
             } else if ($isMonthView) {
                 // En vista mensual, marcar como evento de día completo
                 $evento['allDay'] = true;
             }
 
-            // Solo agregar resourceId si no es vista timeGridDay
-            if ($viewType !== 'timeGridDay') {
-                $evento['resourceId'] = $resourceId;
-            }
+            // Agregar resourceId para todas las vistas de recursos
+            $evento['resourceId'] = $resourceId;
 
             return $evento;
         });
@@ -355,19 +377,22 @@ class PlanificacionController extends Controller
     private function getEventosPlanillas(Carbon $startDate, Carbon $endDate, string $viewType = ''): array
     {
         // 🔹 Traer planillas sin salidas en el rango
-        $planillas = Planilla::with('obra', 'elementos')
+        $planillas = Planilla::with(['obra.cliente', 'elementos'])
             ->whereBetween('fecha_estimada_entrega', [$startDate, $endDate])
             ->get();
 
+        // Determinar si es vista diaria
+        $isDayView = in_array($viewType, ['resourceTimeGridDay', 'timeGridDay', 'resourceTimelineDay']);
 
         // 🔹 Agrupar por obra y día
         $eventos = $planillas->groupBy(function ($p) {
             return $p->obra_id . '|' . Carbon::parse($p->getRawOriginal('fecha_estimada_entrega'))->toDateString();
-        })->map(function ($grupo) use ($viewType) {
+        })->map(function ($grupo) use ($viewType, $isDayView) {
             $obraId = $grupo->first()->obra_id;
             $obra = $grupo->first()->obra;
             $nombreObra = optional($obra)->obra ?? 'Obra desconocida';
             $codObra = optional($obra)->cod_obra ?? 'Código desconocido';
+            $clienteNombre = optional($obra->cliente)->empresa ?? 'Sin cliente';
 
 
             $fechaInicio = Carbon::parse($grupo->first()->getRawOriginal('fecha_estimada_entrega'))->setTime(6, 0, 0);
@@ -407,19 +432,33 @@ class PlanificacionController extends Controller
                 $q->whereIn('paquete_id', $paqueteIds);
             })->get();
 
+            // Construir título según la vista
+            $pesoTotal = $grupo->sum(fn($p) => $p->peso_total ?? 0);
+            if ($isDayView) {
+                // Vista diaria: título completo
+                $titulo = "{$codObra} - {$nombreObra}\n";
+                $titulo .= "👤 {$clienteNombre}\n";
+                $titulo .= "📦 " . number_format($pesoTotal, 0) . " kg";
+            } else {
+                // Otras vistas: título compacto
+                $titulo = $codObra . ' - ' . $nombreObra;
+            }
+
             $evento = [
-                'title' => $codObra . ' - ' . $nombreObra,
+                'title' => $titulo,
                 'id' => 'planillas-' . $obraId . '-' . md5($fechaInicio),
                 'start' => $fechaInicio->toIso8601String(),
                 'end' => $fechaInicio->copy()->addHours(2)->toIso8601String(),
                 'backgroundColor' => $color,
                 'borderColor' => $color,
                 'tipo' => 'planilla',
+                'resourceId' => (string) $obraId,
                 'extendedProps' => [
                     'tipo' => 'planilla',
                     'cod_obra' => $codObra,
                     'nombre_obra'  => $nombreObra,
-                    'pesoTotal' => $grupo->sum(fn($p) => $p->peso_total ?? 0),
+                    'cliente' => $clienteNombre,
+                    'pesoTotal' => $pesoTotal,
                     'longitudTotal' => $grupo->flatMap->elementos->sum(fn($e) => ($e->longitud ?? 0) * ($e->barras ?? 0)),
                     'planillas_ids' => $planillasIds,
                     'diametroMedio' => $diametroMedio,
@@ -431,11 +470,6 @@ class PlanificacionController extends Controller
                     'salidas_codigos' => $salidaRelacionada->pluck('codigo_salida')->toArray(),
                 ],
             ];
-
-            // Solo agregar resourceId si no es vista timeGridDay
-            if ($viewType !== 'timeGridDay') {
-                $evento['resourceId'] = (string) $obraId;
-            }
 
             return $evento;
         })->sortBy([
@@ -493,6 +527,18 @@ class PlanificacionController extends Controller
         ]);
 
         $resources = $resources->concat($obrasResources);
+
+        // Para vista diaria, si no hay recursos, agregar un recurso por defecto
+        $isDayView = in_array($viewType, ['resourceTimeGridDay', 'timeGridDay', 'resourceTimelineDay']);
+        if ($isDayView && $resources->isEmpty()) {
+            $resources->push([
+                'id' => '_default_',
+                'title' => 'Sin obras programadas',
+                'cliente' => '',
+                'cod_obra' => '',
+                'orderIndex' => 1,
+            ]);
+        }
 
         return $resources->values();
     }

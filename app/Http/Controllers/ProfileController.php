@@ -737,13 +737,10 @@ class ProfileController extends Controller
                 'numero_corto' => 'nullable|string|max:4',
                 'dni' => 'nullable|string|max:20',
                 'empresa_id' => 'nullable|exists:empresas,id',
-                'departamento_id' => 'nullable|exists:departamentos,id',
-                'rol_id' => 'nullable|exists:roles,id',
-                'grupo_trabajo_id' => 'nullable|exists:grupos_trabajo,id',
-                'tipo_trabajador' => 'nullable|string|in:fijo,eventual',
-                'hora_entrada' => 'nullable|date_format:H:i',
-                'hora_salida' => 'nullable|date_format:H:i',
-                'categoria' => 'nullable|string',
+                'rol' => 'nullable|string|in:operario,oficina,transportista,visitante',
+                'categoria_id' => 'nullable|exists:categorias,id',
+                'maquina_id' => 'nullable|exists:maquinas,id',
+                'turno' => 'nullable|string|in:diurno,nocturno,mañana,flexible',
             ]);
 
             $user->fill($validated);
@@ -755,10 +752,6 @@ class ProfileController extends Controller
 
         if ($request->filled('email') && $user->isDirty('email')) {
             $user->email_verified_at = null;
-        }
-
-        if ($request->filled('categoria')) {
-            $user->categoria = $request->input('categoria');
         }
 
         $user->save();
