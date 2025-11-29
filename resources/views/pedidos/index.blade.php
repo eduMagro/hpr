@@ -836,37 +836,53 @@
         }
 
         // Event listeners
-        document.addEventListener('DOMContentLoaded', function() {
-            // Listener para cambios en peso
-            document.addEventListener('input', debounce((ev) => {
-                const inputPeso = ev.target.closest('.peso-total');
-                if (!inputPeso) return;
+        function initModalPedidoListeners() {
+            // Listener para cambios en peso (solo registrar una vez usando flag en document)
+            if (!document._pedidosInputListenerAdded) {
+                document._pedidosInputListenerAdded = true;
+                document.addEventListener('input', debounce((ev) => {
+                    const inputPeso = ev.target.closest('.peso-total');
+                    if (!inputPeso) return;
 
-                const tr = inputPeso.closest('tr');
-                const contenedorFechas = tr.querySelector('[id^="fechas-camion-"]');
-                if (!contenedorFechas) return;
+                    const tr = inputPeso.closest('tr');
+                    const contenedorFechas = tr.querySelector('[id^="fechas-camion-"]');
+                    if (!contenedorFechas) return;
 
-                const clave = contenedorFechas.id.replace('fechas-camion-', '');
-                generarFechasPorPeso(inputPeso, clave);
-                dispararSugerirMultiple();
-            }, 300));
+                    const clave = contenedorFechas.id.replace('fechas-camion-', '');
+                    generarFechasPorPeso(inputPeso, clave);
+                    dispararSugerirMultiple();
+                }, 300));
+            }
 
             // Listeners para fabricante/distribuidor
             const fabricanteSelect = document.getElementById('fabricante');
             const distribuidorSelect = document.getElementById('distribuidor');
 
-            if (fabricanteSelect) {
+            if (fabricanteSelect && !fabricanteSelect.dataset.initialized) {
+                fabricanteSelect.dataset.initialized = 'true';
                 fabricanteSelect.addEventListener('change', dispararSugerirMultiple);
             }
-            if (distribuidorSelect) {
+            if (distribuidorSelect && !distribuidorSelect.dataset.initialized) {
+                distribuidorSelect.dataset.initialized = 'true';
                 distribuidorSelect.addEventListener('change', dispararSugerirMultiple);
             }
-        });
+        }
+
+        // Inicializar en carga normal y después de navegación con wire:navigate
+        document.addEventListener('DOMContentLoaded', initModalPedidoListeners);
+        document.addEventListener('livewire:navigated', initModalPedidoListeners);
     </script>
 
     {{-- Script: Validación formulario pedido --}}
     <script>
-        document.getElementById('formularioPedido').addEventListener('submit', function(ev) {
+        function initFormularioPedidoValidacion() {
+            const formulario = document.getElementById('formularioPedido');
+            if (!formulario || formulario.dataset.initialized) {
+                return;
+            }
+            formulario.dataset.initialized = 'true';
+
+            formulario.addEventListener('submit', function(ev) {
             ev.preventDefault();
             const errores = [];
 
@@ -975,9 +991,14 @@
                 }
             });
         });
+        }
+
+        // Inicializar en carga normal y después de navegación con wire:navigate
+        document.addEventListener('DOMContentLoaded', initFormularioPedidoValidacion);
+        document.addEventListener('livewire:navigated', initFormularioPedidoValidacion);
     </script>
     <script>
-        document.addEventListener('DOMContentLoaded', function() {
+        function initStockSelect() {
             const selectObra = document.getElementById('obra_id_hpr_stock');
             const contenedorStock = document.getElementById('contenedor-stock');
             const loadingIndicator = document.getElementById('loading-stock');
@@ -985,6 +1006,12 @@
             if (!selectObra || !contenedorStock) {
                 return;
             }
+
+            // Evitar registrar el listener múltiples veces
+            if (selectObra.dataset.initialized) {
+                return;
+            }
+            selectObra.dataset.initialized = 'true';
 
             selectObra.addEventListener('change', function() {
                 const obraId = this.value;
@@ -1032,10 +1059,14 @@
                         contenedorStock.style.pointerEvents = 'auto';
                     });
             });
-        });
+        }
+
+        // Inicializar en carga normal y después de navegación con wire:navigate
+        document.addEventListener('DOMContentLoaded', initStockSelect);
+        document.addEventListener('livewire:navigated', initStockSelect);
     </script>
     <script>
-        document.addEventListener('DOMContentLoaded', function() {
+        function initColadasModal() {
             const CLIENTE_ID_REQUIERE_COLADAS = 1;
             const BASE_PEDIDOS_URL = `{{ url('/pedidos') }}`;
             const CLASES_ESTADO_A_REMOVER = [
@@ -1205,13 +1236,15 @@
                 cuerpoTabla.appendChild(fila);
             }
 
-            if (btnAgregar) {
+            if (btnAgregar && !btnAgregar.dataset.initialized) {
+                btnAgregar.dataset.initialized = 'true';
                 btnAgregar.addEventListener('click', function() {
                     agregarFilaColada();
                 });
             }
 
-            if (cuerpoTabla) {
+            if (cuerpoTabla && !cuerpoTabla.dataset.initialized) {
+                cuerpoTabla.dataset.initialized = 'true';
                 cuerpoTabla.addEventListener('click', function(ev) {
                     const botonEliminar = ev.target.closest('.btn-eliminar-colada');
                     if (botonEliminar) {
@@ -1223,7 +1256,8 @@
                 });
             }
 
-            if (btnCancelar) {
+            if (btnCancelar && !btnCancelar.dataset.initialized) {
+                btnCancelar.dataset.initialized = 'true';
                 btnCancelar.addEventListener('click', function() {
                     cerrarModalColadas(true);
                 });
@@ -1329,11 +1363,18 @@
                     });
             }
 
-            if (btnConfirmar) {
+            if (btnConfirmar && !btnConfirmar.dataset.initialized) {
+                btnConfirmar.dataset.initialized = 'true';
                 btnConfirmar.addEventListener('click', function() {
                     activarLineaConColadas();
                 });
             }
+
+            // Evitar registrar el listener de submit múltiples veces
+            if (document._coladasSubmitListenerAdded) {
+                return;
+            }
+            document._coladasSubmitListenerAdded = true;
 
             document.addEventListener('submit', function(ev) {
                 const form = ev.target.closest('form');
@@ -1374,6 +1415,10 @@
                     }
                 }
             }, true);
-        });
+        }
+
+        // Inicializar en carga normal y después de navegación con wire:navigate
+        document.addEventListener('DOMContentLoaded', initColadasModal);
+        document.addEventListener('livewire:navigated', initColadasModal);
     </script>
 </x-app-layout>
