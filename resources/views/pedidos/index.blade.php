@@ -70,7 +70,8 @@
                     <div class="p-6">
                         <div class="bg-blue-50 border-l-4 border-blue-500 px-4 py-3 rounded-r mb-5">
                             <p class="text-sm text-blue-800 leading-relaxed">
-                                <strong class="font-semibold">Información:</strong> Puedes añadir cero o más coladas y bultos.
+                                <strong class="font-semibold">Información:</strong> Puedes añadir cero o más coladas y
+                                bultos.
                                 Si no necesitas registrar información, deja la tabla vacía y confirma la activación.
                             </p>
                         </div>
@@ -84,8 +85,10 @@
                                 </colgroup>
                                 <thead class="bg-gradient-to-r from-gray-700 to-gray-800 text-white">
                                     <tr>
-                                        <th class="px-4 py-3 text-left font-semibold uppercase tracking-wider text-xs">Colada</th>
-                                        <th class="px-4 py-3 text-left font-semibold uppercase tracking-wider text-xs">Bulto</th>
+                                        <th class="px-4 py-3 text-left font-semibold uppercase tracking-wider text-xs">
+                                            Colada</th>
+                                        <th class="px-4 py-3 text-left font-semibold uppercase tracking-wider text-xs">
+                                            Bulto</th>
                                         <th
                                             class="px-4 py-3 text-center font-semibold uppercase tracking-wider text-xs whitespace-nowrap">
                                             Acciones</th>
@@ -883,114 +886,118 @@
             formulario.dataset.initialized = 'true';
 
             formulario.addEventListener('submit', function(ev) {
-            ev.preventDefault();
-            const errores = [];
+                ev.preventDefault();
+                const errores = [];
 
-            const fabricante = document.getElementById('fabricante').value;
-            const distribuidor = document.getElementById('distribuidor').value;
-            if (!fabricante && !distribuidor) {
-                errores.push('Debes seleccionar un fabricante o un distribuidor.');
-            }
-            if (fabricante && distribuidor) {
-                errores.push('Solo puedes seleccionar uno: fabricante o distribuidor.');
-            }
+                const fabricante = document.getElementById('fabricante').value;
+                const distribuidor = document.getElementById('distribuidor').value;
+                if (!fabricante && !distribuidor) {
+                    errores.push('Debes seleccionar un fabricante o un distribuidor.');
+                }
+                if (fabricante && distribuidor) {
+                    errores.push('Solo puedes seleccionar uno: fabricante o distribuidor.');
+                }
 
-            const obraHpr = document.getElementById('obra_id_hpr_modal').value;
-            const obraExterna = document.getElementById('obra_id_externa_modal').value;
-            const obraManual = document.getElementById('obra_manual_modal').value.trim();
-            const totalObras = [obraHpr, obraExterna, obraManual].filter(v => v && v !== '').length;
-            if (totalObras === 0) {
-                errores.push('Debes seleccionar una nave, obra externa o escribir un lugar de entrega.');
-            }
-            if (totalObras > 1) {
-                errores.push('Solo puedes seleccionar una opción: nave, obra externa o introducirla manualmente.');
-            }
+                const obraHpr = document.getElementById('obra_id_hpr_modal').value;
+                const obraExterna = document.getElementById('obra_id_externa_modal').value;
+                const obraManual = document.getElementById('obra_manual_modal').value.trim();
+                const totalObras = [obraHpr, obraExterna, obraManual].filter(v => v && v !== '').length;
+                if (totalObras === 0) {
+                    errores.push('Debes seleccionar una nave, obra externa o escribir un lugar de entrega.');
+                }
+                if (totalObras > 1) {
+                    errores.push(
+                        'Solo puedes seleccionar una opción: nave, obra externa o introducirla manualmente.');
+                }
 
-            const resumenLineas = [];
-            document.querySelectorAll('#tablaConfirmacionBody tr').forEach(tr => {
-                const tipo = tr.querySelector('td:nth-child(1)')?.textContent.trim();
-                const diametro = tr.querySelector('td:nth-child(2)')?.textContent.trim().replace(' mm', '')
-                    .split('/')[0].trim();
-                const peso = parseFloat(tr.querySelector('.peso-total')?.value || 0);
+                const resumenLineas = [];
+                document.querySelectorAll('#tablaConfirmacionBody tr').forEach(tr => {
+                    const tipo = tr.querySelector('td:nth-child(1)')?.textContent.trim();
+                    const diametro = tr.querySelector('td:nth-child(2)')?.textContent.trim().replace(' mm',
+                            '')
+                        .split('/')[0].trim();
+                    const peso = parseFloat(tr.querySelector('.peso-total')?.value || 0);
 
-                if (tipo && diametro) {
-                    if (peso <= 0) {
-                        errores.push(`El peso de la línea ${tipo} ${diametro} debe ser mayor a 0.`);
-                    }
+                    if (tipo && diametro) {
+                        if (peso <= 0) {
+                            errores.push(`El peso de la línea ${tipo} ${diametro} debe ser mayor a 0.`);
+                        }
 
-                    const contenedorFechas = tr.querySelector('[id^="fechas-camion-"]');
-                    const fechas = [];
+                        const contenedorFechas = tr.querySelector('[id^="fechas-camion-"]');
+                        const fechas = [];
 
-                    if (contenedorFechas) {
-                        const inputsFecha = contenedorFechas.querySelectorAll('input[type="date"]');
-                        inputsFecha.forEach((input, idx) => {
-                            if (!input.value) {
-                                errores.push(
-                                    `Completa la fecha del camión ${idx + 1} para ${tipo} Ø${diametro}.`
-                                );
-                            }
-                            fechas.push(input.value || '—');
+                        if (contenedorFechas) {
+                            const inputsFecha = contenedorFechas.querySelectorAll('input[type="date"]');
+                            inputsFecha.forEach((input, idx) => {
+                                if (!input.value) {
+                                    errores.push(
+                                        `Completa la fecha del camión ${idx + 1} para ${tipo} Ø${diametro}.`
+                                    );
+                                }
+                                fechas.push(input.value || '—');
+                            });
+                        }
+
+                        resumenLineas.push({
+                            tipo,
+                            diametro,
+                            peso,
+                            fechas
                         });
                     }
-
-                    resumenLineas.push({
-                        tipo,
-                        diametro,
-                        peso,
-                        fechas
-                    });
-                }
-            });
-
-            if (resumenLineas.length === 0) {
-                errores.push('Debes seleccionar al menos un producto para generar el pedido.');
-            }
-
-            if (errores.length > 0) {
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Revisa los datos',
-                    html: '<ul style="text-align:left;">' + errores.map(e => `<li>• ${e}</li>`).join('') +
-                        '</ul>'
                 });
-                return false;
-            }
 
-            let proveedorTexto = fabricante ?
-                `Fabricante: ${document.querySelector('#fabricante option:checked').textContent}` :
-                `Distribuidor: ${document.querySelector('#distribuidor option:checked').textContent}`;
-
-            let obraTexto = obraHpr ?
-                `Nave: ${document.querySelector('#obra_id_hpr_modal option:checked').textContent}` :
-                obraExterna ?
-                `Obra externa: ${document.querySelector('#obra_id_externa_modal option:checked').textContent}` :
-                `Lugar manual: ${obraManual}`;
-
-            let htmlResumen =
-                `<p><b>${proveedorTexto}</b></p><p><b>${obraTexto}</b></p><hr><ul style="text-align:left;">`;
-            resumenLineas.forEach(l => {
-                htmlResumen += `<li>• ${l.tipo} Ø${l.diametro} → ${l.peso.toLocaleString('es-ES')} kg<br>` +
-                    `📅 Fechas de entrega: ${l.fechas.join(', ')}</li>`;
-            });
-            htmlResumen += '</ul>';
-
-            Swal.fire({
-                title: '¿Crear pedido de compra?',
-                html: htmlResumen,
-                icon: 'question',
-                showCancelButton: true,
-                confirmButtonText: 'Sí, crear pedido',
-                cancelButtonText: 'Cancelar',
-                confirmButtonColor: '#16a34a',
-                focusCancel: true,
-                width: 600,
-                allowOutsideClick: false
-            }).then((result) => {
-                if (result.isConfirmed) {
-                    ev.target.submit();
+                if (resumenLineas.length === 0) {
+                    errores.push('Debes seleccionar al menos un producto para generar el pedido.');
                 }
+
+                if (errores.length > 0) {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Revisa los datos',
+                        html: '<ul style="text-align:left;">' + errores.map(e => `<li>• ${e}</li>`).join(
+                            '') +
+                            '</ul>'
+                    });
+                    return false;
+                }
+
+                let proveedorTexto = fabricante ?
+                    `Fabricante: ${document.querySelector('#fabricante option:checked').textContent}` :
+                    `Distribuidor: ${document.querySelector('#distribuidor option:checked').textContent}`;
+
+                let obraTexto = obraHpr ?
+                    `Nave: ${document.querySelector('#obra_id_hpr_modal option:checked').textContent}` :
+                    obraExterna ?
+                    `Obra externa: ${document.querySelector('#obra_id_externa_modal option:checked').textContent}` :
+                    `Lugar manual: ${obraManual}`;
+
+                let htmlResumen =
+                    `<p><b>${proveedorTexto}</b></p><p><b>${obraTexto}</b></p><hr><ul style="text-align:left;">`;
+                resumenLineas.forEach(l => {
+                    htmlResumen +=
+                        `<li>• ${l.tipo} Ø${l.diametro} → ${l.peso.toLocaleString('es-ES')} kg<br>` +
+                        `📅 Fechas de entrega: ${l.fechas.join(', ')}</li>`;
+                });
+                htmlResumen += '</ul>';
+
+                Swal.fire({
+                    title: '¿Crear pedido de compra?',
+                    html: htmlResumen,
+                    icon: 'question',
+                    showCancelButton: true,
+                    confirmButtonText: 'Sí, crear pedido',
+                    cancelButtonText: 'Cancelar',
+                    confirmButtonColor: '#16a34a',
+                    focusCancel: true,
+                    width: 600,
+                    allowOutsideClick: false
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        ev.target.submit();
+                    }
+                });
             });
-        });
         }
 
         // Inicializar en carga normal y después de navegación con wire:navigate
