@@ -363,6 +363,53 @@ class ProductoController extends Controller
         }
     }
 
+    public function GenerarYObtenerDatos(Request $request)
+    {
+        $cantidad = intval($request->input('cantidad', 1));
+        $anio = now()->format('y'); // Año en dos dígitos
+        $mes = now()->format('m');  // Mes en dos dígitos
+        $tipo = 'MP'; // fijo
+
+        DB::beginTransaction();
+
+        try {
+            // Obtener o crear el contador del tipo, año y mes
+            $contador = ProductoCodigo::lockForUpdate()->firstOrCreate(
+                ['tipo' => $tipo, 'anio' => $anio, 'mes' => $mes],
+                ['ultimo_numero' => 0]
+            );
+
+            $desde = $contador->ultimo_numero + 1;
+            $hasta = $contador->ultimo_numero + $cantidad;
+
+            // Generar los códigos en memoria
+            $nuevosCodigos = [];
+            for ($i = $desde; $i <= $hasta; $i++) {
+                $numero = str_pad($i, 4, '0', STR_PAD_LEFT);
+                $codigo = "$tipo$anio$mes$numero"; // Ahora incluye mes
+                $nuevosCodigos[] = ['codigo' => $codigo];
+            }
+
+            // Actualizar el contador
+            $contador->ultimo_numero = $hasta;
+            $contador->save();
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'codigos' => $nuevosCodigos,
+                'cantidad' => count($nuevosCodigos)
+            ]);
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            return response()->json([
+                'success' => false,
+                'error' => 'Error al generar los códigos: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
     //------------------------------------------------------------------------------------ SHOW
     // ProductoController.php
     public function show($id)

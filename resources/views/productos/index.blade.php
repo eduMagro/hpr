@@ -25,6 +25,16 @@
 
         <!-- 🖥️ Tabla solo en pantallas medianas o grandes -->
         <div class="hidden md:block">
+
+            <button onclick="abrirModal()"
+                class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg shadow">
+                Generar códigos
+            </button>
+            <button onclick="abrirModalImprimir()"
+                class="bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-4 rounded-lg shadow">
+                Generar e Imprimir QR
+            </button>
+
             <div id="modalGenerarCodigos"
                 class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden items-center justify-center">
                 <div class="bg-white rounded-lg shadow-lg p-6 w-full max-w-md relative">
@@ -83,6 +93,177 @@
                     const modal = document.getElementById('modalGenerarCodigos');
                     if (event.target === modal) {
                         cerrarModal();
+                    }
+                });
+            </script>
+
+            <!-- Modal Generar e Imprimir QR -->
+            <div id="modalImprimirQR"
+                class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden items-center justify-center">
+                <div class="bg-white rounded-lg shadow-lg p-6 w-full max-w-md relative">
+                    <h2 class="text-xl font-semibold mb-4">Generar e Imprimir QR</h2>
+
+                    <div class="space-y-4">
+                        <div>
+                            <label for="cantidadImprimir" class="block text-sm font-medium text-gray-700">Cantidad a
+                                generar</label>
+                            <input type="number" id="cantidadImprimir" value="10" min="1"
+                                class="w-full p-2 border border-gray-300 rounded-lg" required>
+                        </div>
+
+                        <div id="estadoImpresion" class="hidden">
+                            <div class="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                                <p class="text-sm text-blue-800" id="mensajeEstado"></p>
+                            </div>
+                        </div>
+
+                        <div class="flex justify-end pt-2 space-x-2">
+                            <p class="text-xs text-gray-500 mt-2">
+                                ⚠️ Esta operación genera códigos e imprime automáticamente las etiquetas QR.
+                            </p>
+
+                            <button type="button" onclick="cerrarModalImprimir()"
+                                class="px-4 py-2 bg-gray-300 text-gray-800 rounded hover:bg-gray-400">
+                                Cancelar
+                            </button>
+                            <button type="button" onclick="generarEImprimir()"
+                                id="btnImprimir"
+                                class="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700">
+                                Generar e Imprimir
+                            </button>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+
+            <script>
+                function abrirModalImprimir() {
+                    const modal = document.getElementById('modalImprimirQR');
+                    modal.classList.remove('hidden');
+                    modal.classList.add('flex');
+                    document.getElementById('estadoImpresion').classList.add('hidden');
+                }
+
+                function cerrarModalImprimir() {
+                    const modal = document.getElementById('modalImprimirQR');
+                    modal.classList.remove('flex');
+                    modal.classList.add('hidden');
+                }
+
+                function mostrarEstado(mensaje, tipo = 'info') {
+                    const estadoDiv = document.getElementById('estadoImpresion');
+                    const mensajeP = document.getElementById('mensajeEstado');
+
+                    estadoDiv.classList.remove('hidden', 'bg-blue-50', 'border-blue-200', 'bg-green-50', 'border-green-200', 'bg-red-50', 'border-red-200');
+                    mensajeP.classList.remove('text-blue-800', 'text-green-800', 'text-red-800');
+
+                    if (tipo === 'success') {
+                        estadoDiv.classList.add('bg-green-50', 'border-green-200');
+                        mensajeP.classList.add('text-green-800');
+                    } else if (tipo === 'error') {
+                        estadoDiv.classList.add('bg-red-50', 'border-red-200');
+                        mensajeP.classList.add('text-red-800');
+                    } else {
+                        estadoDiv.classList.add('bg-blue-50', 'border-blue-200');
+                        mensajeP.classList.add('text-blue-800');
+                    }
+
+                    mensajeP.textContent = mensaje;
+                }
+
+                async function generarEImprimir() {
+                    const cantidad = document.getElementById('cantidadImprimir').value;
+                    const btnImprimir = document.getElementById('btnImprimir');
+
+                    if (!cantidad || cantidad < 1) {
+                        alert('Por favor ingresa una cantidad válida');
+                        return;
+                    }
+
+                    try {
+                        // Deshabilitar botón
+                        btnImprimir.disabled = true;
+                        btnImprimir.textContent = 'Procesando...';
+                        mostrarEstado('Generando códigos...', 'info');
+
+                        // 1. Generar códigos en el servidor
+                        const response = await fetch('{{ route('productos.generar.datos') }}', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                            },
+                            body: JSON.stringify({ cantidad: cantidad })
+                        });
+
+                        if (!response.ok) {
+                            throw new Error('Error generando códigos en el servidor');
+                        }
+
+                        const data = await response.json();
+
+                        if (!data.success) {
+                            throw new Error(data.error || 'Error desconocido generando códigos');
+                        }
+
+                        mostrarEstado(`✓ ${data.cantidad} códigos generados. Enviando a impresora...`, 'info');
+
+                        // 2. Enviar a servicio local de impresión
+                        const printResponse = await fetch('http://localhost:8765/print', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify({ codigos: data.codigos })
+                        });
+
+                        if (!printResponse.ok) {
+                            throw new Error('Error comunicándose con el servicio de impresión');
+                        }
+
+                        const printData = await printResponse.json();
+
+                        if (!printData.success) {
+                            throw new Error(printData.error || 'Error desconocido en la impresión');
+                        }
+
+                        // 3. Éxito
+                        mostrarEstado(`✓ ¡Completado! ${printData.cantidad} etiquetas enviadas a imprimir.`, 'success');
+
+                        setTimeout(() => {
+                            cerrarModalImprimir();
+                            location.reload(); // Recargar para actualizar la tabla
+                        }, 2000);
+
+                    } catch (error) {
+                        console.error('Error:', error);
+                        let mensajeError = error.message;
+
+                        if (error.message.includes('servicio de impresión')) {
+                            mensajeError = '❌ No se pudo conectar con el servicio de impresión. Asegúrate de que esté ejecutándose (start_service.bat)';
+                        }
+
+                        mostrarEstado(mensajeError, 'error');
+                    } finally {
+                        // Rehabilitar botón
+                        btnImprimir.disabled = false;
+                        btnImprimir.textContent = 'Generar e Imprimir';
+                    }
+                }
+
+                // Cerrar modal con ESC
+                document.addEventListener('keydown', function(event) {
+                    if (event.key === 'Escape') {
+                        cerrarModalImprimir();
+                    }
+                });
+
+                // Cerrar si se hace clic fuera
+                window.addEventListener('click', function(event) {
+                    const modal = document.getElementById('modalImprimirQR');
+                    if (event.target === modal) {
+                        cerrarModalImprimir();
                     }
                 });
             </script>
