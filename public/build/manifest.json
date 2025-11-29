@@ -34,6 +34,11 @@
     "src": "resources/css/styles.css",
     "isEntry": true
   },
+  "resources/css/ubicaciones/mapaUbis.css": {
+    "file": "assets/mapaUbis.XukTA3LC.css",
+    "src": "resources/css/ubicaciones/mapaUbis.css",
+    "isEntry": true
+  },
   "resources/js/app.js": {
     "file": "assets/app.eMHK6VFw.js",
     "name": "app",
