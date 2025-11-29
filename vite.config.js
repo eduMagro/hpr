@@ -35,6 +35,7 @@ export default defineConfig(({ command, mode }) => {
                     "resources/css/localizaciones/styleLocCreate.css",
 
                     "resources/css/mapaLocalizaciones.css",
+                    "resources/css/ubicaciones/mapaUbis.css",
 
                     // Feature-specific bundles
                     "resources/js/maquinaJS/maquina-bundle.js",
