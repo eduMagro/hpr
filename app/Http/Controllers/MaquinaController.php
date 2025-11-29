@@ -47,6 +47,7 @@ class MaquinaController extends Controller
             $hoy = Carbon::today();
             $maniana = Carbon::tomorrow();
 
+            // Primero buscar asignación CON máquina asignada
             $asignacion = AsignacionTurno::where('user_id', $usuario->id)
                 ->whereDate('fecha', $hoy)
                 ->whereNotNull('maquina_id')
@@ -54,7 +55,7 @@ class MaquinaController extends Controller
                 ->first();
 
             if (!$asignacion) {
-                // 👉 No encontró turno para hoy, probamos para mañana
+                // Probar para mañana con máquina asignada
                 $asignacion = AsignacionTurno::where('user_id', $usuario->id)
                     ->whereDate('fecha', $maniana)
                     ->whereNotNull('maquina_id')
@@ -62,24 +63,46 @@ class MaquinaController extends Controller
                     ->first();
             }
 
+            // Si tiene máquina asignada, redirigir a ella
+            if ($asignacion) {
+                $maquinaId = $asignacion->maquina_id;
+                $turnoId   = $asignacion->turno_id;
 
-            if (!$asignacion) {
+                // Buscar compañero
+                $compañero = AsignacionTurno::where('maquina_id', $maquinaId)
+                    ->where('turno_id', $turnoId)
+                    ->where('user_id', '!=', $usuario->id)
+                    ->latest()
+                    ->first();
+
+                session(['compañero_id' => optional($compañero)->user_id]);
+
+                return redirect()->route('maquinas.show', ['maquina' => $maquinaId]);
+            }
+
+            // Buscar asignación SIN máquina (para que pueda elegir una)
+            $asignacionSinMaquina = AsignacionTurno::where('user_id', $usuario->id)
+                ->whereDate('fecha', $hoy)
+                ->whereNull('maquina_id')
+                ->first();
+
+            if (!$asignacionSinMaquina) {
+                $asignacionSinMaquina = AsignacionTurno::where('user_id', $usuario->id)
+                    ->whereDate('fecha', $maniana)
+                    ->whereNull('maquina_id')
+                    ->first();
+            }
+
+            // Si no tiene ninguna asignación, no ha fichado
+            if (!$asignacionSinMaquina) {
                 abort(403, 'No has fichado entrada');
             }
 
-            $maquinaId = $asignacion->maquina_id;
-            $turnoId   = $asignacion->turno_id;
-
-            // Buscar compañero
-            $compañero = AsignacionTurno::where('maquina_id', $maquinaId)
-                ->where('turno_id', $turnoId)
-                ->where('user_id', '!=', $usuario->id)
-                ->latest()
-                ->first();
-
-            session(['compañero_id' => optional($compañero)->user_id]);
-
-            return redirect()->route('maquinas.show', ['maquina' => $maquinaId]);
+            // Tiene asignación pero sin máquina: mostrar selector de máquinas
+            $maquinasDisponibles = Maquina::orderBy('nombre')->get(['id', 'codigo', 'nombre']);
+            return view('maquinas.seleccionar-maquina', [
+                'maquinas' => $maquinasDisponibles
+            ]);
         }
 
         /* ───────────────────────────────────────────
@@ -123,6 +146,7 @@ class MaquinaController extends Controller
         })
             ->orderBy('obra')
             ->get();
+
         // ▸ 2.3 Render vista
         return view('maquinas.index', compact(
             'registrosMaquina',

@@ -380,22 +380,32 @@ export function crearCalendario() {
                     if (harness) {
                         harness.style.setProperty('width', '100%', 'important');
                         harness.style.setProperty('max-width', '100%', 'important');
+                        harness.style.setProperty('min-width', '100%', 'important');
                         harness.style.setProperty('position', 'static', 'important');
                         harness.style.setProperty('left', 'unset', 'important');
                         harness.style.setProperty('right', 'unset', 'important');
                         harness.style.setProperty('top', 'unset', 'important');
                         harness.style.setProperty('inset', 'unset', 'important');
                         harness.style.setProperty('margin', '0 0 2px 0', 'important');
+                        harness.style.setProperty('display', 'block', 'important');
                     }
 
                     // Forzar en el elemento del evento
                     info.el.style.setProperty('width', '100%', 'important');
                     info.el.style.setProperty('max-width', '100%', 'important');
+                    info.el.style.setProperty('min-width', '100%', 'important');
                     info.el.style.setProperty('margin', '0', 'important');
                     info.el.style.setProperty('position', 'static', 'important');
                     info.el.style.setProperty('left', 'unset', 'important');
                     info.el.style.setProperty('right', 'unset', 'important');
                     info.el.style.setProperty('inset', 'unset', 'important');
+                    info.el.style.setProperty('display', 'block', 'important');
+
+                    // Forzar en todos los hijos
+                    info.el.querySelectorAll('*').forEach(child => {
+                        child.style.setProperty('width', '100%', 'important');
+                        child.style.setProperty('max-width', '100%', 'important');
+                    });
                 }
 
                 // lee filtros actuales (código y nombre)
@@ -441,6 +451,19 @@ export function crearCalendario() {
 
                     if (coincide) {
                         info.el.classList.add("evento-filtrado");
+                        // Forzar fondo negro en el evento y TODOS sus hijos
+                        const colorFondo = '#1f2937';
+                        const colorBorde = '#111827';
+                        info.el.style.setProperty('background-color', colorFondo, 'important');
+                        info.el.style.setProperty('background', colorFondo, 'important');
+                        info.el.style.setProperty('border-color', colorBorde, 'important');
+                        info.el.style.setProperty('color', 'white', 'important');
+                        // Aplicar a TODOS los elementos hijos
+                        info.el.querySelectorAll('*').forEach(child => {
+                            child.style.setProperty('background-color', colorFondo, 'important');
+                            child.style.setProperty('background', colorFondo, 'important');
+                            child.style.setProperty('color', 'white', 'important');
+                        });
                     }
                 }
 
@@ -520,8 +543,7 @@ export function crearCalendario() {
                     });
             },
             dateClick: (info) => {
-                const vt = calendar.view.type;
-
+                // Solo mostrar info de festivo con clic normal
                 if (hayFestivoEnFecha(info.dateStr)) {
                     Swal.fire({
                         icon: "info",
@@ -529,30 +551,8 @@ export function crearCalendario() {
                         text: "Los festivos se editan en la planificación de Trabajadores.",
                         confirmButtonText: "Entendido",
                     });
-                    return;
                 }
-
-                if (
-                    vt === "resourceTimelineWeek" ||
-                    vt === "dayGridMonth"
-                ) {
-                    Swal.fire({
-                        title: "📅 Cambiar a vista diaria",
-                        text: `¿Quieres ver el día ${info.dateStr}?`,
-                        icon: "question",
-                        showCancelButton: true,
-                        confirmButtonText: "Sí, ver día",
-                        cancelButtonText: "No",
-                    }).then((res) => {
-                        if (res.isConfirmed) {
-                            calendar.changeView(
-                                "resourceTimeGridDay",
-                                info.dateStr
-                            );
-                            safeUpdateSize();
-                        }
-                    });
-                }
+                // La navegación a día específico se hace con clic derecho
             },
             eventMinHeight: 30,
             firstDay: 1,
@@ -644,6 +644,44 @@ export function crearCalendario() {
 
         calendar.render();
         safeUpdateSize();
+
+        // Añadir menú contextual para celdas del calendario (clic derecho en día)
+        el.addEventListener('contextmenu', (e) => {
+            // Buscar si el clic fue en una celda de día
+            const dayCell = e.target.closest('.fc-daygrid-day, .fc-timeline-slot, .fc-timegrid-slot, .fc-col-header-cell');
+            if (dayCell) {
+                // Obtener la fecha de la celda
+                let dateStr = dayCell.getAttribute('data-date');
+                if (!dateStr) {
+                    // Intentar obtener de fc-timeline-slot
+                    const slot = e.target.closest('[data-date]');
+                    if (slot) dateStr = slot.getAttribute('data-date');
+                }
+
+                if (dateStr && calendar) {
+                    const vt = calendar.view.type;
+                    // Solo mostrar en vistas semanal o mensual
+                    if (vt === "resourceTimelineWeek" || vt === "dayGridMonth") {
+                        e.preventDefault();
+                        e.stopPropagation();
+
+                        Swal.fire({
+                            title: "📅 Ir a día",
+                            text: `¿Quieres ver el día ${dateStr}?`,
+                            icon: "question",
+                            showCancelButton: true,
+                            confirmButtonText: "Sí, ir al día",
+                            cancelButtonText: "Cancelar",
+                        }).then((res) => {
+                            if (res.isConfirmed) {
+                                calendar.changeView("resourceTimeGridDay", dateStr);
+                                safeUpdateSize();
+                            }
+                        });
+                    }
+                }
+            }
+        });
     };
 
     // ⚠️ Render sólo cuando #calendario sea visible

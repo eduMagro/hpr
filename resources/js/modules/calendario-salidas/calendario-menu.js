@@ -301,24 +301,8 @@ function construirInterfazGestionPaquetesSalida(
 
                 <!-- Paquetes disponibles -->
                 <div class="bg-gray-50 border-2 border-gray-300 rounded-lg p-3">
-                    <div class="font-semibold text-gray-900 mb-2 flex items-center justify-between">
+                    <div class="font-semibold text-gray-900 mb-2">
                         <span>📋 Paquetes Disponibles</span>
-                        <button type="button" id="btn-toggle-todos-modal"
-                                class="text-xs px-3 py-1.5 rounded-md transition-colors shadow-sm font-medium bg-blue-500 hover:bg-blue-600 text-white">
-                            <span class="flex items-center gap-1">
-                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
-                                </svg>
-                                Incluir otros paquetes
-                            </span>
-                        </button>
-                    </div>
-
-                    <!-- Info del modo actual -->
-                    <div id="info-modo-paquetes" class="bg-blue-50 border border-blue-200 rounded-md px-3 py-2 mb-3">
-                        <p class="text-xs text-blue-800">
-                            <strong>📋 Mostrando:</strong> Solo paquetes de las obras de esta salida
-                        </p>
                     </div>
 
                     <!-- Filtros -->
@@ -377,10 +361,24 @@ function construirPaquetesHTMLSalida(paquetes) {
             data-planilla-id="${paquete.planilla?.id || ''}"
             data-planilla="${paquete.planilla?.codigo || ''}"
             data-cliente="${paquete.planilla?.cliente?.empresa || ''}"
+            data-paquete-json='${JSON.stringify(paquete).replace(/'/g, "&#39;")}'
         >
             <div class="flex items-center justify-between text-xs">
                 <span class="font-medium">📦 ${paquete.codigo || 'Paquete #' + paquete.id}</span>
-                <span class="text-gray-600">${parseFloat(paquete.peso || 0).toFixed(2)} kg</span>
+                <div class="flex items-center gap-2">
+                    <button
+                        type="button"
+                        onclick="event.stopPropagation(); window.verElementosPaqueteSalida(${paquete.id})"
+                        class="text-blue-500 hover:text-blue-700 hover:bg-blue-100 rounded p-1 transition-colors"
+                        title="Ver elementos del paquete"
+                    >
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                        </svg>
+                    </button>
+                    <span class="text-gray-600">${parseFloat(paquete.peso || 0).toFixed(2)} kg</span>
+                </div>
             </div>
             <div class="text-xs text-gray-500 mt-1">
                 <div>📄 ${paquete.planilla?.codigo || paquete.planilla_id}</div>
@@ -394,71 +392,157 @@ function construirPaquetesHTMLSalida(paquetes) {
         .join("");
 }
 
+/* ===================== Ver elementos de un paquete ===================== */
+async function verElementosPaqueteSalida(paqueteId) {
+    try {
+        // Buscar el paquete en el DOM para obtener sus datos
+        const paqueteElement = document.querySelector(`[data-paquete-id="${paqueteId}"]`);
+        let paqueteData = null;
+
+        if (paqueteElement && paqueteElement.dataset.paqueteJson) {
+            try {
+                paqueteData = JSON.parse(paqueteElement.dataset.paqueteJson.replace(/&#39;/g, "'"));
+            } catch (e) {
+                console.warn("No se pudo parsear JSON del paquete", e);
+            }
+        }
+
+        // Si no tenemos datos del paquete, hacer fetch
+        if (!paqueteData) {
+            const response = await fetch(`/api/paquetes/${paqueteId}/elementos`);
+            if (response.ok) {
+                paqueteData = await response.json();
+            }
+        }
+
+        if (!paqueteData) {
+            alert("No se pudo obtener información del paquete");
+            return;
+        }
+
+        // Extraer elementos de las etiquetas del paquete
+        const elementos = [];
+        if (paqueteData.etiquetas && paqueteData.etiquetas.length > 0) {
+            paqueteData.etiquetas.forEach((etiqueta) => {
+                if (etiqueta.elementos && etiqueta.elementos.length > 0) {
+                    etiqueta.elementos.forEach((elemento) => {
+                        elementos.push({
+                            id: elemento.id,
+                            dimensiones: elemento.dimensiones,
+                            peso: elemento.peso,
+                            longitud: elemento.longitud,
+                            diametro: elemento.diametro,
+                        });
+                    });
+                }
+            });
+        }
+
+        if (elementos.length === 0) {
+            alert("Este paquete no tiene elementos para mostrar");
+            return;
+        }
+
+        // Construir HTML con los elementos
+        const elementosHtml = elementos.map((el, idx) => `
+            <div class="bg-gray-50 border border-gray-200 rounded-lg p-3 mb-2">
+                <div class="flex items-center justify-between">
+                    <span class="font-medium text-gray-700">Elemento #${el.id}</span>
+                    <span class="text-xs text-gray-500">${idx + 1} de ${elementos.length}</span>
+                </div>
+                <div class="mt-2 text-sm text-gray-600 grid grid-cols-2 gap-2">
+                    ${el.diametro ? `<div><strong>Ø:</strong> ${el.diametro} mm</div>` : ''}
+                    ${el.longitud ? `<div><strong>Long:</strong> ${el.longitud} mm</div>` : ''}
+                    ${el.peso ? `<div><strong>Peso:</strong> ${parseFloat(el.peso).toFixed(2)} kg</div>` : ''}
+                </div>
+                ${el.dimensiones ? `
+                    <div class="mt-2 p-2 bg-white border rounded">
+                        <div id="elemento-dibujo-${el.id}" class="w-full h-32"></div>
+                    </div>
+                ` : ''}
+            </div>
+        `).join('');
+
+        // Eliminar modal anterior si existe
+        const modalAnterior = document.getElementById('modal-elementos-paquete-overlay');
+        if (modalAnterior) {
+            modalAnterior.remove();
+        }
+
+        // Crear modal HTML superpuesto (sin usar SweetAlert para no cerrar el modal principal)
+        const modalHtml = `
+            <div id="modal-elementos-paquete-overlay"
+                 class="fixed inset-0 flex items-center justify-center p-4"
+                 style="z-index: 10000; background: rgba(0,0,0,0.5);"
+                 onclick="if(event.target === this) this.remove()">
+                <div class="bg-white rounded-lg shadow-2xl w-full max-w-lg max-h-[85vh] flex flex-col" onclick="event.stopPropagation()">
+                    <div class="flex items-center justify-between p-4 border-b bg-blue-600 text-white rounded-t-lg">
+                        <h3 class="text-lg font-semibold">👁️ Elementos del Paquete #${paqueteId}</h3>
+                        <button onclick="document.getElementById('modal-elementos-paquete-overlay').remove()"
+                                class="text-white hover:bg-blue-700 rounded p-1 transition-colors">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                            </svg>
+                        </button>
+                    </div>
+                    <div class="p-4 overflow-y-auto flex-1">
+                        <div class="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
+                            <div class="text-sm">
+                                <strong>Planilla:</strong> ${paqueteData.planilla?.codigo || 'N/A'}<br>
+                                <strong>Peso total:</strong> ${parseFloat(paqueteData.peso || 0).toFixed(2)} kg<br>
+                                <strong>Total elementos:</strong> ${elementos.length}
+                            </div>
+                        </div>
+                        ${elementosHtml}
+                    </div>
+                    <div class="p-4 border-t bg-gray-50 rounded-b-lg">
+                        <button onclick="document.getElementById('modal-elementos-paquete-overlay').remove()"
+                                class="w-full bg-gray-600 hover:bg-gray-700 text-white font-medium py-2 px-4 rounded transition-colors">
+                            Cerrar
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        // Insertar modal en el body
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+
+        // Dibujar figuras de elementos después de insertar el modal
+        setTimeout(() => {
+            if (typeof window.dibujarFiguraElemento === "function") {
+                elementos.forEach((el) => {
+                    if (el.dimensiones) {
+                        window.dibujarFiguraElemento(
+                            `elemento-dibujo-${el.id}`,
+                            el.dimensiones,
+                            null
+                        );
+                    }
+                });
+            }
+        }, 100);
+
+    } catch (error) {
+        console.error("Error al ver elementos del paquete:", error);
+        alert("Error al cargar los elementos del paquete");
+    }
+}
+
+// Exponer función globalmente para que el onclick funcione
+window.verElementosPaqueteSalida = verElementosPaqueteSalida;
+
 /* ===================== Inicializar filtros del modal ===================== */
 function inicializarFiltrosModal(filtros) {
-    const btnToggle = document.getElementById('btn-toggle-todos-modal');
     const filtroObra = document.getElementById('filtro-obra-modal');
     const filtroPlanilla = document.getElementById('filtro-planilla-modal');
     const btnLimpiar = document.getElementById('btn-limpiar-filtros-modal');
 
-    // Toggle mostrar todos los paquetes
-    if (btnToggle) {
-        btnToggle.addEventListener('click', () => {
-            const data = window._gestionPaquetesData;
-            if (!data) return;
-
-            data.mostrarTodos = !data.mostrarTodos;
-
-            // Actualizar botón
-            if (data.mostrarTodos) {
-                btnToggle.classList.remove('bg-blue-500', 'hover:bg-blue-600');
-                btnToggle.classList.add('bg-orange-500', 'hover:bg-orange-600');
-                btnToggle.innerHTML = `
-                    <span class="flex items-center gap-1">
-                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"/>
-                        </svg>
-                        Solo esta salida
-                    </span>
-                `;
-            } else {
-                btnToggle.classList.remove('bg-orange-500', 'hover:bg-orange-600');
-                btnToggle.classList.add('bg-blue-500', 'hover:bg-blue-600');
-                btnToggle.innerHTML = `
-                    <span class="flex items-center gap-1">
-                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
-                        </svg>
-                        Incluir otros paquetes
-                    </span>
-                `;
-            }
-
-            // Actualizar info
-            const infoModo = document.getElementById('info-modo-paquetes');
-            if (infoModo) {
-                const numPaquetes = data.mostrarTodos ? data.paquetesTodos.length : data.paquetesDisponibles.length;
-                infoModo.innerHTML = `
-                    <p class="text-xs text-blue-800">
-                        <strong>${data.mostrarTodos ? '🌐' : '📋'} Mostrando:</strong>
-                        ${data.mostrarTodos ? 'Todos los paquetes disponibles' : 'Solo paquetes de las obras de esta salida'}
-                        (${numPaquetes} paquetes)
-                    </p>
-                `;
-            }
-
-            // Limpiar filtros
-            if (filtroObra) filtroObra.value = '';
-            if (filtroPlanilla) filtroPlanilla.value = '';
-
-            // Actualizar paquetes
-            actualizarPaquetesDisponiblesModal();
-        });
-    }
-
     // Filtro por obra
     if (filtroObra) {
         filtroObra.addEventListener('change', () => {
+            // Actualizar planillas disponibles según la obra seleccionada
+            actualizarPlanillasSegunObra();
             aplicarFiltrosModal();
         });
     }
@@ -475,8 +559,64 @@ function inicializarFiltrosModal(filtros) {
         btnLimpiar.addEventListener('click', () => {
             if (filtroObra) filtroObra.value = '';
             if (filtroPlanilla) filtroPlanilla.value = '';
+            actualizarPlanillasSegunObra();
             aplicarFiltrosModal();
         });
+    }
+}
+
+/* ===================== Actualizar planillas según obra seleccionada ===================== */
+function actualizarPlanillasSegunObra() {
+    const filtroObra = document.getElementById('filtro-obra-modal');
+    const filtroPlanilla = document.getElementById('filtro-planilla-modal');
+    const data = window._gestionPaquetesData;
+
+    if (!filtroPlanilla || !data) return;
+
+    const obraId = filtroObra?.value || '';
+
+    // Obtener paquetes fuente según si hay obra seleccionada
+    const paquetesFuente = obraId ? data.paquetesTodos : data.paquetesDisponibles;
+
+    // Extraer planillas únicas de los paquetes
+    const planillasMap = new Map();
+    paquetesFuente.forEach(p => {
+        if (p.planilla?.id) {
+            // Si hay obra seleccionada, solo incluir planillas de esa obra
+            if (obraId && String(p.planilla.obra?.id) !== obraId) return;
+
+            if (!planillasMap.has(p.planilla.id)) {
+                planillasMap.set(p.planilla.id, {
+                    id: p.planilla.id,
+                    codigo: p.planilla.codigo || 'Sin código',
+                    obra_id: p.planilla.obra?.id
+                });
+            }
+        }
+    });
+
+    // Convertir a array y ordenar
+    const planillas = Array.from(planillasMap.values()).sort((a, b) =>
+        (a.codigo || '').localeCompare(b.codigo || '')
+    );
+
+    // Guardar valor actual
+    const valorActual = filtroPlanilla.value;
+
+    // Regenerar opciones
+    filtroPlanilla.innerHTML = '<option value="">-- Todas las planillas --</option>';
+    planillas.forEach(p => {
+        const option = document.createElement('option');
+        option.value = p.id;
+        option.textContent = p.codigo;
+        filtroPlanilla.appendChild(option);
+    });
+
+    // Restaurar valor si sigue existiendo
+    if (valorActual && planillasMap.has(parseInt(valorActual))) {
+        filtroPlanilla.value = valorActual;
+    } else {
+        filtroPlanilla.value = '';
     }
 }
 
@@ -488,8 +628,8 @@ function actualizarPaquetesDisponiblesModal() {
     const zonaDisponibles = document.querySelector('[data-zona="disponibles"]');
     if (!zonaDisponibles) return;
 
-    // Obtener paquetes según el modo
-    const paquetes = data.mostrarTodos ? data.paquetesTodos : data.paquetesDisponibles;
+    // Por defecto mostrar solo paquetes de las obras de esta salida
+    const paquetes = data.paquetesDisponibles;
 
     // Filtrar los que ya están asignados (en la zona de asignados)
     const zonaAsignados = document.querySelector('[data-zona="asignados"]');
@@ -516,43 +656,49 @@ function actualizarPaquetesDisponiblesModal() {
 function aplicarFiltrosModal() {
     const filtroObra = document.getElementById('filtro-obra-modal');
     const filtroPlanilla = document.getElementById('filtro-planilla-modal');
+    const data = window._gestionPaquetesData;
 
     const obraId = filtroObra?.value || '';
     const planillaId = filtroPlanilla?.value || '';
 
     const zonaDisponibles = document.querySelector('[data-zona="disponibles"]');
-    if (!zonaDisponibles) return;
+    if (!zonaDisponibles || !data) return;
 
-    const paquetes = zonaDisponibles.querySelectorAll('.paquete-item-salida');
-    let visibles = 0;
+    // Obtener IDs de paquetes ya asignados
+    const zonaAsignados = document.querySelector('[data-zona="asignados"]');
+    const idsAsignados = new Set();
+    if (zonaAsignados) {
+        zonaAsignados.querySelectorAll('.paquete-item-salida').forEach(item => {
+            idsAsignados.add(parseInt(item.dataset.paqueteId));
+        });
+    }
 
-    paquetes.forEach(paquete => {
-        let mostrar = true;
+    // Si hay filtro de obra, buscar en TODOS los paquetes; si no, solo en los de la salida
+    let paquetesFuente = obraId ? data.paquetesTodos : data.paquetesDisponibles;
 
-        if (obraId && paquete.dataset.obraId !== obraId) {
-            mostrar = false;
-        }
+    // Filtrar por obra y planilla
+    let paquetesFiltrados = paquetesFuente.filter(p => {
+        // Excluir los ya asignados
+        if (idsAsignados.has(p.id)) return false;
 
-        if (planillaId && paquete.dataset.planillaId !== planillaId) {
-            mostrar = false;
-        }
+        // Filtrar por obra si está seleccionada
+        if (obraId && String(p.planilla?.obra?.id) !== obraId) return false;
 
-        paquete.style.display = mostrar ? '' : 'none';
-        if (mostrar) visibles++;
+        // Filtrar por planilla si está seleccionada
+        if (planillaId && String(p.planilla?.id) !== planillaId) return false;
+
+        return true;
     });
 
-    // Mostrar/ocultar placeholder
-    let placeholder = zonaDisponibles.querySelector('.placeholder-sin-paquetes');
-    if (visibles === 0) {
-        if (!placeholder) {
-            placeholder = document.createElement('div');
-            placeholder.className = 'text-gray-400 text-sm text-center py-4 placeholder-sin-paquetes';
-            placeholder.textContent = 'No hay paquetes que coincidan con el filtro';
-            zonaDisponibles.appendChild(placeholder);
-        }
-        placeholder.style.display = '';
-    } else if (placeholder) {
-        placeholder.style.display = 'none';
+    // Regenerar el HTML de paquetes disponibles
+    zonaDisponibles.innerHTML = construirPaquetesHTMLSalida(paquetesFiltrados);
+
+    // Reinicializar drag and drop para los nuevos elementos
+    inicializarDragAndDropSalida();
+
+    // Mostrar placeholder si no hay paquetes
+    if (paquetesFiltrados.length === 0) {
+        zonaDisponibles.innerHTML = '<div class="text-gray-400 text-sm text-center py-4 placeholder-sin-paquetes">No hay paquetes que coincidan con el filtro</div>';
     }
 }
 
@@ -707,18 +853,6 @@ function inicializarNavegacionTecladoModal() {
                     // Volver a navegación de paquetes
                     document.activeElement?.blur();
                     actualizarFocoPaqueteModal();
-                    handled = true;
-                }
-                break;
-            }
-
-            case '+':
-            case 't':
-            case 'T': {
-                // Toggle incluir otros paquetes
-                const btnToggle = document.getElementById('btn-toggle-todos-modal');
-                if (btnToggle) {
-                    btnToggle.click();
                     handled = true;
                 }
                 break;
@@ -1007,22 +1141,6 @@ function actualizarTotalesSalida() {
         badge.textContent = `${totalKg.toFixed(2)} kg`;
     }
 
-    // Actualizar info del modo
-    const data = window._gestionPaquetesData;
-    if (data) {
-        const infoModo = document.getElementById('info-modo-paquetes');
-        if (infoModo) {
-            const zonaDisponibles = document.querySelector('[data-zona="disponibles"]');
-            const numVisibles = zonaDisponibles?.querySelectorAll('.paquete-item-salida:not([style*="display: none"])').length || 0;
-            infoModo.innerHTML = `
-                <p class="text-xs text-blue-800">
-                    <strong>${data.mostrarTodos ? '🌐' : '📋'} Mostrando:</strong>
-                    ${data.mostrarTodos ? 'Todos los paquetes disponibles' : 'Solo paquetes de las obras de esta salida'}
-                    (${numVisibles} paquetes)
-                </p>
-            `;
-        }
-    }
 }
 
 /* ===================== Recolectar paquetes salida ===================== */

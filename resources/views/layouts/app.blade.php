@@ -168,7 +168,7 @@
 
             <!-- Page Content -->
             <main class="flex-1 overflow-y-auto bg-neutral-100 dark:bg-gray-900 transition-colors">
-                <div class="py-6 px-4 sm:px-6 lg:px-8">
+                <div class="py-6 px-0 sm:px-6 lg:px-8">
                     <!-- Breadcrumbs -->
                     <x-breadcrumbs />
 

@@ -1,6 +1,10 @@
 @props(['user', 'resumen'])
 
-<div class="bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50" x-data="{
+<style>
+    [x-cloak] { display: none !important; }
+</style>
+
+<div x-data="{
     mostrarDetalles: false,
     seccionContacto: false,
     seccionLaboral: false,
@@ -11,19 +15,19 @@
     <div class="max-w-7xl mx-auto">
 
         {{-- Header con banner degradado --}}
-        <div class="bg-gray-900 dark:bg-gray-950 rounded-xl sm:rounded-2xl shadow-2xl mb-8 overflow-visible relative">
-            <div class="relative bg-gradient-to-br from-gray-800/50 to-gray-900/50 backdrop-blur-sm">
-                <div class="absolute inset-0 bg-black/10"></div>
+        <div class="bg-gray-900 dark:bg-gray-950 rounded-2xl sm:rounded-3xl shadow-2xl mb-8 overflow-visible relative">
+            <div class="relative bg-gradient-to-br from-gray-800/50 to-gray-900/50 backdrop-blur-sm rounded-2xl sm:rounded-3xl">
+                <div class="absolute inset-0 bg-black/10 rounded-2xl sm:rounded-3xl"></div>
                 <div class="relative p-4 sm:p-6">
                     <div class="flex flex-col items-center text-center gap-4 sm:flex-row sm:items-center sm:text-left sm:gap-6">
                         {{-- Avatar --}}
                         <div class="relative z-10 flex-shrink-0">
                             @if ($user->ruta_imagen)
-                                <div class="w-20 h-20 sm:w-24 sm:h-24 rounded-xl ring-4 ring-gray-700 shadow-2xl overflow-hidden bg-white">
+                                <div class="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl ring-4 ring-gray-700 shadow-2xl overflow-hidden bg-white">
                                     <img src="{{ $user->ruta_imagen }}" alt="Foto de perfil" class="w-full h-full object-cover">
                                 </div>
                             @else
-                                <div class="w-20 h-20 sm:w-24 sm:h-24 bg-gradient-to-br from-gray-700 to-gray-800 rounded-xl flex items-center justify-center text-3xl sm:text-4xl font-bold text-white shadow-2xl ring-4 ring-gray-700">
+                                <div class="w-20 h-20 sm:w-24 sm:h-24 bg-gradient-to-br from-gray-700 to-gray-800 rounded-2xl flex items-center justify-center text-3xl sm:text-4xl font-bold text-white shadow-2xl ring-4 ring-gray-700">
                                     {{ strtoupper(substr($user->name, 0, 1)) }}
                                 </div>
                             @endif
@@ -31,6 +35,7 @@
                             {{-- Botón cambiar foto --}}
                             <form method="POST" action="{{ route('usuarios.editarSubirImagen') }}" enctype="multipart/form-data" class="absolute -bottom-1 -right-1 z-20">
                                 @csrf
+                                <input type="hidden" name="user_id" value="{{ $user->id }}">
                                 <label class="flex items-center justify-center bg-white rounded-full p-1.5 shadow-lg cursor-pointer hover:bg-gray-100 transition-all hover:scale-110 border-2 border-gray-700 active:scale-95">
                                     <svg class="w-3.5 h-3.5 text-gray-900" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
@@ -79,7 +84,8 @@
         </div>
 
         {{-- Contenido desplegable --}}
-        <div x-show="mostrarDetalles"
+        <div x-cloak
+             x-show="mostrarDetalles"
              x-transition:enter="transition ease-out duration-300"
              x-transition:enter-start="opacity-0 -translate-y-4"
              x-transition:enter-end="opacity-100 translate-y-0"
@@ -103,7 +109,7 @@
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
                     </svg>
                 </button>
-                <div x-show="seccionContacto" x-collapse>
+                <div x-cloak x-show="seccionContacto" x-collapse>
                     <div class="px-3 pb-3 space-y-2">
                         <div class="flex items-center gap-3 p-2 bg-gray-50 rounded-lg">
                             <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -155,7 +161,7 @@
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
                     </svg>
                 </button>
-                <div x-show="seccionLaboral" x-collapse>
+                <div x-cloak x-show="seccionLaboral" x-collapse>
                     <div class="px-3 pb-3 space-y-2">
                         <div class="p-2 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border-l-3 border-blue-500">
                             <p class="text-[10px] text-gray-500">Empresa</p>
@@ -192,7 +198,7 @@
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
                         </svg>
                     </button>
-                    <div x-show="seccionDepartamentos" x-collapse>
+                    <div x-cloak x-show="seccionDepartamentos" x-collapse>
                         <div class="px-3 pb-3 flex flex-wrap gap-1.5">
                             @foreach ($user->departamentos as $dep)
                                 <span class="inline-flex items-center px-2 py-1 rounded-full text-[10px] font-medium bg-gradient-to-r from-blue-500 to-indigo-500 text-white">
@@ -223,7 +229,7 @@
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
                         </svg>
                     </button>
-                    <div x-show="seccionNomina" x-collapse>
+                    <div x-cloak x-show="seccionNomina" x-collapse>
                         <div class="px-3 pb-3">
                             <p class="text-xs text-gray-600 mb-3">
                                 Selecciona el mes y recibirás tu nómina en: <span class="font-semibold text-blue-700">{{ $user->email }}</span>
@@ -255,8 +261,11 @@
                 </div>
             @endif
 
-            {{-- Subir justificante --}}
+            {{-- Justificantes - visible para operarios y oficina viendo ficha de operario --}}
             @if ($user->rol === 'operario')
+                @php
+                    $esOficinaViendoOtro = Auth::user()->rol === 'oficina' && Auth::id() !== $user->id;
+                @endphp
                 <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
                     <button @click="seccionJustificante = !seccionJustificante" class="w-full flex items-center justify-between p-3 hover:bg-gray-50 transition-colors">
                         <div class="flex items-center gap-2">
@@ -265,13 +274,15 @@
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                                 </svg>
                             </div>
-                            <span class="text-sm font-semibold text-gray-900">Subir Justificante</span>
+                            <span class="text-sm font-semibold text-gray-900">
+                                {{ $esOficinaViendoOtro ? 'Justificantes' : 'Subir Justificante' }}
+                            </span>
                         </div>
                         <svg class="w-4 h-4 text-gray-400 transition-transform duration-200" :class="{ 'rotate-180': seccionJustificante }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
                         </svg>
                     </button>
-                    <div x-show="seccionJustificante" x-collapse>
+                    <div x-cloak x-show="seccionJustificante" x-collapse>
                         <div class="p-3 pt-0">
                             @livewire('subir-justificante', ['userId' => $user->id])
                         </div>

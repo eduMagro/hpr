@@ -627,6 +627,7 @@ class ProduccionController extends Controller
         $turnosLista = Turno::orderBy('orden')->orderBy('hora_inicio')->get(); // Turnos completos con estado activo
 
         $initialDate = $this->calcularInitialDate();
+        $fechaMaximaCalendario = $this->calcularFechaMaximaCalendario($initialDate);
 
 
         // 🆕 Preparar datos de máquinas para JavaScript
@@ -656,6 +657,7 @@ class ProduccionController extends Controller
             'filtro_fecha_fin'                 => $fechaFin,
             'filtro_turno'                     => $turnoFiltro,
             'initialDate'                     => $initialDate,
+            'fechaMaximaCalendario'           => $fechaMaximaCalendario,
         ]);
     }
 
@@ -872,6 +874,111 @@ class ProduccionController extends Controller
 
         return now()->toDateString();
     }
+
+    /**
+     * Calcula la fecha máxima del calendario basándose en el último fin programado
+     */
+    private function calcularFechaMaximaCalendario(string $initialDate): array
+    {
+        try {
+            $fechaInicio = Carbon::parse($initialDate)->startOfDay();
+
+            // Obtener todas las máquinas de producción
+            $maquinaIds = Maquina::whereNotIn('tipo', ['grua', 'soldadora', 'ensambladora'])
+                ->whereNotNull('tipo')
+                ->where('estado', '!=', 'inactiva')
+                ->pluck('id')
+                ->toArray();
+
+            if (empty($maquinaIds)) {
+                // Mínimo 15 días si no hay máquinas
+                return [
+                    'fecha' => $fechaInicio->copy()->addDays(15)->toDateString(),
+                    'dias' => 15,
+                    'horas' => 360
+                ];
+            }
+
+            // Obtener festivos
+            $festivosSet = $this->obtenerFestivosSet();
+
+            // Calcular el fin programado más lejano
+            $fechaMaxima = $fechaInicio->copy();
+
+            $ordenes = OrdenPlanilla::whereIn('maquina_id', $maquinaIds)
+                ->orderBy('maquina_id')
+                ->orderBy('posicion')
+                ->get()
+                ->groupBy('maquina_id');
+
+            foreach ($ordenes as $maquinaId => $ordenesEnMaquina) {
+                $cursorTiempo = now();
+
+                foreach ($ordenesEnMaquina as $orden) {
+                    // Obtener elementos pendientes de esta planilla en esta máquina
+                    $tiempoSegundos = Elemento::where('planilla_id', $orden->planilla_id)
+                        ->where('maquina_id', $maquinaId)
+                        ->where('estado', 'pendiente')
+                        ->sum('tiempo_fabricacion');
+
+                    if ($tiempoSegundos <= 0) {
+                        continue;
+                    }
+
+                    // Calcular fin programado usando tramos laborales
+                    $tramos = $this->generarTramosLaborales($cursorTiempo, $tiempoSegundos, $festivosSet);
+
+                    if (!empty($tramos)) {
+                        $ultimoTramo = end($tramos);
+                        $finProgramado = $ultimoTramo['end'] instanceof Carbon
+                            ? $ultimoTramo['end']->copy()
+                            : Carbon::parse($ultimoTramo['end']);
+
+                        // Actualizar cursor para la siguiente planilla
+                        $cursorTiempo = $finProgramado->copy();
+
+                        // Actualizar fecha máxima si este fin es más lejano
+                        if ($finProgramado->gt($fechaMaxima)) {
+                            $fechaMaxima = $finProgramado->copy();
+                        }
+                    }
+                }
+            }
+
+            // Añadir un día de margen
+            $fechaMaxima = $fechaMaxima->addDay()->endOfDay();
+
+            // Calcular días y horas desde el inicio
+            $diasTotales = (int) ceil($fechaInicio->diffInDays($fechaMaxima));
+            $diasTotales = max($diasTotales, 15); // Mínimo 15 días
+            $horasTotales = $diasTotales * 24;
+
+            Log::info('📅 Fecha máxima calendario calculada', [
+                'fecha_inicio' => $fechaInicio->toDateString(),
+                'fecha_maxima' => $fechaMaxima->toDateString(),
+                'dias_totales' => $diasTotales,
+                'horas_totales' => $horasTotales
+            ]);
+
+            return [
+                'fecha' => $fechaMaxima->toDateString(),
+                'dias' => $diasTotales,
+                'horas' => $horasTotales
+            ];
+        } catch (\Exception $e) {
+            Log::error('Error calculando fecha máxima calendario', [
+                'error' => $e->getMessage()
+            ]);
+
+            // Fallback: 15 días
+            return [
+                'fecha' => Carbon::parse($initialDate)->addDays(15)->toDateString(),
+                'dias' => 15,
+                'horas' => 360
+            ];
+        }
+    }
+
     /**
      * 🔧 Obtiene la fecha real de finalización según el tipo de máquina
      * Busca en los campos de etiqueta correspondientes
@@ -2047,29 +2154,49 @@ class ProduccionController extends Controller
                             $esPrimerEvento = true;
                         }
 
-                        if ($fechaInicioMasAntigua && $fechaInicioMasAntigua->lt($inicioCola) && $esPrimerEvento) {
-                            // Caso especial: SOLO para el evento en posición 1 de la cola
-                            // Este evento empezó antes y está actualmente en fabricación
-                            $fechaInicio = $fechaInicioMasAntigua;
+                        if ($esPrimerEvento) {
+                            // 🎯 PRIMER EVENTO: fecha de inicio basada en estado de la etiqueta
+                            if ($fechaInicioMasAntigua) {
+                                // Hay elementos fabricando: usar la fecha_inicio de la etiqueta más antigua
+                                $fechaInicio = $fechaInicioMasAntigua;
 
-                            // Calcular duración: desde inicio real hasta now() + tiempo pendientes
-                            $duracionPendientes = $elementosPendientes->sum(function ($elemento) {
-                                $tiempoFabricacion = (float)($elemento->tiempo_fabricacion ?? 1200);
-                                $tiempoAmarrado = 1200;
-                                return $tiempoFabricacion + $tiempoAmarrado;
-                            });
+                                // Calcular duración: desde inicio real hasta now() + tiempo pendientes
+                                $duracionPendientes = $elementosPendientes->sum(function ($elemento) {
+                                    $tiempoFabricacion = (float)($elemento->tiempo_fabricacion ?? 1200);
+                                    $tiempoAmarrado = 1200;
+                                    return $tiempoFabricacion + $tiempoAmarrado;
+                                });
 
-                            // Calcular dónde debería terminar el evento
-                            $finEstimado = Carbon::now()->addSeconds($duracionPendientes);
+                                // Calcular dónde debería terminar el evento
+                                $finEstimado = Carbon::now()->addSeconds($duracionPendientes);
 
-                            // La duración es desde el inicio real hasta el fin estimado
-                            $duracionSegundos = max($fechaInicio->diffInSeconds($finEstimado), 3600);
+                                // La duración es desde el inicio real hasta el fin estimado
+                                $duracionSegundos = max($fechaInicio->diffInSeconds($finEstimado), 3600);
 
-                            Log::info('🎯 Primera planilla con fecha real', [
-                                'planilla' => $planilla->codigo_limpio,
-                                'fecha_real' => $fechaInicio->toIso8601String(),
-                                'inicioCola' => $inicioCola->toIso8601String()
-                            ]);
+                                Log::info('🎯 Primer evento FABRICANDO - usando fecha etiqueta', [
+                                    'planilla' => $planilla->codigo_limpio,
+                                    'fecha_etiqueta' => $fechaInicio->toIso8601String(),
+                                    'elementos_fabricando' => $elementosFabricandoOCompletados->count(),
+                                    'elementos_pendientes' => $elementosPendientes->count()
+                                ]);
+                            } else {
+                                // Todos los elementos están pendientes: usar now()
+                                $fechaInicio = Carbon::now();
+
+                                // Duración = suma de tiempos de fabricación de TODOS los elementos
+                                $duracionSegundos = $subGrupo->sum(function ($elemento) {
+                                    $tiempoFabricacion = (float)($elemento->tiempo_fabricacion ?? 1200);
+                                    $tiempoAmarrado = 1200;
+                                    return $tiempoFabricacion + $tiempoAmarrado;
+                                });
+                                $duracionSegundos = max($duracionSegundos, 3600);
+
+                                Log::info('🎯 Primer evento PENDIENTE - usando now()', [
+                                    'planilla' => $planilla->codigo_limpio,
+                                    'fecha_inicio' => $fechaInicio->toIso8601String(),
+                                    'elementos_pendientes' => $elementosPendientes->count()
+                                ]);
+                            }
                         } else {
                             // Caso normal: usar SIEMPRE inicioCola para evitar solapamiento
                             // Esto incluye planillas con elementos fabricando que NO sean la primera
@@ -2083,7 +2210,7 @@ class ProduccionController extends Controller
                             });
                             $duracionSegundos = max($duracionSegundos, 3600);
 
-                            if ($fechaInicioMasAntigua && !$esPrimerEvento) {
+                            if ($fechaInicioMasAntigua) {
                                 Log::warning('⚠️ Evento con elementos fabricando NO es el primero en cola', [
                                     'planilla' => $planilla->codigo_limpio,
                                     'orden_planilla_id' => $ordenKey,
@@ -3615,6 +3742,220 @@ class ProduccionController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Error al aplicar balanceo: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Obtener resumen del calendario de producción
+     */
+    public function obtenerResumen()
+    {
+        try {
+            // Obtener festivos para cálculo de tramos
+            $festivosSet = $this->obtenerFestivosSet();
+
+            // 1. Obtener todas las máquinas de producción (excluir grúas, soldadoras y ensambladoras)
+            $maquinas = Maquina::whereNotIn('tipo', ['grua', 'soldadora', 'ensambladora'])
+                ->whereNotNull('tipo')
+                ->where('estado', '!=', 'inactiva')
+                ->get();
+
+            // 2. Calcular datos por máquina
+            $datosMaquinas = [];
+            $planillasConRetraso = [];
+            $planillasRevisadas = 0;
+            $planillasNoRevisadas = 0;
+            $planillasAnalizadas = collect();
+
+            foreach ($maquinas as $maquina) {
+                // Obtener órdenes de planillas para esta máquina
+                $ordenesEnMaquina = DB::table('orden_planillas')
+                    ->join('planillas', 'planillas.id', '=', 'orden_planillas.planilla_id')
+                    ->where('orden_planillas.maquina_id', $maquina->id)
+                    ->select('orden_planillas.*', 'planillas.fecha_estimada_entrega', 'planillas.codigo', 'planillas.revisada', 'planillas.obra_id', 'planillas.descripcion', 'planillas.seccion', 'planillas.ensamblado')
+                    ->orderBy('orden_planillas.posicion')
+                    ->get();
+
+                // Calcular kilos y tiempo totales para esta máquina
+                $kilosTotales = 0;
+                $tiempoTotalSegundos = 0;
+                $cursorTiempo = now();
+
+                foreach ($ordenesEnMaquina as $orden) {
+                    // Obtener elementos pendientes de esta planilla en esta máquina
+                    $elementos = Elemento::where('planilla_id', $orden->planilla_id)
+                        ->where('maquina_id', $maquina->id)
+                        ->where('estado', 'pendiente')
+                        ->get();
+
+                    if ($elementos->isEmpty()) {
+                        continue;
+                    }
+
+                    // Sumar kilos y tiempo
+                    $kilosPlanilla = $elementos->sum('peso');
+                    $tiempoPlanilla = $elementos->sum('tiempo_fabricacion');
+
+                    $kilosTotales += $kilosPlanilla;
+                    $tiempoTotalSegundos += $tiempoPlanilla;
+
+                    // Calcular fin programado usando tramos laborales
+                    $tramos = $this->generarTramosLaborales($cursorTiempo, $tiempoPlanilla, $festivosSet);
+
+                    if (!empty($tramos)) {
+                        $ultimoTramo = end($tramos);
+                        $finProgramado = $ultimoTramo['end'] instanceof Carbon
+                            ? $ultimoTramo['end']->copy()
+                            : Carbon::parse($ultimoTramo['end']);
+
+                        // Actualizar cursor para la siguiente planilla
+                        $cursorTiempo = $finProgramado->copy();
+
+                        // Verificar si está fuera de tiempo
+                        $fechaEntrega = Carbon::parse($orden->fecha_estimada_entrega);
+                        if ($finProgramado->gt($fechaEntrega)) {
+                            // Solo agregar si no se ha analizado esta planilla
+                            if (!$planillasAnalizadas->contains($orden->planilla_id)) {
+                                $diasRetraso = (int) ceil($finProgramado->floatDiffInDays($fechaEntrega));
+                                $planillasConRetraso[] = [
+                                    'planilla_codigo' => $orden->codigo,
+                                    'planilla_id' => $orden->planilla_id,
+                                    'planilla_descripcion' => $orden->descripcion,
+                                    'planilla_seccion' => $orden->seccion,
+                                    'planilla_ensamblado' => $orden->ensamblado,
+                                    'obra_id' => $orden->obra_id,
+                                    'maquina_codigo' => $maquina->codigo,
+                                    'fecha_entrega' => $fechaEntrega->format('d/m/Y'),
+                                    'fin_programado' => $finProgramado->format('d/m/Y H:i'),
+                                    'dias_retraso' => $diasRetraso,
+                                ];
+                            }
+                        }
+                    }
+
+                    // Contar revisadas/no revisadas (solo una vez por planilla)
+                    if (!$planillasAnalizadas->contains($orden->planilla_id)) {
+                        $planillasAnalizadas->push($orden->planilla_id);
+                        if ($orden->revisada) {
+                            $planillasRevisadas++;
+                        } else {
+                            $planillasNoRevisadas++;
+                        }
+                    }
+                }
+
+                // Convertir tiempo a formato legible
+                $horas = floor($tiempoTotalSegundos / 3600);
+                $minutos = floor(($tiempoTotalSegundos % 3600) / 60);
+
+                $datosMaquinas[] = [
+                    'id' => $maquina->id,
+                    'codigo' => $maquina->codigo,
+                    'nombre' => $maquina->nombre ?? $maquina->codigo,
+                    'tipo' => $maquina->tipo,
+                    'kilos_totales' => round($kilosTotales, 2),
+                    'kilos_formateado' => number_format($kilosTotales, 2, ',', '.') . ' kg',
+                    'tiempo_total_segundos' => $tiempoTotalSegundos,
+                    'tiempo_formateado' => $horas . 'h ' . $minutos . 'min',
+                    'planillas_en_cola' => $ordenesEnMaquina->count(),
+                ];
+            }
+
+            // Ordenar máquinas por kilos (descendente)
+            usort($datosMaquinas, function ($a, $b) {
+                return $b['kilos_totales'] <=> $a['kilos_totales'];
+            });
+
+            // Agrupar planillas con retraso por cliente, obra y fecha de entrega
+            $clientesAgrupados = [];
+            foreach ($planillasConRetraso as $planilla) {
+                $obra = Obra::with('cliente')->find($planilla['obra_id']);
+                $clienteId = $obra && $obra->cliente ? $obra->cliente->id : 0;
+                $clienteCodigo = $obra && $obra->cliente ? $obra->cliente->codigo : '-';
+                $clienteNombre = $obra && $obra->cliente ? $obra->cliente->empresa : 'Sin cliente';
+                $obraId = $obra ? $obra->id : 0;
+                $obraCodigo = $obra ? $obra->cod_obra : '-';
+                $obraNombre = $obra ? $obra->obra : 'Sin obra';
+                $fechaEntrega = $planilla['fecha_entrega']; // dd/mm/yyyy
+
+                // Inicializar cliente si no existe
+                if (!isset($clientesAgrupados[$clienteId])) {
+                    $clientesAgrupados[$clienteId] = [
+                        'cliente_id' => $clienteId,
+                        'cliente_codigo' => $clienteCodigo,
+                        'cliente_nombre' => $clienteNombre,
+                        'obras' => [],
+                    ];
+                }
+
+                // Inicializar obra si no existe
+                if (!isset($clientesAgrupados[$clienteId]['obras'][$obraId])) {
+                    $clientesAgrupados[$clienteId]['obras'][$obraId] = [
+                        'obra_id' => $obraId,
+                        'obra_codigo' => $obraCodigo,
+                        'obra_nombre' => $obraNombre,
+                        'fechas' => [],
+                    ];
+                }
+
+                // Inicializar fecha si no existe
+                if (!isset($clientesAgrupados[$clienteId]['obras'][$obraId]['fechas'][$fechaEntrega])) {
+                    $clientesAgrupados[$clienteId]['obras'][$obraId]['fechas'][$fechaEntrega] = [
+                        'fecha_entrega' => $fechaEntrega,
+                        'planillas' => [],
+                    ];
+                }
+
+                // Agregar planilla a la fecha correspondiente
+                $clientesAgrupados[$clienteId]['obras'][$obraId]['fechas'][$fechaEntrega]['planillas'][] = [
+                    'planilla_codigo' => $planilla['planilla_codigo'],
+                    'descripcion' => $planilla['planilla_descripcion'],
+                    'seccion' => $planilla['planilla_seccion'],
+                    'ensamblado' => $planilla['planilla_ensamblado'],
+                    'maquina_codigo' => $planilla['maquina_codigo'],
+                    'fecha_entrega' => $planilla['fecha_entrega'],
+                    'fin_programado' => $planilla['fin_programado'],
+                    'dias_retraso' => $planilla['dias_retraso'],
+                ];
+            }
+
+            // Convertir arrays asociativos a arrays indexados y ordenar fechas
+            $clientesAgrupados = array_values($clientesAgrupados);
+            foreach ($clientesAgrupados as &$cliente) {
+                $cliente['obras'] = array_values($cliente['obras']);
+                foreach ($cliente['obras'] as &$obra) {
+                    // Ordenar fechas cronológicamente
+                    $fechas = $obra['fechas'];
+                    uasort($fechas, function ($a, $b) {
+                        $dateA = \DateTime::createFromFormat('d/m/Y', $a['fecha_entrega']);
+                        $dateB = \DateTime::createFromFormat('d/m/Y', $b['fecha_entrega']);
+                        return $dateA <=> $dateB;
+                    });
+                    $obra['fechas'] = array_values($fechas);
+                }
+            }
+
+            return response()->json([
+                'success' => true,
+                'resumen' => [
+                    'planillas_revisadas' => $planillasRevisadas,
+                    'planillas_no_revisadas' => $planillasNoRevisadas,
+                    'total_planillas' => $planillasRevisadas + $planillasNoRevisadas,
+                    'planillas_con_retraso' => count($planillasConRetraso),
+                ],
+                'clientes_con_retraso' => $clientesAgrupados,
+                'maquinas' => $datosMaquinas,
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Error en obtenerResumen:', [
+                'message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al obtener resumen: ' . $e->getMessage()
             ], 500);
         }
     }

@@ -1212,6 +1212,29 @@ class SalidaFerrallaController extends Controller
 
             // Función helper para mapear paquetes
             $mapPaquete = function ($paquete) {
+                // Mapear etiquetas con sus elementos
+                $etiquetas = [];
+                if ($paquete->etiquetas) {
+                    foreach ($paquete->etiquetas as $etiqueta) {
+                        $elementos = [];
+                        if ($etiqueta->elementos) {
+                            foreach ($etiqueta->elementos as $elemento) {
+                                $elementos[] = [
+                                    'id' => $elemento->id,
+                                    'dimensiones' => $elemento->dimensiones,
+                                    'peso' => $elemento->peso,
+                                    'longitud' => $elemento->longitud,
+                                    'diametro' => $elemento->diametro,
+                                ];
+                            }
+                        }
+                        $etiquetas[] = [
+                            'id' => $etiqueta->id,
+                            'elementos' => $elementos,
+                        ];
+                    }
+                }
+
                 return [
                     'id' => $paquete->id,
                     'codigo' => $paquete->codigo,
@@ -1234,11 +1257,12 @@ class SalidaFerrallaController extends Controller
                             'empresa' => $paquete->planilla->cliente->empresa ?? null,
                         ],
                     ],
+                    'etiquetas' => $etiquetas,
                 ];
             };
 
             // Obtener paquetes asignados a esta salida
-            $paquetesAsignados = Paquete::with(['planilla.obra:id,obra,cod_obra', 'planilla.cliente:id,empresa', 'nave:id,obra'])
+            $paquetesAsignados = Paquete::with(['planilla.obra:id,obra,cod_obra', 'planilla.cliente:id,empresa', 'nave:id,obra', 'etiquetas.elementos'])
                 ->whereHas('salidas', function ($q) use ($salidaId) {
                     $q->where('salidas.id', $salidaId);
                 })
@@ -1257,7 +1281,7 @@ class SalidaFerrallaController extends Controller
             $obrasIds = $obrasIds->filter()->unique()->values();
 
             // Obtener paquetes disponibles según el filtro (solo estado pendiente)
-            $queryDisponibles = Paquete::with(['planilla.obra:id,obra,cod_obra', 'planilla.cliente:id,empresa', 'nave:id,obra'])
+            $queryDisponibles = Paquete::with(['planilla.obra:id,obra,cod_obra', 'planilla.cliente:id,empresa', 'nave:id,obra', 'etiquetas.elementos'])
                 ->whereDoesntHave('salidas')
                 ->where('estado', 'pendiente');
 
@@ -1271,7 +1295,7 @@ class SalidaFerrallaController extends Controller
             $paquetesDisponibles = $queryDisponibles->get()->map($mapPaquete);
 
             // Obtener todos los paquetes disponibles (para el toggle) - solo estado pendiente
-            $paquetesTodos = Paquete::with(['planilla.obra:id,obra,cod_obra', 'planilla.cliente:id,empresa', 'nave:id,obra'])
+            $paquetesTodos = Paquete::with(['planilla.obra:id,obra,cod_obra', 'planilla.cliente:id,empresa', 'nave:id,obra', 'etiquetas.elementos'])
                 ->whereDoesntHave('salidas')
                 ->where('estado', 'pendiente')
                 ->get()
@@ -1432,10 +1456,11 @@ class SalidaFerrallaController extends Controller
                     'paquetes_ids' => $paquetesIds,
                     'estado' => 'asignado_a_salida',
                 ]);
-
-                // Sincronizar salida_clientes con las obras/clientes de los paquetes asignados
-                $this->sincronizarSalidaClientes($salidaId, $paquetesIds);
             }
+
+            // Sincronizar salida_clientes con las obras/clientes de los paquetes asignados
+            // (también elimina registros de obras que ya no tienen paquetes)
+            $this->sincronizarSalidaClientes($salidaId, $paquetesIds);
 
             Log::info('✅ Paquetes de salida guardados', [
                 'salida_id' => $salidaId,
@@ -2214,10 +2239,20 @@ class SalidaFerrallaController extends Controller
             }
         }
 
-        if ($nuevosRegistros > 0) {
+        // Eliminar registros que ya no tienen paquetes de esa obra/cliente
+        $registrosEliminados = 0;
+        foreach ($existentes as $clave => $registro) {
+            if (!isset($obrasClientesUnicos[$clave])) {
+                $registro->delete();
+                $registrosEliminados++;
+            }
+        }
+
+        if ($nuevosRegistros > 0 || $registrosEliminados > 0) {
             Log::info('🔄 Sincronizados salida_clientes', [
                 'salida_id' => $salidaId,
                 'nuevos_registros' => $nuevosRegistros,
+                'registros_eliminados' => $registrosEliminados,
                 'obras_clientes' => array_values($obrasClientesUnicos),
             ]);
         }

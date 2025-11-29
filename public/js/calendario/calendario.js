@@ -1,12 +1,23 @@
 // public/js/calendario/calendario.js
 (function () {
-    if (typeof FullCalendar === "undefined") {
-        console.error("FullCalendar no está cargado.");
-        return;
-    }
-
     const qsAll = (sel, ctx = document) =>
         Array.from(ctx.querySelectorAll(sel));
+
+    // Esperar a que FullCalendar esté disponible (máximo 5 segundos)
+    function waitForFullCalendar(callback, maxAttempts = 50) {
+        let attempts = 0;
+        const check = () => {
+            if (typeof FullCalendar !== "undefined") {
+                callback();
+            } else if (attempts < maxAttempts) {
+                attempts++;
+                setTimeout(check, 100);
+            } else {
+                console.error("FullCalendar no se cargó después de 5 segundos.");
+            }
+        };
+        check();
+    }
     const addDaysStr = (d, days) => {
         const x = new Date(d);
         x.setDate(x.getDate() + days);
@@ -14,55 +25,32 @@
     };
     const addOneDayStr = (d) => addDaysStr(d, 1);
 
-    function mergeDailyEvents(events) {
-        const norm = events.map((ev) => {
-            const startISO =
-                ev.startStr ||
-                ev.start ||
-                ev.startTime ||
-                ev.startDate ||
-                ev.start;
-            const start = new Date(startISO);
-            let endISO = ev.endStr || ev.end;
-            if (!endISO)
-                endISO = addOneDayStr(start.toISOString().split("T")[0]);
-            return {
-                ...ev,
-                start: start.toISOString(),
-                end: new Date(endISO).toISOString(),
-                allDay: ev.allDay !== false,
-            };
-        });
-        norm.sort((a, b) => new Date(a.start) - new Date(b.start));
-        const keyOf = (ev) => {
-            const p = ev.extendedProps || {};
-            // usa una “clave de grupo” estable si existe; si no, cae a título+tipo/estado/turno
-            const grupo = p.grupo || "";
-            return [
-                grupo || ev.title || "",
-                p.tipo || p.estado || p.turno || "",
-            ].join("|");
-        };
-        const merged = [];
-        for (const ev of norm) {
-            const startDay = ev.start.split("T")[0];
-            if (!merged.length) {
-                merged.push({ ...ev, __key: keyOf(ev) });
-                continue;
-            }
-            const last = merged[merged.length - 1];
-            const lastEndDay = last.end.split("T")[0];
-            if (last.__key === keyOf(ev) && startDay === lastEndDay) {
-                last.end = ev.end;
-                if (last.extendedProps) {
-                    last.extendedProps.asignacion_id = null;
-                    last.extendedProps.merged = true;
-                }
+    function normalizeDailyEvents(events) {
+        // Cada evento es individual por día - sin fusionar días consecutivos
+        // NO añadimos 'end' para que FullCalendar los trate como eventos de un solo día
+        return events.map((ev) => {
+            const startISO = ev.startStr || ev.start || ev.startTime || ev.startDate;
+            // Extraer solo la fecha (YYYY-MM-DD) sin hora
+            let startStr;
+            if (typeof startISO === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(startISO)) {
+                // Ya es formato YYYY-MM-DD
+                startStr = startISO;
             } else {
-                merged.push({ ...ev, __key: keyOf(ev) });
+                const startDate = new Date(startISO);
+                startStr = startDate.toISOString().split("T")[0];
             }
-        }
-        return merged.map(({ __key, ...rest }) => rest);
+
+            // Devolver evento sin 'end' para que sea de un solo día
+            const normalized = {
+                ...ev,
+                start: startStr,
+                allDay: true,
+            };
+            // Eliminar 'end' si existe para evitar que se extienda a varios días
+            delete normalized.end;
+            delete normalized.endStr;
+            return normalized;
+        });
     }
 
     function actualizarResumenAsistencia(resumenUrl) {
@@ -305,33 +293,171 @@
                 .map((t) => `<option value="${t.nombre}">${t.nombre}</option>`)
                 .join("");
 
-            const mensajeFecha =
-                fechaInicio === fechaFin
-                    ? `<p>${fechaInicio}</p>`
-                    : `<p>Desde: ${fechaInicio}</p><p>Hasta: ${fechaFin}</p>`;
+            const esMismoDia = fechaInicio === fechaFin;
+            const mensajeFecha = esMismoDia
+                ? `<p class="mb-2">${fechaInicio}</p>`
+                : `<p class="mb-2">Desde: ${fechaInicio} — Hasta: ${fechaFin}</p>`;
 
-            const { value: tipoSeleccionado, isConfirmed } = await Swal.fire({
-                title: "Selecciona un turno o estado",
+            // Si es un solo día, buscar horas existentes en los eventos del calendario
+            let entradaExistente = '';
+            let salidaExistente = '';
+            if (esMismoDia) {
+                const eventos = calendar.getEvents();
+                eventos.forEach(ev => {
+                    const props = ev.extendedProps || {};
+                    if (props.fecha === fechaInicio || (ev.startStr && ev.startStr.startsWith(fechaInicio))) {
+                        if (props.entrada && !entradaExistente) {
+                            entradaExistente = props.entrada.substring(0, 5);
+                        }
+                        if (props.salida && !salidaExistente) {
+                            salidaExistente = props.salida.substring(0, 5);
+                        }
+                    }
+                });
+            }
+
+            const { value: formData, isConfirmed } = await Swal.fire({
+                title: null,
                 html: `
-            ${mensajeFecha}
-            <select id="tipo-dia" class="swal2-select">
-                <option value="eliminarTurnoEstado">🗑 Eliminar Turno</option>
-                ${opcionesTurnos}
-                <option value="eliminarEstado">🗑 Eliminar Estado</option>
-                <option value="curso">🎓 Realizando Cursos</option>
-                <option value="vacaciones">🏖 Vacaciones</option>
-                <option value="baja">🤒 Baja</option>
-                <option value="justificada">✅ Falta Justificada</option>
-                <option value="injustificada">❌ Falta Injustificada</option>
-            </select>
-        `,
+                    <div style="text-align: left; overflow-x: hidden;">
+                        <!-- Header con fecha -->
+                        <div style="background: linear-gradient(135deg, #1e3a5f 0%, #111827 100%); color: white; margin: -20px -20px 20px -20px; padding: 20px; border-radius: 8px 8px 0 0;">
+                            <h3 style="margin: 0 0 8px 0; font-size: 18px; font-weight: 600;">📅 Gestionar Asignación</h3>
+                            <p style="margin: 0; font-size: 14px; opacity: 0.9;">
+                                ${esMismoDia ? fechaInicio : `${fechaInicio} → ${fechaFin}`}
+                            </p>
+                        </div>
+
+                        <!-- Selector de turno/estado -->
+                        <div style="margin-bottom: 20px;">
+                            <label style="display: block; font-size: 13px; font-weight: 600; color: #374151; margin-bottom: 8px;">
+                                Turno o Estado
+                            </label>
+                            <select id="tipo-dia" style="width: 100%; padding: 12px; border: 2px solid #e5e7eb; border-radius: 8px; font-size: 14px; background: white; cursor: pointer; transition: border-color 0.2s;">
+                                <option value="">⏱️ Solo actualizar horas</option>
+                                <option value="eliminarTurnoEstado">🗑️ Eliminar turno</option>
+                                ${opcionesTurnos}
+                                <option disabled style="font-size: 8px;">─────────</option>
+                                <option value="eliminarEstado">🗑️ Eliminar estado</option>
+                                <option value="curso">🎓 Cursos</option>
+                                <option value="vacaciones">🏖️ Vacaciones</option>
+                                <option value="baja">🤒 Baja</option>
+                                <option value="justificada">✅ Justificada</option>
+                                <option value="injustificada">❌ Injustificada</option>
+                            </select>
+                        </div>
+
+                        <!-- Campos de hora -->
+                        <div style="background: #f9fafb; border-radius: 8px; padding: 16px; border: 1px solid #e5e7eb;">
+                            <label style="display: block; font-size: 13px; font-weight: 600; color: #374151; margin-bottom: 12px;">
+                                Horario de fichaje
+                            </label>
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                                <div>
+                                    <label style="display: flex; align-items: center; gap: 6px; font-size: 12px; color: #059669; margin-bottom: 6px; font-weight: 500;">
+                                        <span style="width: 8px; height: 8px; background: #10b981; border-radius: 50%; display: inline-block;"></span>
+                                        Entrada
+                                    </label>
+                                    <input type="time" id="hora-entrada" value="${entradaExistente}"
+                                        style="width: 100%; padding: 10px 12px; border: 2px solid #e5e7eb; border-radius: 8px; font-size: 15px; font-family: monospace; transition: border-color 0.2s;">
+                                </div>
+                                <div>
+                                    <label style="display: flex; align-items: center; gap: 6px; font-size: 12px; color: #dc2626; margin-bottom: 6px; font-weight: 500;">
+                                        <span style="width: 8px; height: 8px; background: #ef4444; border-radius: 50%; display: inline-block;"></span>
+                                        Salida
+                                    </label>
+                                    <input type="time" id="hora-salida" value="${salidaExistente}"
+                                        style="width: 100%; padding: 10px 12px; border: 2px solid #e5e7eb; border-radius: 8px; font-size: 15px; font-family: monospace; transition: border-color 0.2s;">
+                                </div>
+                            </div>
+                            ${!esMismoDia ? `
+                                <p style="margin: 12px 0 0 0; font-size: 12px; color: #6b7280; display: flex; align-items: center; gap: 6px;">
+                                    <svg style="width: 14px; height: 14px;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                    </svg>
+                                    Deja vacío para mantener las horas actuales
+                                </p>
+                            ` : ''}
+                        </div>
+                    </div>
+                `,
                 showCancelButton: true,
-                confirmButtonText: "Registrar",
+                confirmButtonText: "Guardar",
                 cancelButtonText: "Cancelar",
-                preConfirm: () => document.getElementById("tipo-dia").value,
+                confirmButtonColor: "#1e3a5f",
+                cancelButtonColor: "#6b7280",
+                width: 420,
+                padding: "20px",
+                customClass: {
+                    popup: 'swal-calendario-popup',
+                    confirmButton: 'swal-btn-confirm',
+                    cancelButton: 'swal-btn-cancel'
+                },
+                preConfirm: () => {
+                    return {
+                        tipo: document.getElementById("tipo-dia").value,
+                        entrada: document.getElementById("hora-entrada").value || null,
+                        salida: document.getElementById("hora-salida").value || null,
+                    };
+                },
+                didOpen: () => {
+                    // Añadir efectos hover a los inputs
+                    const inputs = document.querySelectorAll('#hora-entrada, #hora-salida, #tipo-dia');
+                    inputs.forEach(input => {
+                        input.addEventListener('focus', () => input.style.borderColor = '#3b82f6');
+                        input.addEventListener('blur', () => input.style.borderColor = '#e5e7eb');
+                    });
+                }
             });
 
-            if (!isConfirmed) return;
+            if (!isConfirmed || !formData) return;
+
+            const tipoSeleccionado = formData.tipo;
+            const horaEntrada = formData.entrada;
+            const horaSalida = formData.salida;
+
+            // --- Solo actualizar horas (sin cambiar turno/estado) ---
+            if (!tipoSeleccionado) {
+                // Validar que al menos una hora esté especificada
+                if (!horaEntrada && !horaSalida) {
+                    Swal.fire("Aviso", "Debes especificar al menos una hora para actualizar.", "warning");
+                    return;
+                }
+
+                const body = {
+                    user_id: userId,
+                    fecha_inicio: fechaInicio,
+                    fecha_fin: fechaFin,
+                    tipo: "soloHoras",
+                };
+                if (horaEntrada) body.entrada = horaEntrada;
+                if (horaSalida) body.salida = horaSalida;
+
+                fetch(routes.storeUrl, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "X-CSRF-TOKEN": csrfToken,
+                    },
+                    body: JSON.stringify(body),
+                })
+                    .then((res) => res.json())
+                    .then((data) => {
+                        if (data.success) {
+                            smartRefetch(calendar, () =>
+                                actualizarResumenAsistencia(routes.resumenUrl)
+                            );
+                            Swal.fire("Actualizado", "Horas actualizadas correctamente.", "success");
+                        } else {
+                            Swal.fire("Error", data.error || "No se pudieron actualizar las horas.", "error");
+                        }
+                    })
+                    .catch((err) => {
+                        console.error("Error:", err);
+                        Swal.fire("Error", "Ocurrió un problema al actualizar las horas.", "error");
+                    });
+                return;
+            }
 
             // --- Lógica de eliminación ---
             if (
@@ -409,6 +535,10 @@
                 tipo: tipoSeleccionado,
             };
 
+            // Añadir horas solo si se han especificado
+            if (horaEntrada) body.entrada = horaEntrada;
+            if (horaSalida) body.salida = horaSalida;
+
             fetch(routes.storeUrl, {
                 method: "POST",
                 headers: {
@@ -455,6 +585,12 @@
             height: "auto",
             selectable: false, // drag-select desactivado
             selectMirror: false,
+            displayEventTime: false, // La hora ya está en el título
+            displayEventEnd: false,
+            eventDisplay: 'block', // Mostrar eventos timed como bloques
+            nextDayThreshold: '00:00:00', // Eventos que terminan a medianoche no pasan al día siguiente
+            forceEventDuration: true, // Forzar duración por defecto
+            defaultAllDayEventDuration: { days: 1 }, // Duración por defecto de 1 día
             headerToolbar: {
                 left: "prev,next today",
                 center: "title",
@@ -473,7 +609,30 @@
                 }
                 fetch(routes.eventosUrl)
                     .then((r) => r.json())
-                    .then((events) => success(mergeDailyEvents(events)))
+                    .then((events) => {
+                        console.log('📅 Eventos recibidos del servidor:', events.length);
+
+                        // Separar eventos allDay de eventos con hora (fichajes)
+                        const allDayEvents = events.filter(ev => ev.allDay !== false);
+                        const timedEvents = events.filter(ev => ev.allDay === false);
+
+                        console.log('📅 Eventos allDay:', allDayEvents.length, 'Eventos con hora:', timedEvents.length);
+
+                        // Normalizar solo los eventos allDay
+                        const normalized = normalizeDailyEvents(allDayEvents);
+
+                        // Verificar que no hay eventos con end multi-día
+                        normalized.forEach(ev => {
+                            if (ev.end) {
+                                console.warn('⚠️ Evento con end:', ev.id, ev.start, ev.end);
+                            }
+                        });
+
+                        // Combinar ambos tipos
+                        const final = [...normalized, ...timedEvents];
+                        console.log('📅 Total eventos a renderizar:', final.length);
+                        success(final);
+                    })
                     .catch(failure);
             },
 
@@ -563,9 +722,45 @@
         actualizarResumenAsistencia(routes.resumenUrl);
 
         calendar.on("datesSet", bindHoverCells);
+
+        // Exponer calendario globalmente para poder refrescar desde otros scripts
+        window.calendar = calendar;
     }
 
-    document.addEventListener("DOMContentLoaded", function () {
-        qsAll(".fc-calendario").forEach(initCalendarOn);
+    // Función para inicializar calendarios que no han sido inicializados
+    function initCalendars() {
+        const calendarios = qsAll(".fc-calendario");
+        if (calendarios.length === 0) return;
+
+        // Esperar a que FullCalendar esté disponible
+        waitForFullCalendar(() => {
+            calendarios.forEach((el) => {
+                // Solo inicializar si no tiene ya un calendario
+                if (!el.classList.contains("fc-initialized")) {
+                    el.classList.add("fc-initialized");
+                    initCalendarOn(el);
+                }
+            });
+        });
+    }
+
+    // Inicializar en carga inicial
+    if (document.readyState === 'loading') {
+        document.addEventListener("DOMContentLoaded", initCalendars);
+    } else {
+        // DOM ya está listo
+        initCalendars();
+    }
+
+    // Reinicializar después de navegación Livewire (SPA)
+    document.addEventListener("livewire:navigated", initCalendars);
+
+    // Recargar eventos cuando se sube un justificante
+    document.addEventListener("livewire:initialized", () => {
+        Livewire.on("justificante-guardado", () => {
+            if (window.calendar) {
+                window.calendar.refetchEvents();
+            }
+        });
     });
 })();

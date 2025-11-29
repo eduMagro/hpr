@@ -179,6 +179,16 @@
                         </svg>
                         <span class="text-sm font-medium hidden md:inline">Balancear Carga</span>
                     </button>
+
+                    <!-- Botón de resumen -->
+                    <button onclick="abrirModalResumen()" id="resumen-btn"
+                        title="Ver resumen del calendario"
+                        class="px-3 py-2 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white rounded-lg transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105 flex items-center gap-2 group">
+                        <svg class="w-5 h-5 transition-transform group-hover:scale-110" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                        </svg>
+                        <span class="text-sm font-medium hidden md:inline">Resumen</span>
+                    </button>
                 </div>
 
                 <!-- Botón de pantalla completa en esquina superior derecha -->
@@ -725,6 +735,106 @@
             </div>
         </div>
 
+        <!-- Modal Resumen del Calendario -->
+        <div id="modalResumen"
+            class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50 overflow-y-auto">
+            <div class="bg-white rounded-lg shadow-xl w-full max-w-5xl mx-4 my-8 max-h-[90vh] flex flex-col">
+                <div class="bg-blue-600 text-white px-6 py-4 rounded-t-lg">
+                    <h3 class="text-lg font-semibold flex items-center gap-2">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                        </svg>
+                        Resumen del Calendario de Producción
+                    </h3>
+                    <p class="text-sm opacity-90 mt-1">Vista general del estado de las planillas y carga de máquinas</p>
+                </div>
+
+                <!-- Loading state -->
+                <div id="resumenLoading" class="p-12 text-center">
+                    <div class="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+                    <p class="mt-4 text-gray-600">Cargando resumen del calendario...</p>
+                </div>
+
+                <!-- Content state -->
+                <div id="resumenContent" class="hidden flex-1 overflow-y-auto">
+                    <!-- Estadísticas superiores -->
+                    <div class="p-6 bg-gray-50 border-b border-gray-200">
+                        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                            <div class="bg-green-50 border border-green-200 rounded-lg p-4">
+                                <div class="text-sm text-green-600 font-medium">Planillas Revisadas</div>
+                                <div id="estadRevisadas" class="text-3xl font-bold text-green-700">0</div>
+                            </div>
+                            <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                                <div class="text-sm text-yellow-600 font-medium">Sin Revisar</div>
+                                <div id="estadNoRevisadas" class="text-3xl font-bold text-yellow-700">0</div>
+                            </div>
+                            <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                                <div class="text-sm text-blue-600 font-medium">Total en Cola</div>
+                                <div id="estadTotalPlanillas" class="text-3xl font-bold text-blue-700">0</div>
+                            </div>
+                            <div class="bg-red-50 border border-red-200 rounded-lg p-4">
+                                <div class="text-sm text-red-600 font-medium">Fuera de Tiempo</div>
+                                <div id="estadFueraTiempo" class="text-3xl font-bold text-red-700">0</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Sección de Planillas Fuera de Tiempo -->
+                    <div class="p-6 border-b border-gray-200">
+                        <h4 class="font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                            <svg class="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg>
+                            Planillas Fuera de Tiempo
+                        </h4>
+                        <div id="contenedorClientesRetraso" class="space-y-4">
+                            <!-- Se llenará dinámicamente -->
+                        </div>
+                        <div id="sinPlanillasRetraso" class="hidden text-center py-8 text-gray-500">
+                            <svg class="w-12 h-12 mx-auto text-green-500 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg>
+                            <p>No hay planillas fuera de tiempo</p>
+                        </div>
+                    </div>
+
+                    <!-- Sección de Carga por Máquina -->
+                    <div class="p-6">
+                        <h4 class="font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                            <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
+                            </svg>
+                            Carga por Máquina
+                        </h4>
+                        <div class="overflow-x-auto">
+                            <table class="min-w-full divide-y divide-gray-200 text-sm">
+                                <thead class="bg-gray-50">
+                                    <tr>
+                                        <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Máquina</th>
+                                        <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Tipo</th>
+                                        <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Planillas en Cola</th>
+                                        <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Kilos Totales</th>
+                                        <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Tiempo de Trabajo</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tablaMaquinas" class="bg-white divide-y divide-gray-200">
+                                    <!-- Se llenará dinámicamente -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Botones de acción -->
+                <div class="bg-gray-50 px-6 py-4 rounded-b-lg flex justify-end gap-3 border-t border-gray-200">
+                    <button onclick="cerrarModalResumen()"
+                        class="bg-gray-300 hover:bg-gray-400 text-gray-700 px-4 py-2 rounded-lg transition-colors">
+                        Cerrar
+                    </button>
+                </div>
+            </div>
+        </div>
+
         <style>
             /* Contenedor calendario */
             #contenedor-calendario {
@@ -1220,18 +1330,18 @@
                                 days: 1
                             },
                             slotMinTime: '00:00:00',
-                            slotMaxTime: '360:00:00',
+                            slotMaxTime: '{{ $fechaMaximaCalendario["horas"] }}:00:00',
                             slotDuration: '01:00:00',
                             dayHeaderContent: function(arg) {
                                 return '';
                             },
-                            buttonText: '15 días',
-                            // Extender el rango visible para incluir 15 días de eventos
+                            buttonText: '{{ $fechaMaximaCalendario["dias"] }} días',
+                            // Extender el rango visible hasta el último fin programado
                             visibleRange: function(currentDate) {
                                 const start = new Date(currentDate);
                                 start.setHours(0, 0, 0, 0);
                                 const end = new Date(start);
-                                end.setDate(end.getDate() + 15);
+                                end.setDate(end.getDate() + {{ $fechaMaximaCalendario["dias"] }});
                                 return { start: start, end: end };
                             }
                         }
@@ -1271,9 +1381,10 @@
                         const msEnd = endDate.getTime() - initialDate.getTime();
                         const horasStart = msStart / (1000 * 60 * 60);
                         const horasEnd = msEnd / (1000 * 60 * 60);
+                        const horasMaximas = {{ $fechaMaximaCalendario["horas"] }};
 
-                        // Solo procesar eventos dentro del rango de 360 horas
-                        if (horasStart >= 0 && horasStart < 360) {
+                        // Solo procesar eventos dentro del rango dinámico
+                        if (horasStart >= 0 && horasStart < horasMaximas) {
                             // Convertir a formato que FullCalendar entienda para vista extendida
                             // Usar el initialDate como base y añadir las horas como minutos desde medianoche
                             const nuevoStart = new Date(initialDate);
@@ -4526,6 +4637,215 @@
                         title: 'Error',
                         text: 'No se pudo aplicar el balanceo. Por favor intenta de nuevo.'
                     });
+                }
+            }
+
+            // ============================================================
+            // RESUMEN DEL CALENDARIO
+            // ============================================================
+
+            async function abrirModalResumen() {
+                const modal = document.getElementById('modalResumen');
+                const loading = document.getElementById('resumenLoading');
+                const content = document.getElementById('resumenContent');
+
+                // Mostrar modal en estado de carga
+                modal.classList.remove('hidden');
+                modal.classList.add('flex');
+                loading.classList.remove('hidden');
+                content.classList.add('hidden');
+
+                try {
+                    const response = await fetch('/api/produccion/resumen', {
+                        method: 'GET',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                        }
+                    });
+
+                    if (!response.ok) {
+                        throw new Error('Error al obtener resumen');
+                    }
+
+                    const data = await response.json();
+
+                    if (data.success) {
+                        // Llenar estadísticas
+                        document.getElementById('estadRevisadas').textContent = data.resumen.planillas_revisadas;
+                        document.getElementById('estadNoRevisadas').textContent = data.resumen.planillas_no_revisadas;
+                        document.getElementById('estadTotalPlanillas').textContent = data.resumen.total_planillas;
+                        document.getElementById('estadFueraTiempo').textContent = data.resumen.planillas_con_retraso;
+
+                        // Llenar estructura de clientes con retraso
+                        const contenedorClientes = document.getElementById('contenedorClientesRetraso');
+                        const sinRetraso = document.getElementById('sinPlanillasRetraso');
+
+                        contenedorClientes.innerHTML = '';
+
+                        if (data.clientes_con_retraso && data.clientes_con_retraso.length > 0) {
+                            contenedorClientes.classList.remove('hidden');
+                            sinRetraso.classList.add('hidden');
+
+                            data.clientes_con_retraso.forEach((cliente, index) => {
+                                const clienteDiv = document.createElement('div');
+                                clienteDiv.className = 'border border-gray-200 rounded-lg overflow-hidden';
+                                const clienteId = `cliente-${index}`;
+
+                                let obrasHtml = '';
+                                let totalPlanillas = 0;
+                                cliente.obras.forEach(obra => {
+                                    // Contar planillas de todas las fechas
+                                    let planillasObra = 0;
+                                    obra.fechas.forEach(fecha => {
+                                        planillasObra += fecha.planillas.length;
+                                    });
+                                    totalPlanillas += planillasObra;
+
+                                    // Generar HTML para cada fecha de entrega
+                                    let fechasHtml = '';
+                                    obra.fechas.forEach(fecha => {
+                                        let planillasHtml = '';
+                                        fecha.planillas.forEach(planilla => {
+                                            planillasHtml += `
+                                                <tr class="hover:bg-gray-50">
+                                                    <td class="px-3 py-2">
+                                                        <div class="font-medium text-gray-900">${planilla.planilla_codigo}</div>
+                                                        <div class="text-xs text-gray-500">${planilla.seccion || ''} ${planilla.descripcion ? '- ' + planilla.descripcion : ''}</div>
+                                                        ${planilla.ensamblado ? '<div class="text-xs text-orange-600 font-medium">' + planilla.ensamblado + '</div>' : ''}
+                                                    </td>
+                                                    <td class="px-3 py-2">
+                                                        <span class="px-2 py-1 text-xs font-medium rounded-full bg-gray-100 text-gray-800">
+                                                            ${planilla.maquina_codigo}
+                                                        </span>
+                                                    </td>
+                                                    <td class="px-3 py-2 text-red-600 font-medium">${planilla.fin_programado}</td>
+                                                    <td class="px-3 py-2">
+                                                        <span class="px-2 py-1 text-xs font-bold rounded-full bg-red-100 text-red-800">
+                                                            +${planilla.dias_retraso} días
+                                                        </span>
+                                                    </td>
+                                                </tr>
+                                            `;
+                                        });
+
+                                        fechasHtml += `
+                                            <div class="border-t border-green-100">
+                                                <div class="bg-green-50 px-4 py-2 flex items-center gap-2">
+                                                    <svg class="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                                                    </svg>
+                                                    <span class="text-sm font-medium text-green-800">Entrega: ${fecha.fecha_entrega}</span>
+                                                    <span class="text-xs text-green-600">(${fecha.planillas.length} planilla${fecha.planillas.length > 1 ? 's' : ''})</span>
+                                                </div>
+                                                <table class="min-w-full text-sm">
+                                                    <thead class="bg-gray-50">
+                                                        <tr>
+                                                            <th class="px-3 py-1.5 text-left text-xs font-medium text-gray-500 uppercase">Planilla / Sección - Descripción</th>
+                                                            <th class="px-3 py-1.5 text-left text-xs font-medium text-gray-500 uppercase">Máquina</th>
+                                                            <th class="px-3 py-1.5 text-left text-xs font-medium text-gray-500 uppercase">Fin Prog.</th>
+                                                            <th class="px-3 py-1.5 text-left text-xs font-medium text-gray-500 uppercase">Retraso</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody class="divide-y divide-gray-100">
+                                                        ${planillasHtml}
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        `;
+                                    });
+
+                                    obrasHtml += `
+                                        <div class="border-t border-gray-100">
+                                            <div class="bg-blue-50 px-4 py-2 flex items-center gap-2">
+                                                <span class="px-2 py-0.5 text-xs font-bold rounded bg-blue-200 text-blue-800">${obra.obra_codigo || '-'}</span>
+                                                <span class="text-sm font-medium text-blue-800">${obra.obra_nombre}</span>
+                                                <span class="text-xs text-blue-600">(${obra.fechas.length} fecha${obra.fechas.length > 1 ? 's' : ''}, ${planillasObra} planilla${planillasObra > 1 ? 's' : ''})</span>
+                                            </div>
+                                            ${fechasHtml}
+                                        </div>
+                                    `;
+                                });
+
+                                clienteDiv.innerHTML = `
+                                    <div class="bg-indigo-600 text-white px-4 py-2 flex items-center gap-3 cursor-pointer hover:bg-indigo-700 transition-colors"
+                                         onclick="toggleClienteResumen('${clienteId}')">
+                                        <svg id="${clienteId}-icon" class="w-5 h-5 transform transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                                        </svg>
+                                        <span class="px-2 py-0.5 text-xs font-bold rounded bg-indigo-400">${cliente.cliente_codigo || '-'}</span>
+                                        <span class="font-semibold">${cliente.cliente_nombre}</span>
+                                        <span class="text-indigo-200 text-sm">(${cliente.obras.length} obra${cliente.obras.length > 1 ? 's' : ''}, ${totalPlanillas} planilla${totalPlanillas > 1 ? 's' : ''})</span>
+                                    </div>
+                                    <div id="${clienteId}-content" class="hidden">
+                                        ${obrasHtml}
+                                    </div>
+                                `;
+
+                                contenedorClientes.appendChild(clienteDiv);
+                            });
+                        } else {
+                            contenedorClientes.classList.add('hidden');
+                            sinRetraso.classList.remove('hidden');
+                        }
+
+                        // Llenar tabla de máquinas
+                        const tablaMaquinas = document.getElementById('tablaMaquinas');
+                        tablaMaquinas.innerHTML = '';
+
+                        data.maquinas.forEach(maquina => {
+                            const row = document.createElement('tr');
+                            row.innerHTML = `
+                                <td class="px-3 py-2 font-medium text-gray-900">${maquina.codigo}</td>
+                                <td class="px-3 py-2">
+                                    <span class="px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-800 capitalize">
+                                        ${maquina.tipo || '-'}
+                                    </span>
+                                </td>
+                                <td class="px-3 py-2 text-gray-600">${maquina.planillas_en_cola}</td>
+                                <td class="px-3 py-2 font-medium text-gray-900">${maquina.kilos_formateado}</td>
+                                <td class="px-3 py-2 text-gray-600">${maquina.tiempo_formateado}</td>
+                            `;
+                            tablaMaquinas.appendChild(row);
+                        });
+
+                        // Mostrar contenido
+                        loading.classList.add('hidden');
+                        content.classList.remove('hidden');
+                    } else {
+                        throw new Error(data.message || 'Error desconocido');
+                    }
+
+                } catch (error) {
+                    console.error('Error al obtener resumen:', error);
+                    loading.innerHTML = `
+                        <div class="text-red-500">
+                            <svg class="w-12 h-12 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg>
+                            <p>Error al cargar el resumen</p>
+                            <p class="text-sm text-gray-500 mt-2">${error.message}</p>
+                        </div>
+                    `;
+                }
+            }
+
+            function cerrarModalResumen() {
+                const modal = document.getElementById('modalResumen');
+                modal.classList.add('hidden');
+                modal.classList.remove('flex');
+            }
+
+            function toggleClienteResumen(clienteId) {
+                const content = document.getElementById(`${clienteId}-content`);
+                const icon = document.getElementById(`${clienteId}-icon`);
+
+                if (content.classList.contains('hidden')) {
+                    content.classList.remove('hidden');
+                    icon.classList.add('rotate-90');
+                } else {
+                    content.classList.add('hidden');
+                    icon.classList.remove('rotate-90');
                 }
             }
 

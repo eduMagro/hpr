@@ -177,43 +177,28 @@
 
                                 <!-- Columna Enviado por -->
                                 <td class="px-4 py-3 text-center">
-                                    @php $usuario = $alerta->usuario1; @endphp
-                                    @if ($usuario)
-                                        <div class="flex flex-col items-center">
-                                            <span class="font-medium text-gray-900">
-                                                @if ($usuario->rol === 'oficina')
-                                                    {{ $usuario->email === 'eduardo.magro@pacoreyes.com' ? 'Dpto. Informática' : 'Administrador' }}
-                                                @else
-                                                    {{ $usuario->nombre_completo }}
-                                                @endif
-                                            </span>
-                                            @if ($usuario->rol === 'oficina')
-                                                <span class="text-xs text-gray-500 mt-0.5">
-                                                    <svg class="w-3 h-3 inline mr-0.5" fill="currentColor"
-                                                        viewBox="0 0 20 20">
-                                                        <path fill-rule="evenodd"
-                                                            d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-6-3a2 2 0 11-4 0 2 2 0 014 0zm-2 4a5 5 0 00-4.546 2.916A5.986 5.986 0 0010 16a5.986 5.986 0 004.546-2.084A5 5 0 0010 11z"
-                                                            clip-rule="evenodd" />
-                                                    </svg>
-                                                    Oficina
-                                                </span>
-                                            @endif
-                                        </div>
-                                    @else
-                                        <span class="text-gray-400 italic">Desconocido</span>
-                                    @endif
+                                    <div class="flex flex-col items-center">
+                                        <span class="font-medium text-gray-900">
+                                            {{ $alerta->nombre_emisor }}
+                                        </span>
+                                    </div>
                                 </td>
 
                                 <!-- Columna Mensaje -->
                                 <td class="px-4 py-3">
                                     <div class="flex items-start justify-between space-x-2">
                                         <div class="flex-1 min-w-0">
-                                            <p class="text-gray-800 line-clamp-2"
+                                            {{-- Mensaje acortado en móvil --}}
+                                            <p class="text-gray-800 line-clamp-2 lg:hidden"
                                                 title="{{ $alerta->mensaje_completo }}">
                                                 {{ $alerta->mensaje_corto }}
                                             </p>
+                                            {{-- Mensaje completo en PC --}}
+                                            <p class="text-gray-800 hidden lg:block">
+                                                {!! $alerta->mensaje !!}
+                                            </p>
                                             @if (strlen($alerta->mensaje_completo) > strlen($alerta->mensaje_corto))
-                                                <span class="text-xs text-blue-600 hover:text-blue-800 font-medium">
+                                                <span class="text-xs text-blue-600 hover:text-blue-800 font-medium lg:hidden">
                                                     Clic para ver completo...
                                                 </span>
                                             @endif
@@ -339,29 +324,23 @@
                                 </div>
                                 <div class="flex-1 min-w-0">
                                     <p class="text-sm font-medium text-gray-900">
-                                        @if ($usuario)
-                                            @if ($usuario->rol === 'oficina')
-                                                {{ $usuario->email === 'eduardo.magro@pacoreyes.com' ? 'Dpto. Informática' : 'Administrador' }}
-                                            @else
-                                                {{ $usuario->nombre_completo }}
-                                            @endif
-                                        @else
-                                            Desconocido
-                                        @endif
+                                        {{ $alerta->nombre_emisor }}
                                     </p>
-                                    @if ($usuario && $usuario->rol === 'oficina')
-                                        <p class="text-xs text-gray-500">Oficina</p>
-                                    @endif
                                 </div>
                             </div>
 
                             <!-- Mensaje -->
                             <div class="bg-gray-50 rounded-lg p-3 border border-gray-200">
-                                <p class="text-sm text-gray-800 line-clamp-3">
+                                {{-- Mensaje acortado en móvil --}}
+                                <p class="text-sm text-gray-800 line-clamp-3 lg:hidden">
                                     {{ $alerta->mensaje_corto }}
                                 </p>
+                                {{-- Mensaje completo en PC --}}
+                                <p class="text-sm text-gray-800 hidden lg:block">
+                                    {!! $alerta->mensaje !!}
+                                </p>
 
-                                <div class="flex items-center justify-between mt-2">
+                                <div class="flex items-center justify-between mt-2 lg:hidden">
                                     @if (strlen($alerta->mensaje_completo) > strlen($alerta->mensaje_corto))
                                         <button class="text-xs text-blue-600 font-medium flex items-center">
                                             <span>Ver mensaje completo</span>
@@ -697,9 +676,9 @@
                             </div>
                             <div class="flex-1 min-w-0">
                                 <p class="text-sm font-bold text-gray-900">
-                                    {{ $alerta->usuario1?->nombre_completo ?? 'Desconocido' }}
+                                    {{ $alerta->nombre_emisor }}
                                 </p>
-                                @if ($alerta->usuario1?->rol)
+                                @if ($alerta->nombre_emisor !== 'Sistema' && $alerta->usuario1?->rol)
                                     <p class="text-xs text-gray-500 mt-0.5">
                                         <span class="inline-block w-2 h-2 rounded-full bg-blue-400 mr-1"></span>
                                         {{ ucfirst($alerta->usuario1->rol) }}
@@ -1097,7 +1076,7 @@
         }
 
         function iniciarEdicionAlerta() {
-            document.getElementById('contenidoMensajePadre').classList.add('hidden');
+            document.getElementById('hiloConversacion').classList.add('hidden');
             document.getElementById('textareaMensaje').classList.remove('hidden');
             document.getElementById('botonEditar').classList.add('hidden');
             document.getElementById('botonesGuardarCancelar').classList.remove('hidden');
@@ -1105,7 +1084,7 @@
 
         function cancelarEdicionAlerta() {
             document.getElementById('textareaMensaje').classList.add('hidden');
-            document.getElementById('contenidoMensajePadre').classList.remove('hidden');
+            document.getElementById('hiloConversacion').classList.remove('hidden');
             document.getElementById('botonEditar').classList.remove('hidden');
             document.getElementById('botonesGuardarCancelar').classList.add('hidden');
         }

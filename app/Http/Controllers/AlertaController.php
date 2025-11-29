@@ -472,7 +472,37 @@ $ordenablesAlertas = [];
 
                     // Actualizar el updated_at del mensaje raíz para indicar nueva actividad
                     $mensajeRaiz = $mensajePadre->mensajeRaiz();
-                    $mensajeRaiz->touch(); // Esto actualiza el updated_at sin modificar leida_en
+                    $mensajeRaiz->touch();
+
+                    // Marcar el mensaje raíz como no leído para el destinatario de la respuesta
+                    // Esto hace que el hilo vuelva a aparecer como nuevo mensaje
+                    // Excluimos al usuario que está enviando la respuesta
+                    foreach ($usuariosDestino as $destinatario) {
+                        if ($destinatario->id === $user->id) {
+                            continue; // No marcar como no leído para quien envía la respuesta
+                        }
+                        AlertaLeida::updateOrCreate(
+                            [
+                                'alerta_id' => $mensajeRaiz->id,
+                                'user_id'   => $destinatario->id,
+                            ],
+                            [
+                                'leida_en' => null,
+                            ]
+                        );
+                    }
+
+                    // Actualizar el leida_en del emisor para que no le aparezca como nuevo
+                    // (ya que el touch() actualiza updated_at y causaría tiene_respuestas_nuevas = true)
+                    AlertaLeida::updateOrCreate(
+                        [
+                            'alerta_id' => $mensajeRaiz->id,
+                            'user_id'   => $user->id,
+                        ],
+                        [
+                            'leida_en' => now(),
+                        ]
+                    );
 
                     // Siempre devolver JSON para respuestas (peticiones AJAX)
                     return response()->json(['success' => true, 'message' => 'Respuesta enviada correctamente']);
@@ -679,7 +709,7 @@ $ordenablesAlertas = [];
             'mensaje' => $mensaje->mensaje,
             'created_at' => $mensaje->created_at->format('d/m/Y H:i'),
             'user_id_1' => $mensaje->user_id_1,
-            'emisor' => $mensaje->usuario1 ? ($mensaje->usuario1->nombre_completo ?? $mensaje->usuario1->name) : 'Usuario desconocido',
+            'emisor' => $mensaje->nombre_emisor,
             'es_propio' => $mensaje->user_id_1 === $user->id,
             'es_raiz' => $mensaje->parent_id === null,
             'respuestas' => []

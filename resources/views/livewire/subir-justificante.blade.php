@@ -1,29 +1,70 @@
 <div>
-        {{-- Mensaje de éxito --}}
-        @if (session()->has('justificante_success'))
-            <div class="mb-4 bg-green-50 border-l-4 border-green-500 p-4 rounded-r-lg">
-                <div class="flex items-center">
-                    <svg class="h-5 w-5 text-green-500 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
+        {{-- Justificantes existentes --}}
+        @if (count($justificantesExistentes) > 0)
+            <div class="mb-4">
+                <h4 class="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
+                    <svg class="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
                     </svg>
-                    <p class="text-sm font-medium text-green-800">{{ session('justificante_success') }}</p>
+                    Justificantes subidos (últimos 90 días)
+                </h4>
+                <div class="space-y-2 max-h-48 overflow-y-auto">
+                    @foreach ($justificantesExistentes as $justificante)
+                        <div class="flex items-center justify-between p-2 bg-gray-50 rounded-lg border border-gray-200">
+                            <div class="flex-1 min-w-0">
+                                <p class="text-sm font-medium text-gray-900">{{ $justificante['fecha_formateada'] }}</p>
+                                <p class="text-xs text-gray-500 truncate">
+                                    {{ $justificante['horas_justificadas'] }}h
+                                    @if ($justificante['observaciones'])
+                                        - {{ Str::limit($justificante['observaciones'], 30) }}
+                                    @endif
+                                </p>
+                            </div>
+                            <a href="{{ asset('storage/' . $justificante['ruta']) }}"
+                               target="_blank"
+                               class="ml-2 p-1.5 text-blue-600 hover:text-blue-800 hover:bg-blue-100 rounded-lg transition"
+                               title="Ver justificante">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                                </svg>
+                            </a>
+                        </div>
+                    @endforeach
                 </div>
             </div>
+            @if (!$soloLectura)
+                <hr class="my-4 border-gray-200">
+            @endif
         @endif
 
-        {{-- Mensaje de error --}}
-        @if ($error)
-            <div class="mb-4 bg-red-50 border-l-4 border-red-500 p-4 rounded-r-lg">
-                <div class="flex items-start">
-                    <svg class="h-5 w-5 text-red-500 mr-2 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"></path>
-                    </svg>
-                    <p class="text-sm font-medium text-red-800">{{ $error }}</p>
+        {{-- Solo mostrar formulario si NO es solo lectura --}}
+        @if (!$soloLectura)
+            {{-- Mensaje de éxito --}}
+            @if (session()->has('justificante_success'))
+                <div class="mb-4 bg-green-50 border-l-4 border-green-500 p-4 rounded-r-lg">
+                    <div class="flex items-center">
+                        <svg class="h-5 w-5 text-green-500 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
+                        </svg>
+                        <p class="text-sm font-medium text-green-800">{{ session('justificante_success') }}</p>
+                    </div>
                 </div>
-            </div>
-        @endif
+            @endif
 
-        @if (count($asignacionesDisponibles) === 0)
+            {{-- Mensaje de error --}}
+            @if ($error)
+                <div class="mb-4 bg-red-50 border-l-4 border-red-500 p-4 rounded-r-lg">
+                    <div class="flex items-start">
+                        <svg class="h-5 w-5 text-red-500 mr-2 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"></path>
+                        </svg>
+                        <p class="text-sm font-medium text-red-800">{{ $error }}</p>
+                    </div>
+                </div>
+            @endif
+
+            @if (count($asignacionesDisponibles) === 0)
             <div class="text-center py-6 text-gray-500">
                 <svg class="w-12 h-12 mx-auto mb-3 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
@@ -72,7 +113,7 @@
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"></path>
                             </svg>
-                            Datos detectados automáticamente
+                            Fecha detectada
                         </h4>
 
                         @if ($fechaDetectada)
@@ -82,13 +123,6 @@
                                 @if ($asignacionSeleccionada)
                                     <span class="text-green-600 ml-2">✓ Asignación seleccionada</span>
                                 @endif
-                            </p>
-                        @endif
-
-                        @if ($horasDetectadas)
-                            <p class="text-sm text-blue-700 mb-2">
-                                <span class="font-medium">Horas detectadas:</span>
-                                {{ $horasDetectadas }} horas
                             </p>
                         @endif
 
@@ -127,19 +161,15 @@
                 <div class="mb-4">
                     <label class="block text-sm font-medium text-gray-700 mb-2">
                         Horas justificadas <span class="text-red-500">*</span>
-                        @if ($mostrarResultados && $horasDetectadas)
-                            <span class="ml-2 text-xs text-green-600 font-normal">(detectadas: {{ $horasDetectadas }}h)</span>
-                        @endif
                     </label>
                     <input type="number"
                         wire:model.live="horasDetectadas"
                         step="0.5"
                         min="0"
                         max="24"
-                        class="w-full rounded-lg shadow-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-300 transition text-sm
-                            {{ $mostrarResultados && $horasDetectadas ? 'border-green-400 bg-green-50' : 'border-gray-300' }}"
-                        placeholder="8">
-                    <p class="mt-1 text-xs text-gray-500">Número de horas que cubre el justificante. Puedes ajustarlo si no es correcto.</p>
+                        class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-300 transition text-sm"
+                        placeholder="Introduce las horas...">
+                    <p class="mt-1 text-xs text-gray-500">Indica el número de horas que cubre el justificante (ej: 1.5, 2, 4, 8).</p>
                     @error('horasDetectadas') <p class="mt-1 text-sm text-red-600">{{ $message }}</p> @enderror
                 </div>
 
@@ -198,13 +228,24 @@
             </svg>
             @if ($ocrDisponible)
                 <p>
-                    El sistema intentará leer el documento para detectar automáticamente la fecha y las horas justificadas.
-                    Si no se detectan correctamente, puedes ajustarlos manualmente.
+                    El sistema detectará automáticamente la fecha del justificante.
+                    Las horas justificadas debes introducirlas manualmente.
                 </p>
             @else
                 <p>
-                    Sube el documento y selecciona manualmente la asignación correspondiente y las horas justificadas.
+                    Sube el documento, selecciona la asignación correspondiente e introduce las horas justificadas.
                 </p>
             @endif
         </div>
+        @endif {{-- fin !$soloLectura --}}
+
+        {{-- Mensaje cuando no hay justificantes y es solo lectura --}}
+        @if ($soloLectura && count($justificantesExistentes) === 0)
+            <div class="text-center py-6 text-gray-500">
+                <svg class="w-12 h-12 mx-auto mb-3 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                </svg>
+                <p class="text-sm">Este trabajador no tiene justificantes subidos en los últimos 90 días.</p>
+            </div>
+        @endif
 </div>

@@ -6,6 +6,8 @@ return [
     'prefijos_operario' => [
         'produccion.trabajadores',
         'users.',
+        'users.verEventos-turnos',
+        'users.verResumen-asistencia',
         'alertas.',
         'productos.',
         'pedidos.',
@@ -61,6 +63,8 @@ return [
         'alertas.verMarcarLeidas',
         'alertas.verSinLeer',
         'vacaciones.solicitar',
+        'users.verEventos-turnos',
+        'users.verResumen-asistencia',
     ],
 
     // 📌 Correos con acceso total

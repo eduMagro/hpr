@@ -264,6 +264,9 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
     Route::get('/api/produccion/balancear-carga-analisis', [ProduccionController::class, 'balancearCargaAnalisis'])->name('api.produccion.balancear.analisis');
     Route::post('/api/produccion/balancear-carga-aplicar', [ProduccionController::class, 'aplicarBalanceoCarga'])->name('api.produccion.balancear.aplicar');
 
+    // Endpoint de resumen del calendario
+    Route::get('/api/produccion/resumen', [ProduccionController::class, 'obtenerResumen'])->name('api.produccion.resumen');
+
     //MSR20 BVBS
     Route::get('/maquinas/{maquina}/exportar-bvbs', [MaquinaController::class, 'exportarBVBS'])
         ->name('maquinas.exportar-bvbs');

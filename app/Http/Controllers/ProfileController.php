@@ -360,9 +360,10 @@ class ProfileController extends Controller
 
 
 
-    public function show($id)
+    public function show($user)
     {
         $auth = auth()->user();
+        $id = $user instanceof User ? $user->id : $user;
 
         if ($auth->rol !== 'oficina' && (int)$auth->id !== (int)$id) {
             abort(403);
@@ -600,50 +601,69 @@ class ProfileController extends Controller
         return $user->asignacionesTurnos->flatMap(function ($asignacion) {
             $eventos = [];
 
-            if ($asignacion->entrada && strlen($asignacion->entrada) >= 5) {
-                $startEntrada = Carbon::parse("{$asignacion->fecha} {$asignacion->entrada}")
-                    ->setTimezone('Europe/Madrid');
+            // Extraer solo la fecha (YYYY-MM-DD) para evitar "double time specification"
+            $soloFecha = Carbon::parse($asignacion->fecha)->format('Y-m-d');
 
-                $eventos[] = [
-                    'id' => 'entrada-' . $asignacion->id,
-                    'title' => 'Entrada',
-                    'start' => $startEntrada->toIso8601String(),
-                    'end' => $startEntrada->copy()->addMinutes(1)->toIso8601String(),
-                    'color' => '#28a745', // Verde
-                    'textColor' => '#ffffff',
-                    'allDay' => false,
-                    'display' => 'auto',
-                    'extendedProps' => [
-                        'tipo' => 'entrada',
-                        'asignacion_id' => $asignacion->id,
-                        'fecha' => $asignacion->fecha,
-                        'entrada' => $asignacion->entrada,
-                        'salida' => $asignacion->salida,
-                    ],
-                ];
+            if ($asignacion->entrada && strlen($asignacion->entrada) >= 5) {
+                try {
+                    // Usar solo los primeros 8 caracteres (HH:MM:SS) o 5 (HH:MM)
+                    $horaEntrada = substr(trim($asignacion->entrada), 0, 8);
+                    $startEntrada = Carbon::createFromFormat('Y-m-d H:i:s', "{$soloFecha} {$horaEntrada}", 'Europe/Madrid')
+                        ?? Carbon::createFromFormat('Y-m-d H:i', "{$soloFecha} " . substr($horaEntrada, 0, 5), 'Europe/Madrid');
+
+                    if ($startEntrada) {
+                        $eventos[] = [
+                            'id' => 'entrada-' . $asignacion->id,
+                            'title' => '🟢 ' . substr($horaEntrada, 0, 5),
+                            'start' => $startEntrada->toIso8601String(),
+                            'end' => $startEntrada->copy()->addMinutes(1)->toIso8601String(),
+                            'color' => '#28a745',
+                            'textColor' => '#ffffff',
+                            'allDay' => false,
+                            'display' => 'auto',
+                            'extendedProps' => [
+                                'tipo' => 'entrada',
+                                'asignacion_id' => $asignacion->id,
+                                'fecha' => $soloFecha,
+                                'entrada' => $asignacion->entrada,
+                                'salida' => $asignacion->salida,
+                            ],
+                        ];
+                    }
+                } catch (\Exception $e) {
+                    // Ignorar registros con formato inválido
+                }
             }
 
             if ($asignacion->salida && strlen($asignacion->salida) >= 5) {
-                $startSalida = Carbon::parse("{$asignacion->fecha} {$asignacion->salida}")
-                    ->setTimezone('Europe/Madrid');
+                try {
+                    // Usar solo los primeros 8 caracteres (HH:MM:SS) o 5 (HH:MM)
+                    $horaSalida = substr(trim($asignacion->salida), 0, 8);
+                    $startSalida = Carbon::createFromFormat('Y-m-d H:i:s', "{$soloFecha} {$horaSalida}", 'Europe/Madrid')
+                        ?? Carbon::createFromFormat('Y-m-d H:i', "{$soloFecha} " . substr($horaSalida, 0, 5), 'Europe/Madrid');
 
-                $eventos[] = [
-                    'id' => 'salida-' . $asignacion->id,
-                    'title' => 'Salida',
-                    'start' => $startSalida->toIso8601String(),
-                    'end' => $startSalida->copy()->addMinutes(1)->toIso8601String(),
-                    'color' => '#dc3545', // Rojo
-                    'textColor' => '#ffffff',
-                    'allDay' => false,
-                    'display' => 'auto',
-                    'extendedProps' => [
-                        'tipo' => 'salida',
-                        'asignacion_id' => $asignacion->id,
-                        'fecha' => $asignacion->fecha,
-                        'entrada' => $asignacion->entrada,
-                        'salida' => $asignacion->salida,
-                    ],
-                ];
+                    if ($startSalida) {
+                        $eventos[] = [
+                            'id' => 'salida-' . $asignacion->id,
+                            'title' => '🔴 ' . substr($horaSalida, 0, 5),
+                            'start' => $startSalida->toIso8601String(),
+                            'end' => $startSalida->copy()->addMinutes(1)->toIso8601String(),
+                            'color' => '#dc3545',
+                            'textColor' => '#ffffff',
+                            'allDay' => false,
+                            'display' => 'auto',
+                            'extendedProps' => [
+                                'tipo' => 'salida',
+                                'asignacion_id' => $asignacion->id,
+                                'fecha' => $soloFecha,
+                                'entrada' => $asignacion->entrada,
+                                'salida' => $asignacion->salida,
+                            ],
+                        ];
+                    }
+                } catch (\Exception $e) {
+                    // Ignorar registros con formato inválido
+                }
             }
 
             return $eventos;
@@ -772,9 +792,19 @@ class ProfileController extends Controller
     {
         $request->validate([
             'imagen' => ['nullable', 'image', 'mimes:jpeg,png,jpg,webp', 'max:5120'],
+            'user_id' => ['nullable', 'exists:users,id'],
         ]);
 
-        $user = auth()->user();
+        // Si se pasa user_id, usar ese usuario (para oficina editando otro perfil)
+        // Si no, usar el usuario autenticado
+        $userId = $request->input('user_id', auth()->id());
+        $user = User::find($userId);
+
+        // Verificar permisos: solo el propio usuario o usuarios de oficina/admin pueden cambiar la foto
+        $authUser = auth()->user();
+        if ($authUser->id != $userId && !in_array($authUser->rol, ['oficina', 'admin', 'administrador'])) {
+            return back()->with('error', 'No tienes permisos para cambiar esta foto.');
+        }
 
         if ($request->hasFile('imagen')) {
             $archivo = $request->file('imagen');
@@ -1019,23 +1049,26 @@ class ProfileController extends Controller
 
         $eventos = collect();
 
-        // 1. Turnos (primero)
+        // 1. Estados (vacaciones, baja, etc.)
         foreach ($user->asignacionesTurnos as $asig) {
             if ($asig->estado && strtolower($asig->estado) !== 'activo') {
                 $nombre = strtolower($asig->estado);
                 $color = $colores[$nombre] ?? ['bg' => '#6b7280', 'border' => '#4b5563', 'text' => '#ffffff'];
 
+                // Formatear fecha como string YYYY-MM-DD para evitar problemas de timezone
+                $fechaStr = Carbon::parse($asig->fecha)->format('Y-m-d');
+
                 $eventos->push([
                     'id' => 'estado-' . $asig->id,
                     'title' => ucfirst($nombre),
-                    'start' => $asig->fecha,
+                    'start' => $fechaStr,
                     'allDay' => true,
                     'backgroundColor' => $color['bg'],
                     'borderColor' => $color['border'],
                     'textColor' => $color['text'],
                     'extendedProps' => [
                         'asignacion_id' => $asig->id,
-                        'fecha'         => $asig->fecha,
+                        'fecha'         => $fechaStr,
                         'entrada'       => $asig->entrada,
                         'salida'        => $asig->salida,
                         'es_turno'      => false
@@ -1044,23 +1077,26 @@ class ProfileController extends Controller
             }
         }
 
-        // 2. Estados (después de turnos)
+        // 2. Turnos (mañana, tarde, noche)
         foreach ($user->asignacionesTurnos as $asig) {
             if ($asig->turno) {
                 $nombre = $asig->turno->nombre;
                 $color = $colores[$nombre] ?? ['bg' => '#1d4ed8', 'border' => '#1e40af', 'text' => '#ffffff'];
 
+                // Formatear fecha como string YYYY-MM-DD para evitar problemas de timezone
+                $fechaStr = Carbon::parse($asig->fecha)->format('Y-m-d');
+
                 $eventos->push([
                     'id' => 'turno-' . $asig->id,
                     'title' => ucfirst($nombre),
-                    'start' => $asig->fecha,
+                    'start' => $fechaStr,
                     'allDay' => true,
                     'backgroundColor' => $color['bg'],
                     'borderColor' => $color['border'],
                     'textColor' => $color['text'],
                     'extendedProps' => [
                         'asignacion_id' => $asig->id,
-                        'fecha'         => $asig->fecha,
+                        'fecha'         => $fechaStr,
                         'entrada'       => $asig->entrada,
                         'salida'        => $asig->salida,
                         'es_turno'      => true
@@ -1069,13 +1105,13 @@ class ProfileController extends Controller
             }
         }
 
-        // 3. Fichajes
+        // 3. Fichajes (entrada/salida con hora)
         $eventos = $eventos->merge($this->getEventosFichajes($user));
 
         // 4. Festivos
         $eventos = $eventos->merge(Festivo::eventosCalendario());
 
-        // 5. Vacaciones
+        // 5. Vacaciones pendientes/denegadas
         $vacaciones = VacacionesSolicitud::where('user_id', $user->id)
             ->whereIn('estado', ['pendiente', 'denegada'])
             ->get()
@@ -1085,11 +1121,12 @@ class ProfileController extends Controller
                 $textColor = $solicitud->estado === 'pendiente' ? 'black' : 'white';
 
                 return collect(CarbonPeriod::create($solicitud->fecha_inicio, $solicitud->fecha_fin)->toArray())
-                    ->map(function ($fecha) use ($title, $color, $textColor) {
+                    ->map(function ($fecha) use ($title, $color, $textColor, $solicitud) {
+                        $fechaStr = $fecha->format('Y-m-d');
                         return [
+                            'id' => 'vac-' . $solicitud->id . '-' . $fechaStr,
                             'title' => $title,
-                            'start' => $fecha->toDateString(),
-                            'end' => $fecha->copy()->addDay()->toDateString(),
+                            'start' => $fechaStr,
                             'allDay' => true,
                             'backgroundColor' => $color,
                             'borderColor' => $color,

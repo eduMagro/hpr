@@ -97,7 +97,7 @@
                     </svg>
                 </button>
 
-                <div id="calendario" data-calendar-type="salidas" class="h-[80vh] w-full overflow-hidden"></div>
+                <div id="calendario" data-calendar-type="salidas" class="min-h-[80vh] w-full"></div>
             </div>
         </div>
     </div>
@@ -141,6 +141,9 @@
 
     <!-- ✅ Vite: Estilos y módulo principal del calendario (incluye calendario-menu.js) -->
     @vite(['resources/css/estilosCalendarioSalidas.css', 'resources/js/modules/calendario-salidas/index.js'])
+
+    <!-- Script para dibujar figuras de elementos -->
+    <script src="{{ asset('js/elementosJs/figuraElemento.js') }}"></script>
 
     {{-- Tu config global ANTES de @vite --}}
     <script data-navigate-once>

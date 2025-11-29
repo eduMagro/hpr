@@ -4,6 +4,7 @@ namespace App\Livewire;
 
 use App\Models\AsignacionTurno;
 use App\Models\User;
+use App\Services\AlertaService;
 use Livewire\Component;
 use Livewire\WithFileUploads;
 use Illuminate\Support\Facades\Storage;
@@ -26,6 +27,8 @@ class SubirJustificante extends Component
     public $asignacionesDisponibles = [];
     public $asignacionSeleccionada = null;
     public $ocrDisponible = false;
+    public $justificantesExistentes = [];
+    public $soloLectura = false;
 
     protected $rules = [
         'archivo' => 'required|file|mimes:pdf,jpg,jpeg,png|max:10240',
@@ -47,8 +50,40 @@ class SubirJustificante extends Component
     public function mount($userId)
     {
         $this->userId = $userId;
+
+        // Si es oficina viendo ficha de otro usuario, modo solo lectura
+        $auth = auth()->user();
+        $this->soloLectura = $auth->rol === 'oficina' && $auth->id != $userId;
+
         $this->cargarAsignacionesDisponibles();
+        $this->cargarJustificantesExistentes();
         $this->ocrDisponible = $this->verificarOCRDisponible();
+    }
+
+    public function cargarJustificantesExistentes()
+    {
+        // Cargar asignaciones con justificante de los últimos 90 días
+        $this->justificantesExistentes = AsignacionTurno::where('user_id', $this->userId)
+            ->whereNotNull('justificante_ruta')
+            ->where('fecha', '>=', now()->subDays(90))
+            ->orderBy('fecha', 'desc')
+            ->with(['turno', 'obra'])
+            ->get()
+            ->map(function ($asignacion) {
+                return [
+                    'id' => $asignacion->id,
+                    'fecha' => $asignacion->fecha->format('Y-m-d'),
+                    'fecha_formateada' => $asignacion->fecha->format('d/m/Y'),
+                    'turno' => $asignacion->turno->nombre ?? 'Sin turno',
+                    'obra' => $asignacion->obra->obra ?? 'Sin obra',
+                    'estado' => $asignacion->estado,
+                    'horas_justificadas' => $asignacion->horas_justificadas,
+                    'observaciones' => $asignacion->justificante_observaciones,
+                    'ruta' => $asignacion->justificante_ruta,
+                    'subido_at' => $asignacion->justificante_subido_at?->format('d/m/Y H:i'),
+                ];
+            })
+            ->toArray();
     }
 
     public function cargarAsignacionesDisponibles()
@@ -96,7 +131,7 @@ class SubirJustificante extends Component
         $this->error = '';
         $this->textoExtraido = '';
         $this->fechaDetectada = null;
-        $this->horasDetectadas = 8; // Valor por defecto
+        $this->horasDetectadas = null; // El usuario introduce las horas manualmente
 
         try {
             // Si OCR está disponible, intentar extraer texto
@@ -197,97 +232,6 @@ class SubirJustificante extends Component
         return !empty($return);
     }
 
-    /**
-     * Detectar horas desde diferentes formatos de justificante
-     */
-    protected function detectarHoras($texto)
-    {
-        // 1. Buscar rango de horas (ej: "de 09:00 a 11:30", "09:00 - 11:30", "desde las 9 hasta las 12")
-        $patronesRango = [
-            '/de\s*(\d{1,2})[:\.](\d{2})\s*a\s*(\d{1,2})[:\.](\d{2})/i',
-            '/desde\s*(?:las\s*)?(\d{1,2})[:\.](\d{2})\s*hasta\s*(?:las\s*)?(\d{1,2})[:\.](\d{2})/i',
-            '/(\d{1,2})[:\.](\d{2})\s*[-–]\s*(\d{1,2})[:\.](\d{2})/',
-            '/entre\s*(?:las\s*)?(\d{1,2})[:\.](\d{2})\s*y\s*(?:las\s*)?(\d{1,2})[:\.](\d{2})/i',
-        ];
-
-        foreach ($patronesRango as $patron) {
-            if (preg_match($patron, $texto, $matches)) {
-                $horaInicio = (int)$matches[1] + (int)$matches[2] / 60;
-                $horaFin = (int)$matches[3] + (int)$matches[4] / 60;
-                if ($horaFin > $horaInicio) {
-                    return round($horaFin - $horaInicio, 1);
-                }
-            }
-        }
-
-        // 2. Buscar hora entrada/citación y hora salida/alta (formato médico)
-        $horaEntrada = null;
-        $horaSalida = null;
-
-        $patronesEntrada = [
-            '/cita(?:ci[oó]n)?[:\s]*(\d{1,2})[:\.](\d{2})/i',
-            '/entrada[:\s]*(\d{1,2})[:\.](\d{2})/i',
-            '/inicio[:\s]*(\d{1,2})[:\.](\d{2})/i',
-            '/llegada[:\s]*(\d{1,2})[:\.](\d{2})/i',
-            '/hora[:\s]*(\d{1,2})[:\.](\d{2})/i',
-        ];
-
-        $patronesSalida = [
-            '/alta[:\s]*(\d{1,2})[:\.](\d{2})/i',
-            '/salida[:\s]*(\d{1,2})[:\.](\d{2})/i',
-            '/fin(?:al)?[:\s]*(\d{1,2})[:\.](\d{2})/i',
-            '/t[eé]rmino[:\s]*(\d{1,2})[:\.](\d{2})/i',
-        ];
-
-        foreach ($patronesEntrada as $patron) {
-            if (preg_match($patron, $texto, $matches)) {
-                $horaEntrada = (int)$matches[1] + (int)$matches[2] / 60;
-                break;
-            }
-        }
-
-        foreach ($patronesSalida as $patron) {
-            if (preg_match($patron, $texto, $matches)) {
-                $horaSalida = (int)$matches[1] + (int)$matches[2] / 60;
-                break;
-            }
-        }
-
-        if ($horaEntrada !== null && $horaSalida !== null && $horaSalida > $horaEntrada) {
-            return round($horaSalida - $horaEntrada, 1);
-        }
-
-        // 3. Buscar duración directa (ej: "2 horas", "3h", "duración: 4 horas")
-        $patronesDuracion = [
-            '/duraci[oó]n[:\s]*(\d+(?:[.,]\d+)?)\s*h(?:oras?)?/i',
-            '/(\d+(?:[.,]\d+)?)\s*horas?\s*(?:de\s*)?(?:duraci[oó]n|asistencia|consulta|cita)/i',
-            '/(?:tiempo|permanencia)[:\s]*(\d+(?:[.,]\d+)?)\s*h(?:oras?)?/i',
-            '/(\d+(?:[.,]\d+)?)\s*h(?:oras?)?\b/i',
-        ];
-
-        foreach ($patronesDuracion as $patron) {
-            if (preg_match($patron, $texto, $matches)) {
-                $horas = (float) str_replace(',', '.', $matches[1]);
-                if ($horas > 0 && $horas <= 24) {
-                    return $horas;
-                }
-            }
-        }
-
-        // 4. Detectar jornada completa
-        if (preg_match('/jornada\s*completa|todo\s*el\s*d[ií]a|d[ií]a\s*completo/i', $texto)) {
-            return 8;
-        }
-
-        // 5. Detectar media jornada
-        if (preg_match('/media\s*jornada|medio\s*d[ií]a/i', $texto)) {
-            return 4;
-        }
-
-        // Por defecto, jornada completa
-        return 8;
-    }
-
     protected function analizarTexto($texto)
     {
         // Limpiar el texto de espacios extra para mejor detección
@@ -335,11 +279,9 @@ class SubirJustificante extends Component
             }
         }
 
-        // Buscar horas en el texto
-        $this->horasDetectadas = $this->detectarHoras($texto);
-
         // Si se detectó fecha, intentar seleccionar automáticamente la asignación correspondiente
         if ($this->fechaDetectada) {
+            // Primero buscar en las asignaciones disponibles (sin justificante)
             $encontrada = false;
             foreach ($this->asignacionesDisponibles as $key => $asignacion) {
                 if ($asignacion['fecha'] === $this->fechaDetectada) {
@@ -349,7 +291,29 @@ class SubirJustificante extends Component
                 }
             }
 
-            // Si no existe asignación para esa fecha, crearla
+            // Si no está en disponibles, buscar si existe alguna asignación para esa fecha (con o sin justificante)
+            if (!$encontrada) {
+                $asignacionExistente = AsignacionTurno::where('user_id', $this->userId)
+                    ->whereDate('fecha', $this->fechaDetectada)
+                    ->first();
+
+                if ($asignacionExistente) {
+                    // Añadir a las disponibles para que pueda seleccionarla
+                    $asignacionArray = [
+                        'id' => (string) $asignacionExistente->id,
+                        'fecha' => $asignacionExistente->fecha->format('Y-m-d'),
+                        'fecha_formateada' => $asignacionExistente->fecha->format('d/m/Y'),
+                        'turno' => $asignacionExistente->turno->nombre ?? 'Sin turno',
+                        'obra' => $asignacionExistente->obra->obra ?? 'Sin obra',
+                        'estado' => $asignacionExistente->estado,
+                    ];
+                    array_unshift($this->asignacionesDisponibles, $asignacionArray);
+                    $this->asignacionSeleccionada = (string) $asignacionExistente->id;
+                    $encontrada = true;
+                }
+            }
+
+            // Solo crear nueva asignación si realmente no existe ninguna para esa fecha
             if (!$encontrada) {
                 try {
                     $nuevaAsignacion = AsignacionTurno::create([
@@ -367,9 +331,7 @@ class SubirJustificante extends Component
                         'estado' => 'justificado',
                     ];
 
-                    // Añadir al inicio del array para que aparezca primero
                     array_unshift($this->asignacionesDisponibles, $nuevaAsignacionArray);
-
                     $this->asignacionSeleccionada = (string) $nuevaAsignacion->id;
                 } catch (\Exception $e) {
                     $this->error = 'Error al crear asignación: ' . $e->getMessage();
@@ -377,10 +339,7 @@ class SubirJustificante extends Component
             }
         }
 
-        // Valor por defecto de horas si no se detectaron
-        if (!$this->horasDetectadas) {
-            $this->horasDetectadas = 8; // Jornada completa por defecto
-        }
+        // Las horas se introducen manualmente por el usuario
     }
 
     public function guardarJustificante()
@@ -405,12 +364,22 @@ class SubirJustificante extends Component
             $rutaArchivo = $this->archivo->storeAs($rutaBase, $nombreArchivo, 'public');
 
             // Actualizar asignación
-            $asignacion->update([
+            $datosActualizar = [
                 'justificante_ruta' => $rutaArchivo,
                 'horas_justificadas' => $this->horasDetectadas,
-                'justificante_observaciones' => $this->observaciones ?: $this->textoExtraido,
+                'justificante_observaciones' => $this->observaciones ?: null,
                 'justificante_subido_at' => now(),
-            ]);
+            ];
+
+            // Si estaba en activo, cambiar a justificado
+            if ($asignacion->estado === 'activo') {
+                $datosActualizar['estado'] = 'justificado';
+            }
+
+            $asignacion->update($datosActualizar);
+
+            // Enviar alertas a usuarios de RRHH y Producción
+            $this->notificarDepartamentos($user, $asignacion);
 
             // Resetear formulario
             $this->reset(['archivo', 'textoExtraido', 'fechaDetectada', 'horasDetectadas', 'observaciones', 'mostrarResultados', 'asignacionSeleccionada']);
@@ -421,6 +390,40 @@ class SubirJustificante extends Component
 
         } catch (\Exception $e) {
             $this->error = 'Error al guardar el justificante: ' . $e->getMessage();
+        }
+    }
+
+    /**
+     * Notifica a los usuarios de RRHH y Producción sobre el nuevo justificante
+     */
+    protected function notificarDepartamentos(User $usuario, AsignacionTurno $asignacion): void
+    {
+        $alertaService = app(AlertaService::class);
+
+        // Buscar usuarios de los departamentos RRHH y Producción
+        $usuariosNotificar = User::whereHas('departamentos', function ($query) {
+            $query->whereRaw('LOWER(nombre) IN (?, ?)', [
+                'rrhh',
+                'producción'
+            ]);
+        })
+        ->where('estado', 'activo')
+        ->where('id', '!=', $usuario->id) // No notificar al propio usuario
+        ->get();
+
+        // Crear mensaje de la alerta con enlace al justificante
+        $fechaFormateada = $asignacion->fecha->format('d/m/Y');
+        $enlaceJustificante = asset('storage/' . $asignacion->justificante_ruta);
+        $mensaje = "{$usuario->name} ha subido un justificante para el día {$fechaFormateada} ({$this->horasDetectadas}h). <a href=\"{$enlaceJustificante}\" target=\"_blank\" class=\"text-blue-600 underline hover:text-blue-800\">Ver justificante</a>";
+
+        // Enviar alerta a cada usuario
+        foreach ($usuariosNotificar as $destinatario) {
+            $alertaService->crearAlerta(
+                emisorId: $usuario->id,
+                destinatarioId: $destinatario->id,
+                mensaje: $mensaje,
+                tipo: 'justificante'
+            );
         }
     }
 
