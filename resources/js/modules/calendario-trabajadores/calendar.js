@@ -23,7 +23,8 @@ function generarEventosCarga(cargaTrabajo, turnosConfig) {
         return eventos;
     }
 
-    // Mapear turnos con horas alineadas a los slots del calendario (06-14, 14-22, 22-06)
+    // Mapear turnos con horas alineadas a los slots del calendario
+    // Orden visual: Noche (00:00-08:00) → Mañana (08:00-16:00) → Tarde (16:00-24:00)
     const turnosMap = {};
     turnosValidos.forEach(turno => {
         const nombre = turno.nombre.toLowerCase();
@@ -31,24 +32,24 @@ function generarEventosCarga(cargaTrabajo, turnosConfig) {
         const [hFin] = turno.hora_fin.split(':').map(Number);
         const esNocturno = hFin < hIni;
 
-        // Alinear con los slots del calendario
+        // Mapeo visual: noche=00-08, mañana=08-16, tarde=16-24
         let slotInicio, slotFin;
         if (esNocturno) {
-            slotInicio = '22:00:00';
-            slotFin = '22:30:00'; // Pequeño para que sea un indicador
+            slotInicio = '00:00:00';
+            slotFin = '00:30:00';
         } else if (hIni < 14) {
-            slotInicio = '06:00:00';
-            slotFin = '06:30:00';
+            slotInicio = '08:00:00';
+            slotFin = '08:30:00';
         } else {
-            slotInicio = '14:00:00';
-            slotFin = '14:30:00';
+            slotInicio = '16:00:00';
+            slotFin = '16:30:00';
         }
 
         turnosMap[nombre] = {
-            inicio: slotInicio,
-            fin: slotFin,
-            color: turno.color,
             esNocturno: esNocturno,
+            slotInicio: slotInicio,
+            slotFin: slotFin,
+            color: turno.color,
         };
     });
 
@@ -63,11 +64,12 @@ function generarEventosCarga(cargaTrabajo, turnosConfig) {
                 const horas = data[turnoNombre] || 0;
                 if (horas <= 0) continue;
 
+                // Todos los eventos usan la fecha de la asignación
                 eventos.push({
                     id: `carga-${maquinaId}-${fecha}-${turnoNombre}`,
                     title: `${horas}h`,
-                    start: `${fecha}T${turnoConfig.inicio}`,
-                    end: `${fecha}T${turnoConfig.fin}`,
+                    start: `${fecha}T${turnoConfig.slotInicio}`,
+                    end: `${fecha}T${turnoConfig.slotFin}`,
                     resourceId: maquinaId,
                     backgroundColor: getColorCarga(horas),
                     borderColor: getColorCarga(horas),
@@ -103,12 +105,46 @@ function getColorCarga(horas) {
     return '#86efac';                   // verde claro
 }
 
+/**
+ * =====================================================
+ * LÓGICA DE TURNOS EN EL CALENDARIO DE TRABAJADORES
+ * =====================================================
+ *
+ * CONCEPTO CLAVE:
+ * El turno de noche del LUNES significa que el trabajador trabaja
+ * desde el DOMINGO a las 22:00 hasta el LUNES a las 06:00.
+ * La asignación en la BD tiene fecha = LUNES.
+ *
+ * ORDEN VISUAL DE LOS TURNOS:
+ * El primer turno del día es NOCHE (no mañana), por lo que
+ * visualmente debe aparecer a la IZQUIERDA.
+ *
+ * MAPEO VISUAL (horas ficticias para ordenar correctamente):
+ * - Turno NOCHE (real 22:00-06:00) → se muestra en slot 00:00-08:00
+ * - Turno MAÑANA (real 06:00-14:00) → se muestra en slot 08:00-16:00
+ * - Turno TARDE (real 14:00-22:00) → se muestra en slot 16:00-24:00
+ *
+ * Esto permite que FullCalendar ordene cronológicamente los slots
+ * pero visualmente aparezcan en el orden correcto: Noche → Mañana → Tarde
+ *
+ * ARCHIVOS RELACIONADOS:
+ * - Este archivo (calendar.js): configuración del calendario y eventos de carga
+ * - ProduccionController.php: genera los eventos de trabajadores con el mismo mapeo
+ * - calcularCargaTrabajoPorDia(): calcula horas de máquina por turno
+ *
+ * IMPORTANTE: Si se modifica el mapeo aquí, también hay que modificarlo en:
+ * 1. generarEventosCarga() - eventos de horas de máquina
+ * 2. ProduccionController::trabajadores() - eventos de asignaciones
+ * 3. calcularCargaTrabajoPorDia() - cálculo de horas por turno
+ * =====================================================
+ */
+
 // Calcular configuración de slots basada en turnos
-// Mostrar desde el primer turno del día hasta el fin del turno nocturno (día siguiente)
+// Orden visual: Noche (00-08) → Mañana (08-16) → Tarde (16-24)
 function calcularConfigTurnos(turnos) {
     const defaultConfig = {
-        slotMinTime: '06:00:00',
-        slotMaxTime: '30:00:00',
+        slotMinTime: '00:00:00',
+        slotMaxTime: '24:00:00',
         slotDuration: '08:00:00',
         turnos: [],
     };
@@ -124,39 +160,25 @@ function calcularConfigTurnos(turnos) {
         return defaultConfig;
     }
 
-    // Ordenar turnos por hora de inicio (cronológico)
+    // Ordenar: noche primero, luego mañana, luego tarde
     const turnosOrdenados = [...turnosValidos].sort((a, b) => {
-        return (a.hora_inicio || '').localeCompare(b.hora_inicio || '');
+        const [hIniA] = a.hora_inicio.split(':').map(Number);
+        const [hFinA] = a.hora_fin.split(':').map(Number);
+        const [hIniB] = b.hora_inicio.split(':').map(Number);
+        const [hFinB] = b.hora_fin.split(':').map(Number);
+
+        const esNocturnoA = hFinA < hIniA;
+        const esNocturnoB = hFinB < hIniB;
+
+        if (esNocturnoA && !esNocturnoB) return -1;
+        if (!esNocturnoA && esNocturnoB) return 1;
+        return hIniA - hIniB;
     });
-
-    // Encontrar el turno más temprano y el nocturno
-    const primerTurno = turnosOrdenados[0]; // mañana (05:00)
-    const turnoNocturno = turnosValidos.find(t => {
-        const [hIni] = t.hora_inicio.split(':').map(Number);
-        const [hFin] = t.hora_fin.split(':').map(Number);
-        return hFin < hIni;
-    });
-
-    // slotMinTime: usar 06:00 para que 24h se divida exactamente en 3 slots de 8h
-    // (aunque mañana empiece a las 05:00, los eventos seguirán visibles)
-    const hMin = 6;
-
-    // slotMaxTime: fin del turno nocturno + 24 si cruza medianoche
-    let hMax = 30; // Por defecto 06:00 del día siguiente
-    if (turnoNocturno) {
-        const [hFin] = turnoNocturno.hora_fin.split(':').map(Number);
-        hMax = hFin + 24; // Ej: 06:00 -> 30:00
-    }
-
-    // Calcular duración: total de horas / número de turnos
-    const totalHoras = hMax - hMin;
-    const numTurnos = turnosValidos.length;
-    const duracionSlot = Math.floor(totalHoras / numTurnos);
 
     return {
-        slotMinTime: `${String(hMin).padStart(2, '0')}:00:00`,
-        slotMaxTime: `${String(hMax).padStart(2, '0')}:00:00`,
-        slotDuration: `${String(duracionSlot).padStart(2, '0')}:00:00`,
+        slotMinTime: '00:00:00',
+        slotMaxTime: '24:00:00',
+        slotDuration: '08:00:00',
         turnos: turnosOrdenados,
     };
 }
@@ -244,36 +266,36 @@ export function initCalendar(domEl) {
             const viewType = info.view.type;
             if (viewType === "resourceTimelineDay" && configTurnos.turnos) {
                 const hour = info.date.getHours();
-                // Colorear según turno desde la BD
-                for (const turno of configTurnos.turnos) {
-                    const [hIni] = turno.hora_inicio.split(':').map(Number);
-                    const [hFin] = turno.hora_fin.split(':').map(Number);
-
-                    let enTurno = false;
-                    if (hFin > hIni) {
-                        enTurno = hour >= hIni && hour < hFin;
-                    } else {
-                        // Turno nocturno (cruza medianoche)
-                        enTurno = hour >= hIni || hour < hFin;
-                    }
-
-                    if (enTurno) {
-                        info.el.style.backgroundColor = turno.color || '#e5e7eb';
-                        break;
-                    }
+                // Mapeo visual: 00-08=Noche, 08-16=Mañana, 16-24=Tarde
+                let turnoIndex = 0;
+                if (hour >= 8 && hour < 16) {
+                    turnoIndex = 1; // Mañana
+                } else if (hour >= 16) {
+                    turnoIndex = 2; // Tarde
+                }
+                // Aplicar color del turno correspondiente
+                const turno = configTurnos.turnos[turnoIndex];
+                if (turno) {
+                    info.el.style.backgroundColor = turno.color || '#e5e7eb';
                 }
             }
+        },
+        slotLabelContent(info) {
+            const viewType = info.view.type;
+            if (viewType === "resourceTimelineDay") {
+                const hour = info.date.getHours();
+                // Mapeo visual: 00-08=Noche, 08-16=Mañana, 16-24=Tarde
+                if (hour === 0) return { html: '<b>Noche</b>' };
+                if (hour === 8) return { html: '<b>Mañana</b>' };
+                if (hour === 16) return { html: '<b>Tarde</b>' };
+            }
+            return null; // Usar formato por defecto para otras vistas
         },
         views: {
             resourceTimelineDay: {
                 slotMinTime: configTurnos.slotMinTime,
                 slotMaxTime: configTurnos.slotMaxTime,
                 slotDuration: configTurnos.slotDuration,
-                slotLabelFormat: {
-                    hour: "2-digit",
-                    minute: "2-digit",
-                    hour12: false,
-                },
                 // Mostrar solo un día en el título (no "30 nov - 1 dic")
                 titleFormat: {
                     weekday: "long",

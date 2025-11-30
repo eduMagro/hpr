@@ -109,14 +109,22 @@ class ProduccionController extends Controller
             // Distribuir las horas del evento por día y turno
             $cursor = $start->copy();
             while ($cursor->lt($end)) {
-                $fechaStr = $cursor->format('Y-m-d');
                 $hora = $cursor->hour;
 
-                // Determinar turno
+                // Determinar turno y fecha correcta
+                // El turno de noche (22:00-06:00) pertenece al día SIGUIENTE
+                // Ej: domingo 22:00 - lunes 06:00 = turno de noche del LUNES
                 $turnoActual = 'mañana';
+                $fechaStr = $cursor->format('Y-m-d');
+
                 if ($hora >= 14 && $hora < 22) {
                     $turnoActual = 'tarde';
-                } elseif ($hora >= 22 || $hora < 6) {
+                } elseif ($hora >= 22) {
+                    // 22:00-23:59 → turno de noche del día SIGUIENTE
+                    $turnoActual = 'noche';
+                    $fechaStr = $cursor->copy()->addDay()->format('Y-m-d');
+                } elseif ($hora < 6) {
+                    // 00:00-05:59 → turno de noche del día ACTUAL
                     $turnoActual = 'noche';
                 }
 
@@ -339,19 +347,35 @@ class ProduccionController extends Controller
                     $hFin = (int) substr($horaSalida, 0, 2);
                     $esNocturno = $hFin < $hIni;
 
-                    // Alinear eventos con los slots del calendario (8 horas cada uno: 06-14, 14-22, 22-06)
+                    /**
+                     * MAPEO VISUAL DE TURNOS PARA EL CALENDARIO
+                     * ==========================================
+                     * El turno de noche del LUNES = trabajador trabaja DOMINGO 22:00 - LUNES 06:00
+                     * La asignación en BD tiene fecha = LUNES
+                     *
+                     * Para que el turno de noche aparezca PRIMERO (izquierda) en el calendario,
+                     * usamos horas ficticias que FullCalendar ordena cronológicamente:
+                     *
+                     * - NOCHE (real 22:00-06:00) → slot visual 00:00-08:00
+                     * - MAÑANA (real 06:00-14:00) → slot visual 08:00-16:00
+                     * - TARDE (real 14:00-22:00) → slot visual 16:00-24:00
+                     *
+                     * IMPORTANTE: Este mapeo debe coincidir con:
+                     * - resources/js/modules/calendario-trabajadores/calendar.js
+                     * - calcularCargaTrabajoPorDia() en este mismo controlador
+                     */
                     if ($esNocturno) {
-                        // Turno nocturno: mostrar solo en el día de la asignación (00:00 - 06:00)
+                        // Turno nocturno: slot 00:00-08:00
                         $start = $fechaStr . 'T00:00:00';
-                        $end = $fechaStr . 'T06:00:00';
+                        $end = $fechaStr . 'T08:00:00';
                     } elseif ($hIni < 14) {
-                        // Turno mañana: 06:00 - 14:00
-                        $start = $fechaStr . 'T06:00:00';
-                        $end = $fechaStr . 'T14:00:00';
+                        // Turno mañana: slot 08:00-16:00
+                        $start = $fechaStr . 'T08:00:00';
+                        $end = $fechaStr . 'T16:00:00';
                     } else {
-                        // Turno tarde: 14:00 - 22:00
-                        $start = $fechaStr . 'T14:00:00';
-                        $end = $fechaStr . 'T22:00:00';
+                        // Turno tarde: slot 16:00-24:00
+                        $start = $fechaStr . 'T16:00:00';
+                        $end = $fechaStr . 'T23:59:59';
                     }
 
                     $maquinaId = $asignacionTurno->maquina_id ?? $trabajador->maquina_id;
