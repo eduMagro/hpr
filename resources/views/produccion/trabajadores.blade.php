@@ -1,10 +1,10 @@
 <x-app-layout>
     <x-slot name="title">Planificación Producción</x-slot>
 
-    <div class="py-6" id="calendario-trabajadores-container">
+    <div class="py-2" id="calendario-trabajadores-container">
         <!-- Contenedor del Calendario -->
         <div class="w-full bg-white">
-            <div id="calendario" data-calendar-type="trabajadores" class="h-[80vh] w-full"></div>
+            <div id="calendario" data-calendar-type="trabajadores" class="h-[calc(100vh-100px)] w-full"></div>
         </div>
     </div>
 
