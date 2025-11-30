@@ -72,7 +72,7 @@
                     </svg>
                     <!-- Badge de notificaciones (se oculta automáticamente cuando no hay mensajes) -->
                     <span id="alerta-count"
-                        class="absolute top-1 right-1 hidden bg-red-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center"></span>
+                        class="absolute top-1 right-1 bg-red-500 text-white text-xs font-bold rounded-full w-5 h-5 items-center justify-center hidden"></span>
                 </a>
 
                 <!-- User Dropdown -->
@@ -168,8 +168,10 @@
                     if (data.cantidad > 0) {
                         badge.textContent = data.cantidad;
                         badge.classList.remove('hidden');
+                        badge.classList.add('flex');
                     } else {
                         badge.classList.add('hidden');
+                        badge.classList.remove('flex');
                     }
                 }
             })

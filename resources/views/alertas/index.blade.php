@@ -833,7 +833,8 @@
                         </label>
                         <textarea id="textoRespuesta"
                             class="w-full p-3 border-2 border-green-300 rounded-lg text-sm text-gray-800 focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all duration-200"
-                            rows="4" placeholder="Escribe tu respuesta..."></textarea>
+                            rows="4" placeholder="Escribe tu respuesta... (Enter para enviar, Shift+Enter para nueva línea)"
+                            onkeydown="if(event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); enviarRespuesta(); }"></textarea>
                     </div>
                 </div>
 
@@ -873,7 +874,7 @@
 
                 <!-- Botones de respuesta (para mensajes entrantes) -->
                 <div id="botonesRespuesta"
-                    class="hidden flex flex-col sm:flex-row justify-end gap-2 md:gap-3 mt-4 md:mt-6">
+                    class="flex flex-col sm:flex-row justify-end gap-2 md:gap-3 mt-4 md:mt-6 hidden">
                     <button onclick="activarRespuesta()"
                         class="inline-flex items-center justify-center px-4 md:px-5 py-2.5 md:py-2.5 bg-green-500 hover:bg-green-600 active:bg-green-700 text-white font-medium rounded-lg transition-colors duration-150 shadow-md active:scale-95"
                         id="botonContestar">
@@ -884,7 +885,7 @@
                         Contestar
                     </button>
 
-                    <div id="botonesEnviarCancelarRespuesta" class="hidden flex flex-col sm:flex-row gap-2 md:gap-3">
+                    <div id="botonesEnviarCancelarRespuesta" class="flex flex-col sm:flex-row gap-2 md:gap-3 hidden">
                         <button onclick="cancelarRespuesta()"
                             class="inline-flex items-center justify-center px-4 md:px-5 py-2.5 md:py-2.5 bg-gray-500 hover:bg-gray-600 active:bg-gray-700 text-white font-medium rounded-lg transition-colors duration-150 shadow-md active:scale-95">
                             <svg class="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
