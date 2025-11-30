@@ -205,6 +205,16 @@ export function initCalendar(domEl) {
             domEl.classList.toggle('vista-dia', esVistaDia);
             domEl.classList.toggle('vista-semana', !esVistaDia);
 
+            // En vista día, sobrescribir el título para mostrar solo un día
+            if (esVistaDia) {
+                const titleEl = domEl.querySelector('.fc-toolbar-title');
+                if (titleEl) {
+                    const fecha = info.start;
+                    const opciones = { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' };
+                    titleEl.textContent = fecha.toLocaleDateString('es-ES', opciones);
+                }
+            }
+
             // Mostrar botón solo en vista semanal (si el botón existe)
             const btn = document.getElementById("btnRepetirSemana");
             if (btn) {
