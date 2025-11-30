@@ -248,7 +248,7 @@
                                 @csrf
                                 <input type="month" name="mes_anio" required value="{{ old('mes_anio') }}"
                                     class="flex-1 rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-300 text-xs py-2"
-                                    :disabled="cargando">
+                                    :class="{ 'opacity-50': cargando }">
                                 <button type="submit"
                                     class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-lg transition-colors disabled:opacity-50"
                                     :disabled="cargando">

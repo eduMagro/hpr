@@ -2,7 +2,7 @@
     <!-- Session Status -->
     <x-auth-session-status class="mb-4" :status="session('status')" />
 
-    <form method="POST" action="{{ route('login') }}">
+    <form method="POST" action="{{ route('login') }}" id="loginForm">
         @csrf
 
         <!-- Email Address -->
@@ -65,7 +65,7 @@
                     {{ __('¿Olvidaste tu contraseña?') }}
                 </a>
             @endif
-            <x-primary-button class="ms-3">
+            <x-primary-button class="ms-3" id="loginButton">
                 {{ __('Iniciar Sesión') }}
             </x-primary-button>
         </div>
@@ -74,6 +74,9 @@
         document.addEventListener('DOMContentLoaded', function() {
             const emailInput = document.getElementById('email');
             const recordarCheckbox = document.getElementById('recordar_correo');
+            const loginForm = document.getElementById('loginForm');
+            const loginButton = document.getElementById('loginButton');
+            let isSubmitting = false;
 
             // Al cargar, si hay un correo guardado en localStorage, lo rellenamos
             const correoGuardado = localStorage.getItem('correoRecordado');
@@ -81,12 +84,22 @@
                 emailInput.value = correoGuardado;
                 recordarCheckbox.checked = true;
             } else {
-                recordarCheckbox.checked = true; // ✅ Activado por defecto aunque no haya correo aún
+                recordarCheckbox.checked = true;
             }
 
+            // Prevenir doble submit del formulario
+            loginForm.addEventListener('submit', function(e) {
+                if (isSubmitting) {
+                    e.preventDefault();
+                    return false;
+                }
 
-            // Al enviar el formulario, guardamos o borramos el correo según el checkbox
-            document.querySelector('form').addEventListener('submit', function() {
+                isSubmitting = true;
+                loginButton.disabled = true;
+                loginButton.innerHTML = 'Iniciando...';
+                loginButton.classList.add('opacity-50', 'cursor-not-allowed');
+
+                // Guardar correo según el checkbox
                 if (recordarCheckbox.checked) {
                     localStorage.setItem('correoRecordado', emailInput.value);
                 } else {
