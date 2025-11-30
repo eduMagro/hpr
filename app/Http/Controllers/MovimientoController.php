@@ -1035,6 +1035,92 @@ class MovimientoController extends Controller
 
 
 
+    /**
+     * Completa un movimiento de preparación de paquete
+     */
+    public function completarPreparacion($id)
+    {
+        try {
+            $movimiento = Movimiento::findOrFail($id);
+
+            if (strtolower($movimiento->tipo) !== 'preparación paquete') {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Este movimiento no es de tipo preparación de paquete.'
+                ], 400);
+            }
+
+            $movimiento->update([
+                'estado' => 'completado',
+                'fecha_ejecucion' => now(),
+                'ejecutado_por' => auth()->id(),
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Paquete marcado como preparado correctamente.'
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Error al completar preparación de paquete: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al completar la preparación.'
+            ], 500);
+        }
+    }
+
+    /**
+     * Obtiene las etiquetas de un paquete para mostrar en el modal de preparación
+     */
+    public function getEtiquetasPaquete($movimientoId)
+    {
+        try {
+            $movimiento = Movimiento::with('paquete.etiquetas.elementos.planilla')->findOrFail($movimientoId);
+
+            if (!$movimiento->paquete) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Este movimiento no tiene un paquete asociado.'
+                ], 400);
+            }
+
+            $paquete = $movimiento->paquete;
+            $etiquetas = $paquete->etiquetas;
+
+            // Filtrar solo etiquetas con elementos sin elaborar
+            $etiquetasConElementosSinElaborar = $etiquetas->filter(function ($etiqueta) {
+                return $etiqueta->elementos->contains(fn($e) => (int)($e->elaborado ?? 1) === 0);
+            });
+
+            // Renderizar las etiquetas como HTML
+            $html = '';
+            foreach ($etiquetasConElementosSinElaborar as $etiqueta) {
+                $planilla = $etiqueta->elementos->first()?->planilla;
+                $html .= view('components.etiqueta.etiqueta', [
+                    'etiqueta' => $etiqueta,
+                    'planilla' => $planilla,
+                    'maquinaTipo' => 'grua',
+                ])->render();
+            }
+
+            return response()->json([
+                'success' => true,
+                'html' => $html,
+                'paquete' => [
+                    'id' => $paquete->id,
+                    'codigo' => $paquete->codigo ?? $paquete->id,
+                ],
+                'total_etiquetas' => $etiquetasConElementosSinElaborar->count(),
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Error al obtener etiquetas del paquete: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al obtener las etiquetas.'
+            ], 500);
+        }
+    }
+
     public function destroy($id)
     {
         // Iniciar una transacción para asegurar la integridad de los datos

@@ -500,6 +500,34 @@ export function crearCalendario() {
                 }
                 return true;
             },
+            eventDragStart: (info) => {
+                // Limitar el ancho del evento mirror durante el arrastre en vista mensual
+                const viewType = calendar?.view?.type;
+                if (viewType === 'dayGridMonth') {
+                    // Inyectar estilos CSS temporales (no pelea con FC como los estilos inline)
+                    if (!document.getElementById('drag-width-fix-style')) {
+                        const style = document.createElement('style');
+                        style.id = 'drag-width-fix-style';
+                        style.textContent = `
+                            .fc-event-mirror,
+                            .fc-event-dragging,
+                            .fc-daygrid-event-harness-abs {
+                                width: 200px !important;
+                                max-width: 200px !important;
+                                min-width: 200px !important;
+                            }
+                        `;
+                        document.head.appendChild(style);
+                    }
+                }
+            },
+            eventDragStop: () => {
+                // Eliminar los estilos temporales cuando termina el arrastre
+                const style = document.getElementById('drag-width-fix-style');
+                if (style) {
+                    style.remove();
+                }
+            },
             eventDrop: (info) => {
                 const p = info.event.extendedProps || {};
                 const id = info.event.id;

@@ -36,6 +36,8 @@
             ],
             'maquinas' => $maquinas,
             'eventos' => $trabajadoresEventos,
+            'cargaTrabajo' => $cargaTrabajo ?? [],
+            'turnos' => $turnos ?? [],
         ];
     @endphp
 
@@ -43,6 +45,203 @@
         window.AppPlanif = @json($cfg);
     </script>
     <style>
+        /* ============================================
+           ESTILOS DEL CALENDARIO (mismo estilo que User/show)
+           ============================================ */
+
+        .fc {
+            width: 100% !important;
+            max-width: 100% !important;
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+        }
+
+        /* Header del calendario - mismo color que sidebar */
+        .fc .fc-toolbar {
+            padding: 1rem;
+            background: #111827; /* gray-900 */
+            border-radius: 12px 12px 0 0;
+            margin-bottom: 0 !important;
+        }
+
+        .fc .fc-toolbar-title {
+            color: white !important;
+            font-weight: 700;
+            font-size: 1.25rem;
+            text-transform: capitalize;
+        }
+
+        .fc .fc-button {
+            background: rgba(255, 255, 255, 0.1) !important;
+            border: 1px solid rgba(255, 255, 255, 0.2) !important;
+            color: white !important;
+            font-weight: 500;
+            padding: 0.5rem 1rem;
+            border-radius: 8px !important;
+            transition: all 0.2s ease;
+            text-transform: capitalize;
+        }
+
+        .fc .fc-button:hover {
+            background: rgba(255, 255, 255, 0.2) !important;
+            transform: translateY(-1px);
+        }
+
+        .fc .fc-button-active {
+            background: #3b82f6 !important;
+            color: white !important;
+            border-color: #3b82f6 !important;
+            box-shadow: 0 2px 8px rgba(59, 130, 246, 0.4);
+        }
+
+        .fc .fc-button:disabled {
+            opacity: 0.5;
+        }
+
+        /* Bordes redondeados del contenedor */
+        .fc .fc-view-harness {
+            border-radius: 0 0 12px 12px;
+            overflow: hidden;
+            border: 1px solid #e2e8f0;
+            border-top: none;
+        }
+
+        /* Encabezados de recursos (máquinas) */
+        .fc .fc-resource-area {
+            background: #f8fafc;
+        }
+
+        .fc .fc-datagrid-cell-frame {
+            padding: 0.5rem;
+        }
+
+        /* Eventos de carga de trabajo (indicadores pequeños) */
+        .fc-event.evento-carga {
+            font-size: 0.6rem !important;
+            padding: 0 !important;
+            border-radius: 3px !important;
+            cursor: default !important;
+            pointer-events: none !important;
+            opacity: 0.9;
+            min-height: 16px !important;
+            max-height: 18px !important;
+            line-height: 16px !important;
+            overflow: hidden;
+        }
+
+        .fc-event.evento-carga .fc-event-main {
+            padding: 0 !important;
+        }
+
+        .carga-content {
+            font-size: 0.6rem;
+            font-weight: 700;
+            text-align: center;
+            padding: 0 3px;
+            line-height: 16px;
+        }
+
+        /* Ocultar eventos de carga en vista semanal */
+        .vista-semana .evento-carga {
+            display: none !important;
+        }
+
+        /* Celdas del timeline - vista día con turnos limpios */
+        .vista-dia .fc-timeline-slot {
+            border-color: #d1d5db !important;
+        }
+
+        .vista-dia .fc-timeline-slot-frame {
+            border-right: 2px solid #9ca3af !important;
+        }
+
+        /* Ocultar líneas de cuadrícula menores en vista día */
+        .vista-dia .fc-timeline-slot-minor {
+            border: none !important;
+        }
+
+        /* Celdas del timeline - vista semana */
+        .vista-semana .fc-timeline-slot {
+            border-color: #e2e8f0 !important;
+        }
+
+        /* Hover solo en la celda individual */
+        .fc .fc-timeline-lane:hover {
+            background-color: rgba(0, 0, 0, 0.02);
+        }
+
+        /* Slot del día actual */
+        .fc .fc-day-today {
+            background: linear-gradient(135deg, #dbeafe 0%, #e0e7ff 100%) !important;
+        }
+
+        /* Eventos */
+        .fc .fc-event {
+            border-radius: 6px;
+            border: none !important;
+            padding: 2px 6px;
+            font-size: 0.75rem;
+            font-weight: 500;
+            margin: 1px 2px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            transition: transform 0.15s ease, box-shadow 0.15s ease;
+        }
+
+        .fc .fc-event:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.15);
+            z-index: 10;
+        }
+
+        /* Labels de slots (días/horas) */
+        .fc .fc-timeline-slot-label {
+            font-weight: 600;
+            color: #475569;
+            text-transform: capitalize;
+            font-size: 0.8rem;
+        }
+
+        /* Scrollbar del calendario */
+        .fc .fc-scroller::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        .fc .fc-scroller::-webkit-scrollbar-track {
+            background: #f1f5f9;
+            border-radius: 4px;
+        }
+
+        .fc .fc-scroller::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+
+        .fc .fc-scroller::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .fc .fc-toolbar {
+                flex-direction: column;
+                gap: 0.75rem;
+                padding: 0.75rem;
+            }
+
+            .fc .fc-toolbar-title {
+                font-size: 1rem;
+            }
+
+            .fc .fc-button {
+                padding: 0.4rem 0.75rem;
+                font-size: 0.8rem;
+            }
+        }
+
+        /* ============================================
+           ESTILOS DEL MENÚ CONTEXTUAL
+           ============================================ */
+
         .fc-contextmenu button:hover {
             background: #f3f4f6;
         }

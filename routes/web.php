@@ -267,6 +267,10 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
     // Endpoint de resumen del calendario
     Route::get('/api/produccion/resumen', [ProduccionController::class, 'obtenerResumen'])->name('api.produccion.resumen');
 
+    // Endpoints de priorización de obras
+    Route::get('/api/produccion/obras-activas', [ProduccionController::class, 'obrasConPlanillasActivas'])->name('api.produccion.obras-activas');
+    Route::post('/api/produccion/priorizar-obra', [ProduccionController::class, 'priorizarObra'])->name('api.produccion.priorizar-obra');
+
     //MSR20 BVBS
     Route::get('/maquinas/{maquina}/exportar-bvbs', [MaquinaController::class, 'exportarBVBS'])
         ->name('maquinas.exportar-bvbs');
@@ -274,6 +278,8 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
     // === MOVIMIENTOS ===
     Route::resource('movimientos', MovimientoController::class);
     Route::post('/movimientos/crear', [MovimientoController::class, 'crearMovimiento'])->name('movimientos.crear');
+    Route::put('/movimientos/{id}/completar-preparacion', [MovimientoController::class, 'completarPreparacion'])->name('movimientos.completar-preparacion');
+    Route::get('/movimientos/{id}/etiquetas-paquete', [MovimientoController::class, 'getEtiquetasPaquete'])->name('movimientos.etiquetas-paquete');
 
     // === PAQUETES ETIQUETAS Y ELEMENTOS ===
 

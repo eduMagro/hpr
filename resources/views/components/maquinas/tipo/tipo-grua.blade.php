@@ -143,6 +143,15 @@
                                         🚛 Ejecutar salida
                                     </button>
                                 @endif
+                                {{-- PREPARACIÓN PAQUETE (elementos sin elaborar) --}}
+                                @if (strtolower($mov->tipo) === 'preparación paquete')
+                                    <div class="flex flex-wrap gap-2 mt-2">
+                                        <button onclick='abrirModalPreparacionPaquete(@json($mov->id))'
+                                            class="bg-blue-600 hover:bg-blue-700 text-white text-sm px-3 py-2 rounded">
+                                            📦 Preparar
+                                        </button>
+                                    </div>
+                                @endif
                             </div>
                         </li>
                     @endif
@@ -571,4 +580,161 @@
     window.eliminarEscaneado = eliminarEscaneado;
     window.mostrarErrorInline = mostrarErrorInline;
     window.limpiarErrorInline = limpiarErrorInline;
+</script>
+{{-- Modal de Preparación de Paquete --}}
+<div id="modalPreparacionPaquete" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 overflow-y-auto">
+    <div class="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] overflow-hidden m-4">
+        <div class="flex justify-between items-center p-4 border-b bg-blue-600 text-white">
+            <h2 class="text-xl font-bold">
+                📦 Preparar Paquete <span id="modalPaqueteCodigo"></span>
+            </h2>
+            <button onclick="cerrarModalPreparacionPaquete()" class="text-white hover:text-gray-200 text-2xl">&times;</button>
+        </div>
+        <div id="modalPreparacionContenido" class="p-4 overflow-y-auto" style="max-height: calc(90vh - 140px);">
+            <div class="flex items-center justify-center py-8">
+                <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+                <span class="ml-3 text-gray-600">Cargando etiquetas...</span>
+            </div>
+        </div>
+        <div class="flex justify-end gap-3 p-4 border-t bg-gray-50">
+            <button onclick="cerrarModalPreparacionPaquete()"
+                class="px-4 py-2 bg-gray-300 hover:bg-gray-400 text-gray-800 rounded font-semibold">
+                Cancelar
+            </button>
+            <button id="btnCompletarPreparacion" onclick="completarPreparacionDesdeModal()"
+                class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded font-semibold">
+                ✅ Marcar como preparado
+            </button>
+        </div>
+    </div>
+</div>
+
+<script>
+    // ====== PREPARACIÓN PAQUETE (elementos sin elaborar) ======
+    let movimientoActualId = null;
+
+    async function abrirModalPreparacionPaquete(movimientoId) {
+        movimientoActualId = movimientoId;
+        const modal = document.getElementById('modalPreparacionPaquete');
+        const contenido = document.getElementById('modalPreparacionContenido');
+        const codigoSpan = document.getElementById('modalPaqueteCodigo');
+
+        // Mostrar modal con loading
+        modal.classList.remove('hidden');
+        contenido.innerHTML = `
+            <div class="flex items-center justify-center py-8">
+                <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+                <span class="ml-3 text-gray-600">Cargando etiquetas...</span>
+            </div>
+        `;
+
+        try {
+            const response = await fetch(`/movimientos/${movimientoId}/etiquetas-paquete`, {
+                headers: {
+                    'Accept': 'application/json'
+                }
+            });
+
+            const data = await response.json();
+
+            if (response.ok && data.success) {
+                codigoSpan.textContent = `#${data.paquete.codigo}`;
+
+                if (data.total_etiquetas === 0) {
+                    contenido.innerHTML = `
+                        <div class="text-center py-8 text-gray-500">
+                            <p class="text-lg">No hay etiquetas con elementos sin elaborar en este paquete.</p>
+                        </div>
+                    `;
+                } else {
+                    contenido.innerHTML = `
+                        <p class="text-sm text-gray-600 mb-4">
+                            ${data.total_etiquetas} etiqueta(s) con elementos sin elaborar:
+                        </p>
+                        <div class="flex flex-wrap gap-4 justify-center">
+                            ${data.html}
+                        </div>
+                    `;
+                }
+            } else {
+                contenido.innerHTML = `
+                    <div class="text-center py-8 text-red-500">
+                        <p class="text-lg">${data.message || 'Error al cargar las etiquetas.'}</p>
+                    </div>
+                `;
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            contenido.innerHTML = `
+                <div class="text-center py-8 text-red-500">
+                    <p class="text-lg">Error de conexión al cargar las etiquetas.</p>
+                </div>
+            `;
+        }
+    }
+
+    function cerrarModalPreparacionPaquete() {
+        document.getElementById('modalPreparacionPaquete').classList.add('hidden');
+        movimientoActualId = null;
+    }
+
+    async function completarPreparacionDesdeModal() {
+        if (!movimientoActualId) return;
+
+        const result = await Swal.fire({
+            title: '¿Marcar como preparado?',
+            text: 'El paquete quedará listo para su entrega.',
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonText: 'Sí, marcar como preparado',
+            confirmButtonColor: '#10B981',
+            cancelButtonText: 'Cancelar'
+        });
+
+        if (!result.isConfirmed) return;
+
+        try {
+            const response = await fetch(`/movimientos/${movimientoActualId}/completar-preparacion`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '',
+                    'Accept': 'application/json'
+                }
+            });
+
+            const data = await response.json();
+
+            if (response.ok && data.success) {
+                cerrarModalPreparacionPaquete();
+                await Swal.fire({
+                    title: '¡Preparado!',
+                    text: data.message || 'El paquete ha sido marcado como preparado.',
+                    icon: 'success',
+                    timer: 1500,
+                    showConfirmButton: false
+                });
+                location.reload();
+            } else {
+                Swal.fire('Error', data.message || 'No se pudo completar la preparación.', 'error');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            Swal.fire('Error', 'Ha ocurrido un error de conexión.', 'error');
+        }
+    }
+
+    // Cerrar modal con Escape
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') cerrarModalPreparacionPaquete();
+    });
+
+    // Cerrar modal al hacer clic fuera
+    document.getElementById('modalPreparacionPaquete')?.addEventListener('click', (e) => {
+        if (e.target.id === 'modalPreparacionPaquete') cerrarModalPreparacionPaquete();
+    });
+
+    window.abrirModalPreparacionPaquete = abrirModalPreparacionPaquete;
+    window.cerrarModalPreparacionPaquete = cerrarModalPreparacionPaquete;
+    window.completarPreparacionDesdeModal = completarPreparacionDesdeModal;
 </script>

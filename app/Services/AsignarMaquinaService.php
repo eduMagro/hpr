@@ -27,6 +27,18 @@ class AsignarMaquinaService
             return;
         }
 
+        // Detectar si es "ensamblado taller" para usar Nave B
+        $esEnsambladoTaller = $this->esEnsambladoTaller($planilla);
+
+        if ($esEnsambladoTaller) {
+            Log::channel('planilla_import')->info("🏭 [AsignarMaquina] Planilla {$planillaId}: ENSAMBLADO TALLER detectado → Asignando a Nave B");
+            $this->repartirEnNaveB($planilla, $elementos);
+            return;
+        }
+
+        // Lógica normal para Nave A
+        Log::channel('planilla_import')->info("🏭 [AsignarMaquina] Planilla {$planillaId}: Asignando a Nave A (normal)");
+
         // Clasificar elementos
         $estribos = $elementos->filter(
             fn($e) => (int)$e->dobles_barra >= 4 && (int)$e->diametro <= 16
@@ -34,10 +46,9 @@ class AsignarMaquinaService
 
 
         $grupos = [
-            // Solo elementos con dobles >= 4 Y diÃ¡metro <= 16 son "estribos"
+            // Solo elementos con dobles >= 4 Y diámetro <= 16 son "estribos"
             'estribos' => $estribos,
-            // âœ… CORREGIDO: Resto = TODOS los que NO son estribos
-            // (incluye dobles >= 4 con diÃ¡metro > 16)
+            // Resto = TODOS los que NO son estribos (incluye dobles >= 4 con diámetro > 16)
             'resto' => $elementos->reject(fn($e) => $estribos->contains($e)),
         ];
 
@@ -57,21 +68,11 @@ class AsignarMaquinaService
         // Calcular cargas actuales
         $cargas = $this->cargasPendientesPorMaquina();
 
-        // 📦 PASO 1: Elementos sin elaboración → Syntax Line 28
+        // 📦 PASO 1: Elementos sin elaboración (única dimensión) → Grúa de Nave A
         $sinElaborar = $elementos->filter(fn($e) => (int)($e->elaborado ?? 1) === 0);
-        $syntaxLine = $maquinas->first(fn($m) => $m->codigo === 'SL28');
 
         if ($sinElaborar->isNotEmpty()) {
-            if (!$syntaxLine) {
-                Log::channel('planilla_import')->warning("⚠️ Syntax Line 28 no disponible para elementos sin elaborar en planilla {$planilla->id}");
-            } else {
-                foreach ($sinElaborar as $e) {
-                    $e->maquina_id = $syntaxLine->id;
-                    $e->save();
-                    $this->sumarCarga($cargas, $syntaxLine->id, (float)$e->peso, (int)($e->tiempo_fabricacion ?? 0));
-                }
-                Log::channel('planilla_import')->info("📦 [AsignarMaquina] {$sinElaborar->count()} elementos sin elaborar → Syntax Line 28");
-            }
+            $this->asignarElementosAGrua($planilla, $sinElaborar, 'A', $cargas);
         }
 
         // 🔧 PASO 2: Elementos que SÍ requieren elaboración (elaborado = 1)
@@ -632,5 +633,130 @@ class AsignarMaquinaService
         }
 
         Log::channel('planilla_import')->info("📊 ========================================================");
+    }
+
+    /**
+     * Detecta si la planilla es de tipo "ensamblado taller"
+     * Las planillas con ensamblado taller van a máquinas de Nave B
+     */
+    protected function esEnsambladoTaller(Planilla $planilla): bool
+    {
+        $ensamblado = strtolower(trim($planilla->ensamblado ?? ''));
+        return str_contains($ensamblado, 'taller');
+    }
+
+    /**
+     * Reparte los elementos de una planilla "ensamblado taller" en máquinas de Nave B
+     * Solo usa cortadoras_dobladoras de Nave B, sin lógica de estriberas ni CM
+     */
+    protected function repartirEnNaveB(Planilla $planilla, $elementos): void
+    {
+        Log::channel('planilla_import')->info("🏭 [AsignarMaquina/NaveB] Iniciando reparto de {$elementos->count()} elementos para planilla {$planilla->id} en Nave B");
+
+        // Calcular cargas actuales
+        $cargas = $this->cargasPendientesPorMaquina();
+
+        // 📦 PASO 1: Elementos sin elaboración (única dimensión) → Grúa de Nave B
+        $sinElaborar = $elementos->filter(fn($e) => (int)($e->elaborado ?? 1) === 0);
+
+        if ($sinElaborar->isNotEmpty()) {
+            $this->asignarElementosAGrua($planilla, $sinElaborar, 'B', $cargas);
+        }
+
+        // 🔧 PASO 2: Elementos que SÍ requieren elaboración
+        $elementosAElaborar = $elementos->reject(fn($e) => (int)($e->elaborado ?? 1) === 0);
+
+        if ($elementosAElaborar->isEmpty()) {
+            Log::channel('planilla_import')->info("✅ [AsignarMaquina/NaveB] Solo había elementos sin elaborar, reparto completado");
+            return;
+        }
+
+        // Obtener máquinas de Nave B tipo cortadora_dobladora (activas)
+        $maquinasNaveB = Maquina::naveB()
+            ->where('tipo', 'cortadora_dobladora')
+            ->where(function($query) {
+                $query->where('estado', 'activa')
+                      ->orWhereNull('estado');
+            })
+            ->get()
+            ->keyBy('id');
+
+        Log::channel('planilla_import')->info("🏭 [AsignarMaquina/NaveB] Máquinas disponibles en Nave B: {$maquinasNaveB->count()} - Códigos: " . json_encode($maquinasNaveB->pluck('codigo')->toArray()));
+
+        if ($maquinasNaveB->isEmpty()) {
+            Log::channel('planilla_import')->error("❌ [AsignarMaquina/NaveB] No hay máquinas cortadora_dobladora activas en Nave B para planilla {$planilla->id}");
+            return;
+        }
+
+        // Optimizar elementos por desperdicio antes de asignar
+        $elementosOptimizados = $this->optimizarPorDesperdicio($elementosAElaborar);
+        $pesoTotal = $elementosOptimizados->sum(fn($e) => (float)$e->peso);
+        Log::channel('planilla_import')->info("⚖️ [AsignarMaquina/NaveB] Elementos optimizados (total: {$pesoTotal}kg) para distribución en Nave B");
+
+        $asignados = 0;
+
+        foreach ($elementosOptimizados as $elemento) {
+            // Buscar máquinas que soporten el diámetro
+            $candidatas = $maquinasNaveB->filter(fn($m) => $this->soportaDiametro($m, (int)$elemento->diametro));
+
+            if ($candidatas->isEmpty()) {
+                Log::channel('planilla_import')->warning("⚠️ [AsignarMaquina/NaveB] Sin máquina compatible para elemento {$elemento->id} Ø{$elemento->diametro} en Nave B");
+                continue;
+            }
+
+            // Seleccionar la menos cargada
+            $maquina = $this->menosCargada($candidatas, $cargas);
+
+            if ($maquina) {
+                $elemento->maquina_id = $maquina->id;
+                $elemento->save();
+                $this->sumarCarga($cargas, $maquina->id, (float)$elemento->peso, (int)($elemento->tiempo_fabricacion ?? 0));
+                $asignados++;
+                Log::channel('planilla_import')->debug("✓ [AsignarMaquina/NaveB] Elemento {$elemento->id} (Ø{$elemento->diametro}, {$elemento->peso}kg) → Máquina {$maquina->id} ({$maquina->codigo})");
+            }
+        }
+
+        Log::channel('planilla_import')->info("✅ [AsignarMaquina/NaveB] Asignados {$asignados} de {$elementosAElaborar->count()} elementos a Nave B");
+
+        // Mostrar resumen de balanceo
+        $this->mostrarResumenBalanceo($cargas, $maquinasNaveB);
+    }
+
+    /**
+     * Asigna elementos sin elaborar (única dimensión) a la primera grúa de la nave
+     * Los movimientos de preparación se crean cuando el gruista entra en la vista de grúa
+     * y hay salidas programadas para mañana con estos elementos
+     */
+    protected function asignarElementosAGrua(Planilla $planilla, $elementos, string $nave, array &$cargas): void
+    {
+        $naveLabel = "Nave {$nave}";
+        Log::channel('planilla_import')->info("🏗️ [AsignarMaquina/Grúa] Asignando {$elementos->count()} elementos sin elaborar a grúa de {$naveLabel}");
+
+        // Obtener la primera grúa de la nave correspondiente
+        $grua = $nave === 'A'
+            ? Maquina::naveA()->where('tipo', 'grua')->orderBy('id')->first()
+            : Maquina::naveB()->where('tipo', 'grua')->orderBy('id')->first();
+
+        if (!$grua) {
+            Log::channel('planilla_import')->error("❌ [AsignarMaquina/Grúa] No hay grúa disponible en {$naveLabel} para planilla {$planilla->id}");
+            return;
+        }
+
+        Log::channel('planilla_import')->info("🏗️ [AsignarMaquina/Grúa] Grúa seleccionada: {$grua->codigo} (ID: {$grua->id}) en {$naveLabel}");
+
+        $asignados = 0;
+
+        foreach ($elementos as $elemento) {
+            // Asignar elemento a la grúa
+            $elemento->maquina_id = $grua->id;
+            $elemento->save();
+
+            $this->sumarCarga($cargas, $grua->id, (float)$elemento->peso, (int)($elemento->tiempo_fabricacion ?? 0));
+            $asignados++;
+
+            Log::channel('planilla_import')->debug("✓ [AsignarMaquina/Grúa] Elemento {$elemento->id} (Ø{$elemento->diametro}, {$elemento->peso}kg) → Grúa {$grua->codigo}");
+        }
+
+        Log::channel('planilla_import')->info("✅ [AsignarMaquina/Grúa] {$asignados} elementos asignados a grúa {$grua->codigo}");
     }
 }

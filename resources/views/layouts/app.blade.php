@@ -258,6 +258,64 @@
             // Remover overlay inmediatamente - Livewire ya se encarga de la sincronización
             isNavigating = false;
             overlay.classList.remove('active');
+
+            // Cargar FullCalendar dinámicamente si estamos en la página de máquinas
+            const calendarioEl = document.getElementById('calendario');
+            if (calendarioEl && calendarioEl.dataset.calendarType === 'maquinas') {
+                // Pequeño delay para que el script de la página se ejecute primero
+                setTimeout(() => {
+                    // Destruir calendario anterior si existe
+                    if (window.calendar) {
+                        try {
+                            window.calendar.destroy();
+                            window.calendar = null;
+                        } catch (e) {
+                            console.warn('Error al destruir calendario anterior:', e);
+                        }
+                    }
+
+                    // Función para esperar a que la función de inicialización esté disponible
+                    function esperarYCargar(intentos = 0) {
+                        if (typeof window.inicializarCalendarioMaquinas === 'function') {
+                            if (typeof FullCalendar === 'undefined') {
+                                console.log('📅 Cargando FullCalendar dinámicamente...');
+                                const scripts = [
+                                    'https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js',
+                                    'https://cdn.jsdelivr.net/npm/fullcalendar-scheduler@6.1.8/index.global.min.js',
+                                    'https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/locales-all.global.min.js'
+                                ];
+
+                                function cargarScriptSecuencial(index, callback) {
+                                    if (index >= scripts.length) {
+                                        if (callback) callback();
+                                        return;
+                                    }
+                                    const script = document.createElement('script');
+                                    script.src = scripts[index];
+                                    script.onload = () => cargarScriptSecuencial(index + 1, callback);
+                                    document.head.appendChild(script);
+                                }
+
+                                cargarScriptSecuencial(0, () => {
+                                    console.log('✅ FullCalendar cargado, inicializando calendario...');
+                                    window.inicializarCalendarioMaquinas();
+                                });
+                            } else {
+                                // FullCalendar ya está cargado, solo inicializar
+                                console.log('📅 FullCalendar ya disponible, reinicializando calendario...');
+                                window.inicializarCalendarioMaquinas();
+                            }
+                        } else if (intentos < 20) {
+                            // Esperar un poco más
+                            setTimeout(() => esperarYCargar(intentos + 1), 50);
+                        } else {
+                            console.error('❌ No se encontró la función inicializarCalendarioMaquinas');
+                        }
+                    }
+
+                    esperarYCargar();
+                }, 100);
+            }
         });
 
         // Manejar errores de navegación

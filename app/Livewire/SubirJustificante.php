@@ -384,6 +384,7 @@ class SubirJustificante extends Component
             // Resetear formulario
             $this->reset(['archivo', 'textoExtraido', 'fechaDetectada', 'horasDetectadas', 'observaciones', 'mostrarResultados', 'asignacionSeleccionada']);
             $this->cargarAsignacionesDisponibles();
+            $this->cargarJustificantesExistentes();
 
             session()->flash('justificante_success', 'Justificante guardado correctamente.');
             $this->dispatch('justificante-guardado');

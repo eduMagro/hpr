@@ -375,3 +375,17 @@
     padding-left: 2px !important;
     padding-right: 2px !important;
 }
+
+/* 🔹 Limitar el ancho del evento mientras se arrastra en vista mensual */
+.fc-dayGridMonth-view .fc-event-dragging,
+.fc-dayGridMonth-view .fc-event-mirror {
+    width: 200px !important;
+    max-width: 200px !important;
+    position: fixed !important;
+}
+
+/* 🔹 También para el harness del evento mientras se arrastra */
+.fc-dayGridMonth-view .fc-daygrid-event-harness-abs {
+    width: auto !important;
+    max-width: 200px !important;
+}

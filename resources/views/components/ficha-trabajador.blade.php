@@ -261,8 +261,8 @@
                 </div>
             @endif
 
-            {{-- Justificantes - visible para operarios y oficina viendo ficha de operario --}}
-            @if ($user->rol === 'operario')
+            {{-- Justificantes - visible para operarios y oficina --}}
+            @if (in_array($user->rol, ['operario', 'oficina']))
                 @php
                     $esOficinaViendoOtro = Auth::user()->rol === 'oficina' && Auth::id() !== $user->id;
                 @endphp

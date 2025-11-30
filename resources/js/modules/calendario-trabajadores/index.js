@@ -24,15 +24,8 @@ function inicializarCalendarioTrabajadores() {
     window.calendarTrabajadores = calendar;
 }
 
-// Inicializar solo una vez
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', inicializarCalendarioTrabajadores, { once: true });
-} else {
-    inicializarCalendarioTrabajadores();
-}
-
-// Limpiar al salir de la página
-document.addEventListener('livewire:navigating', () => {
+// Función para limpiar el calendario
+function limpiarCalendario() {
     if (window.calendarTrabajadores) {
         try {
             window.calendarTrabajadores.destroy();
@@ -41,4 +34,17 @@ document.addEventListener('livewire:navigating', () => {
         }
         window.calendarTrabajadores = null;
     }
-}, { once: true });
+}
+
+// Inicializar en carga inicial
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', inicializarCalendarioTrabajadores);
+} else {
+    inicializarCalendarioTrabajadores();
+}
+
+// Inicializar cuando se navega a esta página con Livewire (wire:navigate)
+document.addEventListener('livewire:navigated', inicializarCalendarioTrabajadores);
+
+// Limpiar al salir de la página con Livewire
+document.addEventListener('livewire:navigating', limpiarCalendario);

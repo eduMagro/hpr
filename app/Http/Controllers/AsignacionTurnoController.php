@@ -367,7 +367,8 @@ class AsignacionTurnoController extends Controller
             ]);
 
             $user = User::findOrFail($request->user_id);
-            if ($user->rol !== 'operario') {
+            // Permitir fichaje a todos los roles (operario y oficina)
+            if (!in_array($user->rol, ['operario', 'oficina'])) {
                 return response()->json(['error' => 'No tienes permisos para fichar.'], 403);
             }
 
@@ -381,13 +382,7 @@ class AsignacionTurnoController extends Controller
             $obraEncontrada = Obra::where('estado', 'activa')->first();
 
             /* 3) Hora actual + detección de turno/fecha ------------------------------ */
-            // TODO: Quitar para producción - Permite falsear hora para pruebas
-            if ($request->filled('hora_prueba')) {
-                $ahora = Carbon::parse($request->hora_prueba);
-                Log::info("🧪 MODO PRUEBA: Usando hora falseada: {$ahora}");
-            } else {
-                $ahora = now();
-            }
+            $ahora = now();
             $horaActual = $ahora->format('H:i:s');
 
             [$turnoDetectado, $fechaTurnoDetectado] = $this->detectarTurnoYFecha($ahora);

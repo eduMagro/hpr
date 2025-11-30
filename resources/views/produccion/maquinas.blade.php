@@ -180,6 +180,16 @@
                         <span class="text-sm font-medium hidden md:inline">Balancear Carga</span>
                     </button>
 
+                    <!-- Botón de priorizar obra -->
+                    <button onclick="abrirModalPriorizarObra()" id="priorizar-obra-btn"
+                        title="Priorizar todas las planillas de una obra"
+                        class="px-3 py-2 bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white rounded-lg transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105 flex items-center gap-2 group">
+                        <svg class="w-5 h-5 transition-transform group-hover:scale-110" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"></path>
+                        </svg>
+                        <span class="text-sm font-medium hidden md:inline">Priorizar Obra</span>
+                    </button>
+
                     <!-- Botón de resumen -->
                     <button onclick="abrirModalResumen()" id="resumen-btn"
                         title="Ver resumen del calendario"
@@ -244,8 +254,15 @@
                 </button>
             </div>
 
+            <!-- Filtro por máquina -->
+            <div class="px-4 py-2 bg-gray-50 border-b">
+                <select id="panel_filtro_maquina" class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                    <option value="todas">Todas las máquinas</option>
+                </select>
+            </div>
+
             <div id="panel_lista"
-                class="flex-1 overflow-y-auto p-4 space-y-3
+                class="flex-1 overflow-y-auto p-3 space-y-1
                    [&::-webkit-scrollbar]:w-2
                    [&::-webkit-scrollbar-track]:bg-gray-200
                    [&::-webkit-scrollbar-thumb]:bg-blue-600
@@ -279,7 +296,7 @@
             </div>
         </div>
 
-        <!-- Scripts externos -->
+        <!-- Scripts externos FullCalendar -->
         <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.css">
         <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js"></script>
         <script src="https://cdn.jsdelivr.net/npm/fullcalendar-scheduler@6.1.8/index.global.min.js"></script>
@@ -735,6 +752,74 @@
             </div>
         </div>
 
+        <!-- Modal Priorizar Obra -->
+        <div id="modalPriorizarObra"
+            class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+            <div class="bg-white rounded-lg shadow-xl w-full max-w-lg mx-4">
+                <div class="bg-orange-500 text-white px-6 py-4 rounded-t-lg">
+                    <h3 class="text-lg font-semibold flex items-center gap-2">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"></path>
+                        </svg>
+                        Priorizar Obra
+                    </h3>
+                    <p class="text-sm opacity-90 mt-1">Mover todas las planillas de una obra al inicio de la cola</p>
+                </div>
+
+                <!-- Loading state -->
+                <div id="priorizarObraLoading" class="p-8 text-center">
+                    <div class="inline-block animate-spin rounded-full h-10 w-10 border-b-2 border-orange-500"></div>
+                    <p class="mt-4 text-gray-600">Cargando obras...</p>
+                </div>
+
+                <!-- Content state -->
+                <div id="priorizarObraContent" class="hidden p-6">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                        Selecciona obra y fecha de entrega:
+                    </label>
+                    <select id="selectObraPriorizar"
+                        class="w-full border border-gray-300 rounded-lg px-4 py-3 text-gray-700 focus:ring-2 focus:ring-orange-500 focus:border-orange-500">
+                        <option value="">-- Selecciona --</option>
+                    </select>
+                    <div id="infoPriorizacion" class="mt-3 p-3 bg-orange-50 border border-orange-200 rounded-lg hidden">
+                        <div class="flex items-center gap-2 text-orange-800">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg>
+                            <span id="infoPlanillasCount" class="font-medium"></span>
+                        </div>
+                    </div>
+                    <p class="mt-3 text-sm text-gray-500">
+                        Las planillas seleccionadas se moverán a la posición 1 en cada máquina.
+                    </p>
+                </div>
+
+                <!-- Empty state -->
+                <div id="priorizarObraEmpty" class="hidden p-8 text-center">
+                    <svg class="w-16 h-16 mx-auto text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"></path>
+                    </svg>
+                    <h3 class="text-lg font-semibold text-gray-800 mb-2">Sin obras activas</h3>
+                    <p class="text-gray-600">No hay obras con planillas pendientes en la cola de producción.</p>
+                </div>
+
+                <!-- Botones de acción -->
+                <div class="bg-gray-50 px-6 py-4 rounded-b-lg flex justify-end gap-3 border-t border-gray-200">
+                    <button onclick="cerrarModalPriorizarObra()"
+                        class="bg-gray-300 hover:bg-gray-400 text-gray-700 px-4 py-2 rounded-lg transition-colors">
+                        Cancelar
+                    </button>
+                    <button id="btnAplicarPriorizar" onclick="aplicarPriorizarObra()"
+                        class="bg-orange-500 hover:bg-orange-600 text-white px-6 py-2 rounded-lg transition-colors flex items-center gap-2 hidden">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"></path>
+                        </svg>
+                        Priorizar Obra
+                    </button>
+                </div>
+            </div>
+        </div>
+
         <!-- Modal Resumen del Calendario -->
         <div id="modalResumen"
             class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50 overflow-y-auto">
@@ -861,21 +946,21 @@
                 transform: translateX(0);
             }
 
-            /* Elementos arrastrables */
+            /* Elementos arrastrables - Compacto */
             .elemento-drag {
                 background: white;
-                border: 2px solid #e5e7eb;
-                border-radius: 8px;
-                padding: 12px;
+                border: 1px solid #e5e7eb;
+                border-radius: 4px;
+                padding: 2px;
                 cursor: move;
-                transition: all 0.2s;
+                transition: all 0.15s;
                 position: relative;
+                line-height: 0;
             }
 
             .elemento-drag:hover {
                 border-color: #3b82f6;
-                box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-                transform: translateY(-2px);
+                box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
             }
 
             .elemento-drag.fc-dragging {
@@ -886,62 +971,67 @@
             .elemento-drag.seleccionado {
                 border-color: #2563eb;
                 background-color: #eff6ff;
-                box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.2);
+                box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.2);
             }
 
             .elemento-drag.seleccionado::before {
                 content: '✓';
                 position: absolute;
-                top: 8px;
-                right: 8px;
+                top: 4px;
+                right: 4px;
                 background-color: #2563eb;
                 color: white;
-                width: 24px;
-                height: 24px;
+                width: 18px;
+                height: 18px;
                 border-radius: 50%;
                 display: flex;
                 align-items: center;
                 justify-content: center;
                 font-weight: bold;
-                font-size: 14px;
+                font-size: 11px;
                 z-index: 10;
             }
 
             .elemento-drag canvas {
                 width: 100%;
-                height: 120px;
+                height: 80px;
                 border: 1px solid #e5e7eb;
-                border-radius: 4px;
-                margin-bottom: 8px;
+                border-radius: 3px;
             }
 
             .elemento-info-mini {
                 display: flex;
                 justify-content: space-between;
-                font-size: 0.875rem;
+                font-size: 0.75rem;
             }
 
-            /* Secciones de máquina en el panel */
+            /* Secciones de máquina en el panel - Compacto */
             .seccion-maquina-header {
-                margin: 0 -16px 12px -16px;
+                margin: 0 -12px 6px -12px;
             }
 
             .seccion-maquina-header:first-child {
-                margin-top: -16px;
+                margin-top: -12px;
             }
 
             .seccion-maquina-header > div {
                 position: sticky;
                 top: 0;
                 z-index: 5;
-                box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+                box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+                padding: 6px 12px !important;
+                font-size: 0.8rem;
             }
 
             .seccion-maquina-elementos {
                 display: flex;
                 flex-direction: column;
-                gap: 12px;
-                margin-bottom: 20px;
+                gap: 4px;
+                margin-bottom: 4px;
+            }
+
+            .seccion-maquina-wrapper {
+                margin-bottom: 2px;
             }
 
             /* Badge con contador de selección */
@@ -1250,14 +1340,33 @@
                 line-height: 48px;
             }
         </style>
-        <script data-navigate-once>
-            function inicializarCalendarioMaquinas() {
-                const maquinas = @json($resources);
-                const planillas = @json($planillasEventos);
-                const cargaTurnoResumen = @json($cargaTurnoResumen);
-                const planDetallado = @json($planDetallado);
-                const realDetallado = @json($realDetallado);
-                const turnosActivos = @json($turnosLista);
+        {{-- Datos del calendario - se actualiza en cada navegación --}}
+        <script id="calendario-maquinas-data" type="application/json">
+            {
+                "maquinas": @json($resources),
+                "planillas": @json($planillasEventos),
+                "cargaTurnoResumen": @json($cargaTurnoResumen),
+                "planDetallado": @json($planDetallado),
+                "realDetallado": @json($realDetallado),
+                "turnosActivos": @json($turnosLista)
+            }
+        </script>
+        <script>
+            // Hacer la función global para que el layout pueda llamarla
+            window.inicializarCalendarioMaquinas = function() {
+                // Leer datos actualizados del DOM (se actualizan en cada navegación)
+                const dataEl = document.getElementById('calendario-maquinas-data');
+                if (!dataEl) {
+                    console.error('No se encontraron datos del calendario');
+                    return;
+                }
+                const calendarData = JSON.parse(dataEl.textContent);
+                const maquinas = calendarData.maquinas;
+                const planillas = calendarData.planillas;
+                const cargaTurnoResumen = calendarData.cargaTurnoResumen;
+                const planDetallado = calendarData.planDetallado;
+                const realDetallado = calendarData.realDetallado;
+                const turnosActivos = calendarData.turnosActivos;
 
                 // Variable global para el calendario
                 let calendar;
@@ -1347,7 +1456,7 @@
                         }
                     },
                     locale: 'es',
-                    timeZone: 'local', // ✅ Usar zona horaria local del navegador
+                    timeZone: 'local', // Fechas ISO8601 con offset se interpretan correctamente
                     initialDate: "{{ $initialDate }}",
                     // ✅ CAMBIO: Usar endpoints dinámicos en lugar de datos estáticos
                     resources: {
@@ -2570,6 +2679,7 @@
                         if (!acc[maquinaId]) {
                             acc[maquinaId] = {
                                 nombre: elemento.maquina ? elemento.maquina.nombre : 'Sin asignar',
+                                codigo: elemento.maquina ? elemento.maquina.codigo : null,
                                 elementos: []
                             };
                         }
@@ -2577,21 +2687,59 @@
                         return acc;
                     }, {});
 
+                    // Poblar el select de filtro por máquina
+                    const selectFiltro = document.getElementById('panel_filtro_maquina');
+                    if (selectFiltro) {
+                        selectFiltro.innerHTML = '<option value="todas">Todas las máquinas</option>';
+                        Object.entries(elementosPorMaquina).forEach(([maquinaId, grupo]) => {
+                            const option = document.createElement('option');
+                            option.value = maquinaId;
+                            option.textContent = `${grupo.codigo ? grupo.codigo + ' - ' : ''}${grupo.nombre} (${grupo.elementos.length})`;
+                            selectFiltro.appendChild(option);
+                        });
+
+                        // Event listener para navegar a la sección seleccionada
+                        selectFiltro.onchange = function() {
+                            const maquinaSeleccionada = this.value;
+                            if (maquinaSeleccionada === 'todas') {
+                                // Mostrar todas las secciones y scroll al inicio
+                                lista.querySelectorAll('.seccion-maquina-wrapper').forEach(s => s.style.display = 'block');
+                                lista.scrollTop = 0;
+                            } else {
+                                // Mostrar solo la sección seleccionada
+                                lista.querySelectorAll('.seccion-maquina-wrapper').forEach(s => {
+                                    s.style.display = s.dataset.maquinaId === maquinaSeleccionada ? 'block' : 'none';
+                                });
+                                // Scroll a la sección
+                                const seccion = lista.querySelector(`.seccion-maquina-wrapper[data-maquina-id="${maquinaSeleccionada}"]`);
+                                if (seccion) {
+                                    seccion.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                                }
+                            }
+                        };
+                    }
+
                     // Crear secciones por máquina
                     Object.entries(elementosPorMaquina).forEach(([maquinaId, grupo]) => {
+                        // Crear wrapper para la sección completa
+                        const seccionWrapper = document.createElement('div');
+                        seccionWrapper.className = 'seccion-maquina-wrapper';
+                        seccionWrapper.dataset.maquinaId = maquinaId;
+
                         // Crear header de la sección
                         const seccionHeader = document.createElement('div');
                         seccionHeader.className = 'seccion-maquina-header';
                         seccionHeader.innerHTML = `
-                            <div class="bg-blue-500 text-white px-4 py-2 rounded-md font-semibold text-sm mb-3">
-                                ${grupo.nombre} (${grupo.elementos.length})
+                            <div class="bg-blue-500 text-white px-3 py-1.5 rounded font-medium text-xs">
+                                ${grupo.codigo ? grupo.codigo + ' - ' : ''}${grupo.nombre} (${grupo.elementos.length})
                             </div>
                         `;
-                        lista.appendChild(seccionHeader);
+                        seccionWrapper.appendChild(seccionHeader);
+                        lista.appendChild(seccionWrapper);
 
                         // Crear contenedor de elementos de esta máquina
                         const seccionElementos = document.createElement('div');
-                        seccionElementos.className = 'seccion-maquina-elementos mb-4';
+                        seccionElementos.className = 'seccion-maquina-elementos';
 
                         grupo.elementos.forEach(elemento => {
                             const div = document.createElement('div');
@@ -2616,7 +2764,7 @@
                             const canvasId = `canvas-panel-${elemento.id}`;
 
                             div.innerHTML = `
-                            <canvas id="${canvasId}" width="240" height="120" draggable="false"></canvas>
+                            <canvas id="${canvasId}" width="240" height="80" draggable="false"></canvas>
                         `;
 
                             seccionElementos.appendChild(div);
@@ -2639,7 +2787,7 @@
                             }, 10);
                         });
 
-                        lista.appendChild(seccionElementos);
+                        seccionWrapper.appendChild(seccionElementos);
                     });
 
                     // Configurar FullCalendar.Draggable con timeout para asegurar que se ejecuta
@@ -3585,39 +3733,8 @@
                 inicializarCalendarioMaquinas();
             }
 
-            // Reinicializar en navegación Livewire
-            document.addEventListener('livewire:navigated', function() {
-                // Solo inicializar si estamos en la página de máquinas
-                const calendarioEl = document.getElementById('calendario');
-                if (calendarioEl && calendarioEl.dataset.calendarType === 'maquinas') {
-                    console.log('🔄 Reinicializando calendario de máquinas después de navegación');
-
-                    // Destruir calendario anterior si existe
-                    if (window.calendar) {
-                        try {
-                            window.calendar.destroy();
-                            window.calendar = null;
-                        } catch (e) {
-                            console.warn('Error al destruir calendario anterior:', e);
-                        }
-                    }
-
-                    inicializarCalendarioMaquinas();
-                }
-            });
-
-            // Limpiar al salir de la página
-            document.addEventListener('livewire:navigating', function() {
-                if (window.calendar) {
-                    try {
-                        console.log('🧹 Limpiando calendario de máquinas');
-                        window.calendar.destroy();
-                        window.calendar = null;
-                    } catch (e) {
-                        console.warn('Error al limpiar calendario:', e);
-                    }
-                }
-            });
+            // Nota: La reinicialización en livewire:navigated se maneja desde el layout principal (app.blade.php)
+            // para evitar problemas de timing con la carga de scripts
 
             // ============================================================
             // FUNCIONES GLOBALES (fuera de inicializarCalendarioMaquinas)
@@ -4637,6 +4754,167 @@
                         title: 'Error',
                         text: 'No se pudo aplicar el balanceo. Por favor intenta de nuevo.'
                     });
+                }
+            }
+
+            // ============================================================
+            // PRIORIZAR OBRA POR FECHA DE ENTREGA
+            // ============================================================
+
+            window.datosAgrupaciones = null;
+
+            async function abrirModalPriorizarObra() {
+                const modal = document.getElementById('modalPriorizarObra');
+                const loading = document.getElementById('priorizarObraLoading');
+                const content = document.getElementById('priorizarObraContent');
+                const empty = document.getElementById('priorizarObraEmpty');
+                const btnAplicar = document.getElementById('btnAplicarPriorizar');
+                const infoDiv = document.getElementById('infoPriorizacion');
+
+                modal.classList.remove('hidden');
+                modal.classList.add('flex');
+                loading.classList.remove('hidden');
+                content.classList.add('hidden');
+                empty.classList.add('hidden');
+                btnAplicar.classList.add('hidden');
+                if (infoDiv) infoDiv.classList.add('hidden');
+
+                try {
+                    const response = await fetch('/api/produccion/obras-activas');
+                    if (!response.ok) throw new Error('Error al obtener obras');
+                    const agrupaciones = await response.json();
+
+                    if (agrupaciones.length === 0) {
+                        loading.classList.add('hidden');
+                        empty.classList.remove('hidden');
+                        return;
+                    }
+
+                    // Guardar datos para usar al aplicar
+                    window.datosAgrupaciones = agrupaciones;
+
+                    // Agrupar visualmente por obra
+                    const select = document.getElementById('selectObraPriorizar');
+                    select.innerHTML = '<option value="">-- Selecciona obra y fecha --</option>';
+
+                    let currentObra = null;
+                    let optgroup = null;
+
+                    agrupaciones.forEach((grupo, index) => {
+                        // Crear optgroup si cambia la obra
+                        if (currentObra !== grupo.obra_id) {
+                            optgroup = document.createElement('optgroup');
+                            optgroup.label = `${grupo.cod_obra} - ${grupo.obra}`;
+                            select.appendChild(optgroup);
+                            currentObra = grupo.obra_id;
+                        }
+
+                        const option = document.createElement('option');
+                        option.value = index; // Índice en el array
+                        option.textContent = `📅 ${grupo.fecha_entrega_formatted} (${grupo.planillas_count} planillas)`;
+                        optgroup.appendChild(option);
+                    });
+
+                    loading.classList.add('hidden');
+                    content.classList.remove('hidden');
+
+                    select.onchange = function() {
+                        const idx = this.value;
+                        if (idx !== '' && window.datosAgrupaciones[idx]) {
+                            const grupo = window.datosAgrupaciones[idx];
+                            btnAplicar.classList.remove('hidden');
+                            if (infoDiv) {
+                                infoDiv.classList.remove('hidden');
+                                document.getElementById('infoPlanillasCount').textContent =
+                                    `${grupo.planillas_count} planillas de "${grupo.cod_obra} - ${grupo.obra}" con entrega ${grupo.fecha_entrega_formatted}`;
+                            }
+                        } else {
+                            btnAplicar.classList.add('hidden');
+                            if (infoDiv) infoDiv.classList.add('hidden');
+                        }
+                    };
+                } catch (error) {
+                    console.error('Error al cargar obras:', error);
+                    Swal.fire({ icon: 'error', title: 'Error', text: 'No se pudieron cargar las obras' });
+                    cerrarModalPriorizarObra();
+                }
+            }
+
+            function cerrarModalPriorizarObra() {
+                const modal = document.getElementById('modalPriorizarObra');
+                modal.classList.add('hidden');
+                modal.classList.remove('flex');
+                window.datosAgrupaciones = null;
+            }
+
+            async function aplicarPriorizarObra() {
+                const select = document.getElementById('selectObraPriorizar');
+                const idx = select.value;
+
+                if (idx === '' || !window.datosAgrupaciones || !window.datosAgrupaciones[idx]) {
+                    Swal.fire({ icon: 'warning', title: 'Selección requerida', text: 'Por favor selecciona una opción' });
+                    return;
+                }
+
+                const grupo = window.datosAgrupaciones[idx];
+                const result = await Swal.fire({
+                    icon: 'question',
+                    title: '¿Priorizar estas planillas?',
+                    html: `<strong>${grupo.planillas_count} planillas</strong> de <strong>${grupo.cod_obra} - ${grupo.obra}</strong><br>
+                           Fecha de entrega: <strong>${grupo.fecha_entrega_formatted}</strong><br><br>
+                           Se moverán al inicio de la cola en cada máquina.<br><br>
+                           <label class="flex items-center justify-center gap-2 cursor-pointer">
+                               <input type="checkbox" id="pararFabricando" class="w-4 h-4 rounded border-gray-300 text-orange-600 focus:ring-orange-500">
+                               <span class="text-sm text-gray-700">Parar planillas en posición 1 que estén fabricando</span>
+                           </label>`,
+                    showCancelButton: true,
+                    confirmButtonText: 'Sí, priorizar',
+                    cancelButtonText: 'Cancelar',
+                    confirmButtonColor: '#f97316',
+                    preConfirm: () => {
+                        return {
+                            pararFabricando: document.getElementById('pararFabricando').checked
+                        };
+                    }
+                });
+
+                if (!result.isConfirmed) return;
+
+                const pararFabricando = result.value?.pararFabricando || false;
+
+                Swal.fire({ title: 'Priorizando...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+
+                try {
+                    const response = await fetch('/api/produccion/priorizar-obra', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                        },
+                        body: JSON.stringify({
+                            obra_id: grupo.obra_id,
+                            planillas_ids: grupo.planillas_ids,
+                            parar_fabricando: pararFabricando
+                        })
+                    });
+
+                    const data = await response.json();
+                    if (!response.ok || !data.success) throw new Error(data.message || 'Error');
+
+                    Swal.fire({
+                        icon: 'success',
+                        title: '¡Planillas priorizadas!',
+                        html: data.message,
+                        confirmButtonColor: '#f97316'
+                    });
+                    cerrarModalPriorizarObra();
+
+                    if (typeof calendar !== 'undefined') {
+                        calendar.refetchResources();
+                        calendar.refetchEvents();
+                    }
+                } catch (error) {
+                    Swal.fire({ icon: 'error', title: 'Error', text: error.message || 'No se pudo priorizar' });
                 }
             }
 

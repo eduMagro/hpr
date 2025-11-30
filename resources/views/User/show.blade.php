@@ -30,37 +30,22 @@
 <x-app-layout>
     <x-slot name="title">{{ $user->nombre_completo }}</x-slot>
 
-    {{-- Botones de fichaje: solo operarios --}}
-    @if (!$esOficina)
-        <div class="container mx-auto px-4 pt-6 pb-4">
-            {{-- TODO: Quitar para producción - Selector de hora de prueba --}}
-            <div class="flex justify-center items-center gap-2 mb-4 p-3 bg-yellow-100 border border-yellow-400 rounded-lg">
-                <span class="text-yellow-800 font-semibold text-sm">🧪 MODO PRUEBA:</span>
-                <input type="datetime-local" id="hora_prueba"
-                    class="px-3 py-2 border border-yellow-400 rounded-lg text-sm"
-                    placeholder="Dejar vacío para hora actual">
-                <button onclick="document.getElementById('hora_prueba').value=''"
-                    class="px-3 py-2 bg-gray-200 hover:bg-gray-300 rounded-lg text-sm">
-                    Limpiar
-                </button>
-            </div>
-            {{-- FIN modo prueba --}}
-
-            <div class="flex justify-center items-center gap-4">
+    {{-- Botones de fichaje: disponibles para todos los roles --}}
+    <div class="container mx-auto px-4 pt-6 pb-4">
+        <div class="flex justify-center items-center gap-4">
                 <button onclick="registrarFichaje('entrada')"
                     class="py-3 px-8 bg-green-600 hover:bg-green-700 text-white text-lg font-semibold rounded-lg shadow-lg transition duration-200 btn-cargando">
                     <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
                     <span class="texto">Entrada</span>
                 </button>
 
-                <button onclick="registrarFichaje('salida')"
-                    class="py-3 px-8 bg-red-600 hover:bg-red-700 text-white text-lg font-semibold rounded-lg shadow-lg transition duration-200 btn-cargando">
-                    <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
-                    <span class="texto">Salida</span>
-                </button>
-            </div>
+            <button onclick="registrarFichaje('salida')"
+                class="py-3 px-8 bg-red-600 hover:bg-red-700 text-white text-lg font-semibold rounded-lg shadow-lg transition duration-200 btn-cargando">
+                <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                <span class="texto">Salida</span>
+            </button>
         </div>
-    @endif
+    </div>
 
     <div class="container mx-auto px-4 py-6">
         <x-ficha-trabajador :user="$user" :resumen="$resumen" />
@@ -397,56 +382,41 @@
             const textoOriginal = boton.querySelector('.texto').textContent;
 
             boton.disabled = true;
-            boton.querySelector('.texto').textContent = 'Procesando…';
+            boton.querySelector('.texto').textContent = 'Procesando...';
             boton.classList.add('opacity-50', 'cursor-not-allowed');
 
-            // TODO: Descomentar para producción - Geolocalización desactivada para pruebas
-            // navigator.geolocation.getCurrentPosition(
-            //     function(position) {
-            //         const latitud = position.coords.latitude;
-            //         const longitud = position.coords.longitude;
-            //         procesarFichaje(tipo, latitud, longitud, boton, textoOriginal);
-            //     },
-            //     function(error) {
-            //         Swal.fire({
-            //             icon: 'error',
-            //             title: 'Error de ubicación',
-            //             text: `${error.message}`
-            //         });
-            //         boton.disabled = false;
-            //         boton.querySelector('.texto').textContent = textoOriginal;
-            //         boton.classList.remove('opacity-50', 'cursor-not-allowed');
-            //     }, {
-            //         enableHighAccuracy: false,
-            //         timeout: 8000,
-            //         maximumAge: 60000
-            //     }
-            // );
-
-            // TEMPORAL: Coordenadas fijas para pruebas (sin geolocalización)
-            const latitud = 37.1620;  // Coordenadas de prueba
-            const longitud = -5.8400;
-            procesarFichaje(tipo, latitud, longitud, boton, textoOriginal);
+            navigator.geolocation.getCurrentPosition(
+                function(position) {
+                    const latitud = position.coords.latitude;
+                    const longitud = position.coords.longitude;
+                    procesarFichaje(tipo, latitud, longitud, boton, textoOriginal);
+                },
+                function(error) {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error de ubicacion',
+                        text: `${error.message}`
+                    });
+                    boton.disabled = false;
+                    boton.querySelector('.texto').textContent = textoOriginal;
+                    boton.classList.remove('opacity-50', 'cursor-not-allowed');
+                }, {
+                    enableHighAccuracy: false,
+                    timeout: 8000,
+                    maximumAge: 60000
+                }
+            );
         }
 
         function procesarFichaje(tipo, latitud, longitud, boton, textoOriginal) {
-            // Obtener hora de prueba si está definida
-            const horaPruebaInput = document.getElementById('hora_prueba');
-            const horaPrueba = horaPruebaInput ? horaPruebaInput.value : null;
-
-            let textoConfirmacion = `¿Quieres registrar una ${tipo}?`;
-            if (horaPrueba) {
-                textoConfirmacion += `\n\n🧪 HORA SIMULADA: ${horaPrueba}`;
-            }
-
             Swal.fire({
                 title: 'Confirmar Fichaje',
-                text: textoConfirmacion,
+                text: `Quieres registrar una ${tipo}?`,
                 icon: 'question',
                 showCancelButton: true,
                 confirmButtonColor: '#3085d6',
                 cancelButtonColor: '#d33',
-                confirmButtonText: 'Sí, fichar',
+                confirmButtonText: 'Si, fichar',
                 cancelButtonText: 'Cancelar'
             }).then((result) => {
                 if (result.isConfirmed) {
@@ -456,11 +426,6 @@
                         latitud: latitud,
                         longitud: longitud,
                     };
-
-                    // Añadir hora de prueba si está definida
-                    if (horaPrueba) {
-                        payload.hora_prueba = horaPrueba;
-                    }
 
                     fetch("{{ url('/fichar') }}", {
                             method: "POST",
@@ -507,7 +472,4 @@
             });
         }
     </script>
-
-    {{-- asignar turno como operario --}}
-    <script></script>
 </x-app-layout>

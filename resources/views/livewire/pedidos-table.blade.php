@@ -279,7 +279,8 @@
                                         $esFacturado = $estado === 'facturado';
 
                                         $obraLinea = $linea->obra;
-                                        $esEntregaDirecta = $obraLinea ? !$obraLinea->es_nave_paco_reyes : false;
+                                        $tieneObraManual = !empty($linea->obra_manual);
+                                        $esEntregaDirecta = $tieneObraManual || ($obraLinea ? !$obraLinea->es_nave_paco_reyes : false);
                                         $esAlmacen = $obraLinea ? stripos($obraLinea->obra, 'Almacén') !== false : false;
                                         $esNaveA = $obraLinea ? stripos($obraLinea->obra, 'Nave A') !== false : false;
                                         $esNaveB = $obraLinea ? stripos($obraLinea->obra, 'Nave B') !== false : false;
@@ -296,7 +297,7 @@
                                             </button>
                                         @else
                                             {{-- BOTONES DE ESTADO DE LÍNEA --}}
-                                            <div class="botones-estado-{{ $linea->id }} flex items-center gap-1 flex-wrap">
+                                            <div class="botones-estado-{{ $linea->id }} flex items-center gap-1 flex-nowrap">
                                                 {{-- BOTÓN COMPLETAR (Entrega directa) --}}
                                                 @if(($esEntregaDirecta || $esAlmacen) && !$pedidoCompletado)
                                                     <form method="POST" action="{{ route('pedidos.editarCompletarLineaManual', ['pedido' => $pedido->id, 'linea' => $linea['id']]) }}" onsubmit="return confirmarCompletarLinea(this);">
@@ -344,23 +345,23 @@
                                                     @method('PUT')
                                                 </form>
 
-                                                <button type="button" onclick="onclick="confirmarCancelacionLinea({{ $pedido->id }}, {{ $linea['id'] }})" wire:navigate" class="bg-gray-500 hover:bg-gray-600 text-white text-xs px-2 py-1 rounded shadow transition">
+                                                <button type="button" onclick="confirmarCancelacionLinea({{ $pedido->id }}, {{ $linea['id'] }})" class="bg-gray-500 hover:bg-gray-600 text-white text-xs px-2 py-1 rounded shadow transition">
                                                     Cancelar
                                                 </button>
+
+                                                {{-- BOTONES DE EDICIÓN --}}
+                                                <button type="button" onclick="abrirEdicionLinea({{ $linea->id }})" class="btn-editar-linea-{{ $linea->id }} bg-blue-600 hover:bg-blue-700 text-white text-xs px-2 py-1 rounded shadow transition" title="Editar línea">
+                                                    ✏️
+                                                </button>
+
+                                                <button type="button" onclick="guardarLinea({{ $linea->id }}, {{ $pedido->id }})" class="btn-guardar-linea-{{ $linea->id }} hidden bg-green-600 hover:bg-green-700 text-white text-xs px-2 py-1 rounded shadow transition" title="Guardar cambios">
+                                                    💾
+                                                </button>
+
+                                                <button type="button" onclick="cancelarEdicionLinea({{ $linea->id }})" class="btn-cancelar-edicion-{{ $linea->id }} hidden bg-red-600 hover:bg-red-700 text-white text-xs px-2 py-1 rounded shadow transition" title="Cancelar edición">
+                                                    ✖️
+                                                </button>
                                             </div>
-
-                                            {{-- BOTONES DE EDICIÓN --}}
-                                            <button type="button" onclick="onclick="abrirEdicionLinea({{ $linea->id }})" wire:navigate" class="btn-editar-linea-{{ $linea->id }} bg-blue-600 hover:bg-blue-700 text-white text-xs px-2 py-1 rounded shadow transition" title="Editar línea">
-                                                ✏️
-                                            </button>
-
-                                            <button type="button" onclick="onclick="guardarLinea({{ $linea->id }}, {{ $pedido->id }})" wire:navigate" class="btn-guardar-linea-{{ $linea->id }} hidden bg-green-600 hover:bg-green-700 text-white text-xs px-2 py-1 rounded shadow transition" title="Guardar cambios">
-                                                💾
-                                            </button>
-
-                                            <button type="button" onclick="onclick="cancelarEdicionLinea({{ $linea->id }})" wire:navigate" class="btn-cancelar-edicion-{{ $linea->id }} hidden bg-red-600 hover:bg-red-700 text-white text-xs px-2 py-1 rounded shadow transition" title="Cancelar edición">
-                                                ✖️
-                                            </button>
                                         @endif
                                     </div>
                                 </div>

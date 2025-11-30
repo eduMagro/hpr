@@ -187,6 +187,7 @@ class MaquinaController extends Controller
             $grua = $this->cargarContextoGrua($maquina);
             $this->activarMovimientosSalidasHoy();
             $this->activarMovimientosSalidasAlmacenHoy();
+            $this->activarMovimientosPreparacionPaquete($maquina);
             return view('maquinas.show', array_merge(
                 $base,
                 [
@@ -980,6 +981,97 @@ class MaquinaController extends Controller
                     'solicitado_por'  => null,
                     'prioridad'       => 2,
                     'descripcion'     => $descripcion,
+                ]);
+            }
+        }
+    }
+
+    /**
+     * Activa movimientos de preparación de paquete para salidas de mañana
+     * que contengan elementos con elaborado=0 (única dimensión)
+     */
+    private function activarMovimientosPreparacionPaquete(Maquina $grua): void
+    {
+        $manana = Carbon::tomorrow();
+
+        Log::info("🔎 [Grúa] Buscando salidas para mañana ({$manana->format('d/m/Y')}) con elementos sin elaborar");
+
+        // Buscar salidas programadas para mañana
+        $salidasManana = Salida::with(['paquetes.etiquetas.elementos.planilla.cliente', 'paquetes.etiquetas.elementos.planilla.obra'])
+            ->whereDate('fecha_salida', $manana)
+            ->get();
+
+        foreach ($salidasManana as $salida) {
+            foreach ($salida->paquetes as $paquete) {
+                // Verificar si el paquete pertenece a la misma nave que la grúa
+                if ($paquete->nave_id !== $grua->obra_id) {
+                    continue;
+                }
+
+                // Buscar elementos con elaborado=0 en las etiquetas del paquete
+                $elementosSinElaborar = collect();
+                foreach ($paquete->etiquetas as $etiqueta) {
+                    $elementosEtiqueta = $etiqueta->elementos->filter(fn($e) => (int)($e->elaborado ?? 1) === 0);
+                    $elementosSinElaborar = $elementosSinElaborar->merge($elementosEtiqueta);
+                }
+
+                if ($elementosSinElaborar->isEmpty()) {
+                    continue;
+                }
+
+                // Verificar si ya existe un movimiento para este paquete
+                $existeMovimiento = Movimiento::where('paquete_id', $paquete->id)
+                    ->where('tipo', 'Preparación paquete')
+                    ->where('estado', 'pendiente')
+                    ->exists();
+
+                if ($existeMovimiento) {
+                    continue;
+                }
+
+                // Obtener datos para la descripción
+                $planilla = $elementosSinElaborar->first()->planilla;
+                $cliente = $planilla?->cliente?->empresa ?? 'Cliente desconocido';
+                $obra = $planilla?->obra?->obra ?? 'Obra desconocida';
+                $codigoSalida = $salida->codigo_salida ?? $salida->id;
+                $numElementos = $elementosSinElaborar->count();
+                $pesoTotal = $elementosSinElaborar->sum('peso');
+
+                // Resumen de diámetros y longitudes
+                $resumenElementos = $elementosSinElaborar
+                    ->groupBy(fn($e) => "Ø{$e->diametro} L:{$e->longitud}mm")
+                    ->map(fn($grupo) => $grupo->count() . 'x')
+                    ->map(fn($count, $key) => "{$count} {$key}")
+                    ->implode(', ');
+
+                $descripcion = sprintf(
+                    "Preparar paquete %s para salida %s - %s / %s - %d elementos (%.1f kg): %s",
+                    $paquete->codigo ?? $paquete->id,
+                    $codigoSalida,
+                    $cliente,
+                    $obra,
+                    $numElementos,
+                    $pesoTotal,
+                    $resumenElementos
+                );
+
+                // Crear movimiento
+                Movimiento::create([
+                    'tipo'            => 'Preparación paquete',
+                    'paquete_id'      => $paquete->id,
+                    'salida_id'       => $salida->id,
+                    'nave_id'         => $grua->obra_id,
+                    'maquina_destino' => $grua->id,
+                    'estado'          => 'pendiente',
+                    'prioridad'       => 2,
+                    'fecha_solicitud' => now(),
+                    'descripcion'     => $descripcion,
+                ]);
+
+                Log::info("✅ Movimiento 'Preparación paquete' creado", [
+                    'paquete_id' => $paquete->id,
+                    'salida_id' => $salida->id,
+                    'elementos_sin_elaborar' => $numElementos,
                 ]);
             }
         }

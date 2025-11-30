@@ -7,6 +7,7 @@ use App\Models\Cliente;
 use App\Models\Obra;
 use App\Models\Etiqueta;
 use App\Models\Elemento;
+use App\Models\ProductoBase;
 use App\Services\PlanillaImport\DTOs\ProcesamientoResult;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Log;
@@ -34,6 +35,7 @@ class PlanillaProcessor
     protected array $diametrosPermitidos;
     protected int $tiempoSetupElemento;
     protected array $estrategiasSubetiquetas;
+    protected array $longitudesProductoBase;
 
     protected CodigoEtiqueta $codigoService;
 
@@ -42,6 +44,15 @@ class PlanillaProcessor
         $this->codigoService = $codigoService;
         $this->diametrosPermitidos = config('planillas.importacion.diametros_permitidos', [5, 8, 10, 12, 16, 20, 25, 32]);
         $this->tiempoSetupElemento = config('planillas.importacion.tiempo_setup_elemento', 1200);
+
+        // Cargar longitudes de productos base (barras) para determinar elementos no elaborados
+        $this->longitudesProductoBase = ProductoBase::where('tipo', 'barra')
+            ->whereNotNull('longitud')
+            ->pluck('longitud')
+            ->map(fn($l) => (float)$l)
+            ->unique()
+            ->values()
+            ->toArray();
 
         // Configuración de estrategias por máquina
         $this->estrategiasSubetiquetas = config('planillas.importacion.estrategias_subetiquetas', []);
@@ -454,6 +465,12 @@ class PlanillaProcessor
             // Calcular tiempo de fabricación
             $tiempoFabricacion = $this->calcularTiempoFabricacion($item['barras'], $doblesBarra);
 
+            // Determinar si el elemento necesita elaboración
+            // Un elemento NO necesita elaboración si:
+            // 1. No tiene dobleces (dobles_barra = 0)
+            // 2. Su longitud coincide con alguna longitud de producto base disponible
+            $elaborado = $this->determinarElaborado($doblesBarra, (float)$longitud);
+
             // Crear elemento
             Elemento::create([
                 'codigo' => Elemento::generarCodigo(),
@@ -473,6 +490,7 @@ class PlanillaProcessor
                 'dimensiones' => $fila[47] ?? null,
                 'tiempo_fabricacion' => $tiempoFabricacion,
                 'estado' => 'pendiente',
+                'elaborado' => $elaborado,
             ]);
         }
     }
@@ -849,5 +867,45 @@ class PlanillaProcessor
         }
 
         return $eliminadas;
+    }
+
+    /**
+     * Determina si un elemento necesita elaboración.
+     *
+     * Un elemento NO necesita elaboración (elaborado = 0) si:
+     * 1. No tiene dobleces (dobles_barra = 0) - es una barra recta
+     * 2. Su longitud coincide con alguna longitud de producto base disponible
+     *
+     * IMPORTANTE: La longitud del elemento viene en CENTÍMETROS desde el Excel,
+     * mientras que los productos base tienen la longitud en METROS.
+     *
+     * @param int $doblesBarra Número de dobleces del elemento
+     * @param float $longitud Longitud del elemento en CENTÍMETROS
+     * @return int 1 si necesita elaboración, 0 si no
+     */
+    protected function determinarElaborado(int $doblesBarra, float $longitud): int
+    {
+        // Si tiene dobleces, necesita elaboración
+        if ($doblesBarra > 0) {
+            return 1;
+        }
+
+        // Convertir longitud de centímetros a metros para comparar con productos base
+        $longitudEnMetros = $longitud / 100;
+
+        // Tolerancia de 0.05m (5cm) para comparación
+        $tolerancia = 0.05;
+
+        foreach ($this->longitudesProductoBase as $longitudPB) {
+            if (abs($longitudEnMetros - $longitudPB) <= $tolerancia) {
+                Log::channel('planilla_import')->debug(
+                    "📦 Elemento sin elaborar: longitud {$longitud}cm ({$longitudEnMetros}m) coincide con producto base {$longitudPB}m"
+                );
+                return 0; // No necesita elaboración
+            }
+        }
+
+        // La longitud no coincide con ningún producto base, necesita elaboración (corte)
+        return 1;
     }
 }
