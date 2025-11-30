@@ -173,18 +173,20 @@ class ProduccionController extends Controller
                     $horaEntrada = $turno?->hora_inicio ?? '08:00:00';
                     $horaSalida = $turno?->hora_fin ?? '16:00:00';
 
+                    $fechaStr = $fechaTurno->format('Y-m-d');
+
                     if ($horaEntrada === '22:00:00' && $horaSalida === '06:00:00') {
-                        $start = $asignacionTurno->fecha . 'T00:00:00';
-                        $end   = $asignacionTurno->fecha . 'T06:00:00';
+                        $start = $fechaStr . 'T00:00:00';
+                        $end   = $fechaStr . 'T06:00:00';
                     } elseif ($horaEntrada === '06:00:00') {
-                        $start = $asignacionTurno->fecha . 'T06:00:00';
-                        $end = $asignacionTurno->fecha . 'T14:00:00';
+                        $start = $fechaStr . 'T06:00:00';
+                        $end = $fechaStr . 'T14:00:00';
                     } elseif ($horaEntrada === '14:00:00') {
-                        $start = $asignacionTurno->fecha . 'T14:00:00';
-                        $end = $asignacionTurno->fecha . 'T22:00:00';
+                        $start = $fechaStr . 'T14:00:00';
+                        $end = $fechaStr . 'T22:00:00';
                     } else {
-                        $start = $asignacionTurno->fecha . 'T' . $horaEntrada;
-                        $end = $asignacionTurno->fecha . 'T' . $horaSalida;
+                        $start = $fechaStr . 'T' . $horaEntrada;
+                        $end = $fechaStr . 'T' . $horaSalida;
                     }
 
                     $maquinaId = $asignacionTurno->maquina_id ?? $trabajador->maquina_id;
