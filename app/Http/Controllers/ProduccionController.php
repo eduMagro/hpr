@@ -341,10 +341,9 @@ class ProduccionController extends Controller
 
                     // Alinear eventos con los slots del calendario (8 horas cada uno: 06-14, 14-22, 22-06)
                     if ($esNocturno) {
-                        // Turno nocturno: 22:00 hoy - 06:00 mañana
-                        $start = $fechaStr . 'T22:00:00';
-                        $fechaSiguiente = $fechaTurno->copy()->addDay()->format('Y-m-d');
-                        $end = $fechaSiguiente . 'T06:00:00';
+                        // Turno nocturno: mostrar solo en el día de la asignación (00:00 - 06:00)
+                        $start = $fechaStr . 'T00:00:00';
+                        $end = $fechaStr . 'T06:00:00';
                     } elseif ($hIni < 14) {
                         // Turno mañana: 06:00 - 14:00
                         $start = $fechaStr . 'T06:00:00';
@@ -389,10 +388,6 @@ class ProduccionController extends Controller
                                 'justificada'     => ['bg' => '#32CD32', 'border' => '#228B22'],
                                 'injustificada'   => ['bg' => '#DC143C', 'border' => '#B22222'],
                             };
-                            // Para estados especiales, no cruzar al día siguiente (turno nocturno)
-                            if ($esNocturno) {
-                                $end = $fechaStr . 'T23:59:59';
-                            }
                         } else {
                             $obraId = $asignacionTurno->obra_id;
                             $color = $coloresEventos[$obraId] ?? ['bg' => '#d1d5db', 'border' => '#9ca3af'];
