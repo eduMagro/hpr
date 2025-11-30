@@ -389,6 +389,10 @@ class ProduccionController extends Controller
                                 'justificada'     => ['bg' => '#32CD32', 'border' => '#228B22'],
                                 'injustificada'   => ['bg' => '#DC143C', 'border' => '#B22222'],
                             };
+                            // Para estados especiales, no cruzar al día siguiente (turno nocturno)
+                            if ($esNocturno) {
+                                $end = $fechaStr . 'T23:59:59';
+                            }
                         } else {
                             $obraId = $asignacionTurno->obra_id;
                             $color = $coloresEventos[$obraId] ?? ['bg' => '#d1d5db', 'border' => '#9ca3af'];
