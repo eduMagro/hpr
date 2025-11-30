@@ -371,10 +371,8 @@ class SubirJustificante extends Component
                 'justificante_subido_at' => now(),
             ];
 
-            // Si estaba en activo, cambiar a justificado
-            if ($asignacion->estado === 'activo') {
-                $datosActualizar['estado'] = 'justificado';
-            }
+            // Siempre cambiar a justificado al subir justificante
+            $datosActualizar['estado'] = 'justificado';
 
             $asignacion->update($datosActualizar);
 
