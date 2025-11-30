@@ -303,8 +303,9 @@ class AsignacionTurnoController extends Controller
                 $realEntrada = $asignacion->entrada;
 
                 if ($esperadaEntrada && $realEntrada) {
-                    $esperada = Carbon::parse($asignacion->fecha . ' ' . $esperadaEntrada);
-                    $real = Carbon::parse($asignacion->fecha . ' ' . $realEntrada);
+                    $fechaStr = Carbon::parse($asignacion->fecha)->format('Y-m-d');
+                    $esperada = Carbon::parse($fechaStr . ' ' . $esperadaEntrada);
+                    $real = Carbon::parse($fechaStr . ' ' . $realEntrada);
 
                     if ($real->lt($esperada)) {
                         $minutos = $real->diffInMinutes($esperada);
