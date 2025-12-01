@@ -1,18 +1,6 @@
 <div>
     <x-tabla.filtros-aplicados :filtros="$filtrosActivos" />
 
-    {{-- Botón limpiar filtros visible --}}
-    @if(!empty($codigo_linea) || !empty($codigo) || !empty($pedido_global_id) || !empty($fabricante_id) || !empty($distribuidor_id) || !empty($obra_id) || !empty($producto_tipo) || !empty($producto_diametro) || !empty($producto_longitud) || !empty($fecha_pedido) || !empty($fecha_entrega) || !empty($estado))
-        <div class="mb-4">
-            <button wire:click="limpiarFiltros" class="bg-yellow-500 hover:bg-yellow-600 text-white px-4 py-2 rounded text-sm font-semibold flex items-center gap-2">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582M20 20v-5h-.581M4.582 9A7.5 7.5 0 0112 4.5a7.5 7.5 0 016.418 3.418M19.418 15A7.5 7.5 0 0112 19.5a7.5 7.5 0 01-6.418-3.418" />
-                </svg>
-                Limpiar filtros
-            </button>
-        </div>
-    @endif
-
     <div class="overflow-x-auto bg-white shadow rounded-lg">
         <table class="w-full border-collapse text-sm text-center">
             <thead class="bg-blue-500 text-white text-10">
@@ -83,8 +71,8 @@
                     <th class="py-1 px-1 border">
                         <div class="flex gap-1 justify-center">
                             <input type="text" wire:model.live.debounce.300ms="producto_tipo" placeholder="Tipo" class="bg-white text-blue-900 border border-gray-300 rounded text-[10px] text-center w-12 h-6 focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none" />
-                            <input type="number" wire:model.live.debounce.300ms="producto_diametro" placeholder="Ø" class="bg-white text-blue-900 border border-gray-300 rounded text-[10px] text-center w-12 h-6 focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none" />
-                            <input type="number" wire:model.live.debounce.300ms="producto_longitud" placeholder="L" class="bg-white text-blue-900 border border-gray-300 rounded text-[10px] text-center w-12 h-6 focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none" />
+                            <input type="text" inputmode="numeric" wire:model.live.debounce.300ms="producto_diametro" placeholder="Ø" class="bg-white text-blue-900 border border-gray-300 rounded text-[10px] text-center w-12 h-6 focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none" />
+                            <input type="text" inputmode="numeric" wire:model.live.debounce.300ms="producto_longitud" placeholder="L" class="bg-white text-blue-900 border border-gray-300 rounded text-[10px] text-center w-12 h-6 focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none" />
                         </div>
                     </th>
                     <th class="p-1 border"></th>
@@ -106,7 +94,17 @@
                         </select>
                     </th>
                     <th class="p-1 border"></th>
-                    <th class="p-1 border"></th>
+                    <th class="p-1 border text-center align-middle">
+                        <button wire:click="limpiarFiltros"
+                            class="bg-yellow-500 hover:bg-yellow-600 text-white px-2 py-1 rounded text-xs flex items-center justify-center mx-auto"
+                            title="Restablecer filtros">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none"
+                                viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round"
+                                    d="M4 4v5h.582M20 20v-5h-.581M4.582 9A7.5 7.5 0 0112 4.5a7.5 7.5 0 016.418 3.418M19.418 15A7.5 7.5 0 0112 19.5a7.5 7.5 0 01-6.418-3.418" />
+                            </svg>
+                        </button>
+                    </th>
                 </tr>
             </thead>
 
