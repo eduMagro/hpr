@@ -298,10 +298,28 @@
                         nuevaUbicacion
                     } = e.detail;
 
+                    // Actualizar window.productosPorUbicacion
+                    if (window.productosPorUbicacion) {
+                        // Eliminar de todas las ubicaciones
+                        Object.values(window.productosPorUbicacion).forEach(info => {
+                            if (Array.isArray(info?.productos)) {
+                                info.productos = info.productos.filter(c => c !== codigo);
+                            }
+                        });
+                        // Añadir a la nueva ubicación
+                        if (nuevaUbicacion !== null && nuevaUbicacion !== undefined && window
+                            .productosPorUbicacion[nuevaUbicacion]) {
+                            if (!window.productosPorUbicacion[nuevaUbicacion].productos.includes(codigo)) {
+                                window.productosPorUbicacion[nuevaUbicacion].productos.push(codigo);
+                            }
+                        }
+                    }
+
                     // limpiar en esta instancia
                     this.sospechosos = this.sospechosos.filter(c => c !== codigo);
                     this.escaneados = this.escaneados.filter(c => c !== codigo);
                     this.productosEsperados = this.productosEsperados.filter(c => c !== codigo);
+                    this.originalEsperados = this.originalEsperados.filter(c => c !== codigo);
 
                     // actualizar mapa reactivo local (clave para x-show)
                     this.asignados[codigo] = nuevaUbicacion;
@@ -310,13 +328,23 @@
                     if (this.nombreUbicacion && nuevaUbicacion !== null && nuevaUbicacion !== undefined &&
                         this.nombreUbicacion.toString() === nuevaUbicacion.toString()) {
                         if (!this.productosEsperados.includes(codigo)) this.productosEsperados.push(codigo);
+                        if (!this.originalEsperados.includes(codigo)) this.originalEsperados.push(codigo);
                         if (!this.escaneados.includes(codigo)) this.escaneados.push(codigo);
+
+                        // persistir en localStorage de la nueva ubicación
+                        localStorage.setItem(`inv-${nuevaUbicacion}`, JSON.stringify(this.escaneados));
                     }
 
-                    // persistir
-                    localStorage.setItem(`inv-${this.nombreUbicacion}`, JSON.stringify(this.escaneados));
+                    // persistir sospechosos de la ubicación actual
                     localStorage.setItem(`sospechosos-${this.nombreUbicacion}`, JSON.stringify(this
                         .sospechosos));
+
+                    // Disparar actualización de inventario para recalcular estados visuales
+                    window.dispatchEvent(new CustomEvent('inventario-actualizado', {
+                        detail: {
+                            ubicacionId: this.nombreUbicacion
+                        }
+                    }));
                 });
             },
 
@@ -753,6 +781,13 @@
                                     nuevaUbicacion: this.nombreUbicacion
                                 }
                             }));
+
+                            // Emitir evento para recalcular estados visuales
+                            window.dispatchEvent(new CustomEvent('inventario-actualizado', {
+                                detail: {
+                                    ubicacionId: this.nombreUbicacion
+                                }
+                            }));
                         } else {
                             throw new Error(data.message || 'Error desconocido');
                         }
@@ -1079,7 +1114,17 @@ Inesperados: ${inesperados.join(', ') || ''}
             abrirInventario(ubicacionId, productos, codigo) {
                 const inv = ($store && $store.inv) ? $store.inv : null;
                 if (!inv || !inv.modoInventario) return;
-                inv.abrirModalInventario(ubicacionId, productos, codigo);
+
+                // Obtener productos actualizados desde window.productosPorUbicacion
+                let productosActualizados = productos;
+                if (window.productosPorUbicacion && window.productosPorUbicacion[ubicacionId]) {
+                    const info = window.productosPorUbicacion[ubicacionId];
+                    if (Array.isArray(info.productos)) {
+                        productosActualizados = info.productos;
+                    }
+                }
+
+                inv.abrirModalInventario(ubicacionId, productosActualizados, codigo);
             },
             registrarEstado(ubicacionId, sector, estado) {
                 this.estadoUbicaciones[ubicacionId] = estado;
@@ -1123,7 +1168,7 @@ Inesperados: ${inesperados.join(', ') || ''}
 <x-app-layout>
     <x-menu.ubicaciones :obras="$obras" :obra-actual-id="$obraActualId" color-base="emerald" />
 
-    <div x-data="paginaUbicaciones()" x-init="openModal = false" class="max-w-7xl mx-auto space-y-4">
+    <div x-data="paginaUbicaciones()" x-init="openModal = false" class="max-w-7xl mx-auto space-y-4 h-[calc(100vh-12rem)]">
         <div
             class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl shadow-sm p-4 lg:p-6">
             <div class="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
@@ -1214,7 +1259,11 @@ Inesperados: ${inesperados.join(', ') || ''}
                 class="w-full flex items-center justify-between px-4 py-2.5 text-left">
                 <div class="flex items-center gap-3">
                     <span
-                        class="inline-flex items-center justify-center h-9 w-9 rounded-lg bg-red-600 text-white font-bold text-lg shadow-sm">⤬</span>
+                        class="inline-flex items-center justify-center h-9 w-9 rounded-lg bg-red-600 text-white font-bold text-lg shadow-sm"><svg
+                            class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M6 18L18 6M6 6l12 12" />
+                        </svg></span>
                     <div class="text-left">
                         <p class="md:text-base text-xs font-semibold text-red-700 dark:text-red-300">Borrar escaneos de
                             todas las
@@ -1230,8 +1279,8 @@ Inesperados: ${inesperados.join(', ') || ''}
         {{-- Sectores (scroll en desktop para evitar scroll global) --}}
         <div class="space-y-4 lg:overflow-y-auto lg:pr-1"
             :class="$store.inv && $store.inv.modoInventario ?
-                'lg:max-h-[calc(100vh-450px)]' :
-                'lg:max-h-[calc(100vh-385px)]'">
+                'lg:max-h-[calc(100vh-360px)]' :
+                'lg:max-h-[calc(100vh-300px)]'">
             @foreach ($ubicacionesPorSector as $sector => $ubicaciones)
                 <div x-init="if (openSectors['{{ $sector }}'] === undefined) openSectors['{{ $sector }}'] = false"
                     class="border border-gray-200 dark:border-gray-800 rounded-2xl shadow-sm bg-white dark:bg-gray-900 overflow-hidden">
@@ -1392,7 +1441,7 @@ Inesperados: ${inesperados.join(', ') || ''}
         </div>
 
 
-        <div class="flex max-md:flex-col gap-3">
+        <div class="flex max-md:flex-col gap-3 max-sm:pb-4">
             <div
                 class="w-full h-14 md:h-16 flex flex-col items-center justify-center border border-blue-200 dark:border-blue-700/70 rounded-xl shadow-sm bg-white/80 dark:bg-gray-900/80 hover:border-blue-500 hover:shadow-md transition">
                 <button @click="openModal = true"
@@ -1492,7 +1541,10 @@ Inesperados: ${inesperados.join(', ') || ''}
                         </h2>
                         <button @click="modalConsumo = false"
                             class="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">
-                            ⤬
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M6 18L18 6M6 6l12 12" />
+                            </svg>
                         </button>
                     </div>
 
@@ -1502,10 +1554,14 @@ Inesperados: ${inesperados.join(', ') || ''}
                             <table class="min-w-full text-sm">
                                 <thead class="bg-gray-100 dark:bg-gray-800/60 text-gray-700 dark:text-gray-200">
                                     <tr>
-                                        <th class="px-2 md:px-4 py-2 text-left font-semibold text-xs md:text-sm">Ubicación</th>
-                                        <th class="px-2 md:px-4 py-2 text-left font-semibold text-xs md:text-sm">Código</th>
-                                        <th class="px-2 md:px-4 py-2 text-left font-semibold text-xs md:text-sm">Colada</th>
-                                        <th class="px-2 md:px-4 py-2 text-left font-semibold text-xs md:text-sm">Estado</th>
+                                        <th class="px-2 md:px-4 py-2 text-left font-semibold text-xs md:text-sm">
+                                            Ubicación</th>
+                                        <th class="px-2 md:px-4 py-2 text-left font-semibold text-xs md:text-sm">Código
+                                        </th>
+                                        <th class="px-2 md:px-4 py-2 text-left font-semibold text-xs md:text-sm">Colada
+                                        </th>
+                                        <th class="px-2 md:px-4 py-2 text-left font-semibold text-xs md:text-sm">Estado
+                                        </th>
                                     </tr>
                                 </thead>
                                 <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
@@ -1572,24 +1628,26 @@ Inesperados: ${inesperados.join(', ') || ''}
         <!-- Modal de Inventario -->
         <template x-teleport="body">
             <div x-show="$store.inv.modalInventario" x-transition x-cloak
-                class="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 backdrop-blur-sm overflow-y-auto pt-0"
-                @keydown.escape.window="!$store.inv.bloquearCierre && $store.inv.cerrarModalInventario()" wire:ignore>
+                class="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 backdrop-blur-sm sm:overflow-y-auto sm:pt-0 overflow-hidden"
+                @keydown.escape.window="!$store.inv.bloquearCierre && $store.inv.cerrarModalInventario()"
+                @click.self="!$store.inv.bloquearCierre && $store.inv.cerrarModalInventario()" x-init="document.body.style.overflow = 'hidden'"
+                x-destroy="document.body.style.overflow = ''" wire:ignore>
                 <template x-if="$store.inv.modalInventario">
-                    <div class="relative bg-white dark:bg-gray-900 max-w-5xl sm:h-auto sm:max-h-[90vh] rounded-xl shadow-2xl border border-gray-200 dark:border-gray-800 overflow-hidden flex flex-col min-h-0 m-4 h-[98vh] w-[98vw]"
-                        @click.away="!$store.inv.bloquearCierre && $store.inv.cerrarModalInventario()"
+                    <div class="relative bg-white dark:bg-gray-900 w-full h-full sm:w-auto sm:h-auto sm:max-w-5xl sm:max-h-[90vh] sm:rounded-xl sm:m-4 shadow-2xl border-0 sm:border border-gray-200 dark:border-gray-800 overflow-hidden flex flex-col"
                         x-data="inventarioUbicacion($store.inv.productosActuales, $store.inv.ubicacionActual)" :key="$store.inv.ubicacionActual">
 
                         <!-- Header del modal -->
                         <div
-                            class="bg-gradient-to-tr from-gray-900 to-gray-700 text-white px-6 py-4 flex items-center justify-between">
+                            class="bg-gradient-to-tr from-gray-900 to-gray-700 text-white px-4 py-3 sm:px-6 sm:py-4 flex items-center justify-between flex-shrink-0">
                             <div>
-                                <h2 class="text-xl font-bold">
+                                <h2 class="md:text-xl text-sm font-bold">
                                     Inventario - Ubicación
                                     <span x-text="$store.inv.codigoActual || nombreUbicacion || ''"></span>
-                                    <span class="text-white/70 text-sm ml-2">ID: <span
+                                    <span class="text-white/70 text-xs md:text-sm ml-2">ID: <span
                                             x-text="nombreUbicacion || ''"></span></span>
                                 </h2>
-                                <p class="text-sm text-white/80 mt-1">Escanea los productos de esta ubicación</p>
+                                <p class="text-xs md:text-sm text-white/80 mt-1">Escanea los productos de esta
+                                    ubicación</p>
                             </div>
 
 
@@ -1604,7 +1662,7 @@ Inesperados: ${inesperados.join(', ') || ''}
 
                         <!-- Input QR -->
                         <div
-                            class="px-6 py-4 bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
+                            class="px-4 py-3 sm:px-6 sm:py-4 bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
                             <input type="text"
                                 class="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-4 py-3 text-sm text-gray-900 dark:text-white placeholder-gray-400 bg-white dark:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm"
                                 placeholder="Escanea el código QR aquí..."
@@ -1614,7 +1672,7 @@ Inesperados: ${inesperados.join(', ') || ''}
 
                         <!-- Barra de progreso -->
                         <div
-                            class="px-6 py-3 bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
+                            class="px-4 py-2 sm:px-6 sm:py-3 bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
                             <div class="flex items-center justify-between mb-2">
                                 <span class="text-xs font-semibold text-gray-600 dark:text-gray-300">Progreso</span>
                                 <span class="text-xs text-gray-500 dark:text-gray-400"
@@ -1628,11 +1686,32 @@ Inesperados: ${inesperados.join(', ') || ''}
 
                         <!-- Contenido scrollable -->
                         <div
-                            class="flex-1 overflow-y-auto sm:px-6 sm:py-4 grid grid-cols-1 lg:grid-cols-2 gap-2 min-h-0">
-                            <!-- Tabla de productos esperados -->
+                            class="flex-1 overflow-y-auto sm:px-6 sm:py-4 grid grid-cols-1 lg:grid-cols-2 gap-2 min-h-0"
+                            x-data="{ showEsperados: false, showInesperados: false }">
+                            <!-- Productos esperados -->
                             <div
-                                class="border border-gray-200 dark:border-gray-700 md:rounded-lg bg-white dark:bg-gray-800 shadow-sm flex flex-col">
-                                <div class="flex-1 overflow-y-auto max-h-[420px]">
+                                class="border border-gray-200 dark:border-gray-700 sm:rounded-lg bg-white dark:bg-gray-800 shadow-sm flex flex-col">
+                                <!-- Header móvil colapsable -->
+                                <button @click="showEsperados = !showEsperados"
+                                    class="sm:hidden w-full px-4 py-3 bg-green-50 dark:bg-green-900/20 border-b border-green-200 dark:border-green-700 flex items-center justify-between">
+                                    <div class="flex items-center gap-3">
+                                        <div class="flex flex-col items-start">
+                                            <span class="text-sm font-semibold text-green-700 dark:text-green-400">Productos esperados</span>
+                                            <span class="text-xs text-green-600 dark:text-green-500" x-text="`${escaneados.length} / ${productosEsperados.length} escaneados`"></span>
+                                        </div>
+                                    </div>
+                                    <div class="flex items-center gap-2">
+                                        <div class="text-right">
+                                            <div class="text-lg font-bold text-green-700 dark:text-green-400" x-text="`${Math.round(progreso())}%`"></div>
+                                        </div>
+                                        <svg class="w-5 h-5 text-green-600 dark:text-green-400 transition-transform" :class="showEsperados ? 'rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                                        </svg>
+                                    </div>
+                                </button>
+
+                                <!-- Contenido colapsable móvil / siempre visible desktop -->
+                                <div x-show="showEsperados" x-collapse class="sm:!block flex-1 overflow-y-auto max-h-[420px]">
                                     <!-- Vista desktop -->
                                     <div class="hidden sm:block">
                                         <table
@@ -1695,8 +1774,7 @@ Inesperados: ${inesperados.join(', ') || ''}
                                                         </td>
                                                         <td class="px-3 py-2 text-center whitespace-nowrap">
                                                             <span x-show="productoEscaneado(codigo)"
-                                                                class="inline-block px-2 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-800">?
-                                                                OK</span>
+                                                                class="inline-block px-2 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-800">OK</span>
                                                             <span x-show="!productoEscaneado(codigo)"
                                                                 class="inline-block px-2 py-1 rounded-full text-xs font-semibold bg-yellow-100 text-yellow-800">Pendiente</span>
                                                         </td>
@@ -1735,8 +1813,7 @@ Inesperados: ${inesperados.join(', ') || ''}
                                                         </td>
                                                         <td class="px-3 py-2 text-center whitespace-nowrap">
                                                             <span
-                                                                class="inline-block px-2 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-800">?
-                                                                OK</span>
+                                                                class="inline-block px-2 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-800">OK</span>
                                                         </td>
                                                     </tr>
                                                 </template>
@@ -1788,8 +1865,7 @@ Inesperados: ${inesperados.join(', ') || ''}
                                                         </div>
                                                     </div>
                                                     <span x-show="productoEscaneado(codigo)"
-                                                        class="inline-block px-2 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-800">?
-                                                        OK</span>
+                                                        class="inline-block px-2 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-800">OK</span>
                                                     <span x-show="!productoEscaneado(codigo)"
                                                         class="inline-block px-2 py-1 rounded-full text-xs font-semibold bg-yellow-100 text-yellow-800">Pend.</span>
                                                 </div>
@@ -1830,8 +1906,7 @@ Inesperados: ${inesperados.join(', ') || ''}
                                                         </p>
                                                     </div>
                                                     <span
-                                                        class="inline-block px-2 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-800">?
-                                                        OK</span>
+                                                        class="inline-block px-2 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-800">OK</span>
                                                 </div>
                                             </div>
                                         </template>
@@ -1841,15 +1916,32 @@ Inesperados: ${inesperados.join(', ') || ''}
 
                             <!-- Productos inesperados -->
                             <div
-                                class="border border-red-200 dark:border-red-700 md:rounded-lg bg-white dark:bg-gray-800 shadow-sm flex flex-col">
+                                class="border border-red-200 dark:border-red-700 sm:rounded-lg bg-white dark:bg-gray-800 shadow-sm flex flex-col">
+                                <!-- Header móvil colapsable -->
+                                <button @click="showInesperados = !showInesperados"
+                                    class="sm:hidden w-full px-4 py-3 bg-red-50 dark:bg-red-900/20 border-b border-red-200 dark:border-red-700 flex items-center justify-between">
+                                    <div class="flex items-center gap-3">
+                                        <div class="flex flex-col items-start">
+                                            <span class="text-sm font-semibold text-red-700 dark:text-red-400">Productos inesperados</span>
+                                            <span class="text-xs text-red-600 dark:text-red-500" x-text="`${sospechosos.length} producto${sospechosos.length !== 1 ? 's' : ''}`"></span>
+                                        </div>
+                                    </div>
+                                    <svg class="w-5 h-5 text-red-600 dark:text-red-400 transition-transform" :class="showInesperados ? 'rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                                    </svg>
+                                </button>
+
+                                <!-- Header desktop (siempre visible) -->
                                 <div
-                                    class="px-4 py-3 border-b border-red-200 dark:border-red-700 flex items-center justify-between">
+                                    class="hidden sm:flex px-4 py-3 border-b border-red-200 dark:border-red-700 items-center justify-between">
                                     <h3 class="text-sm font-semibold text-red-600 dark:text-red-400">Productos
                                         inesperados
                                     </h3>
                                     <span class="text-xs text-red-500" x-text="sospechosos.length"></span>
                                 </div>
-                                <div class="flex-1 overflow-y-auto max-h-[420px] p-3">
+
+                                <!-- Contenido colapsable móvil / siempre visible desktop -->
+                                <div x-show="showInesperados" x-collapse class="sm:!block flex-1 overflow-y-auto max-h-[420px] p-3">
                                     <template x-for="(codigo, idx) in sospechosos" :key="'sosp-' + codigo">
                                         <li class="flex items-center justify-between gap-3 rounded-lg border px-4 py-3 mb-2 list-none"
                                             :class="idx % 2 === 0 ?
@@ -1923,12 +2015,12 @@ Inesperados: ${inesperados.join(', ') || ''}
                                                 class="bg-purple-600 hover:bg-purple-700 text-white px-3 py-1.5 rounded-md text-xs font-semibold flex-shrink-0">
                                                 Asignar aquí
                                             </button>
-                                            <button x-show="!esConsumido && hasId && !misma"
+                                            <button x-show="!esConsumido && !esFabricando && hasId && !misma"
                                                 @click="reasignarProducto(codigo)"
                                                 class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-md text-xs font-semibold flex-shrink-0">
                                                 Asignar aquí
                                             </button>
-                                            <span x-show="!esConsumido && !hasId"
+                                            <span x-show="!esConsumido && !esFabricando && !hasId"
                                                 class="text-gray-500 text-xs flex-shrink-0">
                                                 No asignable
                                             </span>

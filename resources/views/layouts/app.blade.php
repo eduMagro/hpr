@@ -130,7 +130,7 @@
 
             <!-- Page Content -->
             <main class="flex-1 overflow-y-auto bg-neutral-100 dark:bg-gray-900 transition-colors">
-                <div class="py-4 px-2 sm:px-6 lg:px-8">
+                <div class="py-4 px-2 sm:px-6 lg:px-8 h-full">
                     <!-- Breadcrumbs -->
                     <x-breadcrumbs />
 
@@ -145,7 +145,7 @@
                     @endisset
 
                     <!-- Main Content -->
-                    <div class="transition-colors">
+                    <div class="transition-colors h-auto">
                         {{ $slot }}
                     </div>
                 </div>
