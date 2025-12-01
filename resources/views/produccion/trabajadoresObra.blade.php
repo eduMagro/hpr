@@ -68,27 +68,48 @@
 
         <!-- Calendario -->
         <div class="w-full bg-white">
-            <div class="flex flex-wrap items-center justify-end gap-4 my-4 px-4">
-                {{-- Repetir obra específica --}}
-                <div class="flex items-center gap-2">
-                    <select id="selectObraRepetir" class="border border-gray-300 rounded px-3 py-2 text-sm focus:ring focus:ring-yellow-300">
-                        <option value="">-- Seleccionar obra --</option>
+            <div class="flex flex-wrap items-center justify-between gap-4 my-4 px-4">
+                {{-- Panel de eventos seleccionados --}}
+                <div id="panelEventosSeleccionados" class="flex items-center gap-2 bg-blue-50 border border-blue-200 rounded px-3 py-2" style="display: none;">
+                    <span class="text-sm text-blue-800">
+                        <strong id="contadorEventos">0</strong> eventos seleccionados
+                    </span>
+                    <select id="selectObraMover" class="border border-gray-300 rounded px-2 py-1 text-sm focus:ring focus:ring-blue-300">
+                        <option value="">-- Mover a obra --</option>
                     </select>
-                    <button id="btnRepetirObraEspecifica"
-                        class="bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-2 px-4 rounded disabled:opacity-50 disabled:cursor-not-allowed"
+                    <button id="btnMoverEventos"
+                        class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-1 px-3 rounded text-sm disabled:opacity-50 disabled:cursor-not-allowed"
                         disabled>
-                        🔁 Repetir obra
+                        📦 Mover
+                    </button>
+                    <button id="btnDeseleccionarTodos"
+                        class="bg-gray-500 hover:bg-gray-600 text-white font-bold py-1 px-3 rounded text-sm">
+                        ✖ Limpiar
                     </button>
                 </div>
 
-                {{-- Separador --}}
-                <div class="h-8 w-px bg-gray-300"></div>
+                <div class="flex flex-wrap items-center gap-4">
+                    {{-- Repetir obra específica --}}
+                    <div class="flex items-center gap-2">
+                        <select id="selectObraRepetir" class="border border-gray-300 rounded px-3 py-2 text-sm focus:ring focus:ring-yellow-300">
+                            <option value="">-- Seleccionar obra --</option>
+                        </select>
+                        <button id="btnRepetirObraEspecifica"
+                            class="bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-2 px-4 rounded disabled:opacity-50 disabled:cursor-not-allowed"
+                            disabled>
+                            🔁 Repetir obra
+                        </button>
+                    </div>
 
-                {{-- Repetir todas --}}
-                <button id="btnRepetirSemana"
-                    class="bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-2 px-4 rounded">
-                    🔁 Repetir todas las obras
-                </button>
+                    {{-- Separador --}}
+                    <div class="h-8 w-px bg-gray-300"></div>
+
+                    {{-- Repetir todas --}}
+                    <button id="btnRepetirSemana"
+                        class="bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-2 px-4 rounded">
+                        🔁 Repetir todas las obras
+                    </button>
+                </div>
             </div>
             <div id="calendario-obras" class="w-full"></div>
         </div>
@@ -225,6 +246,135 @@
 
         // Guardar resources globalmente para que esté disponible en reinicializaciones
         window.obrasResources = window.obrasResources || @json($resources);
+
+        // Map para almacenar eventos seleccionados
+        window.eventosSeleccionados = window.eventosSeleccionados || new Map();
+
+        /**
+         * Actualiza el panel de eventos seleccionados
+         */
+        function actualizarPanelEventosSeleccionados() {
+            const panel = document.getElementById('panelEventosSeleccionados');
+            const contador = document.getElementById('contadorEventos');
+            const btnMover = document.getElementById('btnMoverEventos');
+            const selectObra = document.getElementById('selectObraMover');
+
+            const cantidad = window.eventosSeleccionados.size;
+            contador.textContent = cantidad;
+
+            if (cantidad > 0) {
+                panel.style.display = 'flex';
+                btnMover.disabled = !selectObra.value;
+            } else {
+                panel.style.display = 'none';
+            }
+        }
+
+        /**
+         * Deselecciona todos los eventos
+         */
+        function deseleccionarTodosEventos() {
+            window.eventosSeleccionados.forEach((data, eventId) => {
+                const evento = window.calendarioObras.getEventById(eventId);
+                if (evento) {
+                    evento.setExtendedProp('seleccionado', false);
+                }
+            });
+            window.eventosSeleccionados.clear();
+
+            // Quitar clase visual de todos los eventos
+            document.querySelectorAll('.evento-seleccionado').forEach(el => {
+                el.classList.remove('evento-seleccionado');
+            });
+
+            actualizarPanelEventosSeleccionados();
+        }
+
+        /**
+         * Poblar el select de obras para mover
+         */
+        function poblarSelectObrasMover() {
+            const select = document.getElementById('selectObraMover');
+            if (!select || !window.obrasResources) return;
+
+            select.innerHTML = '<option value="">-- Mover a obra --</option>';
+
+            window.obrasResources.forEach(resource => {
+                if (resource.id !== 'sin-obra') {
+                    const option = document.createElement('option');
+                    option.value = resource.id;
+                    option.textContent = resource.codigo ? `${resource.codigo} - ${resource.title}` : resource.title;
+                    select.appendChild(option);
+                }
+            });
+        }
+
+        /**
+         * Mover eventos seleccionados a otra obra
+         */
+        function moverEventosAObra() {
+            const selectObra = document.getElementById('selectObraMover');
+            const obraId = selectObra.value;
+
+            if (!obraId) {
+                Swal.fire('⚠️', 'Selecciona una obra destino', 'warning');
+                return;
+            }
+
+            if (window.eventosSeleccionados.size === 0) {
+                Swal.fire('⚠️', 'No hay eventos seleccionados', 'warning');
+                return;
+            }
+
+            const ids = Array.from(window.eventosSeleccionados.keys());
+            const obraTexto = selectObra.options[selectObra.selectedIndex].text;
+
+            Swal.fire({
+                title: '¿Mover eventos?',
+                text: `Se moverán ${ids.length} evento(s) a "${obraTexto}"`,
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonText: 'Sí, mover',
+                cancelButtonText: 'Cancelar'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    fetch('{{ route('asignaciones-turnos.moverEventos') }}', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                        },
+                        body: JSON.stringify({
+                            asignacion_ids: ids,
+                            obra_id: obraId
+                        })
+                    })
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.success) {
+                            Swal.fire({
+                                icon: 'success',
+                                title: '✅ Eventos movidos',
+                                text: data.message,
+                                timer: 2000,
+                                showConfirmButton: false
+                            });
+
+                            // Limpiar selección y recargar eventos
+                            deseleccionarTodosEventos();
+                            window.calendarioObras.refetchEvents();
+                            setTimeout(() => actualizarEstadoFichasTrabajadores(), 200);
+                        } else {
+                            Swal.fire('❌ Error', data.message, 'error');
+                        }
+                    })
+                    .catch(error => {
+                        console.error(error);
+                        Swal.fire('❌ Error', 'No se pudieron mover los eventos.', 'error');
+                    });
+                }
+            });
+        }
 
         /**
          * Actualiza el estado de las fichas de trabajadores según sus asignaciones en la semana actual
@@ -511,6 +661,10 @@
                 eventSourceSuccess: function(content, xhr) {
                     // Se ejecuta después de cargar TODOS los eventos
                     setTimeout(() => actualizarEstadoFichasTrabajadores(), 300);
+
+                    // Limpiar eventos seleccionados al recargar
+                    window.eventosSeleccionados.clear();
+                    actualizarPanelEventosSeleccionados();
                 },
                 eventClick(info) {
                     // Si es click en botón eliminar, no hacer nada aquí
@@ -525,21 +679,28 @@
                         info.jsEvent.preventDefault();
                     }
 
-                    const userId = info.event.extendedProps?.user_id;
+                    // Toggle selección del evento
+                    const eventId = info.event.id;
+                    const eventEl = info.el;
 
-                    // Validación estricta del userId
-                    if (!userId || userId === 'undefined' || userId === 'null' || userId === null) {
-                        console.warn('[EVENT CLICK] No se puede navegar: user_id inválido o vacío', {
-                            userId: userId,
-                            extendedProps: info.event.extendedProps,
-                            eventId: info.event.id
+                    if (window.eventosSeleccionados.has(eventId)) {
+                        // Deseleccionar
+                        window.eventosSeleccionados.delete(eventId);
+                        eventEl.classList.remove('evento-seleccionado');
+                        info.event.setExtendedProp('seleccionado', false);
+                    } else {
+                        // Seleccionar
+                        window.eventosSeleccionados.set(eventId, {
+                            id: eventId,
+                            title: info.event.title,
+                            fecha: info.event.startStr,
+                            user_id: info.event.extendedProps?.user_id
                         });
-                        return;
+                        eventEl.classList.add('evento-seleccionado');
+                        info.event.setExtendedProp('seleccionado', true);
                     }
 
-                    const url = "{{ route('users.show', ':id') }}".replace(':id', userId);
-                    console.log('[EVENT CLICK] Navegando a:', url);
-                    window.location.href = url;
+                    actualizarPanelEventosSeleccionados();
                 },
                 eventReceive(info) {
                     // Evitar que FullCalendar agregue el evento automáticamente
@@ -727,11 +888,68 @@
                     }
                 },
                 eventDrop(info) {
-                    const asignacionId = info.event.id.replace('turno-', '');
-                    const nuevaObraId = info.event.getResources()[0]?.id ?? null; // por si viene undefined
-                    const nuevaFecha = info.event.startStr.split('T')[0];
+                    const eventoArrastrado = info.event;
+                    const nuevaObraId = eventoArrastrado.getResources()[0]?.id ?? null;
+                    const nuevaFecha = eventoArrastrado.startStr.split('T')[0];
+                    const eventoId = eventoArrastrado.id;
 
-                    console.log('📦 Drop asignación:', {
+                    // Verificar si el evento arrastrado está seleccionado
+                    const estaSeleccionado = window.eventosSeleccionados.has(eventoId);
+                    const hayMultiplesSeleccionados = window.eventosSeleccionados.size > 1;
+
+                    // Si hay múltiples eventos seleccionados y el arrastrado es uno de ellos
+                    if (estaSeleccionado && hayMultiplesSeleccionados) {
+                        const ids = Array.from(window.eventosSeleccionados.keys());
+
+                        console.log('📦 Drop múltiple - Moviendo', ids.length, 'eventos a obra:', nuevaObraId);
+
+                        // Mover todos los eventos seleccionados a la nueva obra (manteniendo sus fechas)
+                        fetch('{{ route('asignaciones-turnos.moverEventos') }}', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                            },
+                            body: JSON.stringify({
+                                asignacion_ids: ids,
+                                obra_id: nuevaObraId
+                            })
+                        })
+                        .then(res => res.json())
+                        .then(data => {
+                            if (data.success) {
+                                Swal.fire({
+                                    icon: 'success',
+                                    title: '✅ Eventos movidos',
+                                    text: `Se movieron ${data.actualizados} eventos`,
+                                    toast: true,
+                                    position: 'top-end',
+                                    timer: 2000,
+                                    showConfirmButton: false
+                                });
+
+                                // Limpiar selección y recargar eventos
+                                deseleccionarTodosEventos();
+                                window.calendarioObras.refetchEvents();
+                                setTimeout(() => actualizarEstadoFichasTrabajadores(), 200);
+                            } else {
+                                info.revert();
+                                Swal.fire('❌ Error', data.message, 'error');
+                            }
+                        })
+                        .catch(error => {
+                            console.error('❌ Error:', error);
+                            info.revert();
+                            Swal.fire('❌ Error', 'No se pudieron mover los eventos.', 'error');
+                        });
+
+                        return; // Salir, ya procesamos el drop múltiple
+                    }
+
+                    // Drop individual (comportamiento original)
+                    const asignacionId = eventoId.replace('turno-', '');
+
+                    console.log('📦 Drop individual:', {
                         id: asignacionId,
                         obra_id: nuevaObraId,
                         fecha: nuevaFecha
@@ -744,8 +962,7 @@
                                 'X-CSRF-TOKEN': '{{ csrf_token() }}'
                             },
                             body: JSON.stringify({
-                                obra_id: nuevaObraId === '' ? null :
-                                nuevaObraId, // ⚠️ aseguramos que no llegue string vacío
+                                obra_id: nuevaObraId === '' ? null : nuevaObraId,
                                 fecha: nuevaFecha
                             })
                         })
@@ -854,6 +1071,27 @@
 
         // Llamar después de inicializar el calendario
         setTimeout(poblarSelectObras, 100);
+        setTimeout(poblarSelectObrasMover, 100);
+
+        // Event listeners para el panel de eventos seleccionados
+        const selectObraMover = document.getElementById('selectObraMover');
+        const btnMoverEventos = document.getElementById('btnMoverEventos');
+        const btnDeseleccionarTodos = document.getElementById('btnDeseleccionarTodos');
+
+        if (selectObraMover) {
+            selectObraMover.addEventListener('change', function() {
+                const btnMover = document.getElementById('btnMoverEventos');
+                btnMover.disabled = !this.value || window.eventosSeleccionados.size === 0;
+            });
+        }
+
+        if (btnMoverEventos) {
+            btnMoverEventos.addEventListener('click', moverEventosAObra);
+        }
+
+        if (btnDeseleccionarTodos) {
+            btnDeseleccionarTodos.addEventListener('click', deseleccionarTodosEventos);
+        }
 
         // Habilitar/deshabilitar botón según selección
         const selectObraRepetir = document.getElementById('selectObraRepetir');
@@ -1117,6 +1355,20 @@
             outline: 3px solid #facc15;
             background-color: #fde68a !important;
             transform: scale(1.05);
+        }
+
+        /* Eventos del calendario seleccionados */
+        .fc-timeline-event.evento-seleccionado,
+        .fc-event.evento-seleccionado {
+            outline: 3px solid #3b82f6 !important;
+            box-shadow: 0 0 10px rgba(59, 130, 246, 0.5) !important;
+            transform: scale(1.02);
+            z-index: 100 !important;
+        }
+
+        .fc-timeline-event.evento-seleccionado .fc-event-main,
+        .fc-event.evento-seleccionado .fc-event-main {
+            background-color: rgba(59, 130, 246, 0.2) !important;
         }
 
         /* Asegurar posición relativa en las fichas */

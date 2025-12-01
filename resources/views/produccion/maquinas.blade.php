@@ -275,10 +275,10 @@
 
         <!-- Indicador de posición al arrastrar -->
         <div id="indicador_posicion"
-            class="fixed hidden z-[99999] pointer-events-none"
-            style="display: none; width: 48px; height: 48px;">
-            <div class="w-12 h-12 bg-blue-600 text-white rounded-full shadow-lg flex items-center justify-center font-bold text-xl border-3 border-white"
-                 style="box-shadow: 0 4px 15px rgba(37, 99, 235, 0.5);">
+            class="fixed hidden pointer-events-none"
+            style="display: none; width: 48px; height: 48px; z-index: 2147483647;">
+            <div class="w-12 h-12 bg-blue-600 text-white rounded-full shadow-lg flex items-center justify-center font-bold text-xl"
+                 style="box-shadow: 0 4px 15px rgba(37, 99, 235, 0.5); border: 3px solid white;">
                 <span id="numero_posicion">1</span>
             </div>
         </div>
@@ -1354,12 +1354,18 @@
             }
 
             /* Ocultar todos los tooltips durante el drag */
-            .tippy-disabled [data-tippy-root],
-            .tippy-disabled .tippy-box,
-            .tippy-disabled .fc-tooltip {
+            body.dragging-elemento .fc-tooltip,
+            body.dragging-elemento [data-tippy-root],
+            body.dragging-elemento .tippy-box {
                 display: none !important;
                 visibility: hidden !important;
                 opacity: 0 !important;
+                z-index: -1 !important;
+            }
+
+            /* Indicador siempre encima de todo */
+            #indicador_posicion {
+                z-index: 2147483647 !important;
             }
 
         </style>
@@ -1402,7 +1408,7 @@
                 let elementoArrastrandose = null;
                 let eventoArrastrandose = null;
                 let mostrarIndicador = false;
-                let tooltipsDeshabilitados = false;
+                window.tooltipsDeshabilitados = false;
 
                 // 🎯 Listener GLOBAL para el indicador (mousemove + drag)
                 function moverIndicador(e) {
@@ -2054,10 +2060,10 @@
                     eventDragStart: function(info) {
                         eventoArrastrandose = info.event;
                         mostrarIndicador = true;
-                        tooltipsDeshabilitados = true;
+                        window.tooltipsDeshabilitados = true;
 
                         // Ocultar todos los tooltips existentes
-                        document.querySelectorAll('.fc-tooltip').forEach(t => t.style.display = 'none');
+                        document.querySelectorAll('.fc-tooltip').forEach(t => t.remove());
 
                         // Calcular posición inicial
                         const recursoId = info.event.getResources()[0]?.id;
@@ -2115,14 +2121,11 @@
                     eventDragStop: function(info) {
                         eventoArrastrandose = null;
                         mostrarIndicador = false;
-                        tooltipsDeshabilitados = false;
+                        window.tooltipsDeshabilitados = false;
                         if (indicadorPosicion) {
                             indicadorPosicion.classList.add('hidden');
                             indicadorPosicion.style.display = 'none';
                         }
-
-                        // Limpiar tooltips duplicados que puedan haberse creado
-                        document.querySelectorAll('.fc-tooltip').forEach(t => t.remove());
                     },
 
                     eventDrop: async function(info) {
@@ -2347,17 +2350,21 @@
                         document.body.appendChild(tooltip);
 
                         info.el.addEventListener('mouseenter', function(e) {
-                            if (!tooltipsDeshabilitados) {
-                                tooltip.style.left = e.pageX + 10 + 'px';
-                                tooltip.style.top = e.pageY + 10 + 'px';
-                                tooltip.style.display = 'block';
+                            if (window.tooltipsDeshabilitados || document.body.classList.contains('dragging-elemento')) {
+                                tooltip.style.display = 'none';
+                                return;
                             }
+                            tooltip.style.left = e.pageX + 10 + 'px';
+                            tooltip.style.top = e.pageY + 10 + 'px';
+                            tooltip.style.display = 'block';
                         });
                         info.el.addEventListener('mousemove', function(e) {
-                            if (!tooltipsDeshabilitados) {
-                                tooltip.style.left = e.pageX + 10 + 'px';
-                                tooltip.style.top = e.pageY + 10 + 'px';
+                            if (window.tooltipsDeshabilitados) {
+                                tooltip.style.display = 'none';
+                                return;
                             }
+                            tooltip.style.left = e.pageX + 10 + 'px';
+                            tooltip.style.top = e.pageY + 10 + 'px';
                         });
                         info.el.addEventListener('mouseleave', function() {
                             tooltip.style.display = 'none';
@@ -2855,6 +2862,41 @@
                                 window.MultiSelectElementos.toggleSeleccion(div);
                             });
 
+                            // ✅ Evento de dragstart en cada elemento
+                            div.addEventListener('dragstart', function(e) {
+                                // Ocultar ghost nativo
+                                const img = new Image();
+                                img.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
+                                e.dataTransfer.setDragImage(img, 0, 0);
+
+                                elementoArrastrandose = div;
+                                mostrarIndicador = true;
+                                window.tooltipsDeshabilitados = true;
+                                document.body.classList.add('dragging-elemento');
+
+                                // Eliminar tooltips
+                                document.querySelectorAll('.fc-tooltip').forEach(t => t.remove());
+
+                                // Mostrar indicador
+                                if (indicadorPosicion) {
+                                    indicadorPosicion.style.display = 'block';
+                                    indicadorPosicion.classList.remove('hidden');
+                                }
+
+                                div.classList.add('dragging-original');
+                            });
+
+                            div.addEventListener('dragend', function() {
+                                elementoArrastrandose = null;
+                                mostrarIndicador = false;
+                                window.tooltipsDeshabilitados = false;
+                                document.body.classList.remove('dragging-elemento');
+                                if (indicadorPosicion) {
+                                    indicadorPosicion.style.display = 'none';
+                                }
+                                div.classList.remove('dragging-original');
+                            });
+
                             setTimeout(() => {
                                 window.dibujarFiguraElemento(
                                     canvasId,
@@ -2884,53 +2926,6 @@
                         });
 
                         lista._fcDraggable = draggable;
-
-                        // Cuando empieza el drag
-                        lista.addEventListener('dragstart', function(e) {
-                            const target = e.target.closest('.elemento-drag');
-                            if (!target) return;
-
-                            elementoArrastrandose = target;
-                            mostrarIndicador = true;
-                            tooltipsDeshabilitados = true;
-
-                            // Desactivar TODOS los tooltips de Tippy
-                            if (typeof tippy !== 'undefined') {
-                                document.querySelectorAll('[data-tippy-root]').forEach(t => t.remove());
-                                // Deshabilitar temporalmente Tippy en todo el documento
-                                document.body.classList.add('tippy-disabled');
-                            }
-                            document.querySelectorAll('.fc-tooltip').forEach(t => t.remove());
-
-                            // Mostrar indicador inmediatamente
-                            if (indicadorPosicion) {
-                                indicadorPosicion.style.display = 'block';
-                                indicadorPosicion.classList.remove('hidden');
-                                indicadorPosicion.style.left = (e.clientX + 20) + 'px';
-                                indicadorPosicion.style.top = (e.clientY - 20) + 'px';
-                            }
-
-                            // Marcar elemento original
-                            target.classList.add('dragging-original');
-                        });
-
-                        // Limpiar al terminar drag
-                        const limpiarDrag = function() {
-                            if (elementoArrastrandose) {
-                                elementoArrastrandose.classList.remove('dragging-original');
-                                elementoArrastrandose = null;
-                            }
-                            mostrarIndicador = false;
-                            tooltipsDeshabilitados = false;
-                            document.body.classList.remove('tippy-disabled');
-                            if (indicadorPosicion) {
-                                indicadorPosicion.classList.add('hidden');
-                                indicadorPosicion.style.display = 'none';
-                            }
-                        };
-
-                        lista.addEventListener('dragend', limpiarDrag);
-                        document.addEventListener('drop', limpiarDrag);
                     }, 100);
 
                     // ✅ Ajustar calendario

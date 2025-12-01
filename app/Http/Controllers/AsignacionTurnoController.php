@@ -1387,6 +1387,57 @@ class AsignacionTurnoController extends Controller
         ]);
     }
 
+    /**
+     * Mueve múltiples asignaciones a otra obra manteniendo las fechas
+     */
+    public function moverEventosAObra(Request $request)
+    {
+        try {
+            // Procesar IDs primero (quitar prefijo 'turno-')
+            $ids = collect($request->asignacion_ids)->map(function ($id) {
+                return (int) str_replace('turno-', '', $id);
+            })->filter()->values()->toArray();
+
+            if (empty($ids)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No se proporcionaron IDs válidos.'
+                ], 400);
+            }
+
+            // Validar obra_id (puede venir como string)
+            $obraId = $request->obra_id;
+            if ($obraId === 'sin-obra' || $obraId === '' || $obraId === null) {
+                $obraId = null;
+            } else {
+                $obraId = (int) $obraId;
+                // Verificar que la obra existe
+                if (!Obra::where('id', $obraId)->exists()) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'La obra seleccionada no existe.'
+                    ], 400);
+                }
+            }
+
+            $actualizados = AsignacionTurno::whereIn('id', $ids)->update([
+                'obra_id' => $obraId
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => "Se movieron {$actualizados} asignaciones correctamente.",
+                'actualizados' => $actualizados
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('Error moviendo eventos: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al mover eventos: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
     public function export(Request $request)
     {
         // 💡 Usa la misma query base que index()

@@ -264,10 +264,17 @@
             x-data="{
                 categorias: @js($categorias),
                 nuevaCategoria: '',
+                filtroNombre: '',
                 enviando: false,
                 editandoId: null,
                 editandoNombre: '',
                 originalNombre: '',
+
+                get categoriasFiltradas() {
+                    if (!this.filtroNombre.trim()) return this.categorias;
+                    const filtro = this.filtroNombre.toLowerCase().trim();
+                    return this.categorias.filter(c => c.nombre.toLowerCase().includes(filtro));
+                },
 
                 iniciarEdicion(cat) {
                     this.editandoId = cat.id;
@@ -309,6 +316,10 @@
                     eliminarCategoria(cat.id, cat.nombre, () => {
                         this.categorias = this.categorias.filter(c => c.id !== cat.id);
                     });
+                },
+
+                limpiarFiltro() {
+                    this.filtroNombre = '';
                 }
             }">
             <!-- Formulario para añadir nueva categoría -->
@@ -330,9 +341,25 @@
                         <th class="px-4 py-2 border">Nombre</th>
                         <th class="px-4 py-2 border text-center w-40">Acciones</th>
                     </tr>
+                    <tr>
+                        <th class="p-1 border"></th>
+                        <th class="p-1 border">
+                            <input type="text" x-model="filtroNombre" placeholder="Buscar..."
+                                class="w-full text-xs border rounded px-2 py-1 text-gray-700 bg-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none font-normal normal-case">
+                        </th>
+                        <th class="p-1 border text-center">
+                            <button x-show="filtroNombre" type="button" @click="limpiarFiltro()"
+                                class="bg-yellow-500 hover:bg-yellow-600 text-white px-2 py-1 rounded text-xs flex items-center justify-center mx-auto"
+                                title="Limpiar filtro">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582M20 20v-5h-.581M4.582 9A7.5 7.5 0 0112 4.5a7.5 7.5 0 016.418 3.418M19.418 15A7.5 7.5 0 0112 19.5a7.5 7.5 0 01-6.418-3.418" />
+                                </svg>
+                            </button>
+                        </th>
+                    </tr>
                 </thead>
                 <tbody class="text-sm text-gray-800">
-                    <template x-for="cat in categorias" :key="cat.id">
+                    <template x-for="cat in categoriasFiltradas" :key="cat.id">
                         <tr tabindex="0"
                             @dblclick="if(!$event.target.closest('input, button')) { editandoId === cat.id ? cancelarEdicion() : iniciarEdicion(cat); }"
                             @keydown.enter.stop="if(editandoId === cat.id) { guardar(cat); }"
@@ -401,6 +428,9 @@
                     </template>
                     <tr x-show="categorias.length === 0">
                         <td colspan="3" class="text-center py-4 text-gray-500">No hay categorías registradas.</td>
+                    </tr>
+                    <tr x-show="categorias.length > 0 && categoriasFiltradas.length === 0">
+                        <td colspan="3" class="text-center py-4 text-gray-500">No se encontraron categorías con ese filtro.</td>
                     </tr>
                 </tbody>
             </table>

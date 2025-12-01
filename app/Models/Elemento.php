@@ -50,7 +50,12 @@ class Elemento extends Model
         'peso',
         'dimensiones',
         'tiempo_fabricacion',
-        'estado'
+        'estado',
+        'fecha_entrega'
+    ];
+
+    protected $casts = [
+        'fecha_entrega' => 'date',
     ];
 
     protected $appends = ['longitud_cm', 'longitud_m', 'peso_kg', 'diametro_mm'];
