@@ -155,6 +155,7 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
     // Rutas específicas de productos (antes del resource)
     Route::get('productos/{id}/edit-data', [ProductoController::class, 'getEditData'])->name('productos.getEditData');
     Route::get('productos/{id}/consumir', [ProductoController::class, 'consumir'])->name('productos.editarConsumir');
+    Route::post('productos/consumir-lote', [ProductoController::class, 'consumirLoteAjax'])->name('productos.consumirLote');
 
     Route::resource('productos', ProductoController::class);
     // Route::post('/productos/crear-desde-recepcion', [PedidoController::class, 'crearDesdeRecepcion'])->name('productos.crear.desde.recepcion');

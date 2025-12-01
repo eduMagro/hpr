@@ -1,4 +1,4 @@
-﻿@php
+@php
     $detalles = \App\Models\Producto::with('productoBase')
         ->get()
         ->mapWithKeys(function ($p) {
@@ -49,6 +49,7 @@
 
 <script data-navigate-reload>
     const RUTA_ALERTA = @json(route('alertas.store'));
+    const RUTA_CONSUMO_LOTE = @json(route('productos.consumirLote'));
 
     const ensureSwal = () => new Promise((resolve) => {
         if (window.Swal) return resolve(window.Swal);
@@ -95,6 +96,84 @@
         });
     });
 
+    window.sliderConsumo = function(onComplete) {
+        return {
+            dragging: false,
+            startX: 0,
+            startHandleX: 0,
+            handleX: 0,
+            maxX: 0,
+            completed: false,
+            processing: false,
+            onComplete,
+            init() {
+                this.recalcMax();
+                window.addEventListener('modal-consumo-abierto', () => this.recalcMax());
+            },
+            getClientX(event) {
+                if (!event) return null;
+                if (event.touches && event.touches.length) return event.touches[0].clientX;
+                if (event.changedTouches && event.changedTouches.length) return event.changedTouches[0].clientX;
+                return event.clientX ?? null;
+            },
+            recalcMax() {
+                const track = this.$refs.track;
+                const handle = this.$refs.handle;
+                if (!track || !handle) return;
+                const margin = 8;
+                this.maxX = Math.max((track.clientWidth - handle.clientWidth) - margin, 0);
+                if (this.completed) {
+                    this.handleX = this.maxX;
+                } else if (this.handleX > this.maxX) {
+                    this.handleX = 0;
+                }
+            },
+            startDrag(event) {
+                if (this.completed || this.processing) return;
+                const x = this.getClientX(event);
+                if (x === null) return;
+                if (!this.maxX) this.recalcMax();
+                this.dragging = true;
+                this.startX = x;
+                this.startHandleX = this.handleX;
+            },
+            onDrag(event) {
+                if (!this.dragging) return;
+                const x = this.getClientX(event);
+                if (x === null) return;
+                const delta = x - this.startX;
+                const next = Math.min(Math.max(this.startHandleX + delta, 0), this.maxX);
+                this.handleX = next;
+            },
+            async ejecutarAccion() {
+                if (typeof this.onComplete !== 'function') return;
+                try {
+                    await this.onComplete();
+                } catch (err) {
+                    console.error('[INV] Error al ejecutar consumo', err);
+                }
+            },
+            stopDrag() {
+                if (!this.dragging) return;
+                this.dragging = false;
+                const threshold = this.maxX ? Math.max(this.maxX - 10, this.maxX * 0.9) : 0;
+                if (this.handleX >= threshold && this.maxX > 0) {
+                    this.handleX = this.maxX;
+                    this.completed = true;
+                    this.processing = true;
+                    Promise.resolve(this.ejecutarAccion())
+                        .finally(() => {
+                            this.processing = false;
+                            this.completed = false;
+                            this.handleX = 0;
+                        });
+                } else {
+                    this.handleX = 0;
+                }
+            }
+        };
+    };
+
     window.AUDIO_INV_URLS = {
         ok: "{{ asset('sonidos/scan-ok.wav') }}",
         error: "{{ asset('sonidos/scan-error.mp3') }}",
@@ -104,7 +183,7 @@
         consumido: "{{ asset('sonidos/scan-error.mp3') }}",
     };
 
-    /* ────── Alpine factory per location ────── */
+    /* ------ Alpine factory per location ------ */
     window.inventarioUbicacion = function(productosEsperados, nombreUbicacion) {
         const ubicacionSafe = nombreUbicacion ?? '';
         const listaBase = Array.isArray(productosEsperados) ? productosEsperados.filter(Boolean) : [];
@@ -160,7 +239,7 @@
                 /* snapshot inicial para diferenciar "servidos por Blade" vs. añadidos dinámicos */
                 this.originalEsperados = [...this.productosEsperados];
 
-                /* 1️⃣ recuperar progreso previo */
+                /* 1?? recuperar progreso previo */
                 this.escaneados = JSON.parse(localStorage.getItem(claveLS) || '[]');
                 this.sospechosos = JSON.parse(localStorage.getItem(claveSospechosos) || '[]');
                 this.$nextTick(() => this.$refs.inputQR?.focus());
@@ -322,7 +401,7 @@
                     esperados: this.productosEsperados.length
                 });
 
-                // ❌ Si no empieza por MP, descartamos
+                // ? Si no empieza por MP, descartamos
                 if (!codigo.toUpperCase().startsWith('MP')) {
                     this.reproducirPedo();
                     this.ultimoCodigo = codigo;
@@ -337,11 +416,11 @@
                 if (this.productosEsperados.includes(codigo)) {
                     if (!this.escaneados.includes(codigo)) {
                         this.escaneados.push(codigo);
-                        localStorage.setItem(claveLS, JSON.stringify(this.escaneados)); // 2️⃣ persist
+                        localStorage.setItem(claveLS, JSON.stringify(this.escaneados)); // 2?? persist
                         this.reproducirOk();
                     }
 
-                    // 🧹 Si estaba en inesperados, lo quitamos
+                    // ?? Si estaba en inesperados, lo quitamos
                     const indexSospechoso = this.sospechosos.indexOf(codigo);
                     if (indexSospechoso !== -1) {
                         this.sospechosos.splice(indexSospechoso, 1);
@@ -369,7 +448,7 @@
                     }
                 }
 
-                /* 3️⃣ flash highlight */
+                /* 3?? flash highlight */
                 this.ultimoCodigo = codigo;
                 setTimeout(() => (this.ultimoCodigo = null), 1200);
 
@@ -639,7 +718,7 @@
                     });
             },
 
-            // ⬇️ Reasignar producto
+            // ?? Reasignar producto
             reasignarProducto(codigo) {
                 fetch("{{ route('productos.editarUbicacionInventario', ['codigo' => '___CODIGO___']) }}".replace(
                         '___CODIGO___', codigo), {
@@ -666,7 +745,7 @@
                                 text: `El producto ${codigo} fue reasignado a esta ubicación.`
                             });
 
-                            // 🚀 Emitimos evento global para que todas las ubicaciones se actualicen
+                            // ?? Emitimos evento global para que todas las ubicaciones se actualicen
                             window.dispatchEvent(new CustomEvent('producto-reasignado', {
                                 detail: {
                                     codigo,
@@ -697,8 +776,8 @@
     }) {
         const erroresHtml = `
             <p><strong>Ubicación:</strong> ${ubicacion}</p>
-            <p><strong>Faltantes:</strong> ${faltantes.length ? faltantes.join(', ') : '—'}</p>
-            <p><strong>Inesperados:</strong> ${inesperados.length ? inesperados.join(', ') : '—'}</p>
+            <p><strong>Faltantes:</strong> ${faltantes.length ? faltantes.join(', ') : ''}</p>
+            <p><strong>Inesperados:</strong> ${inesperados.length ? inesperados.join(', ') : ''}</p>
         `;
 
         swalDialog({
@@ -722,8 +801,8 @@
                             tipo: 'inventario',
                             mensaje: `
 Ubicación: ${ubicacion}
-Faltantes: ${faltantes.join(', ') || '—'}
-Inesperados: ${inesperados.join(', ') || '—'}
+Faltantes: ${faltantes.join(', ') || ''}
+Inesperados: ${inesperados.join(', ') || ''}
                         `.trim(),
                             enviar_a_departamentos: ['Programador']
                         })
@@ -746,7 +825,7 @@ Inesperados: ${inesperados.join(', ') || '—'}
                             title: 'Error al enviar',
                             text: error.message
                         });
-                        console.error('❌ Error en notificación:', error);
+                        console.error('? Error en notificación:', error);
                     });
             }
         });
@@ -805,122 +884,231 @@ Inesperados: ${inesperados.join(', ') || '—'}
     };
     document.addEventListener('DOMContentLoaded', forceCloseInvModal);
     document.addEventListener('livewire:navigated', forceCloseInvModal);
+
+    window.paginaUbicaciones = function() {
+        return {
+            openModal: false,
+            modalConsumo: false,
+            openSectors: {},
+            estadoUbicaciones: {},
+            estadoSectores: {},
+            showLeyenda: false,
+            listaConsumos: [],
+            consumoCargando: false,
+            borrarTodosEscaneos() {
+                const ids = Array.isArray(window.ubicacionIdsInventario) ? window.ubicacionIdsInventario : [];
+                if (!ids.length) {
+                    swalToast.fire({
+                        icon: 'info',
+                        title: 'Sin ubicaciones',
+                        text: 'No hay ubicaciones cargadas para limpiar.'
+                    });
+                    return;
+                }
+    
+                swalDialog({
+                    icon: 'warning',
+                    title: '¿Borrar todos los escaneos?',
+                    text: 'Se limpiarán los escaneos y sospechosos de todas las ubicaciones.',
+                    showCancelButton: true,
+                    confirmButtonText: 'Sí, borrar todo',
+                    cancelButtonText: 'Cancelar',
+                    confirmButtonColor: '#dc2626'
+                }).then(result => {
+                    if (!result.isConfirmed) return;
+    
+                    ids.forEach(id => {
+                        localStorage.removeItem(`inv-${id}`);
+                        localStorage.removeItem(`sospechosos-${id}`);
+                    });
+    
+        window.dispatchEvent(new CustomEvent('inventario-actualizado', {}));
+
+        swalToast.fire({
+            icon: 'success',
+            title: 'Escaneos borrados',
+                        text: 'Todos los registros de inventario fueron limpiados.',
+                    });
+                });
+            },
+            abrirConsumos() {
+                const mapa = window.productosPorUbicacion || {};
+                const acumulado = [];
+                Object.entries(mapa).forEach(([ubicId, info]) => {
+                    const escaneados = JSON.parse(localStorage.getItem(`inv-${ubicId}`) || '[]');
+                    const productos = Array.isArray(info?.productos) ? info.productos.filter(Boolean) : [];
+                    productos.forEach(codigo => {
+                        const ok = escaneados.includes(codigo);
+                        if (!ok) {
+                            acumulado.push({
+                                codigo,
+                                ubicacion: info?.ubicacion || ubicId,
+                                estado: 'Pend.'
+                            });
+                        }
+                    });
+                });
+
+                this.listaConsumos = acumulado.sort((a, b) => {
+                    const byUbic = (a.ubicacion || '').toString().localeCompare((b.ubicacion || '').toString());
+                    if (byUbic !== 0) return byUbic;
+                    return (a.codigo || '').toString().localeCompare((b.codigo || '').toString());
+                });
+                this.modalConsumo = true;
+                this.$nextTick(() => window.dispatchEvent(new CustomEvent('modal-consumo-abierto')));
+            },
+            async consumirPendientes() {
+                if (!RUTA_CONSUMO_LOTE) {
+                    swalToast.fire({
+                        icon: 'error',
+                        title: 'Ruta no disponible',
+                        text: 'No se encontró la ruta de consumo masivo.'
+                    });
+                    return;
+                }
+                const codigos = Array.isArray(this.listaConsumos) ? this.listaConsumos.map(i => i.codigo).filter(Boolean) : [];
+                if (!codigos.length) {
+                    swalToast.fire({
+                        icon: 'info',
+                        title: 'Sin pendientes',
+                        text: 'No hay materiales por consumir.'
+                    });
+                    return;
+                }
+    
+                this.consumoCargando = true;
+                const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+                let data = {};
+    
+                try {
+                    const resp = await fetch(RUTA_CONSUMO_LOTE, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Accept': 'application/json',
+                            'X-CSRF-TOKEN': token
+                        },
+                        body: JSON.stringify({
+                            codigos
+                        })
+                    });
+                    data = await resp.json().catch(() => ({}));
+                    const ok = resp.ok && data && data.ok !== false;
+    
+                    if (Array.isArray(data?.consumidos) && data.consumidos.length) {
+                        this.aplicarConsumoLocal(data.consumidos);
+                    }
+    
+                    if (ok) {
+                        swalToast.fire({
+                            icon: 'success',
+                            title: 'Materiales consumidos',
+                            text: data?.message || 'Se marcaron como consumidos.'
+                        });
+                        this.modalConsumo = false;
+                        this.listaConsumos = [];
+                    } else {
+                        swalToast.fire({
+                            icon: 'error',
+                            title: 'No se pudo consumir',
+                            text: data?.message || 'Inténtalo de nuevo.'
+                        });
+                        this.abrirConsumos();
+                    }
+                } catch (err) {
+                    console.error('[INV] Error consumiendo pendientes', err, data);
+                    swalToast.fire({
+                        icon: 'error',
+                        title: 'Error de red',
+                        text: 'No se pudo completar el consumo.'
+                    });
+                    this.abrirConsumos();
+                } finally {
+                    this.consumoCargando = false;
+                }
+            },
+            aplicarConsumoLocal(codigosConsumidos) {
+                const lista = Array.isArray(codigosConsumidos) ? codigosConsumidos.filter(Boolean) : [];
+                if (!lista.length) return;
+                const setCodigos = new Set(lista);
+    
+                const asignados = window.productosAsignados || {};
+                const estados = window.productosEstados || {};
+                const mapa = window.productosPorUbicacion || {};
+                window.productosAsignados = asignados;
+                window.productosEstados = estados;
+                window.productosPorUbicacion = mapa;
+    
+                Object.entries(mapa).forEach(([ubicId, info]) => {
+                    if (!Array.isArray(info?.productos)) return;
+                    info.productos = info.productos.filter(c => !setCodigos.has(c));
+                });
+    
+                lista.forEach(codigo => {
+                    if (asignados && Object.prototype.hasOwnProperty.call(asignados, codigo)) {
+                        const ubic = asignados[codigo];
+                        if (ubic !== undefined && ubic !== null) {
+                            const key = `inv-${ubic}`;
+                            const guardados = JSON.parse(localStorage.getItem(key) || '[]');
+                            const filtrados = Array.isArray(guardados) ? guardados.filter(c => c !== codigo) : [];
+                            localStorage.setItem(key, JSON.stringify(filtrados));
+                        }
+                        asignados[codigo] = null;
+                    }
+                    estados[codigo] = 'consumido';
+                });
+    
+                window.dispatchEvent(new CustomEvent('inventario-actualizado', {}));
+            },
+            toggleAll() {
+                const values = Object.values(this.openSectors);
+                const allOpen = values.length && values.every(Boolean);
+                Object.keys(this.openSectors).forEach(k => this.openSectors[k] = !allOpen);
+            },
+            abrirInventario(ubicacionId, productos, codigo) {
+                const inv = ($store && $store.inv) ? $store.inv : null;
+                if (!inv || !inv.modoInventario) return;
+                inv.abrirModalInventario(ubicacionId, productos, codigo);
+            },
+            registrarEstado(ubicacionId, sector, estado) {
+                this.estadoUbicaciones[ubicacionId] = estado;
+                this.recalcularSector(sector);
+            },
+            recalcularSector(sector) {
+                if (!window.ubicacionSectorMap) return;
+                const estados = Object.entries(this.estadoUbicaciones)
+                    .filter(([id]) => window.ubicacionSectorMap[id] == sector)
+                    .map(([, est]) => est);
+                let final = 'ok';
+                if (estados.includes('consumido')) final = 'consumido';
+                else if (estados.includes('fabricando')) final = 'fabricando';
+                else if (estados.includes('ambar')) final = 'ambar';
+                else if (estados.includes('rojo')) final = 'rojo';
+                else if (estados.includes('pendiente')) final = 'pendiente';
+                this.estadoSectores[sector] = final;
+            },
+            init() {
+                window.addEventListener('ubicacion-estado', (e) => {
+                    const { ubicacionId, sector, estado } = e.detail || {};
+                    if (!ubicacionId || !sector || !estado) return;
+                    this.registrarEstado(ubicacionId, sector, estado);
+                });
+                document.addEventListener('livewire:navigated', () => {
+                    this.openModal = false;
+                    if ($store && $store.inv) {
+                        $store.inv.modalInventario = false;
+                    }
+                });
+                this.openModal = false;
+            }
+        };
+    };
 </script>
 
 <x-app-layout>
     <x-menu.ubicaciones :obras="$obras" :obra-actual-id="$obraActualId" color-base="emerald" />
 
-    <div x-data="{
-        openModal: false,
-        modalConsumo: false,
-        openSectors: {},
-        estadoUbicaciones: {},
-        estadoSectores: {},
-        showLeyenda: false,
-        listaConsumos: [],
-        borrarTodosEscaneos() {
-            const ids = Array.isArray(window.ubicacionIdsInventario) ? window.ubicacionIdsInventario : [];
-            if (!ids.length) {
-                swalToast.fire({
-                    icon: 'info',
-                    title: 'Sin ubicaciones',
-                    text: 'No hay ubicaciones cargadas para limpiar.'
-                });
-                return;
-            }
-    
-            swalDialog({
-                icon: 'warning',
-                title: '¿Borrar todos los escaneos?',
-                text: 'Se limpiarán los escaneos y sospechosos de todas las ubicaciones.',
-                showCancelButton: true,
-                confirmButtonText: 'Sí, borrar todo',
-                cancelButtonText: 'Cancelar',
-                confirmButtonColor: '#dc2626'
-            }).then(result => {
-                if (!result.isConfirmed) return;
-    
-                ids.forEach(id => {
-                    localStorage.removeItem(`inv-${id}`);
-                    localStorage.removeItem(`sospechosos-${id}`);
-                });
-    
-                window.dispatchEvent(new CustomEvent('inventario-actualizado', {}));
-    
-                swalToast.fire({
-                    icon: 'success',
-                    title: 'Escaneos borrados',
-                    text: 'Todos los registros de inventario fueron limpiados.',
-                });
-            });
-        },
-        abrirConsumos() {
-            const mapa = window.productosPorUbicacion || {};
-            const acumulado = [];
-            Object.entries(mapa).forEach(([ubicId, info]) => {
-                const escaneados = JSON.parse(localStorage.getItem(`inv-${ubicId}`) || '[]');
-                const productos = Array.isArray(info?.productos) ? info.productos.filter(Boolean) : [];
-                productos.forEach(codigo => {
-                    const ok = escaneados.includes(codigo);
-                    if (!ok) {
-                        acumulado.push({
-                            codigo,
-                            ubicacion: info?.ubicacion || ubicId,
-                            estado: 'Pend.'
-                        });
-                    }
-                });
-            });
-
-            this.listaConsumos = acumulado.sort((a, b) => {
-                const byUbic = (a.ubicacion || '').toString().localeCompare((b.ubicacion || '').toString());
-                if (byUbic !== 0) return byUbic;
-                return (a.codigo || '').toString().localeCompare((b.codigo || '').toString());
-            });
-            this.modalConsumo = true;
-        },
-        toggleAll() {
-            const values = Object.values(this.openSectors);
-            const allOpen = values.length && values.every(Boolean);
-            Object.keys(this.openSectors).forEach(k => this.openSectors[k] = !allOpen);
-        },
-        abrirInventario(ubicacionId, productos, codigo) {
-            const inv = ($store && $store.inv) ? $store.inv : null;
-            if (!inv || !inv.modoInventario) return;
-            inv.abrirModalInventario(ubicacionId, productos, codigo);
-        },
-        registrarEstado(ubicacionId, sector, estado) {
-            this.estadoUbicaciones[ubicacionId] = estado;
-            this.recalcularSector(sector);
-        },
-        recalcularSector(sector) {
-            if (!window.ubicacionSectorMap) return;
-            const estados = Object.entries(this.estadoUbicaciones)
-                .filter(([id]) => window.ubicacionSectorMap[id] == sector)
-                .map(([, est]) => est);
-            let final = 'ok';
-            if (estados.includes('consumido')) final = 'consumido';
-            else if (estados.includes('fabricando')) final = 'fabricando';
-            else if (estados.includes('ambar')) final = 'ambar';
-            else if (estados.includes('rojo')) final = 'rojo';
-            else if (estados.includes('pendiente')) final = 'pendiente';
-            this.estadoSectores[sector] = final;
-        },
-        init() {
-            window.addEventListener('ubicacion-estado', (e) => {
-                const { ubicacionId, sector, estado } = e.detail || {};
-                if (!ubicacionId || !sector || !estado) return;
-                this.registrarEstado(ubicacionId, sector, estado);
-            });
-            document.addEventListener('livewire:navigated', () => {
-                this.openModal = false;
-                if ($store && $store.inv) {
-                    $store.inv.modalInventario = false;
-                }
-            });
-            this.openModal = false;
-        }
-    }" x-init="openModal = false" class="max-w-7xl mx-auto space-y-4">
+<div x-data="paginaUbicaciones()" x-init="openModal = false" class="max-w-7xl mx-auto space-y-4">
         <div
             class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl shadow-sm p-4 lg:p-6">
             <div class="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
@@ -992,7 +1180,7 @@ Inesperados: ${inesperados.join(', ') || '—'}
                             :class="$store.inv.modoInventario ?
                                 'bg-gradient-to-tr from-red-600 to-red-500 hover:from-red-700 hover:to-red-600' :
                                 'bg-gradient-to-tr from-gray-900 to-gray-700 hover:from-gray-800 hover:to-gray-900'">
-                            <span class="text-xs md:text-sm">📦</span>
+                            <span class="text-xs md:text-sm">??</span>
                             <span class="text-xs md:text-sm"
                                 x-text="$store.inv.modoInventario ? 'Salir de inventario' : 'Hacer inventario'"></span>
                         </button>
@@ -1008,7 +1196,7 @@ Inesperados: ${inesperados.join(', ') || '—'}
                 class="w-full flex items-center justify-between px-4 py-2.5 text-left">
                 <div class="flex items-center gap-3">
                     <span
-                        class="inline-flex items-center justify-center h-9 w-9 rounded-lg bg-red-600 text-white font-bold text-lg shadow-sm">🗑️</span>
+                        class="inline-flex items-center justify-center h-9 w-9 rounded-lg bg-red-600 text-white font-bold text-lg shadow-sm">???</span>
                     <div class="text-left">
                         <p class="md:text-base text-xs font-semibold text-red-700 dark:text-red-300">Borrar escaneos de
                             todas las
@@ -1097,10 +1285,10 @@ Inesperados: ${inesperados.join(', ') || '—'}
                                         const estadosGlobal = window.productosEstados || {};
                                         const maquinasGlobal = window.productosMaquinas || {};
                                         let estado = esperados.length === 0 ? 'ok' : (escaneados.length === esperados.length ? 'ok' : 'pendiente');
-                                
+
                                         const hayFabricando = esperados.some(c => estadosGlobal[c] === 'fabricando' && maquinasGlobal[c]);
                                         if (hayFabricando) estado = 'fabricando';
-                                
+
                                         for (const codigo of sospechosos) {
                                             const estadoProd = (window.productosEstados || {})[codigo];
                                             const ubicAsign = (window.productosAsignados || {})[codigo];
@@ -1121,7 +1309,7 @@ Inesperados: ${inesperados.join(', ') || '—'}
                                                 break;
                                             }
                                         }
-                                
+
                                         this.estado = estado;
                                         window.dispatchEvent(new CustomEvent('ubicacion-estado', {
                                             detail: { ubicacionId: this.ubicId, sector: this.sector, estado }
@@ -1173,7 +1361,7 @@ Inesperados: ${inesperados.join(', ') || '—'}
                                                     x-text="window.detallesProductos?.[prod]?.diametro ?? 'N/D'"></span>
                                                 mm |
                                                 Cosl: <span
-                                                    x-text="window.detallesProductos?.[prod]?.colada ?? '—'"></span>
+                                                    x-text="window.detallesProductos?.[prod]?.colada ?? ''"></span>
                                             </p>
                                         </div>
                                     </template>
@@ -1244,21 +1432,21 @@ Inesperados: ${inesperados.join(', ') || '—'}
                         @csrf
                         <input type="hidden" name="almacen" value="{{ $obraActualId }}">
 
-                        <x-tabla.select name="sector" label="📍 Sector" :options="collect(range(1, 20))
+                        <x-tabla.select name="sector" label="?? Sector" :options="collect(range(1, 20))
                             ->mapWithKeys(
                                 fn($i) => [str_pad($i, 2, '0', STR_PAD_LEFT) => str_pad($i, 2, '0', STR_PAD_LEFT)],
                             )
                             ->toArray()"
                             placeholder="Ej. 01, 02, 03..." />
 
-                        <x-tabla.select name="ubicacion" label="📦 Ubicación" :options="collect(range(1, 100))
+                        <x-tabla.select name="ubicacion" label="?? Ubicación" :options="collect(range(1, 100))
                             ->mapWithKeys(
                                 fn($i) => [str_pad($i, 2, '0', STR_PAD_LEFT) => str_pad($i, 2, '0', STR_PAD_LEFT)],
                             )
                             ->toArray()"
                             placeholder="Ej. 01 a 100" />
 
-                        <x-tabla.input name="descripcion" label="📝 Descripción"
+                        <x-tabla.input name="descripcion" label="?? Descripción"
                             placeholder="Ej. Entrada de barras largas" />
 
                         <div class="flex justify-end gap-3 pt-4">
@@ -1286,11 +1474,12 @@ Inesperados: ${inesperados.join(', ') || '—'}
                         </h2>
                         <button @click="modalConsumo = false"
                             class="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">
-                            ✕
+                            ?
                         </button>
                     </div>
 
-                    <div class="bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
+                    <div
+                        class="bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
                         <div class="max-h-[70vh] overflow-y-auto">
                             <table class="min-w-full text-sm">
                                 <thead class="bg-gray-100 dark:bg-gray-800/60 text-gray-700 dark:text-gray-200">
@@ -1303,7 +1492,8 @@ Inesperados: ${inesperados.join(', ') || '—'}
                                 <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
                                     <template x-if="!listaConsumos.length">
                                         <tr>
-                                            <td colspan="3" class="px-4 py-6 text-center text-gray-500 dark:text-gray-400">
+                                            <td colspan="3"
+                                                class="px-4 py-6 text-center text-gray-500 dark:text-gray-400">
                                                 No hay materiales cargados en la nave.
                                             </td>
                                         </tr>
@@ -1316,9 +1506,9 @@ Inesperados: ${inesperados.join(', ') || '—'}
                                                 x-text="item.codigo"></td>
                                             <td class="px-4 py-2">
                                                 <span x-text="item.estado"
-                                                    :class="item.estado === 'OK'
-                                                        ? 'bg-green-100 text-green-700'
-                                                        : 'bg-amber-100 text-amber-700'"
+                                                    :class="item.estado === 'OK' ?
+                                                        'bg-green-100 text-green-700' :
+                                                        'bg-amber-100 text-amber-700'"
                                                     class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold"></span>
                                             </td>
                                         </tr>
@@ -1328,24 +1518,29 @@ Inesperados: ${inesperados.join(', ') || '—'}
                         </div>
                     </div>
 
-                    <div class="mt-6 flex justify-center">
-                        <div
-                            class="relative w-full max-w-2xl h-12 rounded-full bg-gradient-to-r from-red-600 via-orange-500 to-amber-400 shadow-xl overflow-hidden">
-                            <div
-                                class="absolute inset-0 bg-white/10 blur-md opacity-60 pointer-events-none"></div>
-                            <div class="relative h-full flex items-center pl-2 pr-4 gap-3">
-                                <div
-                                    class="h-10 w-10 rounded-full bg-white text-red-600 flex items-center justify-center shadow-md">
-                                    <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                        stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
-                                        aria-hidden="true">
-                                        <path d="M12 4v8" />
-                                        <path d="M6.5 7.5a7 7 0 1011 0" />
-                                    </svg>
-                                </div>
+                    <div class="mt-6 flex justify-center" x-data="sliderConsumo(() => consumirPendientes())"
+                        @pointermove.window="onDrag($event)" @pointerup.window="stopDrag()"
+                        @touchmove.window="onDrag($event)" @touchend.window="stopDrag()"
+                        @resize.window="recalcMax()" x-init="init()">
+                        <div x-ref="track"
+                            class="relative w-full max-w-2xl h-12 rounded-full bg-gradient-to-r from-red-600 via-orange-500 to-amber-400 shadow-xl overflow-hidden select-none touch-none">
+                            <div class="absolute inset-0 bg-white/10 blur-md opacity-60 pointer-events-none"></div>
+                            <div class="absolute inset-0 flex items-center justify-center pointer-events-none">
                                 <p class="text-sm md:text-base font-semibold text-white tracking-wide select-none">
-                                    Deslizar para confirmar
+                                    Deslizar para consumir
                                 </p>
+                            </div>
+
+                            <div x-ref="handle"
+                                class="absolute top-1 left-1 h-10 w-10 rounded-full bg-white text-orange-600 flex items-center justify-center shadow-md cursor-pointer transition-transform duration-150 active:scale-95"
+                                :class="processing ? 'opacity-70 cursor-not-allowed' : ''"
+                                :style="`transform: translateX(${handleX}px);`" @pointerdown.prevent="startDrag($event)"
+                                @touchstart.prevent="startDrag($event)">
+                                <svg class="h-5 w-5" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor"
+                                    stroke-width="1.3" aria-hidden="true">
+                                    <path fill-rule="evenodd"
+                                        d="M12.185 21.5c4.059 0 7.065-2.84 7.065-6.75 0-2.337-1.093-3.489-2.678-5.158l-.021-.023c-1.44-1.517-3.139-3.351-3.649-6.557a6.14 6.14 0 00-1.911 1.76c-.787 1.144-1.147 2.633-.216 4.495.603 1.205.777 2.74-.277 3.794-.657.657-1.762 1.1-2.956.586-.752-.324-1.353-.955-1.838-1.79-.567.706-.954 1.74-.954 2.893 0 3.847 3.288 6.75 7.435 6.75zm2.08-19.873c-.017-.345-.296-.625-.632-.543-2.337.575-6.605 4.042-4.2 8.854.474.946.392 1.675.004 2.062-.64.64-1.874.684-2.875-1.815-.131-.327-.498-.509-.803-.334-1.547.888-2.509 2.86-2.509 4.899 0 4.829 4.122 8.25 8.935 8.25 4.812 0 8.565-3.438 8.565-8.25 0-2.939-1.466-4.482-3.006-6.102-1.61-1.694-3.479-3.476-3.479-7.021z" />
+                                </svg>
                             </div>
                         </div>
                     </div>
@@ -1369,9 +1564,9 @@ Inesperados: ${inesperados.join(', ') || '—'}
                             <div>
                                 <h2 class="text-xl font-bold">
                                     Inventario - Ubicación
-                                    <span x-text="$store.inv.codigoActual || nombreUbicacion || '—'"></span>
+                                    <span x-text="$store.inv.codigoActual || nombreUbicacion || ''"></span>
                                     <span class="text-white/70 text-sm ml-2">ID: <span
-                                            x-text="nombreUbicacion || '—'"></span></span>
+                                            x-text="nombreUbicacion || ''"></span></span>
                                 </h2>
                                 <p class="text-sm text-white/80 mt-1">Escanea los productos de esta ubicación</p>
                             </div>
@@ -1455,31 +1650,31 @@ Inesperados: ${inesperados.join(', ') || '—'}
                                                         <td class="px-3 py-2 font-mono text-gray-900 dark:text-gray-100"
                                                             x-text="codigo"></td>
                                                         <td class="px-3 py-2 text-gray-900 dark:text-gray-100"
-                                                            x-text="window.detallesProductos[codigo]?.colada || '—'">
+                                                            x-text="window.detallesProductos[codigo]?.colada || ''">
                                                         </td>
                                                         <td class="px-3 py-2 capitalize text-gray-900 dark:text-gray-100"
-                                                            x-text="window.detallesProductos[codigo]?.tipo || '—'">
+                                                            x-text="window.detallesProductos[codigo]?.tipo || ''">
                                                         </td>
                                                         <td class="px-3 py-2 text-gray-900 dark:text-gray-100">
                                                             <span
                                                                 x-show="window.detallesProductos[codigo]?.tipo === 'encarretado'">
                                                                 Ø <span
-                                                                    x-text="window.detallesProductos[codigo]?.diametro || '—'"></span>
+                                                                    x-text="window.detallesProductos[codigo]?.diametro || ''"></span>
                                                                 mm
                                                             </span>
                                                             <span
                                                                 x-show="window.detallesProductos[codigo]?.tipo !== 'encarretado'">
                                                                 Ø <span
-                                                                    x-text="window.detallesProductos[codigo]?.diametro || '—'"></span>
+                                                                    x-text="window.detallesProductos[codigo]?.diametro || ''"></span>
                                                                 mm /
                                                                 <span
-                                                                    x-text="window.detallesProductos[codigo]?.longitud || '—'"></span>
+                                                                    x-text="window.detallesProductos[codigo]?.longitud || ''"></span>
                                                                 m
                                                             </span>
                                                         </td>
                                                         <td class="px-3 py-2 text-center whitespace-nowrap">
                                                             <span x-show="productoEscaneado(codigo)"
-                                                                class="inline-block px-2 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-800">✓
+                                                                class="inline-block px-2 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-800">?
                                                                 OK</span>
                                                             <span x-show="!productoEscaneado(codigo)"
                                                                 class="inline-block px-2 py-1 rounded-full text-xs font-semibold bg-yellow-100 text-yellow-800">Pendiente</span>
@@ -1495,31 +1690,31 @@ Inesperados: ${inesperados.join(', ') || '—'}
                                                         <td class="px-3 py-2 font-mono text-gray-900 dark:text-gray-100"
                                                             x-text="codigo"></td>
                                                         <td class="px-3 py-2 text-gray-900 dark:text-gray-100"
-                                                            x-text="window.detallesProductos[codigo]?.colada || '—'">
+                                                            x-text="window.detallesProductos[codigo]?.colada || ''">
                                                         </td>
                                                         <td class="px-3 py-2 capitalize text-gray-900 dark:text-gray-100"
-                                                            x-text="window.detallesProductos[codigo]?.tipo || '—'">
+                                                            x-text="window.detallesProductos[codigo]?.tipo || ''">
                                                         </td>
                                                         <td class="px-3 py-2 text-gray-900 dark:text-gray-100">
                                                             <span
                                                                 x-show="window.detallesProductos[codigo]?.tipo === 'encarretado'">
                                                                 Ø <span
-                                                                    x-text="window.detallesProductos[codigo]?.diametro || '—'"></span>
+                                                                    x-text="window.detallesProductos[codigo]?.diametro || ''"></span>
                                                                 mm
                                                             </span>
                                                             <span
                                                                 x-show="window.detallesProductos[codigo]?.tipo !== 'encarretado'">
                                                                 Ø <span
-                                                                    x-text="window.detallesProductos[codigo]?.diametro || '—'"></span>
+                                                                    x-text="window.detallesProductos[codigo]?.diametro || ''"></span>
                                                                 mm /
                                                                 <span
-                                                                    x-text="window.detallesProductos[codigo]?.longitud || '—'"></span>
+                                                                    x-text="window.detallesProductos[codigo]?.longitud || ''"></span>
                                                                 m
                                                             </span>
                                                         </td>
                                                         <td class="px-3 py-2 text-center whitespace-nowrap">
                                                             <span
-                                                                class="inline-block px-2 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-800">✓
+                                                                class="inline-block px-2 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-800">?
                                                                 OK</span>
                                                         </td>
                                                     </tr>
@@ -1545,34 +1740,34 @@ Inesperados: ${inesperados.join(', ') || '—'}
                                                             x-text="codigo"></p>
                                                         <div class="flex gap-2 text-[10px]">
                                                             <p class="text-gray-600 dark:text-gray-400 capitalize"
-                                                                x-text="window.detallesProductos[codigo]?.tipo || '—'">
+                                                                x-text="window.detallesProductos[codigo]?.tipo || ''">
                                                             </p>
                                                             <p class="text-gray-500 dark:text-gray-500">
                                                                 <span
                                                                     x-show="window.detallesProductos[codigo]?.tipo === 'encarretado'">
                                                                     Ø <span
-                                                                        x-text="window.detallesProductos[codigo]?.diametro || '—'"></span>
+                                                                        x-text="window.detallesProductos[codigo]?.diametro || ''"></span>
                                                                     mm
                                                                 </span>
                                                                 <span
                                                                     x-show="window.detallesProductos[codigo]?.tipo !== 'encarretado'">
                                                                     Ø <span
-                                                                        x-text="window.detallesProductos[codigo]?.diametro || '—'"></span>
+                                                                        x-text="window.detallesProductos[codigo]?.diametro || ''"></span>
                                                                     mm /
                                                                     <span
-                                                                        x-text="window.detallesProductos[codigo]?.longitud || '—'"></span>
+                                                                        x-text="window.detallesProductos[codigo]?.longitud || ''"></span>
                                                                     m
                                                                 </span>
                                                             </p>
                                                             <p class="text-gray-500 dark:text-gray-500">~</p>
                                                             <p class="text-gray-500 dark:text-gray-500">
                                                                 Col: <span
-                                                                    x-text="window.detallesProductos[codigo]?.colada || '—'"></span>
+                                                                    x-text="window.detallesProductos[codigo]?.colada || ''"></span>
                                                             </p>
                                                         </div>
                                                     </div>
                                                     <span x-show="productoEscaneado(codigo)"
-                                                        class="inline-block px-2 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-800">✓
+                                                        class="inline-block px-2 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-800">?
                                                         OK</span>
                                                     <span x-show="!productoEscaneado(codigo)"
                                                         class="inline-block px-2 py-1 rounded-full text-xs font-semibold bg-yellow-100 text-yellow-800">Pend.</span>
@@ -1590,31 +1785,31 @@ Inesperados: ${inesperados.join(', ') || '—'}
                                                         <p class="font-mono font-semibold text-gray-900 dark:text-gray-100"
                                                             x-text="codigo"></p>
                                                         <p class="text-xs text-gray-600 dark:text-gray-400 capitalize"
-                                                            x-text="window.detallesProductos[codigo]?.tipo || '—'"></p>
+                                                            x-text="window.detallesProductos[codigo]?.tipo || ''"></p>
                                                         <p class="text-xs text-gray-500 dark:text-gray-500">
                                                             Col: <span
-                                                                x-text="window.detallesProductos[codigo]?.colada || '—'"></span>
+                                                                x-text="window.detallesProductos[codigo]?.colada || ''"></span>
                                                         </p>
                                                         <p class="text-xs text-gray-500 dark:text-gray-500">
                                                             <span
                                                                 x-show="window.detallesProductos[codigo]?.tipo === 'encarretado'">
                                                                 Ø <span
-                                                                    x-text="window.detallesProductos[codigo]?.diametro || '—'"></span>
+                                                                    x-text="window.detallesProductos[codigo]?.diametro || ''"></span>
                                                                 mm
                                                             </span>
                                                             <span
                                                                 x-show="window.detallesProductos[codigo]?.tipo !== 'encarretado'">
                                                                 Ø <span
-                                                                    x-text="window.detallesProductos[codigo]?.diametro || '—'"></span>
+                                                                    x-text="window.detallesProductos[codigo]?.diametro || ''"></span>
                                                                 mm /
                                                                 <span
-                                                                    x-text="window.detallesProductos[codigo]?.longitud || '—'"></span>
+                                                                    x-text="window.detallesProductos[codigo]?.longitud || ''"></span>
                                                                 m
                                                             </span>
                                                         </p>
                                                     </div>
                                                     <span
-                                                        class="inline-block px-2 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-800">✓
+                                                        class="inline-block px-2 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-800">?
                                                         OK</span>
                                                 </div>
                                             </div>

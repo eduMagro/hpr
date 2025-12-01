@@ -671,6 +671,63 @@ class ProductoController extends Controller
         return back()->with('success', '✅ Producto actualizado correctamente.');
     }
 
+    public function consumirLoteAjax(Request $request)
+    {
+        $codigos = $request->input('codigos', []);
+        if (!is_array($codigos)) {
+            return response()->json([
+                'ok' => false,
+                'message' => 'Listado de códigos inválido.',
+            ], 422);
+        }
+
+        $codigosLimpios = collect($codigos)
+            ->filter()
+            ->map(fn ($c) => trim((string) $c))
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
+
+        if (empty($codigosLimpios)) {
+            return response()->json([
+                'ok' => false,
+                'message' => 'No se recibieron códigos para consumir.',
+            ], 422);
+        }
+
+        $productos = Producto::whereIn('codigo', $codigosLimpios)->get();
+
+        $consumidos = [];
+        $errores = [];
+
+        DB::beginTransaction();
+        foreach ($productos as $producto) {
+            try {
+                $this->marcarComoConsumido($producto);
+                $producto->save();
+                $consumidos[] = $producto->codigo;
+            } catch (\Throwable $e) {
+                $errores[] = [
+                    'codigo' => $producto->codigo,
+                    'error' => $e->getMessage(),
+                ];
+            }
+        }
+        DB::commit();
+
+        $faltantes = array_values(array_diff($codigosLimpios, $consumidos));
+        $ok = empty($errores) && empty($faltantes);
+
+        return response()->json([
+            'ok' => $ok,
+            'consumidos' => $consumidos,
+            'faltantes' => $faltantes,
+            'errores' => $errores,
+            'message' => $ok ? 'Materiales consumidos correctamente.' : 'Consumo completado parcialmente.',
+        ], $ok ? 200 : 207);
+    }
+
     private function marcarComoConsumido(Producto $producto)
     {
         $producto->peso_stock     = 0;
