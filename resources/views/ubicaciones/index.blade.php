@@ -184,6 +184,72 @@
         consumido: "{{ asset('sonidos/scan-error.mp3') }}",
     };
 
+    /* ------ Función global para confirmar productos manualmente ------ */
+    window.confirmarProductoManualmente = async function(codigo, ubicacionId, escaneadosActuales = []) {
+        if (!codigo) return false;
+
+        const detalles = (window.detallesProductos || {})[codigo] || {};
+        const especificaciones = [];
+        if (detalles.tipo) especificaciones.push('Tipo: ' + detalles.tipo);
+        if (detalles.colada) especificaciones.push('Colada: ' + detalles.colada);
+        if (detalles.diametro) especificaciones.push('Ø ' + detalles.diametro + ' mm');
+        if (detalles.longitud && detalles.tipo !== 'encarretado') {
+            especificaciones.push(detalles.longitud + ' m');
+        }
+
+        const result = await Swal.fire({
+            title: '¿Confirmar producto manualmente?',
+            html: '<div class="text-left">' +
+                '<p class="font-mono font-bold text-lg mb-2">' + codigo + '</p>' +
+                '<p class="text-sm text-gray-600 mb-3">Especificaciones:</p>' +
+                '<ul class="text-sm space-y-1">' +
+                especificaciones.map(function(e) {
+                    return '<li>• ' + e + '</li>';
+                }).join('') +
+                '</ul>' +
+                '<p class="text-sm text-red-600 mt-4">⚠️ Asegúrate de que las especificaciones coincidan con el producto físico antes de confirmar.</p>' +
+                '</div>',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#10b981',
+            cancelButtonColor: '#6b7280',
+            confirmButtonText: 'Sí, confirmar',
+            cancelButtonText: 'Cancelar'
+        });
+
+        if (result.isConfirmed) {
+            const clave = 'inv-' + ubicacionId;
+            let escaneados = JSON.parse(localStorage.getItem(clave) || '[]');
+
+            if (!escaneados.includes(codigo)) {
+                escaneados.push(codigo);
+                localStorage.setItem(clave, JSON.stringify(escaneados));
+
+                window.dispatchEvent(new CustomEvent('inventario-actualizado', {
+                    detail: {
+                        ubicacionId: ubicacionId
+                    }
+                }));
+
+                const audioOk = document.getElementById('sonido-ok');
+                if (audioOk) {
+                    audioOk.currentTime = 0;
+                    audioOk.play().catch(function() {});
+                }
+
+                swalToast.fire({
+                    icon: 'success',
+                    title: 'Producto confirmado',
+                    text: codigo + ' marcado como OK'
+                });
+
+                return true;
+            }
+        }
+
+        return false;
+    };
+
     /* ------ Alpine factory per location ------ */
     window.inventarioUbicacion = function(productosEsperados, nombreUbicacion) {
         const ubicacionSafe = nombreUbicacion ?? '';
@@ -2122,9 +2188,9 @@ Inesperados: ${inesperados.join(', ') || ''}
                                     <div class="flex items-center gap-3">
                                         <!-- Leyenda Mobile -->
                                         <div x-data="{ showLeyendaMobile: false }" class="relative" @click.stop>
-                                            <button @click="showLeyendaMobile = !showLeyendaMobile"
-                                                class="inline-flex items-center justify-center h-6 w-6 rounded-full bg-red-600 hover:bg-red-700 text-white font-bold text-xs shadow transition-all"
-                                                title="Leyenda de colores">
+                                        <button x-show="$store.inv.showInesperados" @click="showLeyendaMobile = !showLeyendaMobile"
+                                            class="inline-flex items-center justify-center h-6 w-6 rounded-full bg-red-600 hover:bg-red-700 text-white font-bold text-xs shadow transition-all"
+                                            title="Leyenda de colores">
                                                 i
                                             </button>
 
@@ -2254,7 +2320,7 @@ Inesperados: ${inesperados.join(', ') || ''}
                                 <div
                                     class="sticky bottom-0 bg-gray-50 dark:bg-gray-800 px-4 py-3 border-t border-gray-200 dark:border-gray-700 flex justify-end flex-shrink-0">
                                     <button @click="$store.inv.showInesperados = false"
-                                        class="bg-red-600 hover:bg-red-700 text-white font-semibold px-4 py-2 rounded-lg text-sm">
+                                        class="bg-red-600 hover:bg-red-700 text-white font-semibold px-4 py-2 rounded-lg text-[10px]">
                                         Cerrar
                                     </button>
                                 </div>
@@ -2284,23 +2350,19 @@ Inesperados: ${inesperados.join(', ') || ''}
         <!-- Modal de detalle de productos esperados (solo móvil) - Fuera del template principal -->
         <template x-if="$store.inv.modalInventario">
             <div x-show="$store.inv.modalDetalleEsperados" x-data="{
-                get productosEsperados() {
-                    return Array.isArray($store?.inv?.productosActuales) ? $store.inv.productosActuales : [];
-                },
-                get ubicacionId() {
-                    return $store?.inv?.ubicacionActual ?? null;
-                },
+                productosEsperados: [],
+                ubicacionId: null,
                 escaneadosDetalle: [],
                 init() {
-                    // Cargar escaneados desde localStorage cuando se abre el modal
+                    this.productosEsperados = Array.isArray($store?.inv?.productosActuales) ? $store.inv.productosActuales : [];
+                    this.ubicacionId = $store?.inv?.ubicacionActual ?? null;
                     this.recargarEscaneados();
                 },
                 recargarEscaneados() {
-                    const clave = `inv-${this.ubicacionId}`;
+                    const clave = 'inv-' + this.ubicacionId;
                     this.escaneadosDetalle = JSON.parse(localStorage.getItem(clave) || '[]');
                 },
                 productoEscaneado(codigo) {
-                    // Recargar cada vez para asegurar datos frescos
                     this.recargarEscaneados();
                     return this.escaneadosDetalle.includes(codigo);
                 },
@@ -2308,6 +2370,13 @@ Inesperados: ${inesperados.join(', ') || ''}
                     this.recargarEscaneados();
                     const total = this.productosEsperados.length;
                     return total > 0 ? (this.escaneadosDetalle.length / total) * 100 : 0;
+                },
+                async confirmarManualmente(codigo) {
+                    if (!codigo || this.productoEscaneado(codigo)) return;
+                    const confirmado = await window.confirmarProductoManualmente(codigo, this.ubicacionId, this.escaneadosDetalle);
+                    if (confirmado) {
+                        this.recargarEscaneados();
+                    }
                 }
             }" x-init="$watch('$store.inv.modalDetalleEsperados', value => { if (value) recargarEscaneados(); })"
                 x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0"
@@ -2336,14 +2405,30 @@ Inesperados: ${inesperados.join(', ') || ''}
                         </button>
                     </div>
 
+                    <!-- Mensaje informativo -->
+                    <div
+                        class="bg-blue-50 dark:bg-blue-900/20 border-b border-blue-200 dark:border-blue-700 px-4 py-2.5 flex items-center gap-2 flex-shrink-0">
+                        <svg class="w-4 h-4 text-blue-600 dark:text-blue-400 flex-shrink-0" fill="none"
+                            stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5M7.188 2.239l.777 2.897M5.136 7.965l-2.898-.777M13.95 4.05l-2.122 2.122m-5.657 5.656l-2.12 2.122" />
+                        </svg>
+                        <p class="text-xs text-blue-800 dark:text-blue-200">
+                            <span class="font-semibold">Tip:</span> Toca los productos pendientes para confirmarlos
+                            manualmente si su QR está dañado
+                        </p>
+                    </div>
+
                     <!-- Lista de productos -->
                     <div class="flex-1 overflow-y-auto p-3 space-y-2">
                         <template x-for="(codigo, idx) in productosEsperados" :key="'detalle-' + codigo">
-                            <div class="rounded-lg border p-3"
+                            <div class="rounded-lg border p-3 transition-all"
                                 :class="{
                                     'bg-green-50 dark:bg-green-900/20 border-green-200': productoEscaneado(codigo),
-                                    'bg-white dark:bg-gray-800 border-gray-200': !productoEscaneado(codigo)
-                                }">
+                                    'bg-white dark:bg-gray-800 border-gray-200 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 active:scale-[0.98]':
+                                        !productoEscaneado(codigo)
+                                }"
+                                @click="!productoEscaneado(codigo) && confirmarManualmente(codigo)">
                                 <div class="flex justify-between items-center">
                                     <div class="flex w-full gap-2 items-center justify-start">
                                         <span
@@ -2351,7 +2436,7 @@ Inesperados: ${inesperados.join(', ') || ''}
                                             x-show="['encarretado', 'barra'].includes(window.detallesProductos[codigo]?.tipo)"
                                             x-text="window.detallesProductos[codigo]?.tipo === 'encarretado' ? 'E' : (window.detallesProductos[codigo]?.tipo === 'barra' ? 'B' : '')">
                                         </span>
-                                        <div class="flex flex-col text-[10px] items-start justify-center">
+                                        <div class="flex flex-col text-[10px] items-start justify-center flex-1">
                                             <p class="font-mono font-semibold text-sm text-gray-900 dark:text-gray-100"
                                                 x-text="codigo"></p>
 
@@ -2382,9 +2467,18 @@ Inesperados: ${inesperados.join(', ') || ''}
                                         </div>
                                     </div>
                                     <span x-show="productoEscaneado(codigo)"
-                                        class="inline-block px-2 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-800">OK</span>
+                                        class="inline-block px-2 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-800 flex-shrink-0">
+                                        <svg class="w-4 h-4 inline mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                            <path fill-rule="evenodd"
+                                                d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                                                clip-rule="evenodd" />
+                                        </svg>
+                                        OK
+                                    </span>
                                     <span x-show="!productoEscaneado(codigo)"
-                                        class="inline-block px-2 py-1 rounded-full text-xs font-semibold bg-yellow-100 text-yellow-800">Pend.</span>
+                                        class="inline-block px-2 py-1 rounded-full text-xs font-semibold bg-yellow-100 text-yellow-800 flex-shrink-0">
+                                        Pend.
+                                    </span>
                                 </div>
                             </div>
                         </template>
@@ -2394,7 +2488,7 @@ Inesperados: ${inesperados.join(', ') || ''}
                     <div
                         class="bg-gray-50 dark:bg-gray-800 px-4 py-3 border-t border-gray-200 dark:border-gray-700 flex justify-end flex-shrink-0">
                         <button @click="$store.inv.modalDetalleEsperados = false"
-                            class="bg-green-600 hover:bg-green-700 text-white font-semibold px-4 py-2 rounded-lg text-sm">
+                            class="bg-green-600 hover:bg-green-700 text-white font-semibold px-4 py-2 rounded-lg text-[10px]">
                             Cerrar
                         </button>
                     </div>
