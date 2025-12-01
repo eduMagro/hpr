@@ -1,4 +1,4 @@
-@php
+﻿@php
     $detalles = \App\Models\Producto::with('productoBase')
         ->get()
         ->mapWithKeys(function ($p) {
@@ -50,6 +50,7 @@
 <script data-navigate-reload>
     const RUTA_ALERTA = @json(route('alertas.store'));
     const RUTA_CONSUMO_LOTE = @json(route('productos.consumirLote'));
+    window.$store = window.$store || {};
 
     const ensureSwal = () => new Promise((resolve) => {
         if (window.Swal) return resolve(window.Swal);
@@ -861,6 +862,9 @@ Inesperados: ${inesperados.join(', ') || ''}
                 this.modalInventario = false;
             }
         });
+
+        window.$store = window.$store || {};
+        window.$store.inv = Alpine.store('inv');
     };
 
     // Si Alpine ya está cargado (navegación SPA), inicializar de inmediato
@@ -905,7 +909,7 @@ Inesperados: ${inesperados.join(', ') || ''}
                     });
                     return;
                 }
-    
+
                 swalDialog({
                     icon: 'warning',
                     title: '¿Borrar todos los escaneos?',
@@ -916,17 +920,17 @@ Inesperados: ${inesperados.join(', ') || ''}
                     confirmButtonColor: '#dc2626'
                 }).then(result => {
                     if (!result.isConfirmed) return;
-    
+
                     ids.forEach(id => {
                         localStorage.removeItem(`inv-${id}`);
                         localStorage.removeItem(`sospechosos-${id}`);
                     });
-    
-        window.dispatchEvent(new CustomEvent('inventario-actualizado', {}));
 
-        swalToast.fire({
-            icon: 'success',
-            title: 'Escaneos borrados',
+                    window.dispatchEvent(new CustomEvent('inventario-actualizado', {}));
+
+                    swalToast.fire({
+                        icon: 'success',
+                        title: 'Escaneos borrados',
                         text: 'Todos los registros de inventario fueron limpiados.',
                     });
                 });
@@ -950,7 +954,8 @@ Inesperados: ${inesperados.join(', ') || ''}
                 });
 
                 this.listaConsumos = acumulado.sort((a, b) => {
-                    const byUbic = (a.ubicacion || '').toString().localeCompare((b.ubicacion || '').toString());
+                    const byUbic = (a.ubicacion || '').toString().localeCompare((b.ubicacion || '')
+                        .toString());
                     if (byUbic !== 0) return byUbic;
                     return (a.codigo || '').toString().localeCompare((b.codigo || '').toString());
                 });
@@ -966,7 +971,8 @@ Inesperados: ${inesperados.join(', ') || ''}
                     });
                     return;
                 }
-                const codigos = Array.isArray(this.listaConsumos) ? this.listaConsumos.map(i => i.codigo).filter(Boolean) : [];
+                const codigos = Array.isArray(this.listaConsumos) ? this.listaConsumos.map(i => i.codigo)
+                    .filter(Boolean) : [];
                 if (!codigos.length) {
                     swalToast.fire({
                         icon: 'info',
@@ -975,11 +981,11 @@ Inesperados: ${inesperados.join(', ') || ''}
                     });
                     return;
                 }
-    
+
                 this.consumoCargando = true;
                 const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
                 let data = {};
-    
+
                 try {
                     const resp = await fetch(RUTA_CONSUMO_LOTE, {
                         method: 'POST',
@@ -994,11 +1000,11 @@ Inesperados: ${inesperados.join(', ') || ''}
                     });
                     data = await resp.json().catch(() => ({}));
                     const ok = resp.ok && data && data.ok !== false;
-    
+
                     if (Array.isArray(data?.consumidos) && data.consumidos.length) {
                         this.aplicarConsumoLocal(data.consumidos);
                     }
-    
+
                     if (ok) {
                         swalToast.fire({
                             icon: 'success',
@@ -1031,33 +1037,34 @@ Inesperados: ${inesperados.join(', ') || ''}
                 const lista = Array.isArray(codigosConsumidos) ? codigosConsumidos.filter(Boolean) : [];
                 if (!lista.length) return;
                 const setCodigos = new Set(lista);
-    
+
                 const asignados = window.productosAsignados || {};
                 const estados = window.productosEstados || {};
                 const mapa = window.productosPorUbicacion || {};
                 window.productosAsignados = asignados;
                 window.productosEstados = estados;
                 window.productosPorUbicacion = mapa;
-    
+
                 Object.entries(mapa).forEach(([ubicId, info]) => {
                     if (!Array.isArray(info?.productos)) return;
                     info.productos = info.productos.filter(c => !setCodigos.has(c));
                 });
-    
+
                 lista.forEach(codigo => {
                     if (asignados && Object.prototype.hasOwnProperty.call(asignados, codigo)) {
                         const ubic = asignados[codigo];
                         if (ubic !== undefined && ubic !== null) {
                             const key = `inv-${ubic}`;
                             const guardados = JSON.parse(localStorage.getItem(key) || '[]');
-                            const filtrados = Array.isArray(guardados) ? guardados.filter(c => c !== codigo) : [];
+                            const filtrados = Array.isArray(guardados) ? guardados.filter(c => c !==
+                                codigo) : [];
                             localStorage.setItem(key, JSON.stringify(filtrados));
                         }
                         asignados[codigo] = null;
                     }
                     estados[codigo] = 'consumido';
                 });
-    
+
                 window.dispatchEvent(new CustomEvent('inventario-actualizado', {}));
             },
             toggleAll() {
@@ -1089,7 +1096,11 @@ Inesperados: ${inesperados.join(', ') || ''}
             },
             init() {
                 window.addEventListener('ubicacion-estado', (e) => {
-                    const { ubicacionId, sector, estado } = e.detail || {};
+                    const {
+                        ubicacionId,
+                        sector,
+                        estado
+                    } = e.detail || {};
                     if (!ubicacionId || !sector || !estado) return;
                     this.registrarEstado(ubicacionId, sector, estado);
                 });
@@ -1108,7 +1119,7 @@ Inesperados: ${inesperados.join(', ') || ''}
 <x-app-layout>
     <x-menu.ubicaciones :obras="$obras" :obra-actual-id="$obraActualId" color-base="emerald" />
 
-<div x-data="paginaUbicaciones()" x-init="openModal = false" class="max-w-7xl mx-auto space-y-4">
+    <div x-data="paginaUbicaciones()" x-init="openModal = false" class="max-w-7xl mx-auto space-y-4">
         <div
             class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl shadow-sm p-4 lg:p-6">
             <div class="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
@@ -1180,7 +1191,7 @@ Inesperados: ${inesperados.join(', ') || ''}
                             :class="$store.inv.modoInventario ?
                                 'bg-gradient-to-tr from-red-600 to-red-500 hover:from-red-700 hover:to-red-600' :
                                 'bg-gradient-to-tr from-gray-900 to-gray-700 hover:from-gray-800 hover:to-gray-900'">
-                            <span class="text-xs md:text-sm">??</span>
+                            <span class="text-xs md:text-sm">📦</span>
                             <span class="text-xs md:text-sm"
                                 x-text="$store.inv.modoInventario ? 'Salir de inventario' : 'Hacer inventario'"></span>
                         </button>
@@ -1196,7 +1207,7 @@ Inesperados: ${inesperados.join(', ') || ''}
                 class="w-full flex items-center justify-between px-4 py-2.5 text-left">
                 <div class="flex items-center gap-3">
                     <span
-                        class="inline-flex items-center justify-center h-9 w-9 rounded-lg bg-red-600 text-white font-bold text-lg shadow-sm">???</span>
+                        class="inline-flex items-center justify-center h-9 w-9 rounded-lg bg-red-600 text-white font-bold text-lg shadow-sm">⤬</span>
                     <div class="text-left">
                         <p class="md:text-base text-xs font-semibold text-red-700 dark:text-red-300">Borrar escaneos de
                             todas las
@@ -1285,10 +1296,10 @@ Inesperados: ${inesperados.join(', ') || ''}
                                         const estadosGlobal = window.productosEstados || {};
                                         const maquinasGlobal = window.productosMaquinas || {};
                                         let estado = esperados.length === 0 ? 'ok' : (escaneados.length === esperados.length ? 'ok' : 'pendiente');
-
+                                
                                         const hayFabricando = esperados.some(c => estadosGlobal[c] === 'fabricando' && maquinasGlobal[c]);
                                         if (hayFabricando) estado = 'fabricando';
-
+                                
                                         for (const codigo of sospechosos) {
                                             const estadoProd = (window.productosEstados || {})[codigo];
                                             const ubicAsign = (window.productosAsignados || {})[codigo];
@@ -1309,7 +1320,7 @@ Inesperados: ${inesperados.join(', ') || ''}
                                                 break;
                                             }
                                         }
-
+                                
                                         this.estado = estado;
                                         window.dispatchEvent(new CustomEvent('ubicacion-estado', {
                                             detail: { ubicacionId: this.ubicId, sector: this.sector, estado }
@@ -1432,21 +1443,21 @@ Inesperados: ${inesperados.join(', ') || ''}
                         @csrf
                         <input type="hidden" name="almacen" value="{{ $obraActualId }}">
 
-                        <x-tabla.select name="sector" label="?? Sector" :options="collect(range(1, 20))
+                        <x-tabla.select name="sector" label="Sector" :options="collect(range(1, 20))
                             ->mapWithKeys(
                                 fn($i) => [str_pad($i, 2, '0', STR_PAD_LEFT) => str_pad($i, 2, '0', STR_PAD_LEFT)],
                             )
                             ->toArray()"
                             placeholder="Ej. 01, 02, 03..." />
 
-                        <x-tabla.select name="ubicacion" label="?? Ubicación" :options="collect(range(1, 100))
+                        <x-tabla.select name="ubicacion" label="Ubicación" :options="collect(range(1, 100))
                             ->mapWithKeys(
                                 fn($i) => [str_pad($i, 2, '0', STR_PAD_LEFT) => str_pad($i, 2, '0', STR_PAD_LEFT)],
                             )
                             ->toArray()"
                             placeholder="Ej. 01 a 100" />
 
-                        <x-tabla.input name="descripcion" label="?? Descripción"
+                        <x-tabla.input name="descripcion" label="Descripción"
                             placeholder="Ej. Entrada de barras largas" />
 
                         <div class="flex justify-end gap-3 pt-4">
@@ -1474,7 +1485,7 @@ Inesperados: ${inesperados.join(', ') || ''}
                         </h2>
                         <button @click="modalConsumo = false"
                             class="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">
-                            ?
+                            ⤬
                         </button>
                     </div>
 
@@ -1520,8 +1531,8 @@ Inesperados: ${inesperados.join(', ') || ''}
 
                     <div class="mt-6 flex justify-center" x-data="sliderConsumo(() => consumirPendientes())"
                         @pointermove.window="onDrag($event)" @pointerup.window="stopDrag()"
-                        @touchmove.window="onDrag($event)" @touchend.window="stopDrag()"
-                        @resize.window="recalcMax()" x-init="init()">
+                        @touchmove.window="onDrag($event)" @touchend.window="stopDrag()" @resize.window="recalcMax()"
+                        x-init="init()">
                         <div x-ref="track"
                             class="relative w-full max-w-2xl h-12 rounded-full bg-gradient-to-r from-red-600 via-orange-500 to-amber-400 shadow-xl overflow-hidden select-none touch-none">
                             <div class="absolute inset-0 bg-white/10 blur-md opacity-60 pointer-events-none"></div>
@@ -1534,8 +1545,8 @@ Inesperados: ${inesperados.join(', ') || ''}
                             <div x-ref="handle"
                                 class="absolute top-1 left-1 h-10 w-10 rounded-full bg-white text-orange-600 flex items-center justify-center shadow-md cursor-pointer transition-transform duration-150 active:scale-95"
                                 :class="processing ? 'opacity-70 cursor-not-allowed' : ''"
-                                :style="`transform: translateX(${handleX}px);`" @pointerdown.prevent="startDrag($event)"
-                                @touchstart.prevent="startDrag($event)">
+                                :style="`transform: translateX(${handleX}px);`"
+                                @pointerdown.prevent="startDrag($event)" @touchstart.prevent="startDrag($event)">
                                 <svg class="h-5 w-5" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor"
                                     stroke-width="1.3" aria-hidden="true">
                                     <path fill-rule="evenodd"
