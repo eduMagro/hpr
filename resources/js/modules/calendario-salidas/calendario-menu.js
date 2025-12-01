@@ -1424,34 +1424,66 @@ function construirFormularioFechas(planillas) {
                   }) + " kg"
                 : "";
             const fechaISO = toISO(p.fecha_estimada_entrega);
+            const tieneElementos = p.elementos && p.elementos.length > 0;
+            const numElementos = p.elementos?.length || 0;
+
+            // Construir filas de elementos si existen
+            let elementosHtml = '';
+            if (tieneElementos) {
+                elementosHtml = p.elementos.map((el, idx) => {
+                    const fechaElISO = el.fecha_entrega || '';
+                    const pesoEl = el.peso ? parseFloat(el.peso).toFixed(2) : '-';
+                    return `
+                    <tr class="elemento-row elemento-planilla-${p.id} bg-gray-50 hidden">
+                        <td class="px-2 py-1 text-xs text-gray-400 pl-8">↳ ${el.id}</td>
+                        <td class="px-2 py-1 text-xs text-gray-500" colspan="2">Marca: ${el.marca || '-'}</td>
+                        <td class="px-2 py-1 text-xs text-gray-500">Ø${el.diametro || '-'}</td>
+                        <td class="px-2 py-1 text-xs text-gray-500">${el.longitud || '-'} mm</td>
+                        <td class="px-2 py-1 text-xs text-gray-500">${el.barras || '-'} uds</td>
+                        <td class="px-2 py-1 text-xs text-right text-gray-500">${pesoEl} kg</td>
+                        <td class="px-2 py-1">
+                            <input type="date" class="swal2-input !m-0 !w-auto !text-xs elemento-fecha"
+                                   data-elemento-id="${el.id}"
+                                   data-planilla-id="${p.id}"
+                                   value="${fechaElISO}">
+                        </td>
+                    </tr>`;
+                }).join('');
+            }
 
             return `
-<tr style="opacity:0; transform:translateY(4px); animation: swalRowIn .22s ease-out forwards; animation-delay:${
-                i * 18
-            }ms;">
-  <td class="px-2 py-1 text-xs">${p.id}</td>
+<tr class="planilla-row hover:bg-blue-50 cursor-pointer" data-planilla-id="${p.id}" style="opacity:0; transform:translateY(4px); animation: swalRowIn .22s ease-out forwards; animation-delay:${i * 18}ms;">
+  <td class="px-2 py-1 text-xs">
+    ${tieneElementos ? `<button type="button" class="toggle-elementos mr-1 text-blue-500 hover:text-blue-700" data-planilla-id="${p.id}">▶</button>` : ''}
+    ${p.id}
+  </td>
   <td class="px-2 py-1 text-xs">${codObra}</td>
   <td class="px-2 py-1 text-xs">${nombreObra}</td>
   <td class="px-2 py-1 text-xs">${seccionObra}</td>
   <td class="px-2 py-1 text-xs">${descripcionObra}</td>
-  <td class="px-2 py-1 text-xs">${codigoPlanilla}</td>
+  <td class="px-2 py-1 text-xs">
+    ${codigoPlanilla}
+    ${tieneElementos ? `<span class="ml-1 text-xs text-gray-400">(${numElementos} elem.)</span>` : ''}
+  </td>
   <td class="px-2 py-1 text-xs text-right font-medium">${pesoTotal}</td>
   <td class="px-2 py-1">
-    <input type="date" class="swal2-input !m-0 !w-auto" data-planilla-id="${
-        p.id
-    }" value="${fechaISO}">
+    <div class="flex items-center gap-1">
+      <input type="date" class="swal2-input !m-0 !w-auto planilla-fecha" data-planilla-id="${p.id}" value="${fechaISO}">
+      ${tieneElementos ? `<button type="button" class="aplicar-fecha-elementos text-xs bg-blue-500 hover:bg-blue-600 text-white px-2 py-1 rounded" data-planilla-id="${p.id}" title="Aplicar fecha a todos los elementos">↓</button>` : ''}
+    </div>
   </td>
-</tr>`;
+</tr>
+${elementosHtml}`;
         })
-
         .join("");
 
     return `
     <div class="text-left">
       <div class="text-sm text-gray-600 mb-2">
-        Edita la <strong>fecha estimada de entrega</strong> y guarda.
+        Edita la <strong>fecha estimada de entrega</strong> de planillas y elementos.
+        <span class="text-blue-600">▶</span> = expandir elementos
       </div>
-      
+
       <!-- Sumatorio dinámico por fechas -->
       <div id="sumatorio-fechas" class="mb-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
         <div class="text-sm font-medium text-blue-800 mb-2">📊 Resumen por fecha:</div>
@@ -1459,24 +1491,32 @@ function construirFormularioFechas(planillas) {
           Cambia las fechas para ver el resumen...
         </div>
       </div>
-      
-      <div class="overflow-auto" style="max-height:45vh;border:1px solid #e5e7eb;border-radius:6px;">
-        <table class="min-w-full text-sm">
-        <thead class="sticky top-0 bg-white">
-  <tr>
-    <th class="px-2 py-1 text-left">ID</th>
-    <th class="px-2 py-1 text-left">Cod. Obra</th>
-    <th class="px-2 py-1 text-left">Obra</th>
-    <th class="px-2 py-1 text-left">Sección</th>
-    <th class="px-2 py-1 text-left">Descripción</th>
-    <th class="px-2 py-1 text-left">Planilla</th>
-    <th class="px-2 py-1 text-left">Peso Total</th>
-    <th class="px-2 py-1 text-left">Fecha Entrega</th>
-  </tr>
-</thead>
 
+      <div class="overflow-auto" style="max-height:50vh;border:1px solid #e5e7eb;border-radius:6px;">
+        <table class="min-w-full text-sm">
+        <thead class="sticky top-0 bg-white z-10">
+          <tr>
+            <th class="px-2 py-1 text-left">ID</th>
+            <th class="px-2 py-1 text-left">Cod. Obra</th>
+            <th class="px-2 py-1 text-left">Obra</th>
+            <th class="px-2 py-1 text-left">Sección</th>
+            <th class="px-2 py-1 text-left">Descripción</th>
+            <th class="px-2 py-1 text-left">Planilla</th>
+            <th class="px-2 py-1 text-left">Peso Total</th>
+            <th class="px-2 py-1 text-left">Fecha Entrega</th>
+          </tr>
+        </thead>
           <tbody>${filas}</tbody>
         </table>
+      </div>
+
+      <div class="mt-2 flex gap-2">
+        <button type="button" id="expandir-todos" class="text-xs bg-gray-200 hover:bg-gray-300 px-3 py-1 rounded">
+          📂 Expandir todos
+        </button>
+        <button type="button" id="colapsar-todos" class="text-xs bg-gray-200 hover:bg-gray-300 px-3 py-1 rounded">
+          📁 Colapsar todos
+        </button>
       </div>
     </div>`;
 }
@@ -1682,7 +1722,54 @@ async function cambiarFechasEntrega(planillasIds, calendar) {
                     });
                 });
 
-                // 5) Actualizar sumatorio inicial
+                // 5) Event listeners para expandir/colapsar elementos
+                const container = Swal.getHtmlContainer();
+
+                // Toggle individual de elementos
+                container.querySelectorAll('.toggle-elementos').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        const planillaId = btn.dataset.planillaId;
+                        const elementos = container.querySelectorAll(`.elemento-planilla-${planillaId}`);
+                        const isExpanded = btn.textContent === '▼';
+
+                        elementos.forEach(el => {
+                            el.classList.toggle('hidden', isExpanded);
+                        });
+                        btn.textContent = isExpanded ? '▶' : '▼';
+                    });
+                });
+
+                // Expandir todos
+                container.querySelector('#expandir-todos')?.addEventListener('click', () => {
+                    container.querySelectorAll('.elemento-row').forEach(el => el.classList.remove('hidden'));
+                    container.querySelectorAll('.toggle-elementos').forEach(btn => btn.textContent = '▼');
+                });
+
+                // Colapsar todos
+                container.querySelector('#colapsar-todos')?.addEventListener('click', () => {
+                    container.querySelectorAll('.elemento-row').forEach(el => el.classList.add('hidden'));
+                    container.querySelectorAll('.toggle-elementos').forEach(btn => btn.textContent = '▶');
+                });
+
+                // Aplicar fecha de planilla a todos sus elementos
+                container.querySelectorAll('.aplicar-fecha-elementos').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        const planillaId = btn.dataset.planillaId;
+                        const fechaPlanilla = container.querySelector(`.planilla-fecha[data-planilla-id="${planillaId}"]`)?.value;
+
+                        if (fechaPlanilla) {
+                            container.querySelectorAll(`.elemento-fecha[data-planilla-id="${planillaId}"]`).forEach(input => {
+                                input.value = fechaPlanilla;
+                                // Trigger change event para actualizar estilos
+                                input.dispatchEvent(new Event('change'));
+                            });
+                        }
+                    });
+                });
+
+                // 6) Actualizar sumatorio inicial
                 setTimeout(() => {
                     actualizarSumatorio(planillas);
                 }, 100);
@@ -1690,14 +1777,27 @@ async function cambiarFechasEntrega(planillasIds, calendar) {
         });
         if (!isConfirmed) return;
 
-        const inputs = Swal.getHtmlContainer().querySelectorAll(
-            "input[data-planilla-id]"
-        );
+        const container = Swal.getHtmlContainer();
 
-        const payload = Array.from(inputs).map((inp) => ({
-            id: Number(inp.getAttribute("data-planilla-id")),
-            fecha_estimada_entrega: inp.value, // input type="date" ya devuelve formato YYYY-MM-DD
-        }));
+        // Recolectar fechas de planillas
+        const planillaInputs = container.querySelectorAll('.planilla-fecha');
+
+        const payload = Array.from(planillaInputs).map((inp) => {
+            const planillaId = Number(inp.getAttribute("data-planilla-id"));
+
+            // Recolectar elementos de esta planilla
+            const elementoInputs = container.querySelectorAll(`.elemento-fecha[data-planilla-id="${planillaId}"]`);
+            const elementos = Array.from(elementoInputs).map(elInp => ({
+                id: Number(elInp.getAttribute("data-elemento-id")),
+                fecha_entrega: elInp.value || null
+            }));
+
+            return {
+                id: planillaId,
+                fecha_estimada_entrega: inp.value,
+                elementos: elementos.length > 0 ? elementos : undefined
+            };
+        });
 
         const resp = await guardarFechasPlanillas(payload);
         await Swal.fire(

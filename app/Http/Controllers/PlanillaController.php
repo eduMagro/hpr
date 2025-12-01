@@ -1051,7 +1051,10 @@ class PlanillaController extends Controller
             $planillas = Planilla::query()
                 ->whereIn('id', $ids->all())
                 ->select(['id', 'codigo', 'fecha_estimada_entrega', 'obra_id', 'seccion', 'descripcion', 'peso_total'])
-                ->with(['obra:id,cod_obra,obra'])
+                ->with([
+                    'obra:id,cod_obra,obra',
+                    'elementos:id,planilla_id,marca,diametro,longitud,barras,peso,fecha_entrega'
+                ])
                 ->get();
 
             $resultado = $planillas->map(function ($p) {
@@ -1076,6 +1079,22 @@ class PlanillaController extends Controller
                     ];
                 }
 
+                // Mapear elementos
+                $elementos = [];
+                if ($p->relationLoaded('elementos')) {
+                    $elementos = $p->elementos->map(function ($e) {
+                        return [
+                            'id' => $e->id,
+                            'marca' => $e->marca,
+                            'diametro' => $e->diametro,
+                            'longitud' => $e->longitud,
+                            'barras' => $e->barras,
+                            'peso' => $e->peso,
+                            'fecha_entrega' => $e->fecha_entrega ? $e->fecha_entrega->format('Y-m-d') : null,
+                        ];
+                    })->values()->all();
+                }
+
                 return [
                     'id'                         => $p->id,
                     // Usamos accessor codigo_limpio
@@ -1085,6 +1104,7 @@ class PlanillaController extends Controller
                     'seccion'                    => $p->seccion ?? null,
                     'descripcion'                => $p->descripcion ?? null,
                     'peso_total'                 => $p->peso_total ?? null,
+                    'elementos'                  => $elementos,
                 ];
             });
 
@@ -1105,20 +1125,34 @@ class PlanillaController extends Controller
                 'planillas' => ['required', 'array', 'min:1'],
                 'planillas.*.id' => ['required', 'integer', 'exists:planillas,id'],
                 'planillas.*.fecha_estimada_entrega' => ['nullable', 'date_format:Y-m-d'],
+                'planillas.*.elementos' => ['nullable', 'array'],
+                'planillas.*.elementos.*.id' => ['required_with:planillas.*.elementos', 'integer', 'exists:elementos,id'],
+                'planillas.*.elementos.*.fecha_entrega' => ['nullable', 'date_format:Y-m-d'],
             ]);
 
             Log::info('[Planillas actualizarFechasMasiva] payload=', $data['planillas']);
 
             DB::transaction(function () use ($data) {
                 foreach ($data['planillas'] as $fila) {
-                    // 🚫 Si la fecha es null, saltamos esta planilla
-                    if (empty($fila['fecha_estimada_entrega'])) {
-                        continue;
+                    // Actualizar fecha de la planilla si se proporciona
+                    if (!empty($fila['fecha_estimada_entrega'])) {
+                        $planilla = Planilla::find($fila['id']);
+                        $planilla->fecha_estimada_entrega = Carbon::createFromFormat('Y-m-d', $fila['fecha_estimada_entrega'])->startOfDay();
+                        $planilla->save();
                     }
 
-                    $planilla = Planilla::find($fila['id']);
-                    $planilla->fecha_estimada_entrega = Carbon::createFromFormat('Y-m-d', $fila['fecha_estimada_entrega'])->startOfDay();
-                    $planilla->save();
+                    // Actualizar fechas de elementos si se proporcionan
+                    if (!empty($fila['elementos']) && is_array($fila['elementos'])) {
+                        foreach ($fila['elementos'] as $elementoData) {
+                            $elemento = Elemento::find($elementoData['id']);
+                            if ($elemento) {
+                                $elemento->fecha_entrega = !empty($elementoData['fecha_entrega'])
+                                    ? Carbon::createFromFormat('Y-m-d', $elementoData['fecha_entrega'])->startOfDay()
+                                    : null;
+                                $elemento->save();
+                            }
+                        }
+                    }
                 }
             });
 
