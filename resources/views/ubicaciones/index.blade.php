@@ -944,10 +944,12 @@ Inesperados: ${inesperados.join(', ') || ''}
                     productos.forEach(codigo => {
                         const ok = escaneados.includes(codigo);
                         if (!ok) {
+                            const detalles = (window.detallesProductos || {})[codigo] || {};
                             acumulado.push({
                                 codigo,
                                 ubicacion: info?.ubicacion || ubicId,
-                                estado: 'Pend.'
+                                estado: 'Pend.',
+                                colada: detalles.colada || '-'
                             });
                         }
                     });
@@ -1013,6 +1015,8 @@ Inesperados: ${inesperados.join(', ') || ''}
                         });
                         this.modalConsumo = false;
                         this.listaConsumos = [];
+                        // Recargar la página después del consumo exitoso
+                        setTimeout(() => window.location.reload(), 500);
                     } else {
                         swalToast.fire({
                             icon: 'error',
@@ -1481,10 +1485,10 @@ Inesperados: ${inesperados.join(', ') || ''}
             <div x-show="modalConsumo" x-transition x-cloak
                 class="fixed inset-0 z-[9999] flex items-center justify-center bg-black bg-opacity-60 backdrop-blur overflow-y-auto">
                 <div @click.away="modalConsumo = false"
-                    class="bg-white dark:bg-gray-900 w-full max-w-4xl p-6 rounded-xl shadow-2xl mx-4 my-4 border border-gray-200 dark:border-gray-800">
-                    <div class="flex items-center justify-between mb-4">
-                        <h2 class="text-lg font-bold text-gray-800 dark:text-white">
-                            Materiales pendientes de la nave
+                    class="bg-white dark:bg-gray-900 w-full max-w-4xl rounded-xl shadow-2xl mx-4 my-4 border border-gray-200 dark:border-gray-800">
+                    <div class="flex items-center justify-between p-6">
+                        <h2 class="text-base md:text-lg lg:text-xl font-bold text-gray-800 dark:text-white">
+                            Materiales pendientes
                         </h2>
                         <button @click="modalConsumo = false"
                             class="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">
@@ -1493,20 +1497,21 @@ Inesperados: ${inesperados.join(', ') || ''}
                     </div>
 
                     <div
-                        class="bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
+                        class="bg-gray-50 dark:bg-gray-800 border-y md:border-x border-gray-200 dark:border-gray-700 md:rounded-lg overflow-hidden">
                         <div class="max-h-[70vh] overflow-y-auto">
                             <table class="min-w-full text-sm">
                                 <thead class="bg-gray-100 dark:bg-gray-800/60 text-gray-700 dark:text-gray-200">
                                     <tr>
-                                        <th class="px-4 py-2 text-left font-semibold">Ubicación</th>
-                                        <th class="px-4 py-2 text-left font-semibold">Código</th>
-                                        <th class="px-4 py-2 text-left font-semibold">Estado</th>
+                                        <th class="px-2 md:px-4 py-2 text-left font-semibold text-xs md:text-sm">Ubicación</th>
+                                        <th class="px-2 md:px-4 py-2 text-left font-semibold text-xs md:text-sm">Código</th>
+                                        <th class="px-2 md:px-4 py-2 text-left font-semibold text-xs md:text-sm">Colada</th>
+                                        <th class="px-2 md:px-4 py-2 text-left font-semibold text-xs md:text-sm">Estado</th>
                                     </tr>
                                 </thead>
                                 <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
                                     <template x-if="!listaConsumos.length">
                                         <tr>
-                                            <td colspan="3"
+                                            <td colspan="4"
                                                 class="px-4 py-6 text-center text-gray-500 dark:text-gray-400">
                                                 No hay materiales cargados en la nave.
                                             </td>
@@ -1514,16 +1519,18 @@ Inesperados: ${inesperados.join(', ') || ''}
                                     </template>
                                     <template x-for="item in listaConsumos" :key="`${item.ubicacion}-${item.codigo}`">
                                         <tr>
-                                            <td class="px-4 py-2 font-semibold text-gray-800 dark:text-gray-100"
+                                            <td class="px-2 md:px-4 py-2 font-semibold text-gray-800 dark:text-gray-100 text-xs md:text-base"
                                                 x-text="item.ubicacion"></td>
-                                            <td class="px-4 py-2 font-mono text-gray-700 dark:text-gray-200"
+                                            <td class="px-2 md:px-4 py-2 font-mono text-gray-700 dark:text-gray-200 text-xs md:text-base"
                                                 x-text="item.codigo"></td>
-                                            <td class="px-4 py-2">
+                                            <td class="px-2 md:px-4 py-2 text-gray-600 dark:text-gray-300 text-xs md:text-base"
+                                                x-text="item.colada"></td>
+                                            <td class="px-2 md:px-4 py-2">
                                                 <span x-text="item.estado"
                                                     :class="item.estado === 'OK' ?
                                                         'bg-green-100 text-green-700' :
                                                         'bg-amber-100 text-amber-700'"
-                                                    class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold"></span>
+                                                    class="inline-flex items-center px-2 md:px-2.5 py-0.5 md:py-1 rounded-full text-[10px] md:text-xs font-semibold"></span>
                                             </td>
                                         </tr>
                                     </template>
@@ -1532,7 +1539,7 @@ Inesperados: ${inesperados.join(', ') || ''}
                         </div>
                     </div>
 
-                    <div class="mt-6 flex justify-center" x-data="sliderConsumo(() => consumirPendientes())"
+                    <div class="mt-6 flex justify-center p-6" x-data="sliderConsumo(() => consumirPendientes())"
                         @pointermove.window="onDrag($event)" @pointerup.window="stopDrag()"
                         @touchmove.window="onDrag($event)" @touchend.window="stopDrag()" @resize.window="recalcMax()"
                         x-init="init()">
@@ -1849,24 +1856,33 @@ Inesperados: ${inesperados.join(', ') || ''}
                                                 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700' :
                                                 'bg-gray-50 dark:bg-gray-800/50 border-gray-200 dark:border-gray-700'"
                                             x-data="{
-                                                ubic: null,
-                                                hasId: false,
-                                                misma: false,
-                                                estado: null,
-                                                esConsumido: false,
-                                                esFabricando: false,
-                                                maquinaId: null,
-                                                colada: null
-                                            }" x-init="ubic = (asignados && Object.prototype.hasOwnProperty.call(asignados, codigo)) ? asignados[codigo] : null;
-                                            hasId = (ubic !== null && ubic !== '' && ubic !== undefined);
-                                            misma = (hasId && nombreUbicacion !== null && nombreUbicacion !== undefined && ubic.toString() === nombreUbicacion.toString());
-                                            estado = (estados && Object.prototype.hasOwnProperty.call(estados, codigo)) ? (estados[codigo] ?? null) : null;
-                                            esConsumido = (estado === 'consumido');
-                                            maquinaId = (window.productosMaquinas && Object.prototype.hasOwnProperty.call(window.productosMaquinas, codigo)) ? window.productosMaquinas[codigo] : null;
-                                            esFabricando = (estado === 'fabricando' && maquinaId);
-                                            colada = (window.detallesProductos && Object.prototype.hasOwnProperty.call(window.detallesProductos, codigo)) ?
-                                                (window.detallesProductos[codigo]?.colada ?? null) :
-                                                null;">
+                                                get ubic() {
+                                                    return (asignados && Object.prototype.hasOwnProperty.call(asignados, codigo)) ? asignados[codigo] : null;
+                                                },
+                                                get hasId() {
+                                                    return (this.ubic !== null && this.ubic !== '' && this.ubic !== undefined);
+                                                },
+                                                get misma() {
+                                                    return (this.hasId && nombreUbicacion !== null && nombreUbicacion !== undefined && this.ubic.toString() === nombreUbicacion.toString());
+                                                },
+                                                get estado() {
+                                                    return (estados && Object.prototype.hasOwnProperty.call(estados, codigo)) ? (estados[codigo] ?? null) : null;
+                                                },
+                                                get esConsumido() {
+                                                    return (this.estado === 'consumido');
+                                                },
+                                                get maquinaId() {
+                                                    return (window.productosMaquinas && Object.prototype.hasOwnProperty.call(window.productosMaquinas, codigo)) ? window.productosMaquinas[codigo] : null;
+                                                },
+                                                get esFabricando() {
+                                                    return (this.estado === 'fabricando' && this.maquinaId);
+                                                },
+                                                get colada() {
+                                                    return (window.detallesProductos && Object.prototype.hasOwnProperty.call(window.detallesProductos, codigo)) ?
+                                                        (window.detallesProductos[codigo]?.colada ?? null) :
+                                                        null;
+                                                }
+                                            }">
                                             <div class="flex flex-col items-start min-w-0">
                                                 <div>
 
