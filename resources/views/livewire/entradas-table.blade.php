@@ -1,15 +1,4 @@
-<div class="w-full" x-data="{
-    previewOpen: false,
-    previewUrl: null,
-    abrirPrevisualizacion(url) {
-        this.previewUrl = url;
-        this.previewOpen = true;
-    },
-    cerrarPrevisualizacion() {
-        this.previewOpen = false;
-        this.previewUrl = null;
-    }
-}">
+<div class="w-full">
     <x-tabla.filtros-aplicados :filtros="$filtrosActivos" />
 
     <div class="bg-white shadow rounded-lg overflow-x-auto">
@@ -189,11 +178,10 @@
                         <td class="px-3 py-2">
                             @if ($entrada->pdf_albaran)
                                 <div class="flex justify-center gap-1">
-                                    <button type="button"
-                                        @click="abrirPrevisualizacion('{{ route('entradas.crearDescargarPdf', $entrada->id) }}')"
+                                    <a href="{{ route('entradas.crearDescargarPdf', $entrada->id) }}" target="_blank" rel="noopener noreferrer"
                                         class="text-white bg-blue-600 hover:bg-blue-700 px-2 py-1 rounded text-[10px] font-semibold transition">
                                         Ver
-                                    </button>
+                                    </a>
                                     <a href="{{ route('entradas.crearDescargarPdf', $entrada->id) }}?download=1" download
                                         class="text-blue-700 bg-blue-100 hover:bg-blue-200 px-2 py-1 rounded text-[10px] font-semibold transition">
                                         Descargar
@@ -281,36 +269,6 @@
                         class="px-4 py-2 text-sm bg-blue-600 text-white hover:bg-blue-700 rounded">Adjuntar</button>
                 </div>
             </form>
-        </div>
-    </div>
-
-    {{-- Modal para previsualizar PDF --}}
-    <div x-show="previewOpen" x-cloak
-        class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur"
-        x-transition:enter="transition ease-out duration-200"
-        x-transition:enter-start="opacity-0"
-        x-transition:enter-end="opacity-100"
-        x-transition:leave="transition ease-in duration-150"
-        x-transition:leave-start="opacity-100"
-        x-transition:leave-end="opacity-0"
-        @keydown.escape.window="cerrarPrevisualizacion()">
-        <div class="bg-white dark:bg-gray-900 rounded-lg shadow-xl w-full max-w-5xl h-[80vh] flex flex-col border border-gray-200 dark:border-gray-700">
-            <div class="px-4 py-2 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
-                <div>
-                    <p class="text-sm font-semibold text-gray-800 dark:text-gray-100">PDF adjunto</p>
-                    <p class="text-xs text-gray-500 dark:text-gray-400">Previsualización</p>
-                </div>
-                <button type="button" @click="cerrarPrevisualizacion()"
-                    class="text-gray-500 hover:text-gray-900 dark:hover:text-white rounded-full p-1 focus:outline-none focus:ring">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none"
-                        stroke="currentColor" stroke-width="2">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                </button>
-            </div>
-            <div class="flex-1 overflow-hidden">
-                <iframe :src="previewUrl" class="w-full h-full" frameborder="0"></iframe>
-            </div>
         </div>
     </div>
 
