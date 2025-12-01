@@ -258,7 +258,11 @@
 
                             <!-- DIMENSIONES -->
                             <td class="px-1 py-3 text-center border">
-                                <span>{{ $elemento->dimensiones ?? 'N/A' }}</span>
+                                <template x-if="!editando">
+                                    <span x-text="elemento.dimensiones ?? 'N/A'"></span>
+                                </template>
+                                <input x-show="editando" style="display: none;" type="text" x-model="elemento.dimensiones"
+                                    class="form-control form-control-sm w-full text-xs border rounded px-1 py-0.5">
                             </td>
 
                             <!-- DIAMETRO_MM -->

@@ -19,6 +19,7 @@ window.guardarCambios = function(elemento) {
 
         // Otros campos
         figura: elemento.figura || null,
+        dimensiones: elemento.dimensiones || null,
         peso: elemento.peso || null,
         diametro: elemento.diametro || null,
         longitud: elemento.longitud || null,

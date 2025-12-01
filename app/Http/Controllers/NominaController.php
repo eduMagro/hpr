@@ -794,6 +794,7 @@ class NominaController extends Controller
 
     /**
      * Notifica a todos los usuarios de oficina y operarios que las nóminas de un mes están disponibles
+     * Evita duplicados verificando si ya existe una alerta para ese mes/año
      */
     private function notificarNominasImportadas(string $mes, string $anio): void
     {
@@ -801,12 +802,24 @@ class NominaController extends Controller
             $alertaService = app(AlertaService::class);
             $emisorId = auth()->id();
 
-            // Buscar usuarios con rol oficina u operario que estén activos
+            $mensaje = "Las nóminas de {$mes} {$anio} ya están disponibles. Puedes solicitarla desde tu perfil.";
+
+            // Buscar usuarios que ya tienen alerta de nómina para este mes/año
+            $usuariosYaNotificados = \App\Models\Alerta::where('tipo', 'nomina')
+                ->where('mensaje', $mensaje)
+                ->pluck('destinatario_id')
+                ->toArray();
+
+            // Buscar usuarios con rol oficina u operario que estén activos y NO hayan sido notificados
             $usuarios = User::whereIn('rol', ['oficina', 'operario'])
                 ->where('estado', 'activo')
+                ->whereNotIn('id', $usuariosYaNotificados)
                 ->get();
 
-            $mensaje = "Las nóminas de {$mes} {$anio} ya están disponibles. Puedes solicitarla desde tu perfil.";
+            if ($usuarios->isEmpty()) {
+                \Log::info("ℹ️ Todos los usuarios ya tienen alerta de nóminas para {$mes} {$anio}");
+                return;
+            }
 
             foreach ($usuarios as $usuario) {
                 $alertaService->crearAlerta(
@@ -817,7 +830,7 @@ class NominaController extends Controller
                 );
             }
 
-            \Log::info("✅ Alertas de nóminas enviadas a " . $usuarios->count() . " usuarios");
+            \Log::info("✅ Alertas de nóminas enviadas a " . $usuarios->count() . " usuarios (evitados " . count($usuariosYaNotificados) . " duplicados)");
 
         } catch (\Throwable $e) {
             \Log::error('❌ Error notificando nóminas importadas: ' . $e->getMessage());
