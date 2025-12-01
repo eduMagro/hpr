@@ -1778,18 +1778,20 @@ Inesperados: ${inesperados.join(', ') || ''}
                             <div
                                 class="border-0 sm:border border-gray-200 dark:border-gray-700 sm:rounded-lg bg-white dark:bg-gray-800 shadow-sm flex flex-col">
                                 <!-- Vista móvil: Cuadrado de progreso visual -->
-                                <button @click="$store.inv.sincronizarProductosActuales(); $store.inv.modalDetalleEsperados = true"
+                                <button
+                                    @click="$store.inv.sincronizarProductosActuales(); $store.inv.modalDetalleEsperados = true"
                                     class="sm:hidden relative overflow-hidden bg-gray-100 dark:bg-gray-800 border-2 border-gray-300 dark:border-gray-600 rounded-lg m-4 flex-1 flex items-center justify-center">
                                     <!-- Relleno de progreso (de abajo hacia arriba) -->
                                     <div class="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-green-500 to-green-400 transition-all duration-500 ease-out"
-                                        :style="`height: ${progreso()}%`"></div>
+                                        :style="`height: ${Math.min(Math.max(progreso(), productosEsperados.length ? 8 : 0), 100)}%`">
+                                    </div>
 
                                     <!-- Contenido del cuadrado -->
                                     <div class="relative z-10 text-center">
                                         <div class="text-3xl font-bold text-gray-800 dark:text-white drop-shadow-lg"
-                                            x-text="`${Math.round(progreso())}%`"></div>
-                                        <div class="text-xs font-semibold text-gray-700 dark:text-gray-200 mt-1"
                                             x-text="`${escaneados.length} / ${productosEsperados.length}`"></div>
+                                        <div class="text-xs font-semibold text-gray-700 dark:text-gray-200 mt-1">
+                                            Escaneados</div>
                                         <div class="text-[10px] text-gray-600 dark:text-gray-300 mt-0.5">Productos
                                             esperados</div>
                                     </div>
@@ -2104,10 +2106,10 @@ Inesperados: ${inesperados.join(', ') || ''}
                         <div class="sm:hidden flex-shrink-0" x-show="sospechosos.length > 0">
                             <!-- Header que se desplaza arriba cuando se expande -->
                             <div class="border-t-2 border-red-300 dark:border-red-700 bg-red-50 dark:bg-red-900/20 transition-all duration-300"
-                                :class="$store.inv.showInesperados ? 'fixed top-0 left-0 right-0 z-50' : 'relative'">
-                                <button @click="$store.inv.showInesperados = !$store.inv.showInesperados"
-                                    class="w-full px-4 py-3 flex items-center justify-between">
-                                    <div class="flex items-center gap-3">
+                                :class="$store.inv.showInesperados ? 'fixed top-0 left-0 right-0 z-[110]' : 'relative'">
+                                <div class="w-full px-4 py-3 flex items-center justify-between">
+                                    <div class="flex items-center gap-3"
+                                        @click="$store.inv.showInesperados = !$store.inv.showInesperados">
                                         <div class="flex flex-col items-start">
                                             <span
                                                 class="text-sm font-semibold text-red-700 dark:text-red-400">Productos
@@ -2116,13 +2118,58 @@ Inesperados: ${inesperados.join(', ') || ''}
                                                 x-text="`${sospechosos.length} producto${sospechosos.length !== 1 ? 's' : ''}`"></span>
                                         </div>
                                     </div>
-                                    <svg class="w-5 h-5 text-red-600 dark:text-red-400 transition-transform"
-                                        :class="$store.inv.showInesperados ? '' : 'rotate-180'" fill="none"
-                                        stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                            d="M19 9l-7 7-7-7" />
-                                    </svg>
-                                </button>
+
+                                    <div class="flex items-center gap-3">
+                                        <!-- Leyenda Mobile -->
+                                        <div x-data="{ showLeyendaMobile: false }" class="relative" @click.stop>
+                                            <button @click="showLeyendaMobile = !showLeyendaMobile"
+                                                class="inline-flex items-center justify-center h-6 w-6 rounded-full bg-red-600 hover:bg-red-700 text-white font-bold text-xs shadow transition-all"
+                                                title="Leyenda de colores">
+                                                i
+                                            </button>
+
+                                            <div x-show="showLeyendaMobile" @click.away="showLeyendaMobile = false"
+                                                x-transition:enter="transition ease-out duration-200"
+                                                x-transition:enter-start="opacity-0 translate-y-1"
+                                                x-transition:enter-end="opacity-100 translate-y-0"
+                                                x-transition:leave="transition ease-in duration-150"
+                                                x-transition:leave-start="opacity-100 translate-y-0"
+                                                x-transition:leave-end="opacity-0 translate-y-1"
+                                                class="absolute right-0 top-full w-56 p-3 bg-white dark:bg-gray-800 rounded-xl shadow-xl border border-gray-200 dark:border-gray-700 z-[120] mt-2">
+
+                                                <h3 class="font-bold text-gray-900 dark:text-white mb-2 text-xs">
+                                                    Leyenda</h3>
+                                                <div class="space-y-1.5 text-[10px] text-gray-700 dark:text-gray-300">
+                                                    <div class="flex items-center gap-2">
+                                                        <span class="h-2.5 w-2.5 rounded-full bg-blue-500"></span>
+                                                        <span>Consumido</span>
+                                                    </div>
+                                                    <div class="flex items-center gap-2">
+                                                        <span class="h-2.5 w-2.5 rounded-full bg-purple-500"></span>
+                                                        <span>Fabricando</span>
+                                                    </div>
+                                                    <div class="flex items-center gap-2">
+                                                        <span class="h-2.5 w-2.5 rounded-full bg-amber-500"></span>
+                                                        <span>Otra ubicación</span>
+                                                    </div>
+                                                    <div class="flex items-center gap-2">
+                                                        <span class="h-2.5 w-2.5 rounded-full bg-red-600"></span>
+                                                        <span>Sin registrar</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <button @click="$store.inv.showInesperados = !$store.inv.showInesperados">
+                                            <svg class="w-5 h-5 text-red-600 dark:text-red-400 transition-transform"
+                                                :class="$store.inv.showInesperados ? '' : 'rotate-180'" fill="none"
+                                                stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                    d="M19 9l-7 7-7-7" />
+                                            </svg>
+                                        </button>
+                                    </div>
+                                </div>
                             </div>
 
                             <!-- Overlay oscuro cuando se expande -->
@@ -2131,7 +2178,7 @@ Inesperados: ${inesperados.join(', ') || ''}
                                 x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100"
                                 x-transition:leave="transition ease-in duration-150"
                                 x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0"
-                                class="fixed inset-0 bg-black/50 z-40" @click="$store.inv.showInesperados = false">
+                                class="fixed inset-0 bg-black/50 z-[90]" @click="$store.inv.showInesperados = false">
                             </div>
 
                             <!-- Contenido que se desplaza desde abajo -->
@@ -2140,11 +2187,11 @@ Inesperados: ${inesperados.join(', ') || ''}
                                 x-transition:enter-start="translate-y-full" x-transition:enter-end="translate-y-0"
                                 x-transition:leave="transition ease-in duration-200"
                                 x-transition:leave-start="translate-y-0" x-transition:leave-end="translate-y-full"
-                                class="fixed inset-x-0 bottom-0 z-50 bg-white dark:bg-gray-900 overflow-hidden flex flex-col"
+                                class="fixed inset-x-0 bottom-0 z-[100] bg-white dark:bg-gray-900 overflow-hidden flex flex-col"
                                 style="top: 3.5rem; height: calc(100vh - 3.5rem);">
                                 <div class="flex-1 overflow-y-auto p-3 space-y-2">
                                     <template x-for="(codigo, idx) in sospechosos" :key="'sosp-mobile-' + codigo">
-                                        <div class="flex items-center justify-between gap-3 rounded-lg border px-4 py-3 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700"
+                                        <div class="flex items-center justify-between gap-3 rounded-lg border px-4 py-3 transition-colors duration-200"
                                             x-data="{
                                                 get ubic() {
                                                     return (asignados && Object.prototype.hasOwnProperty.call(asignados, codigo)) ? asignados[codigo] : null;
@@ -2164,12 +2211,19 @@ Inesperados: ${inesperados.join(', ') || ''}
                                                 get esFabricando() {
                                                     return (this.estado === 'fabricando' && this.maquinaId);
                                                 }
+                                            }"
+                                            :class="{
+                                                'text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-800 bg-white dark:bg-gray-800': esConsumido,
+                                                'text-purple-700 dark:text-purple-400 border-purple-200 dark:border-purple-800 bg-white dark:bg-gray-800': esFabricando,
+                                                'text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-800 bg-white dark:bg-gray-800':
+                                                    !esConsumido && !esFabricando && hasId,
+                                                'text-red-700 dark:text-red-400 border-red-200 dark:border-red-800 bg-white dark:bg-gray-800':
+                                                    !esConsumido && !esFabricando && !hasId
                                             }">
+
                                             <div class="flex flex-col items-start min-w-0 flex-1">
-                                                <span
-                                                    class="font-mono text-sm font-semibold text-gray-900 dark:text-gray-100"
-                                                    x-text="codigo"></span>
-                                                <span class="text-[10px] text-gray-600 dark:text-gray-400">
+                                                <span class="font-mono text-sm font-semibold" x-text="codigo"></span>
+                                                <span class="text-[10px] opacity-80">
                                                     <span x-show="esConsumido">Consumido</span>
                                                     <span x-show="esFabricando">Fabricando</span>
                                                     <span x-show="!esConsumido && !esFabricando && hasId">Otra
@@ -2181,16 +2235,16 @@ Inesperados: ${inesperados.join(', ') || ''}
                                             <button x-show="esConsumido"
                                                 @click="confirmarRestablecerConsumido(codigo)"
                                                 class="bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 rounded-md text-xs font-semibold flex-shrink-0">
-                                                Restablecer
+                                                Restablecer aquí
                                             </button>
                                             <button x-show="esFabricando" @click="asignarDesdeFabricando(codigo)"
                                                 class="bg-purple-600 hover:bg-purple-700 text-white px-3 py-1.5 rounded-md text-xs font-semibold flex-shrink-0">
-                                                Asignar
+                                                Asignar aquí
                                             </button>
                                             <button x-show="!esConsumido && !esFabricando && hasId"
                                                 @click="reasignarProducto(codigo)"
                                                 class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-md text-xs font-semibold flex-shrink-0">
-                                                Asignar
+                                                Asignar aquí
                                             </button>
                                         </div>
                                     </template>
@@ -2229,35 +2283,33 @@ Inesperados: ${inesperados.join(', ') || ''}
 
         <!-- Modal de detalle de productos esperados (solo móvil) - Fuera del template principal -->
         <template x-if="$store.inv.modalInventario">
-            <div x-show="$store.inv.modalDetalleEsperados"
-                x-data="{
-                    get productosEsperados() {
-                        return Array.isArray($store?.inv?.productosActuales) ? $store.inv.productosActuales : [];
-                    },
-                    get ubicacionId() {
-                        return $store?.inv?.ubicacionActual ?? null;
-                    },
-                    escaneadosDetalle: [],
-                    init() {
-                        // Cargar escaneados desde localStorage cuando se abre el modal
-                        this.recargarEscaneados();
-                    },
-                    recargarEscaneados() {
-                        const clave = `inv-${this.ubicacionId}`;
-                        this.escaneadosDetalle = JSON.parse(localStorage.getItem(clave) || '[]');
-                    },
-                    productoEscaneado(codigo) {
-                        // Recargar cada vez para asegurar datos frescos
-                        this.recargarEscaneados();
-                        return this.escaneadosDetalle.includes(codigo);
-                    },
-                    get progreso() {
-                        this.recargarEscaneados();
-                        const total = this.productosEsperados.length;
-                        return total > 0 ? (this.escaneadosDetalle.length / total) * 100 : 0;
-                    }
-                }"
-                x-init="$watch('$store.inv.modalDetalleEsperados', value => { if (value) recargarEscaneados(); })"
+            <div x-show="$store.inv.modalDetalleEsperados" x-data="{
+                get productosEsperados() {
+                    return Array.isArray($store?.inv?.productosActuales) ? $store.inv.productosActuales : [];
+                },
+                get ubicacionId() {
+                    return $store?.inv?.ubicacionActual ?? null;
+                },
+                escaneadosDetalle: [],
+                init() {
+                    // Cargar escaneados desde localStorage cuando se abre el modal
+                    this.recargarEscaneados();
+                },
+                recargarEscaneados() {
+                    const clave = `inv-${this.ubicacionId}`;
+                    this.escaneadosDetalle = JSON.parse(localStorage.getItem(clave) || '[]');
+                },
+                productoEscaneado(codigo) {
+                    // Recargar cada vez para asegurar datos frescos
+                    this.recargarEscaneados();
+                    return this.escaneadosDetalle.includes(codigo);
+                },
+                get progreso() {
+                    this.recargarEscaneados();
+                    const total = this.productosEsperados.length;
+                    return total > 0 ? (this.escaneadosDetalle.length / total) * 100 : 0;
+                }
+            }" x-init="$watch('$store.inv.modalDetalleEsperados', value => { if (value) recargarEscaneados(); })"
                 x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0"
                 x-transition:enter-end="opacity-100" x-transition:leave="transition ease-in duration-200"
                 x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0"
@@ -2273,7 +2325,7 @@ Inesperados: ${inesperados.join(', ') || ''}
                         <div>
                             <h3 class="text-base font-bold">Productos esperados</h3>
                             <p class="text-xs text-green-100"
-                                x-text="`${escaneadosDetalle.length} / ${productosEsperados.length} escaneados (${Math.round(progreso)}%)`">
+                                x-text="`${escaneadosDetalle.length} / ${productosEsperados.length} escaneados`">
                             </p>
                         </div>
                         <button @click="$store.inv.modalDetalleEsperados = false" class="text-white">
@@ -2293,31 +2345,41 @@ Inesperados: ${inesperados.join(', ') || ''}
                                     'bg-white dark:bg-gray-800 border-gray-200': !productoEscaneado(codigo)
                                 }">
                                 <div class="flex justify-between items-center">
-                                    <div>
-                                        <p class="font-mono font-semibold text-sm text-gray-900 dark:text-gray-100"
-                                            x-text="codigo"></p>
-                                        <div class="flex gap-2 text-[10px] mt-1">
-                                            <p class="text-gray-600 dark:text-gray-400 capitalize"
-                                                x-text="window.detallesProductos[codigo]?.tipo || ''"></p>
-                                            <p class="text-gray-500 dark:text-gray-500">
-                                                Col: <span
-                                                    x-text="window.detallesProductos[codigo]?.colada || ''"></span>
-                                            </p>
+                                    <div class="flex w-full gap-2 items-center justify-start">
+                                        <span
+                                            class="inline-flex items-center justify-center w-8 h-8 rounded-full border border-gray-300 dark:border-gray-600 text-xl font-bold uppercase text-gray-700 dark:text-gray-200"
+                                            x-show="['encarretado', 'barra'].includes(window.detallesProductos[codigo]?.tipo)"
+                                            x-text="window.detallesProductos[codigo]?.tipo === 'encarretado' ? 'E' : (window.detallesProductos[codigo]?.tipo === 'barra' ? 'B' : '')">
+                                        </span>
+                                        <div class="flex flex-col text-[10px] items-start justify-center">
+                                            <p class="font-mono font-semibold text-sm text-gray-900 dark:text-gray-100"
+                                                x-text="codigo"></p>
+
+                                            <div class="flex gap-3">
+
+                                                <p class="text-gray-500 dark:text-gray-500">
+                                                    Col: <span
+                                                        x-text="window.detallesProductos[codigo]?.colada || ''"></span>
+                                                </p>
+                                                <p class="text-gray-500 dark:text-gray-500">
+                                                    <span
+                                                        x-show="window.detallesProductos[codigo]?.tipo === 'encarretado'">
+                                                        Ø <span
+                                                            x-text="window.detallesProductos[codigo]?.diametro || ''"></span>
+                                                        mm
+                                                    </span>
+                                                    <span
+                                                        x-show="window.detallesProductos[codigo]?.tipo !== 'encarretado'">
+                                                        Ø <span
+                                                            x-text="window.detallesProductos[codigo]?.diametro || ''"></span>
+                                                        mm /
+                                                        <span
+                                                            x-text="window.detallesProductos[codigo]?.longitud || ''"></span>
+                                                        m
+                                                    </span>
+                                                </p>
+                                            </div>
                                         </div>
-                                        <p class="text-[10px] text-gray-500 dark:text-gray-500 mt-0.5">
-                                            <span x-show="window.detallesProductos[codigo]?.tipo === 'encarretado'">
-                                                Ø <span
-                                                    x-text="window.detallesProductos[codigo]?.diametro || ''"></span>
-                                                mm
-                                            </span>
-                                            <span x-show="window.detallesProductos[codigo]?.tipo !== 'encarretado'">
-                                                Ø <span
-                                                    x-text="window.detallesProductos[codigo]?.diametro || ''"></span>
-                                                mm /
-                                                <span x-text="window.detallesProductos[codigo]?.longitud || ''"></span>
-                                                m
-                                            </span>
-                                        </p>
                                     </div>
                                     <span x-show="productoEscaneado(codigo)"
                                         class="inline-block px-2 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-800">OK</span>

@@ -59,6 +59,10 @@ Route::get('/produccion', [PageController::class, 'produccion'])->middleware(['a
 Route::get('/seccion-planificacion', [PageController::class, 'planificacionSeccion'])->middleware(['auth', 'verified'])->name('secciones.planificacion');
 Route::get('/logistica', [PageController::class, 'logistica'])->middleware(['auth', 'verified'])->name('secciones.logistica');
 Route::get('/recursos-humanos', [PageController::class, 'recursosHumanos'])->middleware(['auth', 'verified'])->name('secciones.recursos-humanos');
+Route::get('/incorporaciones', function () {
+    return redirect()->route('secciones.recursos-humanos');
+})->middleware(['auth', 'verified'])->name('incorporaciones.index');
+Route::get('/atajos', [PageController::class, 'atajos'])->middleware(['auth', 'verified'])->name('atajos.index');
 Route::get('/comercial', [PageController::class, 'comercial'])->middleware(['auth', 'verified'])->name('secciones.comercial');
 Route::get('/sistema', [PageController::class, 'sistema'])->middleware(['auth', 'verified'])->name('secciones.sistema');
 
