@@ -168,55 +168,55 @@
 
                     <td class="px-2 py-3 text-center border">
                         <span x-show="!editando">{{ $user->name }}</span>
-                        <x-tabla.input x-show="editando" x-model="usuario.name" placeholder="Nombre"
+                        <x-tabla.input x-cloak x-show="editando" x-model="usuario.name" placeholder="Nombre"
                             @keydown.enter.stop="guardarCambios(usuario)" />
                     </td>
 
                     <td class="px-2 py-3 text-center border">
                         <span x-show="!editando">{{ $user->primer_apellido }}</span>
-                        <x-tabla.input x-show="editando" x-model="usuario.primer_apellido" placeholder="Apellido 1"
+                        <x-tabla.input x-cloak x-show="editando" x-model="usuario.primer_apellido" placeholder="Apellido 1"
                             @keydown.enter.stop="guardarCambios(usuario)" />
                     </td>
 
                     <td class="px-2 py-3 text-center border">
                         <span x-show="!editando">{{ $user->segundo_apellido ?? '-' }}</span>
-                        <x-tabla.input x-show="editando" x-model="usuario.segundo_apellido" placeholder="Apellido 2"
+                        <x-tabla.input x-cloak x-show="editando" x-model="usuario.segundo_apellido" placeholder="Apellido 2"
                             @keydown.enter.stop="guardarCambios(usuario)" />
                     </td>
 
                     <td class="px-2 py-3 text-center border">
                         <span x-show="!editando">{{ $user->email }}</span>
-                        <x-tabla.input x-show="editando" x-model="usuario.email"
+                        <x-tabla.input x-cloak x-show="editando" x-model="usuario.email"
                             @keydown.enter.stop="guardarCambios(usuario)" />
                     </td>
 
                     <td class="px-2 py-3 text-center border">
                         <span x-show="!editando">{{ $user->movil_personal }}</span>
-                        <x-tabla.input x-show="editando" x-model="usuario.movil_personal"
+                        <x-tabla.input x-cloak x-show="editando" x-model="usuario.movil_personal"
                             @keydown.enter.stop="guardarCambios(usuario)" />
                     </td>
 
                     <td class="px-2 py-3 text-center border">
                         <span x-show="!editando">{{ $user->movil_empresa }}</span>
-                        <x-tabla.input x-show="editando" x-model="usuario.movil_empresa"
+                        <x-tabla.input x-cloak x-show="editando" x-model="usuario.movil_empresa"
                             @keydown.enter.stop="guardarCambios(usuario)" />
                     </td>
 
                     <td class="px-2 py-3 text-center border">
                         <span x-show="!editando">{{ $user->numero_corto ?? '-' }}</span>
-                        <x-tabla.input x-show="editando" x-model="usuario.numero_corto" maxlength="4"
+                        <x-tabla.input x-cloak x-show="editando" x-model="usuario.numero_corto" maxlength="4"
                             placeholder="0000" @keydown.enter.stop="guardarCambios(usuario)" />
                     </td>
 
                     <td class="px-2 py-3 text-center border">
                         <span x-show="!editando">{{ $user->dni }}</span>
-                        <x-tabla.input x-show="editando" x-model="usuario.dni"
+                        <x-tabla.input x-cloak x-show="editando" x-model="usuario.dni"
                             @keydown.enter.stop="guardarCambios(usuario)" />
                     </td>
 
                     <td class="px-2 py-3 text-center border">
                         <span x-show="!editando">{{ $user->empresa->nombre ?? 'Sin empresa' }}</span>
-                        <x-tabla.select-edicion x-show="editando" x-model="usuario.empresa_id"
+                        <x-tabla.select-edicion x-cloak x-show="editando" x-model="usuario.empresa_id"
                             @keydown.enter.stop="guardarCambios(usuario)">
                             <option value="">Selecciona empresa</option>
                             @foreach ($empresas as $empresa)
@@ -227,7 +227,7 @@
 
                     <td class="px-2 py-3 text-center border">
                         <span x-show="!editando">{{ $user->rol }}</span>
-                        <x-tabla.select-edicion x-show="editando" x-model="usuario.rol">
+                        <x-tabla.select-edicion x-cloak x-show="editando" x-model="usuario.rol">
                             <option value="">Selecciona rol</option>
                             <option value="oficina">Oficina</option>
                             <option value="operario">Operario</option>
@@ -238,7 +238,7 @@
 
                     <td class="px-2 py-3 text-center border">
                         <span x-show="!editando">{{ $user->categoria->nombre ?? 'Sin asignar' }}</span>
-                        <x-tabla.select-edicion x-show="editando" x-model="usuario.categoria_id">
+                        <x-tabla.select-edicion x-cloak x-show="editando" x-model="usuario.categoria_id">
                             <option value="">Selecciona cat.</option>
                             @foreach ($categorias as $categoria)
                             <option value="{{ $categoria->id }}">{{ ucfirst($categoria->nombre) }}</option>
@@ -248,7 +248,7 @@
 
                     <td class="px-2 py-3 text-center border">
                         <span x-show="!editando">{{ $user->maquina->nombre ?? 'Sin asignar' }}</span>
-                        <x-tabla.select-edicion x-show="editando" x-model="usuario.maquina_id">
+                        <x-tabla.select-edicion x-cloak x-show="editando" x-model="usuario.maquina_id">
                             <option value="">Selecciona máq.</option>
                             @foreach ($maquinas as $maquina)
                             <option value="{{ $maquina->id }}">{{ $maquina->nombre ?? 'N/A' }}</option>
@@ -258,7 +258,7 @@
 
                     <td class="px-2 py-3 text-center border">
                         <span x-show="!editando">{{ $user->turno ? ucfirst($user->turno) : 'N/A' }}</span>
-                        <x-tabla.select-edicion x-show="editando" x-model="usuario.turno">
+                        <x-tabla.select-edicion x-cloak x-show="editando" x-model="usuario.turno">
                             <option value="">Selecciona turno</option>
                             <option value="nocturno">Nocturno</option>
                             <option value="diurno">Diurno</option>
@@ -293,9 +293,9 @@
 
                     <td class="px-2 py-2 border text-xs font-bold">
                         <div class="flex items-center space-x-2 justify-center">
-                            <x-tabla.boton-guardar x-show="editando"
+                            <x-tabla.boton-guardar x-cloak x-show="editando"
                                 @click="guardarCambios(usuario); editando=false" />
-                            <x-tabla.boton-cancelar-edicion @click="editando=false" x-show="editando" />
+                            <x-tabla.boton-cancelar-edicion x-cloak x-show="editando" @click="editando=false" />
 
                             <template x-if="!editando">
                                 <div class="flex items-center space-x-2">
@@ -327,6 +327,68 @@
     <x-tabla.paginacion-livewire :paginador="$registrosUsuarios" />
 
     <script>
+        function confirmarGenerarTurnos(userId, obras) {
+            let usuarioTurno = document.getElementById("usuario_turno_" + userId).value;
+
+            // Generar HTML del select con las obras
+            let opcionesObra = obras.map(
+                (obra) => `<option value="${obra.id}">${obra.obra}</option>`
+            ).join("");
+
+            let selectHtml = `
+                <label for="select-obra">Selecciona la obra asignada:</label>
+                <select id="select-obra" class="swal2-select" style="margin-top: 1em;">
+                    ${opcionesObra}
+                </select>
+            `;
+
+            Swal.fire({
+                title: "¿Estás seguro?",
+                html: `
+                    <p class="mb-2">Esta accion generara turnos hasta final de año y reemplazara los actuales (excepto vacaciones y festivos).</p>
+                    ${selectHtml}
+                `,
+                icon: "warning",
+                showCancelButton: true,
+                confirmButtonText: "Si, continuar",
+                cancelButtonText: "Cancelar",
+                confirmButtonColor: "#3085d6",
+                cancelButtonColor: "#d33",
+                preConfirm: () => {
+                    const obraId = document.getElementById("select-obra").value;
+                    if (!obraId) {
+                        Swal.showValidationMessage("Debes seleccionar una obra");
+                    }
+                    return obraId;
+                }
+            }).then((respuestaConfirmacion) => {
+                if (!respuestaConfirmacion.isConfirmed) return;
+
+                const obraId = respuestaConfirmacion.value;
+                document.getElementById("obra_id_input_" + userId).value = obraId;
+
+                if (usuarioTurno === "diurno") {
+                    Swal.fire({
+                        title: "Selecciona el turno inicial",
+                        text: "¿Con que turno quieres comenzar para el turno diurno?",
+                        icon: "question",
+                        showCancelButton: true,
+                        confirmButtonText: "Mañana",
+                        cancelButtonText: "Tarde",
+                        confirmButtonColor: "#3085d6",
+                        cancelButtonColor: "#d33"
+                    }).then((result) => {
+                        document.getElementById("turno_inicio_" + userId).value =
+                            result.isConfirmed ? "mañana" : "tarde";
+
+                        document.getElementById("form-generar-turnos-" + userId).submit();
+                    });
+                } else {
+                    document.getElementById("form-generar-turnos-" + userId).submit();
+                }
+            });
+        }
+
         function guardarCambios(usuario) {
             fetch(`/users/${usuario.id}`, {
                     method: 'PUT',

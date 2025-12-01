@@ -1323,6 +1323,51 @@ class AsignacionTurnoController extends Controller
         return response()->json(['success' => true]);
     }
 
+    public function repetirSemanaObra(Request $request)
+    {
+        $request->validate([
+            'fecha_actual' => 'required|date',
+            'obra_id' => 'required|exists:obras,id',
+        ]);
+
+        $obraId = $request->obra_id;
+        $inicioSemana = Carbon::parse($request->fecha_actual)->startOfWeek();
+        $inicioAnterior = $inicioSemana->copy()->subWeek();
+        $finAnterior = $inicioAnterior->copy()->endOfWeek();
+
+        $asignaciones = AsignacionTurno::whereBetween('fecha', [$inicioAnterior, $finAnterior])
+            ->where('obra_id', $obraId)
+            ->get();
+
+        $copiadas = 0;
+        foreach ($asignaciones as $asignacion) {
+            $nuevaFecha = Carbon::parse($asignacion->fecha)->addWeek();
+
+            // Verifica si ya existe para evitar duplicados
+            $existe = AsignacionTurno::where('user_id', $asignacion->user_id)
+                ->whereDate('fecha', $nuevaFecha)
+                ->where('obra_id', $obraId)
+                ->exists();
+
+            if (!$existe) {
+                AsignacionTurno::create([
+                    'user_id' => $asignacion->user_id,
+                    'obra_id' => $asignacion->obra_id,
+                    'fecha' => $nuevaFecha,
+                    'estado' => $asignacion->estado,
+                    'turno_id' => $asignacion->turno_id,
+                    'maquina_id' => $asignacion->maquina_id,
+                ]);
+                $copiadas++;
+            }
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => "Se copiaron {$copiadas} asignaciones."
+        ]);
+    }
+
     public function quitarObra($id)
     {
         $asignacion = AsignacionTurno::find($id);

@@ -68,10 +68,26 @@
 
         <!-- Calendario -->
         <div class="w-full bg-white">
-            <div class="flex justify-end my-4">
+            <div class="flex flex-wrap items-center justify-end gap-4 my-4 px-4">
+                {{-- Repetir obra específica --}}
+                <div class="flex items-center gap-2">
+                    <select id="selectObraRepetir" class="border border-gray-300 rounded px-3 py-2 text-sm focus:ring focus:ring-yellow-300">
+                        <option value="">-- Seleccionar obra --</option>
+                    </select>
+                    <button id="btnRepetirObraEspecifica"
+                        class="bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-2 px-4 rounded disabled:opacity-50 disabled:cursor-not-allowed"
+                        disabled>
+                        🔁 Repetir obra
+                    </button>
+                </div>
+
+                {{-- Separador --}}
+                <div class="h-8 w-px bg-gray-300"></div>
+
+                {{-- Repetir todas --}}
                 <button id="btnRepetirSemana"
-                    class=" bg-yellow-500 hover:bg-yellow-600 text-white font-bold m-4 py-2 px-4 rounded">
-                    🔁 Repetir semana anterior
+                    class="bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-2 px-4 rounded">
+                    🔁 Repetir todas las obras
                 </button>
             </div>
             <div id="calendario-obras" class="w-full"></div>
@@ -485,6 +501,12 @@
                     method: 'GET',
                     failure: function() {
                         Swal.fire('Error al cargar eventos');
+                    },
+                    success: function(events) {
+                        console.log('[EVENTOS RECIBIDOS]', events);
+                        console.log('[TOTAL EVENTOS]', events.length);
+                        console.log('[RESOURCES DISPONIBLES]', window.obrasResources);
+                        return events;
                     }
                 },
                 eventSourceSuccess: function(content, xhr) {
@@ -812,6 +834,88 @@
             }
         });
 
+        // Poblar el select de obras con los resources (excluyendo 'sin-obra')
+        function poblarSelectObras() {
+            const select = document.getElementById('selectObraRepetir');
+            if (!select || !window.obrasResources) return;
+
+            // Limpiar opciones existentes
+            select.innerHTML = '<option value="">-- Seleccionar obra --</option>';
+
+            // Añadir obras desde los resources
+            window.obrasResources.forEach(resource => {
+                if (resource.id !== 'sin-obra') {
+                    const option = document.createElement('option');
+                    option.value = resource.id;
+                    option.textContent = resource.codigo ? `${resource.codigo} - ${resource.title}` : resource.title;
+                    select.appendChild(option);
+                }
+            });
+        }
+
+        // Llamar después de inicializar el calendario
+        setTimeout(poblarSelectObras, 100);
+
+        // Habilitar/deshabilitar botón según selección
+        const selectObraRepetir = document.getElementById('selectObraRepetir');
+        const btnRepetirObraEspecifica = document.getElementById('btnRepetirObraEspecifica');
+
+        if (selectObraRepetir && btnRepetirObraEspecifica) {
+            selectObraRepetir.addEventListener('change', function() {
+                btnRepetirObraEspecifica.disabled = !this.value;
+            });
+
+            // Botón repetir obra específica
+            btnRepetirObraEspecifica.addEventListener('click', function() {
+                const obraId = selectObraRepetir.value;
+                const obraTexto = selectObraRepetir.options[selectObraRepetir.selectedIndex].text;
+                const fechaInicio = document.getElementById('btnRepetirSemana').dataset.fecha;
+
+                if (!obraId) {
+                    Swal.fire('❌ Error', 'Debes seleccionar una obra', 'error');
+                    return;
+                }
+
+                Swal.fire({
+                    title: '¿Repetir semana anterior?',
+                    text: `Se copiarán las asignaciones de "${obraTexto}" de la semana pasada a la actual.`,
+                    icon: 'question',
+                    showCancelButton: true,
+                    confirmButtonText: 'Sí, repetir',
+                    cancelButtonText: 'Cancelar'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        fetch('{{ route('asignaciones-turnos.repetirSemanaObra') }}', {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                                },
+                                body: JSON.stringify({
+                                    fecha_actual: fechaInicio,
+                                    obra_id: obraId
+                                })
+                            })
+                            .then(res => res.json())
+                            .then(data => {
+                                if (data.success) {
+                                    Swal.fire('✅ Obra copiada correctamente', data.message || '', 'success');
+                                    window.calendarioObras.refetchEvents();
+                                    setTimeout(() => actualizarEstadoFichasTrabajadores(), 200);
+                                } else {
+                                    Swal.fire('❌ Error', data.message, 'error');
+                                }
+                            })
+                            .catch(error => {
+                                console.error(error);
+                                Swal.fire('❌ Error', 'No se pudo completar la solicitud.', 'error');
+                            });
+                    }
+                });
+            });
+        }
+
+        // Botón repetir todas las obras
         const btnRepetirSemana = document.getElementById('btnRepetirSemana');
         if (btnRepetirSemana) {
             btnRepetirSemana.addEventListener('click', function() {
@@ -819,10 +923,10 @@
 
                 Swal.fire({
                     title: '¿Repetir semana anterior?',
-                    text: 'Se copiarán todas las asignaciones de la semana pasada a la actual.',
+                    text: 'Se copiarán TODAS las asignaciones de la semana pasada a la actual.',
                     icon: 'question',
                     showCancelButton: true,
-                    confirmButtonText: 'Sí, repetir',
+                    confirmButtonText: 'Sí, repetir todas',
                     cancelButtonText: 'Cancelar'
                 }).then((result) => {
                     if (result.isConfirmed) {
@@ -858,6 +962,158 @@
         }
     </script>
     <style>
+        /* ============================================
+           ESTILOS DEL CALENDARIO (mismo estilo que trabajadores)
+           ============================================ */
+
+        .fc {
+            width: 100% !important;
+            max-width: 100% !important;
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+        }
+
+        /* Header del calendario - mismo color que sidebar */
+        .fc .fc-toolbar {
+            padding: 1rem;
+            background: #111827; /* gray-900 */
+            border-radius: 12px 12px 0 0;
+            margin-bottom: 0 !important;
+        }
+
+        .fc .fc-toolbar-title {
+            color: white !important;
+            font-weight: 700;
+            font-size: 1.25rem;
+            text-transform: capitalize;
+        }
+
+        .fc .fc-button {
+            background: rgba(255, 255, 255, 0.1) !important;
+            border: 1px solid rgba(255, 255, 255, 0.2) !important;
+            color: white !important;
+            font-weight: 500;
+            padding: 0.5rem 1rem;
+            border-radius: 8px !important;
+            transition: all 0.2s ease;
+            text-transform: capitalize;
+        }
+
+        .fc .fc-button:hover {
+            background: rgba(255, 255, 255, 0.2) !important;
+            transform: translateY(-1px);
+        }
+
+        .fc .fc-button-active {
+            background: #3b82f6 !important;
+            color: white !important;
+            border-color: #3b82f6 !important;
+            box-shadow: 0 2px 8px rgba(59, 130, 246, 0.4);
+        }
+
+        .fc .fc-button:disabled {
+            opacity: 0.5;
+        }
+
+        /* Bordes redondeados del contenedor */
+        .fc .fc-view-harness {
+            border-radius: 0 0 12px 12px;
+            overflow: hidden;
+            border: 1px solid #e2e8f0;
+            border-top: none;
+        }
+
+        /* Encabezados de recursos (obras) */
+        .fc .fc-resource-area {
+            background: #f8fafc;
+        }
+
+        .fc .fc-datagrid-cell-frame {
+            padding: 0.5rem;
+        }
+
+        /* Celdas del timeline - vista semana */
+        .fc .fc-timeline-slot {
+            border-color: #e2e8f0 !important;
+        }
+
+        /* Hover solo en la celda individual */
+        .fc .fc-timeline-lane:hover {
+            background-color: rgba(0, 0, 0, 0.02);
+        }
+
+        /* Slot del día actual */
+        .fc .fc-day-today {
+            background: linear-gradient(135deg, #dbeafe 0%, #e0e7ff 100%) !important;
+        }
+
+        /* Eventos */
+        .fc .fc-event {
+            border-radius: 6px;
+            border: none !important;
+            padding: 2px 6px;
+            font-size: 0.75rem;
+            font-weight: 500;
+            margin: 1px 2px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            transition: transform 0.15s ease, box-shadow 0.15s ease;
+        }
+
+        .fc .fc-event:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.15);
+            z-index: 10;
+        }
+
+        /* Labels de slots (días/horas) */
+        .fc .fc-timeline-slot-label {
+            font-weight: 600;
+            color: #475569;
+            text-transform: capitalize;
+            font-size: 0.8rem;
+        }
+
+        /* Scrollbar del calendario */
+        .fc .fc-scroller::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        .fc .fc-scroller::-webkit-scrollbar-track {
+            background: #f1f5f9;
+            border-radius: 4px;
+        }
+
+        .fc .fc-scroller::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+
+        .fc .fc-scroller::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .fc .fc-toolbar {
+                flex-direction: column;
+                gap: 0.75rem;
+                padding: 0.75rem;
+            }
+
+            .fc .fc-toolbar-title {
+                font-size: 1rem;
+            }
+
+            .fc .fc-button {
+                padding: 0.4rem 0.75rem;
+                font-size: 0.8rem;
+            }
+        }
+
+        /* ============================================
+           ESTILOS ESPECÍFICOS DE TRABAJADORES OBRA
+           ============================================ */
+
         .fc-event.seleccionado {
             outline: 3px solid #facc15;
             background-color: #fde68a !important;

@@ -2927,17 +2927,19 @@ class ProduccionController extends Controller
             })
             ->map(function ($asignacion) use ($colorPorEstado) {
                 $color = $colorPorEstado($asignacion->estado);
+                $fecha = \Carbon\Carbon::parse($asignacion->fecha)->format('Y-m-d');
 
                 return [
                     'id'         => 'turno-' . $asignacion->id,
                     'title'      => $asignacion->user?->nombre_completo ?? 'Desconocido',
-                    'start'      => $asignacion->fecha . 'T06:00:00',
-                    'end'        => $asignacion->fecha . 'T14:00:00',
+                    'start'      => $fecha . 'T06:00:00',
+                    'end'        => $fecha . 'T14:00:00',
                     'resourceId' => $asignacion->obra_id ?? 'sin-obra',
                     'extendedProps' => [
                         'user_id' => $asignacion->user_id,
                         'estado'  => $asignacion->estado,
                         'turno'   => $asignacion->turno?->nombre,
+                        'foto'    => $asignacion->user?->ruta_imagen,
                     ],
                     'backgroundColor' => $color,
                     'borderColor'     => $color,
