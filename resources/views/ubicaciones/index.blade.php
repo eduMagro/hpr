@@ -881,6 +881,9 @@ Inesperados: ${inesperados.join(', ') || ''}
             codigoActual: null,
             productosActuales: [],
             bloquearCierre: false,
+            showEsperados: false,
+            showInesperados: false,
+            modalDetalleEsperados: false,
 
             toggleModoInventario() {
                 this.modoInventario = !this.modoInventario;
@@ -891,10 +894,18 @@ Inesperados: ${inesperados.join(', ') || ''}
                 this.productosActuales = Array.isArray(productos) ? productos.filter(Boolean) : [];
                 this.codigoActual = codigo || null;
                 this.modalInventario = true;
+                // Resetear estados de expansión al abrir
+                this.showEsperados = false;
+                this.showInesperados = false;
+                this.modalDetalleEsperados = false;
             },
 
             cerrarModalInventario() {
                 this.modalInventario = false;
+                // Resetear estados al cerrar
+                this.showEsperados = false;
+                this.showInesperados = false;
+                this.modalDetalleEsperados = false;
             }
         });
 
@@ -1277,7 +1288,7 @@ Inesperados: ${inesperados.join(', ') || ''}
         </div>
 
         {{-- Sectores (scroll en desktop para evitar scroll global) --}}
-        <div class="space-y-4 lg:overflow-y-auto lg:pr-1"
+        <div class="space-y-2 md:space-y-4 lg:overflow-y-auto lg:pr-1"
             :class="$store.inv && $store.inv.modoInventario ?
                 'lg:max-h-[calc(100vh-360px)]' :
                 'lg:max-h-[calc(100vh-300px)]'">
@@ -1662,17 +1673,83 @@ Inesperados: ${inesperados.join(', ') || ''}
 
                         <!-- Input QR -->
                         <div
-                            class="px-4 py-3 sm:px-6 sm:py-4 bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
+                            class="relative px-4 py-3 sm:px-6 sm:py-4 bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
                             <input type="text"
                                 class="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-4 py-3 text-sm text-gray-900 dark:text-white placeholder-gray-400 bg-white dark:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm"
                                 placeholder="Escanea el código QR aquí..."
                                 x-on:keydown.enter.prevent="procesarQR($event.target.value); $event.target.value = ''"
                                 x-ref="inputQR" inputmode="none" autocomplete="off">
+
+                            <!-- Último código escaneado (flotante) -->
+                            <div x-show="ultimoCodigo" x-transition
+                                class="absolute left-4 right-4 sm:left-6 sm:right-6 top-[4.5rem] sm:top-[5rem] z-10 p-3 rounded-lg border-2 shadow-lg"
+                                :class="{
+                                    'bg-green-50 dark:bg-green-900/20 border-green-400': productosEsperados.includes(
+                                        ultimoCodigo) && !sospechosos.includes(ultimoCodigo),
+                                    'bg-red-50 dark:bg-red-900/20 border-red-400': sospechosos.includes(ultimoCodigo),
+                                    'bg-gray-50 dark:bg-gray-800 border-gray-400': !productosEsperados.includes(
+                                        ultimoCodigo) && !sospechosos.includes(ultimoCodigo)
+                                }">
+                                <div class="flex items-center gap-2">
+                                    <svg class="w-5 h-5"
+                                        :class="{
+                                            'text-green-600': productosEsperados.includes(ultimoCodigo) && !sospechosos
+                                                .includes(ultimoCodigo),
+                                            'text-red-600': sospechosos.includes(ultimoCodigo),
+                                            'text-gray-600': !productosEsperados.includes(ultimoCodigo) && !sospechosos
+                                                .includes(ultimoCodigo)
+                                        }"
+                                        fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                    </svg>
+                                    <div class="flex-1">
+                                        <div class="font-mono font-bold text-sm"
+                                            :class="{
+                                                'text-green-800 dark:text-green-200': productosEsperados.includes(
+                                                    ultimoCodigo) && !sospechosos.includes(ultimoCodigo),
+                                                'text-red-800 dark:text-red-200': sospechosos.includes(ultimoCodigo),
+                                                'text-gray-800 dark:text-gray-200': !productosEsperados.includes(
+                                                    ultimoCodigo) && !sospechosos.includes(ultimoCodigo)
+                                            }"
+                                            x-text="ultimoCodigo"></div>
+                                        <div class="text-xs mt-0.5"
+                                            :class="{
+                                                'text-green-700 dark:text-green-300': productosEsperados.includes(
+                                                    ultimoCodigo) && !sospechosos.includes(ultimoCodigo),
+                                                'text-red-700 dark:text-red-300': sospechosos.includes(ultimoCodigo),
+                                                'text-gray-700 dark:text-gray-300': !productosEsperados.includes(
+                                                    ultimoCodigo) && !sospechosos.includes(ultimoCodigo)
+                                            }">
+                                            <span x-show="window.detallesProductos[ultimoCodigo]?.colada">
+                                                Colada: <span
+                                                    x-text="window.detallesProductos[ultimoCodigo]?.colada"></span>
+                                            </span>
+                                            <span x-show="!window.detallesProductos[ultimoCodigo]?.colada">Sin
+                                                colada</span>
+                                        </div>
+                                    </div>
+                                    <div class="text-xs font-semibold px-2 py-1 rounded"
+                                        :class="{
+                                            'bg-green-200 text-green-800': productosEsperados.includes(ultimoCodigo) &&
+                                                !sospechosos.includes(ultimoCodigo),
+                                            'bg-red-200 text-red-800': sospechosos.includes(ultimoCodigo),
+                                            'bg-gray-200 text-gray-800': !productosEsperados.includes(ultimoCodigo) && !
+                                                sospechosos.includes(ultimoCodigo)
+                                        }">
+                                        <span
+                                            x-show="productosEsperados.includes(ultimoCodigo) && !sospechosos.includes(ultimoCodigo)">OK</span>
+                                        <span x-show="sospechosos.includes(ultimoCodigo)">Inesperado</span>
+                                        <span
+                                            x-show="!productosEsperados.includes(ultimoCodigo) && !sospechosos.includes(ultimoCodigo)">Escaneado</span>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
 
-                        <!-- Barra de progreso -->
+                        <!-- Barra de progreso (solo desktop) -->
                         <div
-                            class="px-4 py-2 sm:px-6 sm:py-3 bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
+                            class="hidden sm:block px-4 py-2 sm:px-6 sm:py-3 bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
                             <div class="flex items-center justify-between mb-2">
                                 <span class="text-xs font-semibold text-gray-600 dark:text-gray-300">Progreso</span>
                                 <span class="text-xs text-gray-500 dark:text-gray-400"
@@ -1686,32 +1763,30 @@ Inesperados: ${inesperados.join(', ') || ''}
 
                         <!-- Contenido scrollable -->
                         <div
-                            class="flex-1 overflow-y-auto sm:px-6 sm:py-4 grid grid-cols-1 lg:grid-cols-2 gap-2 min-h-0"
-                            x-data="{ showEsperados: false, showInesperados: false }">
+                            class="flex-1 overflow-y-auto sm:px-6 sm:py-4 grid grid-cols-1 lg:grid-cols-2 gap-2 min-h-0">
                             <!-- Productos esperados -->
                             <div
-                                class="border border-gray-200 dark:border-gray-700 sm:rounded-lg bg-white dark:bg-gray-800 shadow-sm flex flex-col">
-                                <!-- Header móvil colapsable -->
-                                <button @click="showEsperados = !showEsperados"
-                                    class="sm:hidden w-full px-4 py-3 bg-green-50 dark:bg-green-900/20 border-b border-green-200 dark:border-green-700 flex items-center justify-between">
-                                    <div class="flex items-center gap-3">
-                                        <div class="flex flex-col items-start">
-                                            <span class="text-sm font-semibold text-green-700 dark:text-green-400">Productos esperados</span>
-                                            <span class="text-xs text-green-600 dark:text-green-500" x-text="`${escaneados.length} / ${productosEsperados.length} escaneados`"></span>
-                                        </div>
-                                    </div>
-                                    <div class="flex items-center gap-2">
-                                        <div class="text-right">
-                                            <div class="text-lg font-bold text-green-700 dark:text-green-400" x-text="`${Math.round(progreso())}%`"></div>
-                                        </div>
-                                        <svg class="w-5 h-5 text-green-600 dark:text-green-400 transition-transform" :class="showEsperados ? 'rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-                                        </svg>
+                                class="border-0 sm:border border-gray-200 dark:border-gray-700 sm:rounded-lg bg-white dark:bg-gray-800 shadow-sm flex flex-col">
+                                <!-- Vista móvil: Cuadrado de progreso visual -->
+                                <button @click="$store.inv.modalDetalleEsperados = true"
+                                    class="sm:hidden relative overflow-hidden bg-gray-100 dark:bg-gray-800 border-2 border-gray-300 dark:border-gray-600 rounded-lg m-4 flex-1 flex items-center justify-center">
+                                    <!-- Relleno de progreso (de abajo hacia arriba) -->
+                                    <div class="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-green-500 to-green-400 transition-all duration-500 ease-out"
+                                        :style="`height: ${progreso()}%`"></div>
+
+                                    <!-- Contenido del cuadrado -->
+                                    <div class="relative z-10 text-center">
+                                        <div class="text-3xl font-bold text-gray-800 dark:text-white drop-shadow-lg"
+                                            x-text="`${Math.round(progreso())}%`"></div>
+                                        <div class="text-xs font-semibold text-gray-700 dark:text-gray-200 mt-1"
+                                            x-text="`${escaneados.length} / ${productosEsperados.length}`"></div>
+                                        <div class="text-[10px] text-gray-600 dark:text-gray-300 mt-0.5">Productos
+                                            esperados</div>
                                     </div>
                                 </button>
 
-                                <!-- Contenido colapsable móvil / siempre visible desktop -->
-                                <div x-show="showEsperados" x-collapse class="sm:!block flex-1 overflow-y-auto max-h-[420px]">
+                                <!-- Vista desktop: Contenido completo siempre visible -->
+                                <div class="hidden sm:block flex-1 overflow-y-auto max-h-[420px]">
                                     <!-- Vista desktop -->
                                     <div class="hidden sm:block">
                                         <table
@@ -1914,34 +1989,19 @@ Inesperados: ${inesperados.join(', ') || ''}
                                 </div>
                             </div>
 
-                            <!-- Productos inesperados -->
-                            <div
-                                class="border border-red-200 dark:border-red-700 sm:rounded-lg bg-white dark:bg-gray-800 shadow-sm flex flex-col">
-                                <!-- Header móvil colapsable -->
-                                <button @click="showInesperados = !showInesperados"
-                                    class="sm:hidden w-full px-4 py-3 bg-red-50 dark:bg-red-900/20 border-b border-red-200 dark:border-red-700 flex items-center justify-between">
-                                    <div class="flex items-center gap-3">
-                                        <div class="flex flex-col items-start">
-                                            <span class="text-sm font-semibold text-red-700 dark:text-red-400">Productos inesperados</span>
-                                            <span class="text-xs text-red-600 dark:text-red-500" x-text="`${sospechosos.length} producto${sospechosos.length !== 1 ? 's' : ''}`"></span>
-                                        </div>
-                                    </div>
-                                    <svg class="w-5 h-5 text-red-600 dark:text-red-400 transition-transform" :class="showInesperados ? 'rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-                                    </svg>
-                                </button>
-
-                                <!-- Header desktop (siempre visible) -->
+                            <!-- Productos inesperados (solo desktop) -->
+                            <div x-show="sospechosos.length > 0"
+                                class="hidden sm:flex border border-red-200 dark:border-red-700 sm:rounded-lg bg-white dark:bg-gray-800 shadow-sm flex-col">
+                                <!-- Header desktop -->
                                 <div
-                                    class="hidden sm:flex px-4 py-3 border-b border-red-200 dark:border-red-700 items-center justify-between">
+                                    class="px-4 py-3 border-b border-red-200 dark:border-red-700 flex items-center justify-between">
                                     <h3 class="text-sm font-semibold text-red-600 dark:text-red-400">Productos
-                                        inesperados
-                                    </h3>
+                                        inesperados</h3>
                                     <span class="text-xs text-red-500" x-text="sospechosos.length"></span>
                                 </div>
 
-                                <!-- Contenido colapsable móvil / siempre visible desktop -->
-                                <div x-show="showInesperados" x-collapse class="sm:!block flex-1 overflow-y-auto max-h-[420px] p-3">
+                                <!-- Contenido (siempre visible en desktop) -->
+                                <div class="flex-1 overflow-y-auto max-h-[420px] p-3">
                                     <template x-for="(codigo, idx) in sospechosos" :key="'sosp-' + codigo">
                                         <li class="flex items-center justify-between gap-3 rounded-lg border px-4 py-3 mb-2 list-none"
                                             :class="idx % 2 === 0 ?
@@ -2030,9 +2090,116 @@ Inesperados: ${inesperados.join(', ') || ''}
                             </div>
                         </div>
 
+                        <!-- Productos inesperados móvil (encima del footer) -->
+                        <div class="sm:hidden flex-shrink-0" x-show="sospechosos.length > 0">
+                            <!-- Header que se desplaza arriba cuando se expande -->
+                            <div class="border-t-2 border-red-300 dark:border-red-700 bg-red-50 dark:bg-red-900/20 transition-all duration-300"
+                                :class="$store.inv.showInesperados ? 'fixed top-0 left-0 right-0 z-50' : 'relative'">
+                                <button @click="$store.inv.showInesperados = !$store.inv.showInesperados"
+                                    class="w-full px-4 py-3 flex items-center justify-between">
+                                    <div class="flex items-center gap-3">
+                                        <div class="flex flex-col items-start">
+                                            <span
+                                                class="text-sm font-semibold text-red-700 dark:text-red-400">Productos
+                                                inesperados</span>
+                                            <span class="text-xs text-red-600 dark:text-red-500"
+                                                x-text="`${sospechosos.length} producto${sospechosos.length !== 1 ? 's' : ''}`"></span>
+                                        </div>
+                                    </div>
+                                    <svg class="w-5 h-5 text-red-600 dark:text-red-400 transition-transform"
+                                        :class="$store.inv.showInesperados ? '' : 'rotate-180'" fill="none"
+                                        stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M19 9l-7 7-7-7" />
+                                    </svg>
+                                </button>
+                            </div>
+
+                            <!-- Overlay oscuro cuando se expande -->
+                            <div x-show="$store.inv.showInesperados"
+                                x-transition:enter="transition ease-out duration-200"
+                                x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100"
+                                x-transition:leave="transition ease-in duration-150"
+                                x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0"
+                                class="fixed inset-0 bg-black/50 z-40" @click="$store.inv.showInesperados = false">
+                            </div>
+
+                            <!-- Contenido que se desplaza desde abajo -->
+                            <div x-show="$store.inv.showInesperados"
+                                x-transition:enter="transition ease-out duration-300"
+                                x-transition:enter-start="translate-y-full" x-transition:enter-end="translate-y-0"
+                                x-transition:leave="transition ease-in duration-200"
+                                x-transition:leave-start="translate-y-0" x-transition:leave-end="translate-y-full"
+                                class="fixed inset-x-0 bottom-0 z-50 bg-white dark:bg-gray-900 overflow-y-auto"
+                                style="top: 3.5rem; height: calc(100vh - 3.5rem);">
+                                <div class="p-3 space-y-2">
+                                    <template x-for="(codigo, idx) in sospechosos" :key="'sosp-mobile-' + codigo">
+                                        <div class="flex items-center justify-between gap-3 rounded-lg border px-4 py-3 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700"
+                                            x-data="{
+                                                get ubic() {
+                                                    return (asignados && Object.prototype.hasOwnProperty.call(asignados, codigo)) ? asignados[codigo] : null;
+                                                },
+                                                get hasId() {
+                                                    return (this.ubic !== null && this.ubic !== '' && this.ubic !== undefined);
+                                                },
+                                                get estado() {
+                                                    return (estados && Object.prototype.hasOwnProperty.call(estados, codigo)) ? (estados[codigo] ?? null) : null;
+                                                },
+                                                get esConsumido() {
+                                                    return (this.estado === 'consumido');
+                                                },
+                                                get maquinaId() {
+                                                    return (window.productosMaquinas && Object.prototype.hasOwnProperty.call(window.productosMaquinas, codigo)) ? window.productosMaquinas[codigo] : null;
+                                                },
+                                                get esFabricando() {
+                                                    return (this.estado === 'fabricando' && this.maquinaId);
+                                                }
+                                            }">
+                                            <div class="flex flex-col items-start min-w-0 flex-1">
+                                                <span
+                                                    class="font-mono text-sm font-semibold text-gray-900 dark:text-gray-100"
+                                                    x-text="codigo"></span>
+                                                <span class="text-[10px] text-gray-600 dark:text-gray-400">
+                                                    <span x-show="esConsumido">Consumido</span>
+                                                    <span x-show="esFabricando">Fabricando</span>
+                                                    <span x-show="!esConsumido && !esFabricando && hasId">Otra
+                                                        ubicación</span>
+                                                    <span x-show="!esConsumido && !esFabricando && !hasId">Sin
+                                                        registrar</span>
+                                                </span>
+                                            </div>
+                                            <button x-show="esConsumido"
+                                                @click="confirmarRestablecerConsumido(codigo)"
+                                                class="bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 rounded-md text-xs font-semibold flex-shrink-0">
+                                                Restablecer
+                                            </button>
+                                            <button x-show="esFabricando" @click="asignarDesdeFabricando(codigo)"
+                                                class="bg-purple-600 hover:bg-purple-700 text-white px-3 py-1.5 rounded-md text-xs font-semibold flex-shrink-0">
+                                                Asignar
+                                            </button>
+                                            <button x-show="!esConsumido && !esFabricando && hasId"
+                                                @click="reasignarProducto(codigo)"
+                                                class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-md text-xs font-semibold flex-shrink-0">
+                                                Asignar
+                                            </button>
+                                        </div>
+                                    </template>
+                                </div>
+
+                                <!-- Footer del modal inesperados -->
+                                <div
+                                    class="bg-gray-50 dark:bg-gray-800 px-4 py-3 border-t border-gray-200 dark:border-gray-700 flex justify-end flex-shrink-0">
+                                    <button @click="$store.inv.showInesperados = false"
+                                        class="bg-red-600 hover:bg-red-700 text-white font-semibold px-4 py-2 rounded-lg text-sm">
+                                        Cerrar
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
                         <!-- Footer con botones -->
                         <div
-                            class="bg-gray-50 dark:bg-gray-800 px-6 py-4 border-t border-gray-200 dark:border-gray-700 flex justify-end gap-3">
+                            class="bg-gray-50 dark:bg-gray-800 px-4 py-3 sm:px-6 sm:py-4 border-t border-gray-200 dark:border-gray-700 flex justify-end gap-2 sm:gap-3 flex-shrink-0">
                             <button @click="resetear()"
                                 class="bg-gray-500 hover:bg-gray-600 text-white font-semibold px-4 py-2 rounded-lg text-[10px] shadow">
                                 Limpiar escaneos
@@ -2049,6 +2216,118 @@ Inesperados: ${inesperados.join(', ') || ''}
                     </div>
             </div>
         </template>
+
+        <!-- Modal de detalle de productos esperados (solo móvil) - Fuera del template principal -->
+        <template x-if="$store.inv.modalInventario">
+            <div x-show="$store.inv.modalDetalleEsperados"
+                x-data="{
+                    productosEsperados: $store.inv.productosActuales,
+                    ubicacionId: $store.inv.ubicacionActual,
+                    escaneadosDetalle: [],
+                    init() {
+                        // Cargar escaneados desde localStorage cuando se abre el modal
+                        this.recargarEscaneados();
+                    },
+                    recargarEscaneados() {
+                        const clave = `inv-${this.ubicacionId}`;
+                        this.escaneadosDetalle = JSON.parse(localStorage.getItem(clave) || '[]');
+                    },
+                    productoEscaneado(codigo) {
+                        // Recargar cada vez para asegurar datos frescos
+                        this.recargarEscaneados();
+                        return this.escaneadosDetalle.includes(codigo);
+                    },
+                    get progreso() {
+                        this.recargarEscaneados();
+                        const total = this.productosEsperados.length;
+                        return total > 0 ? (this.escaneadosDetalle.length / total) * 100 : 0;
+                    }
+                }"
+                x-init="$watch('$store.inv.modalDetalleEsperados', value => { if (value) recargarEscaneados(); })"
+                x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0"
+                x-transition:enter-end="opacity-100" x-transition:leave="transition ease-in duration-200"
+                x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0"
+                class="sm:hidden fixed inset-0 z-[110] bg-black/70 backdrop-blur-sm"
+                @click.self="$store.inv.modalDetalleEsperados = false">
+                <div class="fixed inset-0 flex flex-col bg-white dark:bg-gray-900"
+                    x-transition:enter="transition ease-out duration-300" x-transition:enter-start="translate-y-full"
+                    x-transition:enter-end="translate-y-0" x-transition:leave="transition ease-in duration-200"
+                    x-transition:leave-start="translate-y-0" x-transition:leave-end="translate-y-full">
+                    <!-- Header -->
+                    <div
+                        class="bg-gradient-to-r from-green-600 to-green-500 text-white px-4 py-3 flex items-center justify-between flex-shrink-0">
+                        <div>
+                            <h3 class="text-base font-bold">Productos esperados</h3>
+                            <p class="text-xs text-green-100"
+                                x-text="`${escaneadosDetalle.length} / ${productosEsperados.length} escaneados (${Math.round(progreso)}%)`">
+                            </p>
+                        </div>
+                        <button @click="$store.inv.modalDetalleEsperados = false" class="text-white">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                        </button>
+                    </div>
+
+                    <!-- Lista de productos -->
+                    <div class="flex-1 overflow-y-auto p-3 space-y-2">
+                        <template x-for="(codigo, idx) in productosEsperados" :key="'detalle-' + codigo">
+                            <div class="rounded-lg border p-3"
+                                :class="{
+                                    'bg-green-50 dark:bg-green-900/20 border-green-200': productoEscaneado(codigo),
+                                    'bg-white dark:bg-gray-800 border-gray-200': !productoEscaneado(codigo)
+                                }">
+                                <div class="flex justify-between items-center">
+                                    <div>
+                                        <p class="font-mono font-semibold text-sm text-gray-900 dark:text-gray-100"
+                                            x-text="codigo"></p>
+                                        <div class="flex gap-2 text-[10px] mt-1">
+                                            <p class="text-gray-600 dark:text-gray-400 capitalize"
+                                                x-text="window.detallesProductos[codigo]?.tipo || ''"></p>
+                                            <p class="text-gray-500 dark:text-gray-500">
+                                                Col: <span
+                                                    x-text="window.detallesProductos[codigo]?.colada || ''"></span>
+                                            </p>
+                                        </div>
+                                        <p class="text-[10px] text-gray-500 dark:text-gray-500 mt-0.5">
+                                            <span x-show="window.detallesProductos[codigo]?.tipo === 'encarretado'">
+                                                Ø <span
+                                                    x-text="window.detallesProductos[codigo]?.diametro || ''"></span>
+                                                mm
+                                            </span>
+                                            <span x-show="window.detallesProductos[codigo]?.tipo !== 'encarretado'">
+                                                Ø <span
+                                                    x-text="window.detallesProductos[codigo]?.diametro || ''"></span>
+                                                mm /
+                                                <span x-text="window.detallesProductos[codigo]?.longitud || ''"></span>
+                                                m
+                                            </span>
+                                        </p>
+                                    </div>
+                                    <span x-show="productoEscaneado(codigo)"
+                                        class="inline-block px-2 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-800">OK</span>
+                                    <span x-show="!productoEscaneado(codigo)"
+                                        class="inline-block px-2 py-1 rounded-full text-xs font-semibold bg-yellow-100 text-yellow-800">Pend.</span>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+
+                    <!-- Footer del modal detalle -->
+                    <div
+                        class="bg-gray-50 dark:bg-gray-800 px-4 py-3 border-t border-gray-200 dark:border-gray-700 flex justify-end flex-shrink-0">
+                        <button @click="$store.inv.modalDetalleEsperados = false"
+                            class="bg-green-600 hover:bg-green-700 text-white font-semibold px-4 py-2 rounded-lg text-sm">
+                            Cerrar
+                        </button>
+                    </div>
+                </div>
+            </div>
+    </div>
+    </div>
+    </template>
+    </template>
     </div>
 
     <!-- SCRIPT PARA IMPRIMIR QR -->
