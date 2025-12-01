@@ -2231,8 +2231,12 @@ Inesperados: ${inesperados.join(', ') || ''}
         <template x-if="$store.inv.modalInventario">
             <div x-show="$store.inv.modalDetalleEsperados"
                 x-data="{
-                    productosEsperados: $store.inv.productosActuales,
-                    ubicacionId: $store.inv.ubicacionActual,
+                    get productosEsperados() {
+                        return Array.isArray($store?.inv?.productosActuales) ? $store.inv.productosActuales : [];
+                    },
+                    get ubicacionId() {
+                        return $store?.inv?.ubicacionActual ?? null;
+                    },
                     escaneadosDetalle: [],
                     init() {
                         // Cargar escaneados desde localStorage cuando se abre el modal
