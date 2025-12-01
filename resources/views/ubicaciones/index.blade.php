@@ -1173,6 +1173,9 @@ Inesperados: ${inesperados.join(', ') || ''}
                                         <span class="h-3 w-3 rounded-full bg-blue-600"></span> <span>Consumido</span>
                                     </div>
                                     <div class="flex items-center gap-2">
+                                        <span class="h-3 w-3 rounded-full bg-purple-600"></span> <span>Fabricando</span>
+                                    </div>
+                                    <div class="flex items-center gap-2">
                                         <span class="h-3 w-3 rounded-full bg-amber-500"></span> <span>Asignado a otra
                                             ubicación</span>
                                     </div>
@@ -1265,7 +1268,7 @@ Inesperados: ${inesperados.join(', ') || ''}
                         </div>
                     </button>
 
-                    <div x-show="openSectors['{{ $sector }}']" x-collapse
+                    <div x-show="openSectors['{{ $sector }}']"
                         class="flex flex-wrap justify-center gap-2 p-2 md:gap-4 md:p-4">
                         @foreach ($ubicaciones as $ubicacion)
                             <div class="bg-slate-50 dark:bg-gray-800 border rounded-xl p-2 md:p-4 flex flex-col gap-2 shadow-sm hover:shadow-md transition min-w-[282px] max-md:w-full"
