@@ -884,6 +884,15 @@ Inesperados: ${inesperados.join(', ') || ''}
             showEsperados: false,
             showInesperados: false,
             modalDetalleEsperados: false,
+            normalizarProductosLista(productos) {
+                return Array.isArray(productos) ? productos.filter(Boolean) : [];
+            },
+            sincronizarProductosActuales() {
+                if (!this.ubicacionActual || !window.productosPorUbicacion) return;
+                const info = window.productosPorUbicacion[this.ubicacionActual];
+                if (!info) return;
+                this.productosActuales = this.normalizarProductosLista(info.productos);
+            },
 
             toggleModoInventario() {
                 this.modoInventario = !this.modoInventario;
@@ -891,13 +900,14 @@ Inesperados: ${inesperados.join(', ') || ''}
 
             abrirModalInventario(ubicacionId, productos, codigo) {
                 this.ubicacionActual = ubicacionId;
-                this.productosActuales = Array.isArray(productos) ? productos.filter(Boolean) : [];
+                this.productosActuales = this.normalizarProductosLista(productos);
                 this.codigoActual = codigo || null;
                 this.modalInventario = true;
                 // Resetear estados de expansión al abrir
                 this.showEsperados = false;
                 this.showInesperados = false;
                 this.modalDetalleEsperados = false;
+                this.sincronizarProductosActuales();
             },
 
             cerrarModalInventario() {
@@ -1768,7 +1778,7 @@ Inesperados: ${inesperados.join(', ') || ''}
                             <div
                                 class="border-0 sm:border border-gray-200 dark:border-gray-700 sm:rounded-lg bg-white dark:bg-gray-800 shadow-sm flex flex-col">
                                 <!-- Vista móvil: Cuadrado de progreso visual -->
-                                <button @click="$store.inv.modalDetalleEsperados = true"
+                                <button @click="$store.inv.sincronizarProductosActuales(); $store.inv.modalDetalleEsperados = true"
                                     class="sm:hidden relative overflow-hidden bg-gray-100 dark:bg-gray-800 border-2 border-gray-300 dark:border-gray-600 rounded-lg m-4 flex-1 flex items-center justify-center">
                                     <!-- Relleno de progreso (de abajo hacia arriba) -->
                                     <div class="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-green-500 to-green-400 transition-all duration-500 ease-out"
@@ -2130,9 +2140,9 @@ Inesperados: ${inesperados.join(', ') || ''}
                                 x-transition:enter-start="translate-y-full" x-transition:enter-end="translate-y-0"
                                 x-transition:leave="transition ease-in duration-200"
                                 x-transition:leave-start="translate-y-0" x-transition:leave-end="translate-y-full"
-                                class="fixed inset-x-0 bottom-0 z-50 bg-white dark:bg-gray-900 overflow-y-auto"
+                                class="fixed inset-x-0 bottom-0 z-50 bg-white dark:bg-gray-900 overflow-hidden flex flex-col"
                                 style="top: 3.5rem; height: calc(100vh - 3.5rem);">
-                                <div class="p-3 space-y-2">
+                                <div class="flex-1 overflow-y-auto p-3 space-y-2">
                                     <template x-for="(codigo, idx) in sospechosos" :key="'sosp-mobile-' + codigo">
                                         <div class="flex items-center justify-between gap-3 rounded-lg border px-4 py-3 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700"
                                             x-data="{
@@ -2188,7 +2198,7 @@ Inesperados: ${inesperados.join(', ') || ''}
 
                                 <!-- Footer del modal inesperados -->
                                 <div
-                                    class="bg-gray-50 dark:bg-gray-800 px-4 py-3 border-t border-gray-200 dark:border-gray-700 flex justify-end flex-shrink-0">
+                                    class="sticky bottom-0 bg-gray-50 dark:bg-gray-800 px-4 py-3 border-t border-gray-200 dark:border-gray-700 flex justify-end flex-shrink-0">
                                     <button @click="$store.inv.showInesperados = false"
                                         class="bg-red-600 hover:bg-red-700 text-white font-semibold px-4 py-2 rounded-lg text-sm">
                                         Cerrar
