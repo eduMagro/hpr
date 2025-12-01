@@ -92,8 +92,31 @@
             </thead>
             <tbody class="text-gray-700 text-sm">
                 @forelse($productos as $producto)
-                    <tr class="border-b odd:bg-gray-100 even:bg-gray-50 hover:bg-blue-200 text-xs leading-none">
-                        <td class="px-2 py-3 text-center border">{{ $producto->id }}</td>
+                    <tr wire:key="producto-{{ $producto->id }}"
+                        x-data="{
+                            editando: false,
+                            producto: @js($producto),
+                            original: JSON.parse(JSON.stringify(@js($producto)))
+                        }"
+                        @dblclick="if(!$event.target.closest('input, select, button, a')) {
+                            if(!editando) {
+                                editando = true;
+                            } else {
+                                producto = JSON.parse(JSON.stringify(original));
+                                editando = false;
+                            }
+                        }"
+                        @keydown.enter.stop="if(editando) { guardarCambiosProducto(producto); editando = false; }"
+                        @keydown.escape.stop="if(editando) { producto = JSON.parse(JSON.stringify(original)); editando = false; }"
+                        :class="{
+                            'bg-yellow-100': editando,
+                            'hover:bg-blue-50': !editando
+                        }"
+                        class="border-b odd:bg-gray-100 even:bg-gray-50 text-xs leading-none cursor-pointer transition-colors">
+                        <!-- ID -->
+                        <td class="px-2 py-3 text-center border" x-text="producto.id"></td>
+
+                        <!-- ALBARAN -->
                         <td class="px-2 py-3 text-center border">
                             @if($producto->entrada)
                                 <a href="{{ route('entradas.index', ['albaran' => $producto->entrada->albaran]) }}" class="text-blue-600 hover:underline">
@@ -103,69 +126,203 @@
                                 —
                             @endif
                         </td>
-                        <td class="px-2 py-3 text-center border">{{ $producto->codigo ?? 'N/A' }}</td>
-                        <td class="px-2 py-3 text-center border">{{ $producto->obra->obra ?? '—' }}</td>
-                        <td class="px-2 py-3 text-center border">{{ $producto->fabricante->nombre ?? '—' }}</td>
-                        <td class="px-2 py-3 text-center border">{{ ucfirst($producto->productoBase->tipo ?? '—') }}</td>
+
+                        <!-- CODIGO -->
+                        <td class="px-2 py-3 text-center border">
+                            <template x-if="!editando">
+                                <span x-text="producto.codigo ?? 'N/A'"></span>
+                            </template>
+                            <input x-show="editando" x-cloak type="text" x-model="producto.codigo"
+                                class="w-full text-xs border rounded px-1 py-0.5 text-center">
+                        </td>
+
+                        <!-- NAVE -->
+                        <td class="px-2 py-3 text-center border">
+                            <template x-if="!editando">
+                                <span>{{ $producto->obra->obra ?? '—' }}</span>
+                            </template>
+                            <select x-show="editando" x-cloak x-model="producto.obra_id"
+                                class="w-full text-xs border rounded px-1 py-0.5">
+                                <option value="">Sin nave</option>
+                                @foreach($naves as $naveId => $naveNombre)
+                                    <option value="{{ $naveId }}">{{ $naveNombre }}</option>
+                                @endforeach
+                            </select>
+                        </td>
+
+                        <!-- FABRICANTE -->
+                        <td class="px-2 py-3 text-center border">
+                            <template x-if="!editando">
+                                <span>{{ $producto->fabricante->nombre ?? '—' }}</span>
+                            </template>
+                            <select x-show="editando" x-cloak x-model="producto.fabricante_id"
+                                class="w-full text-xs border rounded px-1 py-0.5">
+                                <option value="">Sin fabricante</option>
+                                @foreach($fabricantes as $fab)
+                                    <option value="{{ $fab->id }}">{{ $fab->nombre }}</option>
+                                @endforeach
+                            </select>
+                        </td>
+
+                        <!-- PRODUCTO BASE (Tipo + Diámetro + Longitud) -->
+                        <td class="px-2 py-3 text-center border">
+                            <template x-if="!editando">
+                                <span>{{ ucfirst($producto->productoBase->tipo ?? '—') }}</span>
+                            </template>
+                            <select x-show="editando" x-cloak x-model="producto.producto_base_id"
+                                class="w-full text-xs border rounded px-1 py-0.5">
+                                <option value="">Seleccionar</option>
+                                @foreach($productosBase as $pb)
+                                    <option value="{{ $pb->id }}">{{ ucfirst($pb->tipo) }} Ø{{ $pb->diametro }} - {{ $pb->longitud }}m</option>
+                                @endforeach
+                            </select>
+                        </td>
+
+                        <!-- DIAMETRO (solo lectura, se actualiza con producto_base) -->
                         <td class="px-2 py-3 text-center border">{{ $producto->productoBase->diametro ?? '—' }}</td>
+
+                        <!-- LONGITUD (solo lectura, se actualiza con producto_base) -->
                         <td class="px-2 py-3 text-center border">{{ $producto->productoBase->longitud ?? '—' }}</td>
-                        <td class="px-2 py-3 text-center border">{{ $producto->n_colada }}</td>
-                        <td class="px-2 py-3 text-center border">{{ $producto->n_paquete }}</td>
-                        <td class="px-2 py-3 text-center border">{{ $producto->peso_inicial }} kg</td>
-                        <td class="px-2 py-3 text-center border">{{ $producto->peso_stock }} kg</td>
+
+                        <!-- N_COLADA -->
                         <td class="px-2 py-3 text-center border">
-                            @if($producto->estado === 'consumido')
-                                <div class="relative group inline-block">
-                                    <span class="cursor-help">{{ $producto->estado }}</span>
-                                    <div class="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-10">
-                                        <div class="font-semibold mb-1">Información de consumo</div>
-                                        @if($producto->fecha_consumido)
-                                            <div>📅 {{ \Carbon\Carbon::parse($producto->fecha_consumido)->format('d/m/Y H:i') }}</div>
-                                        @endif
-                                        @if($producto->consumidoPor)
-                                            <div>👤 {{ $producto->consumidoPor->nombre_completo }}</div>
-                                        @endif
-                                        <div class="absolute top-full left-1/2 transform -translate-x-1/2 border-4 border-transparent border-t-gray-900"></div>
+                            <template x-if="!editando">
+                                <span x-text="producto.n_colada"></span>
+                            </template>
+                            <input x-show="editando" x-cloak type="text" x-model="producto.n_colada"
+                                class="w-full text-xs border rounded px-1 py-0.5 text-center">
+                        </td>
+
+                        <!-- N_PAQUETE -->
+                        <td class="px-2 py-3 text-center border">
+                            <template x-if="!editando">
+                                <span x-text="producto.n_paquete"></span>
+                            </template>
+                            <input x-show="editando" x-cloak type="text" x-model="producto.n_paquete"
+                                class="w-full text-xs border rounded px-1 py-0.5 text-center">
+                        </td>
+
+                        <!-- PESO_INICIAL -->
+                        <td class="px-2 py-3 text-center border">
+                            <template x-if="!editando">
+                                <span x-text="producto.peso_inicial + ' kg'"></span>
+                            </template>
+                            <input x-show="editando" x-cloak type="number" step="0.01" x-model="producto.peso_inicial"
+                                class="w-full text-xs border rounded px-1 py-0.5 text-center">
+                        </td>
+
+                        <!-- PESO_STOCK -->
+                        <td class="px-2 py-3 text-center border" x-text="producto.peso_stock + ' kg'"></td>
+
+                        <!-- ESTADO -->
+                        <td class="px-2 py-3 text-center border">
+                            <template x-if="!editando">
+                                @if($producto->estado === 'consumido')
+                                    <div class="relative group inline-block">
+                                        <span class="cursor-help">{{ $producto->estado }}</span>
+                                        <div class="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-10">
+                                            <div class="font-semibold mb-1">Información de consumo</div>
+                                            @if($producto->fecha_consumido)
+                                                <div>{{ \Carbon\Carbon::parse($producto->fecha_consumido)->format('d/m/Y H:i') }}</div>
+                                            @endif
+                                            @if($producto->consumidoPor)
+                                                <div>{{ $producto->consumidoPor->nombre_completo }}</div>
+                                            @endif
+                                            <div class="absolute top-full left-1/2 transform -translate-x-1/2 border-4 border-transparent border-t-gray-900"></div>
+                                        </div>
                                     </div>
-                                </div>
-                            @else
-                                {{ $producto->estado }}
-                            @endif
+                                @else
+                                    <span x-text="producto.estado"></span>
+                                @endif
+                            </template>
+                            <select x-show="editando" x-cloak x-model="producto.estado"
+                                class="w-full text-xs border rounded px-1 py-0.5">
+                                <option value="almacenado">Almacenado</option>
+                                <option value="fabricando">Fabricando</option>
+                                <option value="consumido">Consumido</option>
+                            </select>
                         </td>
+
+                        <!-- UBICACION -->
                         <td class="px-2 py-3 text-center border">
-                            @if($producto->ubicacion)
-                                {{ $producto->ubicacion->nombre }}
-                            @elseif($producto->maquina)
-                                {{ $producto->maquina->nombre }}
-                            @else
-                                No está ubicada
-                            @endif
+                            <template x-if="!editando">
+                                <span>
+                                    @if($producto->ubicacion)
+                                        {{ $producto->ubicacion->nombre }}
+                                    @elseif($producto->maquina)
+                                        {{ $producto->maquina->nombre }}
+                                    @else
+                                        No está ubicada
+                                    @endif
+                                </span>
+                            </template>
+                            <select x-show="editando" x-cloak x-model="producto.ubicacion_id"
+                                class="w-full text-xs border rounded px-1 py-0.5">
+                                <option value="">Sin ubicación</option>
+                                <optgroup label="Ubicaciones">
+                                    @foreach($ubicaciones as $ubi)
+                                        <option value="{{ $ubi->id }}">{{ $ubi->nombre }}</option>
+                                    @endforeach
+                                </optgroup>
+                            </select>
                         </td>
+
+                        <!-- FECHA CREACION -->
                         <td class="px-2 py-3 text-center border">{{ $producto->created_at->format('d/m/Y') }}</td>
                         <td class="px-2 py-2 border text-xs font-bold">
                             <div class="flex items-center space-x-2 justify-center">
-                                <a href="{{ route('productos.edit', $producto->id) }}" class="w-6 h-6 bg-yellow-100 text-yellow-600 rounded hover:bg-yellow-200 flex items-center justify-center" title="Editar">
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                        <path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" />
-                                    </svg>
-                                </a>
-                                <a href="{{ route('productos.show', $producto->id) }}" class="w-6 h-6 bg-blue-100 text-blue-600 rounded hover:bg-blue-200 flex items-center justify-center" title="Ver">
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                        <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                        <path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                                    </svg>
-                                </a>
-                                <button type="button" onclick="abrirModalMovimientoLibre('{{ $producto->codigo }}')" class="w-6 h-6 bg-green-100 text-green-600 rounded hover:bg-green-200 flex items-center justify-center" title="Mover producto">
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
-                                        <path d="M8.5 2A1.5 1.5 0 0 1 10 3.5V10h.5V4A1.5 1.5 0 0 1 13 4v6h.5V5.5a1.5 1.5 0 0 1 3 0V10h.5V7a1.5 1.5 0 0 1 3 0v9.5a3.5 3.5 0 0 1-7 0V18h-2a3 3 0 0 1-3-3v-4H8V3.5A1.5 1.5 0 0 1 8.5 2z" />
+                                <!-- Botones en modo edición -->
+                                <button x-show="editando" x-cloak @click="guardarCambiosProducto(producto); editando = false"
+                                    class="w-6 h-6 bg-green-100 text-green-600 rounded hover:bg-green-200 flex items-center justify-center"
+                                    title="Guardar cambios">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
                                     </svg>
                                 </button>
-                                <a href="{{ route('productos.editarConsumir', $producto->id) }}" data-consumir="{{ route('productos.editarConsumir', $producto->id) }}" class="btn-consumir w-6 h-6 bg-red-100 text-red-600 rounded hover:bg-red-200 flex items-center justify-center" title="Consumir">
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="currentColor" viewBox="0 0 24 24">
-                                        <path d="M13.5 3.5c-2 2-1.5 4-3 5.5s-4 1-4 5a6 6 0 0012 0c0-2-1-3.5-2-4.5s-1-3-3-6z" />
+                                <button x-show="editando" x-cloak @click="producto = JSON.parse(JSON.stringify(original)); editando = false"
+                                    class="w-6 h-6 bg-red-100 text-red-600 rounded hover:bg-red-200 flex items-center justify-center"
+                                    title="Cancelar edición">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                                     </svg>
-                                </a>
-                                <x-tabla.boton-eliminar :action="route('productos.destroy', $producto->id)" />
+                                </button>
+
+                                <!-- Botones en modo normal -->
+                                <template x-if="!editando">
+                                    <div class="flex items-center space-x-2">
+                                        <button @click="editando = true"
+                                            class="w-6 h-6 bg-blue-100 text-blue-600 rounded hover:bg-blue-200 flex items-center justify-center"
+                                            title="Editar inline">
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                    d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                            </svg>
+                                        </button>
+                                        <a href="{{ route('productos.edit', $producto->id) }}" class="w-6 h-6 bg-yellow-100 text-yellow-600 rounded hover:bg-yellow-200 flex items-center justify-center" title="Editar completo">
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                                <path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                                                <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                            </svg>
+                                        </a>
+                                        <a href="{{ route('productos.show', $producto->id) }}" class="w-6 h-6 bg-blue-100 text-blue-600 rounded hover:bg-blue-200 flex items-center justify-center" title="Ver">
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                                <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                                <path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                            </svg>
+                                        </a>
+                                        <button type="button" onclick="abrirModalMovimientoLibre('{{ $producto->codigo }}')" class="w-6 h-6 bg-green-100 text-green-600 rounded hover:bg-green-200 flex items-center justify-center" title="Mover producto">
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
+                                                <path d="M8.5 2A1.5 1.5 0 0 1 10 3.5V10h.5V4A1.5 1.5 0 0 1 13 4v6h.5V5.5a1.5 1.5 0 0 1 3 0V10h.5V7a1.5 1.5 0 0 1 3 0v9.5a3.5 3.5 0 0 1-7 0V18h-2a3 3 0 0 1-3-3v-4H8V3.5A1.5 1.5 0 0 1 8.5 2z" />
+                                            </svg>
+                                        </button>
+                                        <a href="{{ route('productos.editarConsumir', $producto->id) }}" data-consumir="{{ route('productos.editarConsumir', $producto->id) }}" class="btn-consumir w-6 h-6 bg-red-100 text-red-600 rounded hover:bg-red-200 flex items-center justify-center" title="Consumir">
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="currentColor" viewBox="0 0 24 24">
+                                                <path d="M13.5 3.5c-2 2-1.5 4-3 5.5s-4 1-4 5a6 6 0 0012 0c0-2-1-3.5-2-4.5s-1-3-3-6z" />
+                                            </svg>
+                                        </a>
+                                        <x-tabla.boton-eliminar :action="route('productos.destroy', $producto->id)" />
+                                    </div>
+                                </template>
                             </div>
                         </td>
                     </tr>
@@ -198,8 +355,67 @@
         {{ $productos->links('vendor.livewire.tailwind') }}
     </div>
 
-    {{-- Script para botón consumir con SweetAlert --}}
+    {{-- Script para edición inline y botón consumir --}}
     <script>
+        // Función para guardar cambios de producto
+        function guardarCambiosProducto(producto) {
+            const datosActualizar = {
+                codigo: producto.codigo,
+                obra_id: producto.obra_id ? Number(producto.obra_id) : null,
+                fabricante_id: producto.fabricante_id ? Number(producto.fabricante_id) : null,
+                producto_base_id: producto.producto_base_id ? Number(producto.producto_base_id) : null,
+                n_colada: producto.n_colada,
+                n_paquete: producto.n_paquete,
+                peso_inicial: parseFloat(producto.peso_inicial) || 0,
+                estado: producto.estado,
+                ubicacion_id: producto.ubicacion_id ? Number(producto.ubicacion_id) : null,
+            };
+
+            fetch(`/productos/${producto.id}`, {
+                method: "PUT",
+                headers: {
+                    "Content-Type": "application/json",
+                    "X-CSRF-TOKEN": document.querySelector('meta[name="csrf-token"]').getAttribute("content"),
+                    "Accept": "application/json",
+                },
+                body: JSON.stringify(datosActualizar),
+            })
+            .then((response) => response.json())
+            .then((data) => {
+                if (data.success || data.ok) {
+                    Swal.fire({
+                        icon: "success",
+                        title: "Producto actualizado",
+                        text: "Los cambios se han guardado correctamente.",
+                        timer: 1500,
+                        showConfirmButton: false
+                    }).then(() => {
+                        window.location.reload();
+                    });
+                } else {
+                    let errorMsg = data.message || "Ha ocurrido un error inesperado.";
+                    if (data.errors) {
+                        errorMsg = Object.values(data.errors).flat().join(" ");
+                    }
+                    Swal.fire({
+                        icon: "error",
+                        title: "Error al actualizar",
+                        text: errorMsg,
+                        confirmButtonText: "OK",
+                    });
+                }
+            })
+            .catch((error) => {
+                console.error("Error:", error);
+                Swal.fire({
+                    icon: "error",
+                    title: "Error de conexión",
+                    text: "No se pudo actualizar el producto. Inténtalo nuevamente.",
+                    confirmButtonText: "OK",
+                });
+            });
+        }
+
         document.addEventListener('DOMContentLoaded', function() {
             // Delegación de eventos para botones "Consumir"
             document.body.addEventListener('click', async (e) => {

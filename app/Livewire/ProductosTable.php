@@ -302,13 +302,21 @@ class ProductosTable extends Component
             'query_bindings' => $queryTotal->getBindings(),
         ]);
 
-        // Obtener naves para el select
+        // Obtener datos para los selects de edición
         $naves = \App\Models\Obra::pluck('obra', 'id')->toArray();
+        $fabricantes = \App\Models\Fabricante::orderBy('nombre')->get(['id', 'nombre']);
+        $productosBase = \App\Models\ProductoBase::orderBy('tipo')->orderBy('diametro')->get(['id', 'tipo', 'diametro', 'longitud']);
+        $ubicaciones = \App\Models\Ubicacion::orderBy('nombre')->get(['id', 'nombre']);
+        $maquinas = \App\Models\Maquina::orderBy('nombre')->get(['id', 'nombre']);
 
         return view('livewire.productos-table', [
             'productos' => $productos,
             'totalPesoInicial' => $totalPesoInicial,
             'naves' => $naves,
+            'fabricantes' => $fabricantes,
+            'productosBase' => $productosBase,
+            'ubicaciones' => $ubicaciones,
+            'maquinas' => $maquinas,
             'filtrosActivos' => $this->getFiltrosActivos(),
         ]);
     }

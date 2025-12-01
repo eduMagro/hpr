@@ -29,7 +29,8 @@ class PlanificacionController extends Controller
         // Eventos
         $salidasEventos = $this->getEventosSalidas($startDate, $endDate, $viewType);
         $planillasEventos = $this->getEventosPlanillas($startDate, $endDate, $viewType);
-        $resumenEventos = $this->getEventosResumen($planillasEventos['planillas'], $viewType);
+        // Pasar los eventos de planillas para calcular el resumen basado en las fechas reales de los eventos
+        $resumenEventos = $this->getEventosResumen($planillasEventos['eventos'], $viewType);
         $eventos = collect()
             ->concat($planillasEventos['eventos'])
             ->concat($salidasEventos)
@@ -151,21 +152,22 @@ class PlanificacionController extends Controller
         ]);
     }
     /**
-     * Obtiene los eventos de resumen y planillas
-     * @param \Illuminate\Support\Collection $planillas
+     * Obtiene los eventos de resumen basados en los eventos de planillas generados.
+     * @param \Illuminate\Support\Collection $eventosPlanillas - Eventos ya generados (con fechas de salida aplicadas)
      * @param string $viewType
      * @return \Illuminate\Support\Collection
      */
-    private function getEventosResumen($planillas, string $viewType)
+    private function getEventosResumen($eventosPlanillas, string $viewType)
     {
         // ------------------- RESUMEN POR DÍA -------------------
-        $resumenPorDia = $planillas
-            ->groupBy(fn($p) => Carbon::parse($p->getRawOriginal('fecha_estimada_entrega'))->toDateString())
+        // Agrupar eventos por fecha (extraída del campo 'start')
+        $resumenPorDia = $eventosPlanillas
+            ->groupBy(fn($evento) => Carbon::parse($evento['start'])->toDateString())
             ->map(fn($grupo, $fechaDia) => [
                 'fecha' => Carbon::parse($fechaDia),
-                'pesoTotal' => $grupo->sum('peso_total'),
-                'longitudTotal' => $grupo->flatMap->elementos->sum(fn($e) => ($e->longitud ?? 0) * ($e->barras ?? 0)),
-                'diametroMedio' => $grupo->flatMap->elementos->pluck('diametro')->filter()->avg(),
+                'pesoTotal' => $grupo->sum(fn($e) => $e['extendedProps']['pesoTotal'] ?? 0),
+                'longitudTotal' => $grupo->sum(fn($e) => $e['extendedProps']['longitudTotal'] ?? 0),
+                'diametroMedio' => $grupo->avg(fn($e) => $e['extendedProps']['diametroMedio'] ?? 0),
             ])->values();
 
         $resumenEventosDia = $resumenPorDia->map(function ($r) use ($viewType) {
@@ -227,6 +229,7 @@ class PlanificacionController extends Controller
             'paquetes.planilla.obra:id,obra,cod_obra,cliente_id',
             'paquetes.planilla.obra.cliente:id,empresa',
             'paquetes.planilla.user',
+            'paquetes.etiquetas', // Para calcular peso desde etiquetas
             'empresaTransporte:id,nombre',
             'camion:id,modelo',
         ])
@@ -236,7 +239,13 @@ class PlanificacionController extends Controller
         return $salidas->map(function ($salida) use ($viewType) {
             $empresa    = optional($salida->empresaTransporte)->nombre;
             $camion     = optional($salida->camion)->modelo;
-            $pesoTotal  = round($salida->paquetes->sum(fn($p) => optional($p->planilla)->peso_total ?? 0), 0);
+            // Calcular peso real de los paquetes (desde paquete.peso o suma de etiquetas)
+            $pesoTotal  = round($salida->paquetes->sum(function ($paquete) {
+                if ($paquete->peso && $paquete->peso > 0) {
+                    return $paquete->peso;
+                }
+                return $paquete->etiquetas->sum('peso') ?? 0;
+            }), 0);
             $fechaInicio = Carbon::parse($salida->fecha_salida);
 
             // En vista mensual, hacer eventos de día completo para que no se extiendan
@@ -369,118 +378,239 @@ class PlanificacionController extends Controller
     }
 
     /**
-     * Obtiene los eventos de planillas agrupados por obra y día.
+     * Obtiene los eventos de planillas agrupados por obra, día y salida.
+     * Si hay salidas asociadas, crea un evento por cada salida.
+     * Si no hay salidas, crea un solo evento agrupado.
+     *
      * @param Carbon $startDate
      * @param Carbon $endDate
      * @return array
      */
     private function getEventosPlanillas(Carbon $startDate, Carbon $endDate, string $viewType = ''): array
     {
-        // 🔹 Traer planillas sin salidas en el rango
-        $planillas = Planilla::with(['obra.cliente', 'elementos'])
+        // 🔹 Traer planillas con paquetes, sus salidas y etiquetas (para calcular peso)
+        $planillas = Planilla::with(['obra.cliente', 'elementos', 'paquetes.salidas', 'paquetes.etiquetas'])
             ->whereBetween('fecha_estimada_entrega', [$startDate, $endDate])
             ->get();
 
         // Determinar si es vista diaria
         $isDayView = in_array($viewType, ['resourceTimeGridDay', 'timeGridDay', 'resourceTimelineDay']);
 
+        $eventosFinales = collect();
+
         // 🔹 Agrupar por obra y día
-        $eventos = $planillas->groupBy(function ($p) {
+        $grupos = $planillas->groupBy(function ($p) {
             return $p->obra_id . '|' . Carbon::parse($p->getRawOriginal('fecha_estimada_entrega'))->toDateString();
-        })->map(function ($grupo) use ($viewType, $isDayView) {
+        });
+
+        foreach ($grupos as $key => $grupo) {
             $obraId = $grupo->first()->obra_id;
             $obra = $grupo->first()->obra;
             $nombreObra = optional($obra)->obra ?? 'Obra desconocida';
             $codObra = optional($obra)->cod_obra ?? 'Código desconocido';
             $clienteNombre = optional($obra->cliente)->empresa ?? 'Sin cliente';
-
-
-            $fechaInicio = Carbon::parse($grupo->first()->getRawOriginal('fecha_estimada_entrega'))->setTime(6, 0, 0);
+            $fechaBase = Carbon::parse($grupo->first()->getRawOriginal('fecha_estimada_entrega'));
 
             // 👉 IDs de planillas agrupadas
             $planillasIds = $grupo->pluck('id')->toArray();
 
-            // 👉 Totales por estado
-            $fabricados = $grupo->where('estado', 'completada')->sum(fn($p) => $p->peso_total ?? 0);
-            $fabricando = $grupo->where('estado', 'fabricando')->sum(fn($p) => $p->peso_total ?? 0);
-            $pendientes = $grupo->where('estado', 'pendiente')->sum(fn($p) => $p->peso_total ?? 0);
+            // 👉 Buscar paquetes y sus salidas asociadas
+            // Agrupamos por salida, guardando los PAQUETES (no las planillas) para calcular el peso correcto
+            $paquetesPorSalida = collect();
+            $paquetesSinSalida = collect();
+            $pesoTotalGrupo = $grupo->sum(fn($p) => $p->peso_total ?? 0);
 
-            // 👉 Diámetro medio
-            $diametros = $grupo->flatMap->elementos->pluck('diametro')->filter();
-            $diametroMedio = $diametros->isNotEmpty()
-                ? number_format($diametros->avg(), 2, '.', '')
-                : null;
-
-            // 👉 Color según estado
-            $todasCompletadas = $grupo->every(fn($p) => $p->estado === 'completada');
-            $alMenosUnaFabricando = $grupo->contains(fn($p) => $p->estado === 'fabricando');
-
-            if ($todasCompletadas) {
-                $color = '#22c55e'; // verde
-            } elseif ($alMenosUnaFabricando) {
-                $color = '#facc15'; // amarillo
-            } else {
-                $color = '#9CA3AF'; // gris
+            foreach ($grupo as $planilla) {
+                foreach ($planilla->paquetes as $paquete) {
+                    if ($paquete->salidas->isNotEmpty()) {
+                        foreach ($paquete->salidas as $salida) {
+                            if (!$paquetesPorSalida->has($salida->id)) {
+                                $paquetesPorSalida[$salida->id] = [
+                                    'salida' => $salida,
+                                    'paquetes' => collect(),
+                                    'planillas' => collect(),
+                                ];
+                            }
+                            // Agregar paquete
+                            if (!$paquetesPorSalida[$salida->id]['paquetes']->contains('id', $paquete->id)) {
+                                $paquetesPorSalida[$salida->id]['paquetes']->push($paquete);
+                            }
+                            // Agregar planilla para referencia
+                            if (!$paquetesPorSalida[$salida->id]['planillas']->contains('id', $planilla->id)) {
+                                $paquetesPorSalida[$salida->id]['planillas']->push($planilla);
+                            }
+                        }
+                    } else {
+                        // Paquete sin salida
+                        $paquetesSinSalida->push([
+                            'paquete' => $paquete,
+                            'planilla' => $planilla,
+                        ]);
+                    }
+                }
             }
 
-            // Antes del return de cada evento, obtén todas las salidas relacionadas con esas planillas
-            // 👉 Buscar primero los paquetes asociados a esas planillas
-            $paqueteIds = Paquete::whereIn('planilla_id', $planillasIds)->pluck('id');
+            // 🔹 Crear un evento por cada salida asociada (en la fecha de la salida)
+            foreach ($paquetesPorSalida as $salidaId => $data) {
+                $salida = $data['salida'];
+                $paquetesDelEvento = $data['paquetes'];
+                $planillasDelEvento = $data['planillas'];
 
-            // 👉 Buscar las salidas que tengan esos paquetes en la tabla pivote
-            $salidaRelacionada = Salida::whereHas('paquetes', function ($q) use ($paqueteIds) {
-                $q->whereIn('paquete_id', $paqueteIds);
-            })->get();
+                // Peso total de las planillas asociadas a este evento
+                $pesoPlanillas = $planillasDelEvento->sum(fn($p) => $p->peso_total ?? 0);
 
-            // Construir título según la vista
-            $pesoTotal = $grupo->sum(fn($p) => $p->peso_total ?? 0);
-            if ($isDayView) {
-                // Vista diaria: título completo
-                $titulo = "{$codObra} - {$nombreObra}\n";
-                $titulo .= "👤 {$clienteNombre}\n";
-                $titulo .= "📦 " . number_format($pesoTotal, 0) . " kg";
-            } else {
-                // Otras vistas: título compacto
-                $titulo = $codObra . ' - ' . $nombreObra;
+                // Peso de los paquetes de esta salida (desde etiquetas)
+                $pesoPaquetesSalida = $paquetesDelEvento->sum(function ($paquete) {
+                    if ($paquete->peso && $paquete->peso > 0) {
+                        return $paquete->peso;
+                    }
+                    return $paquete->etiquetas->sum('peso') ?? 0;
+                });
+
+                // Usar la fecha de la salida, no la de la planilla
+                $fechaSalida = Carbon::parse($salida->fecha_salida);
+
+                $evento = $this->crearEventoPlanillasConPeso(
+                    $planillasDelEvento,
+                    $obraId,
+                    $codObra,
+                    $nombreObra,
+                    $clienteNombre,
+                    $fechaSalida,
+                    $isDayView,
+                    $salida,
+                    $pesoPlanillas,
+                    $pesoPaquetesSalida
+                );
+                $eventosFinales->push($evento);
             }
 
-            $evento = [
-                'title' => $titulo,
-                'id' => 'planillas-' . $obraId . '-' . md5($fechaInicio),
-                'start' => $fechaInicio->toIso8601String(),
-                'end' => $fechaInicio->copy()->addHours(2)->toIso8601String(),
-                'backgroundColor' => $color,
-                'borderColor' => $color,
-                'tipo' => 'planilla',
-                'resourceId' => (string) $obraId,
-                'extendedProps' => [
-                    'tipo' => 'planilla',
-                    'cod_obra' => $codObra,
-                    'nombre_obra'  => $nombreObra,
-                    'cliente' => $clienteNombre,
-                    'pesoTotal' => $pesoTotal,
-                    'longitudTotal' => $grupo->flatMap->elementos->sum(fn($e) => ($e->longitud ?? 0) * ($e->barras ?? 0)),
-                    'planillas_ids' => $planillasIds,
-                    'diametroMedio' => $diametroMedio,
-                    'fabricadosKg' => $fabricados,
-                    'fabricandoKg' => $fabricando,
-                    'pendientesKg' => $pendientes,
-                    'todasCompletadas' => $todasCompletadas,
-                    'tieneSalidas' => $salidaRelacionada->count() > 0,
-                    'salidas_codigos' => $salidaRelacionada->pluck('codigo_salida')->toArray(),
-                ],
-            ];
+            // 🔹 Crear evento para paquetes sin salida (en la fecha de entrega de la planilla)
+            if ($paquetesSinSalida->isNotEmpty()) {
+                $planillasSinSalida = $paquetesSinSalida->pluck('planilla')->unique('id');
 
-            return $evento;
-        })->sortBy([
+                // Peso total de las planillas
+                $pesoPlanillasSinSalida = $planillasSinSalida->sum(fn($p) => $p->peso_total ?? 0);
+
+                $evento = $this->crearEventoPlanillasConPeso(
+                    $planillasSinSalida,
+                    $obraId,
+                    $codObra,
+                    $nombreObra,
+                    $clienteNombre,
+                    $fechaBase,
+                    $isDayView,
+                    null,
+                    $pesoPlanillasSinSalida,
+                    0
+                );
+                $eventosFinales->push($evento);
+            }
+        }
+
+        // Ordenar eventos
+        $eventosOrdenados = $eventosFinales->sortBy([
             fn($e) => (int) preg_replace('/\D/', '', $e['extendedProps']['cod_obra'] ?? '0'),
             fn($e) => $e['start'],
-        ])
-            ->values();
+        ])->values();
 
         return [
             'planillas' => $planillas,
-            'eventos' => $eventos,
+            'eventos' => $eventosOrdenados,
+        ];
+    }
+
+    /**
+     * Crea un evento de planillas para el calendario.
+     *
+     * @param Collection $planillas - Planillas asociadas (para referencia)
+     * @param int $obraId
+     * @param string $codObra
+     * @param string $nombreObra
+     * @param string $clienteNombre
+     * @param Carbon $fechaBase
+     * @param bool $isDayView
+     * @param Salida|null $salida
+     * @param float $pesoPlanillas - Peso total de las planillas
+     * @param float $pesoPaquetesSalida - Peso de los paquetes de la salida
+     */
+    private function crearEventoPlanillasConPeso(
+        $planillas,
+        $obraId,
+        $codObra,
+        $nombreObra,
+        $clienteNombre,
+        Carbon $fechaBase,
+        bool $isDayView,
+        ?Salida $salida = null,
+        float $pesoPlanillas = 0,
+        float $pesoPaquetesSalida = 0
+    ): array {
+        $fechaInicio = $fechaBase->copy()->setTime(6, 0, 0);
+        $planillasIds = $planillas->pluck('id')->toArray();
+
+        // 👉 Diámetro medio
+        $diametros = $planillas->flatMap->elementos->pluck('diametro')->filter();
+        $diametroMedio = $diametros->isNotEmpty()
+            ? number_format($diametros->avg(), 2, '.', '')
+            : null;
+
+        // 👉 Color según estado
+        $todasCompletadas = $planillas->every(fn($p) => $p->estado === 'completada');
+        $alMenosUnaFabricando = $planillas->contains(fn($p) => $p->estado === 'fabricando');
+
+        if ($todasCompletadas) {
+            $color = '#22c55e'; // verde
+        } elseif ($alMenosUnaFabricando) {
+            $color = '#facc15'; // amarillo
+        } else {
+            $color = '#9CA3AF'; // gris
+        }
+
+        // Construir título según la vista
+        $salidaCodigo = $salida ? $salida->codigo_salida : null;
+
+        if ($isDayView) {
+            $titulo = "{$codObra} - {$nombreObra}\n";
+            $titulo .= "👤 {$clienteNombre}\n";
+            $titulo .= "📦 " . number_format($pesoPlanillas, 0) . " kg";
+        } else {
+            $titulo = $codObra . ' - ' . $nombreObra . " - " . number_format($pesoPlanillas, 0) . " kg";
+        }
+
+        // ID único del evento
+        $eventoId = 'planillas-' . $obraId . '-' . $fechaBase->format('Y-m-d');
+        if ($salida) {
+            $eventoId .= '-salida-' . $salida->id;
+        } else {
+            $eventoId .= '-sin-salida';
+        }
+
+        return [
+            'title' => $titulo,
+            'id' => $eventoId,
+            'start' => $fechaInicio->toIso8601String(),
+            'end' => $fechaInicio->copy()->addHours(2)->toIso8601String(),
+            'backgroundColor' => $color,
+            'borderColor' => $color,
+            'tipo' => 'planilla',
+            'resourceId' => (string) $obraId,
+            'extendedProps' => [
+                'tipo' => 'planilla',
+                'cod_obra' => $codObra,
+                'nombre_obra' => $nombreObra,
+                'cliente' => $clienteNombre,
+                'pesoTotal' => $pesoPlanillas,
+                'pesoPaquetesSalida' => $pesoPaquetesSalida,
+                'longitudTotal' => $planillas->flatMap->elementos->sum(fn($e) => ($e->longitud ?? 0) * ($e->barras ?? 0)),
+                'planillas_ids' => $planillasIds,
+                'diametroMedio' => $diametroMedio,
+                'todasCompletadas' => $todasCompletadas,
+                'tieneSalidas' => $salida !== null,
+                'salida_id' => $salida?->id,
+                'salida_codigo' => $salidaCodigo,
+                'salidas_codigos' => $salidaCodigo ? [$salidaCodigo] : [],
+            ],
         ];
     }
 

@@ -449,7 +449,6 @@
                     const seleccionados = [...document.querySelectorAll('.fc-event.seleccionado')];
 
                     if (seleccionados.length === 0) {
-                        Swal.fire('❌ Debes seleccionar primero uno o más trabajadores.');
                         return;
                     }
 

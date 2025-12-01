@@ -501,31 +501,104 @@ export function crearCalendario() {
                 return true;
             },
             eventDragStart: (info) => {
-                // Limitar el ancho del evento mirror durante el arrastre en vista mensual
-                const viewType = calendar?.view?.type;
-                if (viewType === 'dayGridMonth') {
-                    // Inyectar estilos CSS temporales (no pelea con FC como los estilos inline)
-                    if (!document.getElementById('drag-width-fix-style')) {
-                        const style = document.createElement('style');
-                        style.id = 'drag-width-fix-style';
-                        style.textContent = `
-                            .fc-event-mirror,
-                            .fc-event-dragging,
-                            .fc-daygrid-event-harness-abs {
-                                width: 200px !important;
-                                max-width: 200px !important;
-                                min-width: 200px !important;
+                const p = info.event.extendedProps || {};
+                const bg = info.event.backgroundColor || '#6b7280';
+
+                // Inyectar CSS para ocultar el mirror de FC y mostrar el nuestro
+                const style = document.createElement('style');
+                style.id = 'custom-drag-style';
+                style.textContent = `
+                    .fc-event-mirror { display: none !important; }
+                    .fc-event-dragging { opacity: 0.3 !important; }
+                `;
+                document.head.appendChild(style);
+
+                // Crear nuestro propio elemento visual de arrastre
+                const customMirror = document.createElement('div');
+                customMirror.id = 'custom-drag-mirror';
+                customMirror.style.cssText = `
+                    position: fixed;
+                    width: 150px;
+                    padding: 8px 12px;
+                    background: ${bg};
+                    border: 2px dashed white;
+                    border-radius: 6px;
+                    box-shadow: 0 8px 20px rgba(0,0,0,0.3);
+                    z-index: 99999;
+                    pointer-events: none;
+                    font-size: 12px;
+                    color: #000;
+                    font-weight: 500;
+                    overflow: hidden;
+                    max-height: 80px;
+                `;
+
+                const tipoTexto = p.tipo === 'salida' ? '🚚 Salida' : '📦 Planillas';
+                const titulo = p.tipo === 'salida'
+                    ? (p.codigo_salida || 'Salida')
+                    : (p.cod_obra || 'Planillas');
+                customMirror.innerHTML = `
+                    <div style="font-weight:bold; margin-bottom:4px;">${tipoTexto}</div>
+                    <div style="font-size:11px;">${titulo}</div>
+                `;
+                document.body.appendChild(customMirror);
+
+                // Crear indicador de fecha en la parte superior
+                const dragIndicator = document.createElement('div');
+                dragIndicator.id = 'drag-indicator';
+                dragIndicator.className = 'fixed top-4 left-1/2 transform -translate-x-1/2 z-[99999] bg-gray-900 text-white px-4 py-2 rounded-lg shadow-xl text-sm font-medium';
+                const fechaOriginal = info.event.start.toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric', month: 'short' });
+                dragIndicator.innerHTML = `
+                    <div class="flex items-center gap-3">
+                        <span class="text-yellow-400">${fechaOriginal}</span>
+                        <span class="text-gray-400">→</span>
+                        <span id="drag-dest-date" class="text-green-400">...</span>
+                    </div>
+                `;
+                document.body.appendChild(dragIndicator);
+
+                // Mover el mirror custom con el mouse
+                const moveCustomMirror = (e) => {
+                    customMirror.style.left = (e.clientX + 10) + 'px';
+                    customMirror.style.top = (e.clientY + 10) + 'px';
+
+                    // Actualizar fecha destino
+                    const destDateEl = document.getElementById('drag-dest-date');
+                    if (destDateEl) {
+                        const elemUnder = document.elementFromPoint(e.clientX, e.clientY);
+                        if (elemUnder) {
+                            const dayCell = elemUnder.closest('[data-date]');
+                            if (dayCell) {
+                                const dateStr = dayCell.getAttribute('data-date');
+                                if (dateStr) {
+                                    const fecha = new Date(dateStr);
+                                    destDateEl.textContent = fecha.toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric', month: 'short' });
+                                }
                             }
-                        `;
-                        document.head.appendChild(style);
+                        }
                     }
-                }
+                };
+                document.addEventListener('mousemove', moveCustomMirror);
+                window._dragMoveHandler = moveCustomMirror;
+
+                // Posicionar inicialmente
+                moveCustomMirror({ clientX: info.jsEvent.clientX, clientY: info.jsEvent.clientY });
             },
             eventDragStop: () => {
-                // Eliminar los estilos temporales cuando termina el arrastre
-                const style = document.getElementById('drag-width-fix-style');
-                if (style) {
-                    style.remove();
+                // Eliminar elementos custom
+                const customMirror = document.getElementById('custom-drag-mirror');
+                if (customMirror) customMirror.remove();
+
+                const indicator = document.getElementById('drag-indicator');
+                if (indicator) indicator.remove();
+
+                const style = document.getElementById('custom-drag-style');
+                if (style) style.remove();
+
+                // Limpiar listener
+                if (window._dragMoveHandler) {
+                    document.removeEventListener('mousemove', window._dragMoveHandler);
+                    delete window._dragMoveHandler;
                 }
             },
             eventDrop: (info) => {
@@ -557,12 +630,9 @@ export function crearCalendario() {
                     .then(() => {
                         calendar.refetchEvents();
                         calendar.refetchResources();
-                        // ✅ actualiza totales sin recargar nada
                         const nuevaFecha = info.event.start;
                         const fechaISO = nuevaFecha.toISOString().split("T")[0];
                         actualizarTotales(fechaISO);
-
-                        /* ▼ asegurar que se vea al terminar */
                         safeUpdateSize();
                     })
                     .catch((err) => {
@@ -649,6 +719,8 @@ export function crearCalendario() {
                 };
             },
             editable: true,
+            eventDurationEditable: false, // Solo drag, no resize
+            eventStartEditable: true,     // Permitir mover eventos
             resourceAreaColumns: [
                 { field: "cod_obra", headerContent: "Código" },
                 { field: "title", headerContent: "Obra" },

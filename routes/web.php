@@ -200,12 +200,19 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
         return response()->file($path); // envía con Content-Type correcto
     })->name('usuarios.imagen');
     Route::get('/mi-perfil/{user}', [PerfilController::class, 'show'])->name('usuarios.show');
-    Route::resource('vacaciones', VacacionesController::class);
+
+    // Rutas específicas de vacaciones (DEBEN ir ANTES del resource)
+    Route::get('/vacaciones/usuarios-con-vacaciones', [VacacionesController::class, 'usuariosConVacaciones'])->name('vacaciones.usuariosConVacaciones');
+    Route::get('/vacaciones/eventos', [VacacionesController::class, 'eventos'])->name('vacaciones.eventos');
     Route::post('/vacaciones/solicitar', [VacacionesController::class, 'store'])->name('vacaciones.solicitar');
+    Route::post('/vacaciones/asignar-directo', [VacacionesController::class, 'asignarDirecto'])->name('vacaciones.asignarDirecto');
+    Route::post('/vacaciones/reprogramar', [VacacionesController::class, 'reprogramar'])->name('vacaciones.reprogramar');
+    Route::post('/vacaciones/eliminar-evento', [VacacionesController::class, 'eliminarEvento'])->name('vacaciones.eliminarEvento');
     Route::post('/vacaciones/{id}/aprobar', [VacacionesController::class, 'aprobar'])->name('vacaciones.editarAprobar');
     Route::post('/vacaciones/{id}/denegar', [VacacionesController::class, 'denegar'])->name('vacaciones.editarDenegar');
-    // Route::post('/vacaciones/reprogramar', [VacacionesController::class, 'reprogramar'])->name('vacaciones.reprogramar');
-    // Route::post('/vacaciones/eliminar-evento', [VacacionesController::class, 'eliminarEvento'])->name('vacaciones.eliminarEvento');
+
+    // Resource de vacaciones (al final para que no capture las rutas específicas)
+    Route::resource('vacaciones', VacacionesController::class);
 
     // === TURNOS ===
     Route::resource('turnos', TurnoController::class);
@@ -446,6 +453,9 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
 
     // === NOMINAS Y FISCALIDAD ===
     Route::resource('empresas', EmpresaController::class)->names('empresas');
+    Route::post('/categorias/update-field', [EmpresaController::class, 'updateCategoriaField'])->name('categorias.updateField');
+    Route::post('/categorias/store', [EmpresaController::class, 'storeCategoria'])->name('categorias.store');
+    Route::post('/categorias/destroy', [EmpresaController::class, 'destroyCategoria'])->name('categorias.destroy');
     Route::resource('nominas', NominaController::class)->except(['destroy']);
     Route::post('/generar-nominas', [NominaController::class, 'generarNominasMensuales'])->name('generar.nominas');
     Route::delete('/nominas/borrar-todas', [NominaController::class, 'borrarTodas'])->name('nominas.borrarTodas');

@@ -461,6 +461,7 @@ class ProductoController extends Controller
         try {
             $validated = $request->validate([
                 'codigo' => ['required', 'string', 'regex:/^MP.*/i', 'max:255'],
+                'obra_id'            => 'nullable|integer|exists:obras,id',
                 'fabricante_id'      => 'nullable|exists:fabricantes,id',
                 'producto_base_id'   => 'nullable|exists:productos_base,id',
                 'nombre'             => 'nullable|string|max:255',
@@ -474,6 +475,7 @@ class ProductoController extends Controller
             ], [
                 'codigo.required' => 'El código es obligatorio.',
                 'codigo.regex'    => 'El código debe empezar por "MP".',
+                'obra_id.exists'           => 'La nave seleccionada no es válida.',
                 'fabricante_id.exists'     => 'El fabricante seleccionado no es válido.',
                 'producto_base_id.exists'  => 'El producto base seleccionado no es válido.',
                 'peso_inicial.*'           => 'El peso inicial debe ser un número válido mayor que 0.',

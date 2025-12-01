@@ -275,9 +275,12 @@
 
         <!-- Indicador de posición al arrastrar -->
         <div id="indicador_posicion"
-            class="fixed bg-blue-600 text-white rounded-full shadow-lg font-bold hidden z-[99999] pointer-events-none"
-            style="display: none; width: 48px; height: 48px; line-height: 48px; text-align: center; font-size: 20px;">
-            <span id="numero_posicion">1</span>
+            class="fixed hidden z-[99999] pointer-events-none"
+            style="display: none; width: 48px; height: 48px;">
+            <div class="w-12 h-12 bg-blue-600 text-white rounded-full shadow-lg flex items-center justify-center font-bold text-xl border-3 border-white"
+                 style="box-shadow: 0 4px 15px rgba(37, 99, 235, 0.5);">
+                <span id="numero_posicion">1</span>
+            </div>
         </div>
 
 
@@ -967,6 +970,23 @@
                 opacity: 0.5;
             }
 
+            /* Elemento original mientras se arrastra */
+            .elemento-drag.dragging-original {
+                opacity: 0.4;
+                border: 2px dashed #3b82f6;
+                background: #eff6ff;
+            }
+
+            /* Mirror de FullCalendar */
+            .fc-event-mirror {
+                background: #3b82f6 !important;
+                border: none !important;
+                border-radius: 4px !important;
+                box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4) !important;
+                opacity: 0.9 !important;
+                z-index: 9999 !important;
+            }
+
             /* Elemento seleccionado */
             .elemento-drag.seleccionado {
                 border-color: #2563eb;
@@ -1328,17 +1348,20 @@
                 pointer-events: none;
             }
 
-            /* Indicador de posición durante arrastre */
+            /* Indicador de posición durante arrastre - Círculo azul */
             #indicador_posicion {
                 transition: left 0.05s ease-out, top 0.05s ease-out;
             }
 
-            #indicador_posicion span {
-                display: block;
-                width: 100%;
-                height: 100%;
-                line-height: 48px;
+            /* Ocultar todos los tooltips durante el drag */
+            .tippy-disabled [data-tippy-root],
+            .tippy-disabled .tippy-box,
+            .tippy-disabled .fc-tooltip {
+                display: none !important;
+                visibility: hidden !important;
+                opacity: 0 !important;
             }
+
         </style>
         {{-- Datos del calendario - se actualiza en cada navegación --}}
         <script id="calendario-maquinas-data" type="application/json">
@@ -1381,15 +1404,17 @@
                 let mostrarIndicador = false;
                 let tooltipsDeshabilitados = false;
 
-                // 🎯 Listener GLOBAL de mousemove para el indicador
-                document.addEventListener('mousemove', function(e) {
-                    if (mostrarIndicador && indicadorPosicion) {
+                // 🎯 Listener GLOBAL para el indicador (mousemove + drag)
+                function moverIndicador(e) {
+                    if (mostrarIndicador && indicadorPosicion && e.clientX !== 0 && e.clientY !== 0) {
                         indicadorPosicion.style.left = (e.clientX + 20) + 'px';
                         indicadorPosicion.style.top = (e.clientY - 20) + 'px';
                         indicadorPosicion.style.display = 'block';
                         indicadorPosicion.classList.remove('hidden');
                     }
-                });
+                }
+                document.addEventListener('mousemove', moverIndicador);
+                document.addEventListener('drag', moverIndicador);
 
 
                 // Inicializar FullCalendar
@@ -1575,14 +1600,23 @@
                                 return;
                             }
 
-                            const maquinaDestinoId = parseInt(info.event.getResources()[0].id);
-                            const maquinaDestinoNombre = info.event.getResources()[0].title;
+                            const recursos = info.event.getResources();
+                            if (!recursos || recursos.length === 0 || !recursos[0]) {
+                                console.error('❌ No se pudo obtener el recurso destino');
+                                info.revert();
+                                return;
+                            }
+                            const maquinaDestinoId = parseInt(recursos[0].id);
+                            const maquinaDestinoNombre = recursos[0].title;
                             console.log('🎯 Máquina destino:', maquinaDestinoId, maquinaDestinoNombre);
 
                             // Calcular la posición correcta donde se soltó el elemento
                             const eventosOrdenados = calendar.getEvents()
-                                .filter(ev => ev.getResources().some(r => r.id == maquinaDestinoId))
-                                .sort((a, b) => a.start - b.start);
+                                .filter(ev => {
+                                    const evResources = ev.getResources();
+                                    return evResources && evResources.length > 0 && evResources[0] && evResources[0].id == maquinaDestinoId;
+                                })
+                                .sort((a, b) => (a.start || 0) - (b.start || 0));
 
                             // Encontrar posición basada en el tiempo donde se soltó
                             let nuevaPosicion = 1;
@@ -2524,22 +2558,51 @@
 
                     const elementosBajoMouse = document.elementsFromPoint(e.clientX, e.clientY);
 
-                    // Buscar cualquier elemento que tenga data-resource-id
+                    // Buscar el resourceId - FullCalendar usa diferentes estructuras
                     let resourceId = null;
+
                     for (const el of elementosBajoMouse) {
-                        if (el.dataset.resourceId) {
+                        // Método 1: data-resource-id directo
+                        if (el.dataset && el.dataset.resourceId) {
                             resourceId = el.dataset.resourceId;
                             break;
                         }
-                        let parent = el.parentElement;
-                        while (parent && !resourceId) {
-                            if (parent.dataset.resourceId) {
-                                resourceId = parent.dataset.resourceId;
+
+                        // Método 2: Buscar en fc-timegrid-col con data-resource-id
+                        const colWithResource = el.closest('[data-resource-id]');
+                        if (colWithResource) {
+                            resourceId = colWithResource.dataset.resourceId;
+                            break;
+                        }
+
+                        // Método 3: Buscar columna de timegrid y extraer de su posición
+                        const timeGridCol = el.closest('.fc-timegrid-col');
+                        if (timeGridCol && timeGridCol.dataset.resourceId) {
+                            resourceId = timeGridCol.dataset.resourceId;
+                            break;
+                        }
+
+                        // Método 4: Buscar en la fila del recurso
+                        const resourceLane = el.closest('.fc-timegrid-col-frame');
+                        if (resourceLane) {
+                            const parentCol = resourceLane.closest('[data-resource-id]');
+                            if (parentCol) {
+                                resourceId = parentCol.dataset.resourceId;
                                 break;
                             }
-                            parent = parent.parentElement;
                         }
-                        if (resourceId) break;
+                    }
+
+                    // Si aún no encontramos, intentar por posición X
+                    if (!resourceId) {
+                        const allResourceCols = calendarioEl.querySelectorAll('.fc-timegrid-col[data-resource-id]');
+                        for (const col of allResourceCols) {
+                            const rect = col.getBoundingClientRect();
+                            if (e.clientX >= rect.left && e.clientX <= rect.right) {
+                                resourceId = col.dataset.resourceId;
+                                break;
+                            }
+                        }
                     }
 
                     if (!resourceId) {
@@ -2549,53 +2612,69 @@
                         return;
                     }
 
-                    // Obtener todos los eventos de esa máquina ordenados
-                    const eventosOrdenados = calendar.getEvents()
-                        .filter(ev => ev.getResources().some(r => r.id == resourceId))
-                        .sort((a, b) => a.start - b.start);
+                    // Obtener la columna de la máquina
+                    const columna = calendarioEl.querySelector(`.fc-timegrid-col[data-resource-id="${resourceId}"]`);
+                    if (!columna) {
+                        if (numeroPosicion) numeroPosicion.textContent = '?';
+                        return;
+                    }
 
-                    // Buscar evento más cercano bajo el cursor para estimar posición
-                    let eventoMasCercano = null;
-                    let distanciaMinima = Infinity;
+                    // Obtener todos los eventos VISIBLES de esa máquina, ordenados por posición Y
+                    const eventosEnColumna = [];
+                    const eventosDOM = columna.querySelectorAll('.fc-event:not(.fc-event-mirror)');
 
-                    eventosOrdenados.forEach(evento => {
-                        const eventoEls = document.querySelectorAll(
-                            `.fc-event[data-event-id="${evento.id}"]`);
-                        eventoEls.forEach(eventoEl => {
-                            const rect = eventoEl.getBoundingClientRect();
-                            const distancia = Math.abs(e.clientY - (rect.top + rect.height /
-                                2));
-                            if (distancia < distanciaMinima) {
-                                distanciaMinima = distancia;
-                                eventoMasCercano = evento;
-                            }
+                    eventosDOM.forEach(eventoEl => {
+                        const rect = eventoEl.getBoundingClientRect();
+                        eventosEnColumna.push({
+                            el: eventoEl,
+                            top: rect.top,
+                            bottom: rect.bottom,
+                            centerY: rect.top + rect.height / 2
                         });
                     });
 
+                    // Ordenar por posición vertical (de arriba a abajo)
+                    eventosEnColumna.sort((a, b) => a.top - b.top);
+
                     let posicionCalculada = 1;
 
-                    if (eventoMasCercano) {
-                        const indexCercano = eventosOrdenados.findIndex(ev => ev.id === eventoMasCercano.id);
-                        const eventoEl = document.querySelector(
-                            `.fc-event[data-event-id="${eventoMasCercano.id}"]`);
-                        if (eventoEl) {
-                            const rect = eventoEl.getBoundingClientRect();
-                            const mitadAltura = rect.top + (rect.height / 2);
-
-                            if (e.clientY < mitadAltura) {
-                                posicionCalculada = indexCercano + 1;
-                            } else {
-                                posicionCalculada = indexCercano + 2;
-                            }
-                        } else {
-                            posicionCalculada = indexCercano + 1;
-                        }
-                    } else {
+                    if (eventosEnColumna.length === 0) {
+                        // No hay eventos, posición 1
                         posicionCalculada = 1;
+                    } else {
+                        // Calcular posición basándose en la posición Y del cursor
+                        let encontrado = false;
+
+                        for (let i = 0; i < eventosEnColumna.length; i++) {
+                            const evento = eventosEnColumna[i];
+
+                            if (e.clientY < evento.centerY) {
+                                // Cursor está arriba del centro de este evento
+                                posicionCalculada = i + 1;
+                                encontrado = true;
+                                break;
+                            }
+                        }
+
+                        // Si no encontramos ninguno, insertar al final
+                        if (!encontrado) {
+                            posicionCalculada = eventosEnColumna.length + 1;
+                        }
                     }
 
                     if (numeroPosicion) {
                         numeroPosicion.textContent = posicionCalculada;
+                    }
+                });
+
+                // Resetear cuando sale del calendario
+                calendarioEl.addEventListener('dragleave', function(e) {
+                    const rect = calendarioEl.getBoundingClientRect();
+                    if (e.clientX < rect.left || e.clientX > rect.right ||
+                        e.clientY < rect.top || e.clientY > rect.bottom) {
+                        if (numeroPosicion) {
+                            numeroPosicion.textContent = '?';
+                        }
                     }
                 });
 
@@ -2790,8 +2869,13 @@
                         seccionWrapper.appendChild(seccionElementos);
                     });
 
-                    // Configurar FullCalendar.Draggable con timeout para asegurar que se ejecuta
+                    // Configurar FullCalendar.Draggable
                     setTimeout(() => {
+                        // Destruir draggable anterior si existe
+                        if (lista._fcDraggable) {
+                            lista._fcDraggable.destroy();
+                        }
+
                         const draggable = new FullCalendar.Draggable(lista, {
                             itemSelector: '.elemento-drag',
                             eventData: function(eventEl) {
@@ -2799,38 +2883,54 @@
                             }
                         });
 
-                        // Usar eventos nativos del DOM
-                        lista.addEventListener('mousedown', function(e) {
+                        lista._fcDraggable = draggable;
+
+                        // Cuando empieza el drag
+                        lista.addEventListener('dragstart', function(e) {
                             const target = e.target.closest('.elemento-drag');
-                            if (target) {
-                                setTimeout(() => {
-                                    elementoArrastrandose = target;
-                                    mostrarIndicador = true;
-                                    tooltipsDeshabilitados = true;
-                                    if (numeroPosicion) {
-                                        numeroPosicion.textContent = '?';
-                                    }
-                                    document.querySelectorAll('.fc-tooltip').forEach(t => t
-                                        .style.display = 'none');
-                                }, 50);
+                            if (!target) return;
+
+                            elementoArrastrandose = target;
+                            mostrarIndicador = true;
+                            tooltipsDeshabilitados = true;
+
+                            // Desactivar TODOS los tooltips de Tippy
+                            if (typeof tippy !== 'undefined') {
+                                document.querySelectorAll('[data-tippy-root]').forEach(t => t.remove());
+                                // Deshabilitar temporalmente Tippy en todo el documento
+                                document.body.classList.add('tippy-disabled');
                             }
+                            document.querySelectorAll('.fc-tooltip').forEach(t => t.remove());
+
+                            // Mostrar indicador inmediatamente
+                            if (indicadorPosicion) {
+                                indicadorPosicion.style.display = 'block';
+                                indicadorPosicion.classList.remove('hidden');
+                                indicadorPosicion.style.left = (e.clientX + 20) + 'px';
+                                indicadorPosicion.style.top = (e.clientY - 20) + 'px';
+                            }
+
+                            // Marcar elemento original
+                            target.classList.add('dragging-original');
                         });
 
-                        document.addEventListener('mouseup', function(e) {
+                        // Limpiar al terminar drag
+                        const limpiarDrag = function() {
                             if (elementoArrastrandose) {
-                                setTimeout(() => {
-                                    elementoArrastrandose = null;
-                                    mostrarIndicador = false;
-                                    tooltipsDeshabilitados = false;
-                                    if (indicadorPosicion) {
-                                        indicadorPosicion.classList.add('hidden');
-                                        indicadorPosicion.style.display = 'none';
-                                    }
-                                    document.querySelectorAll('.fc-tooltip').forEach(t => t
-                                        .remove());
-                                }, 100);
+                                elementoArrastrandose.classList.remove('dragging-original');
+                                elementoArrastrandose = null;
                             }
-                        });
+                            mostrarIndicador = false;
+                            tooltipsDeshabilitados = false;
+                            document.body.classList.remove('tippy-disabled');
+                            if (indicadorPosicion) {
+                                indicadorPosicion.classList.add('hidden');
+                                indicadorPosicion.style.display = 'none';
+                            }
+                        };
+
+                        lista.addEventListener('dragend', limpiarDrag);
+                        document.addEventListener('drop', limpiarDrag);
                     }, 100);
 
                     // ✅ Ajustar calendario

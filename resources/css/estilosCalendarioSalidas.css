@@ -318,9 +318,9 @@
 
 /* 🔹 Hacer que todos los eventos ocupen todo el ancho de la celda en vista mensual */
 /* FORZAR ancho completo ignorando completamente el sistema de FullCalendar */
-/* Excluir eventos de resumen para no afectarlos */
-.fc-dayGridMonth-view .fc-daygrid-event-harness:not(:has(.evento-resumen-diario)) {
-    position: static !important;
+/* Excluir eventos de resumen y eventos que se están arrastrando */
+.fc-dayGridMonth-view .fc-daygrid-event-harness:not(:has(.evento-resumen-diario)):not(.fc-event-dragging):not(.fc-daygrid-event-harness-abs) {
+    position: relative !important;
     inset: unset !important;
     left: unset !important;
     right: unset !important;
@@ -331,13 +331,13 @@
     float: none !important;
 }
 
-.fc-dayGridMonth-view .fc-daygrid-event-harness:not(:has(.evento-resumen-diario)):before,
-.fc-dayGridMonth-view .fc-daygrid-event-harness:not(:has(.evento-resumen-diario)):after {
+.fc-dayGridMonth-view .fc-daygrid-event-harness:not(:has(.evento-resumen-diario)):not(.fc-event-dragging):before,
+.fc-dayGridMonth-view .fc-daygrid-event-harness:not(:has(.evento-resumen-diario)):not(.fc-event-dragging):after {
     content: none !important;
 }
 
-.fc-dayGridMonth-view .fc-daygrid-event:not(.evento-resumen-diario) {
-    position: static !important;
+.fc-dayGridMonth-view .fc-daygrid-event:not(.evento-resumen-diario):not(.fc-event-dragging):not(.fc-event-mirror) {
+    position: relative !important;
     width: 100% !important;
     max-width: 100% !important;
     margin: 0 !important;
@@ -376,16 +376,43 @@
     padding-right: 2px !important;
 }
 
-/* 🔹 Limitar el ancho del evento mientras se arrastra en vista mensual */
-.fc-dayGridMonth-view .fc-event-dragging,
-.fc-dayGridMonth-view .fc-event-mirror {
-    width: 200px !important;
-    max-width: 200px !important;
-    position: fixed !important;
+/* 🔹 Limitar el ancho del evento mientras se arrastra (TODAS las vistas) */
+.fc-event-mirror,
+.fc .fc-event-mirror {
+    width: 150px !important;
+    max-width: 150px !important;
+    min-width: 150px !important;
+    height: auto !important;
+    max-height: 100px !important;
+    overflow: hidden !important;
+    position: absolute !important;
+    z-index: 9999 !important;
+    opacity: 0.9 !important;
+    pointer-events: none !important;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3) !important;
+    border: 2px dashed white !important;
+    border-radius: 6px !important;
+}
+
+.fc-event-dragging,
+.fc .fc-event-dragging {
+    opacity: 0.4 !important;
 }
 
 /* 🔹 También para el harness del evento mientras se arrastra */
-.fc-dayGridMonth-view .fc-daygrid-event-harness-abs {
-    width: auto !important;
-    max-width: 200px !important;
+.fc-daygrid-event-harness-abs,
+.fc .fc-daygrid-event-harness-abs {
+    width: 150px !important;
+    max-width: 150px !important;
+    position: absolute !important;
+    z-index: 9999 !important;
+}
+
+/* 🔹 Asegurar que los eventos normales sean arrastrables */
+.fc-event:not(.evento-resumen-diario):not(.fc-event-festivo) {
+    cursor: grab;
+}
+
+.fc-event:not(.evento-resumen-diario):not(.fc-event-festivo):active {
+    cursor: grabbing;
 }
