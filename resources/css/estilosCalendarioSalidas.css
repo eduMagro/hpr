@@ -293,28 +293,8 @@
     padding: 2px !important;
 }
 
-/* 🔹 Reducir ancho de columnas de fin de semana en vista mensual (70% del ancho normal) */
-.fc-dayGridMonth-view .fc-day-sat,
-.fc-dayGridMonth-view .fc-day-sun {
-    width: 10% !important;
-    min-width: 100px !important;
-}
-
-/* 🔹 Ajustar también las celdas de encabezado */
-.fc-dayGridMonth-view .fc-col-header-cell.fc-day-sat,
-.fc-dayGridMonth-view .fc-col-header-cell.fc-day-sun {
-    width: 10% !important;
-    min-width: 100px !important;
-}
-
-/* 🔹 Días laborables toman más espacio */
-.fc-dayGridMonth-view .fc-day:not(.fc-day-sat):not(.fc-day-sun) {
-    width: 16% !important;
-}
-
-.fc-dayGridMonth-view .fc-col-header-cell:not(.fc-day-sat):not(.fc-day-sun) {
-    width: 16% !important;
-}
+/* 🔹 Ancho de columnas de fin de semana controlado dinámicamente por JS */
+/* Ver sección "COLAPSO DE FIN DE SEMANA EN VISTA MENSUAL" más abajo */
 
 /* 🔹 Hacer que todos los eventos ocupen todo el ancho de la celda en vista mensual */
 /* FORZAR ancho completo ignorando completamente el sistema de FullCalendar */
@@ -428,4 +408,183 @@ div.fc-event-mirror {
 
 .fc-event:not(.evento-resumen-diario):not(.fc-event-festivo):active {
     cursor: grabbing;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   🔹 COLAPSO DE FIN DE SEMANA EN VISTA SEMANAL (TIMELINE)
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* Columnas de fin de semana colapsadas */
+.fc-timeline .weekend-collapsed {
+    width: 40px !important;
+    min-width: 40px !important;
+    max-width: 40px !important;
+    overflow: hidden !important;
+    transition: all 0.3s ease;
+    background-color: #f8f9fa !important;
+}
+
+/* Ocultar contenido de celdas colapsadas */
+.fc-timeline .weekend-collapsed .fc-timeline-event,
+.fc-timeline .weekend-collapsed .fc-event {
+    display: none !important;
+}
+
+/* Estilo para encabezados de fin de semana clicables */
+.weekend-header {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 4px 6px;
+    border-radius: 4px;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+    cursor: pointer;
+    background-color: #e5e7eb;
+    font-size: 12px;
+}
+
+.weekend-header:hover {
+    background-color: #d1d5db;
+    transform: scale(1.02);
+}
+
+/* Icono de colapso */
+.weekend-header .collapse-icon {
+    font-size: 9px;
+    color: #4b5563;
+    transition: transform 0.2s ease;
+}
+
+/* Efecto visual cuando está colapsado */
+.weekend-header[data-collapsed="true"] {
+    background-color: #9ca3af;
+    color: white;
+    padding: 4px 8px;
+}
+
+.weekend-header[data-collapsed="true"] .collapse-icon {
+    color: white;
+}
+
+.weekend-header[data-collapsed="true"] .weekend-label {
+    font-size: 10px;
+    font-weight: 500;
+}
+
+/* Efecto visual cuando está expandido */
+.weekend-header[data-collapsed="false"] {
+    background-color: #dbeafe;
+    color: #1e40af;
+}
+
+.weekend-header[data-collapsed="false"] .collapse-icon {
+    color: #1e40af;
+}
+
+/* Transición suave para las columnas */
+.fc-timeline-slot[data-date] {
+    transition: all 0.3s ease;
+}
+
+/* Celdas de lanes también colapsadas */
+.fc-timeline-lane td.weekend-collapsed {
+    width: 40px !important;
+    min-width: 40px !important;
+    max-width: 40px !important;
+    overflow: hidden !important;
+    background-color: #f8f9fa !important;
+}
+
+/* Fondo sutil para identificar columnas de fin de semana */
+.fc-timeline .fc-timeline-slot.fc-day-sat,
+.fc-timeline .fc-timeline-slot.fc-day-sun {
+    background-color: #fafafa;
+}
+
+/* Header de slot colapsado centrado */
+.fc-timeline .weekend-collapsed .fc-timeline-slot-cushion {
+    justify-content: center;
+    padding: 0 !important;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   🔹 COLAPSO DE FIN DE SEMANA EN VISTA MENSUAL (DAYGRID)
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* Columnas de fin de semana colapsadas en vista mensual - celdas de días */
+.fc-dayGridMonth-view td.weekend-day-collapsed {
+    width: 40px !important;
+    min-width: 40px !important;
+    max-width: 40px !important;
+    transition: all 0.3s ease;
+    background-color: #f3f4f6 !important;
+    cursor: pointer;
+}
+
+/* Ocultar eventos en columnas colapsadas */
+.fc-dayGridMonth-view .weekend-day-collapsed .fc-daygrid-day-events {
+    display: none !important;
+}
+
+/* Número del día más pequeño en columnas colapsadas */
+.fc-dayGridMonth-view .weekend-day-collapsed .fc-daygrid-day-top {
+    font-size: 10px !important;
+    padding: 2px !important;
+    text-align: center !important;
+}
+
+.fc-dayGridMonth-view .weekend-day-collapsed .fc-daygrid-day-number {
+    padding: 2px !important;
+}
+
+/* Encabezado de columna colapsada (th) */
+.fc-dayGridMonth-view th.weekend-day-collapsed {
+    width: 40px !important;
+    min-width: 40px !important;
+    max-width: 40px !important;
+    background-color: #9ca3af !important;
+    transition: all 0.3s ease;
+}
+
+.fc-dayGridMonth-view th.weekend-day-collapsed .fc-col-header-cell-cushion {
+    font-size: 10px !important;
+    padding: 4px 2px !important;
+    color: white !important;
+}
+
+/* Cursor pointer para indicar que es clicable en fines de semana */
+.fc-dayGridMonth-view .fc-col-header-cell.fc-day-sat,
+.fc-dayGridMonth-view .fc-col-header-cell.fc-day-sun,
+.fc-dayGridMonth-view .fc-daygrid-day.fc-day-sat,
+.fc-dayGridMonth-view .fc-daygrid-day.fc-day-sun {
+    cursor: pointer;
+}
+
+.fc-dayGridMonth-view .fc-col-header-cell.fc-day-sat:hover,
+.fc-dayGridMonth-view .fc-col-header-cell.fc-day-sun:hover {
+    background-color: #d1d5db !important;
+}
+
+.fc-dayGridMonth-view th.weekend-day-collapsed:hover {
+    background-color: #6b7280 !important;
+}
+
+/* Transición suave para todas las columnas de fin de semana */
+.fc-dayGridMonth-view .fc-day-sat,
+.fc-dayGridMonth-view .fc-day-sun {
+    transition: all 0.3s ease;
+}
+
+/* Indicador visual de que se puede expandir */
+.fc-dayGridMonth-view th.weekend-day-collapsed::after {
+    content: " ▶";
+    font-size: 8px;
+}
+
+.fc-dayGridMonth-view th.fc-day-sat:not(.weekend-day-collapsed)::after,
+.fc-dayGridMonth-view th.fc-day-sun:not(.weekend-day-collapsed)::after {
+    content: " ▼";
+    font-size: 8px;
+    color: #6b7280;
 }

@@ -1211,6 +1211,70 @@ class PedidoController extends Controller
     }
 
     /**
+     * Cancelar un pedido completo y todas sus líneas
+     */
+    public function cancelarPedido($pedidoId)
+    {
+        $pedido = Pedido::with('pedidoProductos')->findOrFail($pedidoId);
+
+        if (strtolower(trim($pedido->estado)) === 'cancelado') {
+            return redirect()->back()->with('info', 'El pedido ya estaba cancelado.');
+        }
+
+        try {
+            DB::transaction(function () use ($pedido) {
+                // Recopilar todos los pedido_global_id afectados
+                $pgIds = $pedido->pedidoProductos
+                    ->pluck('pedido_global_id')
+                    ->filter()
+                    ->unique()
+                    ->toArray();
+
+                // Cancelar todas las líneas del pedido
+                foreach ($pedido->pedidoProductos as $linea) {
+                    if (strtolower(trim($linea->estado)) !== 'cancelado') {
+                        $linea->estado = 'cancelado';
+                        $linea->save();
+                    }
+                }
+
+                // Cancelar el pedido
+                $pedido->estado = 'cancelado';
+                $pedido->save();
+
+                // Recalcular estado de los Pedidos Globales afectados
+                if (!empty($pgIds)) {
+                    $pedidosGlobales = PedidoGlobal::whereIn('id', $pgIds)
+                        ->lockForUpdate()
+                        ->get();
+
+                    foreach ($pedidosGlobales as $pg) {
+                        if (method_exists($pg, 'actualizarEstadoSegunProgreso')) {
+                            $pg->actualizarEstadoSegunProgreso();
+                        }
+                    }
+                }
+
+                Log::info('Pedido cancelado completamente', [
+                    'pedido_id'     => $pedido->id,
+                    'pedido_codigo' => $pedido->codigo,
+                    'num_lineas'    => $pedido->pedidoProductos->count(),
+                    'usuario'       => auth()->user()->nombre_completo ?? auth()->id(),
+                ]);
+            });
+
+            return back()->with('success', 'Pedido cancelado correctamente.');
+        } catch (\Throwable $e) {
+            Log::error('Error al cancelar pedido', [
+                'pedido_id' => $pedido->id,
+                'mensaje'   => $e->getMessage(),
+            ]);
+
+            return back()->with('error', 'Error al cancelar el pedido. Consulta con administración.');
+        }
+    }
+
+    /**
      * Algoritmo único para asignar líneas a PedidoGlobal
      * SOLO encaja si la cantidad es EXACTA al restante de un PG.
      * Si ninguna línea cierra el más antiguo, se avisa.

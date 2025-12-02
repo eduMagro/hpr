@@ -152,6 +152,9 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
 
     Route::post('pedidos/{pedido}/lineas/{linea}/completar', [PedidoController::class, 'completarLineaManual'])->name('pedidos.editarCompletarLineaManual');
 
+    // === CANCELAR PEDIDO COMPLETO ===
+    Route::put('/pedidos/{pedido}/cancelar', [PedidoController::class, 'cancelarPedido'])->name('pedidos.cancelar');
+
     // === LINEAS DEL PEDIDO ===
     Route::put('/pedidos/{pedido}/lineas/{linea}/cancelar', [PedidoController::class, 'cancelarLinea'])->name('pedidos.lineas.editarCancelar');
 
