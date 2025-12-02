@@ -142,7 +142,12 @@
                             <div class="inline-flex flex-col items-center gap-1">
                                 <span class="font-semibold">{{ $pedido->codigo ?? '—' }}</span>
                                 @if(!empty($linea->id))
-                                    <a href="{{ route('entradas.index', ['pedido_producto_id' => $linea->id]) }}" class="text-blue-600 hover:underline text-[11px]">
+                                    <a href="{{ route('entradas.index', [
+                                            'pedido_codigo' => $pedido->codigo,
+                                            'pedido_producto_id' => $linea->id,
+                                        ]) }}"
+                                        wire:navigate
+                                        class="text-blue-600 hover:underline text-[11px]">
                                         Ver entradas
                                     </a>
                                 @endif
