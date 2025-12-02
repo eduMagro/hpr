@@ -359,9 +359,12 @@
 
                 /* Escuchar actualizaciones de inventario para recargar escaneados */
                 window.addEventListener('inventario-actualizado', (e) => {
-                    const { ubicacionId } = e.detail || {};
+                    const {
+                        ubicacionId
+                    } = e.detail || {};
                     // Si es para esta ubicación, recargar escaneados desde localStorage
-                    if (ubicacionId && this.nombreUbicacion && ubicacionId.toString() === this.nombreUbicacion.toString()) {
+                    if (ubicacionId && this.nombreUbicacion && ubicacionId.toString() === this
+                        .nombreUbicacion.toString()) {
                         this.escaneados = JSON.parse(localStorage.getItem(claveLS) || '[]');
                     }
                 });
@@ -1005,6 +1008,10 @@ Inesperados: ${inesperados.join(', ') || ''}
 
         window.$store = window.$store || {};
         window.$store.inv = Alpine.store('inv');
+        window.addEventListener('producto-reasignado', () => {
+            if (!window.$store?.inv) return;
+            setTimeout(() => window.$store.inv.sincronizarProductosActuales(), 0);
+        });
     };
 
     // Si Alpine ya está cargado (navegación SPA), inicializar de inmediato
@@ -1466,10 +1473,10 @@ Inesperados: ${inesperados.join(', ') || ''}
                                         const estadosGlobal = window.productosEstados || {};
                                         const maquinasGlobal = window.productosMaquinas || {};
                                         let estado = esperados.length === 0 ? 'ok' : (escaneados.length === esperados.length ? 'ok' : 'pendiente');
-
+                                
                                         const hayFabricando = esperados.some(c => estadosGlobal[c] === 'fabricando' && maquinasGlobal[c]);
                                         if (hayFabricando) estado = 'fabricando';
-
+                                
                                         for (const codigo of sospechosos) {
                                             const estadoProd = (window.productosEstados || {})[codigo];
                                             const ubicAsign = (window.productosAsignados || {})[codigo];
@@ -1490,7 +1497,7 @@ Inesperados: ${inesperados.join(', ') || ''}
                                                 break;
                                             }
                                         }
-
+                                
                                         this.estado = estado;
                                         window.dispatchEvent(new CustomEvent('ubicacion-estado', {
                                             detail: { ubicacionId: this.ubicId, sector: this.sector, estado }
@@ -1537,23 +1544,26 @@ Inesperados: ${inesperados.join(', ') || ''}
 
                                 <div class="w-full mt-1 space-y-1" x-show="productos && productos.length">
                                     <template x-for="prod in productos" :key="prod">
-                                        <div
-                                            class="rounded-md px-2 py-1 flex items-center gap-1"
+                                        <div class="rounded-md px-2 py-1 flex items-center gap-1"
                                             :class="[
                                                 $store.inv && $store.inv.modoInventario && estaEscaneado(prod) ?
                                                 'bg-green-100 dark:bg-green-900/30 border border-green-400 dark:border-green-500' :
                                                 'bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-400'
                                             ]">
                                             <!-- Checkmark icon for scanned products -->
-                                            <svg x-show="$store.inv && $store.inv.modoInventario && estaEscaneado(prod)" class="w-4 h-4 text-green-600 dark:text-green-400 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                                                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+                                            <svg x-show="$store.inv && $store.inv.modoInventario && estaEscaneado(prod)"
+                                                class="w-4 h-4 text-green-600 dark:text-green-400 flex-shrink-0"
+                                                fill="currentColor" viewBox="0 0 20 20">
+                                                <path fill-rule="evenodd"
+                                                    d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                                                    clip-rule="evenodd" />
                                             </svg>
                                             <p class="text-[11px] font-semibold flex-1"
-                                               :class="[
-                                                   $store.inv && $store.inv.modoInventario && estaEscaneado(prod) ?
-                                                   'text-green-700 dark:text-green-300' :
-                                                   'text-gray-800 dark:text-gray-100'
-                                               ]">
+                                                :class="[
+                                                    $store.inv && $store.inv.modoInventario && estaEscaneado(prod) ?
+                                                    'text-green-700 dark:text-green-300' :
+                                                    'text-gray-800 dark:text-gray-100'
+                                                ]">
                                                 <span x-text="prod"></span> |
                                                 Ø <span
                                                     x-text="window.detallesProductos?.[prod]?.diametro ?? 'N/D'"></span>
@@ -1572,7 +1582,7 @@ Inesperados: ${inesperados.join(', ') || ''}
         </div>
 
 
-        <div class="flex max-md:flex-col gap-3 max-sm:pb-4">
+        <div class="flex max-md:flex-col gap-3 max-sm:pb-8">
             <div
                 class="w-full h-14 md:h-16 flex flex-col items-center justify-center border border-blue-200 dark:border-blue-700/70 rounded-xl shadow-sm bg-white/80 dark:bg-gray-900/80 hover:border-blue-500 hover:shadow-md transition">
                 <button @click="openModal = true"
@@ -1794,11 +1804,24 @@ Inesperados: ${inesperados.join(', ') || ''}
                         <!-- Input QR -->
                         <div
                             class="relative px-4 py-3 sm:px-6 sm:py-4 bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
-                            <input type="text"
-                                class="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-4 py-3 text-sm text-gray-900 dark:text-white placeholder-gray-400 bg-white dark:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm"
-                                placeholder="Escanea el código QR aquí..."
-                                x-on:keydown.enter.prevent="procesarQR($event.target.value); $event.target.value = ''"
-                                x-ref="inputQR" inputmode="none" autocomplete="off">
+                            <div class="flex items-center gap-3">
+                                <div class="flex-1 relative">
+                                    <input type="text"
+                                        class="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-4 py-3 text-sm text-gray-900 dark:text-white placeholder-gray-400 bg-white dark:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 pr-12 shadow-sm"
+                                        placeholder="Escanea el código QR aquí..."
+                                        x-on:keydown.enter.prevent="procesarQR($event.target.value); $event.target.value = ''"
+                                        x-ref="inputQR" inputmode="none" autocomplete="off">
+                                </div>
+                                <button type="button"
+                                    class="flex items-center justify-center rounded-md border border-transparent bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 text-xs font-semibold shadow"
+                                    title="Procesar escaneo"
+                                    @click="if ($refs.inputQR.value.trim()) { procesarQR($refs.inputQR.value); $refs.inputQR.value = '' }">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M21 21l-4.35-4.35M11 19a8 8 0 100-16 8 8 0 000 16z" />
+                                    </svg>
+                                </button>
+                            </div>
 
                             <!-- Último código escaneado (flotante) -->
                             <div x-show="ultimoCodigo" x-transition
@@ -2236,39 +2259,46 @@ Inesperados: ${inesperados.join(', ') || ''}
                                                 @click="showLeyendaMobile = !showLeyendaMobile"
                                                 class="inline-flex items-center justify-center h-6 w-6 rounded-full bg-red-600 hover:bg-red-700 text-white font-bold text-xs shadow transition-all"
                                                 title="Leyenda de colores">
-                                                i
-                                            </button>
+                                                <button x-show="$store.inv.showInesperados"
+                                                    @click="showLeyendaMobile = !showLeyendaMobile"
+                                                    class="inline-flex items-center justify-center h-6 w-6 rounded-full bg-red-600 hover:bg-red-700 text-white font-bold text-xs shadow transition-all"
+                                                    title="Leyenda de colores">
+                                                    i
+                                                </button>
 
-                                            <div x-show="showLeyendaMobile" @click.away="showLeyendaMobile = false"
-                                                x-transition:enter="transition ease-out duration-200"
-                                                x-transition:enter-start="opacity-0 translate-y-1"
-                                                x-transition:enter-end="opacity-100 translate-y-0"
-                                                x-transition:leave="transition ease-in duration-150"
-                                                x-transition:leave-start="opacity-100 translate-y-0"
-                                                x-transition:leave-end="opacity-0 translate-y-1"
-                                                class="absolute right-0 top-full w-56 p-3 bg-white dark:bg-gray-800 rounded-xl shadow-xl border border-gray-200 dark:border-gray-700 z-[120] mt-2">
+                                                <div x-show="showLeyendaMobile"
+                                                    @click.away="showLeyendaMobile = false"
+                                                    x-transition:enter="transition ease-out duration-200"
+                                                    x-transition:enter-start="opacity-0 translate-y-1"
+                                                    x-transition:enter-end="opacity-100 translate-y-0"
+                                                    x-transition:leave="transition ease-in duration-150"
+                                                    x-transition:leave-start="opacity-100 translate-y-0"
+                                                    x-transition:leave-end="opacity-0 translate-y-1"
+                                                    class="absolute right-0 top-full w-56 p-3 bg-white dark:bg-gray-800 rounded-xl shadow-xl border border-gray-200 dark:border-gray-700 z-[120] mt-2">
 
-                                                <h3 class="font-bold text-gray-900 dark:text-white mb-2 text-xs">
-                                                    Leyenda</h3>
-                                                <div class="space-y-1.5 text-[10px] text-gray-700 dark:text-gray-300">
-                                                    <div class="flex items-center gap-2">
-                                                        <span class="h-2.5 w-2.5 rounded-full bg-blue-500"></span>
-                                                        <span>Consumido</span>
-                                                    </div>
-                                                    <div class="flex items-center gap-2">
-                                                        <span class="h-2.5 w-2.5 rounded-full bg-purple-500"></span>
-                                                        <span>Fabricando</span>
-                                                    </div>
-                                                    <div class="flex items-center gap-2">
-                                                        <span class="h-2.5 w-2.5 rounded-full bg-amber-500"></span>
-                                                        <span>Otra ubicación</span>
-                                                    </div>
-                                                    <div class="flex items-center gap-2">
-                                                        <span class="h-2.5 w-2.5 rounded-full bg-red-600"></span>
-                                                        <span>Sin registrar</span>
+                                                    <h3 class="font-bold text-gray-900 dark:text-white mb-2 text-xs">
+                                                        Leyenda</h3>
+                                                    <div
+                                                        class="space-y-1.5 text-[10px] text-gray-700 dark:text-gray-300">
+                                                        <div class="flex items-center gap-2">
+                                                            <span class="h-2.5 w-2.5 rounded-full bg-blue-500"></span>
+                                                            <span>Consumido</span>
+                                                        </div>
+                                                        <div class="flex items-center gap-2">
+                                                            <span
+                                                                class="h-2.5 w-2.5 rounded-full bg-purple-500"></span>
+                                                            <span>Fabricando</span>
+                                                        </div>
+                                                        <div class="flex items-center gap-2">
+                                                            <span class="h-2.5 w-2.5 rounded-full bg-amber-500"></span>
+                                                            <span>Otra ubicación</span>
+                                                        </div>
+                                                        <div class="flex items-center gap-2">
+                                                            <span class="h-2.5 w-2.5 rounded-full bg-red-600"></span>
+                                                            <span>Sin registrar</span>
+                                                        </div>
                                                     </div>
                                                 </div>
-                                            </div>
                                         </div>
 
                                         <svg class="w-5 h-5 text-red-600 dark:text-red-400 transition-transform"
@@ -2397,21 +2427,21 @@ Inesperados: ${inesperados.join(', ') || ''}
                 ubicacionId: null,
                 escaneadosDetalle: [],
                 init() {
-                    this.productosEsperados = Array.isArray($store?.inv?.productosActuales) ? $store.inv.productosActuales : [];
+                    this.actualizarEsperados();
                     this.ubicacionId = $store?.inv?.ubicacionActual ?? null;
                     this.recargarEscaneados();
-
+            
                     // Escuchar reasignaciones de productos para actualizar la lista
                     window.addEventListener('producto-reasignado', (e) => {
                         const { codigo, nuevaUbicacion } = e.detail || {};
                         if (!codigo) return;
-
+            
                         // Sincronizar con el store
                         $store?.inv?.sincronizarProductosActuales();
                         this.productosEsperados = Array.isArray($store?.inv?.productosActuales) ? $store.inv.productosActuales : [];
                         this.recargarEscaneados();
                     });
-
+            
                     // Escuchar actualizaciones de inventario para recargar
                     window.addEventListener('inventario-actualizado', (e) => {
                         const { ubicacionId } = e.detail || {};
@@ -2443,7 +2473,27 @@ Inesperados: ${inesperados.join(', ') || ''}
                         this.recargarEscaneados();
                     }
                 }
-            }" x-init="$watch('$store.inv.modalDetalleEsperados', value => { if (value) recargarEscaneados(); })"
+            }" x-init="init();
+            $watch('$store.inv.modalDetalleEsperados', value => {
+                if (value) {
+                    actualizarEsperados();
+                    ubicacionId = $store?.inv?.ubicacionActual ?? null;
+                    recargarEscaneados();
+                }
+            });
+            $watch('$store.inv.productosActuales', () => {
+                actualizarEsperados();
+                if ($store?.inv?.modalDetalleEsperados) {
+                    recargarEscaneados();
+                }
+            });
+            $watch('$store.inv.ubicacionActual', value => {
+                ubicacionId = value ?? null;
+                if ($store?.inv?.modalDetalleEsperados) {
+                    actualizarEsperados();
+                    recargarEscaneados();
+                }
+            });"
                 x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0"
                 x-transition:enter-end="opacity-100" x-transition:leave="transition ease-in duration-200"
                 x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0"
