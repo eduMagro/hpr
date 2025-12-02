@@ -30,5 +30,13 @@ class PedidoProductoColada extends Model
     {
         return $this->belongsTo(Colada::class);
     }
+
+    /**
+     * Relación alternativa para evitar conflicto con el campo 'colada' (string)
+     */
+    public function coladaMaestra()
+    {
+        return $this->belongsTo(Colada::class, 'colada_id');
+    }
 }
 
