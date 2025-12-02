@@ -357,6 +357,15 @@
                     ...(window.productosMaquinas || {})
                 };
 
+                /* Escuchar actualizaciones de inventario para recargar escaneados */
+                window.addEventListener('inventario-actualizado', (e) => {
+                    const { ubicacionId } = e.detail || {};
+                    // Si es para esta ubicación, recargar escaneados desde localStorage
+                    if (ubicacionId && this.nombreUbicacion && ubicacionId.toString() === this.nombreUbicacion.toString()) {
+                        this.escaneados = JSON.parse(localStorage.getItem(claveLS) || '[]');
+                    }
+                });
+
                 /* Escuchar reasignaciones globales */
                 window.addEventListener('producto-reasignado', (e) => {
                     const {
@@ -732,6 +741,9 @@
                             }
                         }));
 
+                        // Reproducir sonido de OK
+                        this.reproducirOk();
+
                         return swalToast.fire({
                             icon: 'success',
                             title: 'Producto restablecido',
@@ -798,6 +810,9 @@
                             }
                         }));
 
+                        // Reproducir sonido de OK
+                        this.reproducirOk();
+
                         return swalToast.fire({
                             icon: 'success',
                             title: 'Asignado',
@@ -833,6 +848,9 @@
                             // actualizar global y local reactivo
                             window.productosAsignados[codigo] = this.nombreUbicacion;
                             this.asignados[codigo] = this.nombreUbicacion;
+
+                            // Reproducir sonido de OK
+                            this.reproducirOk();
 
                             swalToast.fire({
                                 icon: 'success',
@@ -1411,16 +1429,21 @@ Inesperados: ${inesperados.join(', ') || ''}
                     <div x-show="openSectors['{{ $sector }}']"
                         class="flex flex-wrap justify-center gap-2 p-2 md:gap-4 md:p-4">
                         @foreach ($ubicaciones as $ubicacion)
-                            <div class="bg-slate-50 dark:bg-gray-800 border rounded-xl p-2 md:p-4 flex flex-col gap-2 shadow-sm hover:shadow-md transition min-w-[282px] max-md:w-full"
+                            <div class="border rounded-xl p-2 md:p-4 flex flex-col gap-2 shadow-sm hover:shadow-md transition min-w-[282px] max-md:w-full"
                                 x-data="{
                                     productos: @js($ubicacion->productos->pluck('codigo')->values()),
                                     paquetes: @js($ubicacion->paquetes->pluck('codigo')->values()),
                                     ubicId: '{{ $ubicacion->id }}',
                                     sector: '{{ $sector }}',
                                     estado: 'pendiente',
+                                    escaneadosCache: [],
                                     init() {
+                                        this.actualizarEscaneadosCache();
                                         this.calcularEstado();
-                                        window.addEventListener('inventario-actualizado', () => this.calcularEstado());
+                                        window.addEventListener('inventario-actualizado', (e) => {
+                                            this.actualizarEscaneadosCache();
+                                            this.calcularEstado();
+                                        });
                                         window.addEventListener('producto-reasignado', (e) => {
                                             const { codigo, nuevaUbicacion } = e.detail || {};
                                             if (!codigo) return;
@@ -1429,8 +1452,12 @@ Inesperados: ${inesperados.join(', ') || ''}
                                             } else {
                                                 this.productos = this.productos.filter(c => c !== codigo);
                                             }
+                                            this.actualizarEscaneadosCache();
                                             this.calcularEstado();
                                         });
+                                    },
+                                    actualizarEscaneadosCache() {
+                                        this.escaneadosCache = JSON.parse(localStorage.getItem(`inv-${this.ubicId}`) || '[]');
                                     },
                                     calcularEstado() {
                                         const esperados = this.productos || [];
@@ -1439,10 +1466,10 @@ Inesperados: ${inesperados.join(', ') || ''}
                                         const estadosGlobal = window.productosEstados || {};
                                         const maquinasGlobal = window.productosMaquinas || {};
                                         let estado = esperados.length === 0 ? 'ok' : (escaneados.length === esperados.length ? 'ok' : 'pendiente');
-                                
+
                                         const hayFabricando = esperados.some(c => estadosGlobal[c] === 'fabricando' && maquinasGlobal[c]);
                                         if (hayFabricando) estado = 'fabricando';
-                                
+
                                         for (const codigo of sospechosos) {
                                             const estadoProd = (window.productosEstados || {})[codigo];
                                             const ubicAsign = (window.productosAsignados || {})[codigo];
@@ -1463,24 +1490,27 @@ Inesperados: ${inesperados.join(', ') || ''}
                                                 break;
                                             }
                                         }
-                                
+
                                         this.estado = estado;
                                         window.dispatchEvent(new CustomEvent('ubicacion-estado', {
                                             detail: { ubicacionId: this.ubicId, sector: this.sector, estado }
                                         }));
+                                    },
+                                    estaEscaneado(codigo) {
+                                        return this.escaneadosCache.includes(codigo);
                                     }
                                 }"
                                 :class="[
                                     $store.inv && $store.inv.modoInventario ?
                                     'cursor-pointer hover:ring-2 hover:ring-blue-400' : '',
                                     $store.inv && $store.inv.modoInventario ?
-                                    (estado === 'ok' ? 'border-green-400' :
-                                        estado === 'fabricando' ? 'border-purple-400' :
-                                        estado === 'consumido' ? 'border-blue-400' :
-                                        estado === 'ambar' ? 'border-amber-400' :
-                                        estado === 'rojo' ? 'border-red-500' :
-                                        'border-gray-200 dark:border-gray-700') :
-                                    'border-gray-200 dark:border-gray-700'
+                                    (estado === 'ok' ? 'border-green-400 bg-green-200 dark:bg-green-950' :
+                                        estado === 'fabricando' ? 'border-purple-400 bg-purple-200 dark:bg-purple-950' :
+                                        estado === 'consumido' ? 'border-blue-400 bg-blue-200 dark:bg-blue-950' :
+                                        estado === 'ambar' ? 'border-amber-400 bg-amber-200 dark:bg-amber-950' :
+                                        estado === 'rojo' ? 'border-red-500 bg-red-200 dark:bg-red-950' :
+                                        'border-gray-200 dark:border-gray-700 bg-slate-50 dark:bg-gray-800') :
+                                    'border-gray-200 dark:border-gray-700 bg-slate-50 dark:bg-gray-800'
                                 ]"
                                 @click="abrirInventario('{{ $ubicacion->id }}', @js($ubicacion->productos->pluck('codigo')->values()), {{ json_encode($ubicacion->codigo ?? 'SIN-CODIGO') }})">
                                 <div class="flex items-center justify-between w-full">
@@ -1508,14 +1538,28 @@ Inesperados: ${inesperados.join(', ') || ''}
                                 <div class="w-full mt-1 space-y-1" x-show="productos && productos.length">
                                     <template x-for="prod in productos" :key="prod">
                                         <div
-                                            class="bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-400 rounded-md px-2 py-1 text-center">
-                                            <p class="text-[11px] text-gray-800 dark:text-gray-100 font-semibold">
+                                            class="rounded-md px-2 py-1 flex items-center gap-1"
+                                            :class="[
+                                                $store.inv && $store.inv.modoInventario && estaEscaneado(prod) ?
+                                                'bg-green-100 dark:bg-green-900/30 border border-green-400 dark:border-green-500' :
+                                                'bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-400'
+                                            ]">
+                                            <!-- Checkmark icon for scanned products -->
+                                            <svg x-show="$store.inv && $store.inv.modoInventario && estaEscaneado(prod)" class="w-4 h-4 text-green-600 dark:text-green-400 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                                                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+                                            </svg>
+                                            <p class="text-[11px] font-semibold flex-1"
+                                               :class="[
+                                                   $store.inv && $store.inv.modoInventario && estaEscaneado(prod) ?
+                                                   'text-green-700 dark:text-green-300' :
+                                                   'text-gray-800 dark:text-gray-100'
+                                               ]">
                                                 <span x-text="prod"></span> |
                                                 Ø <span
                                                     x-text="window.detallesProductos?.[prod]?.diametro ?? 'N/D'"></span>
                                                 mm |
                                                 Cosl: <span
-                                                    x-text="window.detallesProductos?.[prod]?.colada ?? ''"></span>
+                                                    x-text="window.detallesProductos?.[prod]?.colada ?? ''"></span>
                                             </p>
                                         </div>
                                     </template>
@@ -2173,9 +2217,9 @@ Inesperados: ${inesperados.join(', ') || ''}
                             <!-- Header que se desplaza arriba cuando se expande -->
                             <div class="border-t-2 border-red-300 dark:border-red-700 bg-red-50 dark:bg-red-900/20 transition-all duration-300"
                                 :class="$store.inv.showInesperados ? 'fixed top-0 left-0 right-0 z-[110]' : 'relative'">
-                                <div class="w-full px-4 py-3 flex items-center justify-between">
-                                    <div class="flex items-center gap-3"
-                                        @click="$store.inv.showInesperados = !$store.inv.showInesperados">
+                                <div class="w-full px-4 py-3 flex items-center justify-between cursor-pointer"
+                                    @click="$store.inv.showInesperados = !$store.inv.showInesperados">
+                                    <div class="flex items-center gap-3">
                                         <div class="flex flex-col items-start">
                                             <span
                                                 class="text-sm font-semibold text-red-700 dark:text-red-400">Productos
@@ -2188,9 +2232,10 @@ Inesperados: ${inesperados.join(', ') || ''}
                                     <div class="flex items-center gap-3">
                                         <!-- Leyenda Mobile -->
                                         <div x-data="{ showLeyendaMobile: false }" class="relative" @click.stop>
-                                        <button x-show="$store.inv.showInesperados" @click="showLeyendaMobile = !showLeyendaMobile"
-                                            class="inline-flex items-center justify-center h-6 w-6 rounded-full bg-red-600 hover:bg-red-700 text-white font-bold text-xs shadow transition-all"
-                                            title="Leyenda de colores">
+                                            <button x-show="$store.inv.showInesperados"
+                                                @click="showLeyendaMobile = !showLeyendaMobile"
+                                                class="inline-flex items-center justify-center h-6 w-6 rounded-full bg-red-600 hover:bg-red-700 text-white font-bold text-xs shadow transition-all"
+                                                title="Leyenda de colores">
                                                 i
                                             </button>
 
@@ -2226,14 +2271,12 @@ Inesperados: ${inesperados.join(', ') || ''}
                                             </div>
                                         </div>
 
-                                        <button @click="$store.inv.showInesperados = !$store.inv.showInesperados">
-                                            <svg class="w-5 h-5 text-red-600 dark:text-red-400 transition-transform"
-                                                :class="$store.inv.showInesperados ? '' : 'rotate-180'" fill="none"
-                                                stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                    d="M19 9l-7 7-7-7" />
-                                            </svg>
-                                        </button>
+                                        <svg class="w-5 h-5 text-red-600 dark:text-red-400 transition-transform"
+                                            :class="$store.inv.showInesperados ? '' : 'rotate-180'" fill="none"
+                                            stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M19 9l-7 7-7-7" />
+                                        </svg>
                                     </div>
                                 </div>
                             </div>
@@ -2357,6 +2400,28 @@ Inesperados: ${inesperados.join(', ') || ''}
                     this.productosEsperados = Array.isArray($store?.inv?.productosActuales) ? $store.inv.productosActuales : [];
                     this.ubicacionId = $store?.inv?.ubicacionActual ?? null;
                     this.recargarEscaneados();
+
+                    // Escuchar reasignaciones de productos para actualizar la lista
+                    window.addEventListener('producto-reasignado', (e) => {
+                        const { codigo, nuevaUbicacion } = e.detail || {};
+                        if (!codigo) return;
+
+                        // Sincronizar con el store
+                        $store?.inv?.sincronizarProductosActuales();
+                        this.productosEsperados = Array.isArray($store?.inv?.productosActuales) ? $store.inv.productosActuales : [];
+                        this.recargarEscaneados();
+                    });
+
+                    // Escuchar actualizaciones de inventario para recargar
+                    window.addEventListener('inventario-actualizado', (e) => {
+                        const { ubicacionId } = e.detail || {};
+                        if (ubicacionId && this.ubicacionId && ubicacionId.toString() === this.ubicacionId.toString()) {
+                            // Sincronizar con el store
+                            $store?.inv?.sincronizarProductosActuales();
+                            this.productosEsperados = Array.isArray($store?.inv?.productosActuales) ? $store.inv.productosActuales : [];
+                            this.recargarEscaneados();
+                        }
+                    });
                 },
                 recargarEscaneados() {
                     const clave = 'inv-' + this.ubicacionId;
@@ -2506,7 +2571,7 @@ Inesperados: ${inesperados.join(', ') || ''}
     @vite(['resources/js/qr/qr-bundle.js'])
 
     <!-- Elementos de audio para feedback -->
-    <audio id="sonido-ok" src="{{ asset('sonidos/scan-ok.mp3') }}" preload="auto"></audio>
+    <audio id="sonido-ok" src="{{ asset('sonidos/scan-ok.wav') }}" preload="auto"></audio>
     <audio id="sonido-error" src="{{ asset('sonidos/scan-error.mp3') }}" preload="auto"></audio>
     <audio id="sonido-pedo" src="{{ asset('sonidos/scan-error.mp3') }}" preload="auto"></audio>
     <audio id="sonido-estaEnOtraUbi" src="{{ asset('sonidos/scan-error.mp3') }}" preload="auto"></audio>
