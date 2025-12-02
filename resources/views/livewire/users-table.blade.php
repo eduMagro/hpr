@@ -1,4 +1,4 @@
-<div class="max-md:hidden">
+<div class="max-md:hidden" x-data="{ editandoUserId: null }">
     <style>
         [x-cloak] {
             display: none !important;
@@ -159,10 +159,39 @@
 
             <tbody class="text-gray-700 text-sm">
                 @forelse ($registrosUsuarios as $user)
-                <tr tabindex="0" x-data="{ editando: false, usuario: @js($user), original: JSON.parse(JSON.stringify(@js($user))) }"
-                    @keydown.enter.stop="guardarCambios(usuario); editando=false"
-                    :class="{ 'bg-yellow-100': editando }"
-                    class="border-b odd:bg-gray-100 even:bg-gray-50 hover:bg-blue-200 cursor-pointer text-xs uppercase">
+                <tr tabindex="0"
+                    wire:key="user-{{ $user->id }}"
+                    x-data="{
+                        id: {{ $user->id }},
+                        usuario: @js($user),
+                        original: JSON.parse(JSON.stringify(@js($user))),
+                        get editando() { return editandoUserId === this.id },
+                        abrirEdicion() {
+                            editandoUserId = this.id;
+                        },
+                        cerrarEdicion() {
+                            if (editandoUserId === this.id) {
+                                editandoUserId = null;
+                            }
+                        },
+                        cancelarEdicion() {
+                            this.usuario = JSON.parse(JSON.stringify(this.original));
+                            this.cerrarEdicion();
+                        }
+                    }"
+                    @dblclick="if(!$event.target.closest('input, select, button, a')) {
+                        if(!editando) {
+                            abrirEdicion();
+                        } else {
+                            cancelarEdicion();
+                        }
+                    }"
+                    @keydown.enter.stop="if(editando) { guardarCambios(usuario); cerrarEdicion(); }"
+                    :class="{
+                        'bg-yellow-100': editando,
+                        'hover:bg-blue-50': !editando
+                    }"
+                    class="border-b odd:bg-gray-100 even:bg-gray-50 cursor-pointer text-xs uppercase transition-colors">
 
                     <td class="px-2 py-3 text-center border">{{ $user->id }}</td>
 
@@ -291,15 +320,43 @@
                         </form>
                     </td>
 
-                    <td class="px-2 py-2 border text-xs font-bold">
+                    <td class="px-1 py-2 border text-xs font-bold">
                         <div class="flex items-center space-x-2 justify-center">
-                            <x-tabla.boton-guardar x-cloak x-show="editando"
-                                @click="guardarCambios(usuario); editando=false" />
-                            <x-tabla.boton-cancelar-edicion x-cloak x-show="editando" @click="editando=false" />
+                            <!-- Mostrar solo en modo edición -->
+                            <button x-show="editando" style="display: none;"
+                                @click="guardarCambios(usuario); cerrarEdicion()"
+                                class="w-6 h-6 bg-green-100 text-green-600 rounded hover:bg-green-200 flex items-center justify-center"
+                                title="Guardar cambios">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none"
+                                    viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M5 13l4 4L19 7" />
+                                </svg>
+                            </button>
+                            <button x-show="editando" style="display: none;"
+                                @click="cancelarEdicion()"
+                                class="w-6 h-6 bg-red-100 text-red-600 rounded hover:bg-red-200 flex items-center justify-center"
+                                title="Cancelar edición">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none"
+                                    viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
 
+                            <!-- Mostrar solo cuando NO está en modo edición -->
                             <template x-if="!editando">
                                 <div class="flex items-center space-x-2">
-                                    <x-tabla.boton-editar @click="editando=true" x-show="!editando" />
+                                    <button @click="abrirEdicion()"
+                                        class="w-6 h-6 bg-blue-100 text-blue-600 rounded hover:bg-blue-200 flex items-center justify-center"
+                                        title="Editar">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4"
+                                            fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round"
+                                                stroke-width="2"
+                                                d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                        </svg>
+                                    </button>
                                     <x-tabla.boton-ver :href="route('users.show', $user->id)" target="_self" rel="noopener" />
                                     <a href="{{ route('users.edit', $user->id) }}" wire:navigate title="Configuración"
                                         class="w-6 h-6 bg-yellow-100 text-yellow-600 rounded hover:bg-yellow-200 flex items-center justify-center">

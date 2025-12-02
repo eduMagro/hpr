@@ -1381,8 +1381,41 @@
             }
         </script>
         <script>
+            // Variables globales para el sistema de drag (fuera de la función para persistir entre reinicializaciones)
+            window._maquinasCalendarState = window._maquinasCalendarState || {
+                moverIndicadorHandler: null,
+                dragoverHandler: null,
+                dragleaveHandler: null,
+                initialized: false
+            };
+
             // Hacer la función global para que el layout pueda llamarla
             window.inicializarCalendarioMaquinas = function() {
+                // 🧹 LIMPIEZA: Remover listeners anteriores antes de registrar nuevos
+                if (window._maquinasCalendarState.moverIndicadorHandler) {
+                    document.removeEventListener('mousemove', window._maquinasCalendarState.moverIndicadorHandler);
+                    document.removeEventListener('drag', window._maquinasCalendarState.moverIndicadorHandler);
+                }
+
+                // Limpiar listeners del calendario anterior
+                const oldCalendarioEl = document.getElementById('calendario');
+                if (oldCalendarioEl) {
+                    if (window._maquinasCalendarState.dragoverHandler) {
+                        oldCalendarioEl.removeEventListener('dragover', window._maquinasCalendarState.dragoverHandler);
+                    }
+                    if (window._maquinasCalendarState.dragleaveHandler) {
+                        oldCalendarioEl.removeEventListener('dragleave', window._maquinasCalendarState.dragleaveHandler);
+                    }
+                }
+
+                // Destruir calendario anterior si existe
+                if (window.calendar && typeof window.calendar.destroy === 'function') {
+                    window.calendar.destroy();
+                }
+
+                // Limpiar tooltips residuales
+                document.querySelectorAll('.fc-tooltip').forEach(t => t.remove());
+
                 // Leer datos actualizados del DOM (se actualizan en cada navegación)
                 const dataEl = document.getElementById('calendario-maquinas-data');
                 if (!dataEl) {
@@ -1406,7 +1439,6 @@
 
                 // Variable para trackear elemento que se arrastra desde el panel
                 let elementoArrastrandose = null;
-                let eventoArrastrandose = null;
                 let mostrarIndicador = false;
                 window.tooltipsDeshabilitados = false;
 
@@ -1419,8 +1451,24 @@
                         indicadorPosicion.classList.remove('hidden');
                     }
                 }
+
+                // Guardar referencia para poder eliminar después
+                window._maquinasCalendarState.moverIndicadorHandler = moverIndicador;
+
                 document.addEventListener('mousemove', moverIndicador);
                 document.addEventListener('drag', moverIndicador);
+
+                // 🧹 Función auxiliar para limpiar estado de drag completamente
+                function limpiarEstadoDrag() {
+                    mostrarIndicador = false;
+                    elementoArrastrandose = null;
+                    window.tooltipsDeshabilitados = false;
+                    document.body.classList.remove('dragging-elemento');
+                    if (indicadorPosicion) {
+                        indicadorPosicion.classList.add('hidden');
+                        indicadorPosicion.style.display = 'none';
+                    }
+                }
 
 
                 // Inicializar FullCalendar
@@ -1570,12 +1618,8 @@
                     // 🎯 CLAVE: Configurar recepción de elementos externos
                     eventReceive: async function(info) {
                         try {
-                            // Ocultar indicador al soltar
-                            mostrarIndicador = false;
-                            if (indicadorPosicion) {
-                                indicadorPosicion.classList.add('hidden');
-                                indicadorPosicion.style.display = 'none';
-                            }
+                            // Limpiar estado de drag al soltar
+                            limpiarEstadoDrag();
 
                             const elementoDiv = document.querySelector(
                                 `.elemento-drag[data-elemento-id="${info.event.extendedProps.elementoId}"]`
@@ -2058,9 +2102,9 @@
 
                     // 🎯 Eventos para mostrar indicador de posición al arrastrar
                     eventDragStart: function(info) {
-                        eventoArrastrandose = info.event;
                         mostrarIndicador = true;
                         window.tooltipsDeshabilitados = true;
+                        document.body.classList.add('dragging-elemento');
 
                         // Ocultar todos los tooltips existentes
                         document.querySelectorAll('.fc-tooltip').forEach(t => t.remove());
@@ -2119,13 +2163,7 @@
                     },
 
                     eventDragStop: function(info) {
-                        eventoArrastrandose = null;
-                        mostrarIndicador = false;
-                        window.tooltipsDeshabilitados = false;
-                        if (indicadorPosicion) {
-                            indicadorPosicion.classList.add('hidden');
-                            indicadorPosicion.style.display = 'none';
-                        }
+                        limpiarEstadoDrag();
                     },
 
                     eventDrop: async function(info) {
@@ -2359,7 +2397,7 @@
                             tooltip.style.display = 'block';
                         });
                         info.el.addEventListener('mousemove', function(e) {
-                            if (window.tooltipsDeshabilitados) {
+                            if (window.tooltipsDeshabilitados || document.body.classList.contains('dragging-elemento')) {
                                 tooltip.style.display = 'none';
                                 return;
                             }
@@ -2558,7 +2596,8 @@
                 let ultimoRecursoDetectado = null;
                 let ultimaTiempoDetectado = null;
 
-                calendarioEl.addEventListener('dragover', function(e) {
+                // Handler de dragover como función nombrada para poder eliminarla
+                function handleDragover(e) {
                     if (!elementoArrastrandose) return;
 
                     e.preventDefault();
@@ -2672,10 +2711,10 @@
                     if (numeroPosicion) {
                         numeroPosicion.textContent = posicionCalculada;
                     }
-                });
+                }
 
-                // Resetear cuando sale del calendario
-                calendarioEl.addEventListener('dragleave', function(e) {
+                // Handler de dragleave como función nombrada
+                function handleDragleave(e) {
                     const rect = calendarioEl.getBoundingClientRect();
                     if (e.clientX < rect.left || e.clientX > rect.right ||
                         e.clientY < rect.top || e.clientY > rect.bottom) {
@@ -2683,7 +2722,13 @@
                             numeroPosicion.textContent = '?';
                         }
                     }
-                });
+                }
+
+                // Registrar los handlers y guardar referencias para limpieza
+                calendarioEl.addEventListener('dragover', handleDragover);
+                calendarioEl.addEventListener('dragleave', handleDragleave);
+                window._maquinasCalendarState.dragoverHandler = handleDragover;
+                window._maquinasCalendarState.dragleaveHandler = handleDragleave;
 
                 // Función para actualizar eventos sin recargar
                 function actualizarEventosSinRecargar(eventosNuevos, maquinasAfectadas = null) {
@@ -2887,13 +2932,7 @@
                             });
 
                             div.addEventListener('dragend', function() {
-                                elementoArrastrandose = null;
-                                mostrarIndicador = false;
-                                window.tooltipsDeshabilitados = false;
-                                document.body.classList.remove('dragging-elemento');
-                                if (indicadorPosicion) {
-                                    indicadorPosicion.style.display = 'none';
-                                }
+                                limpiarEstadoDrag();
                                 div.classList.remove('dragging-original');
                             });
 
