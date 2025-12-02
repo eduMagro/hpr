@@ -159,26 +159,40 @@
                                 <label class="text-sm text-gray-500">DNI</label>
                                 <p class="font-medium">{{ $incorporacion->dni }}</p>
                                 {{-- Enlaces para ver/descargar imágenes del DNI --}}
-                                <div class="flex gap-3 mt-2">
+                                <div class="flex gap-3 mt-2 flex-wrap">
                                     @if($incorporacion->dni_frontal)
-                                        <a href="{{ route('incorporaciones.ver-archivo', [$incorporacion, $incorporacion->dni_frontal]) }}"
-                                            target="_blank" class="text-blue-600 hover:underline text-sm flex items-center">
-                                            <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                                            </svg>
-                                            Frontal
-                                        </a>
+                                        <div class="flex items-center gap-1">
+                                            <a href="{{ route('incorporaciones.ver-archivo', [$incorporacion, $incorporacion->dni_frontal]) }}"
+                                                target="_blank" class="text-blue-600 hover:underline text-sm flex items-center">
+                                                <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                                </svg>
+                                                Frontal
+                                            </a>
+                                            <button onclick="eliminarArchivoIncorporacion('dni_frontal', 'DNI Frontal')" class="text-red-500 hover:text-red-700 p-1" title="Eliminar">
+                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                                                </svg>
+                                            </button>
+                                        </div>
                                     @endif
                                     @if($incorporacion->dni_trasero)
-                                        <a href="{{ route('incorporaciones.ver-archivo', [$incorporacion, $incorporacion->dni_trasero]) }}"
-                                            target="_blank" class="text-blue-600 hover:underline text-sm flex items-center">
-                                            <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                                            </svg>
-                                            Trasero
-                                        </a>
+                                        <div class="flex items-center gap-1">
+                                            <a href="{{ route('incorporaciones.ver-archivo', [$incorporacion, $incorporacion->dni_trasero]) }}"
+                                                target="_blank" class="text-blue-600 hover:underline text-sm flex items-center">
+                                                <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                                </svg>
+                                                Trasero
+                                            </a>
+                                            <button onclick="eliminarArchivoIncorporacion('dni_trasero', 'DNI Trasero')" class="text-red-500 hover:text-red-700 p-1" title="Eliminar">
+                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                                                </svg>
+                                            </button>
+                                        </div>
                                     @endif
                                 </div>
                             </div>
@@ -197,13 +211,20 @@
                             <div class="sm:col-span-2">
                                 <label class="text-sm text-gray-500">Certificado bancario</label>
                                 @if($incorporacion->certificado_bancario)
-                                    <a href="{{ route('incorporaciones.ver-archivo', [$incorporacion, $incorporacion->certificado_bancario]) }}"
-                                        target="_blank" class="text-blue-600 hover:underline flex items-center">
-                                        <svg class="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                                        </svg>
-                                        Descargar certificado
-                                    </a>
+                                    <div class="flex items-center gap-2">
+                                        <a href="{{ route('incorporaciones.ver-archivo', [$incorporacion, $incorporacion->certificado_bancario]) }}"
+                                            target="_blank" class="text-blue-600 hover:underline flex items-center">
+                                            <svg class="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                            </svg>
+                                            Descargar certificado
+                                        </a>
+                                        <button onclick="eliminarArchivoIncorporacion('certificado_bancario', 'Certificado Bancario')" class="text-red-500 hover:text-red-700 p-1" title="Eliminar">
+                                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                            </svg>
+                                        </button>
+                                    </div>
                                 @endif
                             </div>
                         </div>
@@ -277,10 +298,10 @@
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                                             </svg>
                                         </a>
-                                        <button onclick="abrirModalSubir('{{ $tipo }}', '{{ $item['nombre'] }}')"
-                                            class="text-yellow-600 hover:text-yellow-800" title="Reemplazar documento">
+                                        <button onclick="eliminarArchivoFormacion({{ $item['formacion']->id }}, '{{ $item['nombre'] }}')"
+                                            class="text-red-600 hover:text-red-800" title="Eliminar documento">
                                             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                                             </svg>
                                         </button>
                                     @else
@@ -678,6 +699,92 @@
                                 icon: 'error',
                                 title: 'Error',
                                 text: data.message || 'Error al revocar'
+                            });
+                        }
+                    });
+                }
+            });
+        }
+
+        function eliminarArchivoIncorporacion(tipo, nombre) {
+            Swal.fire({
+                title: `¿Eliminar ${nombre}?`,
+                text: 'Esta acción no se puede deshacer.',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#dc2626',
+                cancelButtonColor: '#6b7280',
+                confirmButtonText: 'Sí, eliminar',
+                cancelButtonText: 'Cancelar'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    fetch('{{ route('incorporaciones.eliminar-archivo', $incorporacion) }}', {
+                        method: 'DELETE',
+                        headers: {
+                            'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                            'Accept': 'application/json',
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({ tipo: tipo })
+                    })
+                    .then(r => r.json())
+                    .then(data => {
+                        if (data.success) {
+                            Swal.fire({
+                                icon: 'success',
+                                title: 'Eliminado',
+                                text: data.message,
+                                timer: 1500,
+                                showConfirmButton: false
+                            }).then(() => location.reload());
+                        } else {
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Error',
+                                text: data.message || 'Error al eliminar'
+                            });
+                        }
+                    });
+                }
+            });
+        }
+
+        function eliminarArchivoFormacion(formacionId, nombre) {
+            Swal.fire({
+                title: `¿Eliminar ${nombre}?`,
+                text: 'Esta acción no se puede deshacer.',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#dc2626',
+                cancelButtonColor: '#6b7280',
+                confirmButtonText: 'Sí, eliminar',
+                cancelButtonText: 'Cancelar'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    fetch('{{ route('incorporaciones.eliminar-archivo', $incorporacion) }}', {
+                        method: 'DELETE',
+                        headers: {
+                            'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                            'Accept': 'application/json',
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({ tipo: 'formacion', formacion_id: formacionId })
+                    })
+                    .then(r => r.json())
+                    .then(data => {
+                        if (data.success) {
+                            Swal.fire({
+                                icon: 'success',
+                                title: 'Eliminado',
+                                text: data.message,
+                                timer: 1500,
+                                showConfirmButton: false
+                            }).then(() => location.reload());
+                        } else {
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Error',
+                                text: data.message || 'Error al eliminar'
                             });
                         }
                     });

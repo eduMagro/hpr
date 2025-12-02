@@ -665,6 +665,8 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
         ->name('incorporaciones.aprobar-ceo');
     Route::post('/incorporaciones/{incorporacion}/revocar-ceo', [\App\Http\Controllers\IncorporacionController::class, 'revocarCeo'])
         ->name('incorporaciones.revocar-ceo');
+    Route::delete('/incorporaciones/{incorporacion}/eliminar-archivo', [\App\Http\Controllers\IncorporacionController::class, 'eliminarArchivo'])
+        ->name('incorporaciones.eliminar-archivo');
 });
 
 // === RUTAS PÚBLICAS - FORMULARIO INCORPORACIÓN (sin autenticación) ===
