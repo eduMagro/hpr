@@ -20,6 +20,8 @@ class Incorporacion extends Model
         'email_provisional',
         'telefono_provisional',
         'dni',
+        'dni_frontal',
+        'dni_trasero',
         'numero_afiliacion_ss',
         'email',
         'telefono',
@@ -30,6 +32,12 @@ class Incorporacion extends Model
         'created_by',
         'updated_by',
         'user_id',
+        'aprobado_rrhh',
+        'aprobado_rrhh_at',
+        'aprobado_rrhh_by',
+        'aprobado_ceo',
+        'aprobado_ceo_at',
+        'aprobado_ceo_by',
     ];
 
     public $timestamps = true;
@@ -40,6 +48,10 @@ class Incorporacion extends Model
         'recordatorio_enviado_at' => 'datetime',
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
+        'aprobado_rrhh' => 'boolean',
+        'aprobado_rrhh_at' => 'datetime',
+        'aprobado_ceo' => 'boolean',
+        'aprobado_ceo_at' => 'datetime',
     ];
 
     // Estados posibles
@@ -55,6 +67,14 @@ class Incorporacion extends Model
 
     // Tipos de documentos post-incorporación
     const DOCUMENTOS_POST = [
+        // Documentos personales
+        'cv' => 'Currículum Vitae',
+        // Documentos de formación
+        'curso_20h_generico' => 'Curso 20H modalidad genérica',
+        'curso_6h_ferralla' => 'Curso 6H Ferralla',
+        'formacion_generica_puesto' => 'Formación genérica del puesto',
+        'formacion_especifica_puesto' => 'Formación específica del puesto',
+        // Documentos administrativos
         'info_preventiva' => 'Información materia preventiva',
         'art_19' => 'Art. 19 específica del puesto',
         'aptitud_medica' => 'Certificado de aptitud médica',
@@ -95,6 +115,16 @@ class Incorporacion extends Model
     public function creador()
     {
         return $this->belongsTo(User::class, 'created_by');
+    }
+
+    public function aprobadorRrhh()
+    {
+        return $this->belongsTo(User::class, 'aprobado_rrhh_by');
+    }
+
+    public function aprobadorCeo()
+    {
+        return $this->belongsTo(User::class, 'aprobado_ceo_by');
     }
 
     public function actualizador()
@@ -159,13 +189,32 @@ class Incorporacion extends Model
     public function porcentajeDocumentosPost()
     {
         $total = count(self::DOCUMENTOS_POST);
-        $completados = $this->documentos()->where('completado', true)->count();
-        return round(($completados / $total) * 100);
+
+        // Contar documentos post-incorporación completados
+        $documentosPost = $this->documentos()->where('completado', true)->pluck('tipo')->toArray();
+
+        // Contar formaciones del formulario público que coinciden con tipos de DOCUMENTOS_POST
+        $tiposFormacion = ['curso_20h_generico', 'curso_6h_ferralla', 'formacion_generica_puesto', 'formacion_especifica_puesto'];
+        $formacionesPublicas = $this->formaciones()->whereIn('tipo', $tiposFormacion)->pluck('tipo')->toArray();
+
+        // Unir ambos arrays y eliminar duplicados
+        $completados = array_unique(array_merge($documentosPost, $formacionesPublicas));
+
+        return round((count($completados) / $total) * 100);
     }
 
     public function documentosFaltantes()
     {
-        $subidos = $this->documentos()->pluck('tipo')->toArray();
+        // Documentos post-incorporación subidos
+        $documentosPost = $this->documentos()->pluck('tipo')->toArray();
+
+        // Formaciones del formulario público
+        $tiposFormacion = ['curso_20h_generico', 'curso_6h_ferralla', 'formacion_generica_puesto', 'formacion_especifica_puesto'];
+        $formacionesPublicas = $this->formaciones()->whereIn('tipo', $tiposFormacion)->pluck('tipo')->toArray();
+
+        // Unir ambos
+        $subidos = array_unique(array_merge($documentosPost, $formacionesPublicas));
+
         return array_diff(array_keys(self::DOCUMENTOS_POST), $subidos);
     }
 

@@ -194,14 +194,14 @@ class PlanillaImportService
 
             DB::beginTransaction();
 
-            // 4. ELIMINAR SOLO ELEMENTOS PENDIENTES
+            // 4. ELIMINAR SOLO ELEMENTOS PENDIENTES (forceDelete para evitar conflictos de código único)
             $elementosEliminados = $planilla->elementos()
                 ->where('estado', 'pendiente')
                 ->count();
 
             $planilla->elementos()
                 ->where('estado', 'pendiente')
-                ->delete();
+                ->forceDelete();
 
             Log::channel('planilla_import')->info("🗑️ Elementos pendientes eliminados", [
                 'cantidad' => $elementosEliminados,

@@ -529,7 +529,23 @@ class PedidoController extends Controller
         }
 
 
-        $requiereFabricanteManual = $pedido->distribuidor_id !== null && $pedido->fabricante_id === null;
+        // Cargar coladas de la línea con su relación a la tabla coladas maestra
+        $linea->load(['coladas.colada']);
+
+        // Verificar si las coladas ya tienen fabricante definido en la tabla coladas
+        $coladasConFabricante = $linea->coladas->filter(function ($c) {
+            return $c->colada && $c->colada->fabricante_id;
+        });
+        $todasColadasTienenFabricante = $linea->coladas->isNotEmpty() &&
+            $coladasConFabricante->count() === $linea->coladas->count();
+
+        // Solo requerir fabricante manual si:
+        // 1. Viene de distribuidor sin fabricante definido en pedido
+        // 2. Y las coladas no tienen fabricante ya definido
+        $requiereFabricanteManual = $pedido->distribuidor_id !== null
+            && $pedido->fabricante_id === null
+            && !$todasColadasTienenFabricante;
+
         $ultimoFabricante = Producto::with(['entrada', 'productoBase'])
             ->whereHas('entrada', fn($q) => $q->where('usuario_id', auth()->id()))
             ->latest()
@@ -665,7 +681,17 @@ class PedidoController extends Controller
 
             $fabricanteFinal = $pedido->fabricante_id ?? $request->fabricante_id;
 
-            //COMPROBACION DE QUE NO NOS PASAMOS DE KG 
+            // --- Si hay colada seleccionada, intentar obtener fabricante de la tabla coladas
+            if ($request->filled('n_colada') && !$fabricanteFinal) {
+                $coladaMaestra = \App\Models\Colada::where('numero_colada', $request->n_colada)
+                    ->where('producto_base_id', $request->producto_base_id)
+                    ->first();
+                if ($coladaMaestra && $coladaMaestra->fabricante_id) {
+                    $fabricanteFinal = $coladaMaestra->fabricante_id;
+                }
+            }
+
+            //COMPROBACION DE QUE NO NOS PASAMOS DE KG
             // --- Calcular lo recepcionado hasta ahora en esa línea
             $recepcionadoHastaAhora = Producto::whereHas(
                 'entrada',
@@ -927,6 +953,7 @@ class PedidoController extends Controller
             'coladas' => ['array'],
             'coladas.*.colada' => ['nullable', 'string', 'max:255'],
             'coladas.*.bulto' => ['nullable', 'numeric', 'min:0'],
+            'coladas.*.fabricante_id' => ['nullable', 'exists:fabricantes,id'],
         ]);
 
         $productoBase = $linea->productoBase;
@@ -974,18 +1001,41 @@ class PedidoController extends Controller
 
             if (!empty($data['coladas'])) {
                 foreach ($data['coladas'] as $fila) {
-                    $colada = $fila['colada'] ?? null;
+                    $numeroColada = $fila['colada'] ?? null;
                     $bulto = $fila['bulto'] ?? null;
+                    $fabricanteId = $fila['fabricante_id'] ?? null;
 
-                    if ($colada === null && $bulto === null) {
+                    if ($numeroColada === null && $bulto === null) {
                         continue;
+                    }
+
+                    $coladaId = null;
+
+                    // Si hay número de colada, buscar o crear en tabla coladas
+                    if ($numeroColada !== null) {
+                        $coladaRegistro = \App\Models\Colada::firstOrCreate(
+                            [
+                                'numero_colada' => $numeroColada,
+                                'producto_base_id' => $productoBase->id,
+                            ],
+                            [
+                                'fabricante_id' => $fabricanteId,
+                            ]
+                        );
+                        $coladaId = $coladaRegistro->id;
+
+                        // Si la colada ya existía pero no tenía fabricante, actualizarlo
+                        if ($fabricanteId && !$coladaRegistro->fabricante_id) {
+                            $coladaRegistro->update(['fabricante_id' => $fabricanteId]);
+                        }
                     }
 
                     \App\Models\PedidoProductoColada::create([
                         'pedido_producto_id' => $linea->id,
-                        'colada' => $colada,
+                        'colada_id' => $coladaId,
+                        'colada' => $numeroColada,
                         'bulto' => $bulto,
-                        'user_id' => auth()->id(), // Usuario que activa la línea
+                        'user_id' => auth()->id(),
                     ]);
                 }
             }

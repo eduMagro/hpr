@@ -9,6 +9,16 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Mail;
+use App\Mail\IncorporacionPendienteCeoMail;
+use App\Mail\IncorporacionAprobadaCeoMail;
+use PhpOffice\PhpSpreadsheet\Spreadsheet;
+use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
+use PhpOffice\PhpSpreadsheet\Style\Alignment;
+use PhpOffice\PhpSpreadsheet\Style\Border;
+use PhpOffice\PhpSpreadsheet\Style\Fill;
+use PhpOffice\PhpSpreadsheet\Style\NumberFormat;
+use PhpOffice\PhpSpreadsheet\Cell\DataType;
 
 class IncorporacionController extends Controller
 {
@@ -87,14 +97,26 @@ class IncorporacionController extends Controller
     {
         $incorporacion->load(['formaciones', 'documentos.subidoPor', 'logs.usuario', 'creador']);
 
+        // Tipos de formación que pueden venir del formulario público
+        $tiposFormacion = ['curso_20h_generico', 'curso_6h_ferralla', 'formacion_generica_puesto', 'formacion_especifica_puesto'];
+
         // Preparar checklist de documentos
         $documentosPost = [];
         foreach (Incorporacion::DOCUMENTOS_POST as $tipo => $nombre) {
+            // Primero buscar en documentos post-incorporación
             $doc = $incorporacion->documentos->where('tipo', $tipo)->first();
+
+            // Si es un tipo de formación y no hay documento post, buscar en formaciones del formulario público
+            $formacionPublica = null;
+            if (!$doc && in_array($tipo, $tiposFormacion)) {
+                $formacionPublica = $incorporacion->formaciones->where('tipo', $tipo)->first();
+            }
+
             $documentosPost[$tipo] = [
                 'nombre' => $nombre,
                 'documento' => $doc,
-                'completado' => $doc ? $doc->completado : false,
+                'formacion' => $formacionPublica, // Documento subido desde formulario público
+                'completado' => $doc ? $doc->completado : ($formacionPublica ? true : false),
             ];
         }
 
@@ -268,6 +290,134 @@ class IncorporacionController extends Controller
     }
 
     /**
+     * Aprobar incorporación por RRHH (entrevista realizada, se propone al CEO)
+     */
+    public function aprobarRrhh(Incorporacion $incorporacion)
+    {
+        // Verificar que existan usuarios CEO antes de aprobar
+        $ceos = User::withoutGlobalScopes()
+            ->whereHas('categoria', function ($query) {
+                $query->whereRaw('LOWER(nombre) LIKE ?', ['%ceo%']);
+            })
+            ->where('estado', 'activo')
+            ->whereNotNull('email')
+            ->get();
+
+        if ($ceos->isEmpty()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'No se encontró ningún usuario con categoría CEO para notificar. Configure un usuario con categoría CEO antes de aprobar.',
+            ], 422);
+        }
+
+        $incorporacion->update([
+            'aprobado_rrhh' => true,
+            'aprobado_rrhh_at' => now(),
+            'aprobado_rrhh_by' => auth()->id(),
+        ]);
+
+        $incorporacion->registrarLog(
+            'aprobacion_rrhh',
+            'Incorporación aprobada por RRHH. Entrevista realizada y propuesto al CEO.'
+        );
+
+        // Enviar email al CEO
+        $this->enviarEmailACeo($incorporacion, $ceos);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Incorporación aprobada. Se ha notificado al CEO para su validación.',
+        ]);
+    }
+
+    /**
+     * Revocar aprobación de RRHH
+     */
+    public function revocarRrhh(Incorporacion $incorporacion)
+    {
+        $incorporacion->update([
+            'aprobado_rrhh' => false,
+            'aprobado_rrhh_at' => null,
+            'aprobado_rrhh_by' => null,
+        ]);
+
+        $incorporacion->registrarLog(
+            'revocacion_rrhh',
+            'Aprobación de RRHH revocada.'
+        );
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Aprobación revocada.',
+        ]);
+    }
+
+    /**
+     * Aprobar incorporación por CEO
+     */
+    public function aprobarCeo(Incorporacion $incorporacion)
+    {
+        // Verificar que existan usuarios en el departamento RRHH antes de aprobar
+        $usuariosRrhh = User::withoutGlobalScopes()
+            ->where('estado', 'activo')
+            ->whereNotNull('email')
+            ->whereHas('departamentos', function ($q) {
+                $q->whereRaw('LOWER(nombre) LIKE ?', ['%rrhh%'])
+                    ->orWhereRaw('LOWER(nombre) LIKE ?', ['%recursos humanos%'])
+                    ->orWhereRaw('LOWER(nombre) LIKE ?', ['%human%']);
+            })
+            ->get();
+
+        if ($usuariosRrhh->isEmpty()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'No se encontró ningún usuario en el departamento de RRHH para notificar. Configure usuarios en el departamento RRHH antes de aprobar.',
+            ], 422);
+        }
+
+        $incorporacion->update([
+            'aprobado_ceo' => true,
+            'aprobado_ceo_at' => now(),
+            'aprobado_ceo_by' => auth()->id(),
+        ]);
+
+        $incorporacion->registrarLog(
+            'aprobacion_ceo',
+            'Incorporación aprobada por CEO. Trabajador autorizado para incorporarse.'
+        );
+
+        // Enviar email a usuarios de RRHH
+        $this->enviarEmailARrhh($incorporacion, $usuariosRrhh);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Incorporación aprobada. Se ha notificado a RRHH.',
+        ]);
+    }
+
+    /**
+     * Revocar aprobación de CEO
+     */
+    public function revocarCeo(Incorporacion $incorporacion)
+    {
+        $incorporacion->update([
+            'aprobado_ceo' => false,
+            'aprobado_ceo_at' => null,
+            'aprobado_ceo_by' => null,
+        ]);
+
+        $incorporacion->registrarLog(
+            'revocacion_ceo',
+            'Aprobación de CEO revocada.'
+        );
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Aprobación de CEO revocada.',
+        ]);
+    }
+
+    /**
      * Descargar archivo privado de incorporación
      */
     public function descargarArchivo(Incorporacion $incorporacion, string $archivo)
@@ -318,5 +468,355 @@ class IncorporacionController extends Controller
 
         // Fallback: usar el ID de la incorporación
         return "incorporacion_{$incorporacion->id}";
+    }
+
+    /**
+     * Descargar ZIP con toda la documentación del trabajador
+     */
+    public function descargarZip(Incorporacion $incorporacion)
+    {
+        $incorporacion->load(['formaciones', 'documentos']);
+
+        $carpetaUsuario = $this->obtenerCarpetaUsuario($incorporacion);
+        $rutaCarpeta = "private/documentos/{$carpetaUsuario}";
+
+        // Nombre del archivo ZIP
+        $nombreCompleto = Str::slug($incorporacion->name . '_' . $incorporacion->primer_apellido . '_' . ($incorporacion->segundo_apellido ?? ''), '_');
+        $nombreZip = "documentacion_{$nombreCompleto}.zip";
+
+        // Crear ZIP temporal
+        $zipPath = storage_path("app/temp/{$nombreZip}");
+
+        // Asegurar que existe el directorio temp
+        if (!file_exists(storage_path('app/temp'))) {
+            mkdir(storage_path('app/temp'), 0755, true);
+        }
+
+        $zip = new \ZipArchive();
+        if ($zip->open($zipPath, \ZipArchive::CREATE | \ZipArchive::OVERWRITE) !== true) {
+            return back()->with('error', 'No se pudo crear el archivo ZIP');
+        }
+
+        $archivosAgregados = 0;
+
+        // 1. DNI Frontal
+        if ($incorporacion->dni_frontal) {
+            $rutaArchivo = storage_path("app/{$rutaCarpeta}/{$incorporacion->dni_frontal}");
+            if (file_exists($rutaArchivo)) {
+                $extension = pathinfo($incorporacion->dni_frontal, PATHINFO_EXTENSION);
+                $zip->addFile($rutaArchivo, "01_DNI/dni_frontal.{$extension}");
+                $archivosAgregados++;
+            }
+        }
+
+        // 2. DNI Trasero
+        if ($incorporacion->dni_trasero) {
+            $rutaArchivo = storage_path("app/{$rutaCarpeta}/{$incorporacion->dni_trasero}");
+            if (file_exists($rutaArchivo)) {
+                $extension = pathinfo($incorporacion->dni_trasero, PATHINFO_EXTENSION);
+                $zip->addFile($rutaArchivo, "01_DNI/dni_trasero.{$extension}");
+                $archivosAgregados++;
+            }
+        }
+
+        // 3. Certificado bancario
+        if ($incorporacion->certificado_bancario) {
+            $rutaArchivo = storage_path("app/{$rutaCarpeta}/{$incorporacion->certificado_bancario}");
+            if (file_exists($rutaArchivo)) {
+                $extension = pathinfo($incorporacion->certificado_bancario, PATHINFO_EXTENSION);
+                $zip->addFile($rutaArchivo, "02_Datos_Bancarios/certificado_bancario.{$extension}");
+                $archivosAgregados++;
+            }
+        }
+
+        // 4. Documentos de formación (del formulario público)
+        foreach ($incorporacion->formaciones as $index => $formacion) {
+            if ($formacion->archivo) {
+                $rutaArchivo = storage_path("app/{$rutaCarpeta}/{$formacion->archivo}");
+                if (file_exists($rutaArchivo)) {
+                    $extension = pathinfo($formacion->archivo, PATHINFO_EXTENSION);
+                    $nombreArchivo = Str::slug($formacion->tipo_nombre, '_');
+                    if ($formacion->nombre) {
+                        $nombreArchivo .= '_' . Str::slug($formacion->nombre, '_');
+                    }
+                    $zip->addFile($rutaArchivo, "03_Formacion/{$nombreArchivo}.{$extension}");
+                    $archivosAgregados++;
+                }
+            }
+        }
+
+        // 5. Documentos post-incorporación
+        foreach ($incorporacion->documentos as $documento) {
+            if ($documento->archivo && $documento->completado) {
+                $rutaArchivo = storage_path("app/{$rutaCarpeta}/{$documento->archivo}");
+                if (file_exists($rutaArchivo)) {
+                    $extension = pathinfo($documento->archivo, PATHINFO_EXTENSION);
+                    $nombreDoc = Incorporacion::DOCUMENTOS_POST[$documento->tipo] ?? $documento->tipo;
+                    $nombreArchivo = Str::slug($nombreDoc, '_');
+                    $zip->addFile($rutaArchivo, "04_Documentos_Empresa/{$nombreArchivo}.{$extension}");
+                    $archivosAgregados++;
+                }
+            }
+        }
+
+        // 6. Generar fichero Excel con información del trabajador
+        $excelPath = $this->generarFichaExcel($incorporacion);
+        if ($excelPath && file_exists($excelPath)) {
+            $zip->addFile($excelPath, "00_FICHA_TRABAJADOR.xlsx");
+        }
+
+        $zip->close();
+
+        // Eliminar archivo Excel temporal
+        if (isset($excelPath) && file_exists($excelPath)) {
+            unlink($excelPath);
+        }
+
+        if ($archivosAgregados === 0) {
+            unlink($zipPath);
+            return back()->with('error', 'No hay documentos disponibles para descargar');
+        }
+
+        // Descargar y luego eliminar el archivo temporal
+        return response()->download($zipPath, $nombreZip)->deleteFileAfterSend(true);
+    }
+
+    /**
+     * Generar ficha de información del trabajador en Excel
+     */
+    private function generarFichaExcel(Incorporacion $incorporacion): ?string
+    {
+        try {
+            $spreadsheet = new Spreadsheet();
+            $sheet = $spreadsheet->getActiveSheet();
+            $sheet->setTitle('Ficha Trabajador');
+
+            // Estilos
+            $headerStyle = [
+                'font' => ['bold' => true, 'size' => 14, 'color' => ['rgb' => 'FFFFFF']],
+                'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => '2563EB']],
+                'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'vertical' => Alignment::VERTICAL_CENTER],
+            ];
+
+            $sectionStyle = [
+                'font' => ['bold' => true, 'size' => 11, 'color' => ['rgb' => 'FFFFFF']],
+                'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => '4B5563']],
+                'alignment' => ['horizontal' => Alignment::HORIZONTAL_LEFT],
+            ];
+
+            $labelStyle = [
+                'font' => ['bold' => true],
+                'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => 'F3F4F6']],
+            ];
+
+            $borderStyle = [
+                'borders' => [
+                    'allBorders' => ['borderStyle' => Border::BORDER_THIN, 'color' => ['rgb' => 'D1D5DB']],
+                ],
+            ];
+
+            // Configurar anchos de columna
+            $sheet->getColumnDimension('A')->setWidth(25);
+            $sheet->getColumnDimension('B')->setWidth(40);
+
+            $row = 1;
+
+            // Título principal
+            $sheet->setCellValue("A{$row}", 'FICHA DEL TRABAJADOR');
+            $sheet->mergeCells("A{$row}:B{$row}");
+            $sheet->getStyle("A{$row}:B{$row}")->applyFromArray($headerStyle);
+            $sheet->getRowDimension($row)->setRowHeight(30);
+            $row += 2;
+
+            // ===== DATOS PERSONALES =====
+            $sheet->setCellValue("A{$row}", 'DATOS PERSONALES');
+            $sheet->mergeCells("A{$row}:B{$row}");
+            $sheet->getStyle("A{$row}:B{$row}")->applyFromArray($sectionStyle);
+            $row++;
+
+            $datosPersonales = [
+                'Nombre completo' => ['valor' => trim($incorporacion->name . ' ' . $incorporacion->primer_apellido . ' ' . ($incorporacion->segundo_apellido ?? '')), 'texto' => false],
+                'DNI/NIE' => ['valor' => $incorporacion->dni ?? 'No disponible', 'texto' => true],
+                'N. Afiliación SS' => ['valor' => $incorporacion->numero_afiliacion_ss ?? 'No disponible', 'texto' => true],
+                'Email' => ['valor' => $incorporacion->email ?? 'No disponible', 'texto' => false],
+                'Teléfono' => ['valor' => $incorporacion->telefono ?? $incorporacion->telefono_provisional ?? 'No disponible', 'texto' => true],
+            ];
+
+            foreach ($datosPersonales as $label => $data) {
+                $sheet->setCellValue("A{$row}", $label);
+                // Forzar formato texto para números largos (DNI, teléfono, N. Afiliación)
+                if ($data['texto']) {
+                    $sheet->setCellValueExplicit("B{$row}", $data['valor'], DataType::TYPE_STRING);
+                } else {
+                    $sheet->setCellValue("B{$row}", $data['valor']);
+                }
+                $sheet->getStyle("A{$row}")->applyFromArray($labelStyle);
+                $sheet->getStyle("A{$row}:B{$row}")->applyFromArray($borderStyle);
+                $row++;
+            }
+
+            $row++;
+
+            // ===== INFORMACIÓN LABORAL =====
+            $sheet->setCellValue("A{$row}", 'INFORMACIÓN LABORAL');
+            $sheet->mergeCells("A{$row}:B{$row}");
+            $sheet->getStyle("A{$row}:B{$row}")->applyFromArray($sectionStyle);
+            $row++;
+
+            $datosLaborales = [
+                'Empresa' => $incorporacion->empresa_nombre,
+                'Puesto' => $incorporacion->puesto ?? 'No especificado',
+                'Estado' => $incorporacion->estado_badge['texto'] ?? $incorporacion->estado,
+            ];
+
+            foreach ($datosLaborales as $label => $valor) {
+                $sheet->setCellValue("A{$row}", $label);
+                $sheet->setCellValue("B{$row}", $valor);
+                $sheet->getStyle("A{$row}")->applyFromArray($labelStyle);
+                $sheet->getStyle("A{$row}:B{$row}")->applyFromArray($borderStyle);
+                $row++;
+            }
+
+            $row++;
+
+            // ===== FECHAS =====
+            $sheet->setCellValue("A{$row}", 'FECHAS');
+            $sheet->mergeCells("A{$row}:B{$row}");
+            $sheet->getStyle("A{$row}:B{$row}")->applyFromArray($sectionStyle);
+            $row++;
+
+            $fechas = [
+                'Fecha de creación' => $incorporacion->created_at?->format('d/m/Y H:i') ?? '-',
+                'Datos completados' => $incorporacion->datos_completados_at?->format('d/m/Y H:i') ?? 'Pendiente',
+            ];
+
+            foreach ($fechas as $label => $valor) {
+                $sheet->setCellValue("A{$row}", $label);
+                $sheet->setCellValue("B{$row}", $valor);
+                $sheet->getStyle("A{$row}")->applyFromArray($labelStyle);
+                $sheet->getStyle("A{$row}:B{$row}")->applyFromArray($borderStyle);
+                $row++;
+            }
+
+            $row++;
+
+            // ===== DOCUMENTOS =====
+            $sheet->setCellValue("A{$row}", 'DOCUMENTOS INCLUIDOS');
+            $sheet->mergeCells("A{$row}:B{$row}");
+            $sheet->getStyle("A{$row}:B{$row}")->applyFromArray($sectionStyle);
+            $row++;
+
+            $documentos = [];
+            if ($incorporacion->dni_frontal) $documentos[] = ['DNI Frontal', '✓'];
+            if ($incorporacion->dni_trasero) $documentos[] = ['DNI Trasero', '✓'];
+            if ($incorporacion->certificado_bancario) $documentos[] = ['Certificado Bancario', '✓'];
+
+            foreach ($incorporacion->formaciones as $formacion) {
+                $nombre = $formacion->tipo_nombre;
+                if ($formacion->nombre) $nombre .= " - " . $formacion->nombre;
+                $documentos[] = [$nombre, '✓'];
+            }
+
+            foreach ($incorporacion->documentos as $documento) {
+                if ($documento->completado) {
+                    $nombre = Incorporacion::DOCUMENTOS_POST[$documento->tipo] ?? $documento->tipo;
+                    $documentos[] = [$nombre, '✓'];
+                }
+            }
+
+            foreach ($documentos as $doc) {
+                $sheet->setCellValue("A{$row}", $doc[0]);
+                $sheet->setCellValue("B{$row}", $doc[1]);
+                $sheet->getStyle("A{$row}")->applyFromArray($labelStyle);
+                $sheet->getStyle("A{$row}:B{$row}")->applyFromArray($borderStyle);
+                $sheet->getStyle("B{$row}")->getFont()->setColor(new \PhpOffice\PhpSpreadsheet\Style\Color('00AA00'));
+                $row++;
+            }
+
+            $row += 2;
+
+            // Pie de página
+            $sheet->setCellValue("A{$row}", 'Generado el: ' . now()->format('d/m/Y H:i:s'));
+            $sheet->mergeCells("A{$row}:B{$row}");
+            $sheet->getStyle("A{$row}")->getFont()->setItalic(true)->setSize(9)->setColor(new \PhpOffice\PhpSpreadsheet\Style\Color('888888'));
+
+            // Guardar archivo temporal
+            $tempPath = storage_path('app/temp/ficha_' . uniqid() . '.xlsx');
+            $writer = new Xlsx($spreadsheet);
+            $writer->save($tempPath);
+
+            return $tempPath;
+
+        } catch (\Exception $e) {
+            \Log::error('Error generando Excel: ' . $e->getMessage());
+            return null;
+        }
+    }
+
+    /**
+     * Enviar email al CEO cuando RRHH aprueba una incorporación
+     */
+    private function enviarEmailACeo(Incorporacion $incorporacion, $ceos): void
+    {
+        try {
+            // Obtener todas las incorporaciones pendientes de aprobación CEO
+            $incorporacionesPendientes = Incorporacion::where('aprobado_rrhh', true)
+                ->where(function ($query) {
+                    $query->where('aprobado_ceo', false)
+                        ->orWhereNull('aprobado_ceo');
+                })
+                ->whereNotIn('estado', ['cancelada', 'completada'])
+                ->orderBy('aprobado_rrhh_at', 'desc')
+                ->get();
+
+            $aprobadoPor = auth()->user()->nombre_completo ?? 'RRHH';
+
+            foreach ($ceos as $ceo) {
+                Mail::to($ceo->email)
+                    ->send(new IncorporacionPendienteCeoMail(
+                        $incorporacion,
+                        $incorporacionesPendientes,
+                        $aprobadoPor
+                    ));
+            }
+
+            \Log::info('Email de incorporación pendiente enviado al CEO', [
+                'incorporacion_id' => $incorporacion->id,
+                'ceos_notificados' => $ceos->pluck('email')->toArray(),
+            ]);
+
+        } catch (\Exception $e) {
+            \Log::error('Error enviando email al CEO: ' . $e->getMessage(), [
+                'incorporacion_id' => $incorporacion->id,
+            ]);
+        }
+    }
+
+    /**
+     * Enviar email a usuarios de RRHH cuando el CEO aprueba una incorporación
+     */
+    private function enviarEmailARrhh(Incorporacion $incorporacion, $usuariosRrhh): void
+    {
+        try {
+            $aprobadoPor = auth()->user()->nombre_completo ?? 'CEO';
+
+            // Cargar relaciones necesarias
+            $incorporacion->load(['aprobadorRrhh']);
+
+            foreach ($usuariosRrhh as $usuario) {
+                Mail::to($usuario->email)
+                    ->send(new IncorporacionAprobadaCeoMail($incorporacion, $aprobadoPor));
+            }
+
+            \Log::info('Email de incorporación aprobada enviado a RRHH', [
+                'incorporacion_id' => $incorporacion->id,
+                'rrhh_notificados' => $usuariosRrhh->pluck('email')->toArray(),
+            ]);
+
+        } catch (\Exception $e) {
+            \Log::error('Error enviando email a RRHH: ' . $e->getMessage(), [
+                'incorporacion_id' => $incorporacion->id,
+            ]);
+        }
     }
 }

@@ -79,8 +79,9 @@
                         <div class="border border-gray-300 rounded-xl mb-5 shadow-sm bg-white overflow-hidden">
                             <table class="w-full text-sm table-fixed">
                                 <colgroup>
-                                    <col style="width:45%">
-                                    <col style="width:40%">
+                                    <col style="width:30%">
+                                    <col style="width:35%">
+                                    <col style="width:20%">
                                     <col style="width:15%">
                                 </colgroup>
                                 <thead class="bg-gradient-to-r from-gray-700 to-gray-800 text-white">
@@ -88,7 +89,9 @@
                                         <th class="px-4 py-3 text-left font-semibold uppercase tracking-wider text-xs">
                                             Colada</th>
                                         <th class="px-4 py-3 text-left font-semibold uppercase tracking-wider text-xs">
-                                            Bulto</th>
+                                            Fabricante</th>
+                                        <th class="px-4 py-3 text-left font-semibold uppercase tracking-wider text-xs">
+                                            Bultos</th>
                                         <th
                                             class="px-4 py-3 text-center font-semibold uppercase tracking-wider text-xs whitespace-nowrap">
                                             Acciones</th>
@@ -98,8 +101,9 @@
                             <div class="max-h-72 overflow-y-auto">
                                 <table class="w-full text-sm table-fixed">
                                     <colgroup>
-                                        <col style="width:45%">
-                                        <col style="width:40%">
+                                        <col style="width:30%">
+                                        <col style="width:35%">
+                                        <col style="width:20%">
                                         <col style="width:15%">
                                     </colgroup>
                                     <tbody id="tabla-coladas-body" class="divide-y divide-gray-200">
@@ -1097,6 +1101,9 @@
             const btnCancelar = document.getElementById('btn-cancelar-coladas');
             const btnConfirmar = document.getElementById('btn-confirmar-activacion-coladas');
 
+            // Lista de fabricantes para el select
+            const fabricantesDisponibles = @json($fabricantes->map(fn($f) => ['id' => $f->id, 'nombre' => $f->nombre]));
+
             let pedidoIdActual = null;
             let lineaIdActual = null;
             let formularioActivacionActual = null;
@@ -1221,12 +1228,25 @@
                 }
             }
 
+            function generarSelectFabricantes() {
+                let options = '<option value="">Seleccionar...</option>';
+                fabricantesDisponibles.forEach(fab => {
+                    options += `<option value="${fab.id}">${fab.nombre}</option>`;
+                });
+                return options;
+            }
+
             function agregarFilaColada() {
                 const fila = document.createElement('tr');
                 fila.className = 'fila-colada hover:bg-gray-50 transition-colors duration-150';
                 fila.innerHTML = `
                     <td class="px-4 py-3">
                         <input type="text" class="w-full border border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 rounded-lg px-3 py-2 text-sm input-colada transition-all duration-200 outline-none" placeholder="Ej: 12/3456">
+                    </td>
+                    <td class="px-4 py-3">
+                        <select class="w-full border border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 rounded-lg px-3 py-2 text-sm input-fabricante transition-all duration-200 outline-none">
+                            ${generarSelectFabricantes()}
+                        </select>
                     </td>
                     <td class="px-4 py-3">
                         <input type="number" step="1" min="0" class="w-full border border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 rounded-lg px-3 py-2 text-sm input-bulto transition-all duration-200 outline-none" placeholder="0">
@@ -1289,14 +1309,17 @@
 
                 filas.forEach(fila => {
                     const coladaInput = fila.querySelector('.input-colada');
+                    const fabricanteSelect = fila.querySelector('.input-fabricante');
                     const bultoInput = fila.querySelector('.input-bulto');
                     const colada = coladaInput ? coladaInput.value.trim() : '';
+                    const fabricanteId = fabricanteSelect ? fabricanteSelect.value : '';
                     const bultoValor = bultoInput ? bultoInput.value.trim() : '';
 
                     if (colada !== '' || bultoValor !== '') {
                         const bulto = bultoValor !== '' ? parseFloat(bultoValor.replace(',', '.')) : null;
                         coladas.push({
                             colada: colada !== '' ? colada : null,
+                            fabricante_id: fabricanteId !== '' ? parseInt(fabricanteId) : null,
                             bulto: bulto,
                         });
                     }

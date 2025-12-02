@@ -59,10 +59,11 @@ class Elemento extends Model
     ];
 
     protected $appends = ['longitud_cm', 'longitud_m', 'peso_kg', 'diametro_mm'];
+
     public static function generarCodigo(): string
     {
         return DB::transaction(function () {
-            $prefijo = 'EL' . now()->format('ym'); // EL2506
+            $prefijo = 'EL' . now()->format('ym'); // EL2512
 
             // Obtener el número mayor ya usado después del prefijo
             $ultimo = self::where('codigo', 'like', "$prefijo%")

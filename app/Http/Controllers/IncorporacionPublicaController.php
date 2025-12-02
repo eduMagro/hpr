@@ -8,6 +8,7 @@ use App\Models\IncorporacionLog;
 use App\Models\User;
 use App\Models\Empresa;
 use App\Models\Categoria;
+use App\Services\DniOcrService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Log;
@@ -52,9 +53,11 @@ class IncorporacionPublicaController extends Controller
                 ->with('error', 'Este formulario ya fue completado anteriormente.');
         }
 
-        // Validación base
+        // Validación base - con imágenes o PDF del DNI
         $rules = [
-            'dni' => ['required', 'string', 'size:9', 'regex:/^([0-9]{8}[A-Z]|[XYZ][0-9]{7}[A-Z])$/'],
+            'dni_frontal' => 'required|file|mimes:jpg,jpeg,png,pdf|max:5120',
+            'dni_trasero' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:5120',
+            'dni' => 'nullable|string|size:9|regex:/^([0-9]{8}[A-Z]|[XYZ][0-9]{7}[A-Z])$/i', // Campo manual de respaldo
             'numero_afiliacion_ss' => ['required', 'string', 'size:12', 'regex:/^[0-9]{12}$/'],
             'email' => 'required|email|max:255',
             'telefono' => ['required', 'string', 'regex:/^[0-9]{9}$/'],
@@ -75,7 +78,12 @@ class IncorporacionPublicaController extends Controller
         }
 
         $messages = [
-            'dni.required' => 'El DNI es obligatorio.',
+            'dni_frontal.required' => 'El archivo del frente del DNI es obligatorio.',
+            'dni_frontal.file' => 'El frente del DNI debe ser un archivo.',
+            'dni_frontal.mimes' => 'El frente del DNI debe ser JPG, PNG o PDF.',
+            'dni_frontal.max' => 'El archivo del frente del DNI no puede superar 5MB.',
+            'dni_trasero.mimes' => 'El reverso del DNI debe ser JPG, PNG o PDF.',
+            'dni_trasero.max' => 'El archivo del reverso del DNI no puede superar 5MB.',
             'dni.size' => 'El DNI debe tener exactamente 9 caracteres.',
             'dni.regex' => 'El formato del DNI no es válido (8 números + letra o NIE).',
             'numero_afiliacion_ss.required' => 'El número de afiliación es obligatorio.',
@@ -105,6 +113,39 @@ class IncorporacionPublicaController extends Controller
 
         $validated = $request->validate($rules, $messages);
 
+        // Extraer DNI de las imágenes usando OCR
+        $dniOcrService = new DniOcrService();
+        $resultadoOcr = $dniOcrService->extraerDni(
+            $request->file('dni_frontal'),
+            $request->file('dni_trasero')
+        );
+
+        // Usar el DNI del OCR o el introducido manualmente
+        $dniExtraido = $resultadoOcr['dni'];
+        $dniManual = $request->input('dni');
+
+        // Priorizar DNI manual si fue proporcionado, sino usar el del OCR
+        $dniFinal = !empty($dniManual) ? strtoupper($dniManual) : $dniExtraido;
+
+        // Validar que tenemos un DNI válido
+        if (empty($dniFinal)) {
+            return redirect()->route('incorporacion.publica', $token)
+                ->with('error', 'No se pudo detectar el DNI de las fotos. Por favor, asegúrate de que las imágenes sean claras y el DNI sea legible, o introduce el DNI manualmente.')
+                ->withInput();
+        }
+
+        // Validar formato del DNI extraído
+        if (!$dniOcrService->validarFormatoDni($dniFinal)) {
+            return redirect()->route('incorporacion.publica', $token)
+                ->with('error', 'El DNI detectado (' . $dniFinal . ') no tiene un formato válido. Por favor, verifica las fotos o introduce el DNI manualmente.')
+                ->withInput();
+        }
+
+        // Añadir el DNI validado a los datos
+        $validated['dni'] = $dniFinal;
+
+        Log::info('OCR DNI - DNI extraído: ' . ($dniExtraido ?? 'null') . ', DNI manual: ' . ($dniManual ?? 'null') . ', DNI final: ' . $dniFinal);
+
         DB::beginTransaction();
 
         try {
@@ -113,6 +154,18 @@ class IncorporacionPublicaController extends Controller
 
             // Carpeta del usuario: nombre_id (sin caracteres especiales)
             $carpetaUsuario = $this->generarNombreCarpeta($usuario);
+
+            // Guardar imágenes del DNI
+            $dniFrontal = $request->file('dni_frontal');
+            $nombreDniFrontal = 'dni_frontal_' . time() . '.' . $dniFrontal->getClientOriginalExtension();
+            $dniFrontal->storeAs("private/documentos/{$carpetaUsuario}", $nombreDniFrontal);
+
+            $nombreDniTrasero = null;
+            if ($request->hasFile('dni_trasero')) {
+                $dniTrasero = $request->file('dni_trasero');
+                $nombreDniTrasero = 'dni_trasero_' . time() . '.' . $dniTrasero->getClientOriginalExtension();
+                $dniTrasero->storeAs("private/documentos/{$carpetaUsuario}", $nombreDniTrasero);
+            }
 
             // Guardar certificado bancario
             $certBancario = $request->file('certificado_bancario');
@@ -126,6 +179,8 @@ class IncorporacionPublicaController extends Controller
                 'email' => strtolower($validated['email']),
                 'telefono' => $validated['telefono'],
                 'certificado_bancario' => $nombreCert,
+                'dni_frontal' => $nombreDniFrontal,
+                'dni_trasero' => $nombreDniTrasero,
                 'datos_completados_at' => now(),
                 'estado' => Incorporacion::ESTADO_DATOS_RECIBIDOS,
                 'user_id' => $usuario->id,

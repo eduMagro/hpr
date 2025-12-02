@@ -32,9 +32,93 @@
 
             <!-- Acciones -->
             <div class="flex gap-2">
+                @if($incorporacion->datos_completados_at)
+                <a href="{{ route('incorporaciones.descargar-zip', $incorporacion) }}"
+                    class="inline-flex items-center px-4 py-2 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg transition">
+                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                    Descargar ZIP
+                </a>
+                @endif
                 <button onclick="cambiarEstado()" class="inline-flex items-center px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium rounded-lg transition">
                     Cambiar estado
                 </button>
+            </div>
+        </div>
+
+        <!-- Sección de Aprobaciones -->
+        <div class="bg-white rounded-lg shadow-sm border p-6 mb-6">
+            <h2 class="text-lg font-semibold text-gray-800 mb-4">Aprobaciones</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- Aprobación RRHH -->
+                <div class="flex items-center justify-between p-4 rounded-lg border-2 {{ $incorporacion->aprobado_rrhh ? 'border-green-300 bg-green-50' : 'border-gray-200 bg-gray-50' }}">
+                    <div class="flex items-center">
+                        <div class="mr-4">
+                            @if($incorporacion->aprobado_rrhh)
+                                <div class="w-12 h-12 rounded-full bg-green-500 flex items-center justify-center cursor-pointer hover:bg-green-600 transition"
+                                    onclick="revocarAprobacion('rrhh')">
+                                    <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7" />
+                                    </svg>
+                                </div>
+                            @else
+                                <div class="w-12 h-12 rounded-full border-4 border-gray-300 bg-white flex items-center justify-center cursor-pointer hover:border-green-400 hover:bg-green-50 transition"
+                                    onclick="aprobarIncorporacion('rrhh')">
+                                </div>
+                            @endif
+                        </div>
+                        <div>
+                            <p class="font-semibold text-gray-800">Aprobación RRHH</p>
+                            @if($incorporacion->aprobado_rrhh)
+                                <p class="text-sm text-green-600">
+                                    Aprobado el {{ $incorporacion->aprobado_rrhh_at?->format('d/m/Y H:i') }}
+                                    @if($incorporacion->aprobadorRrhh)
+                                        por {{ $incorporacion->aprobadorRrhh->nombre_completo }}
+                                    @endif
+                                </p>
+                            @else
+                                <p class="text-sm text-gray-500">Pendiente de aprobación</p>
+                            @endif
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Aprobación CEO -->
+                <div class="flex items-center justify-between p-4 rounded-lg border-2 {{ $incorporacion->aprobado_ceo ? 'border-green-300 bg-green-50' : 'border-gray-200 bg-gray-50' }}">
+                    <div class="flex items-center">
+                        <div class="mr-4">
+                            @if($incorporacion->aprobado_ceo)
+                                <div class="w-12 h-12 rounded-full bg-green-500 flex items-center justify-center cursor-pointer hover:bg-green-600 transition"
+                                    onclick="revocarAprobacion('ceo')">
+                                    <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7" />
+                                    </svg>
+                                </div>
+                            @else
+                                <div class="w-12 h-12 rounded-full border-4 border-gray-300 bg-white flex items-center justify-center cursor-pointer hover:border-green-400 hover:bg-green-50 transition {{ !$incorporacion->aprobado_rrhh ? 'opacity-50 pointer-events-none' : '' }}"
+                                    onclick="aprobarIncorporacion('ceo')"
+                                    title="{{ !$incorporacion->aprobado_rrhh ? 'Requiere aprobación de RRHH primero' : 'Clic para aprobar' }}">
+                                </div>
+                            @endif
+                        </div>
+                        <div>
+                            <p class="font-semibold text-gray-800">Aprobación CEO</p>
+                            @if($incorporacion->aprobado_ceo)
+                                <p class="text-sm text-green-600">
+                                    Aprobado el {{ $incorporacion->aprobado_ceo_at?->format('d/m/Y H:i') }}
+                                    @if($incorporacion->aprobadorCeo)
+                                        por {{ $incorporacion->aprobadorCeo->nombre_completo }}
+                                    @endif
+                                </p>
+                            @elseif(!$incorporacion->aprobado_rrhh)
+                                <p class="text-sm text-gray-400">Requiere aprobación de RRHH primero</p>
+                            @else
+                                <p class="text-sm text-gray-500">Pendiente de aprobación</p>
+                            @endif
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -74,6 +158,29 @@
                             <div>
                                 <label class="text-sm text-gray-500">DNI</label>
                                 <p class="font-medium">{{ $incorporacion->dni }}</p>
+                                {{-- Enlaces para ver/descargar imágenes del DNI --}}
+                                <div class="flex gap-3 mt-2">
+                                    @if($incorporacion->dni_frontal)
+                                        <a href="{{ route('incorporaciones.ver-archivo', [$incorporacion, $incorporacion->dni_frontal]) }}"
+                                            target="_blank" class="text-blue-600 hover:underline text-sm flex items-center">
+                                            <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                            </svg>
+                                            Frontal
+                                        </a>
+                                    @endif
+                                    @if($incorporacion->dni_trasero)
+                                        <a href="{{ route('incorporaciones.ver-archivo', [$incorporacion, $incorporacion->dni_trasero]) }}"
+                                            target="_blank" class="text-blue-600 hover:underline text-sm flex items-center">
+                                            <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                            </svg>
+                                            Trasero
+                                        </a>
+                                    @endif
+                                </div>
                             </div>
                             <div>
                                 <label class="text-sm text-gray-500">N. Afiliación SS</label>
@@ -113,35 +220,6 @@
                     @endif
                 </div>
 
-                <!-- Documentos de formación -->
-                @if($incorporacion->datos_completados_at)
-                <div class="bg-white rounded-lg shadow-sm border p-6">
-                    <h2 class="text-lg font-semibold text-gray-800 mb-4">Documentos de Formación</h2>
-                    @if($incorporacion->formaciones->isEmpty())
-                        <p class="text-gray-500">No hay documentos de formación</p>
-                    @else
-                        <div class="space-y-3">
-                            @foreach($incorporacion->formaciones as $formacion)
-                                <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                                    <div>
-                                        <p class="font-medium">{{ $formacion->tipo_nombre }}</p>
-                                        @if($formacion->nombre)
-                                            <p class="text-sm text-gray-500">{{ $formacion->nombre }}</p>
-                                        @endif
-                                    </div>
-                                    <a href="{{ route('incorporaciones.ver-archivo', [$incorporacion, $formacion->archivo]) }}"
-                                        target="_blank" class="text-blue-600 hover:text-blue-800">
-                                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                                        </svg>
-                                    </a>
-                                </div>
-                            @endforeach
-                        </div>
-                    @endif
-                </div>
-                @endif
-
                 <!-- Documentos post-incorporación -->
                 <div class="bg-white rounded-lg shadow-sm border p-6">
                     <div class="flex justify-between items-center mb-4">
@@ -175,7 +253,8 @@
                                     </div>
                                 </div>
                                 <div class="flex items-center gap-2">
-                                    @if($item['completado'] && $item['documento'])
+                                    @if($item['documento'])
+                                        {{-- Documento subido desde post-incorporación --}}
                                         <a href="{{ route('incorporaciones.ver-archivo', [$incorporacion, $item['documento']->archivo]) }}"
                                             target="_blank" class="text-blue-600 hover:text-blue-800" title="Ver documento">
                                             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -186,6 +265,22 @@
                                         <button onclick="eliminarDocumento('{{ $tipo }}')" class="text-red-600 hover:text-red-800" title="Eliminar">
                                             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                            </svg>
+                                        </button>
+                                    @elseif($item['formacion'] ?? false)
+                                        {{-- Documento subido por el candidato desde formulario público --}}
+                                        <span class="text-xs text-gray-500 mr-2">Por candidato</span>
+                                        <a href="{{ route('incorporaciones.ver-archivo', [$incorporacion, $item['formacion']->archivo]) }}"
+                                            target="_blank" class="text-blue-600 hover:text-blue-800" title="Ver documento">
+                                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                            </svg>
+                                        </a>
+                                        <button onclick="abrirModalSubir('{{ $tipo }}', '{{ $item['nombre'] }}')"
+                                            class="text-yellow-600 hover:text-yellow-800" title="Reemplazar documento">
+                                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
                                             </svg>
                                         </button>
                                     @else
@@ -495,5 +590,99 @@
         document.addEventListener('keydown', function(e) {
             if (e.key === 'Escape') cerrarModal();
         });
+
+        function aprobarIncorporacion(tipo) {
+            const titulo = tipo === 'rrhh' ? 'RRHH' : 'CEO';
+            Swal.fire({
+                title: `¿Aprobar incorporación como ${titulo}?`,
+                text: tipo === 'rrhh'
+                    ? 'Esto indica que el trabajador ha pasado la entrevista y se propone al CEO.'
+                    : 'Esto confirma la aprobación final de la incorporación.',
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonColor: '#22c55e',
+                cancelButtonColor: '#6b7280',
+                confirmButtonText: 'Sí, aprobar',
+                cancelButtonText: 'Cancelar'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    const url = tipo === 'rrhh'
+                        ? '{{ route('incorporaciones.aprobar-rrhh', $incorporacion) }}'
+                        : '{{ route('incorporaciones.aprobar-ceo', $incorporacion) }}';
+
+                    fetch(url, {
+                        method: 'POST',
+                        headers: {
+                            'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                            'Accept': 'application/json',
+                        }
+                    })
+                    .then(r => r.json())
+                    .then(data => {
+                        if (data.success) {
+                            Swal.fire({
+                                icon: 'success',
+                                title: 'Aprobado',
+                                text: data.message,
+                                timer: 1500,
+                                showConfirmButton: false
+                            }).then(() => location.reload());
+                        } else {
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Error',
+                                text: data.message || 'Error al aprobar'
+                            });
+                        }
+                    });
+                }
+            });
+        }
+
+        function revocarAprobacion(tipo) {
+            const titulo = tipo === 'rrhh' ? 'RRHH' : 'CEO';
+            Swal.fire({
+                title: `¿Revocar aprobación ${titulo}?`,
+                text: 'La aprobación será eliminada.',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#dc2626',
+                cancelButtonColor: '#6b7280',
+                confirmButtonText: 'Sí, revocar',
+                cancelButtonText: 'Cancelar'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    const url = tipo === 'rrhh'
+                        ? '{{ route('incorporaciones.revocar-rrhh', $incorporacion) }}'
+                        : '{{ route('incorporaciones.revocar-ceo', $incorporacion) }}';
+
+                    fetch(url, {
+                        method: 'POST',
+                        headers: {
+                            'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                            'Accept': 'application/json',
+                        }
+                    })
+                    .then(r => r.json())
+                    .then(data => {
+                        if (data.success) {
+                            Swal.fire({
+                                icon: 'success',
+                                title: 'Revocado',
+                                text: data.message,
+                                timer: 1500,
+                                showConfirmButton: false
+                            }).then(() => location.reload());
+                        } else {
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Error',
+                                text: data.message || 'Error al revocar'
+                            });
+                        }
+                    });
+                }
+            });
+        }
     </script>
 </x-app-layout>
