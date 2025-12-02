@@ -987,6 +987,10 @@ Inesperados: ${inesperados.join(', ') || ''}
 
         window.$store = window.$store || {};
         window.$store.inv = Alpine.store('inv');
+        window.addEventListener('producto-reasignado', () => {
+            if (!window.$store?.inv) return;
+            setTimeout(() => window.$store.inv.sincronizarProductosActuales(), 0);
+        });
     };
 
     // Si Alpine ya está cargado (navegación SPA), inicializar de inmediato
@@ -1514,7 +1518,7 @@ Inesperados: ${inesperados.join(', ') || ''}
                                                 Ø <span
                                                     x-text="window.detallesProductos?.[prod]?.diametro ?? 'N/D'"></span>
                                                 mm |
-                                                Cosl: <span
+                                                Col: <span
                                                     x-text="window.detallesProductos?.[prod]?.colada ?? ''"></span>
                                             </p>
                                         </div>
@@ -1528,7 +1532,7 @@ Inesperados: ${inesperados.join(', ') || ''}
         </div>
 
 
-        <div class="flex max-md:flex-col gap-3 max-sm:pb-4">
+        <div class="flex max-md:flex-col gap-3 max-sm:pb-8">
             <div
                 class="w-full h-14 md:h-16 flex flex-col items-center justify-center border border-blue-200 dark:border-blue-700/70 rounded-xl shadow-sm bg-white/80 dark:bg-gray-900/80 hover:border-blue-500 hover:shadow-md transition">
                 <button @click="openModal = true"
@@ -1750,11 +1754,24 @@ Inesperados: ${inesperados.join(', ') || ''}
                         <!-- Input QR -->
                         <div
                             class="relative px-4 py-3 sm:px-6 sm:py-4 bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
-                            <input type="text"
-                                class="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-4 py-3 text-sm text-gray-900 dark:text-white placeholder-gray-400 bg-white dark:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm"
-                                placeholder="Escanea el código QR aquí..."
-                                x-on:keydown.enter.prevent="procesarQR($event.target.value); $event.target.value = ''"
-                                x-ref="inputQR" inputmode="none" autocomplete="off">
+                            <div class="flex items-center gap-3">
+                                <div class="flex-1 relative">
+                                    <input type="text"
+                                        class="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-4 py-3 text-sm text-gray-900 dark:text-white placeholder-gray-400 bg-white dark:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 pr-12 shadow-sm"
+                                        placeholder="Escanea el código QR aquí..."
+                                        x-on:keydown.enter.prevent="procesarQR($event.target.value); $event.target.value = ''"
+                                        x-ref="inputQR" inputmode="none" autocomplete="off">
+                                </div>
+                                <button type="button"
+                                    class="flex items-center justify-center rounded-md border border-transparent bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 text-xs font-semibold shadow"
+                                    title="Procesar escaneo"
+                                    @click="if ($refs.inputQR.value.trim()) { procesarQR($refs.inputQR.value); $refs.inputQR.value = '' }">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M21 21l-4.35-4.35M11 19a8 8 0 100-16 8 8 0 000 16z" />
+                                    </svg>
+                                </button>
+                            </div>
 
                             <!-- Último código escaneado (flotante) -->
                             <div x-show="ultimoCodigo" x-transition
@@ -2188,9 +2205,10 @@ Inesperados: ${inesperados.join(', ') || ''}
                                     <div class="flex items-center gap-3">
                                         <!-- Leyenda Mobile -->
                                         <div x-data="{ showLeyendaMobile: false }" class="relative" @click.stop>
-                                        <button x-show="$store.inv.showInesperados" @click="showLeyendaMobile = !showLeyendaMobile"
-                                            class="inline-flex items-center justify-center h-6 w-6 rounded-full bg-red-600 hover:bg-red-700 text-white font-bold text-xs shadow transition-all"
-                                            title="Leyenda de colores">
+                                            <button x-show="$store.inv.showInesperados"
+                                                @click="showLeyendaMobile = !showLeyendaMobile"
+                                                class="inline-flex items-center justify-center h-6 w-6 rounded-full bg-red-600 hover:bg-red-700 text-white font-bold text-xs shadow transition-all"
+                                                title="Leyenda de colores">
                                                 i
                                             </button>
 
@@ -2354,9 +2372,13 @@ Inesperados: ${inesperados.join(', ') || ''}
                 ubicacionId: null,
                 escaneadosDetalle: [],
                 init() {
-                    this.productosEsperados = Array.isArray($store?.inv?.productosActuales) ? $store.inv.productosActuales : [];
+                    this.actualizarEsperados();
                     this.ubicacionId = $store?.inv?.ubicacionActual ?? null;
                     this.recargarEscaneados();
+                },
+                actualizarEsperados() {
+                    const lista = Array.isArray($store?.inv?.productosActuales) ? $store.inv.productosActuales : [];
+                    this.productosEsperados = [...lista];
                 },
                 recargarEscaneados() {
                     const clave = 'inv-' + this.ubicacionId;
@@ -2378,7 +2400,27 @@ Inesperados: ${inesperados.join(', ') || ''}
                         this.recargarEscaneados();
                     }
                 }
-            }" x-init="$watch('$store.inv.modalDetalleEsperados', value => { if (value) recargarEscaneados(); })"
+            }" x-init="init();
+            $watch('$store.inv.modalDetalleEsperados', value => {
+                if (value) {
+                    actualizarEsperados();
+                    ubicacionId = $store?.inv?.ubicacionActual ?? null;
+                    recargarEscaneados();
+                }
+            });
+            $watch('$store.inv.productosActuales', () => {
+                actualizarEsperados();
+                if ($store?.inv?.modalDetalleEsperados) {
+                    recargarEscaneados();
+                }
+            });
+            $watch('$store.inv.ubicacionActual', value => {
+                ubicacionId = value ?? null;
+                if ($store?.inv?.modalDetalleEsperados) {
+                    actualizarEsperados();
+                    recargarEscaneados();
+                }
+            });"
                 x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0"
                 x-transition:enter-end="opacity-100" x-transition:leave="transition ease-in duration-200"
                 x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0"
