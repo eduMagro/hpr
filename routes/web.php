@@ -9,6 +9,7 @@ use App\Http\Controllers\VacacionesController;
 use App\Http\Controllers\EntradaController;
 use App\Http\Controllers\ProductoController;
 use App\Http\Controllers\FabricanteController;
+use App\Http\Controllers\ColadaController;
 use App\Http\Controllers\ProductoBaseController;
 use App\Http\Controllers\PedidoGlobalController;
 use App\Http\Controllers\PedidoController;
@@ -165,6 +166,13 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
     Route::post('productos/generar-datos', [ProductoController::class, 'GenerarYObtenerDatos'])->name('productos.generar.datos');
     Route::post('/productos/{codigo}/reasignar', [ProductoController::class, 'editarUbicacionInventario'])
         ->name('productos.editarUbicacionInventario');
+
+    // === COLADAS ===
+    Route::get('coladas', [ColadaController::class, 'index'])->name('coladas.index');
+    Route::post('coladas', [ColadaController::class, 'store'])->name('coladas.store');
+    Route::put('coladas/{colada}', [ColadaController::class, 'update'])->name('coladas.update');
+    Route::delete('coladas/{colada}', [ColadaController::class, 'destroy'])->name('coladas.destroy');
+    Route::get('coladas/{colada}/descargar', [ColadaController::class, 'descargarDocumento'])->name('coladas.descargar');
 
     Route::get('/ubicaciones/inventario', [UbicacionController::class, 'inventario'])->name('ubicaciones.verInventario');
     Route::resource('ubicaciones', UbicacionController::class);
@@ -647,6 +655,16 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
         ->name('incorporaciones.ver-archivo');
     Route::get('/incorporaciones/{incorporacion}/descargar/{archivo}', [\App\Http\Controllers\IncorporacionController::class, 'descargarArchivo'])
         ->name('incorporaciones.descargar-archivo');
+    Route::get('/incorporaciones/{incorporacion}/descargar-zip', [\App\Http\Controllers\IncorporacionController::class, 'descargarZip'])
+        ->name('incorporaciones.descargar-zip');
+    Route::post('/incorporaciones/{incorporacion}/aprobar-rrhh', [\App\Http\Controllers\IncorporacionController::class, 'aprobarRrhh'])
+        ->name('incorporaciones.aprobar-rrhh');
+    Route::post('/incorporaciones/{incorporacion}/revocar-rrhh', [\App\Http\Controllers\IncorporacionController::class, 'revocarRrhh'])
+        ->name('incorporaciones.revocar-rrhh');
+    Route::post('/incorporaciones/{incorporacion}/aprobar-ceo', [\App\Http\Controllers\IncorporacionController::class, 'aprobarCeo'])
+        ->name('incorporaciones.aprobar-ceo');
+    Route::post('/incorporaciones/{incorporacion}/revocar-ceo', [\App\Http\Controllers\IncorporacionController::class, 'revocarCeo'])
+        ->name('incorporaciones.revocar-ceo');
 });
 
 // === RUTAS PÚBLICAS - FORMULARIO INCORPORACIÓN (sin autenticación) ===

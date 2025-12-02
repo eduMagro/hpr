@@ -20,6 +20,7 @@ class Producto extends Model
         'obra_id',
         'entrada_id',
         'n_colada',
+        'colada_id',
         'n_paquete',
         'peso_inicial',
         'peso_stock',
@@ -110,5 +111,10 @@ class Producto extends Model
     public function fabricante()
     {
         return $this->belongsTo(Fabricante::class);
+    }
+
+    public function colada()
+    {
+        return $this->belongsTo(Colada::class);
     }
 }

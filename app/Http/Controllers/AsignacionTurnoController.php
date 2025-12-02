@@ -473,35 +473,31 @@ class AsignacionTurnoController extends Controller
             }
 
             // ======= SALIDA ==========================================================
-            // Intentar cerrar la asignación abierta más razonable (últimas 36h)
+            // La salida siempre usa la fecha REAL del fichaje, sin detectar turno
+            $fechaReal = $ahora->toDateString();
+
+            // Primero: buscar asignación abierta (con entrada y sin salida) en las últimas 36h
             $asignacion = $this->buscarAsignacionAbiertaParaSalida($user, $ahora);
 
-            // Fallback: usar el día detectado si no hay abierta
+            // Fallback: buscar asignación del día REAL (no del turno detectado)
             if (!$asignacion) {
                 $asignacion = $user->asignacionesTurnos()
-                    ->whereDate('fecha', $fechaTurnoDetectado)
+                    ->whereDate('fecha', $fechaReal)
                     ->orderByDesc('id')
                     ->first();
             }
 
+            // Si no hay asignación, no permitir fichar salida
             if (!$asignacion) {
-                // Si aun así no hay, crearla para no perder el fichaje
-                $asignacion = $user->asignacionesTurnos()->create([
-                    'fecha'      => $fechaTurnoDetectado,
-                    'turno_id'   => $turnoModelo->id,
-                    'estado'     => 'activo',
-                    'maquina_id' => $user->maquina_id ?? null,
-                    'obra_id'    => null,
-                ]);
-                $warning = 'No había una asignación abierta; se ha creado una nueva para registrar la salida.';
+                return response()->json([
+                    'error' => 'No tienes una asignación de turno para hoy. Debes fichar entrada primero.'
+                ], 403);
             }
 
             if (!$asignacion->entrada) {
-                $warning = 'Estás registrando una salida sin haber fichado entrada.';
-            }
-
-            if (!$this->validarHoraSalida($turnoDetectado, $horaActual)) {
-                $warning = 'Has fichado salida fuera de tu horario.';
+                return response()->json([
+                    'error' => 'No puedes fichar salida sin haber fichado entrada.'
+                ], 403);
             }
 
             $asignacion->update([
@@ -511,7 +507,6 @@ class AsignacionTurnoController extends Controller
 
             return response()->json([
                 'success'     => 'Salida registrada.',
-                'warning'     => $warning,
                 'obra_nombre' => $obraEncontrada->obra,
             ]);
         } catch (\Throwable $e) {
@@ -532,8 +527,8 @@ class AsignacionTurnoController extends Controller
      */
     private function detectarTurnoYFecha(Carbon $ahora): array
     {
-        // Margen de anticipación en minutos (fichar hasta 1 hora antes)
-        $margenAnticipacion = 60;
+        // Margen de anticipación en minutos (fichar hasta 2 horas antes)
+        $margenAnticipacion = 120;
 
         // Obtener turnos con horarios definidos (excluir montaje, festivo, dinámico que no tienen hora)
         $turnos = Turno::whereNotNull('hora_inicio')

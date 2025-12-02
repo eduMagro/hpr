@@ -14,6 +14,15 @@
                 </x-tabla.boton-azul>
             @endif
 
+            <a href="{{ route('coladas.index') }}"
+                class="bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white font-semibold py-2.5 px-6 rounded-lg shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105 inline-flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                    <path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z" />
+                    <path fill-rule="evenodd" d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 4a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h3a1 1 0 100-2h-3zm-3 4a1 1 0 100 2h.01a1 1 0 100-2H7zm3 0a1 1 0 100 2h3a1 1 0 100-2h-3z" clip-rule="evenodd" />
+                </svg>
+                Gestion de Coladas
+            </a>
+
             <button onclick="abrirModal()"
                 class="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-semibold py-2.5 px-6 rounded-lg shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105 hidden md:inline-flex items-center gap-2">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
@@ -283,14 +292,23 @@
                                 <p class="text-xs text-gray-600">Listado de productos disponibles</p>
                             </div>
                         </div>
-                        <button @click="open = !open"
-                            class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 flex items-center gap-2 shadow-md hover:shadow-lg">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" :class="{'rotate-180': open}" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="transition: transform 0.2s;">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-                            </svg>
-                            <span x-show="!open">Mostrar</span>
-                            <span x-show="open">Ocultar</span>
-                        </button>
+                        <div class="flex items-center gap-2">
+                            <button onclick="abrirModalProductoBase()"
+                                class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 flex items-center gap-2 shadow-md hover:shadow-lg">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                                </svg>
+                                Añadir
+                            </button>
+                            <button @click="open = !open"
+                                class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 flex items-center gap-2 shadow-md hover:shadow-lg">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" :class="{'rotate-180': open}" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="transition: transform 0.2s;">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                                </svg>
+                                <span x-show="!open">Mostrar</span>
+                                <span x-show="open">Ocultar</span>
+                            </button>
+                        </div>
                     </div>
                 </div>
 
@@ -301,42 +319,75 @@
                      x-transition:leave="transition ease-in duration-150"
                      x-transition:leave-start="opacity-100 transform scale-100"
                      x-transition:leave-end="opacity-0 transform scale-95"
-                     class="mt-3 overflow-x-auto bg-white shadow-lg rounded-lg border border-gray-200">
-                    <table class="w-full min-w-[600px] text-sm">
-                        <thead class="bg-gradient-to-r from-blue-500 to-blue-600 text-white">
-                            <tr>
-                                <th class="px-4 py-3 border-b border-blue-400 font-semibold">ID</th>
-                                <th class="px-4 py-3 border-b border-blue-400 font-semibold">Tipo</th>
-                                <th class="px-4 py-3 border-b border-blue-400 font-semibold">Diámetro</th>
-                                <th class="px-4 py-3 border-b border-blue-400 font-semibold">Longitud</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @forelse ($productosBase as $base)
-                                <tr class="border-b hover:bg-blue-50 transition-colors">
-                                    <td class="px-4 py-3 text-center font-medium text-gray-700">{{ $base->id }}</td>
-                                    <td class="px-4 py-3 text-center">
-                                        <span class="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-xs font-semibold">
-                                            {{ ucfirst($base->tipo) }}
-                                        </span>
-                                    </td>
-                                    <td class="px-4 py-3 text-center font-medium text-gray-700">{{ $base->diametro }} mm</td>
-                                    <td class="px-4 py-3 text-center text-gray-600">{{ $base->longitud ?? '—' }}</td>
-                                </tr>
-                            @empty
-                                <tr>
-                                    <td colspan="4" class="text-center py-8">
-                                        <div class="flex flex-col items-center gap-2">
-                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
-                                            </svg>
-                                            <span class="text-gray-500 font-medium">No hay productos base registrados</span>
-                                        </div>
-                                    </td>
-                                </tr>
-                            @endforelse
-                        </tbody>
-                    </table>
+                     class="mt-3 bg-white shadow-lg rounded-lg border border-gray-200 p-4">
+                    @if($productosBase->count() > 0)
+                        @php
+                            $barras = $productosBase->where('tipo', 'barra')->sortBy('diametro');
+                            $barrasAgrupadas = $barras->groupBy('diametro');
+                            $encarretados = $productosBase->where('tipo', 'encarretado')->sortBy('diametro');
+                        @endphp
+
+                        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                            {{-- Barras --}}
+                            <div class="bg-blue-50 rounded-lg p-3 border border-blue-100">
+                                <h4 class="text-sm font-bold text-blue-800 mb-3 flex items-center gap-2 border-b border-blue-200 pb-2">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4" />
+                                    </svg>
+                                    BARRAS
+                                    <span class="ml-auto text-xs font-normal text-blue-600">({{ $barras->count() }})</span>
+                                </h4>
+                                @if($barras->count() > 0)
+                                    <div class="space-y-2">
+                                        @foreach ($barrasAgrupadas as $diametro => $barrasPorDiametro)
+                                            <div class="flex items-center gap-2">
+                                                <span class="bg-blue-600 text-white text-xs font-bold px-2 py-1 rounded min-w-[50px] text-center">
+                                                    Ø{{ $diametro }}
+                                                </span>
+                                                <div class="flex flex-wrap gap-1">
+                                                    @foreach ($barrasPorDiametro->sortBy('longitud') as $barra)
+                                                        <span class="bg-white border border-blue-300 text-blue-700 text-xs px-2 py-0.5 rounded cursor-pointer hover:bg-red-100 hover:border-red-400 hover:text-red-700 transition-colors"
+                                                              title="ID: {{ $barra->id }} - Click para eliminar"
+                                                              onclick="eliminarProductoBase({{ $barra->id }}, 'Barra Ø{{ $diametro }} {{ $barra->longitud ? $barra->longitud . 'm' : 'S/L' }}')">
+                                                            {{ $barra->longitud ? $barra->longitud . 'm' : 'S/L' }}
+                                                        </span>
+                                                    @endforeach
+                                                </div>
+                                            </div>
+                                        @endforeach
+                                    </div>
+                                @else
+                                    <p class="text-blue-400 text-xs text-center py-2">Sin barras registradas</p>
+                                @endif
+                            </div>
+
+                            {{-- Encarretados --}}
+                            <div class="bg-green-50 rounded-lg p-3 border border-green-100">
+                                <h4 class="text-sm font-bold text-green-800 mb-3 flex items-center gap-2 border-b border-green-200 pb-2">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                                    </svg>
+                                    ENCARRETADOS
+                                    <span class="ml-auto text-xs font-normal text-green-600">({{ $encarretados->count() }})</span>
+                                </h4>
+                                @if($encarretados->count() > 0)
+                                    <div class="flex flex-wrap gap-2">
+                                        @foreach ($encarretados as $enc)
+                                            <span class="bg-green-600 text-white text-xs font-bold px-3 py-1.5 rounded cursor-pointer hover:bg-red-600 transition-colors"
+                                                  title="ID: {{ $enc->id }} - Click para eliminar"
+                                                  onclick="eliminarProductoBase({{ $enc->id }}, 'Encarretado Ø{{ $enc->diametro }}')">
+                                                Ø{{ $enc->diametro }}
+                                            </span>
+                                        @endforeach
+                                    </div>
+                                @else
+                                    <p class="text-green-400 text-xs text-center py-2">Sin encarretados registrados</p>
+                                @endif
+                            </div>
+                        </div>
+                    @else
+                        <p class="text-center text-gray-500 py-4">No hay productos base registrados</p>
+                    @endif
                 </div>
             </div>
 
@@ -552,6 +603,130 @@
                         });
                     });
                 });
+            });
+        </script>
+
+        <!-- Formulario oculto para eliminar Producto Base -->
+        <form id="formEliminarProductoBase" method="POST" class="hidden">
+            @csrf
+            @method('DELETE')
+        </form>
+
+        <!-- Modal Crear Producto Base -->
+        <div id="modalProductoBase" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden items-center justify-center">
+            <div class="bg-white rounded-lg shadow-lg p-6 w-full max-w-md relative">
+                <h2 class="text-xl font-semibold mb-4">Nuevo Producto Base</h2>
+
+                <form action="{{ route('productos-base.store') }}" method="POST" class="space-y-4">
+                    @csrf
+                    <input type="hidden" name="redirect_to" value="productos">
+
+                    <div>
+                        <label for="pb_tipo" class="block text-sm font-medium text-gray-700 mb-1">Tipo *</label>
+                        <select id="pb_tipo" name="tipo" required onchange="toggleLongitud()"
+                            class="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                            <option value="">Seleccione tipo</option>
+                            <option value="barra">Barra</option>
+                            <option value="encarretado">Encarretado</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label for="pb_diametro" class="block text-sm font-medium text-gray-700 mb-1">Diametro (mm) *</label>
+                        <input type="number" id="pb_diametro" name="diametro" required min="1"
+                            class="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                            placeholder="Ej: 12">
+                    </div>
+
+                    <div id="pb_longitud_container">
+                        <label for="pb_longitud" class="block text-sm font-medium text-gray-700 mb-1">Longitud (m)</label>
+                        <input type="number" id="pb_longitud" name="longitud" min="1"
+                            class="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                            placeholder="Ej: 12 (solo para barras)">
+                    </div>
+
+                    <div>
+                        <label for="pb_descripcion" class="block text-sm font-medium text-gray-700 mb-1">Descripcion</label>
+                        <textarea id="pb_descripcion" name="descripcion" rows="2"
+                            class="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                            placeholder="Descripcion opcional..."></textarea>
+                    </div>
+
+                    <div class="flex justify-end gap-2 pt-4">
+                        <button type="button" onclick="cerrarModalProductoBase()"
+                            class="px-4 py-2 bg-gray-300 text-gray-800 rounded-lg hover:bg-gray-400 transition-colors">
+                            Cancelar
+                        </button>
+                        <button type="submit"
+                            class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                            Guardar
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <script>
+            function abrirModalProductoBase() {
+                document.getElementById('modalProductoBase').classList.remove('hidden');
+                document.getElementById('modalProductoBase').classList.add('flex');
+            }
+
+            function cerrarModalProductoBase() {
+                document.getElementById('modalProductoBase').classList.remove('flex');
+                document.getElementById('modalProductoBase').classList.add('hidden');
+                // Limpiar formulario
+                document.getElementById('pb_tipo').value = '';
+                document.getElementById('pb_diametro').value = '';
+                document.getElementById('pb_longitud').value = '';
+                document.getElementById('pb_descripcion').value = '';
+            }
+
+            function toggleLongitud() {
+                const tipo = document.getElementById('pb_tipo').value;
+                const container = document.getElementById('pb_longitud_container');
+                const input = document.getElementById('pb_longitud');
+
+                if (tipo === 'encarretado') {
+                    container.style.display = 'none';
+                    input.value = '';
+                } else {
+                    container.style.display = 'block';
+                }
+            }
+
+            function eliminarProductoBase(id, nombre) {
+                Swal.fire({
+                    title: '¿Eliminar producto base?',
+                    html: `<p class="text-gray-600">Se eliminará: <strong>${nombre}</strong></p><p class="text-xs text-gray-400 mt-1">ID: ${id}</p>`,
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#dc2626',
+                    cancelButtonColor: '#6b7280',
+                    confirmButtonText: 'Sí, eliminar',
+                    cancelButtonText: 'Cancelar'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        const form = document.getElementById('formEliminarProductoBase');
+                        form.action = `/productos-base/${id}`;
+                        form.submit();
+                    }
+                });
+            }
+
+            // Cerrar modal con ESC
+            document.addEventListener('keydown', function(event) {
+                if (event.key === 'Escape') {
+                    cerrarModalProductoBase();
+                }
+            });
+
+            // Cerrar al hacer clic fuera
+            window.addEventListener('click', function(event) {
+                const modal = document.getElementById('modalProductoBase');
+                if (event.target === modal) {
+                    cerrarModalProductoBase();
+                }
             });
         </script>
 
