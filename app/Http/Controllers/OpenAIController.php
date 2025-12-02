@@ -2,9 +2,10 @@
 
 namespace App\Http\Controllers;
 
+use App\Services\AlbaranOcrService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Storage;
 
 class OpenAIController extends Controller
 {
@@ -13,98 +14,52 @@ class OpenAIController extends Controller
         return view('openai.index');
     }
 
-    public function procesar(Request $request)
+    public function procesar(Request $request, AlbaranOcrService $service)
     {
         $request->validate([
             'imagenes.*' => 'required|image|mimes:jpeg,png,jpg,gif,webp|max:20480',
+            'proveedor' => 'nullable|string|in:siderurgica,megasa,balboa,otro',
         ]);
 
-        // Obtener la API key desde el archivo .env
-        $apiKey = env('OPENAI_API_KEY');
-
-        if (!$apiKey) {
-            return view('openai.index', [
-                'resultados' => [[
-                    'nombre_archivo' => 'Error de configuración',
-                    'ruta' => null,
-                    'texto' => null,
-                    'error' => 'No se encontró la API Key de OpenAI. Por favor, configura OPENAI_API_KEY en tu archivo .env'
-                ]]
-            ]);
-        }
+        $proveedor = $request->input('proveedor');
 
         $resultados = [];
 
         if ($request->hasFile('imagenes')) {
             foreach ($request->file('imagenes') as $imagen) {
                 try {
-                    // Guardar la imagen temporalmente
-                    $nombreArchivo = time() . '_' . uniqid() . '.' . $imagen->getClientOriginalExtension();
-                    $rutaImagen = $imagen->storeAs('temp', $nombreArchivo, 'public');
-                    $rutaCompleta = storage_path('app/public/' . $rutaImagen);
+                    $log = $service->parseAndLog($imagen, auth()->id(), $proveedor);
+                    $parsed = $log->parsed_payload ?? [];
 
-                    // Convertir la imagen a base64
-                    $imagenBase64 = base64_encode(file_get_contents($rutaCompleta));
-                    $mimeType = $imagen->getMimeType();
-
-                    // Llamar a la API de OpenAI con GPT-4 Vision
-                    $response = Http::withHeaders([
-                        'Authorization' => 'Bearer ' . $apiKey,
-                        'Content-Type' => 'application/json',
-                    ])
-                    ->timeout(120)
-                    ->post('https://api.openai.com/v1/chat/completions', [
-                        'model' => 'gpt-4o',
-                        'messages' => [
-                            [
-                                'role' => 'user',
-                                'content' => [
-                                    [
-                                        'type' => 'text',
-                                        'text' => 'Por favor, extrae todo el texto visible de esta imagen de un albarán o documento. Devuelve el texto de forma estructurada y organizada, manteniendo el orden y la jerarquía de la información. Incluye todos los números, fechas, nombres, direcciones y cualquier otro texto que veas. Si hay tablas, intenta mantener su formato.'
-                                    ],
-                                    [
-                                        'type' => 'image_url',
-                                        'image_url' => [
-                                            'url' => "data:{$mimeType};base64,{$imagenBase64}",
-                                            'detail' => 'high'
-                                        ]
-                                    ]
-                                ]
-                            ]
-                        ],
-                        'max_tokens' => 4096,
-                        'temperature' => 0.2
-                    ]);
-
-                    if ($response->successful()) {
-                        $data = $response->json();
-                        $textoExtraido = $data['choices'][0]['message']['content'] ?? 'No se pudo extraer texto';
-
-                        $resultados[] = [
-                            'nombre_archivo' => $imagen->getClientOriginalName(),
-                            'ruta' => asset('storage/' . $rutaImagen),
-                            'texto' => $textoExtraido,
-                            'error' => null,
-                            'tokens_usados' => $data['usage']['total_tokens'] ?? 0,
-                        ];
-                    } else {
-                        $errorMsg = $response->json()['error']['message'] ?? 'Error desconocido';
-
-                        $resultados[] = [
-                            'nombre_archivo' => $imagen->getClientOriginalName(),
-                            'ruta' => asset('storage/' . $rutaImagen),
-                            'texto' => null,
-                            'error' => 'Error de OpenAI: ' . $errorMsg,
-                        ];
+                    // Generar preview base64 para mostrar al usuario
+                    $previewData = null;
+                    $mime = $imagen->getMimeType();
+                    try {
+                        $content = Storage::disk('private')->get($log->file_path);
+                        $previewData = 'data:' . $mime . ';base64,' . base64_encode($content);
+                    } catch (\Throwable $e) {
+                        $previewData = null;
                     }
+
+                    // Buscar líneas pendientes y generar simulación
+                    $simulacion = $this->generarSimulacion($parsed);
+
+                    $resultados[] = [
+                        'nombre_archivo' => $imagen->getClientOriginalName(),
+                        'preview' => $previewData,
+                        'parsed' => $parsed,
+                        'raw' => $log->raw_text,
+                        'simulacion' => $simulacion,
+                        'error' => null,
+                    ];
 
                 } catch (\Exception $e) {
                     Log::error('Error procesando imagen con OpenAI: ' . $e->getMessage());
                     $resultados[] = [
                         'nombre_archivo' => $imagen->getClientOriginalName(),
-                        'ruta' => null,
-                        'texto' => null,
+                        'preview' => null,
+                        'parsed' => null,
+                        'raw' => null,
                         'error' => 'Error al procesar: ' . $e->getMessage(),
                     ];
                 }
@@ -112,7 +67,124 @@ class OpenAIController extends Controller
         }
 
         return view('openai.index', [
-            'resultados' => $resultados
+            'resultados' => $resultados,
+            'proveedor' => $proveedor
         ]);
+    }
+
+    /**
+     * Genera una simulación de lo que pasaría si se aceptara este albarán
+     */
+    protected function generarSimulacion(array $parsed): array
+    {
+        $proveedorNombre = $this->obtenerNombreProveedor($parsed['proveedor'] ?? null);
+        $productoBaseId = $parsed['producto']['producto_base_id'] ?? null;
+        $lineItems = $parsed['line_items'] ?? [];
+
+        // Buscar fabricante o distribuidor
+        $fabricanteId = null;
+        $distribuidorId = null;
+
+        if ($parsed['proveedor'] === 'siderurgica') {
+            $fabricante = \App\Models\Fabricante::where('nombre', 'LIKE', '%Siderurgica%')
+                ->orWhere('nombre', 'LIKE', '%SISE%')
+                ->first();
+            $fabricanteId = $fabricante?->id;
+        } elseif ($parsed['proveedor'] === 'megasa') {
+            $distribuidor = \App\Models\Distribuidor::where('nombre', 'LIKE', '%Megasa%')->first();
+            $distribuidorId = $distribuidor?->id;
+        } elseif ($parsed['proveedor'] === 'balboa') {
+            $distribuidor = \App\Models\Distribuidor::where('nombre', 'LIKE', '%Balboa%')->first();
+            $distribuidorId = $distribuidor?->id;
+        }
+
+        // Buscar líneas de pedido pendientes que coincidan
+        $lineasPendientes = \App\Models\PedidoProducto::query()
+            ->with(['pedido.fabricante', 'pedido.distribuidor', 'productoBase', 'obra'])
+            ->whereHas('pedido', function($q) use ($fabricanteId, $distribuidorId) {
+                if ($fabricanteId) {
+                    $q->where('fabricante_id', $fabricanteId);
+                } elseif ($distribuidorId) {
+                    $q->where('distribuidor_id', $distribuidorId);
+                }
+            })
+            ->whereNotIn('estado', ['completado', 'cancelado', 'facturado'])
+            ->when($productoBaseId, function($q) use ($productoBaseId) {
+                $q->where('producto_base_id', $productoBaseId);
+            })
+            ->orderBy('created_at', 'asc')
+            ->get();
+
+        // Preparar información de líneas pendientes
+        $lineasInfo = $lineasPendientes->map(function($linea) {
+            return [
+                'id' => $linea->id,
+                'codigo' => $linea->codigo,
+                'pedido_codigo' => $linea->pedido->codigo ?? '(sin código)',
+                'producto' => $linea->productoBase->nombre ?? '(sin producto)',
+                'cantidad' => $linea->cantidad,
+                'cantidad_recepcionada' => $linea->cantidad_recepcionada,
+                'cantidad_pendiente' => $linea->cantidad - $linea->cantidad_recepcionada,
+                'obra' => $linea->obra->obra ?? $linea->obra_manual ?? '(sin obra)',
+                'estado' => $linea->estado,
+                'fecha_creacion' => $linea->created_at->format('d/m/Y'),
+                'fecha_estimada' => $linea->fecha_estimada_entrega ? \Carbon\Carbon::parse($linea->fecha_estimada_entrega)->format('d/m/Y') : null,
+            ];
+        })->toArray();
+
+        // Línea propuesta (la más antigua)
+        $lineaPropuesta = $lineasInfo[0] ?? null;
+
+        // Calcular bultos totales del albarán
+        $bultosTotal = collect($lineItems)->sum('bultos') ?: 0;
+        $pesoTotal = $parsed['peso_total'] ?? null;
+
+        // Preparar simulación de bultos a crear
+        $bultosSimulados = collect($lineItems)->map(function($item, $index) use ($lineaPropuesta) {
+            return [
+                'numero' => $index + 1,
+                'colada' => $item['colada'] ?? '(sin colada)',
+                'peso_kg' => $item['peso_kg'] ?? null,
+                'estado_simulado' => 'Se crearía',
+                'pedido_producto_id_simulado' => $lineaPropuesta['id'] ?? null,
+            ];
+        })->toArray();
+
+        // Estado final simulado de la línea
+        $estadoFinalSimulado = null;
+        if ($lineaPropuesta) {
+            $nuevaCantidadRecepcionada = $lineaPropuesta['cantidad_recepcionada'] + $bultosTotal;
+            $nuevoEstado = $nuevaCantidadRecepcionada >= $lineaPropuesta['cantidad'] ? 'completado' : 'activo';
+
+            $estadoFinalSimulado = [
+                'cantidad_recepcionada_nueva' => $nuevaCantidadRecepcionada,
+                'cantidad_total' => $lineaPropuesta['cantidad'],
+                'estado_nuevo' => $nuevoEstado,
+                'progreso' => round(($nuevaCantidadRecepcionada / $lineaPropuesta['cantidad']) * 100, 1),
+            ];
+        }
+
+        return [
+            'proveedor_nombre' => $proveedorNombre,
+            'fabricante_id' => $fabricanteId,
+            'distribuidor_id' => $distribuidorId,
+            'lineas_pendientes' => $lineasInfo,
+            'linea_propuesta' => $lineaPropuesta,
+            'bultos_albaran' => $bultosTotal,
+            'peso_total' => $pesoTotal,
+            'bultos_simulados' => $bultosSimulados,
+            'estado_final_simulado' => $estadoFinalSimulado,
+            'hay_coincidencias' => count($lineasInfo) > 0,
+        ];
+    }
+
+    protected function obtenerNombreProveedor(?string $codigo): string
+    {
+        return match($codigo) {
+            'siderurgica' => 'Siderúrgica Sevillana (SISE)',
+            'megasa' => 'Megasa',
+            'balboa' => 'Balboa',
+            default => 'Otro / No identificado',
+        };
     }
 }

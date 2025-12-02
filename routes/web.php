@@ -19,6 +19,7 @@ use App\Http\Controllers\EmpresaTransporteController;
 use App\Http\Controllers\PlanificacionController;
 use App\Http\Controllers\MaquinaController;
 use App\Http\Controllers\MovimientoController;
+use App\Http\Controllers\EntradaOcrController;
 use App\Http\Controllers\PlanillaController;
 use App\Http\Controllers\ProduccionController;
 use App\Http\Controllers\ElementoController;
@@ -129,6 +130,8 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
     Route::post('/entradas/importar-albaran', [EntradaController::class, 'subirPdf'])
         ->name('entradas.crearImportarAlbaranPdf');
     Route::get('/entradas/pdf/{id}', [EntradaController::class, 'descargarPdf'])->name('entradas.crearDescargarPdf');
+    Route::post('/entradas/ocr/parse', [EntradaOcrController::class, 'parse'])->name('entradas.ocr.parse');
+    Route::post('/entradas/ocr/reject', [EntradaOcrController::class, 'reject'])->name('entradas.ocr.reject');
     Route::get('/pedidos/stock-html', [PedidoController::class, 'obtenerStockHtml'])->name('pedidos.verStockHtml');
     Route::resource('pedidos_globales', PedidoGlobalController::class);
     Route::resource('pedidos', PedidoController::class);

@@ -10,6 +10,7 @@ use App\Models\Producto;
 use App\Models\PedidoProducto;
 use App\Models\PedidoProductoColada;
 use App\Models\Pedido;
+use App\Models\EntradaImportLog;
 use App\Models\Elemento;
 use App\Models\ProductoBase;
 use App\Models\Fabricante;
@@ -375,6 +376,7 @@ class EntradaController extends Controller
                 'ubicacion_id'      => ['nullable', 'integer', 'exists:ubicaciones,id'], // ✅ clave correcta
                 'obra_id'           => ['required', 'integer', 'exists:obras,id'],       // ✅ requerido para ambos productos
                 'otros'             => ['nullable', 'string', 'max:255'],
+                'ocr_log_id'        => ['nullable', 'integer', 'exists:entrada_import_logs,id'],
             ], [
                 'codigo.required'   => 'El código generado es obligatorio.',
                 'codigo.string'     => 'El código debe ser una cadena de texto.',
@@ -425,6 +427,7 @@ class EntradaController extends Controller
 
                 'otros.string'      => 'El campo "otros" debe ser una cadena de texto.',
                 'otros.max'         => 'El campo "otros" no puede tener más de 255 caracteres.',
+                'ocr_log_id.exists' => 'El log de importación OCR indicado no existe.',
             ]);
 
             // 2) Normalizaciones / cálculos
@@ -502,6 +505,18 @@ class EntradaController extends Controller
             }
 
             DB::commit();
+
+            if ($request->filled('ocr_log_id')) {
+                $log = EntradaImportLog::find($request->ocr_log_id);
+                if ($log) {
+                    $log->update([
+                        'entrada_id'      => $entrada->id,
+                        'applied_payload' => $request->except(['_token']),
+                        'status'          => 'applied',
+                        'reviewed_at'     => now(),
+                    ]);
+                }
+            }
 
             return redirect()
                 ->route('productos.index')
