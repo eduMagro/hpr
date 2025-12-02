@@ -109,20 +109,78 @@
             </thead>
 
             <tbody>
-                @forelse($lineas as $linea)
+                @forelse($lineasAgrupadas as $pedidoId => $lineasDelPedido)
                     @php
-                        $pedido = $linea->pedido;
-                        $estadoLinea = strtolower(trim($linea->estado));
-                        $claseFondo = match($estadoLinea) {
-                            'facturado' => 'bg-green-500',
-                            'completado' => 'bg-green-100',
-                            'activo' => 'bg-yellow-100',
-                            'cancelado' => 'bg-gray-300 text-gray-500 opacity-70 cursor-not-allowed',
-                            default => 'even:bg-gray-50 odd:bg-white',
-                        };
+                        $pedido = $lineasDelPedido->first()->pedido;
+                        $estadoPedido = strtolower(trim($pedido->estado ?? ''));
+                        $pedidoCancelado = $estadoPedido === 'cancelado';
+                        $pedidoCompletado = $estadoPedido === 'completado';
                     @endphp
 
-                    <tr class="text-xs {{ $claseFondo }}">
+                    {{-- CABECERA DEL PEDIDO --}}
+                    <tr wire:key="pedido-header-{{ $pedidoId }}" class="bg-gray-200 border-t-2 border-gray-400">
+                        <td colspan="14" class="px-3 py-2">
+                            <div class="flex items-center justify-between flex-wrap gap-2">
+                                <div class="flex items-center gap-4 text-sm">
+                                    <span class="font-bold text-gray-800">
+                                        {{ $pedido->codigo ?? '—' }}
+                                    </span>
+                                    <span class="text-gray-600">
+                                        <strong>Fabricante:</strong> {{ $pedido->fabricante?->nombre ?? '—' }}
+                                    </span>
+                                    <span class="text-gray-600">
+                                        <strong>Distribuidor:</strong> {{ $pedido->distribuidor?->nombre ?? '—' }}
+                                    </span>
+                                    <span class="text-gray-600">
+                                        <strong>Fecha:</strong> {{ $pedido->fecha_pedido_formateada ?? '—' }}
+                                    </span>
+                                    <span class="px-2 py-0.5 rounded text-xs font-semibold
+                                        {{ $pedidoCancelado ? 'bg-gray-400 text-white' : '' }}
+                                        {{ $pedidoCompletado ? 'bg-green-500 text-white' : '' }}
+                                        {{ !$pedidoCancelado && !$pedidoCompletado ? 'bg-blue-500 text-white' : '' }}">
+                                        {{ ucfirst($pedido->estado ?? 'pendiente') }}
+                                    </span>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    @if(!$pedidoCancelado && !$pedidoCompletado)
+                                        {{-- Botón Cancelar Pedido --}}
+                                        <form method="POST" action="{{ route('pedidos.cancelar', $pedido->id) }}"
+                                            onsubmit="return confirm('¿Estás seguro de cancelar todo el pedido {{ $pedido->codigo }}? Esta acción cancelará todas sus líneas.')">
+                                            @csrf
+                                            @method('PUT')
+                                            <button type="submit" class="bg-gray-500 hover:bg-gray-600 text-white text-xs px-3 py-1 rounded shadow transition">
+                                                Cancelar Pedido
+                                            </button>
+                                        </form>
+                                    @endif
+                                    {{-- Botón Eliminar Pedido --}}
+                                    <form method="POST" action="{{ route('pedidos.destroy', $pedido->id) }}"
+                                        onsubmit="return confirm('¿Estás seguro de ELIMINAR el pedido {{ $pedido->codigo }}? Esta acción es irreversible.')">
+                                        @csrf
+                                        @method('DELETE')
+                                        <button type="submit" class="bg-red-600 hover:bg-red-700 text-white text-xs px-3 py-1 rounded shadow transition">
+                                            Eliminar
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
+                        </td>
+                    </tr>
+
+                    {{-- LÍNEAS DEL PEDIDO --}}
+                    @foreach($lineasDelPedido as $linea)
+                        @php
+                            $estadoLinea = strtolower(trim($linea->estado));
+                            $claseFondo = match($estadoLinea) {
+                                'facturado' => 'bg-green-500',
+                                'completado' => 'bg-green-100',
+                                'activo' => 'bg-yellow-100',
+                                'cancelado' => 'bg-gray-300 text-gray-500 opacity-70 cursor-not-allowed',
+                                default => 'even:bg-gray-50 odd:bg-white',
+                            };
+                        @endphp
+
+                        <tr wire:key="linea-{{ $linea->id }}" class="text-xs {{ $claseFondo }}">
                         <td class="border px-2 py-1 text-center">
                             <div class="flex flex-col">
                                 @if($linea->codigo)
@@ -365,6 +423,7 @@
                             </div>
                         </td>
                     </tr>
+                    @endforeach
                 @empty
                     <tr>
                         <td colspan="14" class="text-center py-4 text-gray-500">No hay líneas de pedido registradas</td>
