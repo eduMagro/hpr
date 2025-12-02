@@ -530,11 +530,11 @@ class PedidoController extends Controller
 
 
         // Cargar coladas de la línea con su relación a la tabla coladas maestra
-        $linea->load(['coladas.colada']);
+        $linea->load(['coladas.coladaMaestra']);
 
         // Verificar si las coladas ya tienen fabricante definido en la tabla coladas
         $coladasConFabricante = $linea->coladas->filter(function ($c) {
-            return $c->colada && $c->colada->fabricante_id;
+            return $c->coladaMaestra && $c->coladaMaestra->fabricante_id;
         });
         $todasColadasTienenFabricante = $linea->coladas->isNotEmpty() &&
             $coladasConFabricante->count() === $linea->coladas->count();
