@@ -7,20 +7,25 @@
             <x-tabla.header-row>
                 <x-tabla.encabezado-ordenable campo="id" :sortActual="$sort" :orderActual="$order" texto="ID" />
                 <x-tabla.encabezado-ordenable campo="tipo" :sortActual="$sort" :orderActual="$order" texto="Tipo" />
-                <x-tabla.encabezado-ordenable campo="pedido_producto_id" :sortActual="$sort" :orderActual="$order" texto="Línea Pedido" />
-                <th class="p-2 border">Producto</th>
-                <x-tabla.encabezado-ordenable campo="descripcion" :sortActual="$sort" :orderActual="$order" texto="Descripción" />
-                <th class="p-2 border">Nave</th>
-                <x-tabla.encabezado-ordenable campo="prioridad" :sortActual="$sort" :orderActual="$order" texto="Prioridad" />
-                <th class="p-2 border">Solicitado por</th>
-                <th class="p-2 border">Ejecutado por</th>
+                <x-tabla.encabezado-ordenable campo="pedido_producto_id" :sortActual="$sort" :orderActual="$order"
+                    texto="Línea Pedido" />
+                <th class="p-2">Producto</th>
+                <x-tabla.encabezado-ordenable campo="descripcion" :sortActual="$sort" :orderActual="$order"
+                    texto="Descripción" />
+                <th class="p-2">Nave</th>
+                <x-tabla.encabezado-ordenable campo="prioridad" :sortActual="$sort" :orderActual="$order"
+                    texto="Prioridad" />
+                <th class="p-2">Solicitado por</th>
+                <th class="p-2">Ejecutado por</th>
                 <x-tabla.encabezado-ordenable campo="estado" :sortActual="$sort" :orderActual="$order" texto="Estado" />
-                <x-tabla.encabezado-ordenable campo="fecha_solicitud" :sortActual="$sort" :orderActual="$order" texto="Fecha Solicitud" />
-                <x-tabla.encabezado-ordenable campo="fecha_ejecucion" :sortActual="$sort" :orderActual="$order" texto="Fecha Ejecución" />
-                <th class="p-2 border">Origen</th>
-                <th class="p-2 border">Destino</th>
-                <th class="p-2 border">Producto/Paquete</th>
-                <th class="p-2 border">Acciones</th>
+                <x-tabla.encabezado-ordenable campo="fecha_solicitud" :sortActual="$sort" :orderActual="$order"
+                    texto="Fecha Solicitud" />
+                <x-tabla.encabezado-ordenable campo="fecha_ejecucion" :sortActual="$sort" :orderActual="$order"
+                    texto="Fecha Ejecución" />
+                <th class="p-2">Origen</th>
+                <th class="p-2">Destino</th>
+                <th class="p-2">Producto/Paquete</th>
+                <th class="p-2">Acciones</th>
             </x-tabla.header-row>
 
             {{-- Fila de filtros --}}
@@ -32,7 +37,7 @@
                 <x-tabla.filtro-input model="descripcion" placeholder="Descripción" />
 
                 <x-tabla.filtro-select model="nave_id" placeholder="Todas">
-                    @foreach($naves as $id => $nombre)
+                    @foreach ($naves as $id => $nombre)
                         <option value="{{ $id }}">{{ $nombre }}</option>
                     @endforeach
                 </x-tabla.filtro-select>
@@ -70,8 +75,9 @@
 
                     <x-tabla.cell>
                         @php $linea = $movimiento->pedido_producto_id; @endphp
-                        @if($linea)
-                            <a href="{{ route('pedidos.index', ['pedido_producto_id' => $linea]) }}" class="text-indigo-600 hover:underline">
+                        @if ($linea)
+                            <a href="{{ route('pedidos.index', ['pedido_producto_id' => $linea]) }}"
+                                class="text-indigo-600 hover:underline">
                                 #{{ $linea }}
                             </a>
                         @else
@@ -80,7 +86,7 @@
                     </x-tabla.cell>
 
                     <x-tabla.cell>
-                        @if($movimiento->productoBase)
+                        @if ($movimiento->productoBase)
                             {{ ucfirst(strtolower($movimiento->productoBase->tipo)) }}
                             (Ø{{ $movimiento->productoBase->diametro }}{{ strtolower($movimiento->productoBase->tipo) === 'barra' ? ', ' . $movimiento->productoBase->longitud . ' m' : '' }})
                         @else
@@ -95,7 +101,7 @@
                     </x-tabla.cell>
 
                     <x-tabla.cell>
-                        @if($movimiento->nave)
+                        @if ($movimiento->nave)
                             {{ $movimiento->nave->obra }}
                         @else
                             <span class="text-gray-400">—</span>
@@ -107,8 +113,9 @@
                     </x-tabla.cell>
 
                     <x-tabla.cell>
-                        @if($movimiento->solicitadoPor)
-                            <a href="{{ route('users.show', $movimiento->solicitadoPor->id) }}" class="text-blue-500 hover:underline">
+                        @if ($movimiento->solicitadoPor)
+                            <a href="{{ route('users.show', $movimiento->solicitadoPor->id) }}"
+                                class="text-blue-500 hover:underline">
                                 {{ $movimiento->solicitadoPor->nombre_completo }}
                             </a>
                         @else
@@ -117,8 +124,9 @@
                     </x-tabla.cell>
 
                     <x-tabla.cell>
-                        @if($movimiento->ejecutadoPor)
-                            <a href="{{ route('users.show', $movimiento->ejecutadoPor->id) }}" class="text-green-600 hover:underline">
+                        @if ($movimiento->ejecutadoPor)
+                            <a href="{{ route('users.show', $movimiento->ejecutadoPor->id) }}"
+                                class="text-green-600 hover:underline">
                                 {{ $movimiento->ejecutadoPor->nombre_completo }}
                             </a>
                         @else
@@ -143,12 +151,14 @@
                     </x-tabla.cell>
 
                     <x-tabla.cell>
-                        @if($movimiento->producto)
-                            <a href="{{ route('productos.index', ['id' => $movimiento->producto->id]) }}" class="text-blue-500 hover:underline">
+                        @if ($movimiento->producto)
+                            <a href="{{ route('productos.index', ['id' => $movimiento->producto->id]) }}"
+                                class="text-blue-500 hover:underline">
                                 {{ $movimiento->producto->codigo }}
                             </a>
                         @elseif($movimiento->paquete)
-                            <a href="{{ route('paquetes.index', ['id' => $movimiento->paquete->id]) }}" class="text-blue-500 hover:underline">
+                            <a href="{{ route('paquetes.index', ['id' => $movimiento->paquete->id]) }}"
+                                class="text-blue-500 hover:underline">
                                 {{ $movimiento->paquete->codigo }}
                             </a>
                         @else
@@ -166,6 +176,5 @@
         </x-tabla.body>
     </x-tabla.wrapper>
 
-    {{-- Paginación --}}
     <x-tabla.paginacion-livewire :paginador="$movimientos" />
 </div>

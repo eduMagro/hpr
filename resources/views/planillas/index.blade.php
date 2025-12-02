@@ -1,7 +1,7 @@
 <x-app-layout>
     <x-slot name="title">Planillas - {{ config('app.name') }}</x-slot>
 
-    <div class="w-full px-6 py-4">
+    <div class="w-full">
         <div class="flex flex-wrap items-center gap-x-4 gap-y-2 mb-4">
 
             {{-- Botón y modal de importar --}}
@@ -340,7 +340,7 @@
                         `;
                     const iconoFinal = hayErrores ? 'warning' : 'success';
                     const tituloFinal = hayErrores ? 'Proceso completado con incidencias' :
-                    'Proceso finalizado';
+                        'Proceso finalizado';
 
                     if (typeof Swal !== 'undefined') {
                         await Swal.fire({
@@ -351,7 +351,8 @@
                         });
                     } else {
                         alert(
-                            `Procesadas OK: ${procesadasOk}\nOmitidas por fecha: ${omitidasFecha}\nFallidas: ${fallidas}`);
+                            `Procesadas OK: ${procesadasOk}\nOmitidas por fecha: ${omitidasFecha}\nFallidas: ${fallidas}`
+                            );
                     }
 
                     window.location.reload();

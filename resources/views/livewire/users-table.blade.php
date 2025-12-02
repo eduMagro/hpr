@@ -13,135 +13,145 @@
 
     <div class="w-full max-w-full overflow-x-auto bg-white shadow-lg rounded-lg mt-4">
         <table class="w-full border border-gray-300 rounded-lg">
-            <thead class="bg-blue-500 text-white">
-                <tr class="text-center text-xs uppercase">
+            <x-tabla.header>
+                <x-tabla.header-row>
                     <x-tabla.encabezado-ordenable campo="id" :sortActual="$sort" :orderActual="$order" texto="ID" />
-                    <x-tabla.encabezado-ordenable campo="nombre_completo" :sortActual="$sort" :orderActual="$order" texto="Nombre" />
-                    <x-tabla.encabezado-ordenable campo="nombre_completo" :sortActual="$sort" :orderActual="$order" texto="Primer Apellido" />
-                    <x-tabla.encabezado-ordenable campo="nombre_completo" :sortActual="$sort" :orderActual="$order" texto="Segundo Apellido" />
+                    <x-tabla.encabezado-ordenable campo="nombre_completo" :sortActual="$sort" :orderActual="$order"
+                        texto="Nombre" />
+                    <x-tabla.encabezado-ordenable campo="nombre_completo" :sortActual="$sort" :orderActual="$order"
+                        texto="Primer Apellido" />
+                    <x-tabla.encabezado-ordenable campo="nombre_completo" :sortActual="$sort" :orderActual="$order"
+                        texto="Segundo Apellido" />
                     <x-tabla.encabezado-ordenable campo="email" :sortActual="$sort" :orderActual="$order" texto="Email" />
-                    <th class="p-2 border">Móvil Personal</th>
-                    <th class="p-2 border">Móvil Empresa</th>
-                    <x-tabla.encabezado-ordenable campo="numero_corto" :sortActual="$sort" :orderActual="$order" texto="Nº Corporativo" />
+                    <th class="p-2">Móvil Personal</th>
+                    <th class="p-2">Móvil Empresa</th>
+                    <x-tabla.encabezado-ordenable campo="numero_corto" :sortActual="$sort" :orderActual="$order"
+                        texto="Nº Corporativo" />
                     <x-tabla.encabezado-ordenable campo="dni" :sortActual="$sort" :orderActual="$order" texto="DNI" />
-                    <x-tabla.encabezado-ordenable campo="empresa" :sortActual="$sort" :orderActual="$order" texto="Empresa" />
+                    <x-tabla.encabezado-ordenable campo="empresa" :sortActual="$sort" :orderActual="$order"
+                        texto="Empresa" />
                     <x-tabla.encabezado-ordenable campo="rol" :sortActual="$sort" :orderActual="$order" texto="Rol" />
-                    <x-tabla.encabezado-ordenable campo="categoria" :sortActual="$sort" :orderActual="$order" texto="Categoría" />
-                    <x-tabla.encabezado-ordenable campo="maquina_id" :sortActual="$sort" :orderActual="$order" texto="Máquina" />
+                    <x-tabla.encabezado-ordenable campo="categoria" :sortActual="$sort" :orderActual="$order"
+                        texto="Categoría" />
+                    <x-tabla.encabezado-ordenable campo="maquina_id" :sortActual="$sort" :orderActual="$order"
+                        texto="Máquina" />
                     <x-tabla.encabezado-ordenable campo="turno" :sortActual="$sort" :orderActual="$order" texto="Turno" />
                     <x-tabla.encabezado-ordenable campo="estado" :sortActual="$sort" :orderActual="$order" texto="Estado" />
-                    <th class="p-2 border"></th>
-                    <th class="p-2 border">Acciones</th>
-                </tr>
+                    <th class="p-2"></th>
+                    <th class="p-2">Acciones</th>
 
-                {{-- Filtros --}}
-                <tr class="text-center text-xs uppercase">
-                    <th class="p-1 border">
+                    {{-- Filtros --}}
+                </x-tabla.header-row>
+                <x-tabla.filtro-row>
+                    <th class="p-2 bg-gray-50">
                         <input type="text" wire:model.live.debounce.300ms="user_id" placeholder="ID"
-                            class="w-full text-xs px-2 py-1 border rounded text-blue-900 focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none" />
+                            class="w-full text-xs px-2 py-2 border rounded text-blue-900 focus:border-blue-900 focus:ring-1 focus:ring-gray-600 focus:outline-none" />
                     </th>
-                    <th class="p-1 border">
+                    <th class="p-2 bg-gray-50">
                         <input type="text" wire:model.live="filtro_name" placeholder="Nombre" autocomplete="off"
-                            class="w-full text-xs px-2 py-1 border rounded text-blue-900 focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none" />
+                            class="w-full text-xs px-2 py-2 border rounded text-blue-900 focus:border-blue-900 focus:ring-1 focus:ring-gray-600 focus:outline-none" />
                     </th>
-                    <th class="p-1 border">
-                        <input type="text" wire:model.live="filtro_primer_apellido" placeholder="Apellido 1" autocomplete="off"
-                            class="w-full text-xs px-2 py-1 border rounded text-blue-900 focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none" />
+                    <th class="p-2 bg-gray-50">
+                        <input type="text" wire:model.live="filtro_primer_apellido" placeholder="Apellido 1"
+                            autocomplete="off"
+                            class="w-full text-xs px-2 py-2 border rounded text-blue-900 focus:border-blue-900 focus:ring-1 focus:ring-gray-600 focus:outline-none" />
                     </th>
-                    <th class="p-1 border">
-                        <input type="text" wire:model.live="filtro_segundo_apellido" placeholder="Apellido 2" autocomplete="off"
-                            class="w-full text-xs px-2 py-1 border rounded text-blue-900 focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none" />
+                    <th class="p-2 bg-gray-50">
+                        <input type="text" wire:model.live="filtro_segundo_apellido" placeholder="Apellido 2"
+                            autocomplete="off"
+                            class="w-full text-xs px-2 py-2 border rounded text-blue-900 focus:border-blue-900 focus:ring-1 focus:ring-gray-600 focus:outline-none" />
                     </th>
-                    <th class="p-1 border">
+                    <th class="p-2 bg-gray-50">
                         <input type="text" wire:model.live.debounce.300ms="email" placeholder="Email"
-                            class="w-full text-xs px-2 py-1 border rounded text-blue-900 focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none" />
+                            class="w-full text-xs px-2 py-2 border rounded text-blue-900 focus:border-blue-900 focus:ring-1 focus:ring-gray-600 focus:outline-none" />
                     </th>
-                    <th class="p-1 border">
+                    <th class="p-2 bg-gray-50">
                         <input type="text" wire:model.live.debounce.300ms="movil_personal" placeholder="Móvil"
-                            class="w-full text-xs px-2 py-1 border rounded text-blue-900 focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none" />
+                            class="w-full text-xs px-2 py-2 border rounded text-blue-900 focus:border-blue-900 focus:ring-1 focus:ring-gray-600 focus:outline-none" />
                     </th>
-                    <th class="p-1 border">
+                    <th class="p-2 bg-gray-50">
                         <input type="text" wire:model.live.debounce.300ms="movil_empresa" placeholder="Móvil Emp."
-                            class="w-full text-xs px-2 py-1 border rounded text-blue-900 focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none" />
+                            class="w-full text-xs px-2 py-2 border rounded text-blue-900 focus:border-blue-900 focus:ring-1 focus:ring-gray-600 focus:outline-none" />
                     </th>
-                    <th class="p-1 border">
+                    <th class="p-2 bg-gray-50">
                         <input type="text" wire:model.live.debounce.300ms="numero_corto" placeholder="Nº Corp."
-                            class="w-full text-xs px-2 py-1 border rounded text-blue-900 focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none" />
+                            class="w-full text-xs px-2 py-2 border rounded text-blue-900 focus:border-blue-900 focus:ring-1 focus:ring-gray-600 focus:outline-none" />
                     </th>
-                    <th class="p-1 border">
+                    <th class="p-2 bg-gray-50">
                         <input type="text" wire:model.live.debounce.300ms="dni" placeholder="DNI"
-                            class="w-full text-xs px-2 py-1 border rounded text-blue-900 focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none" />
+                            class="w-full text-xs px-2 py-2 border rounded text-blue-900 focus:border-blue-900 focus:ring-1 focus:ring-gray-600 focus:outline-none" />
                     </th>
-                    <th class="p-1 border">
+                    <th class="p-2 bg-gray-50">
                         <select wire:model.live="empresa_id"
-                            class="w-full text-xs px-2 py-1 border rounded text-blue-900 focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none">
+                            class="w-full text-xs px-2 py-2 border rounded text-blue-900 focus:border-blue-900 focus:ring-1 focus:ring-gray-600 focus:outline-none">
                             <option value="">Todas</option>
-                            @foreach($empresas as $empresa)
-                            <option value="{{ $empresa->id }}">{{ $empresa->nombre }}</option>
+                            @foreach ($empresas as $empresa)
+                                <option value="{{ $empresa->id }}">{{ $empresa->nombre }}</option>
                             @endforeach
                         </select>
                     </th>
-                    <th class="p-1 border">
+                    <th class="p-2 bg-gray-50">
                         <select wire:model.live="rol"
-                            class="w-full text-xs px-2 py-1 border rounded text-blue-900 focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none">
+                            class="w-full text-xs px-2 py-2 border rounded text-blue-900 focus:border-blue-900 focus:ring-1 focus:ring-gray-600 focus:outline-none">
                             <option value="">Todos</option>
-                            @foreach($roles as $r)
-                            <option value="{{ $r }}">{{ ucfirst($r) }}</option>
+                            @foreach ($roles as $r)
+                                <option value="{{ $r }}">{{ ucfirst($r) }}</option>
                             @endforeach
                         </select>
                     </th>
-                    <th class="p-1 border">
+                    <th class="p-2 bg-gray-50">
                         <select wire:model.live="categoria_id"
-                            class="w-full text-xs px-2 py-1 border rounded text-blue-900 focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none">
+                            class="w-full text-xs px-2 py-2 border rounded text-blue-900 focus:border-blue-900 focus:ring-1 focus:ring-gray-600 focus:outline-none">
                             <option value="">Todas</option>
-                            @foreach($categorias as $categoria)
-                            <option value="{{ $categoria->id }}">{{ $categoria->nombre }}</option>
+                            @foreach ($categorias as $categoria)
+                                <option value="{{ $categoria->id }}">{{ $categoria->nombre }}</option>
                             @endforeach
                         </select>
                     </th>
-                    <th class="p-1 border">
+                    <th class="p-2 bg-gray-50">
                         <select wire:model.live="maquina_id"
-                            class="w-full text-xs px-2 py-1 border rounded text-blue-900 focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none">
+                            class="w-full text-xs px-2 py-2 border rounded text-blue-900 focus:border-blue-900 focus:ring-1 focus:ring-gray-600 focus:outline-none">
                             <option value="">Todas</option>
-                            @foreach($maquinas as $maquina)
-                            <option value="{{ $maquina->id }}">{{ $maquina->nombre }}</option>
+                            @foreach ($maquinas as $maquina)
+                                <option value="{{ $maquina->id }}">{{ $maquina->nombre }}</option>
                             @endforeach
                         </select>
                     </th>
-                    <th class="p-1 border">
+                    <th class="p-2 bg-gray-50">
                         <select wire:model.live="turno"
-                            class="w-full text-xs px-2 py-1 border rounded text-blue-900 focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none">
+                            class="w-full text-xs px-2 py-2 border rounded text-blue-900 focus:border-blue-900 focus:ring-1 focus:ring-gray-600 focus:outline-none">
                             <option value="">Todos</option>
-                            @foreach($turnos as $t)
-                            <option value="{{ $t }}">{{ ucfirst($t) }}</option>
+                            @foreach ($turnos as $t)
+                                <option value="{{ $t }}">{{ ucfirst($t) }}</option>
                             @endforeach
                         </select>
                     </th>
-                    <th class="p-1 border">
+                    <th class="p-2 bg-gray-50">
                         <select wire:model.live="estado"
-                            class="w-full text-xs px-2 py-1 border rounded text-blue-900 focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none">
+                            class="w-full text-xs px-2 py-2 border rounded text-blue-900 focus:border-blue-900 focus:ring-1 focus:ring-gray-600 focus:outline-none">
                             <option value="">Todos</option>
                             <option value="activo">Activo</option>
                             <option value="inactivo">Inactivo</option>
                         </select>
                     </th>
-                    <th class="p-1 border"></th>
+                    <th class="p-2 bg-gray-50"></th>
 
-                    <th class="p-1 border text-center align-middle">
+                    <th class="p-1 text-center align-middle">
                         <div class="flex justify-center gap-2 items-center h-full">
                             {{-- ♻️ Botón reset --}}
                             <button type="button" wire:click="limpiarFiltros"
-                                class="bg-yellow-500 hover:bg-yellow-600 text-white px-2 py-1 rounded text-xs flex items-center justify-center"
+                                class="bg-yellow-500 hover:bg-yellow-600 text-white px-2 py-2 rounded text-xs flex items-center justify-center"
                                 title="Restablecer filtros">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24"
-                                    stroke="currentColor" stroke-width="2">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none"
+                                    viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                                     <path stroke-linecap="round" stroke-linejoin="round"
                                         d="M4 4v5h.582M20 20v-5h-.581M4.582 9A7.5 7.5 0 0112 4.5a7.5 7.5 0 016.418 3.418M19.418 15A7.5 7.5 0 0112 19.5a7.5 7.5 0 01-6.418-3.418" />
                                 </svg>
                             </button>
 
                             {{-- 📤 Botón exportar Excel --}}
-                            <a href="{{ route('users.verExportar', request()->query()) }}" wire:navigate title="Descarga los registros en Excel"
+                            <a href="{{ route('users.verExportar', request()->query()) }}" wire:navigate
+                                title="Descarga los registros en Excel"
                                 class="bg-green-600 hover:bg-green-700 text-white rounded text-xs flex items-center justify-center">
                                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" class="h-6 w-8">
                                     <path fill="#21A366"
@@ -154,171 +164,171 @@
                             </a>
                         </div>
                     </th>
-                </tr>
-            </thead>
+            </x-tabla.header>
 
             <tbody class="text-gray-700 text-sm">
                 @forelse ($registrosUsuarios as $user)
-                <tr tabindex="0" x-data="{ editando: false, usuario: @js($user), original: JSON.parse(JSON.stringify(@js($user))) }"
-                    @keydown.enter.stop="guardarCambios(usuario); editando=false"
-                    :class="{ 'bg-yellow-100': editando }"
-                    class="border-b odd:bg-gray-100 even:bg-gray-50 hover:bg-blue-200 cursor-pointer text-xs uppercase">
+                    <tr tabindex="0" x-data="{ editando: false, usuario: @js($user), original: JSON.parse(JSON.stringify(@js($user))) }"
+                        @keydown.enter.stop="guardarCambios(usuario); editando=false"
+                        :class="{ 'bg-yellow-100': editando }"
+                        class="border-b odd:bg-gray-100 even:bg-gray-50 hover:bg-gray-200 cursor-pointer text-xs uppercase">
 
-                    <td class="px-2 py-3 text-center border">{{ $user->id }}</td>
+                        <td class="px-2 py-3 text-center border">{{ $user->id }}</td>
 
-                    <td class="px-2 py-3 text-center border">
-                        <span x-show="!editando">{{ $user->name }}</span>
-                        <x-tabla.input x-show="editando" x-model="usuario.name" placeholder="Nombre"
-                            @keydown.enter.stop="guardarCambios(usuario)" />
-                    </td>
+                        <td class="px-2 py-3 text-center border">
+                            <span x-show="!editando">{{ $user->name }}</span>
+                            <x-tabla.input x-show="editando" x-model="usuario.name" placeholder="Nombre"
+                                @keydown.enter.stop="guardarCambios(usuario)" />
+                        </td>
 
-                    <td class="px-2 py-3 text-center border">
-                        <span x-show="!editando">{{ $user->primer_apellido }}</span>
-                        <x-tabla.input x-show="editando" x-model="usuario.primer_apellido" placeholder="Apellido 1"
-                            @keydown.enter.stop="guardarCambios(usuario)" />
-                    </td>
+                        <td class="px-2 py-3 text-center border">
+                            <span x-show="!editando">{{ $user->primer_apellido }}</span>
+                            <x-tabla.input x-show="editando" x-model="usuario.primer_apellido"
+                                placeholder="Apellido 1" @keydown.enter.stop="guardarCambios(usuario)" />
+                        </td>
 
-                    <td class="px-2 py-3 text-center border">
-                        <span x-show="!editando">{{ $user->segundo_apellido ?? '-' }}</span>
-                        <x-tabla.input x-show="editando" x-model="usuario.segundo_apellido" placeholder="Apellido 2"
-                            @keydown.enter.stop="guardarCambios(usuario)" />
-                    </td>
+                        <td class="px-2 py-3 text-center border">
+                            <span x-show="!editando">{{ $user->segundo_apellido ?? '-' }}</span>
+                            <x-tabla.input x-show="editando" x-model="usuario.segundo_apellido"
+                                placeholder="Apellido 2" @keydown.enter.stop="guardarCambios(usuario)" />
+                        </td>
 
-                    <td class="px-2 py-3 text-center border">
-                        <span x-show="!editando">{{ $user->email }}</span>
-                        <x-tabla.input x-show="editando" x-model="usuario.email"
-                            @keydown.enter.stop="guardarCambios(usuario)" />
-                    </td>
+                        <td class="px-2 py-3 text-center border">
+                            <span x-show="!editando">{{ $user->email }}</span>
+                            <x-tabla.input x-show="editando" x-model="usuario.email"
+                                @keydown.enter.stop="guardarCambios(usuario)" />
+                        </td>
 
-                    <td class="px-2 py-3 text-center border">
-                        <span x-show="!editando">{{ $user->movil_personal }}</span>
-                        <x-tabla.input x-show="editando" x-model="usuario.movil_personal"
-                            @keydown.enter.stop="guardarCambios(usuario)" />
-                    </td>
+                        <td class="px-2 py-3 text-center border">
+                            <span x-show="!editando">{{ $user->movil_personal }}</span>
+                            <x-tabla.input x-show="editando" x-model="usuario.movil_personal"
+                                @keydown.enter.stop="guardarCambios(usuario)" />
+                        </td>
 
-                    <td class="px-2 py-3 text-center border">
-                        <span x-show="!editando">{{ $user->movil_empresa }}</span>
-                        <x-tabla.input x-show="editando" x-model="usuario.movil_empresa"
-                            @keydown.enter.stop="guardarCambios(usuario)" />
-                    </td>
+                        <td class="px-2 py-3 text-center border">
+                            <span x-show="!editando">{{ $user->movil_empresa }}</span>
+                            <x-tabla.input x-show="editando" x-model="usuario.movil_empresa"
+                                @keydown.enter.stop="guardarCambios(usuario)" />
+                        </td>
 
-                    <td class="px-2 py-3 text-center border">
-                        <span x-show="!editando">{{ $user->numero_corto ?? '-' }}</span>
-                        <x-tabla.input x-show="editando" x-model="usuario.numero_corto" maxlength="4"
-                            placeholder="0000" @keydown.enter.stop="guardarCambios(usuario)" />
-                    </td>
+                        <td class="px-2 py-3 text-center border">
+                            <span x-show="!editando">{{ $user->numero_corto ?? '-' }}</span>
+                            <x-tabla.input x-show="editando" x-model="usuario.numero_corto" maxlength="4"
+                                placeholder="0000" @keydown.enter.stop="guardarCambios(usuario)" />
+                        </td>
 
-                    <td class="px-2 py-3 text-center border">
-                        <span x-show="!editando">{{ $user->dni }}</span>
-                        <x-tabla.input x-show="editando" x-model="usuario.dni"
-                            @keydown.enter.stop="guardarCambios(usuario)" />
-                    </td>
+                        <td class="px-2 py-3 text-center border">
+                            <span x-show="!editando">{{ $user->dni }}</span>
+                            <x-tabla.input x-show="editando" x-model="usuario.dni"
+                                @keydown.enter.stop="guardarCambios(usuario)" />
+                        </td>
 
-                    <td class="px-2 py-3 text-center border">
-                        <span x-show="!editando">{{ $user->empresa->nombre ?? 'Sin empresa' }}</span>
-                        <x-tabla.select-edicion x-show="editando" x-model="usuario.empresa_id"
-                            @keydown.enter.stop="guardarCambios(usuario)">
-                            <option value="">Selecciona empresa</option>
-                            @foreach ($empresas as $empresa)
-                            <option value="{{ $empresa->id }}">{{ $empresa->nombre }}</option>
-                            @endforeach
-                        </x-tabla.select-edicion>
-                    </td>
+                        <td class="px-2 py-3 text-center border">
+                            <span x-show="!editando">{{ $user->empresa->nombre ?? 'Sin empresa' }}</span>
+                            <x-tabla.select-edicion x-show="editando" x-model="usuario.empresa_id"
+                                @keydown.enter.stop="guardarCambios(usuario)">
+                                <option value="">Selecciona empresa</option>
+                                @foreach ($empresas as $empresa)
+                                    <option value="{{ $empresa->id }}">{{ $empresa->nombre }}</option>
+                                @endforeach
+                            </x-tabla.select-edicion>
+                        </td>
 
-                    <td class="px-2 py-3 text-center border">
-                        <span x-show="!editando">{{ $user->rol }}</span>
-                        <x-tabla.select-edicion x-show="editando" x-model="usuario.rol">
-                            <option value="">Selecciona rol</option>
-                            <option value="oficina">Oficina</option>
-                            <option value="operario">Operario</option>
-                            <option value="transportista">Transportista</option>
-                            <option value="visitante">Visitante</option>
-                        </x-tabla.select-edicion>
-                    </td>
+                        <td class="px-2 py-3 text-center border">
+                            <span x-show="!editando">{{ $user->rol }}</span>
+                            <x-tabla.select-edicion x-show="editando" x-model="usuario.rol">
+                                <option value="">Selecciona rol</option>
+                                <option value="oficina">Oficina</option>
+                                <option value="operario">Operario</option>
+                                <option value="transportista">Transportista</option>
+                                <option value="visitante">Visitante</option>
+                            </x-tabla.select-edicion>
+                        </td>
 
-                    <td class="px-2 py-3 text-center border">
-                        <span x-show="!editando">{{ $user->categoria->nombre ?? 'Sin asignar' }}</span>
-                        <x-tabla.select-edicion x-show="editando" x-model="usuario.categoria_id">
-                            <option value="">Selecciona cat.</option>
-                            @foreach ($categorias as $categoria)
-                            <option value="{{ $categoria->id }}">{{ ucfirst($categoria->nombre) }}</option>
-                            @endforeach
-                        </x-tabla.select-edicion>
-                    </td>
+                        <td class="px-2 py-3 text-center border">
+                            <span x-show="!editando">{{ $user->categoria->nombre ?? 'Sin asignar' }}</span>
+                            <x-tabla.select-edicion x-show="editando" x-model="usuario.categoria_id">
+                                <option value="">Selecciona cat.</option>
+                                @foreach ($categorias as $categoria)
+                                    <option value="{{ $categoria->id }}">{{ ucfirst($categoria->nombre) }}</option>
+                                @endforeach
+                            </x-tabla.select-edicion>
+                        </td>
 
-                    <td class="px-2 py-3 text-center border">
-                        <span x-show="!editando">{{ $user->maquina->nombre ?? 'Sin asignar' }}</span>
-                        <x-tabla.select-edicion x-show="editando" x-model="usuario.maquina_id">
-                            <option value="">Selecciona máq.</option>
-                            @foreach ($maquinas as $maquina)
-                            <option value="{{ $maquina->id }}">{{ $maquina->nombre ?? 'N/A' }}</option>
-                            @endforeach
-                        </x-tabla.select-edicion>
-                    </td>
+                        <td class="px-2 py-3 text-center border">
+                            <span x-show="!editando">{{ $user->maquina->nombre ?? 'Sin asignar' }}</span>
+                            <x-tabla.select-edicion x-show="editando" x-model="usuario.maquina_id">
+                                <option value="">Selecciona máq.</option>
+                                @foreach ($maquinas as $maquina)
+                                    <option value="{{ $maquina->id }}">{{ $maquina->nombre ?? 'N/A' }}</option>
+                                @endforeach
+                            </x-tabla.select-edicion>
+                        </td>
 
-                    <td class="px-2 py-3 text-center border">
-                        <span x-show="!editando">{{ $user->turno ? ucfirst($user->turno) : 'N/A' }}</span>
-                        <x-tabla.select-edicion x-show="editando" x-model="usuario.turno">
-                            <option value="">Selecciona turno</option>
-                            <option value="nocturno">Nocturno</option>
-                            <option value="diurno">Diurno</option>
-                            <option value="mañana">Mañana</option>
-                        </x-tabla.select-edicion>
-                    </td>
+                        <td class="px-2 py-3 text-center border">
+                            <span x-show="!editando">{{ $user->turno ? ucfirst($user->turno) : 'N/A' }}</span>
+                            <x-tabla.select-edicion x-show="editando" x-model="usuario.turno">
+                                <option value="">Selecciona turno</option>
+                                <option value="nocturno">Nocturno</option>
+                                <option value="diurno">Diurno</option>
+                                <option value="mañana">Mañana</option>
+                            </x-tabla.select-edicion>
+                        </td>
 
-                    <td class="px-2 py-3 text-center border">
-                        @if ($user->isOnline())
-                        <span class="text-green-600">En línea</span>
-                        @else
-                        <span class="text-gray-500">Desconectado</span>
-                        @endif
-                    </td>
+                        <td class="px-2 py-3 text-center border">
+                            @if ($user->isOnline())
+                                <span class="text-green-600">En línea</span>
+                            @else
+                                <span class="text-gray-500">Desconectado</span>
+                            @endif
+                        </td>
 
-                    <td class="px-2 py-3 text-center border">
-                        <form action="{{ route('profile.generar.turnos', $user->id) }}" method="POST"
-                            id="form-generar-turnos-{{ $user->id }}">
-                            @csrf
-                            <input type="hidden" name="turno_inicio" id="turno_inicio_{{ $user->id }}">
-                            <input type="hidden" id="usuario_turno_{{ $user->id }}"
-                                value="{{ $user->turno }}">
-                            <input type="hidden" id="obra_id_input_{{ $user->id }}" name="obra_id">
+                        <td class="px-2 py-3 text-center border">
+                            <form action="{{ route('profile.generar.turnos', $user->id) }}" method="POST"
+                                id="form-generar-turnos-{{ $user->id }}">
+                                @csrf
+                                <input type="hidden" name="turno_inicio" id="turno_inicio_{{ $user->id }}">
+                                <input type="hidden" id="usuario_turno_{{ $user->id }}"
+                                    value="{{ $user->turno }}">
+                                <input type="hidden" id="obra_id_input_{{ $user->id }}" name="obra_id">
 
-                            <button type="button"
-                                class="w-full bg-gray-500 hover:bg-gray-600 text-white text-xs px-2 py-1 rounded"
-                                onclick="confirmarGenerarTurnos({{ $user->id }}, obrasHierrosPacoReyes)">
-                                Turnos
-                            </button>
-                        </form>
-                    </td>
+                                <button type="button"
+                                    class="w-full bg-gray-500 hover:bg-gray-600 text-white text-xs px-2 py-2 rounded"
+                                    onclick="confirmarGenerarTurnos({{ $user->id }}, obrasHierrosPacoReyes)">
+                                    Turnos
+                                </button>
+                            </form>
+                        </td>
 
-                    <td class="px-2 py-2 border text-xs font-bold">
-                        <div class="flex items-center space-x-2 justify-center">
-                            <x-tabla.boton-guardar x-show="editando"
-                                @click="guardarCambios(usuario); editando=false" />
-                            <x-tabla.boton-cancelar-edicion @click="editando=false" x-show="editando" />
+                        <td class="px-2 py-2 border text-xs font-bold">
+                            <div class="flex items-center space-x-2 justify-center">
+                                <x-tabla.boton-guardar x-show="editando"
+                                    @click="guardarCambios(usuario); editando=false" />
+                                <x-tabla.boton-cancelar-edicion @click="editando=false" x-show="editando" />
 
-                            <template x-if="!editando">
-                                <div class="flex items-center space-x-2">
-                                    <x-tabla.boton-editar @click="editando=true" x-show="!editando" />
-                                    <x-tabla.boton-ver :href="route('users.show', $user->id)" target="_self" rel="noopener" />
-                                    <a href="{{ route('users.edit', $user->id) }}" wire:navigate title="Configuración"
-                                        class="w-6 h-6 bg-yellow-100 text-yellow-600 rounded hover:bg-yellow-200 flex items-center justify-center">
-                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4"
-                                            viewBox="0 0 24 24" fill="currentColor">
-                                            <path fill-rule="evenodd"
-                                                d="M11.983 2c.529 0 .96.388 1.025.912l.118.998a7.97 7.97 0 0 1 1.575.645l.892-.516a1.033 1.033 0 0 1 1.4.375l.503.87a1.03 1.03 0 0 1-.208 1.286l-.76.625c.063.32.104.648.123.982l.994.168a1.032 1.032 0 0 1 .873 1.017v1.003a1.032 1.032 0 0 1-.873 1.017l-.994.168a8.114 8.114 0 0 1-.123.982l.76.625c.361.296.463.808.208 1.286l-.503.87a1.033 1.033 0 0 1-1.4.375l-.892-.516a7.968 7.968 0 0 1-1.575.645l-.118.998a1.032 1.032 0 0 1-1.025.912h-1.002a1.032 1.032 0 0 1-1.025-.912l-.118-.998a7.97 7.97 0 0 1-1.575-.645l-.892.516a1.033 1.033 0 0 1-1.4-.375l-.503-.87a1.03 1.03 0 0 1 .208-1.286l.76-.625a8.114 8.114 0 0 1-.123-.982l-.994-.168a1.032 1.032 0 0 1-.873 1.017v-1.003a1.032 1.032 0 0 1 .873-1.017l.994-.168c.019-.334.06-.662.123-.982l-.76-.625a1.03 1.03 0 0 1-.208-1.286l.503-.87a1.033 1.033 0 0 1 1.4-.375l.892.516c.494-.29 1.02-.52 1.575-.645l.118-.998A1.032 1.032 0 0 1 10.981 2h1.002zm-1.232 10a2.25 2.25 0 1 0 4.5 0 2.25 2.25 0 0 0-4.5 0z"
-                                                clip-rule="evenodd" />
-                                        </svg>
-                                    </a>
-                                </div>
-                            </template>
-                        </div>
-                    </td>
-                </tr>
-                @empty
-                <tr>
-                    <td colspan="17" class="text-center py-4 text-gray-500">No hay usuarios disponibles.</td>
-                </tr>
+                                <template x-if="!editando">
+                                    <div class="flex items-center space-x-2">
+                                        <x-tabla.boton-editar @click="editando=true" x-show="!editando" />
+                                        <x-tabla.boton-ver :href="route('users.show', $user->id)" target="_self" rel="noopener" />
+                                        <a href="{{ route('users.edit', $user->id) }}" wire:navigate
+                                            title="Configuración"
+                                            class="w-6 h-6 bg-yellow-100 text-yellow-600 rounded hover:bg-yellow-200 flex items-center justify-center">
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4"
+                                                viewBox="0 0 24 24" fill="currentColor">
+                                                <path fill-rule="evenodd"
+                                                    d="M11.983 2c.529 0 .96.388 1.025.912l.118.998a7.97 7.97 0 0 1 1.575.645l.892-.516a1.033 1.033 0 0 1 1.4.375l.503.87a1.03 1.03 0 0 1-.208 1.286l-.76.625c.063.32.104.648.123.982l.994.168a1.032 1.032 0 0 1 .873 1.017v1.003a1.032 1.032 0 0 1-.873 1.017l-.994.168a8.114 8.114 0 0 1-.123.982l.76.625c.361.296.463.808.208 1.286l-.503.87a1.033 1.033 0 0 1-1.4.375l-.892-.516a7.968 7.968 0 0 1-1.575.645l-.118.998a1.032 1.032 0 0 1-1.025.912h-1.002a1.032 1.032 0 0 1-1.025-.912l-.118-.998a7.97 7.97 0 0 1-1.575-.645l-.892.516a1.033 1.033 0 0 1-1.4-.375l-.503-.87a1.03 1.03 0 0 1 .208-1.286l.76-.625a8.114 8.114 0 0 1-.123-.982l-.994-.168a1.032 1.032 0 0 1-.873 1.017v-1.003a1.032 1.032 0 0 1 .873-1.017l.994-.168c.019-.334.06-.662.123-.982l-.76-.625a1.03 1.03 0 0 1-.208-1.286l.503-.87a1.033 1.033 0 0 1 1.4-.375l.892.516c.494-.29 1.02-.52 1.575-.645l.118-.998A1.032 1.032 0 0 1 10.981 2h1.002zm-1.232 10a2.25 2.25 0 1 0 4.5 0 2.25 2.25 0 0 0-4.5 0z"
+                                                    clip-rule="evenodd" />
+                                            </svg>
+                                        </a>
+                                    </div>
+                                </template>
+                            </div>
+                        </td>
+                        </x-tabla.filtro-row>
+                    @empty
+                    <tr>
+                        <td colspan="17" class="text-center py-4 text-gray-500">No hay usuarios disponibles.</td>
+                    </tr>
                 @endforelse
             </tbody>
         </table>

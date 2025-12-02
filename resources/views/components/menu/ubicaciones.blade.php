@@ -26,7 +26,7 @@
                         $active = $obra->id == $obraActualId;
                         $ruta = rutaNave($obra);
                     @endphp
-                    <a href="{{ $ruta }}" wire:navigate
+                    <a href="{{ $ruta }}"
                         class="block px-3 py-3 text-sm font-medium transition
                             {{ $active
                                 ? 'bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white'
@@ -44,7 +44,7 @@
                     $active = $obra->id == $obraActualId;
                     $ruta = rutaNave($obra);
                 @endphp
-                <a href="{{ $ruta }}" wire:navigate
+                <a href="{{ $ruta }}"
                     class="flex-1 text-center px-4 py-2 font-semibold rounded-lg border transition-colors duration-200 ease-out
                     {{ $active
                         ? 'bg-gray-900 text-white border-gray-900 shadow'

@@ -8,29 +8,29 @@
                     <thead class="bg-blue-500 text-white text-10">
                         <tr class="text-center text-xs uppercase">
 
-                            <th class="p-2 border">{!! $ordenables['id'] ?? 'ID' !!}</th>
-                            <th class="p-2 border">Codigo</th>
-                            <th class="p-2 border">Codigo SubEtiqueta</th>
-                            <th class="p-2 border">{!! $ordenables['codigo_planilla'] ?? 'Planilla' !!}</th>
-                            <th class="p-2 border">{!! $ordenables['paquete'] ?? 'Paquete' !!}</th>
-                            <th class="p-2 border">Op 1</th>
-                            <th class="p-2 border">Op 2</th>
-                            <th class="p-2 border">Ens 1</th>
-                            <th class="p-2 border">Ens 2</th>
-                            <th class="p-2 border">Sol 1</th>
-                            <th class="p-2 border">Sol 2</th>
-                            <th class="p-2 border">{!! $ordenables['numero_etiqueta'] ?? 'Número de Etiqueta' !!}</th>
-                            <th class="p-2 border">{!! $ordenables['nombre'] ?? 'Nombre' !!}</th>
-                            <th class="p-2 border">Marca</th>
-                            <th class="p-2 border">{!! $ordenables['peso'] ?? 'Peso (kg)' !!}</th>
-                            <th class="p-2 border">Inicio Fabricación</th>
-                            <th class="p-2 border">Final Fabricación</th>
-                            <th class="p-2 border">Inicio Ensamblado</th>
-                            <th class="p-2 border">Final Ensamblado</th>
-                            <th class="p-2 border">Inicio Soldadura</th>
-                            <th class="p-2 border">Final Soldadura</th>
-                            <th class="p-2 border">{!! $ordenables['estado'] ?? 'Estado' !!}</th>
-                            <th class="p-2 border">Acciones</th>
+                            <th class="p-2">{!! $ordenables['id'] ?? 'ID' !!}</th>
+                            <th class="p-2">Codigo</th>
+                            <th class="p-2">Codigo SubEtiqueta</th>
+                            <th class="p-2">{!! $ordenables['codigo_planilla'] ?? 'Planilla' !!}</th>
+                            <th class="p-2">{!! $ordenables['paquete'] ?? 'Paquete' !!}</th>
+                            <th class="p-2">Op 1</th>
+                            <th class="p-2">Op 2</th>
+                            <th class="p-2">Ens 1</th>
+                            <th class="p-2">Ens 2</th>
+                            <th class="p-2">Sol 1</th>
+                            <th class="p-2">Sol 2</th>
+                            <th class="p-2">{!! $ordenables['numero_etiqueta'] ?? 'Número de Etiqueta' !!}</th>
+                            <th class="p-2">{!! $ordenables['nombre'] ?? 'Nombre' !!}</th>
+                            <th class="p-2">Marca</th>
+                            <th class="p-2">{!! $ordenables['peso'] ?? 'Peso (kg)' !!}</th>
+                            <th class="p-2">Inicio Fabricación</th>
+                            <th class="p-2">Final Fabricación</th>
+                            <th class="p-2">Inicio Ensamblado</th>
+                            <th class="p-2">Final Ensamblado</th>
+                            <th class="p-2">Inicio Soldadura</th>
+                            <th class="p-2">Final Soldadura</th>
+                            <th class="p-2">{!! $ordenables['estado'] ?? 'Estado' !!}</th>
+                            <th class="p-2">Acciones</th>
                         </tr>
 
                         <tr class="text-center text-xs uppercase">
@@ -98,7 +98,8 @@
                                         'ensamblando' => 'Ensamblando',
                                         'soldando' => 'Soldando',
                                         'completada' => 'Completada',
-                                    ]" :selected="request('estado')" wire:navigate empty="Todos" />
+                                    ]" :selected="request('estado')" wire:navigate
+                                        empty="Todos" />
                                 </th>
                                 <x-tabla.botones-filtro ruta="etiquetas.index" />
                             </form>
@@ -132,8 +133,8 @@
                                 <!-- Planilla (no editable) -->
                                 <td class="p-2 text-center border">
                                     @if ($etiqueta->planilla_id)
-                                        <a href="{{ route('planillas.index', ['planilla_id' => $etiqueta->planilla_id]) }}" wire:navigate
-                                            class="text-blue-500 hover:underline">
+                                        <a href="{{ route('planillas.index', ['planilla_id' => $etiqueta->planilla_id]) }}"
+                                            wire:navigate class="text-blue-500 hover:underline">
                                             {{ $etiqueta->planilla->codigo_limpio }}
                                         </a>
                                     @else
@@ -142,8 +143,8 @@
                                 </td>
                                 <td class="p-2 text-center border">
                                     @if (isset($etiqueta->paquete->codigo))
-                                        <a href="{{ route('paquetes.index', [$etiqueta->paquete_id => $etiqueta->paquete->codigo]) }}" wire:navigate
-                                            class="text-blue-500 hover:underline">
+                                        <a href="{{ route('paquetes.index', [$etiqueta->paquete_id => $etiqueta->paquete->codigo]) }}"
+                                            wire:navigate class="text-blue-500 hover:underline">
                                             {{ $etiqueta->paquete->codigo }}
                                         </a>
                                     @else
@@ -154,8 +155,8 @@
                                 <!-- Opeario 1 (no editable) -->
                                 <td class="p-2 text-center border">
                                     @if ($etiqueta->operario1)
-                                        <a href="{{ route('users.index', ['users_id' => $etiqueta->operario1]) }}" wire:navigate
-                                            class="text-blue-500 hover:underline">
+                                        <a href="{{ route('users.index', ['users_id' => $etiqueta->operario1]) }}"
+                                            wire:navigate class="text-blue-500 hover:underline">
                                             {{ $etiqueta->operario1->name }}
                                             {{ $etiqueta->operario1->primer_apellido }}
                                         </a>
@@ -167,8 +168,8 @@
                                 <!-- Operario 2 (no editable) -->
                                 <td class="p-2 text-center border">
                                     @if ($etiqueta->opeario2)
-                                        <a href="{{ route('users.index', ['users_id' => $etiqueta->opeario2]) }}" wire:navigate
-                                            class="text-blue-500 hover:underline">
+                                        <a href="{{ route('users.index', ['users_id' => $etiqueta->opeario2]) }}"
+                                            wire:navigate class="text-blue-500 hover:underline">
                                             {{ $etiqueta->opeario2->name }}
                                         </a>
                                     @else
@@ -178,8 +179,8 @@
                                 <!-- Ensamblador 1 (no editable) -->
                                 <td class="p-2 text-center border">
                                     @if ($etiqueta->ensamblador1)
-                                        <a href="{{ route('users.index', ['users_id' => $etiqueta->ensamblador1]) }}" wire:navigate
-                                            class="text-blue-500 hover:underline">
+                                        <a href="{{ route('users.index', ['users_id' => $etiqueta->ensamblador1]) }}"
+                                            wire:navigate class="text-blue-500 hover:underline">
                                             {{ $etiqueta->ensamblador1->name }}
                                         </a>
                                     @else
@@ -190,8 +191,8 @@
                                 <!-- Ensamblador 2 (no editable) -->
                                 <td class="p-2 text-center border">
                                     @if ($etiqueta->ensamblador2)
-                                        <a href="{{ route('users.index', ['users_id' => $etiqueta->ensamblador2]) }}" wire:navigate
-                                            class="text-blue-500 hover:underline">
+                                        <a href="{{ route('users.index', ['users_id' => $etiqueta->ensamblador2]) }}"
+                                            wire:navigate class="text-blue-500 hover:underline">
                                             {{ $etiqueta->ensamblador2->name }}
                                         </a>
                                     @else

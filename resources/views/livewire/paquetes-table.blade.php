@@ -5,100 +5,98 @@
         <!-- Tabla con filtros Livewire -->
         <div class="w-full overflow-x-auto bg-white shadow-lg rounded-lg">
             <table class="w-full min-w-[1600px] border border-gray-300 rounded-lg">
-                <thead class="bg-blue-500 text-white text-10">
-                    <tr class="text-center text-xs uppercase">
-                        <th class="p-2 border cursor-pointer" wire:click="wire:click="sortBy('id')" wire:navigate">
+                <x-tabla.header>
+                    <x-tabla.header-row>
+                        <th class="p-2 cursor-pointer" wire:click="sortBy('id')" wire:navigate>
                             ID @if ($sort === 'id')
                                 {{ $order === 'asc' ? '▲' : '▼' }}
                             @endif
                         </th>
-                        <th class="p-2 border cursor-pointer" wire:click="wire:click="sortBy('codigo')" wire:navigate">
+                        <th class="p-2 cursor-pointer" wire:click="sortBy('codigo')" wire:navigate>
                             Código @if ($sort === 'codigo')
                                 {{ $order === 'asc' ? '▲' : '▼' }}
                             @endif
                         </th>
-                        <th class="p-2 border cursor-pointer" wire:click="wire:click="sortBy('planilla_id')"
-                            wire:navigate">
+                        <th class="p-2 cursor-pointer" wire:click="sortBy('planilla_id')" wire:navigate>
                             Planilla @if ($sort === 'planilla_id')
                                 {{ $order === 'asc' ? '▲' : '▼' }}
                             @endif
                         </th>
-                        <th class="p-2 border">Cód. Obra</th>
-                        <th class="p-2 border">Obra</th>
-                        <th class="p-2 border">Cód. Cliente</th>
-                        <th class="p-2 border">Cliente</th>
-                        <th class="p-2 border">Nave</th>
-                        <th class="p-2 border">Ubicación</th>
-                        <th class="p-2 border cursor-pointer" wire:click="wire:click="sortBy('estado')" wire:navigate">
+                        <th class="p-2">Cód. Obra</th>
+                        <th class="p-2">Obra</th>
+                        <th class="p-2">Cód. Cliente</th>
+                        <th class="p-2">Cliente</th>
+                        <th class="p-2">Nave</th>
+                        <th class="p-2">Ubicación</th>
+                        <th class="p-2 cursor-pointer" wire:click="sortBy('estado')" wire:navigate>
                             Estado @if ($sort === 'estado')
                                 {{ $order === 'asc' ? '▲' : '▼' }}
                             @endif
                         </th>
-                        <th class="p-2 border">Elementos</th>
-                        <th class="p-2 border cursor-pointer" wire:click="wire:click="sortBy('peso')" wire:navigate">
+                        <th class="p-2">Elementos</th>
+                        <th class="p-2 cursor-pointer" wire:click="sortBy('peso')" wire:navigate>
                             Peso (Kg) @if ($sort === 'peso')
                                 {{ $order === 'asc' ? '▲' : '▼' }}
                             @endif
                         </th>
-                        <th class="p-2 border cursor-pointer" wire:click="wire:click="sortBy('created_at')"
-                            wire:navigate">
+                        <th class="p-2 cursor-pointer" wire:click="sortBy('created_at')" wire:navigate>
                             Fecha Creación @if ($sort === 'created_at')
                                 {{ $order === 'asc' ? '▲' : '▼' }}
                             @endif
                         </th>
-                        <th class="p-2 border">Fecha Límite Reparto</th>
-                        <th class="p-2 border">Acciones</th>
-                    </tr>
+                        <th class="p-2">Fecha Límite Reparto</th>
+                        <th class="p-2">Acciones</th>
 
-                    <tr class="text-center text-xs uppercase">
-                        <th class="p-1 border">
+                    </x-tabla.header-row>
+                    <x-tabla.filtro-row>
+                        <th class="p-2 bg-gray-50">
                             <input type="text" wire:model.live.debounce.300ms="paquete_id"
-                                class="w-full text-xs border rounded px-1 py-0.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none"
+                                class="w-full text-xs border border-gray-300 rounded px-2 py-2 text-gray-800 bg-gray-50 focus:border-gray-700 focus:ring-1 focus:ring-gray-600 focus:outline-none"
                                 placeholder="ID...">
                         </th>
-                        <th class="p-1 border">
+                        <th class="p-2 bg-gray-50">
                             <input type="text" wire:model.live.debounce.300ms="codigo"
-                                class="w-full text-xs border rounded px-1 py-0.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none"
+                                class="w-full text-xs border border-gray-300 rounded px-2 py-2 text-gray-800 bg-gray-50 focus:border-gray-700 focus:ring-1 focus:ring-gray-600 focus:outline-none"
                                 placeholder="Código...">
                         </th>
-                        <th class="p-1 border">
+                        <th class="p-2 bg-gray-50">
                             <input type="text" wire:model.live.debounce.300ms="planilla"
-                                class="w-full text-xs border rounded px-1 py-0.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none"
+                                class="w-full text-xs border border-gray-300 rounded px-2 py-2 text-gray-800 bg-gray-50 focus:border-gray-700 focus:ring-1 focus:ring-gray-600 focus:outline-none"
                                 placeholder="Planilla...">
                         </th>
-                        <th class="p-1 border">
+                        <th class="p-2 bg-gray-50">
                             <input type="text" wire:model.live.debounce.300ms="cod_obra"
-                                class="w-full text-xs border rounded px-1 py-0.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none"
+                                class="w-full text-xs border border-gray-300 rounded px-2 py-2 text-gray-800 bg-gray-50 focus:border-gray-700 focus:ring-1 focus:ring-gray-600 focus:outline-none"
                                 placeholder="Cód. Obra...">
                         </th>
-                        <th class="p-1 border">
+                        <th class="p-2 bg-gray-50">
                             <input type="text" wire:model.live.debounce.300ms="nom_obra"
-                                class="w-full text-xs border rounded px-1 py-0.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none"
+                                class="w-full text-xs border border-gray-300 rounded px-2 py-2 text-gray-800 bg-gray-50 focus:border-gray-700 focus:ring-1 focus:ring-gray-600 focus:outline-none"
                                 placeholder="Obra...">
                         </th>
-                        <th class="p-1 border">
+                        <th class="p-2 bg-gray-50">
                             <input type="text" wire:model.live.debounce.300ms="codigo_cliente"
-                                class="w-full text-xs border rounded px-1 py-0.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none"
+                                class="w-full text-xs border border-gray-300 rounded px-2 py-2 text-gray-800 bg-gray-50 focus:border-gray-700 focus:ring-1 focus:ring-gray-600 focus:outline-none"
                                 placeholder="Cód. Cliente...">
                         </th>
-                        <th class="p-1 border">
+                        <th class="p-2 bg-gray-50">
                             <input type="text" wire:model.live.debounce.300ms="cliente"
-                                class="w-full text-xs border rounded px-1 py-0.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none"
+                                class="w-full text-xs border border-gray-300 rounded px-2 py-2 text-gray-800 bg-gray-50 focus:border-gray-700 focus:ring-1 focus:ring-gray-600 focus:outline-none"
                                 placeholder="Cliente...">
                         </th>
-                        <th class="p-1 border">
+                        <th class="p-2 bg-gray-50">
                             <input type="text" wire:model.live.debounce.300ms="nave"
-                                class="w-full text-xs border rounded px-1 py-0.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none"
+                                class="w-full text-xs border border-gray-300 rounded px-2 py-2 text-gray-800 bg-gray-50 focus:border-gray-700 focus:ring-1 focus:ring-gray-600 focus:outline-none"
                                 placeholder="Nave...">
                         </th>
-                        <th class="p-1 border">
+                        <th class="p-2 bg-gray-50">
                             <input type="text" wire:model.live.debounce.300ms="ubicacion"
-                                class="w-full text-xs border rounded px-1 py-0.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none"
+                                class="w-full text-xs border border-gray-300 rounded px-2 py-2 text-gray-800 bg-gray-50 focus:border-gray-700 focus:ring-1 focus:ring-gray-600 focus:outline-none"
                                 placeholder="Ubicación...">
                         </th>
-                        <th class="p-1 border">
+                        <th class="p-2 bg-gray-50">
                             <select wire:model.live="estado"
-                                class="w-full text-xs border rounded px-1 py-0.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none">
+                                class="w-full text-xs border border-gray-300 rounded px-2 py-2 text-gray-800 bg-gray-50 focus:border-gray-700 focus:ring-1 focus:ring-gray-600 focus:outline-none">
                                 <option value="">Todos</option>
                                 <option value="pendiente">Pendiente</option>
                                 <option value="asignado_a_salida">Asignado</option>
@@ -106,21 +104,21 @@
                                 <option value="enviado">Enviado</option>
                             </select>
                         </th>
-                        <th class="p-1 border"></th> {{-- Elementos --}}
-                        <th class="p-1 border"></th> {{-- Peso --}}
-                        <th class="p-1 border">
+                        <th class="p-2 bg-gray-50"></th> {{-- Elementos --}}
+                        <th class="p-2 bg-gray-50"></th> {{-- Peso --}}
+                        <th class="p-2 bg-gray-50">
                             <input type="date" wire:model.live.debounce.300ms="created_at"
-                                class="w-full text-xs border rounded px-1 py-0.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none">
+                                class="w-full text-xs border border-gray-300 rounded px-2 py-2 text-gray-800 bg-gray-50 focus:border-gray-700 focus:ring-1 focus:ring-gray-600 focus:outline-none">
                         </th>
-                        <th class="p-1 border">
+                        <th class="p-2 bg-gray-50 border-r-0">
                             <input type="date" wire:model.live.debounce.300ms="fecha_limite"
-                                class="w-full text-xs border rounded px-1 py-0.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none">
+                                class="w-full text-xs border border-gray-300 rounded px-2 py-2 text-gray-800 bg-gray-50 focus:border-gray-700 focus:ring-1 focus:ring-gray-600 focus:outline-none">
                         </th>
-                        <th class="p-1 border text-center align-middle">
+                        <th class="p-1 text-center align-middle">
                             <div class="flex justify-center gap-2 items-center h-full">
                                 {{-- ♻️ Botón reset --}}
                                 <button wire:click="limpiarFiltros"
-                                    class="bg-yellow-500 hover:bg-yellow-600 text-white px-2 py-1 rounded text-xs flex items-center justify-center"
+                                    class="bg-yellow-500 hover:bg-yellow-600 text-white px-2 py-2 rounded text-xs flex items-center justify-center"
                                     title="Restablecer filtros">
                                     <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none"
                                         viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
@@ -130,13 +128,13 @@
                                 </button>
                             </div>
                         </th>
-                    </tr>
-                </thead>
+                    </x-tabla.filtro-row>
+                </x-tabla.header>
 
                 <tbody class="text-gray-700 text-sm">
                     @forelse ($paquetes as $paquete)
                         <tr
-                            class="border-b odd:bg-gray-100 even:bg-gray-50 hover:bg-blue-200 transition-colors text-xs uppercase">
+                            class="border-b odd:bg-gray-100 even:bg-gray-50 hover:bg-gray-200 transition-colors text-xs uppercase">
                             <td class="p-2 text-center border">{{ $paquete->id }}</td>
                             <td class="p-2 text-center border">{{ $paquete->codigo }}</td>
                             <td class="p-2 text-center border">
@@ -187,7 +185,7 @@
                                     };
                                 @endphp
                                 <span
-                                    class="inline-flex items-center px-2 py-1 rounded-full text-xs font-semibold {{ $estadoBadge['bg'] }} {{ $estadoBadge['text'] }}">
+                                    class="inline-flex items-center px-2 py-2 rounded-full text-xs font-semibold {{ $estadoBadge['bg'] }} {{ $estadoBadge['text'] }}">
                                     {{ $estadoBadge['icon'] }} {{ $estadoBadge['label'] }}
                                 </span>
                             </td>
@@ -224,15 +222,14 @@
                             </td>
                             <td class="p-2 text-center border">{{ $paquete->peso }} Kg</td>
                             <td class="p-2 text-center border">{{ $paquete->created_at->format('d/m/Y H:i') }}</td>
-                            <td class="p-2 text-center border">
+                            <td class="p-2 text-center border border-r-0">
                                 {{ optional($paquete->planilla->fecha_estimada_reparto)->format('d/m/Y') ?? 'No disponible' }}
                             </td>
-                            <td class="p-2 text-center border">
+                            <td class="p-2 text-center border-0">
                                 <div class="flex flex-row justify-center items-center gap-3">
                                     {{-- Botón QR --}}
                                     <button
-                                        onclick="onclick="generateAndPrintQR('{{ $paquete->codigo }}', '{{ $paquete->planilla->codigo_limpio }}'
-                                        , 'PAQUETE' )" wire:navigate"
+                                        onclick="generateAndPrintQR('{{ $paquete->codigo }}', '{{ $paquete->planilla->codigo_limpio }}', 'PAQUETE')"
                                         class="w-6 h-6 bg-green-100 text-green-600 rounded hover:bg-green-200 flex items-center justify-center"
                                         title="Generar QR">
                                         <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none"
@@ -261,16 +258,15 @@
                             </td>
                         </tr>
                     @empty
-                        <tr>
-                            <td colspan="15" class="text-center py-4 text-gray-500">No hay paquetes registrados</td>
-                        </tr>
+                    <tr>
+                        <td colspan="15" class="text-center py-4 text-gray-500">No hay paquetes registrados</td>
+                    </tr>
                     @endforelse
                 </tbody>
             </table>
         </div>
 
-        <!-- Paginación Livewire -->
-        {{ $paquetes->links() }}
+        <x-tabla.paginacion-livewire :paginador="$paquetes" />
     </div>
 
     {{-- Modal para visualizar elementos del paquete --}}

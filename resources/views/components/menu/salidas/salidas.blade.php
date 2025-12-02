@@ -56,8 +56,8 @@
                         $rutaActual === $link['route'] ||
                         ($estaEnSeccionMostrable && $link['route'] === $representanteSeccion);
                 @endphp
-                <a href="{{ route($link['route']) }}" wire:navigate
-                    wire:navigate
+                <a href="{{ route($link['route']) }}"
+
                     class="block px-2 py-3 text-sm font-medium transition
               {{ $active
                   ? $colores['bgLite'] . ' ' . $colores['activoTxt'] . ' font-semibold'
@@ -77,8 +77,8 @@
                     $rutaActual === $link['route'] ||
                     ($estaEnSeccionMostrable && $link['route'] === $representanteSeccion);
             @endphp
-            <a href="{{ route($link['route']) }}" wire:navigate
-                wire:navigate
+            <a href="{{ route($link['route']) }}"
+
                 class="relative flex-1 text-center px-4 py-2 font-semibold transition
               {{ $active
                   ? $colores['bgActivo'] . ' ' . $colores['txt']

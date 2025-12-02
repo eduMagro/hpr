@@ -5,7 +5,7 @@
         'maquinasDisponibles' => $maquinasDisponibles,
     ])
 
-    <div class="w-full px-6 py-4">
+    <div class="w-full">
         <!-- Botones superiores -->
         <div class="mb-6 flex flex-wrap justify-center gap-3">
             @if (auth()->check() && auth()->id() === 1)
@@ -17,7 +17,8 @@
             <button onclick="abrirModal()"
                 class="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-semibold py-2.5 px-6 rounded-lg shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105 hidden md:inline-flex items-center gap-2">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                    <path d="M2 6a2 2 0 012-2h6a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V6zM14.553 7.106A1 1 0 0014 8v4a1 1 0 00.553.894l2 1A1 1 0 0018 13V7a1 1 0 00-1.447-.894l-2 1z" />
+                    <path
+                        d="M2 6a2 2 0 012-2h6a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V6zM14.553 7.106A1 1 0 0014 8v4a1 1 0 00.553.894l2 1A1 1 0 0018 13V7a1 1 0 00-1.447-.894l-2 1z" />
                 </svg>
                 Generar Códigos QR
             </button>
@@ -93,8 +94,10 @@
                     <div class="flex justify-between items-center">
                         <div class="flex items-center gap-3">
                             <div class="bg-blue-600 p-2 rounded-lg">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-white" fill="none"
+                                    viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
                                 </svg>
                             </div>
                             <div>
@@ -104,8 +107,11 @@
                         </div>
                         <button @click="open = !open"
                             class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 flex items-center gap-2 shadow-md hover:shadow-lg">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" :class="{'rotate-180': open}" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="transition: transform 0.2s;">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" :class="{ 'rotate-180': open }"
+                                fill="none" viewBox="0 0 24 24" stroke="currentColor"
+                                style="transition: transform 0.2s;">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M19 9l-7 7-7-7" />
                             </svg>
                             <span x-show="!open">Mostrar</span>
                             <span x-show="open">Ocultar</span>
@@ -113,14 +119,13 @@
                     </div>
                 </div>
 
-                <div x-show="open"
-                     x-transition:enter="transition ease-out duration-200"
-                     x-transition:enter-start="opacity-0 transform scale-95"
-                     x-transition:enter-end="opacity-100 transform scale-100"
-                     x-transition:leave="transition ease-in duration-150"
-                     x-transition:leave-start="opacity-100 transform scale-100"
-                     x-transition:leave-end="opacity-0 transform scale-95"
-                     class="mt-3 overflow-x-auto bg-white shadow-lg rounded-lg border border-gray-200">
+                <div x-show="open" x-transition:enter="transition ease-out duration-200"
+                    x-transition:enter-start="opacity-0 transform scale-95"
+                    x-transition:enter-end="opacity-100 transform scale-100"
+                    x-transition:leave="transition ease-in duration-150"
+                    x-transition:leave-start="opacity-100 transform scale-100"
+                    x-transition:leave-end="opacity-0 transform scale-95"
+                    class="mt-3 overflow-x-auto bg-white shadow-lg rounded-lg border border-gray-200">
                     <table class="w-full min-w-[600px] text-sm">
                         <thead class="bg-gradient-to-r from-blue-500 to-blue-600 text-white">
                             <tr>
@@ -135,21 +140,26 @@
                                 <tr class="border-b hover:bg-blue-50 transition-colors">
                                     <td class="px-4 py-3 text-center font-medium text-gray-700">{{ $base->id }}</td>
                                     <td class="px-4 py-3 text-center">
-                                        <span class="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-xs font-semibold">
+                                        <span
+                                            class="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-xs font-semibold">
                                             {{ ucfirst($base->tipo) }}
                                         </span>
                                     </td>
-                                    <td class="px-4 py-3 text-center font-medium text-gray-700">{{ $base->diametro }} mm</td>
+                                    <td class="px-4 py-3 text-center font-medium text-gray-700">{{ $base->diametro }} mm
+                                    </td>
                                     <td class="px-4 py-3 text-center text-gray-600">{{ $base->longitud ?? '—' }}</td>
                                 </tr>
                             @empty
                                 <tr>
                                     <td colspan="4" class="text-center py-8">
                                         <div class="flex flex-col items-center gap-2">
-                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 text-gray-400"
+                                                fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                    d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
                                             </svg>
-                                            <span class="text-gray-500 font-medium">No hay productos base registrados</span>
+                                            <span class="text-gray-500 font-medium">No hay productos base
+                                                registrados</span>
                                         </div>
                                     </td>
                                 </tr>
@@ -250,34 +260,34 @@
 
                         @if ($esOficina || $esGruista)
                             <div class="flex flex-wrap gap-2 mt-4 w-full">
-                                    <a href="{{ route('productos.show', $producto->id) }}" wire:navigate
-                                        class="flex-1 bg-blue-500 hover:bg-blue-600 text-white text-center text-sm font-semibold py-2 px-2 rounded shadow">
-                                        Ver
-                                    </a>
-                                    <a href="{{ route('productos.edit', $producto->id) }}" wire:navigate
-                                        class="flex-1 bg-blue-400 hover:bg-blue-500 text-white text-center text-sm font-semibold py-2 px-2 rounded shadow">
-                                        Editar
-                                    </a>
-                                    <button onclick="abrirModalMovimientoLibre('{{ $producto->codigo }}')"
-                                        class="flex-1 bg-green-500 hover:bg-green-600 text-white text-center text-sm font-semibold py-2 px-2 rounded shadow">
-                                        Mover
+                                <a href="{{ route('productos.show', $producto->id) }}" wire:navigate
+                                    class="flex-1 bg-blue-500 hover:bg-blue-600 text-white text-center text-sm font-semibold py-2 px-2 rounded shadow">
+                                    Ver
+                                </a>
+                                <a href="{{ route('productos.edit', $producto->id) }}" wire:navigate
+                                    class="flex-1 bg-blue-400 hover:bg-blue-500 text-white text-center text-sm font-semibold py-2 px-2 rounded shadow">
+                                    Editar
+                                </a>
+                                <button onclick="abrirModalMovimientoLibre('{{ $producto->codigo }}')"
+                                    class="flex-1 bg-green-500 hover:bg-green-600 text-white text-center text-sm font-semibold py-2 px-2 rounded shadow">
+                                    Mover
+                                </button>
+
+                                <a href="{{ route('productos.editarConsumir', $producto->id) }}" wire:navigate
+                                    data-consumir="{{ route('productos.editarConsumir', $producto->id) }}"
+                                    class="btn-consumir flex-1 bg-red-500 hover:bg-red-600 text-white text-center text-sm font-semibold py-2 px-2 rounded shadow">
+                                    Consumir
+                                </a>
+
+                                <form action="{{ route('productos.destroy', $producto->id) }}" method="POST"
+                                    class="form-eliminar flex-1">
+                                    @csrf
+                                    @method('DELETE')
+                                    <button type="submit"
+                                        class="btn-eliminar w-full bg-gray-500 hover:bg-gray-600 text-white text-sm font-semibold py-2 px-2 rounded shadow">
+                                        Eliminar
                                     </button>
-
-                                    <a href="{{ route('productos.editarConsumir', $producto->id) }}" wire:navigate
-                                        data-consumir="{{ route('productos.editarConsumir', $producto->id) }}"
-                                        class="btn-consumir flex-1 bg-red-500 hover:bg-red-600 text-white text-center text-sm font-semibold py-2 px-2 rounded shadow">
-                                        Consumir
-                                    </a>
-
-                                    <form action="{{ route('productos.destroy', $producto->id) }}" method="POST"
-                                        class="form-eliminar flex-1">
-                                        @csrf
-                                        @method('DELETE')
-                                        <button type="submit"
-                                            class="btn-eliminar w-full bg-gray-500 hover:bg-gray-600 text-white text-sm font-semibold py-2 px-2 rounded shadow">
-                                            Eliminar
-                                        </button>
-                                    </form>
+                                </form>
 
                             </div>
                         @endif

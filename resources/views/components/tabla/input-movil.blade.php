@@ -12,6 +12,6 @@
     value="{{ $name ? old($name, $value) : $value }}" placeholder="{{ $placeholder }}"
     {{ $attributes->merge([
         'class' =>
-            'w-full border border-gray-300 rounded text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500',
+            'w-full border border-gray-300 rounded text-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-600 focus:border-gray-700',
         'style' => 'height:2cm; padding:0.75rem 1rem; font-size:1.5rem;',
     ]) }} />

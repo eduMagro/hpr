@@ -130,7 +130,7 @@
 
             <!-- Page Content -->
             <main class="flex-1 overflow-y-auto bg-neutral-100 dark:bg-gray-900 transition-colors">
-                <div class="py-4 px-2 sm:px-6 lg:px-8 h-full">
+                <div class="py-2 px-2 sm:px-6 lg:px-8 h-full">
                     <!-- Breadcrumbs -->
                     <x-breadcrumbs />
 
@@ -156,6 +156,18 @@
     @livewireScripts
 
     @stack('scripts')
+
+    <script data-navigate-once>
+        // Desactiva wire:navigate en enlaces para evitar navegaciones SPA con errores de fetch
+        function disableWireNavigate() {
+            document.querySelectorAll('a[wire\\:navigate]').forEach((link) => {
+                link.removeAttribute('wire:navigate');
+            });
+        }
+
+        document.addEventListener('DOMContentLoaded', disableWireNavigate);
+        document.addEventListener('livewire:navigated', disableWireNavigate);
+    </script>
 
     <!-- Dark Mode Support Script -->
     <script data-navigate-once>

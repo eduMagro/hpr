@@ -25,7 +25,7 @@
             x-cloak>
             @foreach ($links as $link)
                 @php $active = $rutaActual === $link['route']; @endphp
-                <a href="{{ route($link['route']) }}" wire:navigate
+                <a href="{{ route($link['route']) }}"
                     class="block px-2 py-3 transition text-sm font-medium
                           {{ $active ? 'bg-blue-100 text-blue-800 font-semibold' : 'text-blue-700 hover:bg-blue-50 hover:text-blue-900' }}">
                     {!! $link['label'] !!}
@@ -42,7 +42,7 @@
                 $first = $i === 0;
                 $last = $i === count($links) - 1;
             @endphp
-            <a href="{{ route($link['route']) }}" wire:navigate
+            <a href="{{ route($link['route']) }}"
                 class="flex-1 text-center px-4 py-2 rounded-none transition font-semibold
                       {{ $first ? 'first:rounded-l-lg' : '' }}
                       {{ $last ? 'last:rounded-r-lg' : '' }}

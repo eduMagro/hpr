@@ -494,26 +494,26 @@
                     </tr>
                     <tr class="text-center text-xs bg-blue-400">
                         <form method="GET" action="{{ route('alertas.index') }}">
-                            <th class="p-2 border-r border-blue-300">
+                            <th class="p-2-r border-blue-300">
                                 <x-tabla.input name="emisor" value="{{ request('emisor') }}" />
                             </th>
-                            <th class="p-2 border-r border-blue-300">
+                            <th class="p-2-r border-blue-300">
                                 <x-tabla.input name="receptor" value="{{ request('receptor') }}" />
                             </th>
-                            <th class="p-2 border-r border-blue-300">
+                            <th class="p-2-r border-blue-300">
                                 <x-tabla.input name="destino" value="{{ request('destino') }}" />
                             </th>
-                            <th class="p-2 border-r border-blue-300">
+                            <th class="p-2-r border-blue-300">
                                 <x-tabla.input name="destinatario" value="{{ request('destinatario') }}" />
                             </th>
-                            <th class="p-2 border-r border-blue-300">
+                            <th class="p-2-r border-blue-300">
                                 <x-tabla.input name="mensaje" value="{{ request('mensaje') }}" />
                             </th>
-                            <th class="p-2 border-r border-blue-300">
+                            <th class="p-2-r border-blue-300">
                                 <x-tabla.select name="tipo" :options="$tiposAlerta" :selected="request('tipo')" empty="-- Todos --"
                                     class="text-xs" />
                             </th>
-                            <th class="p-2 border-r border-blue-300">
+                            <th class="p-2-r border-blue-300">
                                 <x-tabla.input type="date" name="fecha_creada"
                                     value="{{ request('fecha_creada') }}" />
                             </th>
@@ -1329,7 +1329,8 @@
             const alineacion = esPropio ? 'justify-end' : 'justify-start';
             const bgColor = esPropio ? 'bg-blue-500' : 'bg-green-500';
             const textColor = 'text-white';
-            const borderRadius = esPropio ? 'rounded-l-2xl rounded-tr-2xl rounded-br-md' : 'rounded-r-2xl rounded-tl-2xl rounded-bl-md';
+            const borderRadius = esPropio ? 'rounded-l-2xl rounded-tr-2xl rounded-br-md' :
+                'rounded-r-2xl rounded-tl-2xl rounded-bl-md';
 
             const mensajeDiv = document.createElement('div');
             mensajeDiv.className = `flex ${alineacion} mb-4 animate-fade-in`;
@@ -1397,7 +1398,8 @@
                 const alineacion = esPropio ? 'justify-end' : 'justify-start';
                 const bgColor = esPropio ? 'bg-blue-500' : 'bg-green-500';
                 const textColor = 'text-white';
-                const borderRadius = esPropio ? 'rounded-l-2xl rounded-tr-2xl rounded-br-md' : 'rounded-r-2xl rounded-tl-2xl rounded-bl-md';
+                const borderRadius = esPropio ? 'rounded-l-2xl rounded-tr-2xl rounded-br-md' :
+                    'rounded-r-2xl rounded-tl-2xl rounded-bl-md';
 
                 const respuestaDiv = document.createElement('div');
                 respuestaDiv.className = `flex ${alineacion} mb-3 animate-fade-in`;
@@ -1510,6 +1512,7 @@
                 opacity: 0;
                 transform: translateY(10px);
             }
+
             to {
                 opacity: 1;
                 transform: translateY(0);

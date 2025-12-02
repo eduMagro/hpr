@@ -1,5 +1,5 @@
 <div>
-    <div class="w-full px-6 py-4">
+    <div class="w-full">
 
         <!-- Badge de planillas sin revisar -->
         @if ($planillasSinRevisar > 0)
@@ -31,84 +31,104 @@
         <!-- Tabla con filtros Livewire -->
         <div class="w-full overflow-x-auto bg-white shadow-lg rounded-lg">
             <table class="w-full min-w-[2000px] border border-gray-300 rounded-lg">
-                <thead class="bg-blue-500 text-white text-4">
-                    <tr class="text-center text-xs uppercase">
-                        <x-tabla.encabezado-ordenable campo="id" :sortActual="$sort" :orderActual="$order" texto="ID" />
-                        <x-tabla.encabezado-ordenable campo="codigo" :sortActual="$sort" :orderActual="$order" texto="Código" />
-                        <x-tabla.encabezado-ordenable campo="codigo_cliente" :sortActual="$sort" :orderActual="$order" texto="Codigo Cliente" />
-                        <x-tabla.encabezado-ordenable campo="cliente_id" :sortActual="$sort" :orderActual="$order" texto="Cliente" />
-                        <x-tabla.encabezado-ordenable campo="codigo_obra" :sortActual="$sort" :orderActual="$order" texto="Código Obra" />
-                        <x-tabla.encabezado-ordenable campo="obra_id" :sortActual="$sort" :orderActual="$order" texto="Obra" />
-                        <x-tabla.encabezado-ordenable campo="seccion" :sortActual="$sort" :orderActual="$order" texto="Sección" />
-                        <x-tabla.encabezado-ordenable campo="descripcion" :sortActual="$sort" :orderActual="$order" texto="Descripción" />
-                        <x-tabla.encabezado-ordenable campo="ensamblado" :sortActual="$sort" :orderActual="$order" texto="Ensamblado" />
-                        <x-tabla.encabezado-ordenable campo="comentario" :sortActual="$sort" :orderActual="$order" texto="Comentario" />
-                        <th class="p-2 border">Peso Fabricado</th>
-                        <x-tabla.encabezado-ordenable campo="peso_total" :sortActual="$sort" :orderActual="$order" texto="Peso Total" />
-                        <x-tabla.encabezado-ordenable campo="estado" :sortActual="$sort" :orderActual="$order" texto="Estado" />
-                        <x-tabla.encabezado-ordenable campo="fecha_inicio" :sortActual="$sort" :orderActual="$order" texto="Fecha Inicio" />
-                        <x-tabla.encabezado-ordenable campo="fecha_finalizacion" :sortActual="$sort" :orderActual="$order" texto="Fecha Finalización" />
-                        <x-tabla.encabezado-ordenable campo="created_at" :sortActual="$sort" :orderActual="$order" texto="Fecha Importación" />
-                        <x-tabla.encabezado-ordenable campo="fecha_estimada_entrega" :sortActual="$sort" :orderActual="$order" texto="Fecha Entrega" />
-                        <x-tabla.encabezado-ordenable campo="usuario_id" :sortActual="$sort" :orderActual="$order" texto="Usuario" />
-                        <x-tabla.encabezado-ordenable campo="revisada" :sortActual="$sort" :orderActual="$order" texto="Revisada" />
-                        <x-tabla.encabezado-ordenable campo="revisor_id" :sortActual="$sort" :orderActual="$order" texto="Revisada por" />
-                        <x-tabla.encabezado-ordenable campo="revisada_at" :sortActual="$sort" :orderActual="$order" texto="Fecha revisión" />
-                        <th class="p-2 border">Acciones</th>
-                    </tr>
+                <x-tabla.header>
+                    <x-tabla.header-row>
+                        <x-tabla.encabezado-ordenable campo="id" :sortActual="$sort" :orderActual="$order"
+                            texto="ID" />
+                        <x-tabla.encabezado-ordenable campo="codigo" :sortActual="$sort" :orderActual="$order"
+                            texto="Código" />
+                        <x-tabla.encabezado-ordenable campo="codigo_cliente" :sortActual="$sort" :orderActual="$order"
+                            texto="Codigo Cliente" />
+                        <x-tabla.encabezado-ordenable campo="cliente_id" :sortActual="$sort" :orderActual="$order"
+                            texto="Cliente" />
+                        <x-tabla.encabezado-ordenable campo="codigo_obra" :sortActual="$sort" :orderActual="$order"
+                            texto="Código Obra" />
+                        <x-tabla.encabezado-ordenable campo="obra_id" :sortActual="$sort" :orderActual="$order"
+                            texto="Obra" />
+                        <x-tabla.encabezado-ordenable campo="seccion" :sortActual="$sort" :orderActual="$order"
+                            texto="Sección" />
+                        <x-tabla.encabezado-ordenable campo="descripcion" :sortActual="$sort" :orderActual="$order"
+                            texto="Descripción" />
+                        <x-tabla.encabezado-ordenable campo="ensamblado" :sortActual="$sort" :orderActual="$order"
+                            texto="Ensamblado" />
+                        <x-tabla.encabezado-ordenable campo="comentario" :sortActual="$sort" :orderActual="$order"
+                            texto="Comentario" />
+                        <th class="p-2">Peso Fabricado</th>
+                        <x-tabla.encabezado-ordenable campo="peso_total" :sortActual="$sort" :orderActual="$order"
+                            texto="Peso Total" />
+                        <x-tabla.encabezado-ordenable campo="estado" :sortActual="$sort" :orderActual="$order"
+                            texto="Estado" />
+                        <x-tabla.encabezado-ordenable campo="fecha_inicio" :sortActual="$sort" :orderActual="$order"
+                            texto="Fecha Inicio" />
+                        <x-tabla.encabezado-ordenable campo="fecha_finalizacion" :sortActual="$sort" :orderActual="$order"
+                            texto="Fecha Finalización" />
+                        <x-tabla.encabezado-ordenable campo="created_at" :sortActual="$sort" :orderActual="$order"
+                            texto="Fecha Importación" />
+                        <x-tabla.encabezado-ordenable campo="fecha_estimada_entrega" :sortActual="$sort"
+                            :orderActual="$order" texto="Fecha Entrega" />
+                        <x-tabla.encabezado-ordenable campo="usuario_id" :sortActual="$sort" :orderActual="$order"
+                            texto="Usuario" />
+                        <x-tabla.encabezado-ordenable campo="revisada" :sortActual="$sort" :orderActual="$order"
+                            texto="Revisada" />
+                        <x-tabla.encabezado-ordenable campo="revisor_id" :sortActual="$sort" :orderActual="$order"
+                            texto="Revisada por" />
+                        <x-tabla.encabezado-ordenable campo="revisada_at" :sortActual="$sort" :orderActual="$order"
+                            texto="Fecha revisión" />
+                        <th class="p-2">Acciones</th>
 
-                    <tr class="text-center text-xs uppercase">
-                        <th class="p-1 border"></th>
-                        <th class="p-1 border">
+                    </x-tabla.header-row>
+                    <x-tabla.filtro-row>
+                        <th class="p-2 bg-gray-50"></th>
+                        <th class="p-2 bg-gray-50">
                             <input type="text" wire:model.live.debounce.300ms="codigo"
-                                class="w-full text-xs border rounded px-1 py-0.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none"
+                                class="w-full text-xs border border-gray-300 rounded px-2 py-2 text-gray-800 bg-gray-50 focus:border-gray-700 focus:ring-1 focus:ring-gray-600 focus:outline-none"
                                 placeholder="Código...">
                         </th>
-                        <th class="p-1 border">
+                        <th class="p-2 bg-gray-50">
                             <input type="text" wire:model.live.debounce.300ms="codigo_cliente"
-                                class="w-full text-xs border rounded px-1 py-0.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none"
+                                class="w-full text-xs border border-gray-300 rounded px-2 py-2 text-gray-800 bg-gray-50 focus:border-gray-700 focus:ring-1 focus:ring-gray-600 focus:outline-none"
                                 placeholder="Cód. Cliente...">
                         </th>
-                        <th class="p-1 border">
+                        <th class="p-2 bg-gray-50">
                             <input type="text" wire:model.live.debounce.300ms="cliente"
-                                class="w-full text-xs border rounded px-1 py-0.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none"
+                                class="w-full text-xs border border-gray-300 rounded px-2 py-2 text-gray-800 bg-gray-50 focus:border-gray-700 focus:ring-1 focus:ring-gray-600 focus:outline-none"
                                 placeholder="Cliente...">
                         </th>
-                        <th class="p-1 border">
+                        <th class="p-2 bg-gray-50">
                             <input type="text" wire:model.live.debounce.300ms="cod_obra"
-                                class="w-full text-xs border rounded px-1 py-0.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none"
+                                class="w-full text-xs border border-gray-300 rounded px-2 py-2 text-gray-800 bg-gray-50 focus:border-gray-700 focus:ring-1 focus:ring-gray-600 focus:outline-none"
                                 placeholder="Cód. Obra...">
                         </th>
-                        <th class="p-1 border">
+                        <th class="p-2 bg-gray-50">
                             <input type="text" wire:model.live.debounce.300ms="nom_obra"
-                                class="w-full text-xs border rounded px-1 py-0.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none"
+                                class="w-full text-xs border border-gray-300 rounded px-2 py-2 text-gray-800 bg-gray-50 focus:border-gray-700 focus:ring-1 focus:ring-gray-600 focus:outline-none"
                                 placeholder="Obra...">
                         </th>
-                        <th class="p-1 border">
+                        <th class="p-2 bg-gray-50">
                             <input type="text" wire:model.live.debounce.300ms="seccion"
-                                class="w-full text-xs border rounded px-1 py-0.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none"
+                                class="w-full text-xs border border-gray-300 rounded px-2 py-2 text-gray-800 bg-gray-50 focus:border-gray-700 focus:ring-1 focus:ring-gray-600 focus:outline-none"
                                 placeholder="Sección...">
                         </th>
-                        <th class="p-1 border">
+                        <th class="p-2 bg-gray-50">
                             <input type="text" wire:model.live.debounce.300ms="descripcion"
-                                class="w-full text-xs border rounded px-1 py-0.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none"
+                                class="w-full text-xs border border-gray-300 rounded px-2 py-2 text-gray-800 bg-gray-50 focus:border-gray-700 focus:ring-1 focus:ring-gray-600 focus:outline-none"
                                 placeholder="Descripción...">
                         </th>
-                        <th class="p-1 border">
+                        <th class="p-2 bg-gray-50">
                             <input type="text" wire:model.live.debounce.300ms="ensamblado"
-                                class="w-full text-xs border rounded px-1 py-0.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none"
+                                class="w-full text-xs border border-gray-300 rounded px-2 py-2 text-gray-800 bg-gray-50 focus:border-gray-700 focus:ring-1 focus:ring-gray-600 focus:outline-none"
                                 placeholder="Ensamblado...">
                         </th>
-                        <th class="p-1 border">
+                        <th class="p-2 bg-gray-50">
                             <input type="text" wire:model.live.debounce.300ms="comentario"
-                                class="w-full text-xs border rounded px-1 py-0.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none"
+                                class="w-full text-xs border border-gray-300 rounded px-2 py-2 text-gray-800 bg-gray-50 focus:border-gray-700 focus:ring-1 focus:ring-gray-600 focus:outline-none"
                                 placeholder="Comentario...">
                         </th>
-                        <th class="p-1 border"></th> {{-- Peso Fabricado --}}
-                        <th class="p-1 border"></th> {{-- Peso Total --}}
-                        <th class="p-1 border">
+                        <th class="p-2 bg-gray-50"></th> {{-- Peso Fabricado --}}
+                        <th class="p-2 bg-gray-50"></th> {{-- Peso Total --}}
+                        <th class="p-2 bg-gray-50">
                             <select wire:model.live="estado"
-                                class="w-full text-xs border rounded px-1 py-0.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none">
+                                class="w-full text-xs border border-gray-300 rounded px-2 py-2 text-gray-800 bg-gray-50 focus:border-gray-700 focus:ring-1 focus:ring-gray-600 focus:outline-none">
                                 <option value="">Todos</option>
                                 <option value="pendiente">Pendiente</option>
                                 <option value="fabricando">Fabricando</option>
@@ -116,40 +136,40 @@
                                 <option value="montaje">Montaje</option>
                             </select>
                         </th>
-                        <th class="p-1 border">
+                        <th class="p-2 bg-gray-50">
                             <input type="date" wire:model.live.debounce.300ms="fecha_inicio"
-                                class="w-full text-xs border rounded px-1 py-0.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none">
+                                class="w-full text-xs border border-gray-300 rounded px-2 py-2 text-gray-800 bg-gray-50 focus:border-gray-700 focus:ring-1 focus:ring-gray-600 focus:outline-none">
                         </th>
-                        <th class="p-1 border">
+                        <th class="p-2 bg-gray-50">
                             <input type="date" wire:model.live.debounce.300ms="fecha_finalizacion"
-                                class="w-full text-xs border rounded px-1 py-0.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none">
+                                class="w-full text-xs border border-gray-300 rounded px-2 py-2 text-gray-800 bg-gray-50 focus:border-gray-700 focus:ring-1 focus:ring-gray-600 focus:outline-none">
                         </th>
-                        <th class="p-1 border">
+                        <th class="p-2 bg-gray-50">
                             <input type="date" wire:model.live.debounce.300ms="fecha_importacion"
-                                class="w-full text-xs border rounded px-1 py-0.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none">
+                                class="w-full text-xs border border-gray-300 rounded px-2 py-2 text-gray-800 bg-gray-50 focus:border-gray-700 focus:ring-1 focus:ring-gray-600 focus:outline-none">
                         </th>
-                        <th class="p-1 border">
+                        <th class="p-2 bg-gray-50">
                             <input type="date" wire:model.live.debounce.300ms="fecha_estimada_entrega"
-                                class="w-full text-xs border rounded px-1 py-0.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none">
+                                class="w-full text-xs border border-gray-300 rounded px-2 py-2 text-gray-800 bg-gray-50 focus:border-gray-700 focus:ring-1 focus:ring-gray-600 focus:outline-none">
                         </th>
-                        <th class="p-1 border">
+                        <th class="p-2 bg-gray-50">
                             <input type="text" wire:model.live.debounce.300ms="usuario"
-                                class="w-full text-xs border rounded px-1 py-0.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none"
+                                class="w-full text-xs border border-gray-300 rounded px-2 py-2 text-gray-800 bg-gray-50 focus:border-gray-700 focus:ring-1 focus:ring-gray-600 focus:outline-none"
                                 placeholder="Usuario...">
                         </th>
-                        <th class="p-1 border">
+                        <th class="p-2 bg-gray-50">
                             <select wire:model.live="revisada"
-                                class="w-full text-xs border rounded px-1 py-0.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none">
+                                class="w-full text-xs border border-gray-300 rounded px-2 py-2 text-gray-800 bg-gray-50 focus:border-gray-700 focus:ring-1 focus:ring-gray-600 focus:outline-none">
                                 <option value="">Todas</option>
                                 <option value="1">Sí</option>
                                 <option value="0">No</option>
                             </select>
                         </th>
-                        <th class="p-1 border"></th>
-                        <th class="p-1 border"></th>
-                        <th class="p-1 border text-center align-middle">
+                        <th class="p-2 bg-gray-50"></th>
+                        <th class="p-2 bg-gray-50"></th>
+                        <th class="p-1 text-center align-middle">
                             <button wire:click="limpiarFiltros"
-                                class="bg-yellow-500 hover:bg-yellow-600 text-white px-2 py-1 rounded text-xs flex items-center justify-center"
+                                class="bg-yellow-500 hover:bg-yellow-600 text-white px-2 py-2 rounded text-xs flex items-center justify-center"
                                 title="Restablecer filtros">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none"
                                     viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
@@ -158,13 +178,13 @@
                                 </svg>
                             </button>
                         </th>
-                    </tr>
-                </thead>
+                    </x-tabla.filtro-row>
+                </x-tabla.header>
 
                 <tbody class="text-gray-700">
                     @forelse ($planillas as $planilla)
                         <tr
-                            class="border-b odd:bg-gray-100 even:bg-gray-50 hover:bg-blue-200 cursor-pointer text-xs leading-none uppercase transition-colors">
+                            class="border-b odd:bg-gray-100 even:bg-gray-50 hover:bg-gray-200 cursor-pointer text-xs leading-none uppercase transition-colors">
                             <td class="p-2 text-center border">{{ $planilla->id }}</td>
                             <td class="p-2 text-center border">
                                 <a href="{{ route('planillas.show', $planilla->id) }}"
@@ -195,7 +215,7 @@
                             <td class="p-2 text-center border">{{ number_format($planilla->peso_total, 2) }} kg</td>
                             <td class="p-2 text-center border">
                                 <span
-                                    class="px-2 py-1 rounded text-xs font-semibold
+                                    class="px-2 py-2 rounded text-xs font-semibold
                                     {{ $planilla->estado === 'completada' ? 'bg-green-200 text-green-800' : '' }}
                                     {{ $planilla->estado === 'pendiente' ? 'bg-red-200 text-red-800' : '' }}
                                     {{ $planilla->estado === 'fabricando' ? 'bg-blue-200 text-blue-800' : '' }}
@@ -238,7 +258,7 @@
                             <td class="p-2 text-center border">{{ $planilla->user->name ?? '-' }}</td>
                             <td class="p-2 text-center border">
                                 <span
-                                    class="px-2 py-1 rounded text-xs font-semibold {{ $planilla->revisada ? 'bg-green-200 text-green-800' : 'bg-gray-200 text-gray-800' }}">
+                                    class="px-2 py-2 rounded text-xs font-semibold {{ $planilla->revisada ? 'bg-green-200 text-green-800' : 'bg-gray-200 text-gray-800' }}">
                                     {{ $planilla->revisada ? 'Sí' : 'No' }}
                                 </span>
                             </td>
@@ -312,10 +332,7 @@
             </div>
         @endif
 
-        <!-- Paginación Livewire -->
-        <div class="mt-4">
-            {{ $planillas->links('vendor.livewire.tailwind') }}
-        </div>
+        <x-tabla.paginacion-livewire :paginador="$planillas" />
     </div>
 
     {{-- Modal Reimportar Planilla --}}

@@ -112,18 +112,18 @@
             <table class="w-full border border-gray-300 rounded-lg">
                 <thead class="bg-blue-500 text-white">
                     <tr class="text-left text-sm uppercase">
-                        <th class="p-2 border text-center">{!! $ordenables['id'] !!}</th>
-                        <th class="p-2 border text-center">{!! $ordenables['empresa'] !!}</th>
-                        <th class="p-2 border text-center">{!! $ordenables['codigo'] !!}</th>
-                        <th class="p-2 border text-center">{!! $ordenables['contacto1_telefono'] !!}</th>
-                        <th class="p-2 border text-center">{!! $ordenables['contacto1_email'] !!}</th>
-                        <th class="p-2 border text-center">Dirección</th>
-                        <th class="p-2 border text-center">{!! $ordenables['ciudad'] !!}</th>
-                        <th class="p-2 border text-center">{!! $ordenables['provincia'] !!}</th>
-                        <th class="p-2 border text-center">{!! $ordenables['pais'] !!}</th>
-                        <th class="p-2 border text-center">{!! $ordenables['cif_nif'] !!}</th>
-                        <th class="p-2 border text-center">{!! $ordenables['activo'] !!}</th>
-                        <th class="p-2 border text-center">Acciones</th>
+                        <th class="p-2 text-center">{!! $ordenables['id'] !!}</th>
+                        <th class="p-2 text-center">{!! $ordenables['empresa'] !!}</th>
+                        <th class="p-2 text-center">{!! $ordenables['codigo'] !!}</th>
+                        <th class="p-2 text-center">{!! $ordenables['contacto1_telefono'] !!}</th>
+                        <th class="p-2 text-center">{!! $ordenables['contacto1_email'] !!}</th>
+                        <th class="p-2 text-center">Dirección</th>
+                        <th class="p-2 text-center">{!! $ordenables['ciudad'] !!}</th>
+                        <th class="p-2 text-center">{!! $ordenables['provincia'] !!}</th>
+                        <th class="p-2 text-center">{!! $ordenables['pais'] !!}</th>
+                        <th class="p-2 text-center">{!! $ordenables['cif_nif'] !!}</th>
+                        <th class="p-2 text-center">{!! $ordenables['activo'] !!}</th>
+                        <th class="p-2 text-center">Acciones</th>
 
                     </tr>
                     <tr class="text-left text-sm uppercase">

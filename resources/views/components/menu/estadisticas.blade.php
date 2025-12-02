@@ -34,7 +34,7 @@
         'estadisticas.verTecnicosDespiece' => '👷 Técnicos de Despiece',
         'estadisticas.verConsumo-maquinas' => '⚙️ Consumo Máquinas',
     ] as $ruta => $titulo)
-                <a href="{{ route($ruta) }}" wire:navigate
+                <a href="{{ route($ruta) }}"
                     class="block px-2 py-3 text-sm font-medium transition
                         {{ $rutaActual === $ruta
                             ? $colores['bgLite'] . ' ' . $colores['activoTxt'] . ' font-semibold'
@@ -53,7 +53,7 @@
         'estadisticas.verTecnicosDespiece' => '👷 Técnicos de Despiece',
         'estadisticas.verConsumo-maquinas' => '⚙️ Consumo Máquinas',
     ] as $ruta => $titulo)
-            <a href="{{ route($ruta) }}" wire:navigate
+            <a href="{{ route($ruta) }}"
                 class="flex-1 text-center px-4 py-2 font-semibold transition
                     {{ $rutaActual === $ruta
                         ? $colores['bgActivo'] . ' ' . $colores['txt']

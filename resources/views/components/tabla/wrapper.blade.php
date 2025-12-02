@@ -3,8 +3,10 @@
     'minWidth' => '1000px'
 ])
 
-<div class="w-full overflow-x-auto bg-white shadow-lg rounded-lg">
-    <table class="w-full border border-gray-300 rounded-lg" style="min-width: {{ $minWidth }}">
-        {{ $slot }}
-    </table>
+<div class="w-full overflow-x-auto">
+    <div class="block w-full min-w-full align-middle bg-white border border-gray-200 shadow-lg rounded-xl">
+        <table class="min-w-full text-sm text-gray-800" style="min-width: {{ $minWidth }}">
+            {{ $slot }}
+        </table>
+    </div>
 </div>

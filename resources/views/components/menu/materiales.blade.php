@@ -41,7 +41,7 @@
                 @foreach ($items as $item)
                     @php $active = $rutaActual === $item['route']; @endphp
 
-                    <a href="{{ route($item['route']) }}" wire:navigate
+                    <a href="{{ route($item['route']) }}"
                         class="block px-2 py-3 text-sm font-medium transition {{ $active ? $colores['bgLite'] . ' ' . $colores['activoTxt'] . ' font-semibold' : $colores['txtBase'] . ' ' . $colores['hoverLite'] . ' ' . $colores['txtHover'] }}">
                         {{ $item['label'] }}
                     </a>
@@ -54,7 +54,7 @@
             @foreach ($items as $item)
                 @php $active = $rutaActual === $item['route']; @endphp
 
-                <a href="{{ route($item['route']) }}" wire:navigate
+                <a href="{{ route($item['route']) }}"
                     class="flex-1 text-center px-4 py-2 font-semibold transition {{ $active ? $colores['bgActivo'] . ' ' . $colores['txt'] : $colores['bg'] . ' ' . $colores['bgHover'] . ' ' . $colores['txt'] }}">
                     {{ $item['label'] }}
                 </a>

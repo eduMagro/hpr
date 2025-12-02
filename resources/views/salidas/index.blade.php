@@ -33,12 +33,12 @@
                                     <th class="py-2 px-4 border-b">Obra</th>
                                     <th class="py-2 px-4 border-b">E. Transporte</th>
                                     <th class="py-2 px-4 border-b">Camión</th>
-                                    <th class="p-2 border-b">Horas paralización</th>
-                                    <th class="p-2 border-b">Importe paralización</th>
-                                    <th class="p-2 border-b">Horas Grua</th>
-                                    <th class="p-2 border-b">Importe Grua</th>
-                                    <th class="p-2 border-b">Horas Almacén</th>
-                                    <th class="p-2 border-b">Importe</th>
+                                    <th class="p-2-b">Horas paralización</th>
+                                    <th class="p-2-b">Importe paralización</th>
+                                    <th class="p-2-b">Horas Grua</th>
+                                    <th class="p-2-b">Importe Grua</th>
+                                    <th class="p-2-b">Horas Almacén</th>
+                                    <th class="p-2-b">Importe</th>
                                     <th class="py-2 px-4 border-b">Fecha Estimada Entrega</th>
                                     <th class="py-2 px-4 border-b">Estado</th>
                                     <th class="py-2 px-4 border-b">Acciones</th>
@@ -686,7 +686,8 @@
                     const selCamion = findCamionSelectByKey(key);
                     if (selCamion) {
                         selCamion.innerHTML = '';
-                        selCamion.appendChild(opcionesCamion(empresaId, null)); // limpia selección de camión
+                        selCamion.appendChild(opcionesCamion(empresaId,
+                        null)); // limpia selección de camión
                     }
                     if (!canEdit) return;
 

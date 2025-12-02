@@ -25,20 +25,20 @@
                     <thead class="bg-blue-500 text-white text-10">
                         <!-- Fila de títulos -->
                         <tr class="text-xs uppercase">
-                            <th class="p-2 border">ID Línea</th>
-                            <th class="p-2 border">{!! $ordenables['codigo'] ?? 'Código Pedido' !!}</th>
-                            <th class="p-2 border">{!! $ordenables['cliente'] ?? 'Cliente' !!}</th>
-                            <th class="p-2 border">Producto Base</th>
-                            <th class="p-2 border">Unidad Medida</th>
-                            <th class="p-2 border">Cant. Solicitada</th>
-                            <th class="p-2 border">Cant. Servida</th>
-                            <th class="p-2 border">Precio Unitario</th>
-                            <th class="p-2 border">Estado</th>
-                            <th class="p-2 border">
+                            <th class="p-2">ID Línea</th>
+                            <th class="p-2">{!! $ordenables['codigo'] ?? 'Código Pedido' !!}</th>
+                            <th class="p-2">{!! $ordenables['cliente'] ?? 'Cliente' !!}</th>
+                            <th class="p-2">Producto Base</th>
+                            <th class="p-2">Unidad Medida</th>
+                            <th class="p-2">Cant. Solicitada</th>
+                            <th class="p-2">Cant. Servida</th>
+                            <th class="p-2">Precio Unitario</th>
+                            <th class="p-2">Estado</th>
+                            <th class="p-2">
                                 <input type="checkbox" id="select-all">
                             </th>
 
-                            <th class="p-2 border">Acciones</th>
+                            <th class="p-2">Acciones</th>
                         </tr>
 
                         <!-- Fila de filtros -->
@@ -256,14 +256,14 @@
             ${
                 l.cantidad_pendiente > 0
                     ? `<label>
-                                                                                                                                                        Cant. a asignar:
-                                                                                                                                                        <input type="number" step="0.01" min="0" max="${l.cantidad_pendiente}"
-                                                                                                                                                            name="cantidad[${l.id}]" value="${l.cantidad_pendiente}"
-                                                                                                                                                            class="swal2-input w-32">
-                                                                                                                                                       </label>`
+                                                                                                                                                                Cant. a asignar:
+                                                                                                                                                                <input type="number" step="0.01" min="0" max="${l.cantidad_pendiente}"
+                                                                                                                                                                    name="cantidad[${l.id}]" value="${l.cantidad_pendiente}"
+                                                                                                                                                                    class="swal2-input w-32">
+                                                                                                                                                               </label>`
                     : `<span class="inline-block bg-green-100 text-green-700 px-2 py-1 rounded text-xs">
-                                                                                                                                                        ✅ Completada
-                                                                                                                                                       </span>`
+                                                                                                                                                                ✅ Completada
+                                                                                                                                                               </span>`
             }
         </div>
     `;

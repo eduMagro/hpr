@@ -4,88 +4,103 @@
     <!-- Tabla de asignaciones -->
     <div class="w-full max-w-full overflow-x-auto bg-white shadow-lg rounded-lg">
         <table class="w-full border border-gray-300 rounded-lg text-xs uppercase text-center">
-            <thead class="bg-blue-500 text-white">
-                <tr>
-                    <th class="p-2 border cursor-pointer" wire:click="sortBy('user_id')">
-                        ID Empleado @if($sort === 'user_id'){{ $order === 'asc' ? '↑' : '↓' }}@endif
+            <x-tabla.header>
+                <x-tabla.header-row>
+                    <th class="p-2 cursor-pointer" wire:click="sortBy('user_id')">
+                        ID Empleado @if ($sort === 'user_id')
+                            {{ $order === 'asc' ? '↑' : '↓' }}
+                        @endif
                     </th>
-                    <th class="p-2 border">Empleado</th>
-                    <th class="p-2 border cursor-pointer" wire:click="sortBy('fecha')">
-                        Fecha @if($sort === 'fecha'){{ $order === 'asc' ? '↑' : '↓' }}@endif
+                    <th class="p-2">Empleado</th>
+                    <th class="p-2 cursor-pointer" wire:click="sortBy('fecha')">
+                        Fecha @if ($sort === 'fecha')
+                            {{ $order === 'asc' ? '↑' : '↓' }}
+                        @endif
                     </th>
-                    <th class="p-2 border cursor-pointer" wire:click="sortBy('obra_id')">
-                        Obra @if($sort === 'obra_id'){{ $order === 'asc' ? '↑' : '↓' }}@endif
+                    <th class="p-2 cursor-pointer" wire:click="sortBy('obra_id')">
+                        Obra @if ($sort === 'obra_id')
+                            {{ $order === 'asc' ? '↑' : '↓' }}
+                        @endif
                     </th>
-                    <th class="p-2 border cursor-pointer" wire:click="sortBy('turno_id')">
-                        Turno @if($sort === 'turno_id'){{ $order === 'asc' ? '↑' : '↓' }}@endif
+                    <th class="p-2 cursor-pointer" wire:click="sortBy('turno_id')">
+                        Turno @if ($sort === 'turno_id')
+                            {{ $order === 'asc' ? '↑' : '↓' }}
+                        @endif
                     </th>
-                    <th class="p-2 border cursor-pointer" wire:click="sortBy('maquina_id')">
-                        Máquina @if($sort === 'maquina_id'){{ $order === 'asc' ? '↑' : '↓' }}@endif
+                    <th class="p-2 cursor-pointer" wire:click="sortBy('maquina_id')">
+                        Máquina @if ($sort === 'maquina_id')
+                            {{ $order === 'asc' ? '↑' : '↓' }}
+                        @endif
                     </th>
-                    <th class="p-2 border cursor-pointer" wire:click="sortBy('entrada')">
-                        Entrada @if($sort === 'entrada'){{ $order === 'asc' ? '↑' : '↓' }}@endif
+                    <th class="p-2 cursor-pointer" wire:click="sortBy('entrada')">
+                        Entrada @if ($sort === 'entrada')
+                            {{ $order === 'asc' ? '↑' : '↓' }}
+                        @endif
                     </th>
-                    <th class="p-2 border cursor-pointer" wire:click="sortBy('salida')">
-                        Salida @if($sort === 'salida'){{ $order === 'asc' ? '↑' : '↓' }}@endif
+                    <th class="p-2 cursor-pointer" wire:click="sortBy('salida')">
+                        Salida @if ($sort === 'salida')
+                            {{ $order === 'asc' ? '↑' : '↓' }}
+                        @endif
                     </th>
-                    <th class="p-2 border">Resumen</th>
-                    <th class="p-2 border">Acciones</th>
-                </tr>
-                <tr class="text-center text-xs uppercase">
-                    <th class="p-1 border">
+                    <th class="p-2">Resumen</th>
+                    <th class="p-2">Acciones</th>
+                </x-tabla.header-row>
+                <x-tabla.filtro-row>
+                    <th class="p-2 bg-gray-50">
                         <input type="text" wire:model.live.debounce.300ms="user_id" placeholder="ID"
-                            class="w-full text-xs px-2 py-1 border rounded text-blue-900 focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none" />
+                            class="w-full text-xs px-2 py-2 border rounded text-gray-800 bg-gray-50 shadow-sm focus:border-gray-700 focus:ring-2 focus:ring-gray-600 focus:outline-none" />
                     </th>
-                    <th class="p-1 border">
+                    <th class="p-2 bg-gray-50">
                         <input type="text" wire:model.live.debounce.300ms="empleado" placeholder="Empleado"
-                            class="w-full text-xs px-2 py-1 border rounded text-blue-900 focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none" />
+                            class="w-full text-xs px-2 py-2 border rounded text-gray-800 bg-gray-50 shadow-sm focus:border-gray-700 focus:ring-2 focus:ring-gray-600 focus:outline-none" />
                     </th>
-                    <th class="p-1 border">
+                    <th class="p-2 bg-gray-50">
                         <div class="flex flex-row space-x-1">
                             <input type="date" wire:model.live.debounce.300ms="fecha_inicio"
-                                class="text-xs w-full px-2 py-1 border rounded text-blue-900 focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none" />
+                                class="text-xs w-full px-2 py-2 border rounded text-gray-800 bg-gray-50 shadow-sm focus:border-gray-700 focus:ring-2 focus:ring-gray-600 focus:outline-none" />
                             <input type="date" wire:model.live.debounce.300ms="fecha_fin"
-                                class="text-xs w-full px-2 py-1 border rounded text-blue-900 focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none" />
+                                class="text-xs w-full px-2 py-2 border rounded text-gray-800 bg-gray-50 shadow-sm focus:border-gray-700 focus:ring-2 focus:ring-gray-600 focus:outline-none" />
                         </div>
                     </th>
-                    <th class="p-1 border">
+                    <th class="p-2 bg-gray-50">
                         <input type="text" wire:model.live.debounce.300ms="obra" placeholder="Obra"
-                            class="w-full text-xs px-2 py-1 border rounded text-blue-900 focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none" />
+                            class="w-full text-xs px-2 py-2 border rounded text-gray-800 bg-gray-50 shadow-sm focus:border-gray-700 focus:ring-2 focus:ring-gray-600 focus:outline-none" />
                     </th>
-                    <th class="p-1 border">
+                    <th class="p-2 bg-gray-50">
                         <input type="text" wire:model.live.debounce.300ms="turno" placeholder="Turno"
-                            class="w-full text-xs px-2 py-1 border rounded text-blue-900 focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none" />
+                            class="w-full text-xs px-2 py-2 border rounded text-gray-800 bg-gray-50 shadow-sm focus:border-gray-700 focus:ring-2 focus:ring-gray-600 focus:outline-none" />
                     </th>
-                    <th class="p-1 border">
+                    <th class="p-2 bg-gray-50">
                         <input type="text" wire:model.live.debounce.300ms="maquina" placeholder="Máquina"
-                            class="w-full text-xs px-2 py-1 border rounded text-blue-900 focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none" />
+                            class="w-full text-xs px-2 py-2 border rounded text-gray-800 bg-gray-50 shadow-sm focus:border-gray-700 focus:ring-2 focus:ring-gray-600 focus:outline-none" />
                     </th>
-                    <th class="p-1 border">
+                    <th class="p-2 bg-gray-50">
                         <input type="text" wire:model.live.debounce.300ms="entrada" placeholder="Entrada"
-                            class="w-full text-xs px-2 py-1 border rounded text-blue-900 focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none" />
+                            class="w-full text-xs px-2 py-2 border rounded text-gray-800 bg-gray-50 shadow-sm focus:border-gray-700 focus:ring-2 focus:ring-gray-600 focus:outline-none" />
                     </th>
-                    <th class="p-1 border">
+                    <th class="p-2 bg-gray-50">
                         <input type="text" wire:model.live.debounce.300ms="salida" placeholder="Salida"
-                            class="w-full text-xs px-2 py-1 border rounded text-blue-900 focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none" />
+                            class="w-full text-xs px-2 py-2 border rounded text-gray-800 bg-gray-50 shadow-sm focus:border-gray-700 focus:ring-2 focus:ring-gray-600 focus:outline-none" />
                     </th>
-                    <th class="p-1 border">
+                    <th class="p-2 bg-gray-50">
 
                     </th>
-                    <th class="p-1 border text-center align-middle">
+                    <th class="p-1 text-center align-middle">
                         <div class="flex justify-center gap-2 items-center h-full">
                             {{-- ♻️ Botón reset --}}
                             <button type="button" wire:click="limpiarFiltros"
-                                class="bg-yellow-500 hover:bg-yellow-600 text-white px-2 py-1 rounded text-xs flex items-center justify-center"
+                                class="bg-yellow-500 hover:bg-yellow-600 text-white px-2 py-2 rounded text-xs flex items-center justify-center"
                                 title="Restablecer filtros">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24"
-                                    stroke="currentColor" stroke-width="2">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none"
+                                    viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                                     <path stroke-linecap="round" stroke-linejoin="round"
                                         d="M4 4v5h.582M20 20v-5h-.581M4.582 9A7.5 7.5 0 0112 4.5a7.5 7.5 0 016.418 3.418M19.418 15A7.5 7.5 0 0112 19.5a7.5 7.5 0 01-6.418-3.418" />
                                 </svg>
                             </button>
 
                             {{-- 📤 Botón exportar Excel --}}
-                            <a href="{{ route('asignaciones-turnos.verExportar', request()->query()) }}" wire:navigate title="Descarga los registros en Excel"
+                            <a href="{{ route('asignaciones-turnos.verExportar', request()->query()) }}" wire:navigate
+                                title="Descarga los registros en Excel"
                                 class="bg-green-600 hover:bg-green-700 text-white rounded text-xs flex items-center justify-center">
                                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" class="h-6 w-8">
                                     <path fill="#21A366"
@@ -98,8 +113,8 @@
                             </a>
                         </div>
                     </th>
-                </tr>
-            </thead>
+                </x-tabla.filtro-row>
+            </x-tabla.header>
             <tbody class="text-gray-700">
                 @forelse ($asignaciones as $asignacion)
                     <tr tabindex="0" x-data="{
@@ -132,7 +147,7 @@
                         <td class="px-2 py-2 border">
                             <template x-if="editando">
                                 <select x-model="asignacion.turno_id"
-                                    class="w-full px-2 py-1 border border-gray-300 rounded text-xs focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                    class="w-full px-2 py-2 border border-gray-300 rounded text-xs focus:outline-none focus:ring-2 focus:ring-blue-500">
                                     <option value="">—</option>
                                     @foreach ($turnos as $turno)
                                         <option value="{{ $turno->id }}">{{ $turno->nombre }}</option>

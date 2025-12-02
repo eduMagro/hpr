@@ -6,94 +6,97 @@
        ========================= --}}
     <div class="overflow-x-auto bg-white shadow rounded-lg">
         <table class="w-full border-collapse text-sm text-center">
-            <thead class="bg-blue-500 text-white">
-                <tr class="text-xs uppercase">
-                    <th class="p-2 border">
+            <x-tabla.header>
+                <x-tabla.header-row>
+                    <th class="p-2">
                         <button wire:click="sortBy('codigo')" class="w-full text-center hover:text-yellow-200">
                             Código
-                            @if($sort === 'codigo')
+                            @if ($sort === 'codigo')
                                 <span>{!! $order === 'asc' ? '▲' : '▼' !!}</span>
                             @endif
                         </button>
                     </th>
-                    <th class="p-2 border">Fabricante</th>
-                    <th class="p-2 border">Distribuidor</th>
-                    <th class="p-2 border">
-                        <button wire:click="sortBy('precio_referencia')" class="w-full text-center hover:text-yellow-200">
+                    <th class="p-2">Fabricante</th>
+                    <th class="p-2">Distribuidor</th>
+                    <th class="p-2">
+                        <button wire:click="sortBy('precio_referencia')"
+                            class="w-full text-center hover:text-yellow-200">
                             Precio Ref.
-                            @if($sort === 'precio_referencia')
+                            @if ($sort === 'precio_referencia')
                                 <span>{!! $order === 'asc' ? '▲' : '▼' !!}</span>
                             @endif
                         </button>
                     </th>
-                    <th class="p-2 border">
+                    <th class="p-2">
                         <button wire:click="sortBy('cantidad_total')" class="w-full text-center hover:text-yellow-200">
                             Cantidad Total
-                            @if($sort === 'cantidad_total')
+                            @if ($sort === 'cantidad_total')
                                 <span>{!! $order === 'asc' ? '▲' : '▼' !!}</span>
                             @endif
                         </button>
                     </th>
-                    <th class="p-2 border">Cantidad Restante</th>
-                    <th class="p-2 border">Progreso</th>
-                    <th class="p-2 border">
+                    <th class="p-2">Cantidad Restante</th>
+                    <th class="p-2">Progreso</th>
+                    <th class="p-2">
                         <button wire:click="sortBy('estado')" class="w-full text-center hover:text-yellow-200">
                             Estado
-                            @if($sort === 'estado')
+                            @if ($sort === 'estado')
                                 <span>{!! $order === 'asc' ? '▲' : '▼' !!}</span>
                             @endif
                         </button>
                     </th>
-                    <th class="p-2 border">Creación Registro</th>
-                    <th class="p-2 border">Acciones</th>
-                </tr>
+                    <th class="p-2">Creación Registro</th>
+                    <th class="p-2">Acciones</th>
+                </x-tabla.header-row>
 
-                {{-- Fila de filtros --}}
-                <tr class="text-xs uppercase bg-blue-50 text-black">
-                    <th class="p-1 border">
+                <x-tabla.filtro-row>
+                    <th class="p-2 bg-gray-50">
                         <input wire:model.live.debounce.300ms="codigo" type="text"
-                            class="w-full text-xs border rounded px-1 py-1" placeholder="Código">
+                            class="w-full text-xs border border-gray-300 rounded px-1 py-1" placeholder="Código">
                     </th>
-                    <th class="p-1 border">
-                        <input wire:model.live.debounce.300ms="fabricante" type="text"
-                            class="w-full text-xs border rounded px-1 py-1" placeholder="Fabricante">
-                    </th>
-                    <th class="p-1 border">
-                        <input wire:model.live.debounce.300ms="distribuidor" type="text"
-                            class="w-full text-xs border rounded px-1 py-1" placeholder="Distribuidor">
-                    </th>
+                        <th class="p-2 bg-gray-50">
+                            <input wire:model.live.debounce.300ms="fabricante" type="text"
+                                class="w-full text-xs border border-gray-300 rounded px-1 py-1"
+                                placeholder="Fabricante">
+                        </th>
+                        <th class="p-2 bg-gray-50">
+                            <input wire:model.live.debounce.300ms="distribuidor" type="text"
+                                class="w-full text-xs border border-gray-300 rounded px-1 py-1"
+                                placeholder="Distribuidor">
+                        </th>
 
-                    <th class="p-1 border"></th>
-                    <th class="p-1 border"></th>
-                    <th class="p-1 border"></th>
-                    <th class="p-1 border"></th>
+                        <th class="p-2 bg-gray-50"></th>
+                        <th class="p-2 bg-gray-50"></th>
+                        <th class="p-2 bg-gray-50"></th>
+                        <th class="p-2 bg-gray-50"></th>
 
-                    <th class="p-1 border">
-                        <select wire:model.live="estado" class="w-full text-xs border rounded px-1 py-1">
-                            <option value="">Todos</option>
-                            <option value="pendiente">Pendiente</option>
-                            <option value="en curso">En curso</option>
-                            <option value="completado">Completado</option>
-                            <option value="cancelado">Cancelado</option>
-                        </select>
-                    </th>
+                        <th class="p-2 bg-gray-50">
+                            <select wire:model.live="estado"
+                                class="w-full text-xs border border-gray-300 rounded px-1 py-1">
+                                <option value="">Todos</option>
+                                <option value="pendiente">Pendiente</option>
+                                <option value="en curso">En curso</option>
+                                <option value="completado">Completado</option>
+                                <option value="cancelado">Cancelado</option>
+                            </select>
+                        </th>
 
-                    <th class="p-1 border"></th>
-                    <th class="p-1 border text-center align-middle">
-                        <div class="flex justify-center gap-2 items-center h-full">
-                            <button wire:click="limpiarFiltros" type="button"
-                                class="bg-yellow-500 hover:bg-yellow-600 text-white px-2 py-1 rounded text-xs flex items-center justify-center"
-                                title="Restablecer filtros">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24"
-                                    stroke="currentColor" stroke-width="2">
-                                    <path stroke-linecap="round" stroke-linejoin="round"
-                                        d="M4 4v5h.582M20 20v-5h-.581M4.582 9A7.5 7.5 0 0112 4.5a7.5 7.5 0 016.418 3.418M19.418 15A7.5 7.5 0 0112 19.5a7.5 7.5 0 01-6.418-3.418" />
-                                </svg>
-                            </button>
-                        </div>
-                    </th>
-                </tr>
-            </thead>
+                        <th class="p-2 bg-gray-50"></th>
+                        <th class="p-1 text-center align-middle">
+                            <div class="flex justify-center gap-2 items-center h-full">
+                                <button wire:click="limpiarFiltros" type="button"
+                                    class="bg-yellow-500 hover:bg-yellow-600 text-white px-2 py-2 rounded text-xs flex items-center justify-center"
+                                    title="Restablecer filtros">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none"
+                                        viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                        <path stroke-linecap="round" stroke-linejoin="round"
+                                            d="M4 4v5h.582M20 20v-5h-.581M4.582 9A7.5 7.5 0 0112 4.5a7.5 7.5 0 016.418 3.418M19.418 15A7.5 7.5 0 0112 19.5a7.5 7.5 0 01-6.418-3.418" />
+                                    </svg>
+                                </button>
+                            </div>
+                        </th>
+                </x-tabla.filtro-row>
+            </x-tabla.header>
 
             <tbody>
                 @forelse ($pedidosGlobales as $pedido)
@@ -119,7 +122,7 @@
                                 <span x-text="pedido.fabricante?.nombre ?? 'N/A' "></span>
                             </template>
                             <select x-show="editando" x-model="pedido.fabricante_id"
-                                class="w-full text-xs border rounded px-1 py-1">
+                                class="w-full text-xs border border-gray-300 rounded px-1 py-1">
                                 <option value="">Selecciona</option>
                                 @foreach ($fabricantes as $fab)
                                     <option value="{{ $fab->id }}">{{ $fab->nombre }}</option>
@@ -133,7 +136,7 @@
                                 <span x-text="pedido.distribuidor?.nombre ?? 'N/A'"></span>
                             </template>
                             <select x-show="editando" x-model="pedido.distribuidor_id"
-                                class="w-full text-xs border rounded px-1 py-1">
+                                class="w-full text-xs border border-gray-300 rounded px-1 py-1">
                                 <option value="">Selecciona</option>
                                 @foreach ($distribuidores as $dist)
                                     <option value="{{ $dist->id }}">{{ $dist->nombre }}</option>
@@ -146,9 +149,9 @@
                             <template x-if="!editando">
                                 <span x-text="pedido.precio_referencia_euro ?? 'N/A'"></span>
                             </template>
-                            <input x-show="editando" x-model="pedido.precio_referencia" type="number"
-                                step="0.01" min="0"
-                                class="w-full text-right text-xs border rounded px-1 py-1" placeholder="Ej: 6,40">
+                            <input x-show="editando" x-model="pedido.precio_referencia" type="number" step="0.01"
+                                min="0" class="w-full text-right text-xs border rounded px-1 py-1"
+                                placeholder="Ej: 6,40">
                         </td>
 
                         {{-- Cantidad total --}}
@@ -158,7 +161,7 @@
                                     x-text="Number(pedido.cantidad_total).toLocaleString('es-ES',{minimumFractionDigits:2}) + ' kg'"></span>
                             </template>
                             <input x-show="editando" type="number" step="0.01" x-model="pedido.cantidad_total"
-                                class="w-full text-xs border rounded px-1 py-1">
+                                class="w-full text-xs border border-gray-300 rounded px-1 py-1">
                         </td>
 
                         {{-- Cantidad restante (solo lectura) --}}
@@ -182,7 +185,7 @@
                                 <span x-text="pedido.estado"></span>
                             </template>
                             <select x-show="editando" x-model="pedido.estado"
-                                class="w-full text-xs border rounded px-1 py-1">
+                                class="w-full text-xs border border-gray-300 rounded px-1 py-1">
                                 <option value="pendiente">Pendiente</option>
                                 <option value="en curso">En curso</option>
                                 <option value="completado">Completado</option>
@@ -229,7 +232,7 @@
         </table>
     </div>
 
-    {{ $pedidosGlobales->links() }}
+    <x-tabla.paginacion-livewire :paginador="$pedidosGlobales" />
 
     {{-- =========================
          TABLA MAQUILA
@@ -239,20 +242,20 @@
             <strong>Pedido Global</strong>
         </div>
         <table class="w-full border-collapse text-sm text-center">
-            <thead class="bg-purple-600 text-white">
-                <tr class="text-xs uppercase">
-                    <th class="p-2 border">Código</th>
-                    <th class="p-2 border">Fabricante</th>
-                    <th class="p-2 border">Distribuidor</th>
-                    <th class="p-2 border">Precio Ref.</th>
-                    <th class="p-2 border">Cantidad Total</th>
-                    <th class="p-2 border">Cantidad Restante</th>
-                    <th class="p-2 border">Progreso</th>
-                    <th class="p-2 border">Estado</th>
-                    <th class="p-2 border">Creación Registro</th>
-                    <th class="p-2 border">Acciones</th>
-                </tr>
-            </thead>
+            <x-tabla.header>
+                <x-tabla.header-row>
+                    <th class="p-2">Código</th>
+                    <th class="p-2">Fabricante</th>
+                    <th class="p-2">Distribuidor</th>
+                    <th class="p-2">Precio Ref.</th>
+                    <th class="p-2">Cantidad Total</th>
+                    <th class="p-2">Cantidad Restante</th>
+                    <th class="p-2">Progreso</th>
+                    <th class="p-2">Estado</th>
+                    <th class="p-2">Creación Registro</th>
+                    <th class="p-2">Acciones</th>
+                </x-tabla.header-row>
+            </x-tabla.header>
 
             <tbody>
                 @forelse ($pedidosMaquila as $pedido)
@@ -276,7 +279,7 @@
                                 <span x-text="pedido.fabricante?.nombre ?? 'N/A' "></span>
                             </template>
                             <select x-show="editando" x-model="pedido.fabricante_id"
-                                class="w-full text-xs border rounded px-1 py-1">
+                                class="w-full text-xs border border-gray-300 rounded px-1 py-1">
                                 <option value="">Selecciona</option>
                                 @foreach ($fabricantes as $fab)
                                     <option value="{{ $fab->id }}">{{ $fab->nombre }}</option>
@@ -289,7 +292,7 @@
                                 <span x-text="pedido.distribuidor?.nombre ?? 'N/A'"></span>
                             </template>
                             <select x-show="editando" x-model="pedido.distribuidor_id"
-                                class="w-full text-xs border rounded px-1 py-1">
+                                class="w-full text-xs border border-gray-300 rounded px-1 py-1">
                                 <option value="">Selecciona</option>
                                 @foreach ($distribuidores as $dist)
                                     <option value="{{ $dist->id }}">{{ $dist->nombre }}</option>
@@ -311,8 +314,8 @@
                                 <span
                                     x-text="Number(pedido.cantidad_total).toLocaleString('es-ES',{minimumFractionDigits:2}) + ' kg'"></span>
                             </template>
-                            <input x-show="editando" type="number" step="0.01"
-                                x-model="pedido.cantidad_total" class="w-full text-xs border rounded px-1 py-1">
+                            <input x-show="editando" type="number" step="0.01" x-model="pedido.cantidad_total"
+                                class="w-full text-xs border border-gray-300 rounded px-1 py-1">
                         </td>
 
                         <td class="p-2 border">
@@ -333,7 +336,7 @@
                                 <span x-text="pedido.estado"></span>
                             </template>
                             <select x-show="editando" x-model="pedido.estado"
-                                class="w-full text-xs border rounded px-1 py-1">
+                                class="w-full text-xs border border-gray-300 rounded px-1 py-1">
                                 <option value="pendiente">Pendiente</option>
                                 <option value="en curso">En curso</option>
                                 <option value="completado">Completado</option>
@@ -354,7 +357,7 @@
                             </template>
                         </td>
                     </tr>
-                @empty
+                    @empty
                     <tr>
                         <td colspan="10" class="py-4 text-gray-500 text-center">No hay pedidos Globales para
                             mostrar.</td>
