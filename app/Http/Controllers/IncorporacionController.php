@@ -418,6 +418,67 @@ class IncorporacionController extends Controller
     }
 
     /**
+     * Eliminar archivo de incorporación (DNI, certificado bancario, formación)
+     */
+    public function eliminarArchivo(Request $request, Incorporacion $incorporacion)
+    {
+        $validated = $request->validate([
+            'tipo' => 'required|in:dni_frontal,dni_trasero,certificado_bancario,formacion',
+            'formacion_id' => 'nullable|integer',
+        ]);
+
+        $carpetaUsuario = $this->obtenerCarpetaUsuario($incorporacion);
+        $tipo = $validated['tipo'];
+
+        if ($tipo === 'formacion') {
+            // Eliminar documento de formación
+            $formacion = $incorporacion->formaciones()->find($validated['formacion_id']);
+            if (!$formacion) {
+                return response()->json(['success' => false, 'message' => 'Documento no encontrado'], 404);
+            }
+
+            if ($formacion->archivo) {
+                Storage::delete("private/documentos/{$carpetaUsuario}/" . $formacion->archivo);
+            }
+
+            $nombreDoc = $formacion->tipo_nombre;
+            $formacion->delete();
+
+            $incorporacion->registrarLog(
+                'archivo_eliminado',
+                "Documento de formación eliminado: {$nombreDoc}"
+            );
+
+        } else {
+            // Eliminar DNI o certificado bancario
+            $archivo = $incorporacion->{$tipo};
+            if (!$archivo) {
+                return response()->json(['success' => false, 'message' => 'Archivo no encontrado'], 404);
+            }
+
+            Storage::delete("private/documentos/{$carpetaUsuario}/" . $archivo);
+
+            $incorporacion->update([$tipo => null]);
+
+            $nombres = [
+                'dni_frontal' => 'DNI Frontal',
+                'dni_trasero' => 'DNI Trasero',
+                'certificado_bancario' => 'Certificado Bancario',
+            ];
+
+            $incorporacion->registrarLog(
+                'archivo_eliminado',
+                "Archivo eliminado: {$nombres[$tipo]}"
+            );
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Archivo eliminado correctamente',
+        ]);
+    }
+
+    /**
      * Descargar archivo privado de incorporación
      */
     public function descargarArchivo(Incorporacion $incorporacion, string $archivo)
