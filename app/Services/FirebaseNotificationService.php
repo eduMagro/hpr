@@ -143,6 +143,7 @@ class FirebaseNotificationService
                         'icon' => '/imagenes/ico/android-chrome-192x192.png',
                         'badge' => '/imagenes/ico/favicon-32x32.png',
                         'requireInteraction' => true,
+                        'sticky' => true,
                     ],
                     'fcm_options' => [
                         'link' => $data['url'] ?? config('app.url'),
