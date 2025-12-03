@@ -947,7 +947,7 @@ class AsignacionTurnoController extends Controller
                         if ($esTurno) {
                             $datos['turno_id'] = $turno->id;
                         }
-                        $datos['maquina_id'] = $request->maquina_id ?? $asignacion->maquina_id ?? $user->maquina_id;
+                        $datos['maquina_id'] = $request->maquina_id ?? ($asignacion ? $asignacion->maquina_id : null) ?? $user->maquina_id;
                     }
 
                     if ($request->has('entrada')) {
@@ -960,14 +960,14 @@ class AsignacionTurnoController extends Controller
                         $datos['obra_id'] = $request->obra_id;
                     }
 
-                    if ($asignacion) {
-                        $asignacion->update($datos);
-                    } else {
-                        AsignacionTurno::create(array_merge($datos, [
+                    // Usar updateOrCreate para evitar duplicados
+                    AsignacionTurno::updateOrCreate(
+                        [
                             'user_id' => $user->id,
                             'fecha'   => $dateStr,
-                        ]));
-                    }
+                        ],
+                        $datos
+                    );
                 }
             }
 
