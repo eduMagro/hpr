@@ -260,18 +260,16 @@
 
                                 <!-- ETIQUETA -->
                                 <td class="px-2 py-2 text-center border">
-                                    <a href="{{ route('etiquetas.index', ['id' => $elemento->etiquetaRelacion?->id ?? '#']) }}"
-                                        wire:navigate
-                                        class="text-indigo-600 hover:text-indigo-500  group-hover:underline font-semibold transition">
-                                        {{ $elemento->etiquetaRelacion?->id ?? 'N/A' }}
+                                    <a href="{{ route('etiquetas.index', ['codigo' => $elemento->etiquetaRelacion?->codigo]) }}"
+                                        class="text-indigo-600 hover:text-indigo-500 group-hover:underline font-semibold transition">
+                                        {{ $elemento->etiquetaRelacion?->codigo ?? 'N/A' }}
                                     </a>
                                 </td>
 
                                 <!-- SUBETIQUETA -->
                                 <td class="px-2 py-2 text-center border">
-                                    <a href="{{ route('etiquetas.index', ['id' => $elemento->etiquetaRelacion?->id ?? '#']) }}"
-                                        wire:navigate
-                                        class="text-indigo-600 hover:text-indigo-500  group-hover:underline font-semibold transition">
+                                    <a href="{{ route('etiquetas.index', ['etiqueta_sub_id' => $elemento->etiqueta_sub_id]) }}"
+                                        class="text-indigo-600 hover:text-indigo-500 group-hover:underline font-semibold transition">
                                         {{ $elemento->subetiqueta ?? 'N/A' }}
                                     </a>
                                 </td>

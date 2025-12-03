@@ -164,6 +164,7 @@
                             </a>
                         </div>
                     </th>
+                </x-tabla.filtro-row>
             </x-tabla.header>
 
             <tbody class="text-gray-700 text-sm">
@@ -324,7 +325,7 @@
                                 </template>
                             </div>
                         </td>
-                        </x-tabla.filtro-row>
+                    </tr>
                     @empty
                     <tr>
                         <td colspan="17" class="text-center py-4 text-gray-500">No hay usuarios disponibles.</td>

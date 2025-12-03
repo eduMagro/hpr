@@ -138,7 +138,7 @@
                             <td class="p-2 text-center border">{{ $paquete->id }}</td>
                             <td class="p-2 text-center border">{{ $paquete->codigo }}</td>
                             <td class="p-2 text-center border">
-                                <a href="{{ route('planillas.index', ['planilla_id' => $paquete->planilla->id]) }}"
+                                <a href="{{ route('planillas.index', ['codigo' => $paquete->planilla->codigo_limpio]) }}"
                                     wire:navigate class="text-blue-500 hover:underline">
                                     {{ $paquete->planilla->codigo_limpio }}
                                 </a>

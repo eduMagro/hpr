@@ -9,7 +9,10 @@
       "Bash(do echo \"Verificando $file...\")",
       "Bash(php -l:*)",
       "Bash(echo:*)",
-      "Bash(do echo \"=== $file ===\")"
+      "Bash(do echo \"=== $file ===\")",
+      "Bash(php artisan config:clear:*)",
+      "Bash(php artisan:*)",
+      "Bash(npm run build:*)"
     ],
     "deny": [],
     "ask": []

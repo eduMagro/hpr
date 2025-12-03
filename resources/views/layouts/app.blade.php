@@ -152,6 +152,10 @@
             </main>
         </div>
     </div>
+
+    <!-- Modales globales (fuera del contenedor con overflow-hidden) -->
+    @stack('modals')
+
     <!-- Livewire Scripts -->
     @livewireScripts
 

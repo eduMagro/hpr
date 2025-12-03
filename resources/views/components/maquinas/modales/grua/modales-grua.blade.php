@@ -332,24 +332,27 @@
     }
 
     // Mostrar/ocultar campos según tipo (protegido si no existen en la vista)
-    const initTipoSelect = () => {
-        const tipoSelect = document.getElementById('tipo');
-        const productoSection = document.getElementById('producto-section');
-        const paqueteSection = document.getElementById('paquete-section');
-        if (!tipoSelect || !productoSection || !paqueteSection) return;
+    if (!window._initTipoSelectRegistered) {
+        const initTipoSelect = () => {
+            const tipoSelect = document.getElementById('tipo');
+            const productoSection = document.getElementById('producto-section');
+            const paqueteSection = document.getElementById('paquete-section');
+            if (!tipoSelect || !productoSection || !paqueteSection) return;
 
-        tipoSelect.addEventListener('change', function() {
-            if (this.value === 'producto') {
-                productoSection.classList.remove('hidden');
-                paqueteSection.classList.add('hidden');
-            } else if (this.value === 'paquete') {
-                productoSection.classList.add('hidden');
-                paqueteSection.classList.remove('hidden');
-            }
-        });
-    };
-    document.addEventListener('DOMContentLoaded', initTipoSelect);
-    document.addEventListener('livewire:navigated', initTipoSelect);
+            tipoSelect.addEventListener('change', function() {
+                if (this.value === 'producto') {
+                    productoSection.classList.remove('hidden');
+                    paqueteSection.classList.add('hidden');
+                } else if (this.value === 'paquete') {
+                    productoSection.classList.add('hidden');
+                    paqueteSection.classList.remove('hidden');
+                }
+            });
+        };
+        document.addEventListener('DOMContentLoaded', initTipoSelect);
+        document.addEventListener('livewire:navigated', initTipoSelect);
+        window._initTipoSelectRegistered = true;
+    }
 
     // Usar var + fallback a window para evitar redeclaraciones en navegaciones Livewire
     var paqueteEsperadoId = window.paqueteEsperadoId || null;

@@ -1,9 +1,20 @@
 // =======================
 // Colores y configuración
 // =======================
-const FIGURE_LINE_COLOR = "rgba(0, 0, 0, 0.8)";
-const VALOR_COTA_COLOR = "rgba(0, 0, 0, 1)";
-const BARS_TEXT_COLOR = "rgba(0, 0, 0, 1)";
+if (typeof window !== 'undefined' && window.BARS_TEXT_COLOR) {
+  var FIGURE_LINE_COLOR = window.FIGURE_LINE_COLOR || "rgba(0, 0, 0, 0.8)";
+  var VALOR_COTA_COLOR = window.VALOR_COTA_COLOR || "rgba(0, 0, 0, 1)";
+  var BARS_TEXT_COLOR = window.BARS_TEXT_COLOR;
+} else {
+  const FIGURE_LINE_COLOR = "rgba(0, 0, 0, 0.8)";
+  const VALOR_COTA_COLOR = "rgba(0, 0, 0, 1)";
+  const BARS_TEXT_COLOR = "rgba(0, 0, 0, 1)";
+  if (typeof window !== 'undefined') {
+    window.FIGURE_LINE_COLOR = FIGURE_LINE_COLOR;
+    window.VALOR_COTA_COLOR = VALOR_COTA_COLOR;
+    window.BARS_TEXT_COLOR = BARS_TEXT_COLOR;
+  }
+}
 
 const marginX = 50;
 const marginY = 1;

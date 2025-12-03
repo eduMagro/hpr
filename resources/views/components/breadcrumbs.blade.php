@@ -65,8 +65,7 @@
         @endif
 
         @if($crumb['route'] && $index < count($breadcrumbs) - 1)
-            <a href="{{ route($crumb['route']) }}" wire:navigate
-               wire:navigate
+            <a href="{{ route($crumb['route']) }}" wire:navigate="false"
                class="hover:text-blue-600 transition-all duration-200 hover:underline">
                 {{ $crumb['label'] }}
             </a>
@@ -78,8 +77,7 @@
                         @if($tabIndex > 0)
                             <span class="text-gray-400">|</span>
                         @endif
-                        <a href="{{ route($tab['route']) }}" wire:navigate
-                           wire:navigate
+                        <a href="{{ route($tab['route']) }}" wire:navigate="false"
                            :class="isRouteActive('{{ route($tab['route']) }}') || routeStartsWith('{{ route($tab['route']) }}')
                                ? 'bg-blue-100 text-blue-700 font-semibold'
                                : 'text-gray-600 hover:text-blue-600 hover:bg-blue-50'"

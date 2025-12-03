@@ -711,7 +711,9 @@
             wire:navigate></script>
         <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
         <script>
-            const domSafe = (v) => String(v).replace(/[^A-Za-z0-9_-]/g, '-');
+            if (!window.domSafe) {
+                window.domSafe = (v) => String(v).replace(/[^A-Za-z0-9_-]/g, '-');
+            }
 
             async function imprimirEtiquetas(ids, modo = 'a6') {
                 if (!Array.isArray(ids)) ids = [ids];

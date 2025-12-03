@@ -2,78 +2,323 @@
     <x-slot name="title">Planillas - {{ config('app.name') }}</x-slot>
 
     <div class="w-full">
-        <div class="flex flex-wrap items-center gap-x-4 gap-y-2 mb-4">
-
+        <!-- Botones para desktop -->
+        <div class="hidden md:flex items-center gap-2">
             {{-- Botón y modal de importar --}}
             <button type="button" id="btn-abrir-import"
-                class="px-4 py-2 rounded bg-blue-600 hover:bg-blue-700 text-white font-bold">
+                class="px-4 py-2 rounded bg-gradient-to-tr from-gray-800 to-gray-700 hover:from-gray-700 hover:to-gray-600 text-white font-semibold shadow-sm">
                 Importar planillas
             </button>
 
-            <div id="modal-import" class="fixed inset-0 z-[60] hidden">
-                <div id="modal-import-overlay" class="absolute inset-0 bg-black/50"></div>
-                <div class="relative mx-auto mt-24 bg-white rounded-lg shadow-xl w-[95%] max-w-md p-5">
-                    <h3 class="text-lg font-semibold mb-3">Importar planillas
-                    </h3>
-                    <p class="text-sm text-gray-600 mb-4">
-                        Selecciona el archivo y el <b>día de aprobación</b>.
-                        La <b>fecha estimada de entrega</b> = <b>aprobación + 7
-                            días</b>.
-                    </p>
+            <button type="button" id="btn-completar-planillas" data-url="{{ route('planillas.completarTodas') }}"
+                class="bg-gradient-to-tr from-gray-800 to-gray-700 hover:from-gray-700 hover:to-gray-600 text-white font-semibold py-2 px-4 rounded shadow-sm">
+                Completar planillas
+            </button>
+        </div>
 
-                    <form id="form-import-modal" method="POST" action="{{ route('planillas.crearImport') }}"
-                        enctype="multipart/form-data">
-                        @csrf
+        <div id="modal-import" class="fixed inset-0 z-[60] hidden">
+            <div id="modal-import-overlay" class="absolute inset-0 bg-black/50"></div>
+            <div class="relative mx-auto mt-24 bg-white rounded-lg shadow-xl w-[95%] max-w-md p-5">
+                <h3 class="text-lg font-semibold mb-3">Importar planillas
+                </h3>
+                <p class="text-sm text-gray-600 mb-4">
+                    Selecciona el archivo y el <b>día de aprobación</b>.
+                    La <b>fecha estimada de entrega</b> = <b>aprobación + 7
+                        días</b>.
+                </p>
 
-                        <input type="hidden" name="import_id" id="import_id">
+                <form id="form-import-modal" method="POST" action="{{ route('planillas.crearImport') }}"
+                    enctype="multipart/form-data">
+                    @csrf
 
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Archivo
-                            (.xlsx / .xls)</label>
-                        <input type="file" name="file" id="file" accept=".xlsx,.xls"
-                            class="w-full border rounded px-3 py-2 mb-4" required>
+                    <input type="hidden" name="import_id" id="import_id">
 
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Día
-                            de aprobación</label>
-                        <input type="date" name="fecha_aprobacion" id="fecha_aprobacion"
-                            class="w-full border rounded px-3 py-2 mb-4" required>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Archivo
+                        (.xlsx / .xls)</label>
+                    <input type="file" name="file" id="file" accept=".xlsx,.xls"
+                        class="w-full border rounded px-3 py-2 mb-4" required>
 
-                        {{-- Barra de progreso --}}
-                        <div id="import-progress-wrap" class="hidden mb-3">
-                            <div class="flex justify-between text-sm mb-1">
-                                <span id="import-progress-text" class="text-gray-700">Progreso</span>
-                                <span id="import-progress-percent" class="text-gray-500">0%</span>
-                            </div>
-                            <div class="w-full bg-gray-200 rounded h-3 overflow-hidden">
-                                <div id="import-progress-bar" class="h-3 bg-blue-600 transition-all duration-200"
-                                    style="width:0%"></div>
-                            </div>
-                            <p id="import-progress-msg" class="text-xs text-gray-500 mt-1"></p>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Día
+                        de aprobación</label>
+                    <input type="date" name="fecha_aprobacion" id="fecha_aprobacion"
+                        class="w-full border rounded px-3 py-2 mb-4" required>
+
+                    {{-- Barra de progreso --}}
+                    <div id="import-progress-wrap" class="hidden mb-3">
+                        <div class="flex justify-between text-sm mb-1">
+                            <span id="import-progress-text" class="text-gray-700">Progreso</span>
+                            <span id="import-progress-percent" class="text-gray-500">0%</span>
                         </div>
-
-                        <div class="flex justify-end gap-2 pt-2">
-                            <button type="button" id="btn-cancelar-import"
-                                class="px-4 py-2 rounded bg-gray-200 hover:bg-gray-300">
-                                Cancelar
-                            </button>
-                            <button type="submit" id="btn-confirmar-import"
-                                class="px-4 py-2 rounded bg-blue-600 hover:bg-blue-700 text-white">
-                                Confirmar e importar
-                            </button>
+                        <div class="w-full bg-gray-200 rounded h-3 overflow-hidden">
+                            <div id="import-progress-bar" class="h-3 bg-blue-600 transition-all duration-200"
+                                style="width:0%"></div>
                         </div>
-                    </form>
+                        <p id="import-progress-msg" class="text-xs text-gray-500 mt-1"></p>
+                    </div>
+
+                    <div class="flex justify-end gap-2 pt-2">
+                        <button type="button" id="btn-cancelar-import"
+                            class="px-4 py-2 rounded bg-gray-200 hover:bg-gray-300">
+                            Cancelar
+                        </button>
+                        <button type="submit" id="btn-confirmar-import"
+                            class="px-4 py-2 rounded bg-blue-600 hover:bg-blue-700 text-white">
+                            Confirmar e importar
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <div class="hidden md:block">
+            @livewire('planillas-table')
+        </div>
+
+        <!-- Vista móvil -->
+        <div class="block md:hidden mt-4 space-y-3 pb-6">
+            <div class="bg-gradient-to-tr from-gray-900 to-gray-700 text-white rounded-xl p-3 shadow-lg">
+                <div class="flex items-center justify-between gap-2">
+                    <div class="flex-1">
+                        <p class="text-[10px] uppercase tracking-wide text-gray-300">Planillas</p>
+                        <h2 class="text-base font-semibold">Seguimiento</h2>
+                    </div>
+                    <div class="flex items-center gap-1.5">
+                        <button type="button"
+                            class="bg-white/15 text-white text-[10px] font-semibold px-2.5 py-1.5 rounded-lg shadow hover:bg-white/25 transition"
+                            onclick="document.getElementById('btn-abrir-import')?.click()">
+                            Importar
+                        </button>
+                        <button id="btn-completar-planillas-mobile" data-url="{{ route('planillas.completarTodas') }}"
+                            class="bg-white/15 text-white text-[10px] font-semibold px-2.5 py-1.5 rounded-lg shadow hover:bg-white/25 transition">
+                            Completar
+                        </button>
+                    </div>
                 </div>
             </div>
 
-            <button type="button" id="btn-completar-planillas" data-url="{{ route('planillas.completarTodas') }}"
-                class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
-                Completar todas las planillas
-            </button>
+            <div class="bg-white border border-gray-200 rounded-xl shadow-sm p-3">
+                <form method="GET" action="{{ route('planillas.index') }}" class="space-y-2">
+                    <div class="grid grid-cols-2 gap-2">
+                        <div class="flex flex-col gap-1">
+                            <label class="text-[10px] font-semibold text-gray-700">Código</label>
+                            <input type="text" name="codigo" value="{{ request('codigo') }}" placeholder="Buscar..."
+                                class="w-full px-2 py-1.5 border border-gray-300 rounded-lg text-xs text-gray-800 focus:outline-none focus:ring-1 focus:ring-gray-700" />
+                        </div>
+                        <div class="flex flex-col gap-1">
+                            <label class="text-[10px] font-semibold text-gray-700">Estado</label>
+                            <select name="estado"
+                                class="w-full px-2 py-1.5 border border-gray-300 rounded-lg text-xs text-gray-800 focus:outline-none focus:ring-1 focus:ring-gray-700">
+                                <option value="">Todos</option>
+                                <option value="pendiente" @selected(request('estado') === 'pendiente')>Pendiente</option>
+                                <option value="fabricando" @selected(request('estado') === 'fabricando')>Fabricando</option>
+                                <option value="completada" @selected(request('estado') === 'completada')>Completada</option>
+                                <option value="montaje" @selected(request('estado') === 'montaje')>Montaje</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="flex items-center justify-between gap-2">
+                        <a href="{{ route('planillas.index') }}"
+                            class="text-xs text-gray-600 hover:text-gray-900">Limpiar</a>
+                        <button type="submit"
+                            class="bg-gray-900 text-white text-xs font-semibold px-3 py-1.5 rounded-lg shadow hover:bg-gray-800">
+                            Filtrar
+                        </button>
+                    </div>
+                </form>
+            </div>
 
+            @php
+                $mobilePage = max(1, (int) request('mpage', 1));
+                $perPage = 10;
+
+                // Query con filtros
+                $query = \App\Models\Planilla::with(['cliente', 'obra']);
+
+                // Aplicar filtros
+                if (request('codigo')) {
+                    $query->where('codigo', 'like', '%' . request('codigo') . '%');
+                }
+
+                if (request('estado')) {
+                    $query->where('estado', request('estado'));
+                }
+
+                // Obtener planillas
+                $planillasMobile = $query
+                    ->latest()
+                    ->skip(($mobilePage - 1) * $perPage)
+                    ->take($perPage + 1) // Tomamos una más para saber si hay más páginas
+                    ->get();
+
+                $hayMasPlanillas = $planillasMobile->count() > $perPage;
+
+                // Si hay más, removemos la última para mostrar solo 10
+                if ($hayMasPlanillas) {
+                    $planillasMobile = $planillasMobile->take($perPage);
+                }
+            @endphp
+
+            <div class="space-y-2">
+                @forelse ($planillasMobile as $planilla)
+                    <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                        <div
+                            class="bg-gradient-to-tr from-gray-900 to-gray-700 text-white px-3 py-2 flex items-start justify-between gap-2">
+                            <div class="flex-1 min-w-0">
+                                <p class="text-[9px] text-gray-300">Código</p>
+                                <h3 class="text-sm font-semibold tracking-tight truncate">{{ $planilla->codigo }}</h3>
+                                <p class="text-[9px] text-gray-300 mt-0.5 truncate">
+                                    {{ $planilla->cliente->empresa ?? '—' }}</p>
+                            </div>
+                            <div class="text-right flex-shrink-0">
+                                <span
+                                    class="inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-semibold bg-white/10 border border-white/20">
+                                    {{ strtoupper($planilla->estado ?? '—') }}
+                                </span>
+                                @if ($planilla->seccion)
+                                    <div class="text-[9px] text-gray-200 mt-0.5">
+                                        {{ $planilla->seccion }}
+                                    </div>
+                                @endif
+                            </div>
+                        </div>
+
+                        <div class="p-2.5 space-y-2 text-xs text-gray-700">
+                            <div class="grid grid-cols-2 gap-2 text-[10px]">
+                                <div>
+                                    <p class="text-[9px] uppercase tracking-wide text-gray-500">Obra</p>
+                                    <p class="font-semibold text-gray-900 truncate">{{ $planilla->obra->obra ?? '—' }}
+                                    </p>
+                                </div>
+                                <div>
+                                    <p class="text-[9px] uppercase tracking-wide text-gray-500">Peso</p>
+                                    <p class="font-semibold text-gray-900">
+                                        {{ number_format($planilla->peso_total ?? 0, 0) }} kg</p>
+                                </div>
+                                <div>
+                                    <p class="text-[9px] uppercase tracking-wide text-gray-500">Importación</p>
+                                    <p class="font-semibold text-gray-900">
+                                        {{ $planilla->created_at->format('d/m/Y') }}</p>
+                                </div>
+                                <div>
+                                    <p class="text-[9px] uppercase tracking-wide text-gray-500">Entrega</p>
+                                    <p class="font-semibold text-gray-900">
+                                        {{ $planilla->fecha_estimada_entrega ? \Carbon\Carbon::parse($planilla->fecha_estimada_entrega)->format('d/m/Y') : '—' }}
+                                    </p>
+                                </div>
+                            </div>
+
+                            <div class="flex flex-wrap items-center gap-1 text-[10px] font-semibold pt-1">
+                                <a href="{{ route('planillas.show', $planilla->id) }}"
+                                    class="px-2 py-1 rounded-lg bg-gray-900 text-white hover:bg-gray-800">
+                                    Ver
+                                </a>
+                                <a href="{{ route('elementos.index', ['planilla_id' => $planilla->id]) }}"
+                                    class="px-2 py-1 rounded-lg bg-slate-200 text-slate-800 hover:bg-slate-300">
+                                    Elementos
+                                </a>
+                                <button type="button" onclick="abrirModalReimportar({{ $planilla->id }})"
+                                    class="px-2 py-1 rounded-lg bg-amber-200 text-amber-900 hover:bg-amber-300">
+                                    Reimportar
+                                </button>
+                                @if (!($planilla->revisada ?? false))
+                                    <form action="{{ route('planillas.marcarRevisada', $planilla->id) }}"
+                                        method="POST" class="inline">
+                                        @csrf
+                                        <button type="submit"
+                                            class="px-2 py-1 rounded-lg bg-emerald-600 text-white hover:bg-emerald-500">
+                                            Revisar
+                                        </button>
+                                    </form>
+                                @endif
+                                <form action="{{ route('planillas.destroy', $planilla->id) }}" method="POST"
+                                    class="inline"
+                                    onsubmit="return confirm('¿Eliminar esta planilla? Esta acción no se puede deshacer.');">
+                                    @csrf
+                                    @method('DELETE')
+                                    <button type="submit"
+                                        class="px-2 py-1 rounded-lg bg-red-200 text-red-800 hover:bg-red-300">
+                                        Eliminar
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                @empty
+                    <div
+                        class="rounded-xl border border-dashed border-gray-300 bg-gray-50 p-4 text-center text-xs text-gray-600">
+                        No hay planillas disponibles.
+                    </div>
+                @endforelse
+
+                <!-- Paginación -->
+                @if ($planillasMobile->count() > 0)
+                    <div class="flex justify-between items-center gap-2 pt-2">
+                        @if ($mobilePage > 1)
+                            <a href="{{ route('planillas.index', array_merge(request()->except('mpage'), ['mpage' => $mobilePage - 1])) }}"
+                                class="px-3 py-1.5 rounded-lg bg-gray-100 text-gray-800 text-xs font-semibold border border-gray-200 hover:bg-gray-200">
+                                ← Anterior
+                            </a>
+                        @else
+                            <span
+                                class="px-3 py-1.5 rounded-lg bg-gray-50 text-gray-400 text-xs font-semibold border border-gray-100">
+                                ← Anterior
+                            </span>
+                        @endif
+
+                        <span class="text-xs text-gray-600">Página {{ $mobilePage }}</span>
+
+                        @if ($hayMasPlanillas)
+                            <a href="{{ route('planillas.index', array_merge(request()->except('mpage'), ['mpage' => $mobilePage + 1])) }}"
+                                class="px-3 py-1.5 rounded-lg bg-gray-100 text-gray-800 text-xs font-semibold border border-gray-200 hover:bg-gray-200">
+                                Siguiente →
+                            </a>
+                        @else
+                            <span
+                                class="px-3 py-1.5 rounded-lg bg-gray-50 text-gray-400 text-xs font-semibold border border-gray-100">
+                                Siguiente →
+                            </span>
+                        @endif
+                    </div>
+                @endif
+            </div>
         </div>
 
-        @livewire('planillas-table')
-
     </div>
+
+    @push('modals')
+        <!-- Modal de reimportar (compartido entre desktop y móvil) -->
+        <div id="modal-reimportar" class="hidden absolute inset-0 z-[99999]">
+            <!-- Overlay -->
+            <div class="absolute inset-0 bg-black/50" onclick="cerrarModalReimportar()"></div>
+
+            <!-- Modal Centrado Absolutamente -->
+            <div
+                class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[90%] max-w-lg bg-white rounded-lg shadow-2xl p-6">
+                <h2 class="text-lg font-bold text-gray-800 mb-4">Añade modificaciones del cliente</h2>
+
+                <form id="form-reimportar" method="POST" enctype="multipart/form-data" class="space-y-4">
+                    @csrf
+                    <div>
+                        <label for="archivo-reimportar" class="block text-sm font-medium text-gray-700">
+                            Selecciona el nuevo archivo:
+                        </label>
+                        <input type="file" name="archivo" id="archivo-reimportar" accept=".csv,.xlsx,.xls" required
+                            class="mt-1 block w-full border border-gray-300 rounded p-2 text-sm">
+                    </div>
+
+                    <div class="flex justify-end gap-2">
+                        <button type="button" onclick="cerrarModalReimportar()"
+                            class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-semibold px-4 py-2 rounded">
+                            Cancelar
+                        </button>
+                        <button type="submit" class="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded">
+                            🔄 Reimportar
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    @endpush
 
     <script>
         // Variable global para evitar reinicialización múltiple (persistente entre navegaciones Livewire)
@@ -214,13 +459,31 @@
             });
         }
 
+        // Modal reimportar móvil/desktop
+        function abrirModalReimportar(planillaId) {
+            const modal = document.getElementById('modal-reimportar');
+            const form = document.getElementById('form-reimportar');
+            if (!modal || !form) return;
+            form.action = `/planillas/${planillaId}/reimportar`;
+            modal.classList.remove('hidden');
+        }
+
+        function cerrarModalReimportar() {
+            const modal = document.getElementById('modal-reimportar');
+            if (modal) {
+                modal.classList.add('hidden');
+            }
+        }
+
         function initCompletarTodas() {
             const btnCompletar = document.getElementById('btn-completar-planillas');
-            if (!btnCompletar) {
+            const btnCompletarMobile = document.getElementById('btn-completar-planillas-mobile');
+
+            if (!btnCompletar && !btnCompletarMobile) {
                 return;
             }
 
-            const url = btnCompletar.dataset.url;
+            const url = (btnCompletar || btnCompletarMobile).dataset.url;
             const csrf = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
 
             async function solicitarConfirmacion() {
@@ -242,7 +505,8 @@
                 });
             }
 
-            btnCompletar.addEventListener('click', async (event) => {
+            // Función para manejar el click
+            async function handleClick(event) {
                 event.preventDefault();
 
                 const confirmacion = await solicitarConfirmacion();
@@ -352,7 +616,7 @@
                     } else {
                         alert(
                             `Procesadas OK: ${procesadasOk}\nOmitidas por fecha: ${omitidasFecha}\nFallidas: ${fallidas}`
-                            );
+                        );
                     }
 
                     window.location.reload();
@@ -368,7 +632,15 @@
                         alert(error?.message ?? 'Ocurrió un error al completar las planillas.');
                     }
                 }
-            });
+            }
+
+            // Agregar event listeners a ambos botones
+            if (btnCompletar) {
+                btnCompletar.addEventListener('click', handleClick);
+            }
+            if (btnCompletarMobile) {
+                btnCompletarMobile.addEventListener('click', handleClick);
+            }
         }
 
         // Inicializar al cargar el DOM

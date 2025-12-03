@@ -5,339 +5,434 @@
         'maquinasDisponibles' => $maquinasDisponibles,
     ])
 
-    <div class="w-full">
+    @php
+        $successFlash = session()->pull('success');
+        $statusFlash = session()->pull('status');
+    @endphp
+
+    <div class="w-full md:flex md:flex-col md:gap-3 md:h-[calc(100vh-100px)] md:overflow-hidden">
         <!-- Botones superiores -->
-        <div class="mb-6 flex flex-wrap justify-center gap-3">
+        <div class="mb-4 flex flex-wrap items-center justify-center md:justify-end gap-2 px-2 md:mb-0 md:flex-shrink-0">
             @if (auth()->check() && auth()->id() === 1)
-                <x-tabla.boton-azul :href="route('entradas.create')">
-                    ➕ Crear Nueva Entrada
+                <x-tabla.boton-azul :href="route('entradas.create')" class="text-sm px-4 py-2">
+                    ➕ Nueva Entrada
                 </x-tabla.boton-azul>
             @endif
-
-            <button onclick="abrirModal()"
-                class="bg-gradient-to-r from-gray-800 to-gray-700 hover:from-gray-700 hover:to-gray-600 text-white font-semibold py-2.5 px-6 rounded-lg shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105 hidden md:inline-flex items-center gap-2">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                    <path
-                        d="M2 6a2 2 0 012-2h6a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V6zM14.553 7.106A1 1 0 0014 8v4a1 1 0 00.553.894l2 1A1 1 0 0018 13V7a1 1 0 00-1.447-.894l-2 1z" />
-                </svg>
-                Generar Códigos QR
-            </button>
         </div>
 
-        <!-- 🖥️ Tabla solo en pantallas medianas o grandes -->
-        <div class="hidden md:block">
-            <div id="modalGenerarCodigos"
-                class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden items-center justify-center">
-                <div class="bg-white rounded-lg shadow-lg p-6 w-full max-w-md relative">
-                    <h2 class="text-xl font-semibold mb-4">Generar y exportar códigos</h2>
+        <!-- Modal Generar Códigos (disponible en todas las vistas) -->
+        <div id="modalGenerarCodigos"
+            class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden items-center justify-center px-4">
+            <div class="bg-white rounded-lg shadow-lg p-6 w-full max-w-md relative">
+                <h2 class="text-xl font-semibold mb-4">Generar y exportar códigos</h2>
 
-                    <form action="{{ route('productos.generar.crearExportar') }}" method="POST" class="space-y-4">
-                        @csrf
+                <form action="{{ route('productos.generar.crearExportar') }}" method="POST" class="space-y-4">
+                    @csrf
 
-                        <div>
-                            <label for="cantidad" class="block text-sm font-medium text-gray-700">Cantidad a
-                                generar</label>
-                            <input type="number" id="cantidad" name="cantidad" value="10" min="1"
-                                class="w-full p-2 border border-gray-300 rounded-lg" required>
-                        </div>
-
-                        <div class="flex justify-end pt-2 space-x-2">
-                            <p class="text-xs text-gray-500 mt-2">
-                                ⚠️ Esta exportación es importante. Exporta solo si vas a imprimir etiquetas QR para
-                                evitar duplicados.
-                            </p>
-
-                            <button type="button" onclick="cerrarModal()"
-                                class="px-4 py-2 bg-gray-300 text-gray-800 rounded hover:bg-gray-400">
-                                Cancelar
-                            </button>
-                            <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">
-                                Generar
-                            </button>
-                        </div>
-                    </form>
-
-                </div>
-            </div>
-            <script>
-                function abrirModal() {
-                    const modal = document.getElementById('modalGenerarCodigos');
-                    modal.classList.remove('hidden');
-                    modal.classList.add('flex');
-                }
-
-                function cerrarModal() {
-                    const modal = document.getElementById('modalGenerarCodigos');
-                    modal.classList.remove('flex');
-                    modal.classList.add('hidden');
-                }
-
-                // Opcional: cerrar con tecla ESC
-                document.addEventListener('keydown', function(event) {
-                    if (event.key === 'Escape') {
-                        cerrarModal();
-                    }
-                });
-
-                // Opcional: cerrar si se hace clic fuera del contenido
-                window.addEventListener('click', function(event) {
-                    const modal = document.getElementById('modalGenerarCodigos');
-                    if (event.target === modal) {
-                        cerrarModal();
-                    }
-                });
-            </script>
-
-            <!-- Catálogo de Productos Base -->
-            <div x-data="{ modalCatalogo: false }" @keydown.window.escape="modalCatalogo = false" class="mb-6">
-                <div
-                    class="bg-gradient-to-r from-gray-50 to-gray-100 rounded-lg shadow-md border border-gray-200 p-4 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-                    <div class="flex items-center gap-3">
-                        <div class="bg-gradient-to-tr from-gray-800 to-gray-700 p-2 rounded-lg">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-white" fill="none"
-                                viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-                            </svg>
-                        </div>
-                        <div>
-                            <h2 class="text-lg font-bold text-gray-800">Catálogo de Productos Base</h2>
-                            <p class="text-xs text-gray-600">Abierto en pantalla completa con scroll interno</p>
-                        </div>
+                    <div>
+                        <label for="cantidad" class="block text-sm font-medium text-gray-700">Cantidad a
+                            generar</label>
+                        <input type="number" id="cantidad" name="cantidad" value="10" min="1"
+                            class="w-full p-2 border border-gray-300 rounded-lg" required>
                     </div>
-                    <div class="flex items-center gap-2">
+
+                    <div class="flex justify-end pt-2 space-x-2">
+                        <p class="text-xs text-gray-500 mt-2">
+                            ⚠️ Esta exportación es importante. Exporta solo si vas a imprimir etiquetas QR para
+                            evitar duplicados.
+                        </p>
+
+                        <button type="button" onclick="cerrarModal()"
+                            class="px-4 py-2 bg-gray-300 text-gray-800 rounded hover:bg-gray-400">
+                            Cancelar
+                        </button>
+                        <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">
+                            Generar
+                        </button>
+                    </div>
+                </form>
+
+            </div>
+        </div>
+        <script>
+            function abrirModal() {
+                const modal = document.getElementById('modalGenerarCodigos');
+                modal.classList.remove('hidden');
+                modal.classList.add('flex');
+            }
+
+            function cerrarModal() {
+                const modal = document.getElementById('modalGenerarCodigos');
+                modal.classList.remove('flex');
+                modal.classList.add('hidden');
+            }
+
+            document.addEventListener('keydown', function(event) {
+                if (event.key === 'Escape') {
+                    cerrarModal();
+                }
+            });
+
+            window.addEventListener('click', function(event) {
+                const modal = document.getElementById('modalGenerarCodigos');
+                if (event.target === modal) {
+                    cerrarModal();
+                }
+            });
+        </script>
+
+        <!-- 🖥️ Tabla solo en pantallas medianas o grandes -->
+        <div class="hidden md:flex flex-col gap-3 flex-1 min-h-0 overflow-hidden">
+
+            <div class="hidden md:flex items-center gap-3 mb-4 px-1">
+                <!-- Catálogo de Productos Base -->
+                <div x-data="{ modalCatalogo: false }" @keydown.window.escape="modalCatalogo = false" class="flex-1">
+                    <div
+                        class="rounded-lg border border-gray-200 bg-white shadow-sm px-3 py-2 flex items-center justify-between gap-3">
+                        <div class="flex items-center gap-2">
+                            <div class="bg-gray-800 text-white p-1.5 rounded-md">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none"
+                                    viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                                </svg>
+                            </div>
+                            <div>
+                                <p class="text-xs text-gray-600 leading-tight">Catálogo de Productos Base</p>
+                                <p class="text-[11px] text-gray-400">Pantalla completa · scroll interno</p>
+                            </div>
+                        </div>
                         <button @click="modalCatalogo = true"
-                            class="bg-gradient-to-tr from-gray-800 to-gray-700 hover:from-gray-700 hover:to-gray-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 flex items-center gap-2 shadow-md hover:shadow-lg">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24"
-                                stroke="currentColor">
+                            class="bg-gray-900 hover:bg-gray-800 text-white px-3 py-2 rounded-md text-xs font-semibold transition-all duration-150 flex items-center gap-1 shadow-sm">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none"
+                                viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                     d="M4 6h16M4 12h16M4 18h16" />
                             </svg>
                             <span>Ver catálogo</span>
                         </button>
                     </div>
-                </div>
 
-                <div x-cloak x-show="modalCatalogo" x-transition:enter="transition ease-out duration-200"
-                    x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100"
-                    x-transition:leave="transition ease-in duration-150" x-transition:leave-start="opacity-100"
-                    x-transition:leave-end="opacity-0"
-                    class="fixed inset-0 z-50 bg-black bg-opacity-50 backdrop-blur-sm flex flex-col p-3 md:p-6">
-                    <div class="relative bg-white w-full h-full rounded-lg shadow-2xl flex flex-col overflow-hidden">
-                        <div class="flex items-center justify-between px-4 py-3 border-b bg-gray-50">
-                            <div class="flex items-center gap-3">
-                                <div class="bg-gradient-to-tr from-gray-800 to-gray-700 p-2 rounded-lg">
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-white" fill="none"
-                                        viewBox="0 0 24 24" stroke="currentColor">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                            d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-                                    </svg>
+                    <div x-cloak x-show="modalCatalogo" x-transition:enter="transition ease-out duration-200"
+                        x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100"
+                        x-transition:leave="transition ease-in duration-150" x-transition:leave-start="opacity-100"
+                        x-transition:leave-end="opacity-0"
+                        class="fixed inset-0 z-50 bg-black bg-opacity-50 backdrop-blur-sm flex flex-col p-3 md:p-6">
+                        <div
+                            class="relative bg-white w-full h-full rounded-lg shadow-2xl flex flex-col overflow-hidden">
+                            <div class="flex items-center justify-between px-4 py-3 border-b bg-gray-50">
+                                <div class="flex items-center gap-3">
+                                    <div class="bg-gradient-to-tr from-gray-800 to-gray-700 p-2 rounded-lg">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-white"
+                                            fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                                        </svg>
+                                    </div>
+                                    <div>
+                                        <h3 class="text-base font-semibold text-gray-800">Catálogo de Productos Base
+                                        </h3>
+                                        <p class="text-xs text-gray-600">Listado disponible en modal a pantalla completa
+                                        </p>
+                                    </div>
                                 </div>
-                                <div>
-                                    <h3 class="text-base font-semibold text-gray-800">Catálogo de Productos Base</h3>
-                                    <p class="text-xs text-gray-600">Listado disponible en modal a pantalla completa</p>
+                                <div class="flex items-center gap-2">
+                                    <span class="text-xs text-gray-500 hidden sm:inline">Presiona ESC para cerrar</span>
+                                    <button @click="modalCatalogo = false" class="text-gray-700 hover:text-gray-900">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none"
+                                            viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M6 18L18 6M6 6l12 12" />
+                                        </svg>
+                                    </button>
                                 </div>
                             </div>
-                            <div class="flex items-center gap-2">
-                                <span class="text-xs text-gray-500 hidden sm:inline">Presiona ESC para cerrar</span>
-                                <button @click="modalCatalogo = false" class="text-gray-700 hover:text-gray-900">
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none"
-                                        viewBox="0 0 24 24" stroke="currentColor">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                            d="M6 18L18 6M6 6l12 12" />
-                                    </svg>
-                                </button>
-                            </div>
-                        </div>
 
-                        <div class="flex-1 overflow-auto p-4">
-                            <div class="overflow-x-auto">
-                                <table class="w-full min-w-[600px] text-sm rounded-t-lg overflow-hidden">
-                                    <thead class="bg-gradient-to-t from-gray-800 to-gray-700 text-white">
-                                        <tr>
-                                            <th class="px-4 py-3 border-b border-blue-400 font-semibold">ID</th>
-                                            <th class="px-4 py-3 border-b border-blue-400 font-semibold">Tipo</th>
-                                            <th class="px-4 py-3 border-b border-blue-400 font-semibold">Diámetro</th>
-                                            <th class="px-4 py-3 border-b border-blue-400 font-semibold">Longitud</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        @forelse ($productosBase as $base)
-                                            <tr class="border-b hover:bg-gray-200 transition-colors">
-                                                <td class="px-4 py-3 text-center font-medium text-gray-700">
-                                                    {{ $base->id }}</td>
-                                                <td class="px-4 py-3 text-center">
-                                                    <span
-                                                        class="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-xs font-semibold">
-                                                        {{ ucfirst($base->tipo) }}
-                                                    </span>
-                                                </td>
-                                                <td class="px-4 py-3 text-center font-medium text-gray-700">
-                                                    {{ $base->diametro }} mm
-                                                </td>
-                                                <td class="px-4 py-3 text-center text-gray-600">
-                                                    {{ $base->longitud ?? '—' }}
-                                                </td>
-                                            </tr>
-                                        @empty
+                            <div class="flex-1 overflow-auto p-4">
+                                <div class="overflow-x-auto">
+                                    <table class="w-full min-w-[600px] text-sm rounded-t-lg overflow-hidden">
+                                        <thead class="bg-gradient-to-t from-gray-800 to-gray-700 text-white">
                                             <tr>
-                                                <td colspan="4" class="text-center py-8">
-                                                    <div class="flex flex-col items-center gap-2">
-                                                        <svg xmlns="http://www.w3.org/2000/svg"
-                                                            class="h-12 w-12 text-gray-400" fill="none"
-                                                            viewBox="0 0 24 24" stroke="currentColor">
-                                                            <path stroke-linecap="round" stroke-linejoin="round"
-                                                                stroke-width="2"
-                                                                d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
-                                                        </svg>
-                                                        <span class="text-gray-500 font-medium">No hay productos base
-                                                            registrados</span>
-                                                    </div>
-                                                </td>
+                                                <th class="px-4 py-3 border-b border-blue-400 font-semibold">ID</th>
+                                                <th class="px-4 py-3 border-b border-blue-400 font-semibold">Tipo</th>
+                                                <th class="px-4 py-3 border-b border-blue-400 font-semibold">Diámetro
+                                                </th>
+                                                <th class="px-4 py-3 border-b border-blue-400 font-semibold">Longitud
+                                                </th>
                                             </tr>
-                                        @endforelse
-                                    </tbody>
-                                </table>
+                                        </thead>
+                                        <tbody>
+                                            @forelse ($productosBase as $base)
+                                                <tr class="border-b hover:bg-gray-200 transition-colors">
+                                                    <td class="px-4 py-3 text-center font-medium text-gray-700">
+                                                        {{ $base->id }}</td>
+                                                    <td class="px-4 py-3 text-center">
+                                                        <span
+                                                            class="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-xs font-semibold">
+                                                            {{ ucfirst($base->tipo) }}
+                                                        </span>
+                                                    </td>
+                                                    <td class="px-4 py-3 text-center font-medium text-gray-700">
+                                                        {{ $base->diametro }} mm
+                                                    </td>
+                                                    <td class="px-4 py-3 text-center text-gray-600">
+                                                        {{ $base->longitud ?? '—' }}
+                                                    </td>
+                                                </tr>
+                                            @empty
+                                                <tr>
+                                                    <td colspan="4" class="text-center py-8">
+                                                        <div class="flex flex-col items-center gap-2">
+                                                            <svg xmlns="http://www.w3.org/2000/svg"
+                                                                class="h-12 w-12 text-gray-400" fill="none"
+                                                                viewBox="0 0 24 24" stroke="currentColor">
+                                                                <path stroke-linecap="round" stroke-linejoin="round"
+                                                                    stroke-width="2"
+                                                                    d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
+                                                            </svg>
+                                                            <span class="text-gray-500 font-medium">No hay productos
+                                                                base
+                                                                registrados</span>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            @endforelse
+                                        </tbody>
+                                    </table>
+                                </div>
                             </div>
                         </div>
-                    </div>
-                    <div class="mt-3 text-center text-xs text-gray-200">
-                        Desplázate dentro del modal para revisar el catálogo completo.
+                        <div class="mt-3 text-center text-xs text-gray-200">
+                            Desplázate dentro del modal para revisar el catálogo completo.
+                        </div>
                     </div>
                 </div>
+
+                <button onclick="abrirModal()"
+                    class="shrink-0 bg-gradient-to-r from-gray-800 to-gray-700 hover:from-gray-700 hover:to-gray-600 text-white font-semibold py-2 px-4 rounded-lg shadow-md hover:shadow-lg transition-all duration-200 inline-flex items-center gap-2 text-sm">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                        <path
+                            d="M2 6a2 2 0 012-2h6a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V6zM14.553 7.106A1 1 0 0014 8v4a1 1 0 00.553.894l2 1A1 1 0 0018 13V7a1 1 0 00-1.447-.894l-2 1z" />
+                    </svg>
+                    QR
+                </button>
             </div>
 
-            @livewire('productos-table')
+            <div class="flex-1 min-h-0">
+                @livewire('productos-table')
+            </div>
         </div>
 
-        <!-- 📱 Tarjetas solo en pantallas pequeñas -->
+        <!-- 📱 Vista móvil renovada -->
         <div class="block md:hidden">
-            <!-- Buscador por código -->
-            {{-- <div class="mb-4">
-                <form method="GET" action="{{ route('productos.index') }}"
-            class="flex flex-col sm:flex-row gap-2 items-center">
-            <input type="text" name="codigo" placeholder="Buscar por código..."
-                value="{{ request('codigo') }}"
-                class="w-full sm:w-64 px-4 py-2 border rounded shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-            <button type="submit"
-                class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 text-sm font-semibold">
-                Buscar
-            </button>
-            @if (request('codigo'))
-            <a href="{{ route('productos.index') }}" wire:navigate
-                class="text-sm text-gray-600 underline hover:text-gray-800">Limpiar</a> 
-            @endif
-            </form>
-        </div> --}}
-            <!-- Buscador con filtros personalizados -->
-            <div class="mb-4">
-                <form method="GET" action="{{ route('productos.index') }}"
-                    class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 items-end">
+            <div class="space-y-2 mb-4">
+                <div class="bg-gradient-to-r from-gray-900 to-gray-700 text-white rounded-xl p-3 shadow-lg">
+                    <div class="flex items-center justify-between gap-2">
+                        <div class="flex-1">
+                            <p class="text-[10px] uppercase tracking-wide text-gray-300">Inventario</p>
+                            <h2 class="text-base font-semibold">Materiales</h2>
+                        </div>
+                        <button onclick="abrirModal()"
+                            class="bg-white/15 text-white text-[10px] font-semibold px-2 py-1.5 rounded-lg shadow hover:bg-white/25 transition">
+                            QR
+                        </button>
+                    </div>
+                </div>
 
-                    <x-tabla.input name="codigo" label="Código" placeholder="Buscar por QR..." autofocus
-                        autocomplete="off" />
+                <div class="bg-white border border-gray-200 rounded-xl shadow-sm p-3">
+                    <form method="GET" action="{{ route('productos.index') }}" class="space-y-2">
+                        <div class="flex flex-col gap-1">
+                            <label for="codigo" class="text-[10px] font-semibold text-gray-700">Código QR</label>
+                            <x-tabla.input name="codigo" label="" placeholder="Buscar por QR..." autofocus
+                                autocomplete="off" />
+                        </div>
 
-                    <select id="producto_base_id" name="producto_base_id"
-                        class="w-full px-2 py-1 border border-gray-300 rounded text-xs text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500">
-                        <option value="" disabled selected>Seleccione un producto base</option>
-                        <option value="">NINGUNO</option>
-                        @foreach ($productosBase as $producto)
-                            <option value="{{ $producto->id }}"
-                                {{ old('producto_base_id') == $producto->id ? 'selected' : '' }}>
-                                {{ strtoupper($producto->tipo) }} |
-                                Ø{{ $producto->diametro }}{{ $producto->longitud ? ' | ' . $producto->longitud . ' m' : '' }}
-                            </option>
-                        @endforeach
-                    </select>
+                        <div class="flex flex-col gap-1">
+                            <label for="producto_base_id" class="text-[10px] font-semibold text-gray-700">Producto
+                                base</label>
+                            <select id="producto_base_id" name="producto_base_id"
+                                class="w-full px-2 py-1.5 border border-gray-300 rounded-lg text-xs text-gray-800 focus:outline-none focus:ring-1 focus:ring-gray-700">
+                                <option value="" disabled selected>Seleccione un producto base</option>
+                                <option value="">NINGUNO</option>
+                                @foreach ($productosBase as $producto)
+                                    <option value="{{ $producto->id }}"
+                                        {{ old('producto_base_id') == $producto->id ? 'selected' : '' }}>
+                                        {{ strtoupper($producto->tipo) }} |
+                                        Ø{{ $producto->diametro }}{{ $producto->longitud ? ' | ' . $producto->longitud . ' m' : '' }}
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
 
-                    <x-tabla.botones-filtro ruta="productos.index" />
-                </form>
+                        <div class="flex items-center justify-between gap-2">
+                            <x-tabla.botones-filtro ruta="productos.index" />
+                        </div>
+                    </form>
+                </div>
             </div>
 
-            <!-- Modo Tarjetas -->
-            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div class="space-y-2 pb-4">
                 @forelse($registrosProductos as $producto)
-                    <div class="bg-white shadow-md rounded-lg p-4">
-                        <h3 class="font-bold text-lg text-gray-700">ID: {{ $producto->id }}</h3>
-                        <h3 class="font-bold text-lg text-gray-700">Código: {{ $producto->codigo }}</h3>
-                        <p><strong>Fabricante:</strong> {{ $producto->fabricante->nombre ?? '—' }}</p>
-                        <p>
-                            <strong>Características:</strong>
-                            {{ strtoupper($producto->productoBase->tipo ?? '—') }}
-                            |
-                            Ø{{ $producto->productoBase->diametro ?? '—' }}
-                            {{ $producto->productoBase->longitud ? '| ' . $producto->productoBase->longitud . ' m' : '' }}
-                        </p>
-
-                        <p><strong>Nº Colada:</strong> {{ $producto->n_colada }}</p>
-                        <p><strong>Nº Paquete:</strong> {{ $producto->n_paquete }}</p>
-                        <p><strong>Peso Inicial:</strong> {{ $producto->peso_inicial }} kg</p>
-                        <p><strong>Peso Stock:</strong> {{ $producto->peso_stock }} kg</p>
-                        <p><strong>Estado:</strong> {{ $producto->estado }}</p>
-                        <hr class="m-2 border-gray-300">
-
-                        @if (isset($producto->ubicacion->nombre))
-                            <p class="font-bold text-lg text-gray-800 break-words">{{ $producto->ubicacion->nombre }}
-                            </p>
-                        @elseif (isset($producto->maquina->nombre))
-                            <p class="font-bold text-lg text-gray-800 break-words">{{ $producto->maquina->nombre }}
-                            </p>
-                        @else
-                            <p class="font-bold text-lg text-gray-800 break-words">No está ubicada</p>
-                        @endif
-
-                        <p class="text-gray-600 mt-2">{{ $producto->created_at->format('d/m/Y H:i') }}</p>
-
-                        <hr class="my-2 border-gray-300">
-
-                        @php
-                            $usuario = auth()->user();
-                            $esOficina = $usuario->rol === 'oficina';
-                            $esGruista = $usuario->rol !== 'oficina' && $usuario->maquina?->tipo === 'grua';
-                        @endphp
-
-                        @if ($esOficina || $esGruista)
-                            <div class="flex flex-wrap gap-2 mt-4 w-full">
-                                <a href="{{ route('productos.show', $producto->id) }}" wire:navigate
-                                    class="flex-1 bg-blue-500 hover:bg-blue-600 text-white text-center text-sm font-semibold py-2 px-2 rounded shadow">
-                                    Ver
-                                </a>
-                                <a href="{{ route('productos.edit', $producto->id) }}" wire:navigate
-                                    class="flex-1 bg-blue-400 hover:bg-blue-500 text-white text-center text-sm font-semibold py-2 px-2 rounded shadow">
-                                    Editar
-                                </a>
-                                <button onclick="abrirModalMovimientoLibre('{{ $producto->codigo }}')"
-                                    class="flex-1 bg-green-500 hover:bg-green-600 text-white text-center text-sm font-semibold py-2 px-2 rounded shadow">
-                                    Mover
-                                </button>
-
-                                <a href="{{ route('productos.editarConsumir', $producto->id) }}" wire:navigate
-                                    data-consumir="{{ route('productos.editarConsumir', $producto->id) }}"
-                                    class="btn-consumir flex-1 bg-red-500 hover:bg-red-600 text-white text-center text-sm font-semibold py-2 px-2 rounded shadow">
-                                    Consumir
-                                </a>
-
-                                <form action="{{ route('productos.destroy', $producto->id) }}" method="POST"
-                                    class="form-eliminar flex-1">
-                                    @csrf
-                                    @method('DELETE')
-                                    <button type="submit"
-                                        class="btn-eliminar w-full bg-gray-500 hover:bg-gray-600 text-white text-sm font-semibold py-2 px-2 rounded shadow">
-                                        Eliminar
-                                    </button>
-                                </form>
-
+                    <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                        <div
+                            class="bg-gradient-to-r from-gray-900 to-gray-700 text-white px-3 py-2 flex items-start justify-between gap-2">
+                            <div class="flex-1 min-w-0">
+                                <h3 class="text-sm font-semibold tracking-tight truncate">{{ $producto->codigo }}</h3>
+                                <span
+                                    class="inline-flex items-center px-1.5 py-0.5 rounded-md text-[9px] font-semibold bg-emerald-500/20 text-emerald-100 border border-emerald-400/30 mt-1">
+                                    {{ $producto->estado }}
+                                </span>
                             </div>
-                        @endif
+                            <div class="text-right space-y-0.5 flex-shrink-0">
+                                <span
+                                    class="inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-semibold bg-white/10 border border-white/20">
+                                    {{ strtoupper($producto->productoBase->tipo ?? '—') }}
+                                </span>
+                                <div class="text-[9px] text-gray-200">
+                                    Ø{{ $producto->productoBase->diametro ?? '—' }}
+                                    {{ $producto->productoBase->longitud ? '· ' . $producto->productoBase->longitud . ' m' : '' }}
+                                </div>
+                            </div>
+                        </div>
 
+                        <div class="p-2.5 space-y-2">
+                            <div class="grid grid-cols-2 gap-2 text-[10px]">
+                                <div>
+                                    <p class="text-[9px] uppercase tracking-wide text-gray-500">Fabricante</p>
+                                    <p class="font-semibold text-gray-900 truncate">
+                                        {{ $producto->fabricante->nombre ?? '—' }}</p>
+                                </div>
+                                <div>
+                                    <p class="text-[9px] uppercase tracking-wide text-gray-500">Nº Colada</p>
+                                    <p class="font-semibold text-gray-900">{{ $producto->n_colada }}</p>
+                                </div>
+                                <div>
+                                    <p class="text-[9px] uppercase tracking-wide text-gray-500">Nº Paquete</p>
+                                    <p class="font-semibold text-gray-900">{{ $producto->n_paquete }}</p>
+                                </div>
+                                <div>
+                                    <p class="text-[9px] uppercase tracking-wide text-gray-500">Peso ini.</p>
+                                    <p class="font-semibold text-gray-900">{{ $producto->peso_inicial }} kg</p>
+                                </div>
+                                <div>
+                                    <p class="text-[9px] uppercase tracking-wide text-gray-500">Stock</p>
+                                    <p class="font-semibold text-gray-900">{{ $producto->peso_stock }} kg</p>
+                                </div>
+                                <div>
+                                    <p class="text-[9px] uppercase tracking-wide text-gray-500">Creado</p>
+                                    <p class="font-semibold text-gray-900">
+                                        {{ $producto->created_at->format('d/m/y') }}</p>
+                                </div>
+                            </div>
+
+                            <div class="rounded-lg bg-gray-50 border border-gray-200 p-2 flex items-center gap-2">
+                                <div
+                                    class="h-7 w-7 rounded-md bg-gradient-to-tr from-gray-800 to-gray-700 flex items-center justify-center text-white flex-shrink-0">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none"
+                                        viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M3 7h18M3 12h18M3 17h18" />
+                                    </svg>
+                                </div>
+                                <div class="flex-1 min-w-0">
+                                    <p class="text-[9px] uppercase tracking-wide text-gray-500">Ubicación</p>
+                                    @if (isset($producto->ubicacion->nombre))
+                                        <p class="font-semibold text-gray-900 text-[10px] truncate">
+                                            {{ $producto->ubicacion->nombre }}</p>
+                                    @elseif (isset($producto->maquina->nombre))
+                                        <p class="font-semibold text-gray-900 text-[10px] truncate">
+                                            {{ $producto->maquina->nombre }}</p>
+                                    @else
+                                        <p class="font-semibold text-gray-900 text-[10px] truncate">No está ubicada</p>
+                                    @endif
+                                </div>
+                            </div>
+
+                            @php
+                                $usuario = auth()->user();
+                                $esOficina = $usuario->rol === 'oficina';
+                                $esGruista = $usuario->rol !== 'oficina' && $usuario->maquina?->tipo === 'grua';
+                            @endphp
+
+                            @if ($esOficina || $esGruista)
+                                <div class="grid grid-cols-2 gap-1 pt-1 text-[10px] font-semibold">
+                                    <a href="{{ route('productos.show', $producto->id) }}" wire:navigate
+                                        class="bg-gray-900 text-white rounded-lg px-2 py-1 text-center shadow hover:bg-gray-800">
+                                        Ver
+                                    </a>
+                                    <a href="{{ route('productos.edit', $producto->id) }}" wire:navigate
+                                        class="bg-gray-700 text-white rounded-lg px-2 py-1 text-center shadow hover:bg-gray-600">
+                                        Editar
+                                    </a>
+                                    <button onclick="abrirModalMovimientoLibre('{{ $producto->codigo }}')"
+                                        class="bg-emerald-500 text-white rounded-lg px-2 py-1 text-center shadow hover:bg-emerald-600">
+                                        Mover
+                                    </button>
+
+                                    <a href="{{ route('productos.editarConsumir', $producto->id) }}" wire:navigate
+                                        data-consumir="{{ route('productos.editarConsumir', $producto->id) }}"
+                                        class="btn-consumir bg-red-500 text-white rounded-lg px-2 py-1 text-center shadow hover:bg-red-600">
+                                        Consumir
+                                    </a>
+
+                                    <form action="{{ route('productos.destroy', $producto->id) }}" method="POST"
+                                        class="form-eliminar col-span-2">
+                                        @csrf
+                                        @method('DELETE')
+                                        <button type="submit"
+                                            class="btn-eliminar w-full bg-gray-200 text-gray-800 rounded-lg px-2 py-1 text-center font-semibold shadow hover:bg-gray-300">
+                                            Eliminar
+                                        </button>
+                                    </form>
+                                </div>
+                            @endif
+                        </div>
                     </div>
                 @empty
-                    <div class="col-span-3 text-center py-4">No hay productos disponibles.</div>
+                    <div
+                        class="rounded-2xl border border-dashed border-gray-300 bg-gray-50 p-6 text-center text-sm text-gray-600">
+                        No hay productos disponibles.
+                    </div>
                 @endforelse
             </div>
         </div>
 
         <script>
+            if (!window._toastProductosInit) {
+                const toastPosition = () => window.matchMedia('(max-width: 768px)').matches ? 'top' : 'top-end';
+                window.swalToastProductos = Swal.mixin({
+                    toast: true,
+                    position: toastPosition(),
+                    showConfirmButton: false,
+                    timer: 3200,
+                    timerProgressBar: true,
+                    customClass: {
+                        popup: 'rounded-xl shadow-lg max-w-[280px] sm:max-w-sm'
+                    },
+                    didOpen: (toast) => {
+                        toast.addEventListener('mouseenter', Swal.stopTimer);
+                        toast.addEventListener('mouseleave', Swal.resumeTimer);
+                    }
+                });
+
+                window.matchMedia('(max-width: 768px)').addEventListener('change', () => {
+                    window.swalToastProductos.update({
+                        position: toastPosition()
+                    });
+                });
+
+                window._toastProductosInit = true;
+            }
+
+            const successMessage = @json($successFlash);
+            const statusMessage = @json($statusFlash);
+            if (successMessage || statusMessage) {
+                window.swalToastProductos.fire({
+                    icon: 'success',
+                    title: successMessage || statusMessage
+                });
+            }
+
             document.addEventListener('DOMContentLoaded', function() {
                 // Delegación de eventos para botones "Consumir"
                 document.body.addEventListener('click', async (e) => {

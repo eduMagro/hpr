@@ -134,6 +134,7 @@
                             </button>
                         </th>
                         <th class="p-2"></th>
+                    </x-tabla.filtro-row>
                 </x-tabla.header>
 
                 <tbody class="text-gray-700">
@@ -230,7 +231,6 @@
                                     <span class="text-gray-400 text-xs">-</span>
                                 @endif
                             </td>
-                            </x-tabla.filtro-row>
                         @empty
                         <tr>
                             <td colspan="15" class="text-center py-8 text-gray-500">

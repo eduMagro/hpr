@@ -1,8 +1,8 @@
 @props(['campo', 'sortActual', 'orderActual', 'texto', 'padding' => 'px-3 py-3'])
 
-<th class="{{ $padding }} cursor-pointer hover:bg-white/10 transition-colors select-none text-left text-[11px] font-semibold uppercase tracking-wide text-white/90"
+<th class="{{ $padding }} cursor-pointer hover:bg-white/10 transition-colors select-none text-center text-[11px] font-semibold uppercase tracking-wide text-white/90 whitespace-nowrap"
     wire:click="sortBy('{{ $campo }}')">
-    <div class="flex items-center justify-start gap-2">
+    <div class="flex items-center justify-center gap-1">
         <span>{{ $texto }}</span>
         <span class="inline-flex flex-col text-xs leading-none">
             @if($sortActual === $campo)

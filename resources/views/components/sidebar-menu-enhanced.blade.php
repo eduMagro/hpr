@@ -526,8 +526,7 @@ $currentRoute = request()->route()->getName();
                     class="mt-2 ml-4 space-y-1 border-l-2 border-gray-700 pl-4">
                     @foreach ($section['submenu'] as $item)
                     <div class="flex items-center group">
-                        <a href="{{ route($item['route']) }}" wire:navigate
-                            wire:navigate
+                        <a href="{{ route($item['route']) }}" wire:navigate="false"
                             @click="if (window.innerWidth < 768) { open = false; localStorage.setItem('sidebar_open', 'false'); }"
                             :class="isRouteActive('{{ route($item['route']) }}')
                                             ? 'bg-{{ $section['color'] }}-500 text-white font-medium'
