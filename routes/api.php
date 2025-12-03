@@ -4,9 +4,14 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\MovimientoController;
 use App\Http\Controllers\PaqueteController;
 use App\Http\Controllers\AsistenteVirtualController;
+use App\Http\Controllers\ProductoController;
 
 Route::get('/codigos/info', [MovimientoController::class, 'infoCodigo'])
     ->name('api.codigos.info');   // ← este será el nombre exacto
+
+// Buscar producto por código (para escaneo QR en grúa)
+Route::get('/productos/buscar-por-codigo', [ProductoController::class, 'buscarPorCodigo'])
+    ->name('api.productos.buscar-por-codigo');
 Route::get('/planillas/{planillaId}/paquetes', [PaqueteController::class, 'obtenerPaquetesPorPlanilla'])
     ->name('api.planillas.paquetes');
 Route::post('/paquetes/{paqueteId}/añadir-etiqueta', [PaqueteController::class, 'añadirEtiquetaAPaquete'])

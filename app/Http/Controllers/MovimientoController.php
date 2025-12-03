@@ -1070,6 +1070,204 @@ class MovimientoController extends Controller
     }
 
     /**
+     * Completa un movimiento genérico (pendiente -> completado)
+     */
+    public function completar($id)
+    {
+        try {
+            $movimiento = Movimiento::findOrFail($id);
+
+            if ($movimiento->estado === 'completado') {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Este movimiento ya está completado.'
+                ], 400);
+            }
+
+            $movimiento->update([
+                'estado' => 'completado',
+                'fecha_ejecucion' => now(),
+                'ejecutado_por' => auth()->id(),
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Movimiento completado correctamente.'
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Error al completar movimiento: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al completar el movimiento.'
+            ], 500);
+        }
+    }
+
+    /**
+     * Obtiene las etiquetas de elementos sin elaborar para un movimiento de "Preparación elementos"
+     * Extrae el planilla_id de la descripción del movimiento
+     */
+    public function getEtiquetasElementosSinElaborar($movimientoId)
+    {
+        try {
+            $movimiento = Movimiento::findOrFail($movimientoId);
+
+            if (strtolower($movimiento->tipo) !== 'preparación elementos') {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Este movimiento no es de tipo preparación de elementos.'
+                ], 400);
+            }
+
+            // Extraer planilla_id de la descripción [planilla_id:123]
+            $planillaId = null;
+            if (preg_match('/\[planilla_id:(\d+)\]/', $movimiento->descripcion, $matches)) {
+                $planillaId = (int) $matches[1];
+            }
+
+            if (!$planillaId) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No se pudo determinar la planilla asociada a este movimiento.'
+                ], 400);
+            }
+
+            $planilla = \App\Models\Planilla::with(['cliente', 'obra'])->find($planillaId);
+
+            if (!$planilla) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No se encontró la planilla asociada.'
+                ], 404);
+            }
+
+            // Buscar elementos con elaborado=0 de esa planilla (con todas las relaciones necesarias)
+            $elementosSinElaborar = \App\Models\Elemento::with([
+                'etiquetaRelacion',
+                'maquina',
+                'producto',
+                'producto2',
+                'producto3'
+            ])
+                ->where('planilla_id', $planillaId)
+                ->where('elaborado', 0)
+                ->get();
+
+            if ($elementosSinElaborar->isEmpty()) {
+                return response()->json([
+                    'success' => true,
+                    'html' => '',
+                    'etiquetasData' => [],
+                    'planilla' => [
+                        'id' => $planilla->id,
+                        'codigo' => $planilla->codigo,
+                    ],
+                    'total_etiquetas' => 0,
+                    'message' => 'No hay elementos sin elaborar en esta planilla.'
+                ]);
+            }
+
+            // Función para ordenar por etiqueta_sub_id
+            $ordenSub = function ($grupo, $subId) {
+                if (preg_match('/^(.*?)[\.\-](\d+)$/', $subId, $m)) {
+                    return sprintf('%s-%010d', $m[1], (int)$m[2]);
+                }
+                return $subId . '-0000000000';
+            };
+
+            // Agrupar por etiqueta_sub_id
+            $elementosAgrupados = $elementosSinElaborar->groupBy('etiqueta_sub_id')->sortBy($ordenSub);
+
+            // Construir etiquetasData para el renderizado de SVGs (mismo formato que en MaquinaController)
+            $etiquetasData = $elementosAgrupados->map(function ($grupo, $subId) {
+                $etiqueta = $grupo->first()->etiquetaRelacion;
+
+                // Si no hay etiqueta, buscarla o crear un objeto mínimo
+                if (!$etiqueta) {
+                    $etiqueta = \App\Models\Etiqueta::where('etiqueta_sub_id', $subId)->first();
+                }
+
+                return [
+                    'etiqueta' => $etiqueta ? [
+                        'id' => $etiqueta->id,
+                        'etiqueta_sub_id' => $etiqueta->etiqueta_sub_id ?? $subId,
+                        'nombre' => $etiqueta->nombre,
+                        'estado' => $etiqueta->estado,
+                    ] : [
+                        'id' => $subId, // Usar subId como fallback
+                        'etiqueta_sub_id' => $subId,
+                        'nombre' => null,
+                        'estado' => 'pendiente',
+                    ],
+                    'elementos' => $grupo->map(function ($e) {
+                        return [
+                            'id'          => $e->id,
+                            'codigo'      => $e->codigo,
+                            'dimensiones' => $e->dimensiones,
+                            'estado'      => $e->estado,
+                            'peso'        => $e->peso_kg,
+                            'diametro'    => $e->diametro_mm,
+                            'longitud'    => $e->longitud_cm,
+                            'barras'      => $e->barras,
+                            'figura'      => $e->figura,
+                            'coladas'     => [
+                                'colada1' => $e->producto ? $e->producto->n_colada : null,
+                                'colada2' => $e->producto2 ? $e->producto2->n_colada : null,
+                                'colada3' => $e->producto3 ? $e->producto3->n_colada : null,
+                            ],
+                        ];
+                    })->values(),
+                ];
+            })->values();
+
+            // Renderizar las etiquetas como HTML
+            $html = '';
+            foreach ($elementosAgrupados as $etiquetaSubId => $elementos) {
+                $firstElement = $elementos->first();
+                $etiqueta = $firstElement->etiquetaRelacion;
+
+                if (!$etiqueta) {
+                    // Si no hay relación de etiqueta, buscarla
+                    $etiqueta = \App\Models\Etiqueta::where('etiqueta_sub_id', $etiquetaSubId)->first();
+                }
+
+                if ($etiqueta) {
+                    // Asegurar que el etiqueta_sub_id esté en el objeto
+                    if (!$etiqueta->etiqueta_sub_id) {
+                        $etiqueta->etiqueta_sub_id = $etiquetaSubId;
+                    }
+
+                    $html .= view('components.etiqueta.etiqueta', [
+                        'etiqueta' => $etiqueta,
+                        'planilla' => $planilla,
+                        'maquinaTipo' => 'grua',
+                    ])->render();
+                }
+            }
+
+            return response()->json([
+                'success' => true,
+                'html' => $html,
+                'etiquetasData' => $etiquetasData,
+                'planilla' => [
+                    'id' => $planilla->id,
+                    'codigo' => $planilla->codigo,
+                    'cliente' => $planilla->cliente->empresa ?? 'N/A',
+                    'obra' => $planilla->obra->obra ?? 'N/A',
+                ],
+                'total_etiquetas' => $elementosAgrupados->count(),
+                'total_elementos' => $elementosSinElaborar->count(),
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Error al obtener etiquetas de elementos sin elaborar: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al obtener las etiquetas: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
      * Obtiene las etiquetas de un paquete para mostrar en el modal de preparación
      */
     public function getEtiquetasPaquete($movimientoId)

@@ -464,7 +464,7 @@
     <div class="w-full sm:px-4">
         <!-- Grid principal -->
         <div class="w-full">
-            @if ($maquina->tipo === 'grua')
+            @if ($maquina->tipo === 'grua' && !($modoFabricacionGrua ?? false))
                 <div class="grid grid-cols-1 sm:grid-cols-8 gap-6">
                     {{-- <x-maquinas.tipo.tipo-grua :movimientosPendientes="$movimientosPendientes" :ubicaciones="$ubicaciones" :paquetes="$paquetes" /> --}}
                     <x-maquinas.tipo.tipo-grua :maquina="$maquina" :movimientos-pendientes="$movimientosPendientes" :movimientos-completados="$movimientosCompletados"

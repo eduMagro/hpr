@@ -184,10 +184,20 @@ class MaquinaController extends Controller
 
         // 2) Rama GRÚA: devolver pronto con variables neutras de máquina
         if ($this->esGrua($maquina)) {
-            $grua = $this->cargarContextoGrua($maquina);
+            // ⚠️ IMPORTANTE: Activar movimientos ANTES de cargar el contexto
+            // para que los nuevos movimientos aparezcan en la primera carga
             $this->activarMovimientosSalidasHoy();
             $this->activarMovimientosSalidasAlmacenHoy();
             $this->activarMovimientosPreparacionPaquete($maquina);
+
+            // 🔧 MODO FABRICACIÓN: Si viene el parámetro fabricar_planilla, mostrar vista de fabricación
+            $fabricarPlanillaId = request('fabricar_planilla');
+            if ($fabricarPlanillaId) {
+                return $this->mostrarGruaComoMaquinaFabricacion($maquina, $fabricarPlanillaId, $base);
+            }
+
+            // Ahora sí cargar el contexto con los movimientos ya creados
+            $grua = $this->cargarContextoGrua($maquina);
             return view('maquinas.show', array_merge(
                 $base,
                 [
@@ -987,96 +997,304 @@ class MaquinaController extends Controller
     }
 
     /**
-     * Activa movimientos de preparación de paquete para salidas de mañana
-     * que contengan elementos con elaborado=0 (única dimensión)
+     * Activa movimientos para elementos con elaborado=0 cuyas planillas tienen salidas programadas para mañana.
+     *
+     * Flujo:
+     * 1. Buscar salidas programadas para mañana
+     * 2. Obtener las planillas asociadas a esas salidas (via paquetes → etiquetas → elementos)
+     * 3. Para cada planilla, buscar elementos con elaborado=0 que estén en la nave de la grúa
+     * 4. Crear movimientos agrupados por planilla para que se preparen esos elementos
      */
     private function activarMovimientosPreparacionPaquete(Maquina $grua): void
     {
         $manana = Carbon::tomorrow();
 
-        Log::info("🔎 [Grúa] Buscando salidas para mañana ({$manana->format('d/m/Y')}) con elementos sin elaborar");
+        Log::info("🔎 [Grúa] Buscando elementos sin elaborar (elaborado=0) con salida para mañana ({$manana->format('d/m/Y')})");
 
-        // Buscar salidas programadas para mañana
-        $salidasManana = Salida::with(['paquetes.etiquetas.elementos.planilla.cliente', 'paquetes.etiquetas.elementos.planilla.obra'])
+        // 1. Buscar salidas programadas para mañana con sus paquetes
+        $salidasManana = Salida::with(['paquetes.etiquetas.elementos'])
             ->whereDate('fecha_salida', $manana)
             ->get();
 
+        if ($salidasManana->isEmpty()) {
+            Log::info("ℹ️ No hay salidas programadas para mañana");
+            return;
+        }
+
+        // 2. Recopilar todas las planillas que tienen elementos en salidas de mañana
+        // y agruparlas por salida para tener contexto
+        $planillasPorSalida = [];
+
         foreach ($salidasManana as $salida) {
             foreach ($salida->paquetes as $paquete) {
-                // Verificar si el paquete pertenece a la misma nave que la grúa
+                // Solo considerar paquetes de la misma nave que la grúa
                 if ($paquete->nave_id !== $grua->obra_id) {
                     continue;
                 }
 
-                // Buscar elementos con elaborado=0 en las etiquetas del paquete
-                $elementosSinElaborar = collect();
                 foreach ($paquete->etiquetas as $etiqueta) {
-                    $elementosEtiqueta = $etiqueta->elementos->filter(fn($e) => (int)($e->elaborado ?? 1) === 0);
-                    $elementosSinElaborar = $elementosSinElaborar->merge($elementosEtiqueta);
+                    foreach ($etiqueta->elementos as $elemento) {
+                        if ($elemento->planilla_id) {
+                            if (!isset($planillasPorSalida[$salida->id])) {
+                                $planillasPorSalida[$salida->id] = [
+                                    'salida' => $salida,
+                                    'planilla_ids' => collect(),
+                                ];
+                            }
+                            $planillasPorSalida[$salida->id]['planilla_ids']->push($elemento->planilla_id);
+                        }
+                    }
                 }
+            }
+        }
 
-                if ($elementosSinElaborar->isEmpty()) {
-                    continue;
-                }
+        // Eliminar duplicados de planillas por salida
+        foreach ($planillasPorSalida as $salidaId => &$data) {
+            $data['planilla_ids'] = $data['planilla_ids']->unique()->values();
+        }
+        unset($data);
 
-                // Verificar si ya existe un movimiento para este paquete
-                $existeMovimiento = Movimiento::where('paquete_id', $paquete->id)
-                    ->where('tipo', 'Preparación paquete')
+        if (empty($planillasPorSalida)) {
+            Log::info("ℹ️ No hay planillas asociadas a salidas de mañana en la nave de esta grúa");
+            return;
+        }
+
+        // 3. Para cada salida, buscar elementos con elaborado=0 en sus planillas
+        foreach ($planillasPorSalida as $salidaId => $data) {
+            $salida = $data['salida'];
+            $planillaIds = $data['planilla_ids'];
+
+            // Buscar elementos con elaborado=0 de esas planillas
+            $elementosSinElaborar = Elemento::with(['planilla.cliente', 'planilla.obra', 'maquina'])
+                ->whereIn('planilla_id', $planillaIds)
+                ->where('elaborado', 0)
+                ->get();
+
+            if ($elementosSinElaborar->isEmpty()) {
+                continue;
+            }
+
+            // Agrupar por planilla para crear movimientos más específicos
+            $elementosPorPlanilla = $elementosSinElaborar->groupBy('planilla_id');
+
+            foreach ($elementosPorPlanilla as $planillaId => $elementos) {
+                // Verificar si ya existe un movimiento pendiente para esta planilla y salida
+                $existeMovimiento = Movimiento::where('tipo', 'Preparación elementos')
+                    ->where('salida_id', $salida->id)
                     ->where('estado', 'pendiente')
+                    ->whereRaw("descripcion LIKE ?", ["%planilla_id:{$planillaId}%"])
                     ->exists();
 
                 if ($existeMovimiento) {
                     continue;
                 }
 
-                // Obtener datos para la descripción
-                $planilla = $elementosSinElaborar->first()->planilla;
+                $planilla = $elementos->first()->planilla;
                 $cliente = $planilla?->cliente?->empresa ?? 'Cliente desconocido';
                 $obra = $planilla?->obra?->obra ?? 'Obra desconocida';
+                $codigoPlanilla = $planilla?->codigo ?? $planillaId;
                 $codigoSalida = $salida->codigo_salida ?? $salida->id;
-                $numElementos = $elementosSinElaborar->count();
-                $pesoTotal = $elementosSinElaborar->sum('peso');
+                $numElementos = $elementos->count();
+                $pesoTotal = $elementos->sum('peso');
 
-                // Resumen de diámetros y longitudes
-                $resumenElementos = $elementosSinElaborar
-                    ->groupBy(fn($e) => "Ø{$e->diametro} L:{$e->longitud}mm")
-                    ->map(fn($grupo) => $grupo->count() . 'x')
-                    ->map(fn($count, $key) => "{$count} {$key}")
+                // Resumen de diámetros
+                $resumenDiametros = $elementos
+                    ->groupBy('diametro')
+                    ->map(fn($grupo, $diametro) => $grupo->count() . "xØ{$diametro}")
                     ->implode(', ');
 
+                // Obtener máquinas donde están asignados estos elementos
+                $maquinasAsignadas = $elementos
+                    ->filter(fn($e) => $e->maquina_id)
+                    ->pluck('maquina.nombre')
+                    ->unique()
+                    ->implode(', ') ?: 'Sin asignar';
+
                 $descripcion = sprintf(
-                    "Preparar paquete %s para salida %s - %s / %s - %d elementos (%.1f kg): %s",
-                    $paquete->codigo ?? $paquete->id,
+                    "⚠️ URGENTE: Fabricar %d elementos (%.1f kg) de planilla %s para salida %s [%s / %s]. Diámetros: %s. Máquinas: %s. [planilla_id:%d]",
+                    $numElementos,
+                    $pesoTotal,
+                    $codigoPlanilla,
                     $codigoSalida,
                     $cliente,
                     $obra,
-                    $numElementos,
-                    $pesoTotal,
-                    $resumenElementos
+                    $resumenDiametros,
+                    $maquinasAsignadas,
+                    $planillaId
                 );
 
                 // Crear movimiento
                 Movimiento::create([
-                    'tipo'            => 'Preparación paquete',
-                    'paquete_id'      => $paquete->id,
+                    'tipo'            => 'Preparación elementos',
                     'salida_id'       => $salida->id,
                     'nave_id'         => $grua->obra_id,
-                    'maquina_destino' => $grua->id,
                     'estado'          => 'pendiente',
-                    'prioridad'       => 2,
+                    'prioridad'       => 1, // Alta prioridad porque es para mañana
                     'fecha_solicitud' => now(),
                     'descripcion'     => $descripcion,
                 ]);
 
-                Log::info("✅ Movimiento 'Preparación paquete' creado", [
-                    'paquete_id' => $paquete->id,
+                Log::info("✅ Movimiento 'Preparación elementos' creado", [
+                    'planilla_id' => $planillaId,
+                    'planilla_codigo' => $codigoPlanilla,
                     'salida_id' => $salida->id,
+                    'salida_codigo' => $codigoSalida,
                     'elementos_sin_elaborar' => $numElementos,
+                    'peso_total' => $pesoTotal,
+                    'maquinas' => $maquinasAsignadas,
                 ]);
             }
         }
     }
 
+
+    /**
+     * Muestra la grúa en modo fabricación, cargando los elementos de una planilla específica
+     * como si fuera una máquina normal de producción.
+     */
+    private function mostrarGruaComoMaquinaFabricacion(Maquina $maquina, int $planillaId, array $base)
+    {
+        $planilla = Planilla::with(['cliente', 'obra'])->find($planillaId);
+
+        if (!$planilla) {
+            return redirect()->route('maquinas.show', $maquina->id)
+                ->with('error', 'Planilla no encontrada.');
+        }
+
+        // Obtener elementos de la planilla con elaborado=0
+        $elementosFiltrados = Elemento::with([
+            'planilla',
+            'etiquetaRelacion',
+            'subetiquetas',
+            'maquina',
+            'producto',
+            'producto2',
+            'producto3'
+        ])
+            ->where('planilla_id', $planillaId)
+            ->where('elaborado', 0)
+            ->get();
+
+        if ($elementosFiltrados->isEmpty()) {
+            return redirect()->route('maquinas.show', $maquina->id)
+                ->with('info', 'No hay elementos pendientes de fabricar en esta planilla.');
+        }
+
+        // Construir datasets para la vista (mismo formato que máquinas normales)
+        $pesosElementos = $elementosFiltrados
+            ->map(fn($e) => ['id' => $e->id, 'peso' => $e->peso])
+            ->values()
+            ->toArray();
+
+        $ordenSub = function ($grupo, $subId) {
+            if (preg_match('/^(.*?)[\.\-](\d+)$/', $subId, $m)) {
+                return sprintf('%s-%010d', $m[1], (int)$m[2]);
+            }
+            return $subId . '-0000000000';
+        };
+
+        $etiquetasData = $elementosFiltrados
+            ->filter(fn($e) => !empty($e->etiqueta_sub_id))
+            ->groupBy('etiqueta_sub_id')
+            ->sortBy($ordenSub)
+            ->map(fn($grupo, $subId) => [
+                'codigo'    => (string)$subId,
+                'elementos' => $grupo->pluck('id')->toArray(),
+                'pesoTotal' => $grupo->sum('peso'),
+            ])
+            ->values();
+
+        $elementosAgrupados = $elementosFiltrados
+            ->groupBy('etiqueta_sub_id')
+            ->sortBy($ordenSub);
+
+        $elementosAgrupadosScript = $elementosAgrupados->map(fn($grupo) => [
+            'etiqueta'  => $grupo->first()->etiquetaRelacion,
+            'planilla'  => $grupo->first()->planilla,
+            'elementos' => $grupo->map(fn($e) => [
+                'id'          => $e->id,
+                'codigo'      => $e->codigo,
+                'dimensiones' => $e->dimensiones,
+                'estado'      => $e->estado,
+                'peso'        => $e->peso_kg,
+                'diametro'    => $e->diametro_mm,
+                'longitud'    => $e->longitud_cm,
+                'barras'      => $e->barras,
+                'figura'      => $e->figura,
+                'coladas'     => [
+                    'colada1' => $e->producto ? $e->producto->n_colada : null,
+                    'colada2' => $e->producto2 ? $e->producto2->n_colada : null,
+                    'colada3' => $e->producto3 ? $e->producto3->n_colada : null,
+                ],
+            ])->values(),
+        ])->values();
+
+        // Sugerencias de productos base (vacías para grúa)
+        $sugerenciasPorElemento = [];
+
+        // Turno de hoy
+        $turnoHoy = AsignacionTurno::where('user_id', auth()->id())
+            ->whereDate('fecha', now())
+            ->with('maquina')
+            ->first();
+
+        // Movimientos pendientes y completados
+        $movimientosPendientes = collect();
+        $movimientosCompletados = collect();
+
+        // Máquinas disponibles de la misma nave (excluyendo grúas)
+        $maquinasDisponibles = Maquina::select('id', 'nombre', 'codigo', 'diametro_min', 'diametro_max', 'obra_id')
+            ->where('obra_id', $maquina->obra_id)
+            ->where('tipo', '!=', 'grua')
+            ->orderBy('nombre')
+            ->get();
+
+        // Variables adicionales para tipo-normal
+        $elementosPorPlanilla = $elementosFiltrados->groupBy('planilla_id');
+        $esBarra = strcasecmp($maquina->tipo_material ?? '', 'barra') === 0;
+
+        $longitudesPorDiametro = $esBarra
+            ? $elementosFiltrados->groupBy('diametro')->map(fn($g) => $g->pluck('longitud')->unique()->sort()->values())
+            : collect();
+
+        $diametroPorEtiqueta = $elementosFiltrados
+            ->filter(fn($e) => !empty($e->etiqueta_sub_id))
+            ->groupBy('etiqueta_sub_id')
+            ->map(fn($g) => $g->first()->diametro);
+
+        return view('maquinas.show', array_merge(
+            $base,
+            [
+                'maquina'                   => $maquina,
+                'elementosMaquina'          => $elementosFiltrados,
+                'pesosElementos'            => $pesosElementos,
+                'etiquetasData'             => $etiquetasData,
+                'elementosAgrupados'        => $elementosAgrupados,
+                'elementosAgrupadosScript'  => $elementosAgrupadosScript,
+                'sugerenciasPorElemento'    => $sugerenciasPorElemento,
+                'planillasActivas'          => collect([$planilla]),
+                'turnoHoy'                  => $turnoHoy,
+                'movimientosPendientes'     => $movimientosPendientes,
+                'movimientosCompletados'    => $movimientosCompletados,
+                'ubicacionesDisponiblesPorProductoBase' => [],
+                'pedidosActivos'            => collect(),
+                'ordenManual'               => collect(),
+                'posicionesDisponibles'     => collect(),
+                'maquinasDisponibles'       => $maquinasDisponibles,
+                // Variables adicionales para tipo-normal
+                'productoBaseSolicitados'   => collect(),
+                'elementosPorPlanilla'      => $elementosPorPlanilla,
+                'esBarra'                   => $esBarra,
+                'longitudesPorDiametro'     => $longitudesPorDiametro,
+                'diametroPorEtiqueta'       => $diametroPorEtiqueta,
+                'posicion1'                 => null,
+                'posicion2'                 => null,
+                // Indicador de modo fabricación en grúa
+                'modoFabricacionGrua'       => true,
+                'planillaFabricacion'       => $planilla,
+            ]
+        ));
+    }
 
     public function create()
     {

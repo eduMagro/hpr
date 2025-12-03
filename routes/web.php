@@ -51,6 +51,7 @@ use App\Http\Controllers\PedidoAlmacenVentaController;
 use App\Http\Controllers\ClienteAlmacenController;
 use App\Http\Controllers\FabricacionLogController;
 use App\Http\Controllers\AtajosController;
+use App\Http\Controllers\FcmTokenController;
 use App\Services\PlanillaService;
 use Illuminate\Support\Facades\Log;
 
@@ -104,6 +105,13 @@ Route::middleware(['auth', 'puede.asistente', 'throttle:60,1'])
         Route::post('/mensaje', [AsistenteVirtualController::class, 'enviarMensaje'])
             ->middleware('throttle:15,1'); // Solo 15 mensajes por minuto
     });
+
+// === FCM (Firebase Cloud Messaging) ===
+Route::middleware(['auth'])->prefix('api/fcm')->group(function () {
+    Route::post('/token', [FcmTokenController::class, 'store'])->name('fcm.token.store');
+    Route::delete('/token', [FcmTokenController::class, 'destroy'])->name('fcm.token.destroy');
+    Route::get('/config', [FcmTokenController::class, 'config'])->name('fcm.config');
+});
 
 Route::middleware(['auth', 'acceso.seccion'])->group(function () {
     // === PERFIL DE USUARIO ===
@@ -299,7 +307,9 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
     Route::resource('movimientos', MovimientoController::class);
     Route::post('/movimientos/crear', [MovimientoController::class, 'crearMovimiento'])->name('movimientos.crear');
     Route::put('/movimientos/{id}/completar-preparacion', [MovimientoController::class, 'completarPreparacion'])->name('movimientos.completar-preparacion');
+    Route::put('/movimientos/{id}/completar', [MovimientoController::class, 'completar'])->name('movimientos.completar');
     Route::get('/movimientos/{id}/etiquetas-paquete', [MovimientoController::class, 'getEtiquetasPaquete'])->name('movimientos.etiquetas-paquete');
+    Route::get('/movimientos/{id}/etiquetas-elementos-sin-elaborar', [MovimientoController::class, 'getEtiquetasElementosSinElaborar'])->name('movimientos.etiquetas-elementos-sin-elaborar');
 
     // === PAQUETES ETIQUETAS Y ELEMENTOS ===
 

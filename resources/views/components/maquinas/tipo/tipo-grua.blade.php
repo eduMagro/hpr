@@ -152,6 +152,23 @@
                                         </button>
                                     </div>
                                 @endif
+                                {{-- PREPARACIÓN ELEMENTOS (elementos con elaborado=0 para salida de mañana) --}}
+                                @if (strtolower($mov->tipo) === 'preparación elementos')
+                                    @php
+                                        // Extraer planilla_id de la descripción [planilla_id:123]
+                                        $planillaIdMatch = [];
+                                        preg_match('/\[planilla_id:(\d+)\]/', $mov->descripcion ?? '', $planillaIdMatch);
+                                        $planillaIdFabricar = $planillaIdMatch[1] ?? null;
+                                    @endphp
+                                    @if($planillaIdFabricar)
+                                        <div class="flex flex-wrap gap-2 mt-2">
+                                            <a href="{{ route('maquinas.show', ['maquina' => $maquina->id, 'fabricar_planilla' => $planillaIdFabricar]) }}"
+                                                class="bg-orange-600 hover:bg-orange-700 text-white text-sm px-3 py-2 rounded inline-block">
+                                                🔧 Fabricar elementos
+                                            </a>
+                                        </div>
+                                    @endif
+                                @endif
                             </div>
                         </li>
                     @endif

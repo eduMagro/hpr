@@ -287,4 +287,14 @@ class User extends Authenticatable
     {
         return $this->hasMany(PedidoProductoColada::class, 'user_id');
     }
+
+    public function fcmTokens()
+    {
+        return $this->hasMany(UserFcmToken::class);
+    }
+
+    public function activeFcmTokens()
+    {
+        return $this->fcmTokens()->active();
+    }
 }

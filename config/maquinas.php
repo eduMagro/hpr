@@ -9,7 +9,7 @@ return [
         'dobladora'       => \App\Servicios\Etiquetas\Servicios\EnsambladoraEtiquetaServicio::class,
         'ensambladora'    => \App\Servicios\Etiquetas\Servicios\SoldadoraEtiquetaServicio::class,
         'cortadora_manual' => \App\Servicios\Etiquetas\Servicios\CortadoraDobladoraBarraEtiquetaServicio::class,
-
+        'grua'            => \App\Servicios\Etiquetas\Servicios\GruaEtiquetaServicio::class,
     ],
 
     // Rama especial para cortadora_dobladora según material
