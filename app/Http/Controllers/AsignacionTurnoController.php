@@ -960,14 +960,31 @@ class AsignacionTurnoController extends Controller
                         $datos['obra_id'] = $request->obra_id;
                     }
 
-                    // Usar updateOrCreate para evitar duplicados
-                    AsignacionTurno::updateOrCreate(
-                        [
-                            'user_id' => $user->id,
-                            'fecha'   => $dateStr,
-                        ],
-                        $datos
-                    );
+                    // Buscar asignación existente con whereDate para evitar problemas de formato
+                    $asignacionExistente = AsignacionTurno::where('user_id', $user->id)
+                        ->whereDate('fecha', $dateStr)
+                        ->first();
+
+                    if ($asignacionExistente) {
+                        $asignacionExistente->update($datos);
+                    } else {
+                        // Usar try-catch para manejar posibles condiciones de carrera
+                        try {
+                            AsignacionTurno::create(array_merge($datos, [
+                                'user_id' => $user->id,
+                                'fecha'   => $dateStr,
+                            ]));
+                        } catch (\Illuminate\Database\QueryException $e) {
+                            // Si es error de duplicado, intentar actualizar
+                            if ($e->errorInfo[1] == 1062) {
+                                AsignacionTurno::where('user_id', $user->id)
+                                    ->whereDate('fecha', $dateStr)
+                                    ->update($datos);
+                            } else {
+                                throw $e;
+                            }
+                        }
+                    }
                 }
             }
 
