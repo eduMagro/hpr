@@ -72,4 +72,29 @@ class FcmTokenController extends Controller
             'vapidKey' => config('firebase.web.vapid_key'),
         ]);
     }
+
+    /**
+     * Envía una notificación de prueba al usuario autenticado
+     */
+    public function sendTest(Request $request): JsonResponse
+    {
+        $user = Auth::user();
+
+        // Solo permitir al usuario con ID 1
+        if ($user->id !== 1) {
+            return response()->json([
+                'success' => false,
+                'message' => 'No autorizado',
+            ], 403);
+        }
+
+        $result = $this->firebaseService->sendToUser(
+            $user,
+            'HIERROS PACO REYES',
+            $request->input('message', 'Notificación de prueba desde tu aplicación'),
+            ['url' => '/']
+        );
+
+        return response()->json($result);
+    }
 }

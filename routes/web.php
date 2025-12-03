@@ -111,6 +111,7 @@ Route::middleware(['auth'])->prefix('api/fcm')->group(function () {
     Route::post('/token', [FcmTokenController::class, 'store'])->name('fcm.token.store');
     Route::delete('/token', [FcmTokenController::class, 'destroy'])->name('fcm.token.destroy');
     Route::get('/config', [FcmTokenController::class, 'config'])->name('fcm.config');
+    Route::post('/test', [FcmTokenController::class, 'sendTest'])->name('fcm.test');
 });
 
 Route::middleware(['auth', 'acceso.seccion'])->group(function () {
