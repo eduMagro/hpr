@@ -5,6 +5,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
+    <meta name="base-url" content="{{ url('') }}">
     <meta name="google" content="notranslate">
 
 
@@ -148,7 +149,7 @@
     </style>
 </head>
 
-<body class="font-sans antialiased transition-colors duration-200">
+<body class="font-sans antialiased transition-colors duration-200" @auth data-user-id="{{ auth()->id() }}" @endauth>
     <!-- Overlay de navegación -->
     <div id="navigation-overlay" class="navigation-overlay">
         <div class="navigation-spinner"></div>
@@ -165,6 +166,11 @@
 
             <!-- Alerts -->
             @include('layouts.alerts')
+
+            <!-- Prompt para notificaciones push -->
+            @auth
+                <x-notification-prompt />
+            @endauth
 
             <!-- Page Content -->
             <main class="flex-1 overflow-y-auto bg-neutral-100 dark:bg-gray-900 transition-colors">
@@ -194,6 +200,9 @@
     @livewireScripts(['navigate' => true])
 
     @stack('scripts')
+
+    <!-- Firebase Cloud Messaging -->
+    <script src="{{ asset('js/firebase-push.js') }}" defer></script>
 
     <!-- Dark Mode Support Script -->
     <script data-navigate-once>

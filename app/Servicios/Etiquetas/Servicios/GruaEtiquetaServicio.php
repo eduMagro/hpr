@@ -1,0 +1,214 @@
+<?php
+
+namespace App\Servicios\Etiquetas\Servicios;
+
+use App\Models\Etiqueta;
+use App\Models\Elemento;
+use App\Models\Maquina;
+use App\Models\Producto;
+use App\Servicios\Etiquetas\Base\ServicioEtiquetaBase;
+use App\Servicios\Etiquetas\Contratos\EtiquetaServicio;
+use App\Servicios\Etiquetas\DTOs\ActualizarEtiquetaDatos;
+use App\Servicios\Etiquetas\Resultados\ActualizarEtiquetaResultado;
+use App\Servicios\Exceptions\ServicioEtiquetaException;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+
+/**
+ * Servicio de fabricación para GRÚA
+ *
+ * Flujo especial:
+ * 1. El operario escanea el QR del producto a usar
+ * 2. Se le pregunta si usa el paquete completo o quita barras
+ * 3. Si usa completo: producto pasa a consumido y ubicacion = null
+ * 4. Si quita barras: se resta el peso de la etiqueta al peso_stock del producto
+ */
+class GruaEtiquetaServicio extends ServicioEtiquetaBase implements EtiquetaServicio
+{
+    public function actualizar(ActualizarEtiquetaDatos $datos): ActualizarEtiquetaResultado
+    {
+        Log::info('🏗️ [Grúa] Iniciando fabricación', [
+            'etiqueta_sub_id' => $datos->etiquetaSubId,
+            'maquina_id' => $datos->maquinaId,
+            'opciones' => $datos->opciones,
+        ]);
+
+        // Validar que se recibió el producto escaneado
+        $productoId = $datos->opciones['producto_id'] ?? null;
+        $usoPaqueteCompleto = $datos->opciones['paquete_completo'] ?? true;
+
+        if (!$productoId) {
+            throw new ServicioEtiquetaException(
+                'Debes escanear el QR de un producto para fabricar con la grúa.',
+                ['campo' => 'producto_id']
+            );
+        }
+
+        return DB::transaction(function () use ($datos, $productoId, $usoPaqueteCompleto) {
+            $maquina = Maquina::findOrFail($datos->maquinaId);
+            $etiqueta = $this->bloquearEtiquetaConElementos($datos->etiquetaSubId);
+            $planilla = $etiqueta->planilla;
+
+            // Obtener producto con lock
+            $producto = Producto::where('id', $productoId)
+                ->lockForUpdate()
+                ->first();
+
+            if (!$producto) {
+                throw new ServicioEtiquetaException(
+                    'El producto escaneado no existe.',
+                    ['producto_id' => $productoId]
+                );
+            }
+
+            if ($producto->estado === 'consumido') {
+                throw new ServicioEtiquetaException(
+                    'El producto escaneado ya está consumido.',
+                    ['producto_id' => $productoId, 'codigo' => $producto->codigo]
+                );
+            }
+
+            // Obtener elementos de esta etiqueta en esta máquina (o sin máquina asignada)
+            $elementosEnMaquina = $etiqueta->elementos()
+                ->where(function ($q) use ($maquina) {
+                    $q->where('maquina_id', $maquina->id)
+                      ->orWhereNull('maquina_id');
+                })
+                ->where(function ($q) {
+                    $q->whereNull('estado')
+                      ->orWhereNotIn('estado', ['fabricado', 'completado']);
+                })
+                ->lockForUpdate()
+                ->get();
+
+            if ($elementosEnMaquina->isEmpty()) {
+                throw new ServicioEtiquetaException(
+                    'No hay elementos pendientes de fabricar en esta etiqueta.',
+                    ['etiqueta_sub_id' => $datos->etiquetaSubId]
+                );
+            }
+
+            $pesoEtiqueta = (float) $elementosEnMaquina->sum('peso');
+            $pesoStockProducto = (float) $producto->peso_stock;
+
+            $warnings = [];
+            $productosAfectados = [];
+
+            // Validar que el producto tiene suficiente peso
+            if (!$usoPaqueteCompleto && $pesoStockProducto < $pesoEtiqueta) {
+                throw new ServicioEtiquetaException(
+                    sprintf(
+                        'El producto no tiene suficiente stock (%.2f kg) para la etiqueta (%.2f kg).',
+                        $pesoStockProducto,
+                        $pesoEtiqueta
+                    ),
+                    ['peso_stock' => $pesoStockProducto, 'peso_etiqueta' => $pesoEtiqueta]
+                );
+            }
+
+            // Procesar consumo del producto
+            $pesoInicial = (float) ($producto->peso_inicial ?? $producto->peso_stock);
+            $pesoConsumido = 0;
+
+            if ($usoPaqueteCompleto) {
+                // Paquete completo: consumir todo
+                $pesoConsumido = $pesoStockProducto;
+                $producto->peso_stock = 0;
+                $producto->estado = 'consumido';
+                $producto->ubicacion_id = null;
+                $producto->maquina_id = null;
+
+                Log::info('🏗️ [Grúa] Paquete completo consumido', [
+                    'producto_id' => $producto->id,
+                    'codigo' => $producto->codigo,
+                    'peso_consumido' => $pesoConsumido,
+                ]);
+            } else {
+                // Quitar barras: restar peso de la etiqueta
+                $pesoConsumido = $pesoEtiqueta;
+                $producto->peso_stock = $pesoStockProducto - $pesoEtiqueta;
+
+                // Si el peso restante es muy bajo, marcar como consumido
+                if ($producto->peso_stock <= 0.1) {
+                    $producto->peso_stock = 0;
+                    $producto->estado = 'consumido';
+                    $producto->ubicacion_id = null;
+                    $producto->maquina_id = null;
+                }
+
+                Log::info('🏗️ [Grúa] Barras extraídas del paquete', [
+                    'producto_id' => $producto->id,
+                    'codigo' => $producto->codigo,
+                    'peso_consumido' => $pesoConsumido,
+                    'peso_restante' => $producto->peso_stock,
+                ]);
+            }
+
+            $producto->save();
+
+            // Registrar producto afectado
+            $productosAfectados[] = [
+                'id' => $producto->id,
+                'codigo' => $producto->codigo,
+                'peso_stock' => $producto->peso_stock,
+                'peso_inicial' => $pesoInicial,
+                'n_colada' => $producto->n_colada,
+                'consumido' => $pesoConsumido,
+            ];
+
+            // Marcar elementos como fabricados y asignar producto
+            foreach ($elementosEnMaquina as $elemento) {
+                $elemento->estado = 'fabricado';
+                $elemento->elaborado = 1;
+                $elemento->producto_id = $producto->id;
+                $elemento->save();
+            }
+
+            // Completar etiqueta si corresponde
+            $this->completarEtiquetaSiCorresponde($etiqueta);
+
+            // Actualizar peso de la etiqueta
+            $this->actualizarPesoEtiqueta($etiqueta);
+            $etiqueta->save();
+
+            // Si todos los elementos de la planilla están fabricados, cerrar planilla
+            if ($planilla) {
+                $todosElementosPlanillaCompletos = $planilla->elementos()
+                    ->where(function ($q) {
+                        $q->whereNull('estado')
+                          ->orWhere('estado', '!=', 'fabricado');
+                    })
+                    ->doesntExist();
+
+                if ($todosElementosPlanillaCompletos) {
+                    $planilla->fecha_finalizacion = now();
+                    $planilla->estado = 'completada';
+                    $planilla->save();
+
+                    Log::info('🏗️ [Grúa] Planilla completada', [
+                        'planilla_id' => $planilla->id,
+                        'codigo' => $planilla->codigo,
+                    ]);
+                }
+            }
+
+            Log::info('🏗️ [Grúa] Fabricación completada', [
+                'etiqueta_sub_id' => $datos->etiquetaSubId,
+                'elementos_fabricados' => $elementosEnMaquina->count(),
+                'producto_usado' => $producto->codigo,
+                'peso_consumido' => $pesoConsumido,
+            ]);
+
+            return new ActualizarEtiquetaResultado(
+                $etiqueta,
+                $warnings,
+                $productosAfectados,
+                [
+                    'elementos_fabricados' => $elementosEnMaquina->count(),
+                    'peso_consumido' => $pesoConsumido,
+                    'paquete_completo' => $usoPaqueteCompleto,
+                ]
+            );
+        });
+    }
+}

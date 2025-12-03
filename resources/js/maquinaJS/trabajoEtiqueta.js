@@ -220,7 +220,21 @@ function initTrabajoEtiqueta() {
         }
 
         // ────────────────────────────────────────────────
-        //  B) MÁQUINAS NORMALES → LLAMADA DIRECTA
+        //  B) GRÚA → PEDIR ESCANEO DE QR DEL PRODUCTO
+        // ────────────────────────────────────────────────
+        const esGrua = (window.MAQUINA_TIPO_NOMBRE || "").toLowerCase() === "grua";
+
+        if (esGrua) {
+            try {
+                await fabricarConGrua(id, maquinaId, csrfToken);
+            } catch (err) {
+                showErrorAlert(err);
+            }
+            return;
+        }
+
+        // ────────────────────────────────────────────────
+        //  C) MÁQUINAS NORMALES → LLAMADA DIRECTA
         // ────────────────────────────────────────────────
         try {
             const res = await fetch(url, {
@@ -242,6 +256,122 @@ function initTrabajoEtiqueta() {
         } catch (err) {
             showErrorAlert(err);
         }
+    }
+
+    // ============================================================================
+    // FABRICAR CON GRÚA - FLUJO ESPECIAL
+    // ============================================================================
+
+    async function fabricarConGrua(etiquetaId, maquinaId, csrfToken) {
+        // Paso 1: Pedir escaneo del QR del producto
+        const { value: codigoProducto, isConfirmed } = await Swal.fire({
+            title: '📦 Escanear producto',
+            text: 'Escanea el QR del paquete de material a usar',
+            input: 'text',
+            inputPlaceholder: 'Código del producto...',
+            showCancelButton: true,
+            confirmButtonText: 'Siguiente',
+            cancelButtonText: 'Cancelar',
+            confirmButtonColor: '#F97316',
+            inputValidator: (value) => {
+                if (!value || !value.trim()) {
+                    return 'Debes escanear o introducir el código del producto';
+                }
+            }
+        });
+
+        if (!isConfirmed || !codigoProducto) return;
+
+        // Paso 2: Buscar el producto por código
+        let producto;
+        try {
+            const res = await fetch(`/api/productos/buscar-por-codigo?codigo=${encodeURIComponent(codigoProducto.trim())}`, {
+                headers: {
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN': csrfToken,
+                }
+            });
+
+            if (!res.ok) {
+                const err = await res.json();
+                throw new Error(err.message || 'Producto no encontrado');
+            }
+
+            producto = await res.json();
+        } catch (err) {
+            await Swal.fire({
+                icon: 'error',
+                title: 'Producto no encontrado',
+                text: err.message || `No se encontró ningún producto con código: ${codigoProducto}`,
+            });
+            return;
+        }
+
+        // Mostrar info del producto y preguntar uso
+        const { value: paqueteCompleto, isConfirmed: confirmado } = await Swal.fire({
+            title: '¿Cómo usar el paquete?',
+            html: `
+                <div class="text-left p-4 bg-gray-100 rounded mb-4">
+                    <p><strong>Producto:</strong> ${producto.codigo}</p>
+                    <p><strong>Diámetro:</strong> Ø${producto.diametro} mm</p>
+                    <p><strong>Stock actual:</strong> ${producto.peso_stock?.toFixed(2) || 0} kg</p>
+                    <p><strong>Colada:</strong> ${producto.n_colada || 'N/A'}</p>
+                </div>
+            `,
+            input: 'radio',
+            inputOptions: {
+                'completo': '📦 Usar paquete completo (consumir todo)',
+                'parcial': '✂️ Quitar barras (restar peso de la etiqueta)'
+            },
+            inputValue: 'completo',
+            showCancelButton: true,
+            confirmButtonText: 'Fabricar',
+            cancelButtonText: 'Cancelar',
+            confirmButtonColor: '#10B981',
+        });
+
+        if (!confirmado) return;
+
+        const usarPaqueteCompleto = paqueteCompleto === 'completo';
+
+        // Paso 3: Enviar a fabricación
+        const url = `/actualizar-etiqueta/${etiquetaId}/maquina/${maquinaId}`;
+
+        const res = await fetch(url, {
+            method: "PUT",
+            headers: {
+                "Content-Type": "application/json",
+                Accept: "application/json",
+                "X-CSRF-TOKEN": csrfToken,
+            },
+            body: JSON.stringify({
+                producto_id: producto.id,
+                paquete_completo: usarPaqueteCompleto,
+            }),
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) {
+            throw new Error(data.message || "Error al fabricar");
+        }
+
+        // Mostrar resultado
+        const pesoConsumido = data.metricas?.peso_consumido || 0;
+        await Swal.fire({
+            icon: 'success',
+            title: '¡Fabricación completada!',
+            html: `
+                <p>Etiqueta fabricada correctamente.</p>
+                <p><strong>Producto usado:</strong> ${producto.codigo}</p>
+                <p><strong>Peso consumido:</strong> ${pesoConsumido.toFixed(2)} kg</p>
+                ${usarPaqueteCompleto ? '<p class="text-orange-600">El paquete ha sido marcado como consumido.</p>' : ''}
+            `,
+            timer: 3000,
+            showConfirmButton: false,
+        });
+
+        actualizarDOMEtiqueta(etiquetaId, data);
     }
 
     // ============================================================================

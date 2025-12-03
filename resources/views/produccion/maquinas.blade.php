@@ -273,12 +273,16 @@
         <div id="panel_overlay" class="fixed inset-0 bg-black bg-opacity-50 hidden transition-opacity duration-300 z-40"
             style="pointer-events: none;"></div>
 
-        <!-- Indicador de posición al arrastrar -->
-        <div id="indicador_posicion"
-            class="fixed hidden pointer-events-none"
-            style="display: none; width: 48px; height: 48px; z-index: 2147483647;">
-            <div class="w-12 h-12 bg-blue-600 text-white rounded-full shadow-lg flex items-center justify-center font-bold text-xl"
-                 style="box-shadow: 0 4px 15px rgba(37, 99, 235, 0.5); border: 3px solid white;">
+        <!-- Contenedor de drag (fantasma + indicador) -->
+        <div id="drag_container"
+            class="fixed pointer-events-none"
+            style="display: none; top: 0; left: 0; z-index: 2147483647;">
+
+            <!-- Elemento fantasma -->
+            <div id="ghost_elemento" class="drag-ghost"></div>
+
+            <!-- Indicador de posición (badge sobre el fantasma) -->
+            <div id="indicador_posicion" class="drag-position-badge">
                 <span id="numero_posicion">1</span>
             </div>
         </div>
@@ -977,14 +981,51 @@
                 background: #eff6ff;
             }
 
-            /* Mirror de FullCalendar */
+            /* Mirror de FullCalendar - Fantasma visible al arrastrar */
             .fc-event-mirror {
                 background: #3b82f6 !important;
-                border: none !important;
+                border: 2px solid #1d4ed8 !important;
                 border-radius: 4px !important;
-                box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4) !important;
-                opacity: 0.9 !important;
+                box-shadow: 0 8px 20px rgba(59, 130, 246, 0.5) !important;
+                opacity: 0.85 !important;
                 z-index: 9999 !important;
+                pointer-events: none !important;
+                min-height: 30px !important;
+            }
+
+            .fc-event-mirror .fc-event-main {
+                padding: 4px 8px !important;
+                overflow: visible !important;
+            }
+
+            .fc-event-mirror .fc-event-title {
+                font-weight: 600 !important;
+                color: white !important;
+                text-shadow: 0 1px 2px rgba(0,0,0,0.3) !important;
+            }
+
+            /* Evento original mientras se arrastra - placeholder visual */
+            .fc-event.fc-event-dragging:not(.fc-event-mirror) {
+                opacity: 0.3 !important;
+                border: 2px dashed #3b82f6 !important;
+                background: repeating-linear-gradient(
+                    45deg,
+                    #e0e7ff,
+                    #e0e7ff 5px,
+                    #f1f5f9 5px,
+                    #f1f5f9 10px
+                ) !important;
+                box-shadow: inset 0 0 0 1px rgba(59, 130, 246, 0.3) !important;
+            }
+
+            .fc-event.fc-event-dragging:not(.fc-event-mirror) .fc-event-main {
+                opacity: 0.4 !important;
+            }
+
+            /* Ocultar el mirror nativo de FullCalendar */
+            .fc-event-mirror {
+                opacity: 0 !important;
+                visibility: hidden !important;
             }
 
             /* Elemento seleccionado */
@@ -1012,11 +1053,13 @@
                 z-index: 10;
             }
 
-            .elemento-drag canvas {
+            .elemento-drag canvas,
+            .elemento-drag > div {
                 width: 100%;
-                height: 80px;
+                height: 120px;
                 border: 1px solid #e5e7eb;
                 border-radius: 3px;
+                background: white;
             }
 
             .elemento-info-mini {
@@ -1348,9 +1391,81 @@
                 pointer-events: none;
             }
 
-            /* Indicador de posición durante arrastre - Círculo azul */
-            #indicador_posicion {
-                transition: left 0.05s ease-out, top 0.05s ease-out;
+            /* ===== SISTEMA DE DRAG MEJORADO ===== */
+
+            /* Contenedor principal del drag */
+            #drag_container {
+                pointer-events: none;
+                will-change: transform;
+                position: fixed;
+                top: 0;
+                left: 0;
+                z-index: 2147483647 !important; /* Máximo z-index posible */
+            }
+
+            #drag_container.active {
+                display: block !important;
+                z-index: 2147483647 !important;
+            }
+
+            /* Fantasma del evento */
+            .drag-ghost {
+                background: white;
+                border-radius: 8px;
+                box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25), 0 4px 12px rgba(59, 130, 246, 0.3);
+                border: 2px solid #3b82f6;
+                padding: 4px;
+                min-width: 100px;
+                animation: ghostAppear 0.15s ease-out;
+                overflow: hidden;
+                position: relative;
+            }
+
+            .drag-ghost > * {
+                pointer-events: none;
+            }
+
+            @keyframes ghostAppear {
+                from {
+                    opacity: 0;
+                    transform: scale(0.8);
+                }
+                to {
+                    opacity: 1;
+                    transform: scale(1);
+                }
+            }
+
+            /* Badge de posición */
+            .drag-position-badge {
+                position: absolute;
+                top: -10px;
+                right: -10px;
+                width: 28px;
+                height: 28px;
+                background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+                color: white;
+                border-radius: 50%;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-weight: 700;
+                font-size: 13px;
+                box-shadow: 0 4px 12px rgba(37, 99, 235, 0.5);
+                border: 2px solid white;
+                animation: badgePulse 1.5s ease-in-out infinite;
+                z-index: 10;
+            }
+
+            @keyframes badgePulse {
+                0%, 100% {
+                    transform: scale(1);
+                    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.5);
+                }
+                50% {
+                    transform: scale(1.05);
+                    box-shadow: 0 6px 20px rgba(37, 99, 235, 0.7);
+                }
             }
 
             /* Ocultar todos los tooltips durante el drag */
@@ -1363,9 +1478,13 @@
                 z-index: -1 !important;
             }
 
-            /* Indicador siempre encima de todo */
-            #indicador_posicion {
-                z-index: 2147483647 !important;
+            /* Cursor durante el drag */
+            body.dragging-elemento {
+                cursor: grabbing !important;
+            }
+
+            body.dragging-elemento * {
+                cursor: grabbing !important;
             }
 
         </style>
@@ -1433,22 +1552,64 @@
                 // Variable global para el calendario
                 let calendar;
 
-                // Referencias al indicador de posición
+                // Referencias al sistema de drag
+                const dragContainer = document.getElementById('drag_container');
+                const ghostElemento = document.getElementById('ghost_elemento');
                 const indicadorPosicion = document.getElementById('indicador_posicion');
                 const numeroPosicion = document.getElementById('numero_posicion');
 
-                // Variable para trackear elemento que se arrastra desde el panel
+                // 🎯 Mover el contenedor de drag al body para evitar problemas de z-index/overflow
+                if (dragContainer && dragContainer.parentElement !== document.body) {
+                    document.body.appendChild(dragContainer);
+                }
+
+                // Variables de estado del drag
                 let elementoArrastrandose = null;
                 let mostrarIndicador = false;
+                let dragAnimationFrame = null;
+                let lastMouseX = 0;
+                let lastMouseY = 0;
+                let arrastreDesdePanel = false; // 🎯 Flag para mantener fantasma desde panel
+                let dragIntervalId = null; // 🎯 Interval para forzar visibilidad
                 window.tooltipsDeshabilitados = false;
 
-                // 🎯 Listener GLOBAL para el indicador (mousemove + drag)
+                // 🎯 Sistema de movimiento con requestAnimationFrame para mayor fluidez
+                function actualizarPosicionDrag() {
+                    if (mostrarIndicador && dragContainer && lastMouseX !== 0 && lastMouseY !== 0) {
+                        // Usar transform para mejor rendimiento
+                        dragContainer.style.transform = `translate(${lastMouseX + 15}px, ${lastMouseY + 15}px)`;
+
+                        // 🎯 Forzar visibilidad del fantasma (especialmente cuando viene del panel)
+                        if (arrastreDesdePanel) {
+                            dragContainer.style.display = 'block';
+                            dragContainer.style.opacity = '1';
+                            dragContainer.style.visibility = 'visible';
+                        }
+                    }
+                    if (mostrarIndicador) {
+                        dragAnimationFrame = requestAnimationFrame(actualizarPosicionDrag);
+                    }
+                }
+
                 function moverIndicador(e) {
-                    if (mostrarIndicador && indicadorPosicion && e.clientX !== 0 && e.clientY !== 0) {
-                        indicadorPosicion.style.left = (e.clientX + 20) + 'px';
-                        indicadorPosicion.style.top = (e.clientY - 20) + 'px';
-                        indicadorPosicion.style.display = 'block';
-                        indicadorPosicion.classList.remove('hidden');
+                    if (mostrarIndicador && e.clientX !== 0 && e.clientY !== 0) {
+                        lastMouseX = e.clientX;
+                        lastMouseY = e.clientY;
+
+                        // Debug: verificar que se sigue recibiendo el evento
+                        if (arrastreDesdePanel && dragContainer) {
+                            // Forzar visibilidad inline
+                            dragContainer.setAttribute('style',
+                                `display: block !important; ` +
+                                `visibility: visible !important; ` +
+                                `opacity: 1 !important; ` +
+                                `position: fixed !important; ` +
+                                `top: 0 !important; ` +
+                                `left: 0 !important; ` +
+                                `z-index: 2147483647 !important; ` +
+                                `transform: translate(${lastMouseX + 15}px, ${lastMouseY + 15}px);`
+                            );
+                        }
                     }
                 }
 
@@ -1457,16 +1618,112 @@
 
                 document.addEventListener('mousemove', moverIndicador);
                 document.addEventListener('drag', moverIndicador);
+                document.addEventListener('dragover', moverIndicador); // 🎯 Capturar también dragover
+
+                // 🎨 Función para crear el fantasma del evento
+                function crearFantasma(elemento, evento = null) {
+                    if (!ghostElemento || !elemento) return;
+
+                    const rect = elemento.getBoundingClientRect();
+                    const clone = elemento.cloneNode(true);
+
+                    // Limpiar estilos que puedan interferir
+                    clone.style.cssText = `
+                        width: ${rect.width}px;
+                        height: ${Math.min(rect.height, 80)}px;
+                        margin: 0;
+                        position: relative;
+                        opacity: 1;
+                        pointer-events: none;
+                    `;
+
+                    // Eliminar clases de estado
+                    clone.classList.remove('fc-event-dragging', 'fc-event-mirror', 'dragging-original');
+
+                    ghostElemento.innerHTML = '';
+                    ghostElemento.appendChild(clone);
+                }
+
+                // 🚀 Función para iniciar el drag
+                function iniciarDrag(e, elemento, evento = null, desdePanel = false) {
+                    mostrarIndicador = true;
+                    arrastreDesdePanel = desdePanel; // 🎯 Guardar si viene del panel
+                    window.tooltipsDeshabilitados = true;
+                    document.body.classList.add('dragging-elemento');
+
+                    // Ocultar tooltips
+                    document.querySelectorAll('.fc-tooltip').forEach(t => t.remove());
+
+                    // Configurar posición inicial
+                    lastMouseX = e?.clientX || 0;
+                    lastMouseY = e?.clientY || 0;
+
+                    // Crear fantasma
+                    crearFantasma(elemento, evento);
+
+                    // Mostrar contenedor
+                    if (dragContainer) {
+                        dragContainer.style.display = 'block';
+                        dragContainer.classList.add('active');
+                        dragContainer.style.transform = `translate(${lastMouseX + 15}px, ${lastMouseY + 15}px)`;
+                    }
+
+                    // Iniciar animación
+                    if (dragAnimationFrame) cancelAnimationFrame(dragAnimationFrame);
+                    dragAnimationFrame = requestAnimationFrame(actualizarPosicionDrag);
+
+                    // 🎯 Si viene del panel, iniciar interval para forzar visibilidad
+                    if (desdePanel && dragContainer) {
+                        if (dragIntervalId) clearInterval(dragIntervalId);
+                        dragIntervalId = setInterval(() => {
+                            if (arrastreDesdePanel && dragContainer && lastMouseX > 0) {
+                                dragContainer.style.cssText = `
+                                    display: block !important;
+                                    visibility: visible !important;
+                                    opacity: 1 !important;
+                                    position: fixed !important;
+                                    top: 0 !important;
+                                    left: 0 !important;
+                                    z-index: 2147483647 !important;
+                                    pointer-events: none !important;
+                                    transform: translate(${lastMouseX + 15}px, ${lastMouseY + 15}px);
+                                `;
+                            }
+                        }, 16); // ~60fps
+                    }
+                }
 
                 // 🧹 Función auxiliar para limpiar estado de drag completamente
                 function limpiarEstadoDrag() {
                     mostrarIndicador = false;
                     elementoArrastrandose = null;
+                    arrastreDesdePanel = false; // 🎯 Limpiar flag
                     window.tooltipsDeshabilitados = false;
+                    lastMouseX = 0;
+                    lastMouseY = 0;
                     document.body.classList.remove('dragging-elemento');
-                    if (indicadorPosicion) {
-                        indicadorPosicion.classList.add('hidden');
-                        indicadorPosicion.style.display = 'none';
+
+                    // Cancelar animación
+                    if (dragAnimationFrame) {
+                        cancelAnimationFrame(dragAnimationFrame);
+                        dragAnimationFrame = null;
+                    }
+
+                    // 🎯 Limpiar interval de forzado de visibilidad
+                    if (dragIntervalId) {
+                        clearInterval(dragIntervalId);
+                        dragIntervalId = null;
+                    }
+
+                    // Ocultar contenedor
+                    if (dragContainer) {
+                        dragContainer.classList.remove('active');
+                        dragContainer.style.cssText = 'display: none;';
+                    }
+
+                    // Limpiar fantasma
+                    if (ghostElemento) {
+                        ghostElemento.innerHTML = '';
                     }
                 }
 
@@ -1608,6 +1865,8 @@
                     eventDurationEditable: false,
                     droppable: true, // ✅ Habilitar drop de elementos externos
                     slotEventOverlap: false, // ✅ Eventos NO se solapan (se apilan verticalmente sin espacios)
+                    dragRevertDuration: 300, // Duración de animación de revert
+                    dragScroll: true, // Permitir scroll mientras se arrastra
 
                     headerToolbar: {
                         left: '',
@@ -2102,18 +2361,17 @@
 
                     // 🎯 Eventos para mostrar indicador de posición al arrastrar
                     eventDragStart: function(info) {
-                        mostrarIndicador = true;
-                        window.tooltipsDeshabilitados = true;
-                        document.body.classList.add('dragging-elemento');
-
-                        // Ocultar todos los tooltips existentes
-                        document.querySelectorAll('.fc-tooltip').forEach(t => t.remove());
+                        // Si el arrastre viene del panel, no iniciar nuevo drag (ya está activo)
+                        if (!arrastreDesdePanel) {
+                            // Usar sistema de drag mejorado
+                            iniciarDrag(info.jsEvent, info.el, info.event, false);
+                        }
 
                         // Calcular posición inicial
                         const recursoId = info.event.getResources()[0]?.id;
                         if (recursoId) {
                             const eventosOrdenados = calendar.getEvents()
-                                .filter(ev => ev.getResources().some(r => r.id == recursoId) && ev.id !==
+                                .filter(ev => ev.getResources().some(r => r && r.id == recursoId) && ev.id !==
                                     info.event.id)
                                 .sort((a, b) => a.start - b.start);
 
@@ -2138,7 +2396,7 @@
 
                             if (recursoId) {
                                 const eventosOrdenados = calendar.getEvents()
-                                    .filter(ev => ev.getResources().some(r => r.id == recursoId) && ev
+                                    .filter(ev => ev.getResources().some(r => r && r.id == recursoId) && ev
                                         .id !== draggedEvent.id)
                                     .sort((a, b) => a.start - b.start);
 
@@ -2163,7 +2421,10 @@
                     },
 
                     eventDragStop: function(info) {
-                        limpiarEstadoDrag();
+                        // Solo limpiar si NO viene del panel (el panel limpia con dragend)
+                        if (!arrastreDesdePanel) {
+                            limpiarEstadoDrag();
+                        }
                     },
 
                     eventDrop: async function(info) {
@@ -2193,7 +2454,7 @@
                         }
 
                         const eventosOrdenados = calendar.getEvents()
-                            .filter(ev => ev.getResources().some(r => r.id == maquinaDestinoId))
+                            .filter(ev => ev.getResources().some(r => r && r.id == maquinaDestinoId))
                             .sort((a, b) => a.start - b.start);
                         const nuevaPosicion = eventosOrdenados.findIndex(ev => ev.id === info.event.id) + 1;
 
@@ -2872,6 +3133,9 @@
                         const seccionElementos = document.createElement('div');
                         seccionElementos.className = 'seccion-maquina-elementos';
 
+                        // Array para almacenar los datos de los elementos a dibujar después
+                        const elementosParaDibujar = [];
+
                         grupo.elementos.forEach(elemento => {
                             const div = document.createElement('div');
                             div.className = 'elemento-drag fc-event';
@@ -2895,7 +3159,7 @@
                             const canvasId = `canvas-panel-${elemento.id}`;
 
                             div.innerHTML = `
-                            <canvas id="${canvasId}" width="240" height="80" draggable="false"></canvas>
+                            <canvas id="${canvasId}" width="280" height="120" draggable="false"></canvas>
                         `;
 
                             seccionElementos.appendChild(div);
@@ -2909,24 +3173,15 @@
 
                             // ✅ Evento de dragstart en cada elemento
                             div.addEventListener('dragstart', function(e) {
-                                // Ocultar ghost nativo
+                                // Ocultar ghost nativo del navegador
                                 const img = new Image();
                                 img.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
                                 e.dataTransfer.setDragImage(img, 0, 0);
 
                                 elementoArrastrandose = div;
-                                mostrarIndicador = true;
-                                window.tooltipsDeshabilitados = true;
-                                document.body.classList.add('dragging-elemento');
 
-                                // Eliminar tooltips
-                                document.querySelectorAll('.fc-tooltip').forEach(t => t.remove());
-
-                                // Mostrar indicador
-                                if (indicadorPosicion) {
-                                    indicadorPosicion.style.display = 'block';
-                                    indicadorPosicion.classList.remove('hidden');
-                                }
+                                // Usar sistema de drag mejorado (desdePanel = true)
+                                iniciarDrag(e, div, null, true);
 
                                 div.classList.add('dragging-original');
                             });
@@ -2936,16 +3191,18 @@
                                 div.classList.remove('dragging-original');
                             });
 
-                            setTimeout(() => {
-                                window.dibujarFiguraElemento(
-                                    canvasId,
-                                    elemento.dimensiones,
-                                    elemento.peso,
-                                    elemento.diametro,
-                                    elemento.barras
-                                );
-                            }, 10);
+                            // Almacenar datos para dibujar después de que el panel sea visible
+                            elementosParaDibujar.push({
+                                canvasId,
+                                dimensiones: elemento.dimensiones,
+                                peso: elemento.peso,
+                                diametro: elemento.diametro,
+                                barras: elemento.barras
+                            });
                         });
+
+                        // Guardar referencia para dibujar después
+                        seccionWrapper._elementosParaDibujar = elementosParaDibujar;
 
                         seccionWrapper.appendChild(seccionElementos);
                     });
@@ -2976,6 +3233,27 @@
                     setTimeout(() => {
                         calendar.updateSize();
                     }, 300);
+
+                    // ✅ Dibujar los SVGs después de que el panel sea visible
+                    // Usamos requestAnimationFrame + setTimeout para asegurar que el panel esté completamente renderizado
+                    requestAnimationFrame(() => {
+                        setTimeout(() => {
+                            // Recorrer todas las secciones y dibujar sus elementos
+                            lista.querySelectorAll('.seccion-maquina-wrapper').forEach(seccion => {
+                                if (seccion._elementosParaDibujar) {
+                                    seccion._elementosParaDibujar.forEach(elem => {
+                                        window.dibujarFiguraElemento(
+                                            elem.canvasId,
+                                            elem.dimensiones,
+                                            elem.peso,
+                                            elem.diametro,
+                                            elem.barras
+                                        );
+                                    });
+                                }
+                            });
+                        }, 50);
+                    });
                 }
 
                 function cerrarPanel() {

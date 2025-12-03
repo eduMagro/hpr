@@ -291,7 +291,7 @@
                                         data-id="{{ $elemento->id }}" data-field="maquina_id"
                                         onchange="actualizarCampoElemento(this)">
                                         <option value="">N/A</option>
-                                        @foreach ($maquinas->whereIn('tipo', ['cortadora_dobladora', 'estribadora', 'cortadora manual']) as $maquina)
+                                        @foreach ($maquinas->whereIn('tipo', ['cortadora_dobladora', 'estribadora', 'cortadora manual', 'grua']) as $maquina)
                                             <option value="{{ $maquina->id }}" @selected($elemento->maquina_id === $maquina->id)>
                                                 {{ $maquina->nombre }}
                                             </option>

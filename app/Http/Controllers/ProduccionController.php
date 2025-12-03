@@ -772,39 +772,38 @@ class ProduccionController extends Controller
             ->filter(fn($data) => !is_null($data['maquina_id']));
 
 
-        // 🔹 3. Calcular colas iniciales de cada máquina
-        $colasMaquinas = [];
-        foreach ($maquinas as $m) {
-            $ultimaPlanillaFabricando = Planilla::whereHas('elementos', fn($q) => $q->where('maquina_id', $m->id))
-                ->where('estado', 'fabricando')
-                ->orderByDesc('fecha_inicio')
-                ->first();
+        // 🔹 3. Calcular colas iniciales de cada máquina (optimizado - sin N+1)
+        $maquinaIds = $maquinas->pluck('id')->toArray();
 
+        // Una sola consulta para obtener las últimas planillas fabricando por máquina
+        $ultimasPlanillasPorMaquina = \DB::table('planillas')
+            ->select('elementos.maquina_id', \DB::raw('MAX(planillas.fecha_inicio) as fecha_inicio'))
+            ->join('elementos', 'elementos.planilla_id', '=', 'planillas.id')
+            ->where('planillas.estado', 'fabricando')
+            ->whereIn('elementos.maquina_id', $maquinaIds)
+            ->groupBy('elementos.maquina_id')
+            ->pluck('fecha_inicio', 'maquina_id');
+
+        $colasMaquinas = [];
+        $now = Carbon::now();
+        $maxFecha = $now->copy()->addYear();
+        $minFecha = $now->copy()->subYears(2);
+
+        foreach ($maquinas as $m) {
             $fechaInicioCola = null;
-            if (optional($ultimaPlanillaFabricando)->fecha_inicio) {
-                $fechaInicioCola = toCarbon($ultimaPlanillaFabricando->fecha_inicio);
+
+            if (isset($ultimasPlanillasPorMaquina[$m->id])) {
+                $fechaInicioCola = toCarbon($ultimasPlanillasPorMaquina[$m->id]);
             }
+
             // Si toCarbon devolvió null o no hay fecha_inicio, usar now()
             if (!$fechaInicioCola instanceof Carbon) {
-                $fechaInicioCola = Carbon::now();
+                $fechaInicioCola = $now->copy();
             }
 
             // Validar que la fecha no esté demasiado lejos en el futuro o pasado
-            $maxFecha = Carbon::now()->addYear();
-            $minFecha = Carbon::now()->subYears(2);
-            if ($fechaInicioCola->lt($minFecha)) {
-                Log::warning('COLA MAQUINA: fecha_inicio demasiado antigua (1970?), usando now()', [
-                    'maquina_id' => $m->id,
-                    'fecha_inicio' => $fechaInicioCola->toIso8601String(),
-                ]);
-                $fechaInicioCola = Carbon::now();
-            } elseif ($fechaInicioCola->gt($maxFecha)) {
-                Log::warning('COLA MAQUINA: fecha_inicio demasiado lejana, usando now()', [
-                    'maquina_id' => $m->id,
-                    'fecha_inicio' => $fechaInicioCola->toIso8601String(),
-                    'planilla_id' => optional($ultimaPlanillaFabricando)->id,
-                ]);
-                $fechaInicioCola = Carbon::now();
+            if ($fechaInicioCola->lt($minFecha) || $fechaInicioCola->gt($maxFecha)) {
+                $fechaInicioCola = $now->copy();
             }
 
             $colasMaquinas[$m->id] = $fechaInicioCola;
@@ -1007,39 +1006,38 @@ class ProduccionController extends Controller
             'count' => $planillasAgrupadas->count()
         ]);
 
-        // 3. Calcular colas iniciales de cada máquina
-        $colasMaquinas = [];
-        foreach ($maquinas as $m) {
-            $ultimaPlanillaFabricando = Planilla::whereHas('elementos', fn($q) => $q->where('maquina_id', $m->id))
-                ->where('estado', 'fabricando')
-                ->orderByDesc('fecha_inicio')
-                ->first();
+        // 3. Calcular colas iniciales de cada máquina (optimizado - sin N+1)
+        $maquinaIds = $maquinas->pluck('id')->toArray();
 
+        // Una sola consulta para obtener las últimas planillas fabricando por máquina
+        $ultimasPlanillasPorMaquina = \DB::table('planillas')
+            ->select('elementos.maquina_id', \DB::raw('MAX(planillas.fecha_inicio) as fecha_inicio'))
+            ->join('elementos', 'elementos.planilla_id', '=', 'planillas.id')
+            ->where('planillas.estado', 'fabricando')
+            ->whereIn('elementos.maquina_id', $maquinaIds)
+            ->groupBy('elementos.maquina_id')
+            ->pluck('fecha_inicio', 'maquina_id');
+
+        $colasMaquinas = [];
+        $now = Carbon::now();
+        $maxFecha = $now->copy()->addYear();
+        $minFecha = $now->copy()->subYears(2);
+
+        foreach ($maquinas as $m) {
             $fechaInicioCola = null;
-            if (optional($ultimaPlanillaFabricando)->fecha_inicio) {
-                $fechaInicioCola = toCarbon($ultimaPlanillaFabricando->fecha_inicio);
+
+            if (isset($ultimasPlanillasPorMaquina[$m->id])) {
+                $fechaInicioCola = toCarbon($ultimasPlanillasPorMaquina[$m->id]);
             }
+
             // Si toCarbon devolvió null o no hay fecha_inicio, usar now()
             if (!$fechaInicioCola instanceof Carbon) {
-                $fechaInicioCola = Carbon::now();
+                $fechaInicioCola = $now->copy();
             }
 
             // Validar que la fecha no esté demasiado lejos en el futuro o pasado
-            $maxFecha = Carbon::now()->addYear();
-            $minFecha = Carbon::now()->subYears(2);
-            if ($fechaInicioCola->lt($minFecha)) {
-                Log::warning('COLA MAQUINA: fecha_inicio demasiado antigua (1970?), usando now()', [
-                    'maquina_id' => $m->id,
-                    'fecha_inicio' => $fechaInicioCola->toIso8601String(),
-                ]);
-                $fechaInicioCola = Carbon::now();
-            } elseif ($fechaInicioCola->gt($maxFecha)) {
-                Log::warning('COLA MAQUINA: fecha_inicio demasiado lejana, usando now()', [
-                    'maquina_id' => $m->id,
-                    'fecha_inicio' => $fechaInicioCola->toIso8601String(),
-                    'planilla_id' => optional($ultimaPlanillaFabricando)->id,
-                ]);
-                $fechaInicioCola = Carbon::now();
+            if ($fechaInicioCola->lt($minFecha) || $fechaInicioCola->gt($maxFecha)) {
+                $fechaInicioCola = $now->copy();
             }
 
             $colasMaquinas[$m->id] = $fechaInicioCola;
@@ -2098,26 +2096,26 @@ class ProduccionController extends Controller
             ];
         })->filter(fn($data) => !is_null($data['maquina_id']));
 
+        // Optimizado - sin N+1
+        $ultimasPlanillasPorMaquina = \DB::table('planillas')
+            ->select('elementos.maquina_id', \DB::raw('MAX(planillas.fecha_inicio) as fecha_inicio'))
+            ->join('elementos', 'elementos.planilla_id', '=', 'planillas.id')
+            ->where('planillas.estado', 'fabricando')
+            ->whereIn('elementos.maquina_id', $maquinaIds)
+            ->groupBy('elementos.maquina_id')
+            ->pluck('fecha_inicio', 'maquina_id');
+
         $colasMaquinas = [];
+        $now = Carbon::now();
+        $maxFecha = $now->copy()->addYear();
+
         foreach ($maquinas as $m) {
-            $ultimaPlanillaFabricando = Planilla::whereHas('elementos', fn($q) => $q->where('maquina_id', $m->id))
-                ->where('estado', 'fabricando')
-                ->orderByDesc('fecha_inicio')
-                ->first();
+            $fechaInicioCola = isset($ultimasPlanillasPorMaquina[$m->id])
+                ? toCarbon($ultimasPlanillasPorMaquina[$m->id])
+                : $now->copy();
 
-            $fechaInicioCola = optional($ultimaPlanillaFabricando)->fecha_inicio
-                ? toCarbon($ultimaPlanillaFabricando->fecha_inicio)
-                : now();
-
-            // Validar que la fecha no esté demasiado lejos en el futuro
-            $maxFecha = Carbon::now()->addYear();
-            if ($fechaInicioCola->gt($maxFecha)) {
-                Log::warning('COLA MAQUINA: fecha_inicio demasiado lejana, usando now()', [
-                    'maquina_id' => $m->id,
-                    'fecha_inicio' => $fechaInicioCola->toIso8601String(),
-                    'planilla_id' => optional($ultimaPlanillaFabricando)->id,
-                ]);
-                $fechaInicioCola = Carbon::now();
+            if (!$fechaInicioCola instanceof Carbon || $fechaInicioCola->gt($maxFecha)) {
+                $fechaInicioCola = $now->copy();
             }
 
             $colasMaquinas[$m->id] = $fechaInicioCola;
@@ -2157,6 +2155,7 @@ class ProduccionController extends Controller
         // Si se proporciona planilla_id, obtener todos los elementos de la planilla
         if ($request->has('planilla_id')) {
             $elementos = Elemento::where('planilla_id', $request->planilla_id)
+                ->whereNotIn('estado', ['fabricando', 'fabricado']) // Excluir elementos ya en proceso o fabricados
                 ->select('id', 'codigo', 'diametro', 'peso', 'dimensiones', 'maquina_id', 'barras')
                 ->with('maquina:id,nombre')
                 ->orderBy('maquina_id')
@@ -2165,6 +2164,7 @@ class ProduccionController extends Controller
             // Comportamiento original para compatibilidad
             $ids = explode(',', $request->ids);
             $elementos = Elemento::whereIn('id', $ids)
+                ->whereNotIn('estado', ['fabricando', 'fabricado']) // Excluir elementos ya en proceso o fabricados
                 ->select('id', 'codigo', 'diametro', 'peso', 'dimensiones', 'maquina_id', 'barras')
                 ->with('maquina:id,nombre')
                 ->orderBy('maquina_id')
@@ -2724,26 +2724,27 @@ class ProduccionController extends Controller
                 ];
             })->filter(fn($data) => !is_null($data['maquina_id']));
 
+            // Optimizado - sin N+1
+            $maquinaIds = $maquinas->pluck('id')->toArray();
+            $ultimasPlanillasPorMaquina = \DB::table('planillas')
+                ->select('elementos.maquina_id', \DB::raw('MAX(planillas.fecha_inicio) as fecha_inicio'))
+                ->join('elementos', 'elementos.planilla_id', '=', 'planillas.id')
+                ->where('planillas.estado', 'fabricando')
+                ->whereIn('elementos.maquina_id', $maquinaIds)
+                ->groupBy('elementos.maquina_id')
+                ->pluck('fecha_inicio', 'maquina_id');
+
             $colasMaquinas = [];
+            $now = Carbon::now();
+            $maxFecha = $now->copy()->addYear();
+
             foreach ($maquinas as $m) {
-                $ultimaPlanillaFabricando = Planilla::whereHas('elementos', fn($q) => $q->where('maquina_id', $m->id))
-                    ->where('estado', 'fabricando')
-                    ->orderByDesc('fecha_inicio')
-                    ->first();
+                $fechaInicioCola = isset($ultimasPlanillasPorMaquina[$m->id])
+                    ? toCarbon($ultimasPlanillasPorMaquina[$m->id])
+                    : $now->copy();
 
-                $fechaInicioCola = optional($ultimaPlanillaFabricando)->fecha_inicio
-                    ? toCarbon($ultimaPlanillaFabricando->fecha_inicio)
-                    : now();
-
-                // Validar que la fecha no esté demasiado lejos en el futuro
-                $maxFecha = Carbon::now()->addYear();
-                if ($fechaInicioCola->gt($maxFecha)) {
-                    Log::warning('COLA MAQUINA: fecha_inicio demasiado lejana, usando now()', [
-                        'maquina_id' => $m->id,
-                        'fecha_inicio' => $fechaInicioCola->toIso8601String(),
-                        'planilla_id' => optional($ultimaPlanillaFabricando)->id,
-                    ]);
-                    $fechaInicioCola = Carbon::now();
+                if (!$fechaInicioCola instanceof Carbon || $fechaInicioCola->gt($maxFecha)) {
+                    $fechaInicioCola = $now->copy();
                 }
 
                 $colasMaquinas[$m->id] = $fechaInicioCola;

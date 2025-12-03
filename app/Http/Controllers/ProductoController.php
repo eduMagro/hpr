@@ -642,4 +642,49 @@ class ProductoController extends Controller
 
         return redirect()->route('productos.index')->with('success', 'Producto eliminado exitosamente.');
     }
+
+    //------------------------------------------------------------------------------------ BUSCAR POR CÓDIGO (API)
+    /**
+     * Busca un producto por su código (para escaneo de QR en grúa)
+     */
+    public function buscarPorCodigo(Request $request)
+    {
+        $codigo = trim($request->input('codigo', ''));
+
+        if (empty($codigo)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Debe proporcionar un código de producto.'
+            ], 400);
+        }
+
+        $producto = Producto::with('productoBase')
+            ->where('codigo', $codigo)
+            ->first();
+
+        if (!$producto) {
+            return response()->json([
+                'success' => false,
+                'message' => "No se encontró ningún producto con código: {$codigo}"
+            ], 404);
+        }
+
+        if ($producto->estado === 'consumido') {
+            return response()->json([
+                'success' => false,
+                'message' => "El producto {$codigo} ya está consumido."
+            ], 400);
+        }
+
+        return response()->json([
+            'id' => $producto->id,
+            'codigo' => $producto->codigo,
+            'diametro' => $producto->productoBase->diametro ?? $producto->diametro ?? null,
+            'peso_stock' => (float) $producto->peso_stock,
+            'peso_inicial' => (float) ($producto->peso_inicial ?? $producto->peso_stock),
+            'n_colada' => $producto->n_colada,
+            'estado' => $producto->estado,
+            'ubicacion_id' => $producto->ubicacion_id,
+        ]);
+    }
 }

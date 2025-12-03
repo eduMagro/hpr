@@ -1298,13 +1298,22 @@ class EtiquetaController extends Controller
             $estadoAnterior = $etiquetaAntes ? $etiquetaAntes->estado : 'pendiente';
             $fechaInicio = $etiquetaAntes ? $etiquetaAntes->fecha_inicio : null;
 
+            // Construir opciones (para grúa: producto_id y paquete_completo)
+            $opciones = [];
+            if ($request->has('producto_id')) {
+                $opciones['producto_id'] = (int) $request->input('producto_id');
+            }
+            if ($request->has('paquete_completo')) {
+                $opciones['paquete_completo'] = (bool) $request->input('paquete_completo');
+            }
+
             $dto = new \App\Servicios\Etiquetas\DTOs\ActualizarEtiquetaDatos(
                 etiquetaSubId: $id,
                 maquinaId: (int) $maquina_id,
                 longitudSeleccionada: (int) $request->input('longitudSeleccionada'),
                 operario1Id: Auth::id(),
                 operario2Id: auth()->user()->compañeroDeTurno()?->id,
-                opciones: []
+                opciones: $opciones
             );
 
             log::info("Delegando actualización de etiqueta {$dto->etiquetaSubId} a servicio para máquina {$maquina->id} ({$maquina->tipo}, operario1Id={$dto->operario1Id}, operario2Id={$dto->operario2Id})");
@@ -1398,6 +1407,7 @@ class EtiquetaController extends Controller
                 'coladas' => $coladas,
                 'coladas_por_elemento' => $coladasPorElemento,
                 'warnings' => $resultado->warnings,
+                'metricas' => $resultado->metricas,
                 'fecha_inicio' => optional($etiqueta->fecha_inicio)->format('d-m-Y H:i:s'),
                 'fecha_finalizacion' => optional($etiqueta->fecha_finalizacion)->format('d-m-Y H:i:s'),
             ], 200);
