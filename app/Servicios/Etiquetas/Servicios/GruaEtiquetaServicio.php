@@ -5,6 +5,7 @@ namespace App\Servicios\Etiquetas\Servicios;
 use App\Models\Etiqueta;
 use App\Models\Elemento;
 use App\Models\Maquina;
+use App\Models\Paquete;
 use App\Models\Producto;
 use App\Servicios\Etiquetas\Base\ServicioEtiquetaBase;
 use App\Servicios\Etiquetas\Contratos\EtiquetaServicio;
@@ -69,9 +70,24 @@ class GruaEtiquetaServicio extends ServicioEtiquetaBase implements EtiquetaServi
                 );
             }
 
-            // Obtener diámetro y longitud del producto
+            // Obtener tipo, diámetro y longitud del producto
+            $tipoProducto = strtolower($producto->productoBase->tipo ?? '');
             $diametroProducto = (float) ($producto->productoBase->diametro ?? $producto->diametro ?? 0);
             $longitudProducto = (float) ($producto->productoBase->longitud ?? $producto->longitud ?? 0);
+
+            // Validar que el producto sea tipo barra
+            if ($tipoProducto && $tipoProducto !== 'barra') {
+                throw new ServicioEtiquetaException(
+                    sprintf(
+                        'El producto debe ser de tipo barra. Tipo actual: %s',
+                        $producto->productoBase->tipo ?? 'desconocido'
+                    ),
+                    [
+                        'tipo_producto' => $tipoProducto,
+                        'codigo_producto' => $producto->codigo,
+                    ]
+                );
+            }
 
             // Obtener diámetro y longitud de la etiqueta (del primer elemento)
             $primerElemento = $etiqueta->elementos()->first();
@@ -85,7 +101,7 @@ class GruaEtiquetaServicio extends ServicioEtiquetaBase implements EtiquetaServi
             $diametroEtiqueta = (float) ($primerElemento->diametro ?? 0);
             $longitudEtiqueta = (float) ($primerElemento->longitud ?? 0);
 
-            // Validar que el diámetro coincida
+            // Validar que el diámetro coincida (debe ser igual)
             if ($diametroProducto > 0 && $diametroEtiqueta > 0 && abs($diametroProducto - $diametroEtiqueta) > 0.1) {
                 throw new ServicioEtiquetaException(
                     sprintf(
@@ -101,15 +117,14 @@ class GruaEtiquetaServicio extends ServicioEtiquetaBase implements EtiquetaServi
                 );
             }
 
-            // Validar que la longitud del producto sea suficiente para la etiqueta
-            // La longitud del elemento está en cm, la del producto en metros (o según configuración)
-            // Convertimos longitud de etiqueta de cm a metros para comparar
+            // Validar que la longitud coincida (debe ser igual, tolerancia 0.1m)
+            // La longitud del elemento está en cm, la del producto en metros
             $longitudEtiquetaMetros = $longitudEtiqueta / 100;
 
-            if ($longitudProducto > 0 && $longitudEtiquetaMetros > 0 && $longitudProducto < $longitudEtiquetaMetros) {
+            if ($longitudProducto > 0 && $longitudEtiquetaMetros > 0 && abs($longitudProducto - $longitudEtiquetaMetros) > 0.1) {
                 throw new ServicioEtiquetaException(
                     sprintf(
-                        'La longitud del producto (%.2f m) es menor que la requerida por la etiqueta (%.2f m).',
+                        'La longitud del producto (%.2f m) no coincide con la de la etiqueta (%.2f m).',
                         $longitudProducto,
                         $longitudEtiquetaMetros
                     ),
@@ -121,8 +136,9 @@ class GruaEtiquetaServicio extends ServicioEtiquetaBase implements EtiquetaServi
                 );
             }
 
-            Log::info('🏗️ [Grúa] Validación de diámetro y longitud OK', [
+            Log::info('🏗️ [Grúa] Validación de tipo, diámetro y longitud OK', [
                 'producto_codigo' => $producto->codigo,
+                'tipo_producto' => $tipoProducto,
                 'diametro_producto' => $diametroProducto,
                 'diametro_etiqueta' => $diametroEtiqueta,
                 'longitud_producto_m' => $longitudProducto,
@@ -225,12 +241,48 @@ class GruaEtiquetaServicio extends ServicioEtiquetaBase implements EtiquetaServi
                 $elemento->save();
             }
 
-            // Completar etiqueta si corresponde
-            $this->completarEtiquetaSiCorresponde($etiqueta);
+            // Para grúa: marcar etiqueta directamente como completada (un solo click)
+            $etiqueta->estado = 'completada';
+            $etiqueta->fecha_inicio = $etiqueta->fecha_inicio ?? now();
+            $etiqueta->fecha_finalizacion = now();
 
             // Actualizar peso de la etiqueta
             $this->actualizarPesoEtiqueta($etiqueta);
             $etiqueta->save();
+
+            Log::info('🏗️ [Grúa] Etiqueta marcada como completada', [
+                'etiqueta_sub_id' => $etiqueta->etiqueta_sub_id,
+                'estado' => $etiqueta->estado,
+            ]);
+
+            // Crear o usar paquete existente para la etiqueta
+            $paquete = null;
+            if ($etiqueta->paquete_id) {
+                // Ya tiene paquete asignado
+                $paquete = Paquete::find($etiqueta->paquete_id);
+            }
+
+            if (!$paquete) {
+                // Crear nuevo paquete (sin ubicación, se asignará después en el mapa)
+                $paquete = Paquete::create([
+                    'codigo' => Paquete::generarCodigo(),
+                    'nave_id' => $maquina->obra_id,
+                    'planilla_id' => $etiqueta->planilla_id,
+                    'ubicacion_id' => null, // Se asignará en el mapa
+                    'peso' => $pesoEtiqueta,
+                    'estado' => 'disponible',
+                ]);
+
+                // Asignar paquete a la etiqueta
+                $etiqueta->paquete_id = $paquete->id;
+                $etiqueta->save();
+
+                Log::info('🏗️ [Grúa] Paquete creado para etiqueta', [
+                    'paquete_id' => $paquete->id,
+                    'paquete_codigo' => $paquete->codigo,
+                    'etiqueta_sub_id' => $etiqueta->etiqueta_sub_id,
+                ]);
+            }
 
             // Si todos los elementos de la planilla están fabricados, cerrar planilla
             if ($planilla) {
@@ -268,6 +320,8 @@ class GruaEtiquetaServicio extends ServicioEtiquetaBase implements EtiquetaServi
                     'elementos_fabricados' => $elementosEnMaquina->count(),
                     'peso_consumido' => $pesoConsumido,
                     'paquete_completo' => $usoPaqueteCompleto,
+                    'paquete_id' => $paquete?->id,
+                    'paquete_codigo' => $paquete?->codigo,
                 ]
             );
         });

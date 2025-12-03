@@ -263,20 +263,74 @@ function initTrabajoEtiqueta() {
     // ============================================================================
 
     async function fabricarConGrua(etiquetaId, maquinaId, csrfToken) {
+        // Obtener diámetro y longitud de la etiqueta para buscar sugerencias
+        const diametroEtiqueta = Number(window.DIAMETRO_POR_ETIQUETA?.[etiquetaId] ?? 0);
+        const longitudEtiquetaCm = Number(window.LONGITUD_POR_ETIQUETA?.[etiquetaId] ?? 0);
+        const longitudEtiquetaM = longitudEtiquetaCm / 100;
+
+        // Cargar sugerencias de productos
+        let htmlSugerencias = '';
+        try {
+            const resSug = await fetch(`/api/productos/sugerencias?diametro=${diametroEtiqueta}&longitud=${longitudEtiquetaM}`, {
+                headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': csrfToken }
+            });
+            if (resSug.ok) {
+                const dataSug = await resSug.json();
+                if (dataSug.productos && dataSug.productos.length > 0) {
+                    htmlSugerencias = `
+                        <div class="mt-3 mb-2 text-left">
+                            <p class="font-semibold text-gray-700 mb-2">📋 Productos disponibles (Ø${diametroEtiqueta}mm x ${longitudEtiquetaM.toFixed(1)}m):</p>
+                            <div class="max-h-40 overflow-y-auto border rounded">
+                                <table class="w-full text-xs">
+                                    <thead class="bg-gray-100 sticky top-0">
+                                        <tr>
+                                            <th class="px-2 py-1 text-left">Código</th>
+                                            <th class="px-2 py-1 text-left">Stock</th>
+                                            <th class="px-2 py-1 text-left">Ubicación</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        ${dataSug.productos.map(p => `
+                                            <tr class="border-t hover:bg-blue-50 cursor-pointer" onclick="document.getElementById('swal-input-producto').value='${p.codigo}'">
+                                                <td class="px-2 py-1 font-mono text-blue-600">${p.codigo}</td>
+                                                <td class="px-2 py-1">${p.peso_stock} kg</td>
+                                                <td class="px-2 py-1 ${p.ubicacion === 'Sin ubicación' ? 'text-gray-400 italic' : 'text-green-700 font-medium'}">${p.ubicacion}</td>
+                                            </tr>
+                                        `).join('')}
+                                    </tbody>
+                                </table>
+                            </div>
+                            <p class="text-xs text-gray-500 mt-1">Haz clic en una fila para seleccionar el producto</p>
+                        </div>
+                    `;
+                } else {
+                    htmlSugerencias = `<p class="text-orange-600 text-sm mt-2">⚠️ No hay productos disponibles con Ø${diametroEtiqueta}mm x ${longitudEtiquetaM.toFixed(1)}m</p>`;
+                }
+            }
+        } catch (e) {
+            console.warn('No se pudieron cargar sugerencias:', e);
+        }
+
         // Paso 1: Pedir escaneo del QR del producto
         const { value: codigoProducto, isConfirmed } = await Swal.fire({
             title: '📦 Escanear producto',
-            text: 'Escanea el QR del paquete de material a usar',
-            input: 'text',
-            inputPlaceholder: 'Código del producto...',
+            html: `
+                <p class="mb-3">Escanea el QR del paquete de material a usar</p>
+                ${htmlSugerencias}
+                <input type="text" id="swal-input-producto" class="swal2-input" placeholder="Código del producto..." autofocus>
+            `,
             showCancelButton: true,
             confirmButtonText: 'Siguiente',
             cancelButtonText: 'Cancelar',
             confirmButtonColor: '#F97316',
-            inputValidator: (value) => {
-                if (!value || !value.trim()) {
-                    return 'Debes escanear o introducir el código del producto';
+            focusConfirm: false,
+            preConfirm: () => {
+                const val = document.getElementById('swal-input-producto').value;
+                if (!val || !val.trim()) {
+                    Swal.showValidationMessage('Debes escanear o introducir el código del producto');
+                    return false;
                 }
+                return val.trim();
             }
         });
 
@@ -307,15 +361,28 @@ function initTrabajoEtiqueta() {
             return;
         }
 
-        // Validar diámetro y longitud ANTES de mostrar el modal de selección
-        const diametroEtiqueta = Number(window.DIAMETRO_POR_ETIQUETA?.[etiquetaId] ?? 0);
-        const longitudEtiquetaCm = Number(window.LONGITUD_POR_ETIQUETA?.[etiquetaId] ?? 0);
-        const longitudEtiquetaM = longitudEtiquetaCm / 100; // Convertir cm a metros
-
+        // Validar tipo, diámetro y longitud ANTES de mostrar el modal de selección
+        const tipoProducto = (producto.tipo || '').toLowerCase();
         const diametroProducto = Number(producto.diametro ?? 0);
         const longitudProducto = Number(producto.longitud ?? 0);
 
-        // Validar diámetro
+        // Validar que sea tipo barra
+        if (tipoProducto && tipoProducto !== 'barra') {
+            await Swal.fire({
+                icon: 'error',
+                title: 'Tipo de producto incorrecto',
+                html: `
+                    <p>El producto debe ser de tipo <strong>barra</strong>.</p>
+                    <div class="mt-3 p-3 bg-red-50 rounded text-left">
+                        <p><strong>Producto:</strong> ${producto.codigo}</p>
+                        <p><strong>Tipo:</strong> ${producto.tipo || 'N/A'}</p>
+                    </div>
+                `,
+            });
+            return;
+        }
+
+        // Validar diámetro (debe ser igual)
         if (diametroProducto > 0 && diametroEtiqueta > 0 && Math.abs(diametroProducto - diametroEtiqueta) > 0.1) {
             await Swal.fire({
                 icon: 'error',
@@ -331,13 +398,13 @@ function initTrabajoEtiqueta() {
             return;
         }
 
-        // Validar longitud (producto debe ser >= longitud etiqueta)
-        if (longitudProducto > 0 && longitudEtiquetaM > 0 && longitudProducto < longitudEtiquetaM) {
+        // Validar longitud (debe ser igual, tolerancia de 0.1m)
+        if (longitudProducto > 0 && longitudEtiquetaM > 0 && Math.abs(longitudProducto - longitudEtiquetaM) > 0.1) {
             await Swal.fire({
                 icon: 'error',
-                title: 'Longitud insuficiente',
+                title: 'Longitud incorrecta',
                 html: `
-                    <p>La longitud del producto es menor que la requerida por la etiqueta.</p>
+                    <p>La longitud del producto no coincide con la de la etiqueta.</p>
                     <div class="mt-3 p-3 bg-red-50 rounded text-left">
                         <p><strong>Producto:</strong> ${longitudProducto.toFixed(2)} m</p>
                         <p><strong>Etiqueta requiere:</strong> ${longitudEtiquetaM.toFixed(2)} m</p>
@@ -398,8 +465,10 @@ function initTrabajoEtiqueta() {
             throw new Error(data.message || "Error al fabricar");
         }
 
-        // Mostrar resultado
+        // Mostrar resultado brevemente
         const pesoConsumido = data.metricas?.peso_consumido || 0;
+        const paqueteCodigo = data.metricas?.paquete_codigo || null;
+
         await Swal.fire({
             icon: 'success',
             title: '¡Fabricación completada!',
@@ -407,13 +476,40 @@ function initTrabajoEtiqueta() {
                 <p>Etiqueta fabricada correctamente.</p>
                 <p><strong>Producto usado:</strong> ${producto.codigo}</p>
                 <p><strong>Peso consumido:</strong> ${pesoConsumido.toFixed(2)} kg</p>
-                ${usarPaqueteCompleto ? '<p class="text-orange-600">El paquete ha sido marcado como consumido.</p>' : ''}
+                ${paqueteCodigo ? `<p><strong>Paquete:</strong> ${paqueteCodigo}</p>` : ''}
+                ${usarPaqueteCompleto ? '<p class="text-orange-600">El producto ha sido marcado como consumido.</p>' : ''}
+                <p class="mt-2 text-blue-600 font-semibold">Ahora selecciona dónde ubicar el paquete...</p>
             `,
-            timer: 3000,
+            timer: 2000,
             showConfirmButton: false,
         });
 
         actualizarDOMEtiqueta(etiquetaId, data);
+
+        // Abrir modal para ubicar el paquete fabricado directamente en el mapa
+        if (paqueteCodigo && typeof abrirModalMoverPaquete === 'function') {
+            abrirModalMoverPaquete();
+
+            // Pre-rellenar el código del paquete, buscarlo y saltar directamente al mapa
+            setTimeout(async () => {
+                const inputCodigo = document.getElementById('codigo_paquete_mover');
+                if (inputCodigo) {
+                    inputCodigo.value = paqueteCodigo;
+
+                    // Buscar el paquete y mostrar directamente el mapa
+                    if (typeof buscarPaqueteParaMover === 'function') {
+                        await buscarPaqueteParaMover();
+
+                        // Saltar directamente al paso del mapa
+                        setTimeout(() => {
+                            if (typeof mostrarPasoMapa === 'function') {
+                                mostrarPasoMapa();
+                            }
+                        }, 300);
+                    }
+                }
+            }, 100);
+        }
     }
 
     // ============================================================================

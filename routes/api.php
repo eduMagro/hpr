@@ -12,6 +12,10 @@ Route::get('/codigos/info', [MovimientoController::class, 'infoCodigo'])
 // Buscar producto por código (para escaneo QR en grúa)
 Route::get('/productos/buscar-por-codigo', [ProductoController::class, 'buscarPorCodigo'])
     ->name('api.productos.buscar-por-codigo');
+
+// Sugerencias de productos por diámetro/longitud (para modal de grúa)
+Route::get('/productos/sugerencias', [ProductoController::class, 'sugerenciasPorDiametroLongitud'])
+    ->name('api.productos.sugerencias');
 Route::get('/planillas/{planillaId}/paquetes', [PaqueteController::class, 'obtenerPaquetesPorPlanilla'])
     ->name('api.planillas.paquetes');
 Route::post('/paquetes/{paqueteId}/añadir-etiqueta', [PaqueteController::class, 'añadirEtiquetaAPaquete'])

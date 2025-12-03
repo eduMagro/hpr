@@ -643,6 +643,58 @@ class ProductoController extends Controller
         return redirect()->route('productos.index')->with('success', 'Producto eliminado exitosamente.');
     }
 
+    //------------------------------------------------------------------------------------ SUGERENCIAS PARA GRÚA (API)
+    /**
+     * Obtiene productos sugeridos por diámetro y longitud para el modal de escaneo de grúa
+     */
+    public function sugerenciasPorDiametroLongitud(Request $request)
+    {
+        $diametro = (int) $request->input('diametro', 0);
+        $longitud = (float) $request->input('longitud', 0); // En metros
+
+        if ($diametro <= 0) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Debe proporcionar un diámetro válido.'
+            ], 400);
+        }
+
+        // Buscar productos tipo barra con ese diámetro y longitud, con stock disponible
+        $query = Producto::with(['productoBase', 'ubicacion'])
+            ->whereHas('productoBase', function ($q) use ($diametro, $longitud) {
+                $q->where('tipo', 'barra')
+                    ->where('diametro', $diametro);
+
+                // Si se especifica longitud, filtrar por ella (tolerancia de 0.1m)
+                if ($longitud > 0) {
+                    $q->whereBetween('longitud', [$longitud - 0.1, $longitud + 0.1]);
+                }
+            })
+            ->where('peso_stock', '>', 0)
+            ->whereNotIn('estado', ['consumido', 'fabricando'])
+            ->orderByDesc('peso_stock')
+            ->limit(5);
+
+        $productos = $query->get();
+
+        return response()->json([
+            'success' => true,
+            'productos' => $productos->map(function ($p) {
+                return [
+                    'id' => $p->id,
+                    'codigo' => $p->codigo,
+                    'diametro' => $p->productoBase->diametro ?? $p->diametro,
+                    'longitud' => $p->productoBase->longitud ?? $p->longitud,
+                    'peso_stock' => round((float) $p->peso_stock, 2),
+                    'n_colada' => $p->n_colada,
+                    'ubicacion' => $p->ubicacion?->nombre ?? 'Sin ubicación',
+                    'ubicacion_id' => $p->ubicacion_id,
+                ];
+            }),
+            'count' => $productos->count(),
+        ]);
+    }
+
     //------------------------------------------------------------------------------------ BUSCAR POR CÓDIGO (API)
     /**
      * Busca un producto por su código (para escaneo de QR en grúa)
@@ -679,6 +731,7 @@ class ProductoController extends Controller
         return response()->json([
             'id' => $producto->id,
             'codigo' => $producto->codigo,
+            'tipo' => $producto->productoBase->tipo ?? null,
             'diametro' => $producto->productoBase->diametro ?? $producto->diametro ?? null,
             'longitud' => $producto->productoBase->longitud ?? $producto->longitud ?? null,
             'peso_stock' => (float) $producto->peso_stock,

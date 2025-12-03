@@ -273,20 +273,12 @@
         <div id="panel_overlay" class="fixed inset-0 bg-black bg-opacity-50 hidden transition-opacity duration-300 z-40"
             style="pointer-events: none;"></div>
 
-        <!-- Contenedor de drag (fantasma + indicador) -->
-        <div id="drag_container"
-            class="fixed pointer-events-none"
-            style="display: none; top: 0; left: 0; z-index: 2147483647;">
-
-            <!-- Elemento fantasma -->
-            <div id="ghost_elemento" class="drag-ghost"></div>
-
-            <!-- Indicador de posición (badge sobre el fantasma) -->
-            <div id="indicador_posicion" class="drag-position-badge">
-                <span id="numero_posicion">1</span>
-            </div>
+        <!-- Indicador de posición al arrastrar -->
+        <div id="indicador_posicion"
+            class="fixed bg-blue-600 text-white rounded-full shadow-lg font-bold hidden z-[99999] pointer-events-none"
+            style="display: none; width: 48px; height: 48px; line-height: 48px; text-align: center; font-size: 20px;">
+            <span id="numero_posicion">1</span>
         </div>
-
 
         <!-- Modal para ver figura dibujada -->
         <div id="modal-dibujo" class="hidden fixed inset-0 flex justify-center items-center z-[9999] bg-black bg-opacity-50">
@@ -981,53 +973,6 @@
                 background: #eff6ff;
             }
 
-            /* Mirror de FullCalendar - Fantasma visible al arrastrar */
-            .fc-event-mirror {
-                background: #3b82f6 !important;
-                border: 2px solid #1d4ed8 !important;
-                border-radius: 4px !important;
-                box-shadow: 0 8px 20px rgba(59, 130, 246, 0.5) !important;
-                opacity: 0.85 !important;
-                z-index: 9999 !important;
-                pointer-events: none !important;
-                min-height: 30px !important;
-            }
-
-            .fc-event-mirror .fc-event-main {
-                padding: 4px 8px !important;
-                overflow: visible !important;
-            }
-
-            .fc-event-mirror .fc-event-title {
-                font-weight: 600 !important;
-                color: white !important;
-                text-shadow: 0 1px 2px rgba(0,0,0,0.3) !important;
-            }
-
-            /* Evento original mientras se arrastra - placeholder visual */
-            .fc-event.fc-event-dragging:not(.fc-event-mirror) {
-                opacity: 0.3 !important;
-                border: 2px dashed #3b82f6 !important;
-                background: repeating-linear-gradient(
-                    45deg,
-                    #e0e7ff,
-                    #e0e7ff 5px,
-                    #f1f5f9 5px,
-                    #f1f5f9 10px
-                ) !important;
-                box-shadow: inset 0 0 0 1px rgba(59, 130, 246, 0.3) !important;
-            }
-
-            .fc-event.fc-event-dragging:not(.fc-event-mirror) .fc-event-main {
-                opacity: 0.4 !important;
-            }
-
-            /* Ocultar el mirror nativo de FullCalendar */
-            .fc-event-mirror {
-                opacity: 0 !important;
-                visibility: hidden !important;
-            }
-
             /* Elemento seleccionado */
             .elemento-drag.seleccionado {
                 border-color: #2563eb;
@@ -1391,100 +1336,26 @@
                 pointer-events: none;
             }
 
-            /* ===== SISTEMA DE DRAG MEJORADO ===== */
-
-            /* Contenedor principal del drag */
-            #drag_container {
-                pointer-events: none;
-                will-change: transform;
-                position: fixed;
-                top: 0;
-                left: 0;
-                z-index: 2147483647 !important; /* Máximo z-index posible */
+            /* Indicador de posición durante arrastre */
+            #indicador_posicion {
+                transition: left 0.05s ease-out, top 0.05s ease-out;
             }
 
-            #drag_container.active {
-                display: block !important;
-                z-index: 2147483647 !important;
+            #indicador_posicion span {
+                display: block;
+                width: 100%;
+                height: 100%;
+                line-height: 48px;
             }
 
-            /* Fantasma del evento */
-            .drag-ghost {
-                background: white;
-                border-radius: 8px;
-                box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25), 0 4px 12px rgba(59, 130, 246, 0.3);
-                border: 2px solid #3b82f6;
-                padding: 4px;
-                min-width: 100px;
-                animation: ghostAppear 0.15s ease-out;
-                overflow: hidden;
-                position: relative;
-            }
-
-            .drag-ghost > * {
-                pointer-events: none;
-            }
-
-            @keyframes ghostAppear {
-                from {
-                    opacity: 0;
-                    transform: scale(0.8);
-                }
-                to {
-                    opacity: 1;
-                    transform: scale(1);
-                }
-            }
-
-            /* Badge de posición */
-            .drag-position-badge {
-                position: absolute;
-                top: -10px;
-                right: -10px;
-                width: 28px;
-                height: 28px;
-                background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
-                color: white;
-                border-radius: 50%;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                font-weight: 700;
-                font-size: 13px;
-                box-shadow: 0 4px 12px rgba(37, 99, 235, 0.5);
-                border: 2px solid white;
-                animation: badgePulse 1.5s ease-in-out infinite;
-                z-index: 10;
-            }
-
-            @keyframes badgePulse {
-                0%, 100% {
-                    transform: scale(1);
-                    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.5);
-                }
-                50% {
-                    transform: scale(1.05);
-                    box-shadow: 0 6px 20px rgba(37, 99, 235, 0.7);
-                }
-            }
-
-            /* Ocultar todos los tooltips durante el drag */
-            body.dragging-elemento .fc-tooltip,
-            body.dragging-elemento [data-tippy-root],
-            body.dragging-elemento .tippy-box {
+            /* Ocultar todos los tooltips cuando se arrastra un elemento del panel */
+            body.dragging-panel-elemento .fc-tooltip,
+            body.dragging-panel-elemento [data-tippy-root],
+            body.dragging-panel-elemento .tippy-box {
                 display: none !important;
                 visibility: hidden !important;
                 opacity: 0 !important;
-                z-index: -1 !important;
-            }
-
-            /* Cursor durante el drag */
-            body.dragging-elemento {
-                cursor: grabbing !important;
-            }
-
-            body.dragging-elemento * {
-                cursor: grabbing !important;
+                pointer-events: none !important;
             }
 
         </style>
@@ -1552,206 +1423,25 @@
                 // Variable global para el calendario
                 let calendar;
 
-                // Referencias al sistema de drag
-                const dragContainer = document.getElementById('drag_container');
-                const ghostElemento = document.getElementById('ghost_elemento');
+                // Referencias al indicador de posición
                 const indicadorPosicion = document.getElementById('indicador_posicion');
                 const numeroPosicion = document.getElementById('numero_posicion');
 
-                // 🎯 Mover el contenedor de drag al body para evitar problemas de z-index/overflow
-                if (dragContainer && dragContainer.parentElement !== document.body) {
-                    document.body.appendChild(dragContainer);
-                }
-
-                // Variables de estado del drag
+                // Variable para trackear elemento que se arrastra desde el panel
                 let elementoArrastrandose = null;
+                let eventoArrastrandose = null;
                 let mostrarIndicador = false;
-                let dragAnimationFrame = null;
-                let lastMouseX = 0;
-                let lastMouseY = 0;
-                let arrastreDesdePanel = false; // 🎯 Flag para mantener fantasma desde panel
-                let dragIntervalId = null; // 🎯 Interval para forzar visibilidad
-                let ghostHtmlBackup = ''; // 🎯 Backup del HTML del fantasma
                 window.tooltipsDeshabilitados = false;
 
-                // 🎯 Capturar posición del ratón SIEMPRE usando múltiples eventos
-                function capturarPosicionMouse(e) {
-                    if (arrastreDesdePanel && e.clientX > 0 && e.clientY > 0) {
-                        lastMouseX = e.clientX;
-                        lastMouseY = e.clientY;
+                // 🎯 Listener GLOBAL de mousemove para el indicador
+                document.addEventListener('mousemove', function(e) {
+                    if (mostrarIndicador && indicadorPosicion) {
+                        indicadorPosicion.style.left = (e.clientX + 20) + 'px';
+                        indicadorPosicion.style.top = (e.clientY - 20) + 'px';
+                        indicadorPosicion.style.display = 'block';
+                        indicadorPosicion.classList.remove('hidden');
                     }
-                }
-
-                // Escuchar en capture phase para interceptar antes que FullCalendar
-                document.addEventListener('dragover', function(e) {
-                    if (arrastreDesdePanel) {
-                        e.preventDefault();
-                        capturarPosicionMouse(e);
-                    }
-                }, true);
-
-                document.addEventListener('drag', capturarPosicionMouse, true);
-                document.addEventListener('mousemove', capturarPosicionMouse, true);
-
-                // También escuchar en el window por si acaso
-                window.addEventListener('dragover', function(e) {
-                    if (arrastreDesdePanel) {
-                        capturarPosicionMouse(e);
-                    }
-                }, true);
-
-                // 🎯 Sistema de movimiento con requestAnimationFrame para mayor fluidez
-                function actualizarPosicionDrag() {
-                    if (mostrarIndicador && dragContainer && lastMouseX !== 0 && lastMouseY !== 0) {
-                        // Usar transform para mejor rendimiento
-                        dragContainer.style.transform = `translate(${lastMouseX + 15}px, ${lastMouseY + 15}px)`;
-
-                        // 🎯 Forzar visibilidad del fantasma (especialmente cuando viene del panel)
-                        if (arrastreDesdePanel) {
-                            dragContainer.style.display = 'block';
-                            dragContainer.style.opacity = '1';
-                            dragContainer.style.visibility = 'visible';
-                        }
-                    }
-                    if (mostrarIndicador) {
-                        dragAnimationFrame = requestAnimationFrame(actualizarPosicionDrag);
-                    }
-                }
-
-                function moverIndicador(e) {
-                    if (mostrarIndicador && e.clientX !== 0 && e.clientY !== 0) {
-                        lastMouseX = e.clientX;
-                        lastMouseY = e.clientY;
-                    }
-                }
-
-                // Guardar referencia para poder eliminar después
-                window._maquinasCalendarState.moverIndicadorHandler = moverIndicador;
-
-                // 🎨 Función para crear el fantasma del evento
-                function crearFantasma(elemento, evento = null) {
-                    if (!ghostElemento || !elemento) return;
-
-                    const rect = elemento.getBoundingClientRect();
-                    const clone = elemento.cloneNode(true);
-
-                    // Limpiar estilos que puedan interferir
-                    clone.style.cssText = `
-                        width: ${rect.width}px;
-                        height: ${Math.min(rect.height, 80)}px;
-                        margin: 0;
-                        position: relative;
-                        opacity: 1;
-                        pointer-events: none;
-                    `;
-
-                    // Eliminar clases de estado
-                    clone.classList.remove('fc-event-dragging', 'fc-event-mirror', 'dragging-original');
-
-                    ghostElemento.innerHTML = '';
-                    ghostElemento.appendChild(clone);
-
-                    // Guardar backup del HTML por si se vacía
-                    ghostHtmlBackup = ghostElemento.innerHTML;
-                }
-
-                // 🚀 Función para iniciar el drag
-                function iniciarDrag(e, elemento, evento = null, desdePanel = false) {
-                    mostrarIndicador = true;
-                    arrastreDesdePanel = desdePanel; // 🎯 Guardar si viene del panel
-                    window.tooltipsDeshabilitados = true;
-                    document.body.classList.add('dragging-elemento');
-
-                    // Ocultar tooltips
-                    document.querySelectorAll('.fc-tooltip').forEach(t => t.remove());
-
-                    // Configurar posición inicial
-                    lastMouseX = e?.clientX || 0;
-                    lastMouseY = e?.clientY || 0;
-
-                    // Crear fantasma
-                    crearFantasma(elemento, evento);
-
-                    // Mostrar contenedor
-                    if (dragContainer) {
-                        dragContainer.style.display = 'block';
-                        dragContainer.classList.add('active');
-                        dragContainer.style.transform = `translate(${lastMouseX + 15}px, ${lastMouseY + 15}px)`;
-                    }
-
-                    // Iniciar animación
-                    if (dragAnimationFrame) cancelAnimationFrame(dragAnimationFrame);
-                    dragAnimationFrame = requestAnimationFrame(actualizarPosicionDrag);
-
-                    // 🎯 Si viene del panel, iniciar interval para forzar visibilidad
-                    if (desdePanel && dragContainer) {
-                        if (dragIntervalId) clearInterval(dragIntervalId);
-                        dragIntervalId = setInterval(() => {
-                            if (arrastreDesdePanel && dragContainer && lastMouseX > 0) {
-                                // Forzar estilos del contenedor
-                                dragContainer.style.cssText = `
-                                    display: block !important;
-                                    visibility: visible !important;
-                                    opacity: 1 !important;
-                                    position: fixed !important;
-                                    top: 0 !important;
-                                    left: 0 !important;
-                                    z-index: 2147483647 !important;
-                                    pointer-events: none !important;
-                                    transform: translate(${lastMouseX + 15}px, ${lastMouseY + 15}px);
-                                `;
-
-                                // Forzar estilos del ghost y restaurar contenido si se vació
-                                if (ghostElemento) {
-                                    ghostElemento.style.cssText = `
-                                        display: block !important;
-                                        visibility: visible !important;
-                                        opacity: 1 !important;
-                                    `;
-
-                                    // Restaurar HTML si se vació
-                                    if (!ghostElemento.innerHTML && ghostHtmlBackup) {
-                                        ghostElemento.innerHTML = ghostHtmlBackup;
-                                    }
-                                }
-                            }
-                        }, 16); // ~60fps
-                    }
-                }
-
-                // 🧹 Función auxiliar para limpiar estado de drag completamente
-                function limpiarEstadoDrag() {
-                    mostrarIndicador = false;
-                    elementoArrastrandose = null;
-                    arrastreDesdePanel = false; // 🎯 Limpiar flag
-                    window.tooltipsDeshabilitados = false;
-                    lastMouseX = 0;
-                    lastMouseY = 0;
-                    document.body.classList.remove('dragging-elemento');
-
-                    // Cancelar animación
-                    if (dragAnimationFrame) {
-                        cancelAnimationFrame(dragAnimationFrame);
-                        dragAnimationFrame = null;
-                    }
-
-                    // 🎯 Limpiar interval de forzado de visibilidad
-                    if (dragIntervalId) {
-                        clearInterval(dragIntervalId);
-                        dragIntervalId = null;
-                    }
-
-                    // Ocultar contenedor
-                    if (dragContainer) {
-                        dragContainer.classList.remove('active');
-                        dragContainer.style.cssText = 'display: none;';
-                    }
-
-                    // Limpiar fantasma
-                    if (ghostElemento) {
-                        ghostElemento.innerHTML = '';
-                    }
-                }
+                });
 
 
                 // Inicializar FullCalendar
@@ -1903,8 +1593,12 @@
                     // 🎯 CLAVE: Configurar recepción de elementos externos
                     eventReceive: async function(info) {
                         try {
-                            // Limpiar estado de drag al soltar
-                            limpiarEstadoDrag();
+                            // Ocultar indicador al soltar
+                            mostrarIndicador = false;
+                            if (indicadorPosicion) {
+                                indicadorPosicion.classList.add('hidden');
+                                indicadorPosicion.style.display = 'none';
+                            }
 
                             const elementoDiv = document.querySelector(
                                 `.elemento-drag[data-elemento-id="${info.event.extendedProps.elementoId}"]`
@@ -2210,21 +1904,24 @@
                     slotLabelContent: function(arg) {
                         // Obtener la fecha inicial del calendario
                         const initialDateStr = "{{ $initialDate }}";
-                        const calendarInitialDate = new Date(initialDateStr);
-                        calendarInitialDate.setHours(0, 0, 0, 0);
+                        // Parsear la fecha correctamente para evitar problemas de zona horaria
+                        const [year, month, day] = initialDateStr.split('-').map(Number);
+                        const calendarInitialDate = new Date(year, month - 1, day, 0, 0, 0, 0);
 
-                        // arg.text contiene la hora del slot ('0', '1', '2'... '359')
-                        // arg.date devuelve 1970 incorrectamente con slotMaxTime extendido
-                        const horaSlot = parseInt(arg.text, 10) || 0;
-
-                        // Calcular días adicionales y hora real del día
-                        const diasAdicionales = Math.floor(horaSlot / 24);
-                        const horaDelDia = horaSlot % 24;
+                        // arg.text contiene solo la hora del día (0-23), NO las horas acumuladas
+                        // arg.date SÍ avanza correctamente aunque muestre 1970
+                        // Usamos arg.date para calcular los días transcurridos
+                        const slotDate = arg.date;
+                        const horaDelDia = parseInt(arg.text, 10) || 0;
                         const minutos = 0; // Los slots son de 1 hora
 
-                        // Calcular la fecha real del slot
-                        const fechaReal = new Date(calendarInitialDate.getTime());
-                        fechaReal.setDate(fechaReal.getDate() + diasAdicionales);
+                        // Calcular días adicionales desde la fecha base de FullCalendar (1970-01-01)
+                        // La fecha 1970-01-01T00:00:00Z corresponde al día 0
+                        const fechaBase1970 = new Date(Date.UTC(1970, 0, 1, 0, 0, 0));
+                        const diasDesde1970 = Math.floor((slotDate.getTime() - fechaBase1970.getTime()) / (24 * 60 * 60 * 1000));
+
+                        // Calcular la fecha real del slot sumando los días a la fecha inicial del calendario
+                        const fechaReal = new Date(calendarInitialDate.getTime() + (diasDesde1970 * 24 * 60 * 60 * 1000));
                         fechaReal.setHours(horaDelDia, minutos, 0, 0);
 
                         // Formatear la hora para mostrar
@@ -2234,7 +1931,7 @@
                         // Determinar si este slot corresponde a un inicio de turno basado en turnos activos
                         let esTurno = false;
                         let nombreTurno = '';
-                        let fechaMostrar = new Date(fechaReal);
+                        let fechaMostrar = new Date(fechaReal.getTime());
                         let turnoEncontrado = null;
 
                         // Buscar si esta hora corresponde al inicio de algún turno activo
@@ -2260,10 +1957,10 @@
 
                                 nombreTurno = `${emoji} ${turno.nombre}`;
 
-                                // Si el turno tiene offset negativo, mostrar fecha del día siguiente
+                                // Si el turno tiene offset negativo (turno de noche),
+                                // la fecha laboral es el día siguiente
                                 if (turno.offset_dias_inicio < 0) {
-                                    fechaMostrar = new Date(fechaReal.getTime());
-                                    fechaMostrar.setDate(fechaMostrar.getDate() + 1);
+                                    fechaMostrar = new Date(fechaReal.getTime() + (24 * 60 * 60 * 1000));
                                 }
 
                                 break;
@@ -2387,11 +2084,12 @@
 
                     // 🎯 Eventos para mostrar indicador de posición al arrastrar
                     eventDragStart: function(info) {
-                        // Si el arrastre viene del panel, no iniciar nuevo drag (ya está activo)
-                        if (!arrastreDesdePanel) {
-                            // Usar sistema de drag mejorado
-                            iniciarDrag(info.jsEvent, info.el, info.event, false);
-                        }
+                        eventoArrastrandose = info.event;
+                        mostrarIndicador = true;
+                        window.tooltipsDeshabilitados = true;
+
+                        // Ocultar todos los tooltips existentes
+                        document.querySelectorAll('.fc-tooltip').forEach(t => t.style.display = 'none');
 
                         // Calcular posición inicial
                         const recursoId = info.event.getResources()[0]?.id;
@@ -2447,10 +2145,16 @@
                     },
 
                     eventDragStop: function(info) {
-                        // Solo limpiar si NO viene del panel (el panel limpia con dragend)
-                        if (!arrastreDesdePanel) {
-                            limpiarEstadoDrag();
+                        eventoArrastrandose = null;
+                        mostrarIndicador = false;
+                        window.tooltipsDeshabilitados = false;
+                        if (indicadorPosicion) {
+                            indicadorPosicion.classList.add('hidden');
+                            indicadorPosicion.style.display = 'none';
                         }
+
+                        // Limpiar tooltips duplicados que puedan haberse creado
+                        document.querySelectorAll('.fc-tooltip').forEach(t => t.remove());
                     },
 
                     eventDrop: async function(info) {
@@ -2675,7 +2379,9 @@
                         document.body.appendChild(tooltip);
 
                         info.el.addEventListener('mouseenter', function(e) {
-                            if (window.tooltipsDeshabilitados || document.body.classList.contains('dragging-elemento')) {
+                            if (window.tooltipsDeshabilitados ||
+                                document.body.classList.contains('dragging-elemento') ||
+                                document.body.classList.contains('dragging-panel-elemento')) {
                                 tooltip.style.display = 'none';
                                 return;
                             }
@@ -2684,7 +2390,9 @@
                             tooltip.style.display = 'block';
                         });
                         info.el.addEventListener('mousemove', function(e) {
-                            if (window.tooltipsDeshabilitados || document.body.classList.contains('dragging-elemento')) {
+                            if (window.tooltipsDeshabilitados ||
+                                document.body.classList.contains('dragging-elemento') ||
+                                document.body.classList.contains('dragging-panel-elemento')) {
                                 tooltip.style.display = 'none';
                                 return;
                             }
@@ -2699,15 +2407,66 @@
                 calendar.render();
                 window.calendar = calendar;
 
-                // 🎯 Listener específico para el calendario para capturar dragover
-                const calElDragListener = document.getElementById('calendario');
-                if (calElDragListener) {
-                    calElDragListener.addEventListener('dragover', function(e) {
-                        if (arrastreDesdePanel) {
-                            lastMouseX = e.clientX;
-                            lastMouseY = e.clientY;
+                // 🎯 Listener para calcular posición cuando se arrastra elemento del panel sobre el calendario
+                const calendarDragTarget = document.getElementById('calendario');
+                if (calendarDragTarget) {
+                    calendarDragTarget.addEventListener('dragover', function(e) {
+                        // Solo procesar si estamos arrastrando un elemento del panel
+                        if (!elementoArrastrandose || !mostrarIndicador) return;
+
+                        // Encontrar la columna de recurso (máquina) bajo el cursor
+                        const elementoBajo = document.elementFromPoint(e.clientX, e.clientY);
+                        if (!elementoBajo) return;
+
+                        // Buscar la columna del recurso
+                        const columna = elementoBajo.closest('.fc-timegrid-col');
+                        if (!columna) return;
+
+                        // Obtener el ID del recurso desde data-resource-id
+                        const resourceId = columna.dataset.resourceId;
+                        if (!resourceId) return;
+
+                        // Obtener todos los eventos de esta máquina
+                        const eventosOrdenados = calendar.getEvents()
+                            .filter(ev => ev.getResources().some(r => r && r.id == resourceId))
+                            .sort((a, b) => a.start - b.start);
+
+                        // Calcular la posición basada en la posición Y del cursor
+                        // Obtener el slot de tiempo bajo el cursor
+                        const slotLane = elementoBajo.closest('.fc-timegrid-slot-lane') ||
+                                        elementoBajo.closest('.fc-timegrid-slot');
+
+                        let posicionDestino = eventosOrdenados.length + 1; // Por defecto al final
+
+                        if (slotLane) {
+                            const slotTime = slotLane.dataset.time;
+                            if (slotTime) {
+                                // Convertir el tiempo del slot a una fecha para comparar
+                                const [hours, minutes] = slotTime.split(':').map(Number);
+                                const initialDateStr = "{{ $initialDate }}";
+                                const [year, month, day] = initialDateStr.split('-').map(Number);
+                                const initialDate = new Date(year, month - 1, day, 0, 0, 0, 0);
+
+                                // Calcular la fecha/hora del slot
+                                const slotDate = new Date(initialDate.getTime() + (hours * 60 + minutes) * 60 * 1000);
+
+                                // Encontrar la posición donde caería este elemento
+                                posicionDestino = 1;
+                                for (let i = 0; i < eventosOrdenados.length; i++) {
+                                    if (slotDate < eventosOrdenados[i].start) {
+                                        posicionDestino = i + 1;
+                                        break;
+                                    }
+                                    posicionDestino = i + 2;
+                                }
+                            }
                         }
-                    }, true);
+
+                        // Actualizar el indicador de posición
+                        if (numeroPosicion) {
+                            numeroPosicion.textContent = posicionDestino;
+                        }
+                    });
                 }
 
                 // 🎯 Aplicar líneas separadoras de turnos dinámicamente
@@ -3182,6 +2941,7 @@
                             div.dataset.elementoId = elemento.id;
                             div.dataset.planillaId = planillaId;
                             div.dataset.maquinaOriginal = elemento.maquina_id;
+                            div.dataset.posicion = elemento.posicion || '1';
 
                             div.dataset.event = JSON.stringify({
                                 title: elemento.codigo,
@@ -3216,16 +2976,42 @@
                                 e.dataTransfer.setDragImage(img, 0, 0);
 
                                 elementoArrastrandose = div;
+                                mostrarIndicador = true;
+                                window.tooltipsDeshabilitados = true;
 
-                                // Usar sistema de drag mejorado (desdePanel = true)
-                                iniciarDrag(e, div, null, true);
+                                // Añadir clase al body para ocultar tooltips via CSS
+                                document.body.classList.add('dragging-panel-elemento');
+
+                                // Ocultar y eliminar tooltips existentes
+                                document.querySelectorAll('.fc-tooltip').forEach(t => {
+                                    t.style.display = 'none';
+                                    t.remove();
+                                });
+
+                                // Mostrar indicador con posición inicial (se actualizará en dragover)
+                                if (numeroPosicion) {
+                                    numeroPosicion.textContent = '?';
+                                }
 
                                 div.classList.add('dragging-original');
                             });
 
                             div.addEventListener('dragend', function() {
-                                limpiarEstadoDrag();
+                                elementoArrastrandose = null;
+                                mostrarIndicador = false;
+                                window.tooltipsDeshabilitados = false;
+
+                                // Quitar clase del body
+                                document.body.classList.remove('dragging-panel-elemento');
+
+                                if (indicadorPosicion) {
+                                    indicadorPosicion.classList.add('hidden');
+                                    indicadorPosicion.style.display = 'none';
+                                }
                                 div.classList.remove('dragging-original');
+
+                                // Limpiar tooltips duplicados
+                                document.querySelectorAll('.fc-tooltip').forEach(t => t.remove());
                             });
 
                             // Almacenar datos para dibujar después de que el panel sea visible

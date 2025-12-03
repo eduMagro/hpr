@@ -933,7 +933,8 @@ class ProduccionController extends Controller
                 ];
             })->values()->all();
 
-            Log::info('✅ obtenerRecursos: devolviendo ' . count($resources) . ' máquinas');
+            // Log deshabilitado para rendimiento
+            // Log::info('✅ obtenerRecursos: devolviendo ' . count($resources) . ' máquinas');
 
             return response()->json($resources);
         } catch (\Throwable $e) {
@@ -968,9 +969,8 @@ class ProduccionController extends Controller
             ->whereHas('planilla', fn($q) => $q->whereIn('estado', ['pendiente', 'fabricando']))
             ->get();
 
-        Log::info('🔍 DEBUG obtenerEventos: Elementos obtenidos', [
-            'count' => $elementos->count()
-        ]);
+        // Log deshabilitado para rendimiento
+        // Log::info('🔍 DEBUG obtenerEventos: Elementos obtenidos', ['count' => $elementos->count()]);
 
         $maquinaReal = function ($e) {
             $tipo1 = optional($e->maquina)->tipo;
@@ -1002,9 +1002,8 @@ class ProduccionController extends Controller
             })
             ->filter(fn($data) => !is_null($data['maquina_id']));
 
-        Log::info('🔍 DEBUG obtenerEventos: Planillas agrupadas', [
-            'count' => $planillasAgrupadas->count()
-        ]);
+        // Log deshabilitado para rendimiento
+        // Log::info('🔍 DEBUG obtenerEventos: Planillas agrupadas', ['count' => $planillasAgrupadas->count()]);
 
         // 3. Calcular colas iniciales de cada máquina (optimizado - sin N+1)
         $maquinaIds = $maquinas->pluck('id')->toArray();
@@ -1060,7 +1059,8 @@ class ProduccionController extends Controller
             // Convertir Collection a array para asegurar formato JSON correcto
             $eventosArray = $planillasEventos->values()->all();
 
-            Log::info('✅ obtenerEventos: devolviendo ' . count($eventosArray) . ' eventos');
+            // Log deshabilitado para rendimiento
+            // Log::info('✅ obtenerEventos: devolviendo ' . count($eventosArray) . ' eventos');
 
             return response()->json($eventosArray);
         } catch (\Throwable $e) {
@@ -1186,12 +1186,8 @@ class ProduccionController extends Controller
             $diasTotales = max($diasTotales, 15); // Mínimo 15 días
             $horasTotales = $diasTotales * 24;
 
-            Log::info('📅 Fecha máxima calendario calculada', [
-                'fecha_inicio' => $fechaInicio->toDateString(),
-                'fecha_maxima' => $fechaMaxima->toDateString(),
-                'dias_totales' => $diasTotales,
-                'horas_totales' => $horasTotales
-            ]);
+            // Log deshabilitado para rendimiento
+            // Log::info('📅 Fecha máxima calendario calculada', [...]);
 
             return [
                 'fecha' => $fechaMaxima->toDateString(),
@@ -1694,11 +1690,8 @@ class ProduccionController extends Controller
 
                         // Si el segmento termina después de las 22:00 del viernes, cortarlo ahí
                         if ($finSeg->gt($finViernesTarde) && $cursor->lt($finViernesTarde)) {
-                            Log::info('✂️ CORTE VIERNES: Limitando segmento a las 22:00', [
-                                'cursor' => $cursor->format('Y-m-d H:i:s'),
-                                'finSeg_original' => $finSeg->format('Y-m-d H:i:s'),
-                                'finSeg_ajustado' => $finViernesTarde->format('Y-m-d H:i:s'),
-                            ]);
+                            // Log deshabilitado para rendimiento
+                            // Log::info('✂️ CORTE VIERNES: Limitando segmento a las 22:00', [...]);
                             $finSeg = $finViernesTarde;
                         }
                     }
@@ -1719,10 +1712,8 @@ class ProduccionController extends Controller
 
                     // ✅ Si llegamos a las 22:00 del viernes, FORZAR salida (fin de semana)
                     if ($cursor->dayOfWeek === Carbon::FRIDAY && $cursor->hour >= 22) {
-                        Log::info('🛑 FIN SEMANA: Deteniendo en viernes 22:00', [
-                            'cursor' => $cursor->format('Y-m-d H:i:s'),
-                            'restante' => $restante,
-                        ]);
+                        // Log deshabilitado para rendimiento
+                        // Log::info('🛑 FIN SEMANA: Deteniendo en viernes 22:00', [...]);
                         // Salir del bucle - el evento terminará en viernes 22:00
                         break 2; // Salir tanto del foreach como del while
                     }
@@ -1738,11 +1729,8 @@ class ProduccionController extends Controller
                     // 🛑 CORTE FIN DE SEMANA: Si acabamos de procesar el viernes, DETENER
                     // NO continuar al sábado/domingo, el evento quedará incompleto
                     if ($diaActual->dayOfWeek === Carbon::FRIDAY) {
-                        Log::info('🛑 FIN SEMANA: Viernes procesado, deteniendo evento', [
-                            'cursor' => $cursor->format('Y-m-d H:i:s'),
-                            'restante_segundos' => $restante,
-                            'restante_horas' => round($restante / 3600, 2),
-                        ]);
+                        // Log deshabilitado para rendimiento
+                        // Log::info('🛑 FIN SEMANA: Viernes procesado, deteniendo evento', [...]);
                         break; // Salir del while - el evento termina el viernes
                     }
 
@@ -1754,18 +1742,8 @@ class ProduccionController extends Controller
 
                     $segmentosSiguienteDia = $this->obtenerSegmentosLaborablesDia($siguienteDia);
 
-                    Log::info('🔍 TRAMOS: Verificando continuidad', [
-                        'dia_procesado' => $diaActual->format('Y-m-d'),
-                        'dia_siguiente' => $siguienteDia->format('Y-m-d'),
-                        'cursor' => $cursor->format('Y-m-d H:i:s'),
-                        'restante_segundos' => $restante,
-                        'ultimo_segmento_fin' => $ultimoSegmentoHoy ? $ultimoSegmentoHoy['fin']->format('Y-m-d H:i:s') : 'N/A',
-                        'ultimo_segmento_fin_timestamp' => $ultimoSegmentoHoy ? $ultimoSegmentoHoy['fin']->timestamp : 'N/A',
-                        'segmentos_hoy_count' => count($segmentos),
-                        'segmentos_manana_count' => count($segmentosSiguienteDia),
-                        'primer_segmento_manana_inicio' => !empty($segmentosSiguienteDia) ? $segmentosSiguienteDia[0]['inicio']->format('Y-m-d H:i:s') : 'N/A',
-                        'primer_segmento_manana_inicio_timestamp' => !empty($segmentosSiguienteDia) ? $segmentosSiguienteDia[0]['inicio']->timestamp : 'N/A',
-                    ]);
+                    // Log deshabilitado para rendimiento
+                    // Log::info('🔍 TRAMOS: Verificando continuidad', [...]);
 
                     // Si hay segmentos mañana y el último segmento de hoy conecta con el primero de mañana
                     if (!empty($segmentosSiguienteDia)) {
@@ -1776,14 +1754,14 @@ class ProduccionController extends Controller
                             $ultimoSegmentoHoy &&
                             $ultimoSegmentoHoy['fin']->equalTo($primerSegmentoManana['inicio'])
                         ) {
-                            Log::info('✅ TRAMOS: Continuidad detectada, NO cortando');
+                            // Log deshabilitado para rendimiento
+                            // Log::info('✅ TRAMOS: Continuidad detectada, NO cortando');
                             // ✅ Son continuos, avanzar al día siguiente SIN crear corte
                             // Mover el cursor al día siguiente para continuar procesando
                             $cursor = $siguienteDia->copy()->startOfDay();
                             continue;
-                        } else {
-                            Log::info('❌ TRAMOS: Sin continuidad, creando corte');
                         }
+                        // else: Sin continuidad, continuar normalmente (no necesita log)
                     }
 
                     // No hay continuidad, avanzar al día siguiente normalmente
@@ -2197,10 +2175,11 @@ class ProduccionController extends Controller
         $planillasAgrupadasCol = collect($planillasAgrupadas);
         if ($ordenes instanceof Collection) $ordenes = $ordenes->all();
 
-        Log::info('🔍 DEBUG: Planillas agrupadas', [
-            'count' => $planillasAgrupadasCol->count(),
-            'ordenes_count' => is_array($ordenes) ? count($ordenes) : 0
-        ]);
+        // Log deshabilitado para rendimiento
+        // Log::info('🔍 DEBUG: Planillas agrupadas', [
+        //     'count' => $planillasAgrupadasCol->count(),
+        //     'ordenes_count' => is_array($ordenes) ? count($ordenes) : 0
+        // ]);
 
         // 3) Índice estable
         $agrupadasIndex = $planillasAgrupadasCol
@@ -2219,9 +2198,8 @@ class ProduccionController extends Controller
                 return ["{$planillaId}-{$maquinaId}" => $data];
             });
 
-        Log::info('🔍 DEBUG: Índice creado', [
-            'count' => $agrupadasIndex->count()
-        ]);
+        // Log deshabilitado para rendimiento
+        // Log::info('🔍 DEBUG: Índice creado', ['count' => $agrupadasIndex->count()]);
 
         if ($agrupadasIndex->isEmpty()) {
             Log::warning('EVT E: índice vacío, devuelvo 0 eventos');
@@ -2326,13 +2304,8 @@ class ProduccionController extends Controller
                         $subGrupos = collect([$primerOrdenKey => $todosElementos]);
                     }
 
-                    Log::info('🔍 EVENTOS: Generando eventos', [
-                        'planilla' => $planilla->codigo_limpio,
-                        'maquina_id' => $maquinaId,
-                        'num_subgrupos' => $subGrupos->count(),
-                        'subgrupos_keys' => $subGrupos->keys()->toArray(),
-                        'elementos_por_subgrupo' => $subGrupos->map(fn($sg) => $sg->count())->toArray()
-                    ]);
+                    // Log deshabilitado para rendimiento (se ejecuta por cada planilla)
+                    // Log::info('🔍 EVENTOS: Generando eventos', [...]);
 
                     // Procesar cada sub-grupo como un evento independiente
                     foreach ($subGrupos as $ordenKey => $subGrupo) {
@@ -2408,12 +2381,8 @@ class ProduccionController extends Controller
                                 // La duración es desde el inicio real hasta el fin estimado
                                 $duracionSegundos = max($fechaInicio->diffInSeconds($finEstimado), 3600);
 
-                                Log::info('🎯 Primer evento FABRICANDO - usando fecha etiqueta', [
-                                    'planilla' => $planilla->codigo_limpio,
-                                    'fecha_etiqueta' => $fechaInicio->toIso8601String(),
-                                    'elementos_fabricando' => $elementosFabricandoOCompletados->count(),
-                                    'elementos_pendientes' => $elementosPendientes->count()
-                                ]);
+                                // Log deshabilitado para rendimiento
+                                // Log::info('🎯 Primer evento FABRICANDO - usando fecha etiqueta', [...]);
                             } else {
                                 // Todos los elementos están pendientes: usar now()
                                 $fechaInicio = Carbon::now();
@@ -2426,11 +2395,8 @@ class ProduccionController extends Controller
                                 });
                                 $duracionSegundos = max($duracionSegundos, 3600);
 
-                                Log::info('🎯 Primer evento PENDIENTE - usando now()', [
-                                    'planilla' => $planilla->codigo_limpio,
-                                    'fecha_inicio' => $fechaInicio->toIso8601String(),
-                                    'elementos_pendientes' => $elementosPendientes->count()
-                                ]);
+                                // Log deshabilitado para rendimiento
+                                // Log::info('🎯 Primer evento PENDIENTE - usando now()', [...]);
                             }
                         } else {
                             // Caso normal: usar SIEMPRE inicioCola para evitar solapamiento
@@ -2456,18 +2422,8 @@ class ProduccionController extends Controller
                             }
                         }
 
-                        // DEBUG: Log antes de generar tramos
-                        Log::info('🔍 DEBUG ANTES generarTramosLaborales', [
-                            'planilla' => $planilla->codigo_limpio ?? $planillaId,
-                            'maquina_id' => $maquinaId,
-                            'fechaInicio' => $fechaInicio->toIso8601String(),
-                            'fechaInicio_timestamp' => $fechaInicio->timestamp,
-                            'duracionSegundos' => $duracionSegundos,
-                            'esPrimerEvento' => $esPrimerEvento,
-                            'ordenId' => $ordenId,
-                            'primeraOrdenId' => $primeraOrdenId,
-                            'posicion' => $posicion,
-                        ]);
+                        // Log deshabilitado para rendimiento
+                        // Log::info('🔍 DEBUG ANTES generarTramosLaborales', [...]);
 
                         $tramos = $this->generarTramosLaborales($fechaInicio, $duracionSegundos, $festivosSet);
 
@@ -2480,18 +2436,8 @@ class ProduccionController extends Controller
                         $ultimoTramoTemp = end($tramos)['end'] instanceof Carbon ? end($tramos)['end'] : Carbon::parse(end($tramos)['end']);
                         $duracionRealSegundos = $primerTramoTemp->diffInSeconds($ultimoTramoTemp);
 
-                        Log::info('📍 TRAMOS generados', [
-                            'planilla' => $planilla->codigo_limpio,
-                            'maquina_id' => $maquinaId,
-                            'fechaInicio_solicitada' => $fechaInicio->toIso8601String(),
-                            'primer_tramo_inicio' => $primerTramoTemp->toIso8601String(),
-                            'ultimo_tramo_fin' => $ultimoTramoTemp->toIso8601String(),
-                            'num_tramos' => count($tramos),
-                            'duracion_solicitada_segundos' => $duracionSegundos,
-                            'duracion_real_segundos' => $duracionRealSegundos,
-                            'discrepancia_segundos' => $duracionRealSegundos - $duracionSegundos,
-                            'discrepancia_horas' => round(($duracionRealSegundos - $duracionSegundos) / 3600, 2)
-                        ]);
+                        // Log deshabilitado para rendimiento
+                        // Log::info('📍 TRAMOS generados', [...]);
 
                         $ultimoTramo  = end($tramos);
                         $fechaFinReal = $ultimoTramo['end'] instanceof Carbon
@@ -2542,19 +2488,8 @@ class ProduccionController extends Controller
                             $eventoId .= '-ord' . $ordenId;
                         }
 
-                        Log::info('✅ EVENTOS: Creando evento', [
-                            'evento_id' => $eventoId,
-                            'planilla' => $planilla->codigo_limpio,
-                            'maquina_id' => $maquinaId,
-                            'posicion' => $posicion ?? '?',
-                            'orden_key' => $ordenKey,
-                            'inicio' => $eventoInicio->toIso8601String(),
-                            'fin' => $eventoFin->toIso8601String(),
-                            'inicioCola_antes' => $inicioCola->toIso8601String(),
-                            'elementos' => $subGrupo->count(),
-                            'elementos_fabricando' => $elementosFabricandoOCompletados->count(),
-                            'elementos_pendientes' => $elementosPendientes->count()
-                        ]);
+                        // Log deshabilitado para rendimiento
+                        // Log::info('✅ EVENTOS: Creando evento', [...]);
 
                         // Formatear fechas con offset de timezone (ISO8601 completo)
                         $planillasEventos->push([
@@ -2592,12 +2527,8 @@ class ProduccionController extends Controller
                         // para garantizar que el siguiente evento empiece exactamente donde termina este
                         $inicioCola = $eventoFin->copy();
 
-                        Log::info('🔄 COLA ACTUALIZADA después de evento', [
-                            'planilla' => $planilla->codigo_limpio,
-                            'maquina_id' => $maquinaId,
-                            'nueva_inicioCola' => $inicioCola->toIso8601String(),
-                            'eventoFin' => $eventoFin->toIso8601String()
-                        ]);
+                        // Log deshabilitado para rendimiento
+                        // Log::info('🔄 COLA ACTUALIZADA después de evento', [...]);
                     } // fin foreach subGrupos
 
                     // Avanza cola (solo si eventoFin está definida)

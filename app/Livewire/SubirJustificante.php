@@ -26,26 +26,41 @@ class SubirJustificante extends Component
     public $error = '';
     public $asignacionesDisponibles = [];
     public $asignacionSeleccionada = null;
+    public $fechaManual = null;
     public $ocrDisponible = false;
     public $justificantesExistentes = [];
     public $soloLectura = false;
-
-    protected $rules = [
-        'archivo' => 'required|file|mimes:pdf,jpg,jpeg,png|max:10240',
-        'asignacionSeleccionada' => 'required',
-        'horasDetectadas' => 'required|numeric|min:0|max:24',
-    ];
 
     protected $messages = [
         'archivo.required' => 'Debes seleccionar un archivo.',
         'archivo.mimes' => 'El archivo debe ser PDF, JPG, JPEG o PNG.',
         'archivo.max' => 'El archivo no puede superar los 10MB.',
         'asignacionSeleccionada.required' => 'Debes seleccionar una asignación de turno.',
+        'fechaManual.required' => 'Debes seleccionar una fecha.',
+        'fechaManual.date' => 'La fecha no es válida.',
+        'fechaManual.before_or_equal' => 'La fecha no puede ser futura.',
         'horasDetectadas.required' => 'Debes indicar las horas justificadas.',
         'horasDetectadas.numeric' => 'Las horas deben ser un número.',
         'horasDetectadas.min' => 'Las horas no pueden ser negativas.',
         'horasDetectadas.max' => 'Las horas no pueden superar 24.',
     ];
+
+    protected function rules()
+    {
+        $rules = [
+            'archivo' => 'required|file|mimes:pdf,jpg,jpeg,png|max:10240',
+            'horasDetectadas' => 'required|numeric|min:0|max:24',
+        ];
+
+        // Si hay asignaciones disponibles, requerir selección; si no, requerir fecha manual
+        if (count($this->asignacionesDisponibles) > 0) {
+            $rules['asignacionSeleccionada'] = 'required';
+        } else {
+            $rules['fechaManual'] = 'required|date|before_or_equal:today';
+        }
+
+        return $rules;
+    }
 
     public function mount($userId)
     {
@@ -348,11 +363,31 @@ class SubirJustificante extends Component
 
         try {
             $user = User::find($this->userId);
-            $asignacion = AsignacionTurno::find($this->asignacionSeleccionada);
 
-            if (!$asignacion) {
-                $this->error = 'No se encontró la asignación seleccionada.';
-                return;
+            // Si hay asignación seleccionada, usarla; si no, crear una nueva con la fecha manual
+            if ($this->asignacionSeleccionada) {
+                $asignacion = AsignacionTurno::find($this->asignacionSeleccionada);
+
+                if (!$asignacion) {
+                    $this->error = 'No se encontró la asignación seleccionada.';
+                    return;
+                }
+            } else {
+                // Crear nueva asignación con la fecha manual
+                $fecha = Carbon::parse($this->fechaManual);
+
+                // Verificar si ya existe una asignación para esa fecha
+                $asignacion = AsignacionTurno::where('user_id', $this->userId)
+                    ->whereDate('fecha', $fecha)
+                    ->first();
+
+                if (!$asignacion) {
+                    $asignacion = AsignacionTurno::create([
+                        'user_id' => $this->userId,
+                        'fecha' => $fecha,
+                        'estado' => 'justificado',
+                    ]);
+                }
             }
 
             // Crear directorio si no existe
@@ -380,7 +415,7 @@ class SubirJustificante extends Component
             $this->notificarDepartamentos($user, $asignacion);
 
             // Resetear formulario
-            $this->reset(['archivo', 'textoExtraido', 'fechaDetectada', 'horasDetectadas', 'observaciones', 'mostrarResultados', 'asignacionSeleccionada']);
+            $this->reset(['archivo', 'textoExtraido', 'fechaDetectada', 'horasDetectadas', 'observaciones', 'mostrarResultados', 'asignacionSeleccionada', 'fechaManual']);
             $this->cargarAsignacionesDisponibles();
             $this->cargarJustificantesExistentes();
 
@@ -428,7 +463,7 @@ class SubirJustificante extends Component
 
     public function cancelar()
     {
-        $this->reset(['archivo', 'textoExtraido', 'fechaDetectada', 'horasDetectadas', 'observaciones', 'mostrarResultados', 'asignacionSeleccionada', 'error']);
+        $this->reset(['archivo', 'textoExtraido', 'fechaDetectada', 'horasDetectadas', 'observaciones', 'mostrarResultados', 'asignacionSeleccionada', 'fechaManual', 'error']);
     }
 
     public function render()
