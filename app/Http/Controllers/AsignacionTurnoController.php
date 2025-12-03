@@ -408,13 +408,19 @@ class AsignacionTurnoController extends Controller
                     ->first();
 
                 if (!$asignacion) {
-                    $asignacion = $user->asignacionesTurnos()->create([
-                        'fecha'      => $fechaTurnoDetectado,
-                        'turno_id'   => $turnoModelo->id,
-                        'estado'     => 'activo',
-                        'maquina_id' => $user->maquina_id ?? null,
-                        'obra_id'    => null,
-                    ]);
+                    // Usar firstOrCreate para evitar duplicados por condiciones de carrera
+                    $asignacion = AsignacionTurno::firstOrCreate(
+                        [
+                            'user_id' => $user->id,
+                            'fecha'   => $fechaTurnoDetectado,
+                        ],
+                        [
+                            'turno_id'   => $turnoModelo->id,
+                            'estado'     => 'activo',
+                            'maquina_id' => $user->maquina_id ?? null,
+                            'obra_id'    => null,
+                        ]
+                    );
 
                     // (Opcional) notificación a programadores
                     try {
