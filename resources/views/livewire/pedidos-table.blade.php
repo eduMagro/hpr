@@ -39,11 +39,13 @@
                 </x-tabla.header-row>
                 <x-tabla.filtro-row>
                     <th class="p-2 bg-gray-50">
-                        <div class="relative">
+                        <div class="flex flex-col gap-1">
                             <input type="text" wire:model.live.debounce.300ms="codigo_linea"
-                                placeholder="PC25/0001–001" class="w-full text-xs px-2 py-2 border rounded pr-6" />
-                            <i class="fas fa-question-circle absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400 cursor-help"
-                                title="Búsqueda flexible: 'PC25' / '0001–' / '=PC25/0001–001' (exacto)"></i>
+                                placeholder="PC25/0001–001"
+                                class="w-full max-w-[180px] text-xs px-2 py-1 border rounded shadow-sm focus:border-gray-700 focus:ring-1 focus:ring-gray-600 focus:outline-none" />
+                            <input type="text" wire:model.live.debounce.300ms="pedido_producto_id"
+                                placeholder="ID línea (123)"
+                                class="w-full max-w-[180px] text-xs px-2 py-1 border rounded shadow-sm focus:border-gray-700 focus:ring-1 focus:ring-gray-600 focus:outline-none" />
                         </div>
                     </th>
                     <th class="p-2 bg-gray-50">
@@ -346,8 +348,15 @@
                                                     onsubmit="return confirmarCompletarLinea(this);">
                                                     @csrf
                                                     <button type="submit"
-                                                        class="bg-green-600 hover:bg-green-700 text-white text-xs px-2 py-2 rounded shadow transition">
-                                                        Completar
+                                                        class="inline-flex h-9 w-9 items-center justify-center rounded-md bg-green-600 text-white shadow transition hover:bg-green-700"
+                                                        title="Completar">
+                                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4"
+                                                            fill="none" viewBox="0 0 24 24" stroke="currentColor"
+                                                            stroke-width="2">
+                                                            <path stroke-linecap="round" stroke-linejoin="round"
+                                                                d="M5 13l4 4L19 7" />
+                                                        </svg>
+                                                        <span class="sr-only">Completar</span>
                                                     </button>
                                                 </form>
                                             @endif
@@ -359,8 +368,14 @@
                                                     @csrf
                                                     @method('DELETE')
                                                     <button type="submit" title="Desactivar línea"
-                                                        class="bg-red-600 hover:bg-red-700 text-white text-xs px-2 py-2 rounded shadow transition">
-                                                        Desactivar
+                                                        class="inline-flex h-9 w-9 items-center justify-center rounded-md bg-red-600 text-white shadow transition hover:bg-red-700">
+                                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4"
+                                                            fill="none" viewBox="0 0 24 24" stroke="currentColor"
+                                                            stroke-width="2">
+                                                            <path stroke-linecap="round" stroke-linejoin="round"
+                                                                d="M6 18L18 6M6 6l12 12" />
+                                                        </svg>
+                                                        <span class="sr-only">Desactivar</span>
                                                     </button>
                                                 </form>
                                             @endif
@@ -372,8 +387,14 @@
                                                     @csrf
                                                     @method('PUT')
                                                     <button type="submit" title="Activar línea"
-                                                        class="bg-yellow-500 hover:bg-yellow-600 text-white text-xs px-2 py-2 rounded shadow transition">
-                                                        Activar
+                                                        class="inline-flex h-9 w-9 items-center justify-center rounded-md bg-yellow-500 text-white shadow transition hover:bg-yellow-600">
+                                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4"
+                                                            fill="none" viewBox="0 0 24 24" stroke="currentColor"
+                                                            stroke-width="2">
+                                                            <path stroke-linecap="round" stroke-linejoin="round"
+                                                                d="M5 12h14M12 5l7 7-7 7" />
+                                                        </svg>
+                                                        <span class="sr-only">Activar</span>
                                                     </button>
                                                 </form>
                                             @endif
@@ -389,34 +410,52 @@
                                             </form>
 
                                             <button type="button"
-                                                onclick="onclick="confirmarCancelacionLinea({{ $pedido->id }},
-                                                {{ $linea['id'] }})" wire:navigate"
-                                                class="bg-gray-500 hover:bg-gray-600 text-white text-xs px-2 py-2 rounded shadow transition">
-                                                Cancelar
+                                                onclick="confirmarCancelacionLinea({{ $pedido->id }}, {{ $linea['id'] }})"
+                                                class="inline-flex h-9 w-9 items-center justify-center rounded-md bg-gray-500 text-white shadow transition hover:bg-gray-600"
+                                                title="Cancelar línea">
+                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none"
+                                                    viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                                    <path stroke-linecap="round" stroke-linejoin="round"
+                                                        d="M6 18L18 6M6 6l12 12" />
+                                                </svg>
+                                                <span class="sr-only">Cancelar</span>
                                             </button>
                                         </div>
 
                                         {{-- BOTONES DE EDICIÓN --}}
                                         <button type="button"
-                                            onclick="onclick="abrirEdicionLinea({{ $linea->id }})" wire:navigate"
-                                            class="btn-editar-linea-{{ $linea->id }} bg-blue-600 hover:bg-blue-700 text-white text-xs px-2 py-2 rounded shadow transition"
+                                            onclick="abrirEdicionLinea({{ $linea->id }})"
+                                            class="btn-editar-linea-{{ $linea->id }} inline-flex h-9 w-9 items-center justify-center rounded-md bg-blue-600 text-white shadow transition hover:bg-blue-700"
                                             title="Editar línea">
-                                            ✏️
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none"
+                                                viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                                <path stroke-linecap="round" stroke-linejoin="round"
+                                                    d="M11 5h2m-1-1v2m-6 8l-2 2v3h3l9-9-3-3-7 7z" />
+                                            </svg>
+                                            <span class="sr-only">Editar</span>
                                         </button>
 
-                                        <button type="button" onclick="onclick="guardarLinea({{ $linea->id }},
-                                            {{ $pedido->id }})" wire:navigate"
-                                            class="btn-guardar-linea-{{ $linea->id }} hidden bg-green-600 hover:bg-green-700 text-white text-xs px-2 py-2 rounded shadow transition"
+                                        <button type="button" onclick="guardarLinea({{ $linea->id }},
+                                            {{ $pedido->id }})"
+                                            class="btn-guardar-linea-{{ $linea->id }} hidden inline-flex h-9 w-9 items-center justify-center rounded-md bg-green-600 text-white shadow transition hover:bg-green-700"
                                             title="Guardar cambios">
-                                            💾
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none"
+                                                viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                                <path stroke-linecap="round" stroke-linejoin="round"
+                                                    d="M4 7h16M4 7v13h16V7M4 7l4-4h8l4 4M9 12h6m-6 4h3" />
+                                            </svg>
+                                            <span class="sr-only">Guardar</span>
                                         </button>
 
-                                        <button type="button"
-                                            onclick="onclick="cancelarEdicionLinea({{ $linea->id }})"
-                                            wire:navigate"
-                                            class="btn-cancelar-edicion-{{ $linea->id }} hidden bg-red-600 hover:bg-red-700 text-white text-xs px-2 py-2 rounded shadow transition"
+                                        <button type="button" onclick="cancelarEdicionLinea({{ $linea->id }})"
+                                            class="btn-cancelar-edicion-{{ $linea->id }} hidden inline-flex h-9 w-9 items-center justify-center rounded-md bg-red-600 text-white shadow transition hover:bg-red-700"
                                             title="Cancelar edición">
-                                            ✖️
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none"
+                                                viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                                <path stroke-linecap="round" stroke-linejoin="round"
+                                                    d="M6 18L18 6M6 6l12 12" />
+                                            </svg>
+                                            <span class="sr-only">Cancelar edición</span>
                                         </button>
                                     @endif
                                 </div>
