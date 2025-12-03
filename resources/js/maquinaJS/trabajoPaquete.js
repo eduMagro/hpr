@@ -165,10 +165,23 @@
             document.getElementById("ubicacion-id")?.value || window.ubicacionId
         );
 
-        if (!maquinaId || !ubicacionId) {
+        // Detectar si es máquina tipo grúa
+        const esGrua = (window.MAQUINA_TIPO_NOMBRE || "").toLowerCase() === "grua";
+
+        // Para grúa: no requerimos ubicacionId, se asignará después en el mapa
+        if (!maquinaId) {
             await Swal.fire(
                 "Faltan datos",
-                "Debe especificarse la máquina y la ubicación.",
+                "Debe especificarse la máquina.",
+                "error"
+            );
+            return;
+        }
+
+        if (!esGrua && !ubicacionId) {
+            await Swal.fire(
+                "Faltan datos",
+                "Debe especificarse la ubicación.",
                 "error"
             );
             return;
@@ -177,7 +190,8 @@
         const payload = {
             items: items.map((i) => ({ id: i.id, type: i.type })),
             maquina_id: maquinaId,
-            ubicacion_id: ubicacionId,
+            ubicacion_id: esGrua ? null : ubicacionId, // Para grúa: null, se asigna después
+            sin_ubicacion: esGrua, // Flag para indicar que se ubicará después
         };
 
         const confirmarCreacion = async (extra = {}) => {
@@ -247,14 +261,57 @@
         const peso = calcularPesoTotal();
         const etiquetas = [...items.map((i) => i.id)];
 
-        await Swal.fire({
-            icon: "success",
-            title: "Paquete creado",
-            html: `<p><strong>${codigo}</strong> creado correctamente</p><p>${etiquetas.length
-                } etiquetas · ${peso.toFixed(2)} kg</p>`,
-        });
+        // Detectar si es máquina tipo grúa
+        const esGrua = (window.MAQUINA_TIPO_NOMBRE || "").toLowerCase() === "grua";
 
-        limpiarCarro();
+        if (esGrua) {
+            // Para grúa: mostrar mensaje breve y abrir modal del mapa para ubicar
+            await Swal.fire({
+                icon: "success",
+                title: "Paquete creado",
+                html: `<p><strong>${codigo}</strong> creado correctamente</p>
+                       <p>${etiquetas.length} etiquetas · ${peso.toFixed(2)} kg</p>
+                       <p class="mt-2 text-blue-600 font-semibold">Ahora selecciona dónde ubicar el paquete...</p>`,
+                timer: 2000,
+                showConfirmButton: false,
+            });
+
+            limpiarCarro();
+
+            // Abrir modal del mapa para ubicar el paquete
+            if (typeof abrirModalMoverPaquete === 'function') {
+                abrirModalMoverPaquete();
+
+                // Pre-rellenar el código del paquete y saltar al mapa
+                setTimeout(async () => {
+                    const inputCodigo = document.getElementById('codigo_paquete_mover');
+                    if (inputCodigo) {
+                        inputCodigo.value = codigo;
+
+                        if (typeof buscarPaqueteParaMover === 'function') {
+                            await buscarPaqueteParaMover();
+
+                            // Saltar directamente al paso del mapa
+                            setTimeout(() => {
+                                if (typeof mostrarPasoMapa === 'function') {
+                                    mostrarPasoMapa();
+                                }
+                            }, 300);
+                        }
+                    }
+                }, 100);
+            }
+        } else {
+            // Flujo normal para otras máquinas
+            await Swal.fire({
+                icon: "success",
+                title: "Paquete creado",
+                html: `<p><strong>${codigo}</strong> creado correctamente</p><p>${etiquetas.length
+                    } etiquetas · ${peso.toFixed(2)} kg</p>`,
+            });
+
+            limpiarCarro();
+        }
 
         // ⭐ DISPARAR EVENTO
         console.log(`📦 Disparando evento paquete:creado para ${codigo}`);

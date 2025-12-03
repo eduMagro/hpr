@@ -163,11 +163,11 @@
                     <p class="text-xs text-gray-500 mt-1.5">DNI: 8 números + letra | NIE: X/Y/Z + 7 números + letra</p>
                 </div>
 
-                <!-- Campos editables para nombre y apellidos extraídos del DNI -->
+                <!-- Campos editables para nombre y apellidos -->
                 <div id="datos-personales-dni-container" class="mt-4 pt-4 border-t border-gray-200">
                     <p class="text-sm text-gray-600 mb-3">
-                        <span class="font-medium">Datos extraídos del documento.</span>
-                        Verifica que sean correctos o corrígelos si es necesario:
+                        <span class="font-medium">Introduce tus datos personales</span>
+                        tal como aparecen en tu DNI/NIE:
                     </p>
                     <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
                         <div>

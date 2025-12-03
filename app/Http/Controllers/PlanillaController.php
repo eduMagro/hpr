@@ -1053,7 +1053,7 @@ class PlanillaController extends Controller
                 ->select(['id', 'codigo', 'fecha_estimada_entrega', 'obra_id', 'seccion', 'descripcion', 'peso_total'])
                 ->with([
                     'obra:id,cod_obra,obra',
-                    'elementos:id,planilla_id,marca,diametro,longitud,barras,peso,fecha_entrega'
+                    'elementos:id,planilla_id,codigo,marca,diametro,longitud,barras,peso,dimensiones,fecha_entrega'
                 ])
                 ->get();
 
@@ -1085,11 +1085,13 @@ class PlanillaController extends Controller
                     $elementos = $p->elementos->map(function ($e) {
                         return [
                             'id' => $e->id,
+                            'codigo' => $e->codigo,
                             'marca' => $e->marca,
                             'diametro' => $e->diametro,
                             'longitud' => $e->longitud,
                             'barras' => $e->barras,
                             'peso' => $e->peso,
+                            'dimensiones' => $e->dimensiones,
                             'fecha_entrega' => $e->fecha_entrega ? $e->fecha_entrega->format('Y-m-d') : null,
                         ];
                     })->values()->all();

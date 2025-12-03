@@ -479,6 +479,93 @@ class IncorporacionController extends Controller
     }
 
     /**
+     * Resubir/actualizar un archivo del candidato (DNI frontal, trasero, certificado bancario)
+     */
+    public function resubirArchivo(Request $request, Incorporacion $incorporacion)
+    {
+        $validated = $request->validate([
+            'campo' => 'required|in:dni_frontal,dni_trasero,certificado_bancario',
+            'archivo' => 'required|file|mimes:pdf,jpg,jpeg,png|max:5120',
+        ]);
+
+        $campo = $validated['campo'];
+        $carpetaUsuario = $this->obtenerCarpetaUsuario($incorporacion);
+
+        // Eliminar archivo anterior si existe
+        $archivoAnterior = $incorporacion->{$campo};
+        if ($archivoAnterior) {
+            Storage::delete("private/documentos/{$carpetaUsuario}/" . $archivoAnterior);
+        }
+
+        // Guardar nuevo archivo
+        $archivo = $request->file('archivo');
+        $nombreArchivo = $campo . '_' . time() . '.' . $archivo->getClientOriginalExtension();
+        $archivo->storeAs("private/documentos/{$carpetaUsuario}", $nombreArchivo);
+
+        // Actualizar incorporación
+        $incorporacion->update([$campo => $nombreArchivo]);
+
+        // Registrar log
+        $nombres = [
+            'dni_frontal' => 'DNI Frontal',
+            'dni_trasero' => 'DNI Trasero',
+            'certificado_bancario' => 'Certificado Bancario',
+        ];
+
+        $incorporacion->registrarLog(
+            'archivo_actualizado',
+            "Archivo actualizado: {$nombres[$campo]}"
+        );
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Documento actualizado correctamente',
+        ]);
+    }
+
+    /**
+     * Actualizar un campo de la incorporación (número afiliación SS, etc.)
+     */
+    public function actualizarCampo(Request $request, Incorporacion $incorporacion)
+    {
+        $validated = $request->validate([
+            'campo' => 'required|in:numero_afiliacion_ss',
+            'valor' => 'required|string',
+        ]);
+
+        $campo = $validated['campo'];
+        $valor = $validated['valor'];
+
+        // Validaciones específicas por campo
+        if ($campo === 'numero_afiliacion_ss') {
+            if (!preg_match('/^[0-9]{12}$/', $valor)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'El número de afiliación debe tener 12 dígitos',
+                ], 422);
+            }
+        }
+
+        $valorAnterior = $incorporacion->{$campo};
+        $incorporacion->update([$campo => $valor]);
+
+        // Registrar log
+        $nombres = [
+            'numero_afiliacion_ss' => 'N. Afiliación SS',
+        ];
+
+        $incorporacion->registrarLog(
+            'campo_actualizado',
+            "{$nombres[$campo]} actualizado: {$valorAnterior} → {$valor}"
+        );
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Campo actualizado correctamente',
+        ]);
+    }
+
+    /**
      * Descargar archivo privado de incorporación
      */
     public function descargarArchivo(Incorporacion $incorporacion, string $archivo)

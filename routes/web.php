@@ -378,6 +378,8 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
     Route::post('/planillas/completar', [PlanillaController::class, 'completar'])->name('planillas.completar');
     Route::get('/planificacion/index', [PlanificacionController::class, 'index'])->name('planificacion.index');
     Route::get('/planificacion/totales', [PlanificacionController::class, 'getTotalesAjax']);
+    Route::post('/planificacion/simular-adelanto', [PlanificacionController::class, 'simularAdelanto'])->name('planificacion.simularAdelanto');
+    Route::post('/planificacion/ejecutar-adelanto', [PlanificacionController::class, 'ejecutarAdelanto'])->name('planificacion.ejecutarAdelanto');
     Route::post('/planillas/completar-todas', [PlanillaController::class, 'completarTodas'])
         ->name('planillas.completarTodas');
     // === EMPRESAS TRANSPORTE ===
@@ -681,6 +683,10 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
         ->name('incorporaciones.revocar-ceo');
     Route::delete('/incorporaciones/{incorporacion}/eliminar-archivo', [\App\Http\Controllers\IncorporacionController::class, 'eliminarArchivo'])
         ->name('incorporaciones.eliminar-archivo');
+    Route::post('/incorporaciones/{incorporacion}/resubir-archivo', [\App\Http\Controllers\IncorporacionController::class, 'resubirArchivo'])
+        ->name('incorporaciones.resubir-archivo');
+    Route::post('/incorporaciones/{incorporacion}/actualizar-campo', [\App\Http\Controllers\IncorporacionController::class, 'actualizarCampo'])
+        ->name('incorporaciones.actualizar-campo');
 });
 
 // === RUTAS PÚBLICAS - FORMULARIO INCORPORACIÓN (sin autenticación) ===

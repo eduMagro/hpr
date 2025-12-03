@@ -572,6 +572,7 @@ export function crearCalendario() {
                     fecha: nuevaFechaISO,
                     tipo: p.tipo,
                     planillas_ids: p.planillas_ids || [],
+                    elementos_ids: p.elementos_ids || [],
                 };
                 const url = (
                     window.AppSalidas?.routes?.updateItem || ""
@@ -590,13 +591,41 @@ export function crearCalendario() {
                             throw new Error("No se pudo actualizar la fecha.");
                         return r.json();
                     })
-                    .then(() => {
+                    .then((data) => {
                         calendar.refetchEvents();
                         calendar.refetchResources();
                         const nuevaFecha = info.event.start;
                         const fechaISO = nuevaFecha.toISOString().split("T")[0];
                         actualizarTotales(fechaISO);
                         safeUpdateSize();
+
+                        // Mostrar alerta si hay retraso en fabricación
+                        if (data.alerta_retraso) {
+                            Swal.fire({
+                                icon: "warning",
+                                title: "⚠️ Fecha de entrega adelantada",
+                                html: `
+                                    <div class="text-left">
+                                        <p class="mb-2">${data.alerta_retraso.mensaje}</p>
+                                        <div class="bg-yellow-50 border border-yellow-200 rounded p-3 mt-3">
+                                            <p class="text-sm"><strong>Fin fabricación:</strong> ${data.alerta_retraso.fin_programado}</p>
+                                            <p class="text-sm"><strong>Fecha entrega:</strong> ${data.alerta_retraso.fecha_entrega}</p>
+                                        </div>
+                                        <p class="mt-3 text-sm text-gray-600">Los elementos no estarán listos para la fecha indicada según la programación actual de máquinas.</p>
+                                    </div>
+                                `,
+                                showCancelButton: true,
+                                confirmButtonText: "🚀 Adelantar fabricación",
+                                cancelButtonText: "Entendido",
+                                confirmButtonColor: "#10b981",
+                                cancelButtonColor: "#f59e0b",
+                            }).then((result) => {
+                                if (result.isConfirmed) {
+                                    // Simular adelanto
+                                    simularAdelantoFabricacion(p.elementos_ids, nuevaFechaISO);
+                                }
+                            });
+                        }
                     })
                     .catch((err) => {
                         console.error("Error:", err);
@@ -1033,4 +1062,232 @@ function calcularFechaCentral(info) {
         return mid.toISOString().split("T")[0];
     }
     return info.startStr.split("T")[0];
+}
+
+/**
+ * Simula el adelanto de fabricación y muestra opciones al usuario
+ */
+function simularAdelantoFabricacion(elementosIds, fechaEntrega) {
+    if (!elementosIds || elementosIds.length === 0) {
+        Swal.fire({
+            icon: "error",
+            title: "Error",
+            text: "No hay elementos para adelantar",
+        });
+        return;
+    }
+
+    // Mostrar loading
+    Swal.fire({
+        title: "Analizando opciones...",
+        html: "Calculando la mejor posición para adelantar la fabricación",
+        allowOutsideClick: false,
+        didOpen: () => {
+            Swal.showLoading();
+        },
+    });
+
+    fetch("/planificacion/simular-adelanto", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+            "X-CSRF-TOKEN": window.AppSalidas?.csrf,
+        },
+        body: JSON.stringify({
+            elementos_ids: elementosIds,
+            fecha_entrega: fechaEntrega,
+        }),
+    })
+        .then((r) => {
+            if (!r.ok) throw new Error("Error en la simulación");
+            return r.json();
+        })
+        .then((data) => {
+            if (!data.necesita_adelanto) {
+                Swal.fire({
+                    icon: "info",
+                    title: "No es necesario adelantar",
+                    text: data.mensaje || "Los elementos llegarán a tiempo.",
+                });
+                return;
+            }
+
+            // Construir HTML con detalles de órdenes a adelantar
+            let htmlOrdenes = "";
+            if (data.ordenes_a_adelantar && data.ordenes_a_adelantar.length > 0) {
+                htmlOrdenes = `
+                    <div class="mb-4">
+                        <h4 class="font-semibold text-green-700 mb-2">📋 Planillas a adelantar:</h4>
+                        <div class="max-h-40 overflow-y-auto">
+                            <table class="w-full text-sm border">
+                                <thead class="bg-green-100">
+                                    <tr>
+                                        <th class="px-2 py-1 text-left">Planilla</th>
+                                        <th class="px-2 py-1 text-left">Máquina</th>
+                                        <th class="px-2 py-1 text-center">Pos. Actual</th>
+                                        <th class="px-2 py-1 text-center">Nueva Pos.</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                `;
+                data.ordenes_a_adelantar.forEach((o) => {
+                    htmlOrdenes += `
+                        <tr class="border-t">
+                            <td class="px-2 py-1">${o.planilla_codigo}</td>
+                            <td class="px-2 py-1">${o.maquina_nombre}</td>
+                            <td class="px-2 py-1 text-center">${o.posicion_actual}</td>
+                            <td class="px-2 py-1 text-center font-bold text-green-600">${o.posicion_nueva}</td>
+                        </tr>
+                    `;
+                });
+                htmlOrdenes += `
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                `;
+            }
+
+            // Construir HTML con planillas colaterales afectadas
+            let htmlColaterales = "";
+            if (data.colaterales && data.colaterales.length > 0) {
+                htmlColaterales = `
+                    <div class="mb-4">
+                        <h4 class="font-semibold text-orange-700 mb-2">⚠️ Planillas que se retrasarán:</h4>
+                        <div class="max-h-32 overflow-y-auto bg-orange-50 border border-orange-200 rounded p-2">
+                            <table class="w-full text-sm">
+                                <thead class="bg-orange-100">
+                                    <tr>
+                                        <th class="px-2 py-1 text-left">Planilla</th>
+                                        <th class="px-2 py-1 text-left">Obra</th>
+                                        <th class="px-2 py-1 text-left">F. Entrega</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                `;
+                data.colaterales.forEach((c) => {
+                    htmlColaterales += `
+                        <tr class="border-t">
+                            <td class="px-2 py-1">${c.planilla_codigo}</td>
+                            <td class="px-2 py-1 truncate" style="max-width:150px">${c.obra}</td>
+                            <td class="px-2 py-1">${c.fecha_entrega}</td>
+                        </tr>
+                    `;
+                });
+                htmlColaterales += `
+                                </tbody>
+                            </table>
+                        </div>
+                        <p class="text-xs text-orange-600 mt-1">Estas planillas bajarán una posición en la cola de fabricación.</p>
+                    </div>
+                `;
+            }
+
+            const fechaEntregaStr = data.fecha_entrega || "---";
+
+            Swal.fire({
+                icon: "question",
+                title: "🚀 Adelantar fabricación",
+                html: `
+                    <div class="text-left">
+                        <p class="mb-3">Para cumplir con la fecha de entrega <strong>${fechaEntregaStr}</strong>, se propone el siguiente cambio:</p>
+                        ${htmlOrdenes}
+                        ${htmlColaterales}
+                        <p class="text-sm text-gray-600 mt-3">¿Deseas ejecutar el adelanto?</p>
+                    </div>
+                `,
+                width: 600,
+                showCancelButton: true,
+                confirmButtonText: "✅ Ejecutar adelanto",
+                cancelButtonText: "Cancelar",
+                confirmButtonColor: "#10b981",
+                cancelButtonColor: "#6b7280",
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    ejecutarAdelantoFabricacion(data.ordenes_a_adelantar);
+                }
+            });
+        })
+        .catch((err) => {
+            console.error("Error en simulación:", err);
+            Swal.fire({
+                icon: "error",
+                title: "Error",
+                text: "No se pudo simular el adelanto. " + err.message,
+            });
+        });
+}
+
+/**
+ * Ejecuta el adelanto de fabricación
+ */
+function ejecutarAdelantoFabricacion(ordenesAAdelantar) {
+    if (!ordenesAAdelantar || ordenesAAdelantar.length === 0) {
+        Swal.fire({
+            icon: "error",
+            title: "Error",
+            text: "No hay órdenes para adelantar",
+        });
+        return;
+    }
+
+    // Mostrar loading
+    Swal.fire({
+        title: "Ejecutando adelanto...",
+        html: "Actualizando posiciones en la cola de fabricación",
+        allowOutsideClick: false,
+        didOpen: () => {
+            Swal.showLoading();
+        },
+    });
+
+    // Preparar datos para enviar
+    const ordenes = ordenesAAdelantar.map((o) => ({
+        planilla_id: o.planilla_id,
+        maquina_id: o.maquina_id,
+        posicion_nueva: o.posicion_nueva,
+    }));
+
+    fetch("/planificacion/ejecutar-adelanto", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+            "X-CSRF-TOKEN": window.AppSalidas?.csrf,
+        },
+        body: JSON.stringify({ ordenes }),
+    })
+        .then((r) => {
+            if (!r.ok) throw new Error("Error al ejecutar el adelanto");
+            return r.json();
+        })
+        .then((data) => {
+            if (data.success) {
+                Swal.fire({
+                    icon: "success",
+                    title: "¡Adelanto ejecutado!",
+                    text: data.mensaje || "Las posiciones han sido actualizadas correctamente.",
+                    confirmButtonColor: "#10b981",
+                }).then(() => {
+                    // Refrescar el calendario
+                    if (calendar) {
+                        calendar.refetchEvents();
+                        calendar.refetchResources();
+                    }
+                });
+            } else {
+                Swal.fire({
+                    icon: "error",
+                    title: "Error",
+                    text: data.mensaje || "No se pudo ejecutar el adelanto.",
+                });
+            }
+        })
+        .catch((err) => {
+            console.error("Error al ejecutar adelanto:", err);
+            Swal.fire({
+                icon: "error",
+                title: "Error",
+                text: "No se pudo ejecutar el adelanto. " + err.message,
+            });
+        });
 }

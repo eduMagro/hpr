@@ -2572,6 +2572,15 @@ class EtiquetaController extends Controller
             // Buscar la etiqueta o lanzar excepción si no se encuentra
             $etiqueta = Etiqueta::findOrFail($id);
 
+            // Normalizar campos: la tabla envía 'peso' pero el modelo usa 'peso'
+            // Aceptamos tanto 'peso_kg' como 'peso'
+            $pesoValue = $request->peso_kg ?? $request->peso ?? null;
+            // Limpiar el valor de peso: si es vacío o no numérico, convertir a null
+            if ($pesoValue === '' || $pesoValue === null || (!is_numeric($pesoValue) && !is_float($pesoValue))) {
+                $pesoValue = null;
+            }
+            $request->merge(['peso_kg' => $pesoValue]);
+
             // Si los campos de fecha vienen vacíos, forzar null
             $request->merge([
                 'fecha_inicio'                => $request->fecha_inicio ?: null,
@@ -2583,61 +2592,57 @@ class EtiquetaController extends Controller
             ]);
 
             // Validar los datos recibidos con mensajes personalizados
+            // Aceptamos fechas en formato Y-m-d (desde inputs date) o d/m/Y
             $validatedData = $request->validate([
-                'numero_etiqueta'          => 'required|string|max:50',
-                'nombre'                   => 'required|string|max:255',
+                'numero_etiqueta'          => 'nullable|string|max:50',
+                'nombre'                   => 'nullable|string|max:255',
+                'marca'                    => 'nullable|string|max:100',
                 'peso_kg'                  => 'nullable|numeric',
-                'fecha_inicio'             => 'nullable|date_format:d/m/Y',
-                'fecha_finalizacion'       => 'nullable|date_format:d/m/Y',
-                'fecha_inicio_ensamblado'  => 'nullable|date_format:d/m/Y',
-                'fecha_finalizacion_ensamblado' => 'nullable|date_format:d/m/Y',
-                'fecha_inicio_soldadura'   => 'nullable|date_format:d/m/Y',
-                'fecha_finalizacion_soldadura' => 'nullable|date_format:d/m/Y',
-                'estado'                   => 'nullable|string|in:pendiente,fabricando,completada'
+                'fecha_inicio'             => 'nullable|date',
+                'fecha_finalizacion'       => 'nullable|date',
+                'fecha_inicio_ensamblado'  => 'nullable|date',
+                'fecha_finalizacion_ensamblado' => 'nullable|date',
+                'fecha_inicio_soldadura'   => 'nullable|date',
+                'fecha_finalizacion_soldadura' => 'nullable|date',
+                'estado'                   => 'nullable|string|in:pendiente,fabricando,ensamblando,soldando,completada,empaquetada'
             ], [
-                'numero_etiqueta.required' => 'El campo Número de Etiqueta es obligatorio.',
                 'numero_etiqueta.string'   => 'El campo Número de Etiqueta debe ser una cadena de texto.',
                 'numero_etiqueta.max'      => 'El campo Número de Etiqueta no debe exceder 50 caracteres.',
 
-                'nombre.required'          => 'El campo Nombre es obligatorio.',
                 'nombre.string'            => 'El campo Nombre debe ser una cadena de texto.',
                 'nombre.max'               => 'El campo Nombre no debe exceder 255 caracteres.',
 
                 'peso_kg.numeric'          => 'El campo Peso debe ser un número.',
 
-                'fecha_inicio.date_format'             => 'El campo Fecha Inicio no corresponde al formato DD/MM/YYYY.',
-                'fecha_finalizacion.date_format'       => 'El campo Fecha Finalización no corresponde al formato DD/MM/YYYY.',
-                'fecha_inicio_ensamblado.date_format'    => 'El campo Fecha Inicio Ensamblado no corresponde al formato DD/MM/YYYY.',
-                'fecha_finalizacion_ensamblado.date_format' => 'El campo Fecha Finalización Ensamblado no corresponde al formato DD/MM/YYYY.',
-                'fecha_inicio_soldadura.date_format'     => 'El campo Fecha Inicio Soldadura no corresponde al formato DD/MM/YYYY.',
-                'fecha_finalizacion_soldadura.date_format' => 'El campo Fecha Finalización Soldadura no corresponde al formato DD/MM/YYYY.',
-                'estado.in'              => 'El campo Estado debe ser: pendiente, fabricando o completada.'
+                'fecha_inicio.date'             => 'El campo Fecha Inicio no es una fecha válida.',
+                'fecha_finalizacion.date'       => 'El campo Fecha Finalización no es una fecha válida.',
+                'fecha_inicio_ensamblado.date'    => 'El campo Fecha Inicio Ensamblado no es una fecha válida.',
+                'fecha_finalizacion_ensamblado.date' => 'El campo Fecha Finalización Ensamblado no es una fecha válida.',
+                'fecha_inicio_soldadura.date'     => 'El campo Fecha Inicio Soldadura no es una fecha válida.',
+                'fecha_finalizacion_soldadura.date' => 'El campo Fecha Finalización Soldadura no es una fecha válida.',
+                'estado.in'              => 'El campo Estado no es válido.'
             ]);
 
-            // Convertir las fechas al formato 'Y-m-d' si existen
-            if (!empty($validatedData['fecha_inicio'])) {
-                $validatedData['fecha_inicio'] = Carbon::createFromFormat('d/m/Y', $validatedData['fecha_inicio'])
-                    ->format('Y-m-d');
+            // Convertir peso_kg a peso para el modelo
+            if (isset($validatedData['peso_kg'])) {
+                $validatedData['peso'] = $validatedData['peso_kg'];
+                unset($validatedData['peso_kg']);
             }
-            if (!empty($validatedData['fecha_finalizacion'])) {
-                $validatedData['fecha_finalizacion'] = Carbon::createFromFormat('d/m/Y', $validatedData['fecha_finalizacion'])
-                    ->format('Y-m-d');
-            }
-            if (!empty($validatedData['fecha_inicio_ensamblado'])) {
-                $validatedData['fecha_inicio_ensamblado'] = Carbon::createFromFormat('d/m/Y', $validatedData['fecha_inicio_ensamblado'])
-                    ->format('Y-m-d');
-            }
-            if (!empty($validatedData['fecha_finalizacion_ensamblado'])) {
-                $validatedData['fecha_finalizacion_ensamblado'] = Carbon::createFromFormat('d/m/Y', $validatedData['fecha_finalizacion_ensamblado'])
-                    ->format('Y-m-d');
-            }
-            if (!empty($validatedData['fecha_inicio_soldadura'])) {
-                $validatedData['fecha_inicio_soldadura'] = Carbon::createFromFormat('d/m/Y', $validatedData['fecha_inicio_soldadura'])
-                    ->format('Y-m-d');
-            }
-            if (!empty($validatedData['fecha_finalizacion_soldadura'])) {
-                $validatedData['fecha_finalizacion_soldadura'] = Carbon::createFromFormat('d/m/Y', $validatedData['fecha_finalizacion_soldadura'])
-                    ->format('Y-m-d');
+
+            // Convertir las fechas al formato 'Y-m-d' si vienen en otro formato
+            $camposFecha = ['fecha_inicio', 'fecha_finalizacion', 'fecha_inicio_ensamblado',
+                           'fecha_finalizacion_ensamblado', 'fecha_inicio_soldadura', 'fecha_finalizacion_soldadura'];
+
+            foreach ($camposFecha as $campo) {
+                if (!empty($validatedData[$campo])) {
+                    try {
+                        // Intentar parsear la fecha (acepta múltiples formatos)
+                        $validatedData[$campo] = Carbon::parse($validatedData[$campo])->format('Y-m-d');
+                    } catch (\Exception $e) {
+                        // Si falla, dejar null
+                        $validatedData[$campo] = null;
+                    }
+                }
             }
 
             // Actualizar la etiqueta con los datos validados

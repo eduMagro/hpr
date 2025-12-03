@@ -1409,6 +1409,67 @@ function esFinDeSemana(dateStr) {
     return dayOfWeek === 0 || dayOfWeek === 6;
 }
 
+/**
+ * Muestra un tooltip con la figura del elemento al hacer hover
+ * @param {string|number} elementoId - ID del elemento
+ * @param {string} dimensiones - String de dimensiones del elemento
+ * @param {HTMLElement} triggerBtn - Botón que disparó el evento
+ */
+function mostrarFiguraElementoModal(elementoId, dimensiones, triggerBtn) {
+    // Eliminar modal anterior si existe
+    const modalAnterior = document.getElementById('modal-figura-elemento-overlay');
+    if (modalAnterior) {
+        modalAnterior.remove();
+    }
+
+    // Calcular posición cerca del botón
+    const rect = triggerBtn.getBoundingClientRect();
+    const tooltipWidth = 320;
+    const tooltipHeight = 200;
+
+    // Posicionar a la derecha del botón, o a la izquierda si no hay espacio
+    let left = rect.right + 10;
+    if (left + tooltipWidth > window.innerWidth) {
+        left = rect.left - tooltipWidth - 10;
+    }
+
+    // Centrar verticalmente respecto al botón
+    let top = rect.top - (tooltipHeight / 2) + (rect.height / 2);
+    if (top < 10) top = 10;
+    if (top + tooltipHeight > window.innerHeight - 10) {
+        top = window.innerHeight - tooltipHeight - 10;
+    }
+
+    // Crear tooltip HTML
+    const modalHtml = `
+        <div id="modal-figura-elemento-overlay"
+             class="fixed bg-white rounded-lg shadow-2xl border border-gray-300"
+             style="z-index: 10001; left: ${left}px; top: ${top}px; width: ${tooltipWidth}px;"
+             onmouseleave="this.remove()">
+            <div class="flex items-center justify-between px-3 py-2 border-b bg-gray-100 rounded-t-lg">
+                <h3 class="text-xs font-semibold text-gray-700">Elemento #${elementoId}</h3>
+            </div>
+            <div class="p-2">
+                <div id="figura-elemento-container-${elementoId}" class="w-full h-40 bg-gray-50 rounded"></div>
+            </div>
+        </div>
+    `;
+
+    // Insertar tooltip en el body
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+
+    // Dibujar la figura después de insertar el modal
+    setTimeout(() => {
+        if (typeof window.dibujarFiguraElemento === 'function') {
+            window.dibujarFiguraElemento(
+                `figura-elemento-container-${elementoId}`,
+                dimensiones,
+                null
+            );
+        }
+    }, 50);
+}
+
 function construirFormularioFechas(planillas) {
     const filas = planillas
         .map((p, i) => {
@@ -1433,15 +1494,37 @@ function construirFormularioFechas(planillas) {
                 elementosHtml = p.elementos.map((el, idx) => {
                     const fechaElISO = el.fecha_entrega || '';
                     const pesoEl = el.peso ? parseFloat(el.peso).toFixed(2) : '-';
+                    const codigoEl = el.codigo || '-';
+                    const tieneDimensiones = el.dimensiones && el.dimensiones.trim() !== '';
+                    // Escapar dimensiones para JSON
+                    const dimensionesEscaped = tieneDimensiones ? el.dimensiones.replace(/"/g, '&quot;').replace(/'/g, '&#39;') : '';
+
                     return `
                     <tr class="elemento-row elemento-planilla-${p.id} bg-gray-50 hidden">
-                        <td class="px-2 py-1 text-xs text-gray-400 pl-8">↳ ${el.id}</td>
-                        <td class="px-2 py-1 text-xs text-gray-500" colspan="2">Marca: ${el.marca || '-'}</td>
+                        <td class="px-2 py-1 text-xs text-gray-400 pl-8">
+                            <div class="flex items-center gap-1">
+                                <span>↳</span>
+                                <span class="font-medium text-gray-600">${codigoEl}</span>
+                                ${tieneDimensiones ? `
+                                <button type="button"
+                                        class="ver-figura-elemento text-blue-500 hover:text-blue-700 hover:bg-blue-100 rounded p-0.5 transition-colors"
+                                        data-elemento-id="${el.id}"
+                                        data-dimensiones="${dimensionesEscaped}"
+                                        title="Ver figura del elemento">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                                    </svg>
+                                </button>
+                                ` : ''}
+                            </div>
+                        </td>
+                        <td class="px-2 py-1 text-xs text-gray-500">${el.marca || '-'}</td>
                         <td class="px-2 py-1 text-xs text-gray-500">Ø${el.diametro || '-'}</td>
                         <td class="px-2 py-1 text-xs text-gray-500">${el.longitud || '-'} mm</td>
                         <td class="px-2 py-1 text-xs text-gray-500">${el.barras || '-'} uds</td>
                         <td class="px-2 py-1 text-xs text-right text-gray-500">${pesoEl} kg</td>
-                        <td class="px-2 py-1">
+                        <td class="px-2 py-1" colspan="2">
                             <input type="date" class="swal2-input !m-0 !w-auto !text-xs elemento-fecha"
                                    data-elemento-id="${el.id}"
                                    data-planilla-id="${p.id}"
@@ -1452,24 +1535,21 @@ function construirFormularioFechas(planillas) {
             }
 
             return `
-<tr class="planilla-row hover:bg-blue-50 cursor-pointer" data-planilla-id="${p.id}" style="opacity:0; transform:translateY(4px); animation: swalRowIn .22s ease-out forwards; animation-delay:${i * 18}ms;">
-  <td class="px-2 py-1 text-xs">
-    ${tieneElementos ? `<button type="button" class="toggle-elementos mr-1 text-blue-500 hover:text-blue-700" data-planilla-id="${p.id}">▶</button>` : ''}
-    ${p.id}
+<tr class="planilla-row hover:bg-blue-50 bg-blue-100 border-t border-blue-200" data-planilla-id="${p.id}" style="opacity:0; transform:translateY(4px); animation: swalRowIn .22s ease-out forwards; animation-delay:${i * 18}ms;">
+  <td class="px-2 py-2 text-xs font-semibold text-blue-800" colspan="2">
+    ${tieneElementos ? `<button type="button" class="toggle-elementos mr-1 text-blue-600 hover:text-blue-800" data-planilla-id="${p.id}">▶</button>` : ''}
+    📄 ${codigoPlanilla}
+    ${tieneElementos ? `<span class="ml-1 text-xs text-blue-500 font-normal">(${numElementos} elem.)</span>` : ''}
   </td>
-  <td class="px-2 py-1 text-xs">${codObra}</td>
-  <td class="px-2 py-1 text-xs">${nombreObra}</td>
-  <td class="px-2 py-1 text-xs">${seccionObra}</td>
-  <td class="px-2 py-1 text-xs">${descripcionObra}</td>
-  <td class="px-2 py-1 text-xs">
-    ${codigoPlanilla}
-    ${tieneElementos ? `<span class="ml-1 text-xs text-gray-400">(${numElementos} elem.)</span>` : ''}
+  <td class="px-2 py-2 text-xs text-blue-700" colspan="2">
+    <span class="font-medium">${codObra}</span> ${nombreObra}
   </td>
-  <td class="px-2 py-1 text-xs text-right font-medium">${pesoTotal}</td>
-  <td class="px-2 py-1">
+  <td class="px-2 py-2 text-xs text-blue-600">${seccionObra || '-'}</td>
+  <td class="px-2 py-2 text-xs text-right font-semibold text-blue-800">${pesoTotal}</td>
+  <td class="px-2 py-2" colspan="2">
     <div class="flex items-center gap-1">
-      <input type="date" class="swal2-input !m-0 !w-auto planilla-fecha" data-planilla-id="${p.id}" value="${fechaISO}">
-      ${tieneElementos ? `<button type="button" class="aplicar-fecha-elementos text-xs bg-blue-500 hover:bg-blue-600 text-white px-2 py-1 rounded" data-planilla-id="${p.id}" title="Aplicar fecha a todos los elementos">↓</button>` : ''}
+      <input type="date" class="swal2-input !m-0 !w-auto planilla-fecha !bg-blue-50 !border-blue-300" data-planilla-id="${p.id}" value="${fechaISO}">
+      ${tieneElementos ? `<button type="button" class="aplicar-fecha-elementos text-xs bg-blue-600 hover:bg-blue-700 text-white px-2 py-1 rounded" data-planilla-id="${p.id}" title="Aplicar fecha a todos los elementos">↓</button>` : ''}
     </div>
   </td>
 </tr>
@@ -1496,14 +1576,13 @@ ${elementosHtml}`;
         <table class="min-w-full text-sm">
         <thead class="sticky top-0 bg-white z-10">
           <tr>
-            <th class="px-2 py-1 text-left">ID</th>
-            <th class="px-2 py-1 text-left">Cod. Obra</th>
-            <th class="px-2 py-1 text-left">Obra</th>
-            <th class="px-2 py-1 text-left">Sección</th>
-            <th class="px-2 py-1 text-left">Descripción</th>
-            <th class="px-2 py-1 text-left">Planilla</th>
-            <th class="px-2 py-1 text-left">Peso Total</th>
-            <th class="px-2 py-1 text-left">Fecha Entrega</th>
+            <th class="px-2 py-1 text-left">ID / Código</th>
+            <th class="px-2 py-1 text-left">Marca</th>
+            <th class="px-2 py-1 text-left">Ø</th>
+            <th class="px-2 py-1 text-left">Longitud</th>
+            <th class="px-2 py-1 text-left">Barras</th>
+            <th class="px-2 py-1 text-left">Peso</th>
+            <th class="px-2 py-1 text-left" colspan="2">Fecha Entrega</th>
           </tr>
         </thead>
           <tbody>${filas}</tbody>
@@ -1769,7 +1848,29 @@ async function cambiarFechasEntrega(planillasIds, calendar) {
                     });
                 });
 
-                // 6) Actualizar sumatorio inicial
+                // 6) Ver figura del elemento (hover)
+                container.querySelectorAll('.ver-figura-elemento').forEach(btn => {
+                    btn.addEventListener('mouseenter', (e) => {
+                        const elementoId = btn.dataset.elementoId;
+                        const dimensiones = btn.dataset.dimensiones?.replace(/&quot;/g, '"').replace(/&#39;/g, "'") || '';
+
+                        if (dimensiones && typeof window.dibujarFiguraElemento === 'function') {
+                            mostrarFiguraElementoModal(elementoId, dimensiones, btn);
+                        }
+                    });
+
+                    btn.addEventListener('mouseleave', (e) => {
+                        // Pequeño delay para permitir mover el mouse al modal
+                        setTimeout(() => {
+                            const modal = document.getElementById('modal-figura-elemento-overlay');
+                            if (modal && !modal.matches(':hover')) {
+                                modal.remove();
+                            }
+                        }, 100);
+                    });
+                });
+
+                // 7) Actualizar sumatorio inicial
                 setTimeout(() => {
                     actualizarSumatorio(planillas);
                 }, 100);

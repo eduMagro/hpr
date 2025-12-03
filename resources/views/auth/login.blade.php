@@ -47,22 +47,8 @@
 
         </div>
 
-        <!-- Remember Me -->
-        <div class="block mt-4">
-            <label for="remember_me" class="inline-flex items-center">
-                <input id="remember_me" type="checkbox"
-                    class="rounded border-gray-300 text-indigo-600 shadow-sm focus:ring-indigo-500" name="remember"
-                    checked>
-                <span class="ms-2 text-sm text-gray-600">{{ __('Recuerdame') }}</span>
-            </label>
-        </div>
-        <div class="block mt-4">
-            <label for="recordar_correo" class="inline-flex items-center">
-                <input id="recordar_correo" type="checkbox"
-                    class="rounded border-gray-300 text-indigo-600 shadow-sm focus:ring-indigo-500" checked>
-                <span class="ms-2 text-sm text-gray-600">Recordar correo</span>
-            </label>
-        </div>
+        <!-- Sesión persistente siempre activa -->
+        <input type="hidden" name="remember" value="1">
 
         <div class="flex items-center justify-between mt-4">
             @if (Route::has('password.request'))
@@ -80,7 +66,6 @@
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             const emailInput = document.getElementById('email');
-            const recordarCheckbox = document.getElementById('recordar_correo');
             const loginForm = document.getElementById('loginForm');
             const loginButton = document.getElementById('loginButton');
             let isSubmitting = false;
@@ -89,12 +74,9 @@
             const correoGuardado = localStorage.getItem('correoRecordado');
             if (correoGuardado) {
                 emailInput.value = correoGuardado;
-                recordarCheckbox.checked = true;
-            } else {
-                recordarCheckbox.checked = true;
             }
 
-            // Prevenir doble submit del formulario
+            // Prevenir doble submit del formulario y guardar correo siempre
             loginForm.addEventListener('submit', function(e) {
                 if (isSubmitting) {
                     e.preventDefault();
@@ -106,12 +88,8 @@
                 loginButton.innerHTML = 'Iniciando...';
                 loginButton.classList.add('opacity-50', 'cursor-not-allowed');
 
-                // Guardar correo según el checkbox
-                if (recordarCheckbox.checked) {
-                    localStorage.setItem('correoRecordado', emailInput.value);
-                } else {
-                    localStorage.removeItem('correoRecordado');
-                }
+                // Guardar correo siempre
+                localStorage.setItem('correoRecordado', emailInput.value);
             });
 
             // Toggle password visibility
@@ -121,15 +99,10 @@
             const eyeSlashIcon = document.getElementById('eyeSlashIcon');
 
             togglePassword.addEventListener('click', function() {
-                // Alternar el tipo de input entre password y text
                 const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
                 passwordInput.setAttribute('type', type);
-
-                // Alternar la visibilidad de los iconos
                 eyeIcon.classList.toggle('hidden');
                 eyeSlashIcon.classList.toggle('hidden');
-
-                // Actualizar el aria-label para accesibilidad
                 this.setAttribute('aria-label', type === 'password' ? 'Mostrar contraseña' : 'Ocultar contraseña');
             });
         });

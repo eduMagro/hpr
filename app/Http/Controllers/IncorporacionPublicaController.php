@@ -53,6 +53,12 @@ class IncorporacionPublicaController extends Controller
                 ->with('error', 'Este formulario ya fue completado anteriormente.');
         }
 
+        // Limpiar espacios del teléfono y número de afiliación antes de validar
+        $request->merge([
+            'telefono' => preg_replace('/\s+/', '', $request->telefono ?? ''),
+            'numero_afiliacion_ss' => preg_replace('/\s+/', '', $request->numero_afiliacion_ss ?? ''),
+        ]);
+
         // Validación base - con imágenes o PDF del DNI
         $rules = [
             'dni_frontal' => 'required|file|mimes:jpg,jpeg,png,pdf|max:5120',
@@ -216,9 +222,9 @@ class IncorporacionPublicaController extends Controller
             // Actualizar nombre y apellidos con los datos del formulario (verificados por el usuario)
             $datosActualizacion['name'] = ucwords(strtolower($validated['nombre_final']));
             $datosActualizacion['primer_apellido'] = ucwords(strtolower($validated['primer_apellido_final']));
-            if (!empty($validated['segundo_apellido_final'])) {
-                $datosActualizacion['segundo_apellido'] = ucwords(strtolower($validated['segundo_apellido_final']));
-            }
+            $datosActualizacion['segundo_apellido'] = !empty($validated['segundo_apellido_final'])
+                ? ucwords(strtolower($validated['segundo_apellido_final']))
+                : null;
 
             $incorporacion->update($datosActualizacion);
 

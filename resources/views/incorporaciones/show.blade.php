@@ -170,12 +170,24 @@
                                                 </svg>
                                                 Frontal
                                             </a>
+                                            <button onclick="abrirModalResubir('dni_frontal', 'DNI Frontal')" class="text-amber-500 hover:text-amber-700 p-1" title="Resubir">
+                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                                                </svg>
+                                            </button>
                                             <button onclick="eliminarArchivoIncorporacion('dni_frontal', 'DNI Frontal')" class="text-red-500 hover:text-red-700 p-1" title="Eliminar">
                                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                                                 </svg>
                                             </button>
                                         </div>
+                                    @else
+                                        <button onclick="abrirModalResubir('dni_frontal', 'DNI Frontal')" class="text-blue-600 hover:text-blue-800 text-sm flex items-center">
+                                            <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                                            </svg>
+                                            Subir frontal
+                                        </button>
                                     @endif
                                     @if($incorporacion->dni_trasero)
                                         <div class="flex items-center gap-1">
@@ -187,18 +199,37 @@
                                                 </svg>
                                                 Trasero
                                             </a>
+                                            <button onclick="abrirModalResubir('dni_trasero', 'DNI Trasero')" class="text-amber-500 hover:text-amber-700 p-1" title="Resubir">
+                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                                                </svg>
+                                            </button>
                                             <button onclick="eliminarArchivoIncorporacion('dni_trasero', 'DNI Trasero')" class="text-red-500 hover:text-red-700 p-1" title="Eliminar">
                                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                                                 </svg>
                                             </button>
                                         </div>
+                                    @else
+                                        <button onclick="abrirModalResubir('dni_trasero', 'DNI Trasero')" class="text-blue-600 hover:text-blue-800 text-sm flex items-center">
+                                            <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                                            </svg>
+                                            Subir trasero
+                                        </button>
                                     @endif
                                 </div>
                             </div>
                             <div>
                                 <label class="text-sm text-gray-500">N. Afiliación SS</label>
-                                <p class="font-medium">{{ $incorporacion->numero_afiliacion_ss }}</p>
+                                <div class="flex items-center gap-2">
+                                    <p class="font-medium" id="texto-afiliacion-ss">{{ $incorporacion->numero_afiliacion_ss ?? 'No especificado' }}</p>
+                                    <button onclick="editarAfiliacionSS()" class="text-amber-500 hover:text-amber-700 p-1" title="Editar">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                                        </svg>
+                                    </button>
+                                </div>
                             </div>
                             <div>
                                 <label class="text-sm text-gray-500">Email</label>
@@ -217,14 +248,26 @@
                                             <svg class="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                                             </svg>
-                                            Descargar certificado
+                                            Ver certificado
                                         </a>
+                                        <button onclick="abrirModalResubir('certificado_bancario', 'Certificado Bancario')" class="text-amber-500 hover:text-amber-700 p-1" title="Resubir">
+                                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                                            </svg>
+                                        </button>
                                         <button onclick="eliminarArchivoIncorporacion('certificado_bancario', 'Certificado Bancario')" class="text-red-500 hover:text-red-700 p-1" title="Eliminar">
                                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                                             </svg>
                                         </button>
                                     </div>
+                                @else
+                                    <button onclick="abrirModalResubir('certificado_bancario', 'Certificado Bancario')" class="text-blue-600 hover:text-blue-800 flex items-center mt-1">
+                                        <svg class="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                                        </svg>
+                                        Subir certificado
+                                    </button>
                                 @endif
                             </div>
                         </div>
@@ -378,7 +421,7 @@
         </div>
     </div>
 
-    <!-- Modal subir documento -->
+    <!-- Modal subir documento post-incorporación -->
     <div id="modalSubir" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50 flex items-center justify-center p-4">
         <div class="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
             <h3 class="text-lg font-semibold mb-4" id="modalTitulo">Subir documento</h3>
@@ -414,6 +457,38 @@
                     </button>
                     <button type="submit" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg">
                         Subir documento
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal resubir documento candidato (DNI, certificado bancario) -->
+    <div id="modalResubir" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
+            <h3 class="text-lg font-semibold mb-4" id="modalResubirTitulo">Resubir documento</h3>
+            <form id="formResubir" enctype="multipart/form-data">
+                @csrf
+                <input type="hidden" name="campo" id="modalResubirCampo">
+
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Nuevo archivo</label>
+                    <input type="file" name="archivo" accept=".pdf,.jpg,.jpeg,.png" required
+                        class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm text-gray-700
+                        file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0
+                        file:text-sm file:font-medium file:bg-amber-50 file:text-amber-700
+                        hover:file:bg-amber-100 file:cursor-pointer
+                        focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500
+                        transition-all duration-200">
+                    <p class="text-xs text-gray-500 mt-1.5">PDF, JPG o PNG. Máximo 5MB. El archivo anterior será reemplazado.</p>
+                </div>
+
+                <div class="flex justify-end gap-3">
+                    <button type="button" onclick="cerrarModalResubir()" class="px-4 py-2 text-gray-600 hover:text-gray-800">
+                        Cancelar
+                    </button>
+                    <button type="submit" class="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-lg">
+                        Reemplazar documento
                     </button>
                 </div>
             </form>
@@ -609,8 +684,123 @@
 
         // Cerrar modal con Escape
         document.addEventListener('keydown', function(e) {
-            if (e.key === 'Escape') cerrarModal();
+            if (e.key === 'Escape') {
+                cerrarModal();
+                cerrarModalResubir();
+            }
         });
+
+        // Funciones para resubir documentos del candidato
+        function abrirModalResubir(campo, nombre) {
+            document.getElementById('modalResubirCampo').value = campo;
+            document.getElementById('modalResubirTitulo').textContent = 'Resubir: ' + nombre;
+            document.getElementById('modalResubir').classList.remove('hidden');
+        }
+
+        function cerrarModalResubir() {
+            document.getElementById('modalResubir').classList.add('hidden');
+            document.getElementById('formResubir').reset();
+        }
+
+        document.getElementById('formResubir').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const formData = new FormData(this);
+
+            fetch('{{ route('incorporaciones.resubir-archivo', $incorporacion) }}', {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                    'Accept': 'application/json',
+                }
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Documento actualizado',
+                        text: data.message || 'El documento se ha reemplazado correctamente.',
+                        timer: 1500,
+                        showConfirmButton: false
+                    }).then(() => location.reload());
+                } else {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: data.message || 'Error al subir el documento'
+                    });
+                }
+            })
+            .catch(err => {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: 'Error al subir el documento'
+                });
+            });
+        });
+
+        function editarAfiliacionSS() {
+            const valorActual = '{{ $incorporacion->numero_afiliacion_ss ?? '' }}';
+
+            Swal.fire({
+                title: 'Editar N. Afiliación SS',
+                input: 'text',
+                inputValue: valorActual,
+                inputPlaceholder: '123456789012',
+                inputAttributes: {
+                    maxlength: 12,
+                    pattern: '[0-9]{12}'
+                },
+                showCancelButton: true,
+                confirmButtonText: 'Guardar',
+                cancelButtonText: 'Cancelar',
+                confirmButtonColor: '#2563eb',
+                inputValidator: (value) => {
+                    if (!value) {
+                        return 'Debes introducir el número de afiliación';
+                    }
+                    if (!/^[0-9]{12}$/.test(value)) {
+                        return 'El número debe tener exactamente 12 dígitos';
+                    }
+                }
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    fetch('{{ route('incorporaciones.actualizar-campo', $incorporacion) }}', {
+                        method: 'POST',
+                        headers: {
+                            'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                            'Content-Type': 'application/json',
+                            'Accept': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            campo: 'numero_afiliacion_ss',
+                            valor: result.value
+                        })
+                    })
+                    .then(r => r.json())
+                    .then(data => {
+                        if (data.success) {
+                            document.getElementById('texto-afiliacion-ss').textContent = result.value;
+                            Swal.fire({
+                                icon: 'success',
+                                title: 'Actualizado',
+                                text: 'Número de afiliación actualizado correctamente.',
+                                timer: 1500,
+                                showConfirmButton: false
+                            });
+                        } else {
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Error',
+                                text: data.message || 'Error al actualizar'
+                            });
+                        }
+                    });
+                }
+            });
+        }
 
         function aprobarIncorporacion(tipo) {
             const titulo = tipo === 'rrhh' ? 'RRHH' : 'CEO';

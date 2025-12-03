@@ -1,6 +1,6 @@
 {
   "resources/css/app.css": {
-    "file": "assets/app.ClyroXSA.css",
+    "file": "assets/app.bX5PXsqq.css",
     "src": "resources/css/app.css",
     "isEntry": true
   },
@@ -52,13 +52,13 @@
     "isEntry": true
   },
   "resources/js/maquinaJS/maquina-bundle.js": {
-    "file": "assets/maquina-bundle.Dno96JKH.js",
+    "file": "assets/maquina-bundle.DWTPg8Hq.js",
     "name": "maquina-bundle",
     "src": "resources/js/maquinaJS/maquina-bundle.js",
     "isEntry": true
   },
   "resources/js/modules/calendario-salidas/index.js": {
-    "file": "assets/index.DWi5q9FA.js",
+    "file": "assets/index.DWf5Ss5v.js",
     "name": "index",
     "src": "resources/js/modules/calendario-salidas/index.js",
     "isEntry": true

@@ -487,6 +487,11 @@
                         :posicion2="$posicion2" />
 
                     @include('components.maquinas.modales.normal.modales-normal')
+
+                    {{-- Incluir modal de mover paquete para grúa en modo fabricación --}}
+                    @if ($modoFabricacionGrua ?? false)
+                        @include('components.maquinas.modales.grua.modales-grua')
+                    @endif
             @endif
 
         </div>

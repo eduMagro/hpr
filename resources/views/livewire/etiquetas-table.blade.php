@@ -869,7 +869,16 @@
                 .then(response => response.json())
                 .then(data => {
                     if (data.success) {
-                        window.location.reload();
+                        // Mostrar toast de éxito sin recargar
+                        Swal.fire({
+                            toast: true,
+                            position: 'top-end',
+                            icon: 'success',
+                            title: 'Etiqueta actualizada',
+                            showConfirmButton: false,
+                            timer: 2000,
+                            timerProgressBar: true
+                        });
                     } else {
                         let errorMsg = data.message || "Ha ocurrido un error inesperado.";
                         if (data.errors) {
@@ -886,8 +895,6 @@
                             if (result.dismiss === Swal.DismissReason.cancel) {
                                 notificarProgramador(errorMsg);
                             }
-                        }).then(() => {
-                            window.location.reload();
                         });
                     }
                 })

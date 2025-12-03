@@ -71,14 +71,6 @@
                 </div>
             @endif
 
-            @if (count($asignacionesDisponibles) === 0)
-            <div class="text-center py-6 text-gray-500">
-                <svg class="w-12 h-12 mx-auto mb-3 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                </svg>
-                <p class="text-sm">No hay asignaciones pendientes de justificar en los últimos 60 días.</p>
-            </div>
-        @else
             {{-- Formulario de subida --}}
             <form wire:submit.prevent="guardarJustificante">
                 {{-- Selector de archivo --}}
@@ -142,26 +134,40 @@
                     </div>
                 @endif
 
-                {{-- Selector de asignación --}}
+                {{-- Selector de asignación o fecha manual --}}
                 <div class="mb-4">
                     <label class="block text-sm font-medium text-gray-700 mb-2">
-                        Asignación a justificar <span class="text-red-500">*</span>
-                        @if ($fechaDetectada && $asignacionSeleccionada)
-                            <span class="ml-2 text-xs text-green-600 font-normal">(detectada automáticamente)</span>
+                        @if (count($asignacionesDisponibles) > 0)
+                            Asignación a justificar <span class="text-red-500">*</span>
+                            @if ($fechaDetectada && $asignacionSeleccionada)
+                                <span class="ml-2 text-xs text-green-600 font-normal">(detectada automáticamente)</span>
+                            @endif
+                        @else
+                            Fecha a justificar <span class="text-red-500">*</span>
                         @endif
                     </label>
-                    <select wire:model.live="asignacionSeleccionada"
-                        class="w-full rounded-lg shadow-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-300 transition text-sm
-                            {{ $fechaDetectada && $asignacionSeleccionada ? 'border-green-400 bg-green-50' : 'border-gray-300' }}">
-                        <option value="">Selecciona una asignación...</option>
-                        @foreach ($asignacionesDisponibles as $asignacion)
-                            <option value="{{ $asignacion['id'] }}">
-                                {{ $asignacion['fecha_formateada'] }} - {{ $asignacion['turno'] }} - {{ $asignacion['obra'] }}
-                                @if ($asignacion['estado']) ({{ ucfirst($asignacion['estado']) }}) @endif
-                            </option>
-                        @endforeach
-                    </select>
-                    @error('asignacionSeleccionada') <p class="mt-1 text-sm text-red-600">{{ $message }}</p> @enderror
+
+                    @if (count($asignacionesDisponibles) > 0)
+                        <select wire:model.live="asignacionSeleccionada"
+                            class="w-full rounded-lg shadow-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-300 transition text-sm
+                                {{ $fechaDetectada && $asignacionSeleccionada ? 'border-green-400 bg-green-50' : 'border-gray-300' }}">
+                            <option value="">Selecciona una asignación...</option>
+                            @foreach ($asignacionesDisponibles as $asignacion)
+                                <option value="{{ $asignacion['id'] }}">
+                                    {{ $asignacion['fecha_formateada'] }} - {{ $asignacion['turno'] }} - {{ $asignacion['obra'] }}
+                                    @if ($asignacion['estado']) ({{ ucfirst($asignacion['estado']) }}) @endif
+                                </option>
+                            @endforeach
+                        </select>
+                        @error('asignacionSeleccionada') <p class="mt-1 text-sm text-red-600">{{ $message }}</p> @enderror
+                    @else
+                        <input type="date"
+                            wire:model.live="fechaManual"
+                            max="{{ date('Y-m-d') }}"
+                            class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-300 transition text-sm">
+                        <p class="mt-1 text-xs text-gray-500">Selecciona la fecha del día que quieres justificar.</p>
+                        @error('fechaManual') <p class="mt-1 text-sm text-red-600">{{ $message }}</p> @enderror
+                    @endif
                 </div>
 
                 {{-- Horas justificadas --}}
@@ -199,7 +205,7 @@
                             focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2
                             disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
                         wire:loading.attr="disabled"
-                        @if(!$archivo || !$asignacionSeleccionada) disabled @endif>
+                        @if(!$archivo || (!$asignacionSeleccionada && !$fechaManual)) disabled @endif>
                         <svg wire:loading.remove wire:target="guardarJustificante" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
                         </svg>
@@ -226,7 +232,6 @@
                     @endif
                 </div>
             </form>
-        @endif
 
         {{-- Info sobre requisitos --}}
         <div class="mt-4 flex items-start gap-2 text-xs text-gray-500 border-t pt-4">
@@ -240,7 +245,7 @@
                 </p>
             @else
                 <p>
-                    Sube el documento, selecciona la asignación correspondiente e introduce las horas justificadas.
+                    Sube el documento, selecciona la fecha correspondiente e introduce las horas justificadas.
                 </p>
             @endif
         </div>
