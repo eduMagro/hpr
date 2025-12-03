@@ -374,13 +374,15 @@ class AsignacionTurnoController extends Controller
             }
 
             /* 2) Obra cercana --------------------------------------------------------- */
-            // TODO: Descomentar para producción - Control de ubicación desactivado para pruebas
-            // $obraEncontrada = $this->buscarObraCercana($request->latitud, $request->longitud);
-            // if (!$obraEncontrada) {
-            //     return response()->json(['error' => 'No estás dentro de ninguna zona de trabajo.'], 403);
-            // }
-            // TEMPORAL: Usar primera obra activa para pruebas
-            $obraEncontrada = Obra::where('estado', 'activa')->first();
+            // Eduardo Magro puede fichar sin verificación de ubicación
+            if ($user->email === 'eduardo.magro@pacoreyes.com') {
+                $obraEncontrada = Obra::where('estado', 'activa')->first();
+            } else {
+                $obraEncontrada = $this->buscarObraCercana($request->latitud, $request->longitud);
+                if (!$obraEncontrada) {
+                    return response()->json(['error' => 'No estás dentro de ninguna zona de trabajo.'], 403);
+                }
+            }
 
             /* 3) Hora actual + detección de turno/fecha ------------------------------ */
             $ahora = now();
