@@ -1571,6 +1571,7 @@
                 let lastMouseY = 0;
                 let arrastreDesdePanel = false; // 🎯 Flag para mantener fantasma desde panel
                 let dragIntervalId = null; // 🎯 Interval para forzar visibilidad
+                let ghostHtmlBackup = ''; // 🎯 Backup del HTML del fantasma
                 window.tooltipsDeshabilitados = false;
 
                 // 🎯 Capturar posición del ratón SIEMPRE usando múltiples eventos
@@ -1649,6 +1650,9 @@
 
                     ghostElemento.innerHTML = '';
                     ghostElemento.appendChild(clone);
+
+                    // Guardar backup del HTML por si se vacía
+                    ghostHtmlBackup = ghostElemento.innerHTML;
                 }
 
                 // 🚀 Función para iniciar el drag
@@ -1684,7 +1688,7 @@
                         if (dragIntervalId) clearInterval(dragIntervalId);
                         dragIntervalId = setInterval(() => {
                             if (arrastreDesdePanel && dragContainer && lastMouseX > 0) {
-                                // Forzar estilos
+                                // Forzar estilos del contenedor
                                 dragContainer.style.cssText = `
                                     display: block !important;
                                     visibility: visible !important;
@@ -1697,13 +1701,18 @@
                                     transform: translate(${lastMouseX + 15}px, ${lastMouseY + 15}px);
                                 `;
 
-                                // También forzar en el ghost
+                                // Forzar estilos del ghost y restaurar contenido si se vació
                                 if (ghostElemento) {
                                     ghostElemento.style.cssText = `
                                         display: block !important;
                                         visibility: visible !important;
                                         opacity: 1 !important;
                                     `;
+
+                                    // Restaurar HTML si se vació
+                                    if (!ghostElemento.innerHTML && ghostHtmlBackup) {
+                                        ghostElemento.innerHTML = ghostHtmlBackup;
+                                    }
                                 }
                             }
                         }, 16); // ~60fps
