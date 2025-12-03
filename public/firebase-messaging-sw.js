@@ -1,5 +1,76 @@
-// Firebase Messaging Service Worker
+// Service Worker para PWA + Firebase Messaging
 // Este archivo DEBE estar en la raíz del dominio (public/)
+
+const CACHE_NAME = 'hpr-manager-v1';
+const STATIC_ASSETS = [
+    '/',
+    '/imagenes/ico/android-chrome-192x192.png',
+    '/imagenes/ico/android-chrome-512x512.png',
+    '/imagenes/ico/favicon-32x32.png',
+    '/imagenes/ico/apple-touch-icon.png'
+];
+
+// Evento de instalación - cachear recursos estáticos
+self.addEventListener('install', (event) => {
+    console.log('Service Worker: Instalando...');
+    event.waitUntil(
+        caches.open(CACHE_NAME)
+            .then((cache) => {
+                console.log('Service Worker: Cacheando archivos');
+                return cache.addAll(STATIC_ASSETS);
+            })
+            .then(() => self.skipWaiting())
+    );
+});
+
+// Evento de activación - limpiar caches antiguas
+self.addEventListener('activate', (event) => {
+    console.log('Service Worker: Activado');
+    event.waitUntil(
+        caches.keys().then((cacheNames) => {
+            return Promise.all(
+                cacheNames.map((cacheName) => {
+                    if (cacheName !== CACHE_NAME) {
+                        console.log('Service Worker: Eliminando cache antigua', cacheName);
+                        return caches.delete(cacheName);
+                    }
+                })
+            );
+        }).then(() => self.clients.claim())
+    );
+});
+
+// Evento fetch - estrategia network-first para contenido dinámico
+self.addEventListener('fetch', (event) => {
+    // Solo manejar requests GET
+    if (event.request.method !== 'GET') return;
+
+    // Ignorar requests a APIs externas
+    if (!event.request.url.startsWith(self.location.origin)) return;
+
+    event.respondWith(
+        fetch(event.request)
+            .then((response) => {
+                // Clonar la respuesta para guardarla en cache
+                const responseClone = response.clone();
+                caches.open(CACHE_NAME).then((cache) => {
+                    // Solo cachear respuestas válidas
+                    if (response.status === 200) {
+                        cache.put(event.request, responseClone);
+                    }
+                });
+                return response;
+            })
+            .catch(() => {
+                // Si falla la red, intentar servir desde cache
+                return caches.match(event.request);
+            })
+    );
+});
+
+// ============================================
+// Firebase Cloud Messaging
+// ============================================
 
 importScripts('https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js');
 importScripts('https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging-compat.js');

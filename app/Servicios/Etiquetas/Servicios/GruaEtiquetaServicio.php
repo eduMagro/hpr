@@ -46,11 +46,12 @@ class GruaEtiquetaServicio extends ServicioEtiquetaBase implements EtiquetaServi
 
         return DB::transaction(function () use ($datos, $productoId, $usoPaqueteCompleto) {
             $maquina = Maquina::findOrFail($datos->maquinaId);
-            $etiqueta = $this->bloquearEtiquetaConElementos($datos->etiquetaSubId);
+            $etiqueta = $this->bloquearEtiquetaConElementos((int) $datos->etiquetaSubId);
             $planilla = $etiqueta->planilla;
 
-            // Obtener producto con lock
-            $producto = Producto::where('id', $productoId)
+            // Obtener producto con lock (incluyendo productoBase para validar diámetro/longitud)
+            $producto = Producto::with('productoBase')
+                ->where('id', $productoId)
                 ->lockForUpdate()
                 ->first();
 
@@ -67,6 +68,66 @@ class GruaEtiquetaServicio extends ServicioEtiquetaBase implements EtiquetaServi
                     ['producto_id' => $productoId, 'codigo' => $producto->codigo]
                 );
             }
+
+            // Obtener diámetro y longitud del producto
+            $diametroProducto = (float) ($producto->productoBase->diametro ?? $producto->diametro ?? 0);
+            $longitudProducto = (float) ($producto->productoBase->longitud ?? $producto->longitud ?? 0);
+
+            // Obtener diámetro y longitud de la etiqueta (del primer elemento)
+            $primerElemento = $etiqueta->elementos()->first();
+            if (!$primerElemento) {
+                throw new ServicioEtiquetaException(
+                    'La etiqueta no tiene elementos.',
+                    ['etiqueta_sub_id' => $datos->etiquetaSubId]
+                );
+            }
+
+            $diametroEtiqueta = (float) ($primerElemento->diametro ?? 0);
+            $longitudEtiqueta = (float) ($primerElemento->longitud ?? 0);
+
+            // Validar que el diámetro coincida
+            if ($diametroProducto > 0 && $diametroEtiqueta > 0 && abs($diametroProducto - $diametroEtiqueta) > 0.1) {
+                throw new ServicioEtiquetaException(
+                    sprintf(
+                        'El diámetro del producto (Ø%.1f mm) no coincide con el de la etiqueta (Ø%.1f mm).',
+                        $diametroProducto,
+                        $diametroEtiqueta
+                    ),
+                    [
+                        'diametro_producto' => $diametroProducto,
+                        'diametro_etiqueta' => $diametroEtiqueta,
+                        'codigo_producto' => $producto->codigo,
+                    ]
+                );
+            }
+
+            // Validar que la longitud del producto sea suficiente para la etiqueta
+            // La longitud del elemento está en cm, la del producto en metros (o según configuración)
+            // Convertimos longitud de etiqueta de cm a metros para comparar
+            $longitudEtiquetaMetros = $longitudEtiqueta / 100;
+
+            if ($longitudProducto > 0 && $longitudEtiquetaMetros > 0 && $longitudProducto < $longitudEtiquetaMetros) {
+                throw new ServicioEtiquetaException(
+                    sprintf(
+                        'La longitud del producto (%.2f m) es menor que la requerida por la etiqueta (%.2f m).',
+                        $longitudProducto,
+                        $longitudEtiquetaMetros
+                    ),
+                    [
+                        'longitud_producto' => $longitudProducto,
+                        'longitud_etiqueta_m' => $longitudEtiquetaMetros,
+                        'codigo_producto' => $producto->codigo,
+                    ]
+                );
+            }
+
+            Log::info('🏗️ [Grúa] Validación de diámetro y longitud OK', [
+                'producto_codigo' => $producto->codigo,
+                'diametro_producto' => $diametroProducto,
+                'diametro_etiqueta' => $diametroEtiqueta,
+                'longitud_producto_m' => $longitudProducto,
+                'longitud_etiqueta_m' => $longitudEtiquetaMetros,
+            ]);
 
             // Obtener elementos de esta etiqueta en esta máquina (o sin máquina asignada)
             $elementosEnMaquina = $etiqueta->elementos()

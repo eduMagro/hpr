@@ -56,8 +56,11 @@ class IncorporacionPublicaController extends Controller
         // Validación base - con imágenes o PDF del DNI
         $rules = [
             'dni_frontal' => 'required|file|mimes:jpg,jpeg,png,pdf|max:5120',
-            'dni_trasero' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:5120',
+            'dni_trasero' => 'required|file|mimes:jpg,jpeg,png,pdf|max:5120',
             'dni' => 'nullable|string|size:9|regex:/^([0-9]{8}[A-Z]|[XYZ][0-9]{7}[A-Z])$/i', // Campo manual de respaldo
+            'nombre_dni' => 'required|string|max:100',
+            'primer_apellido_dni' => 'required|string|max:100',
+            'segundo_apellido_dni' => 'nullable|string|max:100',
             'numero_afiliacion_ss' => ['required', 'string', 'size:12', 'regex:/^[0-9]{12}$/'],
             'email' => 'required|email|max:255',
             'telefono' => ['required', 'string', 'regex:/^[0-9]{9}$/'],
@@ -78,14 +81,21 @@ class IncorporacionPublicaController extends Controller
         }
 
         $messages = [
-            'dni_frontal.required' => 'El archivo del frente del DNI es obligatorio.',
-            'dni_frontal.file' => 'El frente del DNI debe ser un archivo.',
-            'dni_frontal.mimes' => 'El frente del DNI debe ser JPG, PNG o PDF.',
-            'dni_frontal.max' => 'El archivo del frente del DNI no puede superar 5MB.',
-            'dni_trasero.mimes' => 'El reverso del DNI debe ser JPG, PNG o PDF.',
-            'dni_trasero.max' => 'El archivo del reverso del DNI no puede superar 5MB.',
-            'dni.size' => 'El DNI debe tener exactamente 9 caracteres.',
-            'dni.regex' => 'El formato del DNI no es válido (8 números + letra o NIE).',
+            'dni_frontal.required' => 'El archivo del frente del DNI/NIE es obligatorio.',
+            'dni_frontal.file' => 'El frente del DNI/NIE debe ser un archivo.',
+            'dni_frontal.mimes' => 'El frente del DNI/NIE debe ser JPG, PNG o PDF.',
+            'dni_frontal.max' => 'El archivo del frente del DNI/NIE no puede superar 5MB.',
+            'dni_trasero.required' => 'El archivo del reverso del DNI/NIE es obligatorio.',
+            'dni_trasero.file' => 'El reverso del DNI/NIE debe ser un archivo.',
+            'dni_trasero.mimes' => 'El reverso del DNI/NIE debe ser JPG, PNG o PDF.',
+            'dni_trasero.max' => 'El archivo del reverso del DNI/NIE no puede superar 5MB.',
+            'dni.size' => 'El DNI/NIE debe tener exactamente 9 caracteres.',
+            'dni.regex' => 'El formato del DNI/NIE no es válido (DNI: 8 números + letra, NIE: X/Y/Z + 7 números + letra).',
+            'nombre_dni.required' => 'El nombre es obligatorio.',
+            'nombre_dni.max' => 'El nombre no puede superar 100 caracteres.',
+            'primer_apellido_dni.required' => 'El primer apellido es obligatorio.',
+            'primer_apellido_dni.max' => 'El primer apellido no puede superar 100 caracteres.',
+            'segundo_apellido_dni.max' => 'El segundo apellido no puede superar 100 caracteres.',
             'numero_afiliacion_ss.required' => 'El número de afiliación es obligatorio.',
             'numero_afiliacion_ss.size' => 'El número de afiliación debe tener exactamente 12 dígitos.',
             'numero_afiliacion_ss.regex' => 'El número de afiliación debe contener solo números.',
@@ -113,7 +123,7 @@ class IncorporacionPublicaController extends Controller
 
         $validated = $request->validate($rules, $messages);
 
-        // Extraer DNI de las imágenes usando OCR
+        // Extraer DNI y datos personales de las imágenes usando OCR
         $dniOcrService = new DniOcrService();
         $resultadoOcr = $dniOcrService->extraerDni(
             $request->file('dni_frontal'),
@@ -144,7 +154,23 @@ class IncorporacionPublicaController extends Controller
         // Añadir el DNI validado a los datos
         $validated['dni'] = $dniFinal;
 
-        Log::info('OCR DNI - DNI extraído: ' . ($dniExtraido ?? 'null') . ', DNI manual: ' . ($dniManual ?? 'null') . ', DNI final: ' . $dniFinal);
+        // Usar los campos editables del formulario (el usuario puede haberlos corregido)
+        // Si el OCR extrajo datos, se pre-rellenaron pero el usuario tiene la última palabra
+        $validated['nombre_final'] = $validated['nombre_dni'];
+        $validated['primer_apellido_final'] = $validated['primer_apellido_dni'];
+        $validated['segundo_apellido_final'] = $validated['segundo_apellido_dni'] ?? null;
+
+        Log::info('OCR DNI - Datos finales (después de edición del usuario)', [
+            'dni_extraido' => $dniExtraido,
+            'dni_manual' => $dniManual,
+            'dni_final' => $dniFinal,
+            'nombre_ocr' => $resultadoOcr['nombre'],
+            'nombre_formulario' => $validated['nombre_dni'],
+            'primer_apellido_ocr' => $resultadoOcr['primer_apellido'],
+            'primer_apellido_formulario' => $validated['primer_apellido_dni'],
+            'segundo_apellido_ocr' => $resultadoOcr['segundo_apellido'],
+            'segundo_apellido_formulario' => $validated['segundo_apellido_dni'] ?? null,
+        ]);
 
         DB::beginTransaction();
 
@@ -173,7 +199,8 @@ class IncorporacionPublicaController extends Controller
             $certBancario->storeAs("private/documentos/{$carpetaUsuario}", $nombreCert);
 
             // Actualizar datos personales y vincular usuario
-            $incorporacion->update([
+            // Si el OCR extrajo nombre/apellidos, actualizar también la incorporación
+            $datosActualizacion = [
                 'dni' => strtoupper($validated['dni']),
                 'numero_afiliacion_ss' => $validated['numero_afiliacion_ss'],
                 'email' => strtolower($validated['email']),
@@ -184,7 +211,16 @@ class IncorporacionPublicaController extends Controller
                 'datos_completados_at' => now(),
                 'estado' => Incorporacion::ESTADO_DATOS_RECIBIDOS,
                 'user_id' => $usuario->id,
-            ]);
+            ];
+
+            // Actualizar nombre y apellidos con los datos del formulario (verificados por el usuario)
+            $datosActualizacion['name'] = ucwords(strtolower($validated['nombre_final']));
+            $datosActualizacion['primer_apellido'] = ucwords(strtolower($validated['primer_apellido_final']));
+            if (!empty($validated['segundo_apellido_final'])) {
+                $datosActualizacion['segundo_apellido'] = ucwords(strtolower($validated['segundo_apellido_final']));
+            }
+
+            $incorporacion->update($datosActualizacion);
 
             // Guardar documentos de formación
             if ($incorporacion->empresa_destino === Incorporacion::EMPRESA_HPR) {
@@ -244,6 +280,7 @@ class IncorporacionPublicaController extends Controller
 
     /**
      * Crear usuario automáticamente a partir de los datos de incorporación
+     * Prioriza los datos extraídos del DNI por OCR sobre los datos iniciales
      */
     private function crearUsuario(Incorporacion $incorporacion, array $datos): User
     {
@@ -268,10 +305,21 @@ class IncorporacionPublicaController extends Controller
         // Contraseña: DNI sin la letra (los 8 primeros caracteres numéricos)
         $password = preg_replace('/[^0-9]/', '', $dni);
 
+        // Usar los datos del formulario (el usuario los ha verificado/corregido)
+        $nombre = $datos['nombre_final'];
+        $primerApellido = $datos['primer_apellido_final'];
+        $segundoApellido = $datos['segundo_apellido_final'];
+
+        Log::info('Creando usuario con datos del formulario', [
+            'nombre' => $nombre,
+            'primer_apellido' => $primerApellido,
+            'segundo_apellido' => $segundoApellido,
+        ]);
+
         return User::create([
-            'name' => ucwords(strtolower($incorporacion->name)),
-            'primer_apellido' => ucwords(strtolower($incorporacion->primer_apellido)),
-            'segundo_apellido' => $incorporacion->segundo_apellido ? ucwords(strtolower($incorporacion->segundo_apellido)) : null,
+            'name' => ucwords(strtolower($nombre)),
+            'primer_apellido' => ucwords(strtolower($primerApellido)),
+            'segundo_apellido' => $segundoApellido ? ucwords(strtolower($segundoApellido)) : null,
             'dni' => $dni,
             'email' => strtolower($datos['email']),
             'movil_personal' => $datos['telefono'],

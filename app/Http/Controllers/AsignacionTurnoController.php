@@ -960,12 +960,17 @@ class AsignacionTurnoController extends Controller
                         $datos['obra_id'] = $request->obra_id;
                     }
 
-                    // Buscar asignación existente con whereDate para evitar problemas de formato
-                    $asignacionExistente = AsignacionTurno::where('user_id', $user->id)
+                    // Buscar asignación existente (incluyendo soft-deleted) con whereDate
+                    $asignacionExistente = AsignacionTurno::withTrashed()
+                        ->where('user_id', $user->id)
                         ->whereDate('fecha', $dateStr)
                         ->first();
 
                     if ($asignacionExistente) {
+                        // Restaurar si estaba eliminada
+                        if ($asignacionExistente->trashed()) {
+                            $asignacionExistente->restore();
+                        }
                         $asignacionExistente->update($datos);
                     } else {
                         // Usar try-catch para manejar posibles condiciones de carrera
@@ -975,11 +980,18 @@ class AsignacionTurnoController extends Controller
                                 'fecha'   => $dateStr,
                             ]));
                         } catch (\Illuminate\Database\QueryException $e) {
-                            // Si es error de duplicado, intentar actualizar
+                            // Si es error de duplicado, intentar actualizar (incluye soft-deleted)
                             if ($e->errorInfo[1] == 1062) {
-                                AsignacionTurno::where('user_id', $user->id)
+                                $asignacion = AsignacionTurno::withTrashed()
+                                    ->where('user_id', $user->id)
                                     ->whereDate('fecha', $dateStr)
-                                    ->update($datos);
+                                    ->first();
+                                if ($asignacion) {
+                                    if ($asignacion->trashed()) {
+                                        $asignacion->restore();
+                                    }
+                                    $asignacion->update($datos);
+                                }
                             } else {
                                 throw $e;
                             }

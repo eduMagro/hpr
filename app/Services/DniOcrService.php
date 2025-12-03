@@ -20,16 +20,19 @@ class DniOcrService
     }
 
     /**
-     * Extraer el DNI/NIE de las imágenes del documento
+     * Extraer el DNI/NIE y datos personales de las imágenes del documento
      *
      * @param UploadedFile $imagenFrontal Imagen del frente del DNI
      * @param UploadedFile|null $imagenTrasera Imagen del reverso del DNI (opcional)
-     * @return array ['dni' => string|null, 'confianza' => float, 'texto_raw' => string]
+     * @return array ['dni' => string|null, 'nombre' => string|null, 'primer_apellido' => string|null, 'segundo_apellido' => string|null, 'confianza' => float, 'texto_raw' => string]
      */
     public function extraerDni(UploadedFile $imagenFrontal, ?UploadedFile $imagenTrasera = null): array
     {
         $resultado = [
             'dni' => null,
+            'nombre' => null,
+            'primer_apellido' => null,
+            'segundo_apellido' => null,
             'confianza' => 0,
             'texto_raw' => '',
         ];
@@ -39,12 +42,26 @@ class DniOcrService
         $resultado['texto_raw'] .= "FRONTAL:\n" . $textoFrontal . "\n";
 
         $dni = $this->buscarDniEnTexto($textoFrontal);
+        $datosPersonales = $this->extraerDatosPersonales($textoFrontal);
 
-        // Si no encontramos en el frente y tenemos reverso, intentar ahí
-        if (!$dni && $imagenTrasera) {
+        // Si tenemos reverso, procesar también (MRZ suele estar en el reverso)
+        $textoTrasero = '';
+        if ($imagenTrasera) {
             $textoTrasero = $this->procesarImagenConApi($imagenTrasera);
             $resultado['texto_raw'] .= "TRASERA:\n" . $textoTrasero . "\n";
-            $dni = $this->buscarDniEnTexto($textoTrasero);
+
+            // Si no encontramos DNI en el frente, intentar en el reverso
+            if (!$dni) {
+                $dni = $this->buscarDniEnTexto($textoTrasero);
+            }
+
+            // Intentar extraer datos personales del reverso (MRZ)
+            $datosPersonalesTrasero = $this->extraerDatosPersonales($textoTrasero);
+
+            // Priorizar datos del reverso (MRZ es más fiable)
+            if (!empty($datosPersonalesTrasero['nombre'])) {
+                $datosPersonales = $datosPersonalesTrasero;
+            }
         }
 
         if ($dni) {
@@ -52,12 +69,176 @@ class DniOcrService
             $resultado['confianza'] = $this->validarFormatoDni($dni) ? 1.0 : 0.5;
         }
 
+        // Asignar datos personales al resultado
+        $resultado['nombre'] = $datosPersonales['nombre'] ?? null;
+        $resultado['primer_apellido'] = $datosPersonales['primer_apellido'] ?? null;
+        $resultado['segundo_apellido'] = $datosPersonales['segundo_apellido'] ?? null;
+
         Log::info('OCR DNI - Resultado final', [
             'dni_encontrado' => $resultado['dni'],
+            'nombre' => $resultado['nombre'],
+            'primer_apellido' => $resultado['primer_apellido'],
+            'segundo_apellido' => $resultado['segundo_apellido'],
             'confianza' => $resultado['confianza'],
         ]);
 
         return $resultado;
+    }
+
+    /**
+     * Extraer nombre y apellidos del texto OCR (zona MRZ o texto visible)
+     */
+    private function extraerDatosPersonales(string $texto): array
+    {
+        $datos = [
+            'nombre' => null,
+            'primer_apellido' => null,
+            'segundo_apellido' => null,
+        ];
+
+        $textoOriginal = $texto;
+        $texto = strtoupper($texto);
+
+        // ============================================
+        // MÉTODO 1: Buscar en zona MRZ del DNI/NIE español
+        // Formato MRZ línea 1: IDESP[DNI/NIE]<[APELLIDO1]<[APELLIDO2]<<[NOMBRE]<<<<
+        // Formato MRZ línea 2: Datos de nacimiento, sexo, etc.
+        // ============================================
+
+        // Patrón MRZ del DNI español (línea superior con apellidos y nombre)
+        // Ejemplo DNI: IDESP12345678A<GARCIA<LOPEZ<<MARIA<CARMEN<<<<<<
+        // Ejemplo NIE: IDESPX1234567A<GARCIA<LOPEZ<<MARIA<<<<<<
+        if (preg_match('/IDESP[0-9XYZ][0-9A-Z]{7,8}<+([A-Z]+)<([A-Z]*)<{2,}([A-Z<]+)/i', $texto, $matches)) {
+            $datos['primer_apellido'] = $this->limpiarTextoMrz($matches[1]);
+            $datos['segundo_apellido'] = $this->limpiarTextoMrz($matches[2]);
+            $datos['nombre'] = $this->limpiarTextoMrz($matches[3]);
+
+            Log::info('OCR DNI/NIE - Datos extraídos de MRZ formato 1', $datos);
+            return $datos;
+        }
+
+        // Patrón MRZ alternativo (con espacios o errores OCR)
+        if (preg_match('/ID\s*ESP[0-9XYZ][0-9A-Z\s]{6,9}[<\s]+([A-Z]+)[<\s]+([A-Z]*)[<\s]{2,}([A-Z\s<]+)/i', $texto, $matches)) {
+            $datos['primer_apellido'] = $this->limpiarTextoMrz($matches[1]);
+            $datos['segundo_apellido'] = $this->limpiarTextoMrz($matches[2]);
+            $datos['nombre'] = $this->limpiarTextoMrz($matches[3]);
+
+            Log::info('OCR DNI/NIE - Datos extraídos de MRZ formato 2', $datos);
+            return $datos;
+        }
+
+        // ============================================
+        // MÉTODO 1.5: MRZ de Tarjeta de Residencia (NIE)
+        // Formato: INESP[NIE]<[APELLIDO1]<[APELLIDO2]<<[NOMBRE]
+        // ============================================
+        if (preg_match('/I[DN]ESP[XYZ][0-9]{7}[A-Z]<+([A-Z]+)<([A-Z]*)<{2,}([A-Z<]+)/i', $texto, $matches)) {
+            $datos['primer_apellido'] = $this->limpiarTextoMrz($matches[1]);
+            $datos['segundo_apellido'] = $this->limpiarTextoMrz($matches[2]);
+            $datos['nombre'] = $this->limpiarTextoMrz($matches[3]);
+
+            Log::info('OCR NIE - Datos extraídos de MRZ tarjeta residencia', $datos);
+            return $datos;
+        }
+
+        // ============================================
+        // MÉTODO 2: Buscar etiquetas en el texto visible del DNI
+        // El frente del DNI tiene: APELLIDOS / NOMBRE
+        // ============================================
+
+        // Buscar "APELLIDOS" seguido del valor
+        if (preg_match('/APELLIDOS?\s*[:\-]?\s*([A-ZÁÉÍÓÚÑÜ]+(?:\s+[A-ZÁÉÍÓÚÑÜ]+)?)/i', $textoOriginal, $matches)) {
+            $apellidos = trim($matches[1]);
+            $partesApellidos = preg_split('/\s+/', $apellidos);
+
+            if (count($partesApellidos) >= 1) {
+                $datos['primer_apellido'] = $this->capitalizarNombre($partesApellidos[0]);
+            }
+            if (count($partesApellidos) >= 2) {
+                $datos['segundo_apellido'] = $this->capitalizarNombre($partesApellidos[1]);
+            }
+        }
+
+        // Buscar "NOMBRE" seguido del valor
+        if (preg_match('/NOMBRE\s*[:\-]?\s*([A-ZÁÉÍÓÚÑÜ]+(?:\s+[A-ZÁÉÍÓÚÑÜ]+)*)/i', $textoOriginal, $matches)) {
+            $datos['nombre'] = $this->capitalizarNombre(trim($matches[1]));
+        }
+
+        // ============================================
+        // MÉTODO 3: Buscar patrón de líneas del DNI frontal
+        // A veces el OCR lee las líneas en orden
+        // ============================================
+
+        // Si aún no tenemos datos, intentar buscar patrones más flexibles
+        if (empty($datos['nombre']) && empty($datos['primer_apellido'])) {
+            // Buscar dos líneas consecutivas que parezcan apellidos y nombre
+            // Patrón: línea con solo letras mayúsculas (apellidos)
+            // Seguida de otra línea con solo letras mayúsculas (nombre)
+            $lineas = preg_split('/[\r\n]+/', $texto);
+            $lineasValidas = [];
+
+            foreach ($lineas as $linea) {
+                $linea = trim($linea);
+                // Línea que solo contiene letras y espacios (posible nombre/apellido)
+                if (preg_match('/^[A-ZÁÉÍÓÚÑÜ\s]{2,50}$/', $linea) && strlen($linea) > 2) {
+                    $lineasValidas[] = $linea;
+                }
+            }
+
+            // Si encontramos al menos 2 líneas válidas, podrían ser apellidos y nombre
+            if (count($lineasValidas) >= 2) {
+                // Heurística: los apellidos suelen ir antes que el nombre
+                $posibleApellidos = $lineasValidas[0];
+                $posibleNombre = $lineasValidas[1];
+
+                $partesApellidos = preg_split('/\s+/', $posibleApellidos);
+                if (count($partesApellidos) >= 1 && empty($datos['primer_apellido'])) {
+                    $datos['primer_apellido'] = $this->capitalizarNombre($partesApellidos[0]);
+                }
+                if (count($partesApellidos) >= 2 && empty($datos['segundo_apellido'])) {
+                    $datos['segundo_apellido'] = $this->capitalizarNombre($partesApellidos[1]);
+                }
+                if (empty($datos['nombre'])) {
+                    $datos['nombre'] = $this->capitalizarNombre(trim($posibleNombre));
+                }
+            }
+        }
+
+        if (!empty($datos['nombre']) || !empty($datos['primer_apellido'])) {
+            Log::info('OCR DNI - Datos extraídos del texto visible', $datos);
+        }
+
+        return $datos;
+    }
+
+    /**
+     * Limpiar texto de zona MRZ (quitar < y formatear)
+     */
+    private function limpiarTextoMrz(string $texto): ?string
+    {
+        // Reemplazar < por espacios
+        $texto = str_replace('<', ' ', $texto);
+        // Quitar espacios múltiples
+        $texto = preg_replace('/\s+/', ' ', $texto);
+        $texto = trim($texto);
+
+        if (empty($texto)) {
+            return null;
+        }
+
+        return $this->capitalizarNombre($texto);
+    }
+
+    /**
+     * Capitalizar nombre correctamente (Primera letra mayúscula, resto minúscula)
+     */
+    private function capitalizarNombre(string $texto): string
+    {
+        $texto = mb_strtolower($texto, 'UTF-8');
+        $palabras = explode(' ', $texto);
+        $palabras = array_map(function($palabra) {
+            return mb_convert_case($palabra, MB_CASE_TITLE, 'UTF-8');
+        }, $palabras);
+        return implode(' ', $palabras);
     }
 
     /**
