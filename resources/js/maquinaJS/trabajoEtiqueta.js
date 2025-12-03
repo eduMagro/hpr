@@ -307,13 +307,55 @@ function initTrabajoEtiqueta() {
             return;
         }
 
+        // Validar diámetro y longitud ANTES de mostrar el modal de selección
+        const diametroEtiqueta = Number(window.DIAMETRO_POR_ETIQUETA?.[etiquetaId] ?? 0);
+        const longitudEtiquetaCm = Number(window.LONGITUD_POR_ETIQUETA?.[etiquetaId] ?? 0);
+        const longitudEtiquetaM = longitudEtiquetaCm / 100; // Convertir cm a metros
+
+        const diametroProducto = Number(producto.diametro ?? 0);
+        const longitudProducto = Number(producto.longitud ?? 0);
+
+        // Validar diámetro
+        if (diametroProducto > 0 && diametroEtiqueta > 0 && Math.abs(diametroProducto - diametroEtiqueta) > 0.1) {
+            await Swal.fire({
+                icon: 'error',
+                title: 'Diámetro incorrecto',
+                html: `
+                    <p>El diámetro del producto no coincide con el de la etiqueta.</p>
+                    <div class="mt-3 p-3 bg-red-50 rounded text-left">
+                        <p><strong>Producto:</strong> Ø${diametroProducto} mm</p>
+                        <p><strong>Etiqueta requiere:</strong> Ø${diametroEtiqueta} mm</p>
+                    </div>
+                `,
+            });
+            return;
+        }
+
+        // Validar longitud (producto debe ser >= longitud etiqueta)
+        if (longitudProducto > 0 && longitudEtiquetaM > 0 && longitudProducto < longitudEtiquetaM) {
+            await Swal.fire({
+                icon: 'error',
+                title: 'Longitud insuficiente',
+                html: `
+                    <p>La longitud del producto es menor que la requerida por la etiqueta.</p>
+                    <div class="mt-3 p-3 bg-red-50 rounded text-left">
+                        <p><strong>Producto:</strong> ${longitudProducto.toFixed(2)} m</p>
+                        <p><strong>Etiqueta requiere:</strong> ${longitudEtiquetaM.toFixed(2)} m</p>
+                    </div>
+                `,
+            });
+            return;
+        }
+
         // Mostrar info del producto y preguntar uso
+        const longitudTexto = producto.longitud ? `${producto.longitud} m` : 'N/A';
         const { value: paqueteCompleto, isConfirmed: confirmado } = await Swal.fire({
             title: '¿Cómo usar el paquete?',
             html: `
                 <div class="text-left p-4 bg-gray-100 rounded mb-4">
                     <p><strong>Producto:</strong> ${producto.codigo}</p>
                     <p><strong>Diámetro:</strong> Ø${producto.diametro} mm</p>
+                    <p><strong>Longitud:</strong> ${longitudTexto}</p>
                     <p><strong>Stock actual:</strong> ${producto.peso_stock?.toFixed(2) || 0} kg</p>
                     <p><strong>Colada:</strong> ${producto.n_colada || 'N/A'}</p>
                 </div>

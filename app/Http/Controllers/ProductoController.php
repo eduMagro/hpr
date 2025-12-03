@@ -680,6 +680,7 @@ class ProductoController extends Controller
             'id' => $producto->id,
             'codigo' => $producto->codigo,
             'diametro' => $producto->productoBase->diametro ?? $producto->diametro ?? null,
+            'longitud' => $producto->productoBase->longitud ?? $producto->longitud ?? null,
             'peso_stock' => (float) $producto->peso_stock,
             'peso_inicial' => (float) ($producto->peso_inicial ?? $producto->peso_stock),
             'n_colada' => $producto->n_colada,

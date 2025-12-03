@@ -369,6 +369,11 @@
                 $c = collect($els)->pluck('diametro')->filter()->map(fn($d) => (int) $d);
                 return (int) $c->countBy()->sortDesc()->keys()->first();
             }));
+        window.LONGITUD_POR_ETIQUETA = @json(
+            $elementosAgrupados->map(function ($els) {
+                // Obtener la longitud máxima de los elementos (en cm)
+                return (float) collect($els)->pluck('longitud')->filter()->max();
+            }));
 
         @if ($esBarra)
             window.LONGITUDES_POR_DIAMETRO = @json($longitudesPorDiametro);

@@ -1,62 +1,4 @@
 <x-app-layout>
-    @push('scripts')
-    <script>
-        // Alpine.js component para notificaciones push - debe cargarse antes de Alpine
-        document.addEventListener('alpine:init', () => {
-            Alpine.data('notificacionesPush', () => ({
-                status: 'default',
-
-                init() {
-                    this.checkStatus();
-                },
-
-                checkStatus() {
-                    if (!('Notification' in window) || !('serviceWorker' in navigator)) {
-                        this.status = 'unsupported';
-                        return;
-                    }
-                    this.status = Notification.permission;
-                },
-
-                async activarNotificaciones() {
-                    this.status = 'loading';
-
-                    try {
-                        if (typeof window.FirebasePush === 'undefined') {
-                            console.error('FirebasePush no está disponible');
-                            this.status = 'default';
-                            return;
-                        }
-
-                        await window.FirebasePush.init();
-                        const token = await window.FirebasePush.requestPermission();
-
-                        if (token) {
-                            this.status = 'granted';
-                            if (typeof Swal !== 'undefined') {
-                                Swal.fire({
-                                    title: 'Notificaciones activadas',
-                                    text: 'Recibirás alertas importantes en tu dispositivo.',
-                                    icon: 'success',
-                                    toast: true,
-                                    position: 'top-end',
-                                    showConfirmButton: false,
-                                    timer: 3000
-                                });
-                            }
-                        } else {
-                            this.checkStatus();
-                        }
-                    } catch (error) {
-                        console.error('Error activando notificaciones:', error);
-                        this.checkStatus();
-                    }
-                }
-            }));
-        });
-    </script>
-    @endpush
-
     <div class="py-4 lg:py-12 ">
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
             <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
@@ -305,7 +247,50 @@
                 </div>
 
                 <!-- Notificaciones Push -->
-                <div x-data="notificacionesPush()" class="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                <div x-data="{
+                    status: 'default',
+                    init() {
+                        this.checkStatus();
+                    },
+                    checkStatus() {
+                        if (!('Notification' in window) || !('serviceWorker' in navigator)) {
+                            this.status = 'unsupported';
+                            return;
+                        }
+                        this.status = Notification.permission;
+                    },
+                    async activarNotificaciones() {
+                        this.status = 'loading';
+                        try {
+                            if (typeof window.FirebasePush === 'undefined') {
+                                console.error('FirebasePush no está disponible');
+                                this.status = 'default';
+                                return;
+                            }
+                            await window.FirebasePush.init();
+                            const token = await window.FirebasePush.requestPermission();
+                            if (token) {
+                                this.status = 'granted';
+                                if (typeof Swal !== 'undefined') {
+                                    Swal.fire({
+                                        title: 'Notificaciones activadas',
+                                        text: 'Recibirás alertas importantes en tu dispositivo.',
+                                        icon: 'success',
+                                        toast: true,
+                                        position: 'top-end',
+                                        showConfirmButton: false,
+                                        timer: 3000
+                                    });
+                                }
+                            } else {
+                                this.checkStatus();
+                            }
+                        } catch (error) {
+                            console.error('Error activando notificaciones:', error);
+                            this.checkStatus();
+                        }
+                    }
+                }" class="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
                     <div class="flex items-center justify-between">
                         <div class="flex items-center gap-3">
                             <div class="flex-shrink-0">

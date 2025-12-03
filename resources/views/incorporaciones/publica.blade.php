@@ -121,7 +121,7 @@
                     <!-- DNI Trasero -->
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1.5">
-                            DNI - Parte Trasera <span class="text-gray-400 text-xs">(recomendado)</span>
+                            DNI - Parte Trasera <span class="text-red-500">*</span>
                         </label>
                         <div class="file-input-wrapper">
                             <div class="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center hover:border-blue-400 transition cursor-pointer"
@@ -133,7 +133,7 @@
                                 <p class="text-sm text-gray-600" id="text-dni-trasero">Toca para subir archivo</p>
                                 <p class="text-xs text-gray-400 mt-1">Foto o PDF del reverso del DNI</p>
                             </div>
-                            <input type="file" name="dni_trasero" accept="image/*,.pdf" capture="environment"
+                            <input type="file" name="dni_trasero" accept="image/*,.pdf" capture="environment" required
                                 onchange="updateFileName(this, 'text-dni-trasero'); previewDniImage(this, 'preview-dni-trasero')">
                         </div>
                         <div id="preview-dni-trasero" class="mt-2 hidden">
@@ -155,12 +155,55 @@
                 <!-- Input para corrección manual si el OCR falla -->
                 <div id="dni-manual-container" class="hidden">
                     <label for="dni" class="block text-sm font-medium text-gray-700 mb-1.5">
-                        <span class="text-amber-600">No se pudo detectar el DNI automáticamente.</span> Introdúcelo manualmente:
+                        <span class="text-amber-600">No se pudo detectar el DNI/NIE automáticamente.</span> Introdúcelo manualmente:
                     </label>
                     <input type="text" id="dni" name="dni" value="{{ old('dni') }}"
-                        placeholder="12345678A" maxlength="9"
+                        placeholder="12345678A o X1234567A" maxlength="9"
                         class="input-styled uppercase">
-                    <p class="text-xs text-gray-500 mt-1.5">8 números + letra (o NIE)</p>
+                    <p class="text-xs text-gray-500 mt-1.5">DNI: 8 números + letra | NIE: X/Y/Z + 7 números + letra</p>
+                </div>
+
+                <!-- Campos editables para nombre y apellidos extraídos del DNI -->
+                <div id="datos-personales-dni-container" class="mt-4 pt-4 border-t border-gray-200">
+                    <p class="text-sm text-gray-600 mb-3">
+                        <span class="font-medium">Datos extraídos del documento.</span>
+                        Verifica que sean correctos o corrígelos si es necesario:
+                    </p>
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        <div>
+                            <label for="nombre_dni" class="block text-sm font-medium text-gray-700 mb-1">
+                                Nombre <span class="text-red-500">*</span>
+                            </label>
+                            <input type="text" id="nombre_dni" name="nombre_dni"
+                                value="{{ old('nombre_dni', $incorporacion->name) }}"
+                                placeholder="Ej: María Carmen"
+                                class="input-styled" required>
+                        </div>
+                        <div>
+                            <label for="primer_apellido_dni" class="block text-sm font-medium text-gray-700 mb-1">
+                                Primer Apellido <span class="text-red-500">*</span>
+                            </label>
+                            <input type="text" id="primer_apellido_dni" name="primer_apellido_dni"
+                                value="{{ old('primer_apellido_dni', $incorporacion->primer_apellido) }}"
+                                placeholder="Ej: García"
+                                class="input-styled" required>
+                        </div>
+                        <div>
+                            <label for="segundo_apellido_dni" class="block text-sm font-medium text-gray-700 mb-1">
+                                Segundo Apellido
+                            </label>
+                            <input type="text" id="segundo_apellido_dni" name="segundo_apellido_dni"
+                                value="{{ old('segundo_apellido_dni', $incorporacion->segundo_apellido) }}"
+                                placeholder="Ej: López"
+                                class="input-styled">
+                        </div>
+                    </div>
+                    <p class="text-xs text-gray-500 mt-2">
+                        <svg class="w-4 h-4 inline-block text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        Estos datos deben coincidir exactamente con los de tu DNI/NIE
+                    </p>
                 </div>
             </div>
 

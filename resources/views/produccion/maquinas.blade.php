@@ -1573,6 +1573,32 @@
                 let dragIntervalId = null; // 🎯 Interval para forzar visibilidad
                 window.tooltipsDeshabilitados = false;
 
+                // 🎯 Capturar posición del ratón SIEMPRE usando múltiples eventos
+                function capturarPosicionMouse(e) {
+                    if (arrastreDesdePanel && e.clientX > 0 && e.clientY > 0) {
+                        lastMouseX = e.clientX;
+                        lastMouseY = e.clientY;
+                    }
+                }
+
+                // Escuchar en capture phase para interceptar antes que FullCalendar
+                document.addEventListener('dragover', function(e) {
+                    if (arrastreDesdePanel) {
+                        e.preventDefault();
+                        capturarPosicionMouse(e);
+                    }
+                }, true);
+
+                document.addEventListener('drag', capturarPosicionMouse, true);
+                document.addEventListener('mousemove', capturarPosicionMouse, true);
+
+                // También escuchar en el window por si acaso
+                window.addEventListener('dragover', function(e) {
+                    if (arrastreDesdePanel) {
+                        capturarPosicionMouse(e);
+                    }
+                }, true);
+
                 // 🎯 Sistema de movimiento con requestAnimationFrame para mayor fluidez
                 function actualizarPosicionDrag() {
                     if (mostrarIndicador && dragContainer && lastMouseX !== 0 && lastMouseY !== 0) {
@@ -1595,30 +1621,11 @@
                     if (mostrarIndicador && e.clientX !== 0 && e.clientY !== 0) {
                         lastMouseX = e.clientX;
                         lastMouseY = e.clientY;
-
-                        // Debug: verificar que se sigue recibiendo el evento
-                        if (arrastreDesdePanel && dragContainer) {
-                            // Forzar visibilidad inline
-                            dragContainer.setAttribute('style',
-                                `display: block !important; ` +
-                                `visibility: visible !important; ` +
-                                `opacity: 1 !important; ` +
-                                `position: fixed !important; ` +
-                                `top: 0 !important; ` +
-                                `left: 0 !important; ` +
-                                `z-index: 2147483647 !important; ` +
-                                `transform: translate(${lastMouseX + 15}px, ${lastMouseY + 15}px);`
-                            );
-                        }
                     }
                 }
 
                 // Guardar referencia para poder eliminar después
                 window._maquinasCalendarState.moverIndicadorHandler = moverIndicador;
-
-                document.addEventListener('mousemove', moverIndicador);
-                document.addEventListener('drag', moverIndicador);
-                document.addEventListener('dragover', moverIndicador); // 🎯 Capturar también dragover
 
                 // 🎨 Función para crear el fantasma del evento
                 function crearFantasma(elemento, evento = null) {
@@ -1677,6 +1684,7 @@
                         if (dragIntervalId) clearInterval(dragIntervalId);
                         dragIntervalId = setInterval(() => {
                             if (arrastreDesdePanel && dragContainer && lastMouseX > 0) {
+                                // Forzar estilos
                                 dragContainer.style.cssText = `
                                     display: block !important;
                                     visibility: visible !important;
@@ -1688,6 +1696,15 @@
                                     pointer-events: none !important;
                                     transform: translate(${lastMouseX + 15}px, ${lastMouseY + 15}px);
                                 `;
+
+                                // También forzar en el ghost
+                                if (ghostElemento) {
+                                    ghostElemento.style.cssText = `
+                                        display: block !important;
+                                        visibility: visible !important;
+                                        opacity: 1 !important;
+                                    `;
+                                }
                             }
                         }, 16); // ~60fps
                     }
@@ -2672,6 +2689,17 @@
                 });
                 calendar.render();
                 window.calendar = calendar;
+
+                // 🎯 Listener específico para el calendario para capturar dragover
+                const calElDragListener = document.getElementById('calendario');
+                if (calElDragListener) {
+                    calElDragListener.addEventListener('dragover', function(e) {
+                        if (arrastreDesdePanel) {
+                            lastMouseX = e.clientX;
+                            lastMouseY = e.clientY;
+                        }
+                    }, true);
+                }
 
                 // 🎯 Aplicar líneas separadoras de turnos dinámicamente
                 window.aplicarLineasTurnos = function() {

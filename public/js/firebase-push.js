@@ -3,6 +3,11 @@
  * Inicializa FCM y gestiona el token del dispositivo
  */
 
+// Evitar redeclaración si el script se carga múltiples veces
+if (typeof window.FirebasePush !== 'undefined') {
+    // Ya está definido, no hacer nada
+} else {
+
 class FirebasePush {
     constructor() {
         this.messaging = null;
@@ -392,6 +397,61 @@ class FirebasePush {
 // Instancia global
 window.FirebasePush = new FirebasePush();
 
+// ============================================
+// PWA Install Prompt
+// ============================================
+
+let deferredPrompt = null;
+
+// Capturar el evento de instalación antes de que el navegador lo muestre
+window.addEventListener('beforeinstallprompt', (e) => {
+    console.log('PWA: beforeinstallprompt capturado');
+    e.preventDefault();
+    deferredPrompt = e;
+
+    // Disparar evento personalizado para que Alpine.js pueda reaccionar
+    window.dispatchEvent(new CustomEvent('pwa-install-available'));
+});
+
+// Detectar si la app ya está instalada
+window.addEventListener('appinstalled', () => {
+    console.log('PWA: Aplicación instalada');
+    deferredPrompt = null;
+    window.dispatchEvent(new CustomEvent('pwa-installed'));
+});
+
+/**
+ * Mostrar el prompt de instalación de PWA
+ */
+window.showPWAInstallPrompt = async function() {
+    if (!deferredPrompt) {
+        console.log('PWA: No hay prompt disponible');
+        return false;
+    }
+
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+    console.log('PWA: Usuario eligió:', outcome);
+
+    deferredPrompt = null;
+    return outcome === 'accepted';
+};
+
+/**
+ * Verificar si la PWA puede ser instalada
+ */
+window.canInstallPWA = function() {
+    return deferredPrompt !== null;
+};
+
+/**
+ * Verificar si la app está en modo standalone (instalada)
+ */
+window.isPWAInstalled = function() {
+    return window.matchMedia('(display-mode: standalone)').matches ||
+           window.navigator.standalone === true;
+};
+
 // Auto-inicializar si hay un usuario autenticado
 document.addEventListener('DOMContentLoaded', async () => {
     // Verificar si el usuario está autenticado (presencia de csrf-token y body con data-user)
@@ -408,3 +468,5 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
 });
+
+} // Fin del bloque if para evitar redeclaración

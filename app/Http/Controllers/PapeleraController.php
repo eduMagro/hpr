@@ -51,7 +51,7 @@ class PapeleraController extends Controller
             'planillas' => Planilla::onlyTrashed()->with('cliente', 'obra')->get(),
             'etiquetas' => Etiqueta::onlyTrashed()->with('planilla')->get(),
             'paquetes' => Paquete::onlyTrashed()->with('planilla')->get(),
-            'elementos' => Elemento::onlyTrashed()->with('etiqueta')->get(),
+            'elementos' => Elemento::onlyTrashed()->with('etiquetaRelacion')->get(),
             'pedidos' => Pedido::onlyTrashed()->with('fabricante')->get(),
             'pedidos_globales' => PedidoGlobal::onlyTrashed()->get(),
             'movimientos' => Movimiento::onlyTrashed()->get(),

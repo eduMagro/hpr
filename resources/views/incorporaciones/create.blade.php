@@ -66,11 +66,11 @@
                     </div>
                     <div>
                         <label for="primer_apellido" class="block text-sm font-medium text-gray-700 mb-2">
-                            Primer apellido <span class="text-red-500">*</span>
+                            Primer apellido
                         </label>
                         <input type="text" id="primer_apellido" name="primer_apellido" value="{{ old('primer_apellido') }}"
                             placeholder="Primer apellido"
-                            class="w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500" required>
+                            class="w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500">
                         @error('primer_apellido')
                             <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                         @enderror

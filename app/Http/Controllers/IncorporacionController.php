@@ -71,7 +71,7 @@ class IncorporacionController extends Controller
         $validated = $request->validate([
             'empresa_destino' => 'required|in:hpr_servicios,hierros_paco_reyes',
             'name' => 'required|string|max:255',
-            'primer_apellido' => 'required|string|max:255',
+            'primer_apellido' => 'nullable|string|max:255',
             'segundo_apellido' => 'nullable|string|max:255',
             'telefono_provisional' => 'required|string|max:20',
         ]);
@@ -128,7 +128,7 @@ class IncorporacionController extends Controller
         $validated = $request->validate([
             'puesto' => 'nullable|string|max:255',
             'name' => 'required|string|max:255',
-            'primer_apellido' => 'required|string|max:255',
+            'primer_apellido' => 'nullable|string|max:255',
             'segundo_apellido' => 'nullable|string|max:255',
             'email_provisional' => 'nullable|email|max:255',
             'telefono_provisional' => 'nullable|string|max:20',
