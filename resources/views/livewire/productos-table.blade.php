@@ -315,11 +315,11 @@
                                                 <path d="M8.5 2A1.5 1.5 0 0 1 10 3.5V10h.5V4A1.5 1.5 0 0 1 13 4v6h.5V5.5a1.5 1.5 0 0 1 3 0V10h.5V7a1.5 1.5 0 0 1 3 0v9.5a3.5 3.5 0 0 1-7 0V18h-2a3 3 0 0 1-3-3v-4H8V3.5A1.5 1.5 0 0 1 8.5 2z" />
                                             </svg>
                                         </button>
-                                        <a href="{{ route('productos.editarConsumir', $producto->id) }}" data-consumir="{{ route('productos.editarConsumir', $producto->id) }}" class="btn-consumir w-6 h-6 bg-red-100 text-red-600 rounded hover:bg-red-200 flex items-center justify-center" title="Consumir">
+                                        <button type="button" data-consumir="{{ route('productos.editarConsumir', $producto->id) }}" class="btn-consumir w-6 h-6 bg-red-100 text-red-600 rounded hover:bg-red-200 flex items-center justify-center" title="Consumir">
                                             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="currentColor" viewBox="0 0 24 24">
                                                 <path d="M13.5 3.5c-2 2-1.5 4-3 5.5s-4 1-4 5a6 6 0 0012 0c0-2-1-3.5-2-4.5s-1-3-3-6z" />
                                             </svg>
-                                        </a>
+                                        </button>
                                         <x-tabla.boton-eliminar :action="route('productos.destroy', $producto->id)" />
                                     </div>
                                 </template>
@@ -424,7 +424,8 @@
 
                 e.preventDefault();
 
-                const url = btn.dataset.consumir || btn.getAttribute('href');
+                const url = btn.dataset.consumir;
+                if (!url) return;
 
                 const { value: opcion } = await Swal.fire({
                     title: '¿Cómo deseas consumir el material?',
