@@ -91,7 +91,7 @@
                 </h2>
 
                 <p class="text-sm text-gray-600 mb-4">
-                    Sube fotos claras de tu DNI o NIE. El sistema extraerá automáticamente el número.
+                    Sube fotos claras de tu DNI o NIE e introduce los datos manualmente.
                 </p>
 
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
@@ -164,37 +164,21 @@
                     </div>
                 </div>
 
-                <!-- Campo DNI/NIE (se intentará detectar automáticamente, si no, introducir manualmente) -->
+                <!-- Campo DNI/NIE y datos personales -->
                 <div class="mt-4 pt-4 border-t border-gray-200">
-                    <div class="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
-                        <div class="flex items-start">
-                            <svg class="w-5 h-5 text-blue-600 mr-2 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                            </svg>
-                            <p class="text-sm text-blue-700">
-                                El sistema intentará detectar tu DNI/NIE de las fotos automáticamente.
-                                Si no lo detecta correctamente, introdúcelo manualmente en el campo de abajo.
-                            </p>
-                        </div>
-                    </div>
+                    <p class="text-sm text-gray-600 mb-3">
+                        <span class="font-medium">Introduce tus datos</span> tal como aparecen en tu DNI/NIE:
+                    </p>
 
                     <div class="mb-4">
                         <label for="dni" class="block text-sm font-medium text-gray-700 mb-1">
-                            DNI/NIE <span class="text-gray-400 text-xs">(déjalo vacío si las fotos son claras, o introdúcelo si no se detecta)</span>
+                            DNI/NIE <span class="text-red-500">*</span>
                         </label>
                         <input type="text" id="dni" name="dni" value="{{ old('dni', $incorporacion->dni) }}"
-                            placeholder="12345678A o X1234567A" maxlength="9"
+                            placeholder="12345678A o X1234567A" maxlength="9" required
                             class="input-styled uppercase w-full sm:w-64">
                         <p class="text-xs text-gray-500 mt-1">DNI: 8 números + letra | NIE: X/Y/Z + 7 números + letra</p>
                     </div>
-                </div>
-
-                <!-- Campos editables para nombre y apellidos -->
-                <div id="datos-personales-dni-container" class="mt-4 pt-4 border-t border-gray-200">
-                    <p class="text-sm text-gray-600 mb-3">
-                        <span class="font-medium">Introduce tus datos personales</span>
-                        tal como aparecen en tu DNI/NIE:
-                    </p>
                     <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
                         <div>
                             <label for="nombre_dni" class="block text-sm font-medium text-gray-700 mb-1">

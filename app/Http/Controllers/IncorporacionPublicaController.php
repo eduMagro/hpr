@@ -8,7 +8,6 @@ use App\Models\IncorporacionLog;
 use App\Models\User;
 use App\Models\Empresa;
 use App\Models\Categoria;
-use App\Services\DniOcrService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Log;
@@ -84,7 +83,7 @@ class IncorporacionPublicaController extends Controller
         $rules = [
             'dni_frontal' => ($tieneDniFrontalTmp ? 'nullable' : 'required') . '|file|mimes:jpg,jpeg,png,pdf|max:15360',
             'dni_trasero' => ($tieneDniTraseroTmp ? 'nullable' : 'required') . '|file|mimes:jpg,jpeg,png,pdf|max:15360',
-            'dni' => 'nullable|string|size:9|regex:/^([0-9]{8}[A-Z]|[XYZ][0-9]{7}[A-Z])$/i',
+            'dni' => ['required', 'string', 'size:9', 'regex:/^([0-9]{8}[A-Z]|[XYZ][0-9]{7}[A-Z])$/i'],
             'nombre_dni' => 'required|string|max:100',
             'primer_apellido_dni' => 'required|string|max:100',
             'segundo_apellido_dni' => 'nullable|string|max:100',
@@ -151,72 +150,18 @@ class IncorporacionPublicaController extends Controller
 
         $validated = $request->validate($rules, $messages);
 
-        // Intentar extraer DNI con OCR si hay archivos
         $sessionKey = "incorporacion_tmp_{$token}";
-        $dniFrontalFile = $request->file('dni_frontal');
-        $dniTraseroFile = $request->file('dni_trasero');
 
-        // Si no hay archivo nuevo pero hay temporal, crear ruta para OCR
-        $dniFrontalPath = null;
-        $dniTraseroPath = null;
+        // DNI en mayúsculas
+        $validated['dni'] = strtoupper($validated['dni']);
 
-        if (!$dniFrontalFile && session()->has("{$sessionKey}.dni_frontal")) {
-            $tmpData = session()->get("{$sessionKey}.dni_frontal");
-            if (isset($tmpData['ruta']) && Storage::exists($tmpData['ruta'])) {
-                $dniFrontalPath = Storage::path($tmpData['ruta']);
-            }
-        }
-
-        if (!$dniTraseroFile && session()->has("{$sessionKey}.dni_trasero")) {
-            $tmpData = session()->get("{$sessionKey}.dni_trasero");
-            if (isset($tmpData['ruta']) && Storage::exists($tmpData['ruta'])) {
-                $dniTraseroPath = Storage::path($tmpData['ruta']);
-            }
-        }
-
-        // Intentar OCR solo si hay archivos disponibles
-        $dniExtraido = null;
-        if ($dniFrontalFile || $dniFrontalPath) {
-            $dniOcrService = new DniOcrService();
-            $resultadoOcr = $dniOcrService->extraerDni(
-                $dniFrontalFile,
-                $dniTraseroFile,
-                $dniFrontalPath,
-                $dniTraseroPath
-            );
-            $dniExtraido = $resultadoOcr['dni'];
-        }
-
-        // Usar DNI del formulario (manual) o el extraído por OCR
-        $dniManual = $request->input('dni');
-        $dniFinal = !empty($dniManual) ? strtoupper($dniManual) : $dniExtraido;
-
-        // Si no tenemos DNI válido, redirigir con error
-        if (empty($dniFinal)) {
-            return redirect()->route('incorporacion.publica', $token)
-                ->with('error', 'No se pudo detectar el DNI/NIE de las fotos. Por favor, introdúcelo manualmente en el campo correspondiente.')
-                ->withInput();
-        }
-
-        // Validar formato del DNI
-        $dniOcrService = $dniOcrService ?? new DniOcrService();
-        if (!$dniOcrService->validarFormatoDni($dniFinal)) {
-            return redirect()->route('incorporacion.publica', $token)
-                ->with('error', 'El DNI/NIE introducido (' . $dniFinal . ') no tiene un formato válido. Debe ser 8 números + letra (DNI) o X/Y/Z + 7 números + letra (NIE).')
-                ->withInput();
-        }
-
-        $validated['dni'] = $dniFinal;
-
-        // Usar los campos editables del formulario
+        // Usar los campos del formulario
         $validated['nombre_final'] = $validated['nombre_dni'];
         $validated['primer_apellido_final'] = $validated['primer_apellido_dni'];
         $validated['segundo_apellido_final'] = $validated['segundo_apellido_dni'] ?? null;
 
         Log::info('Incorporación - Datos procesados', [
-            'dni_ocr' => $dniExtraido,
-            'dni_manual' => $dniManual,
-            'dni_final' => $dniFinal,
+            'dni' => $validated['dni'],
             'nombre' => $validated['nombre_dni'],
             'primer_apellido' => $validated['primer_apellido_dni'],
             'segundo_apellido' => $validated['segundo_apellido_dni'] ?? null,
