@@ -30,7 +30,7 @@
 
     init() {
         window.addEventListener('toggleLeft', () => {
-            this.showLeft = JSON.parse(localStorage.getItem('showLeft') ?? 'false');
+            this.showLeft = JSON.parse(localStorage.getItem('showLeft') ?? 'true');
         });
         window.addEventListener('solo', () => {
             this.showLeft = false;

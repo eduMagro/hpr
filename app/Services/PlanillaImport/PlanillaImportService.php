@@ -302,9 +302,11 @@ class PlanillaImportService
 
     /**
      * Verifica qué códigos de planilla ya existen en la base de datos.
+     * También elimina definitivamente las planillas soft-deleted para evitar
+     * errores de "Duplicate entry" en la base de datos.
      *
      * @param array $codigos
-     * @return array Códigos que ya existen
+     * @return array Códigos que ya existen (activos, no eliminados)
      */
     protected function verificarDuplicados(array $codigos): array
     {
@@ -312,6 +314,33 @@ class PlanillaImportService
             return [];
         }
 
+        // Primero, eliminar definitivamente las planillas soft-deleted que coincidan
+        // para evitar errores de "Duplicate entry" al crear nuevas
+        $softDeleted = Planilla::onlyTrashed()
+            ->whereIn('codigo', $codigos)
+            ->get();
+
+        if ($softDeleted->isNotEmpty()) {
+            $codigosSoftDeleted = $softDeleted->pluck('codigo')->toArray();
+
+            Log::channel('planilla_import')->info("🗑️ Eliminando definitivamente planillas soft-deleted para reimportación", [
+                'codigos' => $codigosSoftDeleted,
+            ]);
+
+            // Eliminar elementos asociados primero (force delete)
+            foreach ($softDeleted as $planilla) {
+                $planilla->elementos()->withTrashed()->forceDelete();
+                // Eliminar etiquetas asociadas
+                Etiqueta::where('planilla_id', $planilla->id)->delete();
+            }
+
+            // Eliminar definitivamente las planillas
+            Planilla::onlyTrashed()
+                ->whereIn('codigo', $codigos)
+                ->forceDelete();
+        }
+
+        // Ahora verificar cuáles existen realmente (activas)
         return Planilla::whereIn('codigo', $codigos)
             ->pluck('codigo')
             ->toArray();

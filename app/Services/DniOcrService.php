@@ -22,11 +22,13 @@ class DniOcrService
     /**
      * Extraer el DNI/NIE y datos personales de las imágenes del documento
      *
-     * @param UploadedFile $imagenFrontal Imagen del frente del DNI
+     * @param UploadedFile|null $imagenFrontal Imagen del frente del DNI
      * @param UploadedFile|null $imagenTrasera Imagen del reverso del DNI (opcional)
+     * @param string|null $rutaFrontalTmp Ruta de archivo temporal frontal (si no hay UploadedFile)
+     * @param string|null $rutaTraseraTmp Ruta de archivo temporal trasero (si no hay UploadedFile)
      * @return array ['dni' => string|null, 'nombre' => string|null, 'primer_apellido' => string|null, 'segundo_apellido' => string|null, 'confianza' => float, 'texto_raw' => string]
      */
-    public function extraerDni(UploadedFile $imagenFrontal, ?UploadedFile $imagenTrasera = null): array
+    public function extraerDni(?UploadedFile $imagenFrontal, ?UploadedFile $imagenTrasera = null, ?string $rutaFrontalTmp = null, ?string $rutaTraseraTmp = null): array
     {
         $resultado = [
             'dni' => null,
@@ -37,8 +39,13 @@ class DniOcrService
             'texto_raw' => '',
         ];
 
-        // Intentar extraer del frente
-        $textoFrontal = $this->procesarImagenConApi($imagenFrontal);
+        // Intentar extraer del frente (desde UploadedFile o desde ruta temporal)
+        $textoFrontal = '';
+        if ($imagenFrontal) {
+            $textoFrontal = $this->procesarImagenConApi($imagenFrontal);
+        } elseif ($rutaFrontalTmp && file_exists($rutaFrontalTmp)) {
+            $textoFrontal = $this->procesarImagenConRuta($rutaFrontalTmp);
+        }
         $resultado['texto_raw'] .= "FRONTAL:\n" . $textoFrontal . "\n";
 
         $dni = $this->buscarDniEnTexto($textoFrontal);
@@ -48,6 +55,11 @@ class DniOcrService
         $textoTrasero = '';
         if ($imagenTrasera) {
             $textoTrasero = $this->procesarImagenConApi($imagenTrasera);
+        } elseif ($rutaTraseraTmp && file_exists($rutaTraseraTmp)) {
+            $textoTrasero = $this->procesarImagenConRuta($rutaTraseraTmp);
+        }
+
+        if (!empty($textoTrasero)) {
             $resultado['texto_raw'] .= "TRASERA:\n" . $textoTrasero . "\n";
 
             // Si no encontramos DNI en el frente, intentar en el reverso
@@ -313,6 +325,81 @@ class DniOcrService
             return '';
         } catch (\Exception $e) {
             Log::error('Error en OCR API: ' . $e->getMessage());
+            return '';
+        }
+    }
+
+    /**
+     * Procesar una imagen o PDF desde una ruta de archivo usando OCR.space API
+     */
+    private function procesarImagenConRuta(string $rutaArchivo): string
+    {
+        try {
+            if (!file_exists($rutaArchivo)) {
+                Log::warning('OCR: Archivo no encontrado en ruta: ' . $rutaArchivo);
+                return '';
+            }
+
+            // Convertir archivo a base64
+            $fileData = base64_encode(file_get_contents($rutaArchivo));
+            $extension = strtolower(pathinfo($rutaArchivo, PATHINFO_EXTENSION));
+            $mimeType = mime_content_type($rutaArchivo);
+
+            // Determinar el tipo de archivo para la API
+            $isPdf = $extension === 'pdf' || $mimeType === 'application/pdf';
+
+            // Construir base64 con el prefijo correcto
+            if ($isPdf) {
+                $base64File = "data:application/pdf;base64,{$fileData}";
+            } else {
+                $base64File = "data:{$mimeType};base64,{$fileData}";
+            }
+
+            $postData = [
+                ['name' => 'apikey', 'contents' => $this->apiKey],
+                ['name' => 'base64Image', 'contents' => $base64File],
+                ['name' => 'language', 'contents' => 'spa'],
+                ['name' => 'isOverlayRequired', 'contents' => 'false'],
+                ['name' => 'detectOrientation', 'contents' => 'true'],
+                ['name' => 'scale', 'contents' => 'true'],
+                ['name' => 'OCREngine', 'contents' => '2'],
+            ];
+
+            if ($isPdf) {
+                $postData[] = ['name' => 'isTable', 'contents' => 'true'];
+            }
+
+            $response = Http::timeout(60)
+                ->asMultipart()
+                ->post('https://api.ocr.space/parse/image', $postData);
+
+            if ($response->successful()) {
+                $data = $response->json();
+
+                $textoCompleto = '';
+                if (isset($data['ParsedResults']) && is_array($data['ParsedResults'])) {
+                    foreach ($data['ParsedResults'] as $result) {
+                        if (isset($result['ParsedText'])) {
+                            $textoCompleto .= $result['ParsedText'] . "\n";
+                        }
+                    }
+                }
+
+                if (!empty($textoCompleto)) {
+                    Log::info('OCR DNI (desde ruta) - Texto extraído: ' . substr($textoCompleto, 0, 500));
+                    return $textoCompleto;
+                }
+
+                if (isset($data['ErrorMessage'])) {
+                    Log::error('OCR API Error (desde ruta): ' . implode(', ', (array)$data['ErrorMessage']));
+                }
+            } else {
+                Log::error('OCR API HTTP Error (desde ruta): ' . $response->status());
+            }
+
+            return '';
+        } catch (\Exception $e) {
+            Log::error('Error en OCR API (desde ruta): ' . $e->getMessage());
             return '';
         }
     }

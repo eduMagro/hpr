@@ -40,7 +40,20 @@ class IncorporacionPublicaController extends Controller
             ? IncorporacionFormacion::TIPOS_HPR
             : IncorporacionFormacion::TIPOS_HIERROS;
 
-        return view('incorporaciones.publica', compact('incorporacion', 'tiposFormacion'));
+        // Obtener archivos temporales guardados (si hubo error previo)
+        $sessionKey = "incorporacion_tmp_{$token}";
+        $archivosTmp = [
+            'dni_frontal' => session()->get("{$sessionKey}.dni_frontal"),
+            'dni_trasero' => session()->get("{$sessionKey}.dni_trasero"),
+            'certificado_bancario' => session()->get("{$sessionKey}.certificado_bancario"),
+            'formacion_curso_20h' => session()->get("{$sessionKey}.formacion_curso_20h"),
+            'formacion_curso_6h' => session()->get("{$sessionKey}.formacion_curso_6h"),
+            'formacion_generica' => session()->get("{$sessionKey}.formacion_generica"),
+            'formacion_especifica' => session()->get("{$sessionKey}.formacion_especifica"),
+            'formacion_otros' => session()->get("{$sessionKey}.formacion_otros", []),
+        ];
+
+        return view('incorporaciones.publica', compact('incorporacion', 'tiposFormacion', 'archivosTmp'));
     }
 
     public function store(Request $request, $token)
@@ -53,6 +66,9 @@ class IncorporacionPublicaController extends Controller
                 ->with('error', 'Este formulario ya fue completado anteriormente.');
         }
 
+        // Guardar archivos temporalmente antes de validar para no perderlos en caso de error
+        $archivosTmp = $this->guardarArchivosTemporales($request, $token);
+
         // Limpiar espacios del teléfono y número de afiliación antes de validar
         $request->merge([
             'telefono' => preg_replace('/\s+/', '', $request->telefono ?? ''),
@@ -60,17 +76,22 @@ class IncorporacionPublicaController extends Controller
         ]);
 
         // Validación base - con imágenes o PDF del DNI
+        // Los archivos son opcionales si ya están guardados temporalmente
+        $tieneDniFrontalTmp = isset($archivosTmp['dni_frontal']) || session()->has("incorporacion_tmp_{$token}.dni_frontal");
+        $tieneDniTraseroTmp = isset($archivosTmp['dni_trasero']) || session()->has("incorporacion_tmp_{$token}.dni_trasero");
+        $tieneCertBancarioTmp = isset($archivosTmp['certificado_bancario']) || session()->has("incorporacion_tmp_{$token}.certificado_bancario");
+
         $rules = [
-            'dni_frontal' => 'required|file|mimes:jpg,jpeg,png,pdf|max:15360',
-            'dni_trasero' => 'required|file|mimes:jpg,jpeg,png,pdf|max:15360',
-            'dni' => 'nullable|string|size:9|regex:/^([0-9]{8}[A-Z]|[XYZ][0-9]{7}[A-Z])$/i', // Campo manual de respaldo
+            'dni_frontal' => ($tieneDniFrontalTmp ? 'nullable' : 'required') . '|file|mimes:jpg,jpeg,png,pdf|max:15360',
+            'dni_trasero' => ($tieneDniTraseroTmp ? 'nullable' : 'required') . '|file|mimes:jpg,jpeg,png,pdf|max:15360',
+            'dni' => 'nullable|string|size:9|regex:/^([0-9]{8}[A-Z]|[XYZ][0-9]{7}[A-Z])$/i',
             'nombre_dni' => 'required|string|max:100',
             'primer_apellido_dni' => 'required|string|max:100',
             'segundo_apellido_dni' => 'nullable|string|max:100',
             'numero_afiliacion_ss' => ['required', 'string', 'size:12', 'regex:/^[0-9]{12}$/'],
             'email' => 'required|email|max:255',
             'telefono' => ['required', 'string', 'regex:/^[0-9]{9}$/'],
-            'certificado_bancario' => 'required|file|mimes:pdf,jpg,jpeg,png|max:15360',
+            'certificado_bancario' => ($tieneCertBancarioTmp ? 'nullable' : 'required') . '|file|mimes:pdf,jpg,jpeg,png|max:15360',
         ];
 
         // Validación de formación según empresa (todos opcionales)
@@ -95,6 +116,7 @@ class IncorporacionPublicaController extends Controller
             'dni_trasero.file' => 'El reverso del DNI/NIE debe ser un archivo.',
             'dni_trasero.mimes' => 'El reverso del DNI/NIE debe ser JPG, PNG o PDF.',
             'dni_trasero.max' => 'El archivo del reverso del DNI/NIE no puede superar 15MB.',
+            'dni.required' => 'El DNI/NIE es obligatorio.',
             'dni.size' => 'El DNI/NIE debe tener exactamente 9 caracteres.',
             'dni.regex' => 'El formato del DNI/NIE no es válido (DNI: 8 números + letra, NIE: X/Y/Z + 7 números + letra).',
             'nombre_dni.required' => 'El nombre es obligatorio.',
@@ -129,53 +151,75 @@ class IncorporacionPublicaController extends Controller
 
         $validated = $request->validate($rules, $messages);
 
-        // Extraer DNI y datos personales de las imágenes usando OCR
-        $dniOcrService = new DniOcrService();
-        $resultadoOcr = $dniOcrService->extraerDni(
-            $request->file('dni_frontal'),
-            $request->file('dni_trasero')
-        );
+        // Intentar extraer DNI con OCR si hay archivos
+        $sessionKey = "incorporacion_tmp_{$token}";
+        $dniFrontalFile = $request->file('dni_frontal');
+        $dniTraseroFile = $request->file('dni_trasero');
 
-        // Usar el DNI del OCR o el introducido manualmente
-        $dniExtraido = $resultadoOcr['dni'];
+        // Si no hay archivo nuevo pero hay temporal, crear ruta para OCR
+        $dniFrontalPath = null;
+        $dniTraseroPath = null;
+
+        if (!$dniFrontalFile && session()->has("{$sessionKey}.dni_frontal")) {
+            $tmpData = session()->get("{$sessionKey}.dni_frontal");
+            if (isset($tmpData['ruta']) && Storage::exists($tmpData['ruta'])) {
+                $dniFrontalPath = Storage::path($tmpData['ruta']);
+            }
+        }
+
+        if (!$dniTraseroFile && session()->has("{$sessionKey}.dni_trasero")) {
+            $tmpData = session()->get("{$sessionKey}.dni_trasero");
+            if (isset($tmpData['ruta']) && Storage::exists($tmpData['ruta'])) {
+                $dniTraseroPath = Storage::path($tmpData['ruta']);
+            }
+        }
+
+        // Intentar OCR solo si hay archivos disponibles
+        $dniExtraido = null;
+        if ($dniFrontalFile || $dniFrontalPath) {
+            $dniOcrService = new DniOcrService();
+            $resultadoOcr = $dniOcrService->extraerDni(
+                $dniFrontalFile,
+                $dniTraseroFile,
+                $dniFrontalPath,
+                $dniTraseroPath
+            );
+            $dniExtraido = $resultadoOcr['dni'];
+        }
+
+        // Usar DNI del formulario (manual) o el extraído por OCR
         $dniManual = $request->input('dni');
-
-        // Priorizar DNI manual si fue proporcionado, sino usar el del OCR
         $dniFinal = !empty($dniManual) ? strtoupper($dniManual) : $dniExtraido;
 
-        // Validar que tenemos un DNI válido
+        // Si no tenemos DNI válido, redirigir con error
         if (empty($dniFinal)) {
             return redirect()->route('incorporacion.publica', $token)
-                ->with('error', 'No se pudo detectar el DNI de las fotos. Por favor, asegúrate de que las imágenes sean claras y el DNI sea legible, o introduce el DNI manualmente.')
+                ->with('error', 'No se pudo detectar el DNI/NIE de las fotos. Por favor, introdúcelo manualmente en el campo correspondiente.')
                 ->withInput();
         }
 
-        // Validar formato del DNI extraído
+        // Validar formato del DNI
+        $dniOcrService = $dniOcrService ?? new DniOcrService();
         if (!$dniOcrService->validarFormatoDni($dniFinal)) {
             return redirect()->route('incorporacion.publica', $token)
-                ->with('error', 'El DNI detectado (' . $dniFinal . ') no tiene un formato válido. Por favor, verifica las fotos o introduce el DNI manualmente.')
+                ->with('error', 'El DNI/NIE introducido (' . $dniFinal . ') no tiene un formato válido. Debe ser 8 números + letra (DNI) o X/Y/Z + 7 números + letra (NIE).')
                 ->withInput();
         }
 
-        // Añadir el DNI validado a los datos
         $validated['dni'] = $dniFinal;
 
-        // Usar los campos editables del formulario (el usuario puede haberlos corregido)
-        // Si el OCR extrajo datos, se pre-rellenaron pero el usuario tiene la última palabra
+        // Usar los campos editables del formulario
         $validated['nombre_final'] = $validated['nombre_dni'];
         $validated['primer_apellido_final'] = $validated['primer_apellido_dni'];
         $validated['segundo_apellido_final'] = $validated['segundo_apellido_dni'] ?? null;
 
-        Log::info('OCR DNI - Datos finales (después de edición del usuario)', [
-            'dni_extraido' => $dniExtraido,
+        Log::info('Incorporación - Datos procesados', [
+            'dni_ocr' => $dniExtraido,
             'dni_manual' => $dniManual,
             'dni_final' => $dniFinal,
-            'nombre_ocr' => $resultadoOcr['nombre'],
-            'nombre_formulario' => $validated['nombre_dni'],
-            'primer_apellido_ocr' => $resultadoOcr['primer_apellido'],
-            'primer_apellido_formulario' => $validated['primer_apellido_dni'],
-            'segundo_apellido_ocr' => $resultadoOcr['segundo_apellido'],
-            'segundo_apellido_formulario' => $validated['segundo_apellido_dni'] ?? null,
+            'nombre' => $validated['nombre_dni'],
+            'primer_apellido' => $validated['primer_apellido_dni'],
+            'segundo_apellido' => $validated['segundo_apellido_dni'] ?? null,
         ]);
 
         DB::beginTransaction();
@@ -187,22 +231,28 @@ class IncorporacionPublicaController extends Controller
             // Carpeta del usuario: nombre_id (sin caracteres especiales)
             $carpetaUsuario = $this->generarNombreCarpeta($usuario);
 
-            // Guardar imágenes del DNI
-            $dniFrontal = $request->file('dni_frontal');
-            $nombreDniFrontal = 'dni_frontal_' . time() . '.' . $dniFrontal->getClientOriginalExtension();
-            $dniFrontal->storeAs("private/documentos/{$carpetaUsuario}", $nombreDniFrontal);
+            // Guardar imágenes del DNI (desde request o desde temporal)
+            $nombreDniFrontal = $this->guardarArchivoFinal(
+                $request->file('dni_frontal'),
+                session()->get("{$sessionKey}.dni_frontal"),
+                'dni_frontal',
+                $carpetaUsuario
+            );
 
-            $nombreDniTrasero = null;
-            if ($request->hasFile('dni_trasero')) {
-                $dniTrasero = $request->file('dni_trasero');
-                $nombreDniTrasero = 'dni_trasero_' . time() . '.' . $dniTrasero->getClientOriginalExtension();
-                $dniTrasero->storeAs("private/documentos/{$carpetaUsuario}", $nombreDniTrasero);
-            }
+            $nombreDniTrasero = $this->guardarArchivoFinal(
+                $request->file('dni_trasero'),
+                session()->get("{$sessionKey}.dni_trasero"),
+                'dni_trasero',
+                $carpetaUsuario
+            );
 
             // Guardar certificado bancario
-            $certBancario = $request->file('certificado_bancario');
-            $nombreCert = 'certificado_bancario_' . time() . '.' . $certBancario->getClientOriginalExtension();
-            $certBancario->storeAs("private/documentos/{$carpetaUsuario}", $nombreCert);
+            $nombreCert = $this->guardarArchivoFinal(
+                $request->file('certificado_bancario'),
+                session()->get("{$sessionKey}.certificado_bancario"),
+                'certificado_bancario',
+                $carpetaUsuario
+            );
 
             // Actualizar datos personales y vincular usuario
             // Si el OCR extrajo nombre/apellidos, actualizar también la incorporación
@@ -228,22 +278,34 @@ class IncorporacionPublicaController extends Controller
 
             $incorporacion->update($datosActualizacion);
 
-            // Guardar documentos de formación
+            // Guardar documentos de formación (desde request o desde temporal)
             if ($incorporacion->empresa_destino === Incorporacion::EMPRESA_HPR) {
-                $this->guardarFormacion($incorporacion, $request->file('formacion_curso_20h'), 'curso_20h_generico', null, $carpetaUsuario);
-                $this->guardarFormacion($incorporacion, $request->file('formacion_curso_6h'), 'curso_6h_ferralla', null, $carpetaUsuario);
+                $this->guardarFormacionConTemporal($incorporacion, $request->file('formacion_curso_20h'), session()->get("{$sessionKey}.formacion_curso_20h"), 'curso_20h_generico', null, $carpetaUsuario);
+                $this->guardarFormacionConTemporal($incorporacion, $request->file('formacion_curso_6h'), session()->get("{$sessionKey}.formacion_curso_6h"), 'curso_6h_ferralla', null, $carpetaUsuario);
 
                 // Otros cursos (múltiples)
-                if ($request->hasFile('formacion_otros')) {
+                $formacionOtrosTmp = session()->get("{$sessionKey}.formacion_otros", []);
+                if ($request->hasFile('formacion_otros') || !empty($formacionOtrosTmp)) {
                     $nombres = $request->input('formacion_otros_nombres', []);
-                    foreach ($request->file('formacion_otros') as $index => $archivo) {
+                    $archivos = $request->file('formacion_otros') ?? [];
+
+                    // Primero procesar archivos nuevos del request
+                    foreach ($archivos as $index => $archivo) {
                         $nombre = $nombres[$index] ?? 'Otro curso ' . ($index + 1);
                         $this->guardarFormacion($incorporacion, $archivo, 'otros_cursos', $nombre, $carpetaUsuario);
                     }
+
+                    // Luego procesar archivos temporales que no fueron reemplazados
+                    foreach ($formacionOtrosTmp as $index => $datosTmp) {
+                        if (!isset($archivos[$index]) && isset($datosTmp['ruta']) && Storage::exists($datosTmp['ruta'])) {
+                            $nombre = $nombres[$index] ?? 'Otro curso ' . ($index + 1);
+                            $this->guardarFormacionDesdeTemporal($incorporacion, $datosTmp, 'otros_cursos', $nombre, $carpetaUsuario);
+                        }
+                    }
                 }
             } else {
-                $this->guardarFormacion($incorporacion, $request->file('formacion_generica'), 'formacion_generica_puesto', null, $carpetaUsuario);
-                $this->guardarFormacion($incorporacion, $request->file('formacion_especifica'), 'formacion_especifica_puesto', null, $carpetaUsuario);
+                $this->guardarFormacionConTemporal($incorporacion, $request->file('formacion_generica'), session()->get("{$sessionKey}.formacion_generica"), 'formacion_generica_puesto', null, $carpetaUsuario);
+                $this->guardarFormacionConTemporal($incorporacion, $request->file('formacion_especifica'), session()->get("{$sessionKey}.formacion_especifica"), 'formacion_especifica_puesto', null, $carpetaUsuario);
             }
 
             // Registrar log
@@ -260,6 +322,9 @@ class IncorporacionPublicaController extends Controller
             );
 
             DB::commit();
+
+            // Limpiar archivos temporales después del éxito
+            $this->limpiarArchivosTemporales($token);
 
             // Enviar correo a departamentos de programador y recursos humanos
             $this->notificarDepartamentos($incorporacion);
@@ -409,5 +474,158 @@ class IncorporacionPublicaController extends Controller
         } catch (\Exception $e) {
             Log::error('Error al enviar notificación de incorporación: ' . $e->getMessage());
         }
+    }
+
+    /**
+     * Guardar archivos temporalmente para no perderlos en caso de error de validación
+     */
+    private function guardarArchivosTemporales(Request $request, string $token): array
+    {
+        $archivosTmp = [];
+        $sessionKey = "incorporacion_tmp_{$token}";
+        $camposArchivo = [
+            'dni_frontal',
+            'dni_trasero',
+            'certificado_bancario',
+            'formacion_curso_20h',
+            'formacion_curso_6h',
+            'formacion_generica',
+            'formacion_especifica',
+        ];
+
+        foreach ($camposArchivo as $campo) {
+            if ($request->hasFile($campo) && $request->file($campo)->isValid()) {
+                $archivo = $request->file($campo);
+                $nombreTmp = $campo . '_' . time() . '_' . Str::random(8) . '.' . $archivo->getClientOriginalExtension();
+                $rutaTmp = $archivo->storeAs("temp/incorporaciones/{$token}", $nombreTmp);
+
+                $archivosTmp[$campo] = [
+                    'ruta' => $rutaTmp,
+                    'nombre_original' => $archivo->getClientOriginalName(),
+                    'extension' => $archivo->getClientOriginalExtension(),
+                    'mime' => $archivo->getMimeType(),
+                ];
+
+                // Guardar en sesión
+                session()->put("{$sessionKey}.{$campo}", $archivosTmp[$campo]);
+            }
+        }
+
+        // Manejar archivos múltiples (formacion_otros)
+        if ($request->hasFile('formacion_otros')) {
+            $archivosTmp['formacion_otros'] = [];
+            foreach ($request->file('formacion_otros') as $index => $archivo) {
+                if ($archivo && $archivo->isValid()) {
+                    $nombreTmp = "formacion_otros_{$index}_" . time() . '_' . Str::random(8) . '.' . $archivo->getClientOriginalExtension();
+                    $rutaTmp = $archivo->storeAs("temp/incorporaciones/{$token}", $nombreTmp);
+
+                    $archivosTmp['formacion_otros'][$index] = [
+                        'ruta' => $rutaTmp,
+                        'nombre_original' => $archivo->getClientOriginalName(),
+                        'extension' => $archivo->getClientOriginalExtension(),
+                        'mime' => $archivo->getMimeType(),
+                    ];
+                }
+            }
+            if (!empty($archivosTmp['formacion_otros'])) {
+                session()->put("{$sessionKey}.formacion_otros", $archivosTmp['formacion_otros']);
+            }
+        }
+
+        return $archivosTmp;
+    }
+
+    /**
+     * Obtener archivo desde temporal o desde request
+     * Retorna la ruta del archivo temporal si existe, o null si debe usarse el del request
+     */
+    private function obtenerArchivoTemporal(string $token, string $campo): ?string
+    {
+        $sessionKey = "incorporacion_tmp_{$token}.{$campo}";
+        $datos = session()->get($sessionKey);
+
+        if ($datos && isset($datos['ruta']) && Storage::exists($datos['ruta'])) {
+            return $datos['ruta'];
+        }
+
+        return null;
+    }
+
+    /**
+     * Limpiar archivos temporales después de procesar exitosamente
+     */
+    private function limpiarArchivosTemporales(string $token): void
+    {
+        $sessionKey = "incorporacion_tmp_{$token}";
+
+        // Eliminar archivos del storage
+        $directorio = "temp/incorporaciones/{$token}";
+        if (Storage::exists($directorio)) {
+            Storage::deleteDirectory($directorio);
+        }
+
+        // Limpiar sesión
+        session()->forget($sessionKey);
+    }
+
+    /**
+     * Guardar archivo final desde request o desde temporal
+     */
+    private function guardarArchivoFinal($archivoRequest, ?array $datosTmp, string $prefijo, string $carpetaUsuario): ?string
+    {
+        // Si hay archivo nuevo en el request, usarlo
+        if ($archivoRequest && $archivoRequest->isValid()) {
+            $nombreArchivo = $prefijo . '_' . time() . '.' . $archivoRequest->getClientOriginalExtension();
+            $archivoRequest->storeAs("private/documentos/{$carpetaUsuario}", $nombreArchivo);
+            return $nombreArchivo;
+        }
+
+        // Si hay archivo temporal, moverlo a la ubicación final
+        if ($datosTmp && isset($datosTmp['ruta']) && Storage::exists($datosTmp['ruta'])) {
+            $nombreArchivo = $prefijo . '_' . time() . '.' . $datosTmp['extension'];
+            Storage::move($datosTmp['ruta'], "private/documentos/{$carpetaUsuario}/{$nombreArchivo}");
+            return $nombreArchivo;
+        }
+
+        return null;
+    }
+
+    /**
+     * Guardar formación con soporte para archivos temporales
+     */
+    private function guardarFormacionConTemporal(Incorporacion $incorporacion, $archivoRequest, ?array $datosTmp, string $tipo, ?string $nombre, string $carpetaUsuario): void
+    {
+        // Si hay archivo nuevo en el request, usarlo
+        if ($archivoRequest && $archivoRequest->isValid()) {
+            $this->guardarFormacion($incorporacion, $archivoRequest, $tipo, $nombre, $carpetaUsuario);
+            return;
+        }
+
+        // Si hay archivo temporal, usarlo
+        if ($datosTmp && isset($datosTmp['ruta']) && Storage::exists($datosTmp['ruta'])) {
+            $this->guardarFormacionDesdeTemporal($incorporacion, $datosTmp, $tipo, $nombre, $carpetaUsuario);
+        }
+    }
+
+    /**
+     * Guardar formación desde archivo temporal
+     */
+    private function guardarFormacionDesdeTemporal(Incorporacion $incorporacion, array $datosTmp, string $tipo, ?string $nombre, string $carpetaUsuario): void
+    {
+        if (!isset($datosTmp['ruta']) || !Storage::exists($datosTmp['ruta'])) {
+            return;
+        }
+
+        $nombreArchivo = $tipo . '_' . time() . '_' . Str::random(5) . '.' . $datosTmp['extension'];
+
+        // Mover archivo temporal a ubicación final
+        Storage::move($datosTmp['ruta'], "private/documentos/{$carpetaUsuario}/{$nombreArchivo}");
+
+        // Crear registro de formación
+        $incorporacion->formaciones()->create([
+            'tipo' => $tipo,
+            'nombre' => $nombre,
+            'archivo' => $nombreArchivo,
+        ]);
     }
 }

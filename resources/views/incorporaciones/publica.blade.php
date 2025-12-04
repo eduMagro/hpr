@@ -100,17 +100,28 @@
                         <label class="block text-sm font-medium text-gray-700 mb-1.5">
                             DNI - Parte Frontal <span class="text-red-500">*</span>
                         </label>
+                        @if(isset($archivosTmp['dni_frontal']))
+                            <div class="bg-green-50 border border-green-300 rounded-lg p-3 mb-2">
+                                <div class="flex items-center text-green-700">
+                                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                                    </svg>
+                                    <span class="text-sm font-medium">Archivo guardado: {{ $archivosTmp['dni_frontal']['nombre_original'] }}</span>
+                                </div>
+                                <p class="text-xs text-green-600 mt-1">Puedes subir otro archivo para reemplazarlo</p>
+                            </div>
+                        @endif
                         <div class="file-input-wrapper">
-                            <div class="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center hover:border-blue-400 transition cursor-pointer"
+                            <div class="border-2 border-dashed {{ isset($archivosTmp['dni_frontal']) ? 'border-green-300 bg-green-50' : 'border-gray-300' }} rounded-lg p-4 text-center hover:border-blue-400 transition cursor-pointer"
                                 id="dropzone-dni-frontal">
                                 <svg class="w-8 h-8 mx-auto text-gray-400 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
                                 </svg>
-                                <p class="text-sm text-gray-600" id="text-dni-frontal">Toca para subir archivo</p>
+                                <p class="text-sm text-gray-600" id="text-dni-frontal">{{ isset($archivosTmp['dni_frontal']) ? 'Cambiar archivo' : 'Toca para subir archivo' }}</p>
                                 <p class="text-xs text-gray-400 mt-1">Foto o PDF del frente del DNI</p>
                             </div>
-                            <input type="file" name="dni_frontal" accept="image/*,.pdf" capture="environment" required
+                            <input type="file" name="dni_frontal" accept="image/*,.pdf" capture="environment" {{ isset($archivosTmp['dni_frontal']) ? '' : 'required' }}
                                 onchange="updateFileName(this, 'text-dni-frontal'); previewDniImage(this, 'preview-dni-frontal')">
                         </div>
                         <div id="preview-dni-frontal" class="mt-2 hidden">
@@ -123,17 +134,28 @@
                         <label class="block text-sm font-medium text-gray-700 mb-1.5">
                             DNI - Parte Trasera <span class="text-red-500">*</span>
                         </label>
+                        @if(isset($archivosTmp['dni_trasero']))
+                            <div class="bg-green-50 border border-green-300 rounded-lg p-3 mb-2">
+                                <div class="flex items-center text-green-700">
+                                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                                    </svg>
+                                    <span class="text-sm font-medium">Archivo guardado: {{ $archivosTmp['dni_trasero']['nombre_original'] }}</span>
+                                </div>
+                                <p class="text-xs text-green-600 mt-1">Puedes subir otro archivo para reemplazarlo</p>
+                            </div>
+                        @endif
                         <div class="file-input-wrapper">
-                            <div class="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center hover:border-blue-400 transition cursor-pointer"
+                            <div class="border-2 border-dashed {{ isset($archivosTmp['dni_trasero']) ? 'border-green-300 bg-green-50' : 'border-gray-300' }} rounded-lg p-4 text-center hover:border-blue-400 transition cursor-pointer"
                                 id="dropzone-dni-trasero">
                                 <svg class="w-8 h-8 mx-auto text-gray-400 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
                                 </svg>
-                                <p class="text-sm text-gray-600" id="text-dni-trasero">Toca para subir archivo</p>
+                                <p class="text-sm text-gray-600" id="text-dni-trasero">{{ isset($archivosTmp['dni_trasero']) ? 'Cambiar archivo' : 'Toca para subir archivo' }}</p>
                                 <p class="text-xs text-gray-400 mt-1">Foto o PDF del reverso del DNI</p>
                             </div>
-                            <input type="file" name="dni_trasero" accept="image/*,.pdf" capture="environment" required
+                            <input type="file" name="dni_trasero" accept="image/*,.pdf" capture="environment" {{ isset($archivosTmp['dni_trasero']) ? '' : 'required' }}
                                 onchange="updateFileName(this, 'text-dni-trasero'); previewDniImage(this, 'preview-dni-trasero')">
                         </div>
                         <div id="preview-dni-trasero" class="mt-2 hidden">
@@ -142,25 +164,29 @@
                     </div>
                 </div>
 
-                <!-- Campo oculto para DNI extraído (se mostrará después del procesamiento) -->
-                <div id="dni-extraido-container" class="hidden bg-green-50 border border-green-200 rounded-lg p-4 mb-4">
-                    <div class="flex items-center">
-                        <svg class="w-5 h-5 text-green-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-                        </svg>
-                        <span class="text-sm text-green-700">DNI detectado: <strong id="dni-detectado-texto"></strong></span>
+                <!-- Campo DNI/NIE (se intentará detectar automáticamente, si no, introducir manualmente) -->
+                <div class="mt-4 pt-4 border-t border-gray-200">
+                    <div class="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
+                        <div class="flex items-start">
+                            <svg class="w-5 h-5 text-blue-600 mr-2 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            <p class="text-sm text-blue-700">
+                                El sistema intentará detectar tu DNI/NIE de las fotos automáticamente.
+                                Si no lo detecta correctamente, introdúcelo manualmente en el campo de abajo.
+                            </p>
+                        </div>
                     </div>
-                </div>
 
-                <!-- Input para corrección manual si el OCR falla -->
-                <div id="dni-manual-container" class="hidden">
-                    <label for="dni" class="block text-sm font-medium text-gray-700 mb-1.5">
-                        <span class="text-amber-600">No se pudo detectar el DNI/NIE automáticamente.</span> Introdúcelo manualmente:
-                    </label>
-                    <input type="text" id="dni" name="dni" value="{{ old('dni') }}"
-                        placeholder="12345678A o X1234567A" maxlength="9"
-                        class="input-styled uppercase">
-                    <p class="text-xs text-gray-500 mt-1.5">DNI: 8 números + letra | NIE: X/Y/Z + 7 números + letra</p>
+                    <div class="mb-4">
+                        <label for="dni" class="block text-sm font-medium text-gray-700 mb-1">
+                            DNI/NIE <span class="text-gray-400 text-xs">(déjalo vacío si las fotos son claras, o introdúcelo si no se detecta)</span>
+                        </label>
+                        <input type="text" id="dni" name="dni" value="{{ old('dni', $incorporacion->dni) }}"
+                            placeholder="12345678A o X1234567A" maxlength="9"
+                            class="input-styled uppercase w-full sm:w-64">
+                        <p class="text-xs text-gray-500 mt-1">DNI: 8 números + letra | NIE: X/Y/Z + 7 números + letra</p>
+                    </div>
                 </div>
 
                 <!-- Campos editables para nombre y apellidos -->
@@ -277,16 +303,27 @@
                                 </svg>
                             </div>
                         </div>
+                        @if(isset($archivosTmp['certificado_bancario']))
+                            <div class="bg-green-50 border border-green-300 rounded-lg p-3 mb-2">
+                                <div class="flex items-center text-green-700">
+                                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                                    </svg>
+                                    <span class="text-sm font-medium">Archivo guardado: {{ $archivosTmp['certificado_bancario']['nombre_original'] }}</span>
+                                </div>
+                                <p class="text-xs text-green-600 mt-1">Puedes subir otro archivo para reemplazarlo</p>
+                            </div>
+                        @endif
                         <div class="file-input-wrapper">
-                            <div class="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center hover:border-blue-400 transition cursor-pointer"
+                            <div class="border-2 border-dashed {{ isset($archivosTmp['certificado_bancario']) ? 'border-green-300 bg-green-50' : 'border-gray-300' }} rounded-lg p-4 text-center hover:border-blue-400 transition cursor-pointer"
                                 id="dropzone-bancario">
                                 <svg class="w-8 h-8 mx-auto text-gray-400 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
                                 </svg>
-                                <p class="text-sm text-gray-600" id="text-bancario">Haz clic o arrastra el archivo aquí</p>
+                                <p class="text-sm text-gray-600" id="text-bancario">{{ isset($archivosTmp['certificado_bancario']) ? 'Cambiar archivo' : 'Haz clic o arrastra el archivo aquí' }}</p>
                                 <p class="text-xs text-gray-400 mt-1">PDF, JPG o PNG (máx. 15MB)</p>
                             </div>
-                            <input type="file" name="certificado_bancario" accept=".pdf,.jpg,.jpeg,.png" required
+                            <input type="file" name="certificado_bancario" accept=".pdf,.jpg,.jpeg,.png" {{ isset($archivosTmp['certificado_bancario']) ? '' : 'required' }}
                                 onchange="updateFileName(this, 'text-bancario')">
                         </div>
                     </div>
