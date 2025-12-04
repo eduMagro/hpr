@@ -553,14 +553,22 @@
                     })
                     .then(response => response.json())
                     .then(data => {
-                        if (data.success) {
+                        if (data.ok) {
                             console.log('✅ Campo actualizado correctamente');
                             input.dataset.originalValue = valor;
                             // Recargar la página para ver los cambios
                             window.location.reload();
+                        } else if (data.swal) {
+                            // Mostrar error con SweetAlert si está disponible
+                            if (typeof Swal !== 'undefined') {
+                                Swal.fire(data.swal);
+                            } else {
+                                alert(data.swal.text || data.swal.title);
+                            }
+                            input.value = valorOriginal;
                         } else {
-                            console.error('❌ Error al actualizar:', data.message);
-                            alert('Error: ' + (data.message || 'No se pudo actualizar'));
+                            console.error('❌ Error al actualizar:', data.error || data.message);
+                            alert('Error: ' + (data.error || data.message || 'No se pudo actualizar'));
                             input.value = valorOriginal;
                         }
                     })
