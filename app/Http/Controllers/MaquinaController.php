@@ -528,10 +528,21 @@ class MaquinaController extends Controller
         $ubicacion = Ubicacion::where('descripcion', 'like', "%{$maquina->codigo}%")->first();
         $maquinas  = Maquina::orderBy('nombre')->get();
 
-        $productosBaseCompatibles = ProductoBase::where('tipo', $maquina->tipo_material)
-            ->whereBetween('diametro', [$maquina->diametro_min, $maquina->diametro_max])
+        $productosBaseCompatibles = ProductoBase::whereRaw('LOWER(tipo) = ?', [strtolower($maquina->tipo_material ?? '')])
+            ->whereBetween('diametro', [$maquina->diametro_min ?? 0, $maquina->diametro_max ?? 100])
             ->orderBy('diametro')
             ->get();
+
+        // Debug temporal - puedes quitar esto después
+        if ($productosBaseCompatibles->isEmpty()) {
+            \Log::warning('Sin productos base compatibles para máquina', [
+                'maquina_id' => $maquina->id,
+                'maquina_nombre' => $maquina->nombre,
+                'tipo_material' => $maquina->tipo_material,
+                'diametro_min' => $maquina->diametro_min,
+                'diametro_max' => $maquina->diametro_max,
+            ]);
+        }
 
         $usuario1 = auth()->user();
         $usuario1->name = html_entity_decode($usuario1->name, ENT_QUOTES, 'UTF-8');
