@@ -1,4 +1,4 @@
-<div class="w-full">
+<div class="w-full h-full">
     <x-tabla.filtros-aplicados :filtros="$filtrosActivos" />
 
     <x-tabla.wrapper minWidth="1200px">
@@ -131,11 +131,11 @@
                             <div class="flex items-center justify-center gap-1">
                                 <a href="{{ route('entradas.crearDescargarPdf', ['id' => $entrada->id, 'preview' => 1]) }}"
                                     target="_blank"
-                                    class="inline-flex h-8 px-3 items-center justify-center rounded-md bg-blue-600 text-white text-xs font-semibold shadow hover:bg-blue-700">
+                                    class="inline-flex h-10 px-3 items-center justify-center rounded-md bg-blue-600 text-white text-xs font-semibold shadow hover:bg-blue-700">
                                     Ver
                                 </a>
                                 <a href="{{ route('entradas.crearDescargarPdf', $entrada->id) }}" download
-                                    class="inline-flex h-8 px-3 items-center justify-center rounded-md bg-gray-700 text-white text-xs font-semibold shadow hover:bg-gray-800">
+                                    class="inline-flex h-10 px-3 items-center justify-center rounded-md bg-gray-700 text-white text-xs font-semibold shadow hover:bg-gray-800">
                                     Descargar
                                 </a>
                             </div>
@@ -157,9 +157,9 @@
                                 <div class="flex items-center space-x-2">
                                     <!-- Botón de adjuntar albarán -->
                                     <button @click="$dispatch('abrir-modal-adjuntar', { entradaId: fila.id })"
-                                        class="w-6 h-6 bg-gray-100 text-gray-700 rounded hover:bg-gray-200 flex items-center justify-center"
+                                        class="w-10 h-10 bg-gray-100 text-gray-700 rounded hover:bg-gray-200 flex items-center justify-center"
                                         title="Adjuntar albarán PDF">
-                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none"
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none"
                                             viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                                             <path stroke-linecap="round" stroke-linejoin="round"
                                                 d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l7.07-7.07a4 4 0 00-5.657-5.657L6.343 11.343a6 6 0 008.485 8.485l.707-.707" />
@@ -167,10 +167,10 @@
                                     </button>
 
                                     <button @click="editando = true" type="button"
-                                        class="w-6 h-6 bg-yellow-100 text-yellow-600 rounded hover:bg-yellow-200 flex items-center justify-center"
+                                        class="w-10 h-10 bg-yellow-100 text-yellow-600 rounded hover:bg-yellow-200 flex items-center justify-center"
                                         title="Editar">
                                         <!-- ícono lápiz -->
-                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none"
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none"
                                             viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                                             <path stroke-linecap="round" stroke-linejoin="round"
                                                 d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" />
