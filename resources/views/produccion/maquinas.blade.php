@@ -5109,9 +5109,19 @@
                                 currentObra = grupo.obra_id;
                             }
 
+                            // Mostrar códigos de planillas (máx 3, luego "...")
+                            const codigos = grupo.planillas_codigos || [];
+                            let codigosText = '';
+                            if (codigos.length > 0) {
+                                const mostrar = codigos.slice(0, 3).join(', ');
+                                codigosText = codigos.length > 3
+                                    ? ` [${mostrar}...]`
+                                    : ` [${mostrar}]`;
+                            }
+
                             const option = document.createElement('option');
                             option.value = index;
-                            option.textContent = `${grupo.fecha_entrega_formatted} (${grupo.planillas_count} planillas)`;
+                            option.textContent = `${grupo.fecha_entrega_formatted} (${grupo.planillas_count} pl.)${codigosText}`;
                             optgroup.appendChild(option);
                         });
                     }
@@ -5157,8 +5167,10 @@
 
                 resumenList.innerHTML = '';
                 selecciones.forEach((sel, idx) => {
+                    const codigos = sel.grupo.planillas_codigos || [];
+                    const codigosText = codigos.length > 0 ? ` - ${codigos.join(', ')}` : '';
                     const li = document.createElement('li');
-                    li.innerHTML = `<strong>${idx + 1}.</strong> ${sel.grupo.cod_obra} - ${sel.grupo.fecha_entrega_formatted} <span class="text-orange-500">(${sel.grupo.planillas_count} planillas)</span>`;
+                    li.innerHTML = `<strong>${idx + 1}.</strong> ${sel.grupo.cod_obra} - ${sel.grupo.fecha_entrega_formatted} <span class="text-orange-500">(${sel.grupo.planillas_count} pl.)</span><br><span class="text-xs text-gray-600 ml-4">${codigosText}</span>`;
                     resumenList.appendChild(li);
                 });
 

@@ -4428,7 +4428,7 @@ class ProduccionController extends Controller
             ->whereIn('estado', ['pendiente', 'fabricando'])
             ->whereHas('ordenProduccion')
             ->whereNotNull('obra_id')
-            ->select('id', 'obra_id', 'fecha_estimada_entrega')
+            ->select('id', 'codigo', 'obra_id', 'fecha_estimada_entrega')
             ->get();
 
         // Agrupar por obra y fecha de entrega
@@ -4452,6 +4452,9 @@ class ProduccionController extends Controller
             $primeraplanilla = $grupo->first();
             $obra = $primeraplanilla->obra;
 
+            // Obtener los códigos limpios de las planillas
+            $codigosLimpios = $grupo->map(fn($p) => $p->codigo_limpio)->filter()->values();
+
             return [
                 'obra_id' => (int) $obraId,
                 'cod_obra' => $obra->cod_obra ?? '—',
@@ -4462,10 +4465,11 @@ class ProduccionController extends Controller
                     : \Carbon\Carbon::parse($fecha)->format('d/m/Y'),
                 'planillas_count' => $grupo->count(),
                 'planillas_ids' => $grupo->pluck('id')->values(),
+                'planillas_codigos' => $codigosLimpios,
             ];
         })->values()->sortBy([
-            ['cod_obra', 'asc'],
             ['fecha_entrega', 'asc'],
+            ['cod_obra', 'asc'],
         ])->values();
 
         return response()->json($agrupaciones);
@@ -4600,6 +4604,160 @@ class ProduccionController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Error al priorizar obra: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Priorizar múltiples obras con sus fechas de entrega (hasta 5 posiciones)
+     */
+    public function priorizarObras(Request $request)
+    {
+        $request->validate([
+            'prioridades' => 'required|array|min:1|max:5',
+            'prioridades.*.obra_id' => 'required|integer|exists:obras,id',
+            'prioridades.*.planillas_ids' => 'required|array|min:1',
+            'prioridades.*.planillas_ids.*' => 'integer|exists:planillas,id',
+            'parar_fabricando' => 'nullable|boolean',
+        ]);
+
+        $prioridades = $request->prioridades;
+        $pararFabricando = (bool) $request->parar_fabricando;
+
+        DB::beginTransaction();
+
+        try {
+            // Recopilar todas las planillas a priorizar en orden
+            $todasLasPlanillasOrdenadas = [];
+            foreach ($prioridades as $prioridad) {
+                foreach ($prioridad['planillas_ids'] as $planillaId) {
+                    $todasLasPlanillasOrdenadas[] = (int) $planillaId;
+                }
+            }
+
+            // Obtener todas las OrdenPlanilla de las planillas seleccionadas
+            $ordenesAPriorizar = OrdenPlanilla::whereIn('planilla_id', $todasLasPlanillasOrdenadas)->get();
+
+            if ($ordenesAPriorizar->isEmpty()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No hay planillas activas en la cola de producción'
+                ], 404);
+            }
+
+            // Agrupar por máquina
+            $ordenesPorMaquina = $ordenesAPriorizar->groupBy('maquina_id');
+            $maquinasAfectadas = 0;
+            $planillasMovidas = 0;
+            $planillasParadas = 0;
+
+            foreach ($ordenesPorMaquina as $maquinaId => $ordenesDeSeleccion) {
+                // Si se debe parar las planillas fabricando
+                if ($pararFabricando) {
+                    $ordenesEnFabricacion = OrdenPlanilla::where('maquina_id', $maquinaId)
+                        ->whereHas('planilla', fn($q) => $q->where('estado', 'fabricando'))
+                        ->with('planilla')
+                        ->get();
+
+                    foreach ($ordenesEnFabricacion as $ordenFab) {
+                        // Solo parar si no está en las planillas a priorizar
+                        if (!in_array($ordenFab->planilla_id, $todasLasPlanillasOrdenadas)) {
+                            $ordenFab->planilla->estado = 'pendiente';
+                            $ordenFab->planilla->save();
+                            $planillasParadas++;
+
+                            Log::info('⏸️ Planilla detenida por priorización múltiple', [
+                                'planilla_id' => $ordenFab->planilla_id,
+                                'maquina_id' => $maquinaId,
+                            ]);
+                        }
+                    }
+                }
+
+                // Obtener todas las órdenes de esta máquina ordenadas por posición
+                $todasLasOrdenes = OrdenPlanilla::where('maquina_id', $maquinaId)
+                    ->orderBy('posicion')
+                    ->get();
+
+                // Separar: planillas priorizadas vs resto
+                $idsOrdenesPriorizadas = $ordenesDeSeleccion->pluck('id')->toArray();
+
+                // Ordenar las priorizadas según el orden global que vino del frontend
+                $ordenesPriorizadas = collect();
+                foreach ($todasLasPlanillasOrdenadas as $planillaId) {
+                    $orden = $ordenesDeSeleccion->firstWhere('planilla_id', $planillaId);
+                    if ($orden) {
+                        $ordenesPriorizadas->push($orden);
+                    }
+                }
+
+                $ordenesResto = $todasLasOrdenes->whereNotIn('id', $idsOrdenesPriorizadas)->values();
+
+                // Reasignar posiciones: primero las priorizadas en orden, luego el resto
+                $posicion = 1;
+
+                foreach ($ordenesPriorizadas as $orden) {
+                    if ($orden->posicion !== $posicion) {
+                        $orden->posicion = $posicion;
+                        $orden->save();
+                        $planillasMovidas++;
+                    }
+                    $posicion++;
+                }
+
+                foreach ($ordenesResto as $orden) {
+                    if ($orden->posicion !== $posicion) {
+                        $orden->posicion = $posicion;
+                        $orden->save();
+                    }
+                    $posicion++;
+                }
+
+                $maquinasAfectadas++;
+            }
+
+            DB::commit();
+
+            // Preparar mensaje de resumen
+            $obrasInfo = [];
+            foreach ($prioridades as $idx => $prioridad) {
+                $obra = Obra::find($prioridad['obra_id']);
+                $obrasInfo[] = ($idx + 1) . ". {$obra->cod_obra}";
+            }
+
+            Log::info('✅ Múltiples obras priorizadas', [
+                'obras' => $obrasInfo,
+                'maquinas_afectadas' => $maquinasAfectadas,
+                'planillas_movidas' => $planillasMovidas,
+                'planillas_paradas' => $planillasParadas,
+                'user_id' => auth()->id(),
+            ]);
+
+            $mensaje = "Prioridades aplicadas: " . implode(', ', $obrasInfo) . ".<br>";
+            $mensaje .= "{$ordenesAPriorizar->count()} planillas reordenadas en {$maquinasAfectadas} máquinas.";
+            if ($planillasParadas > 0) {
+                $mensaje .= "<br>Se detuvieron {$planillasParadas} planillas que estaban fabricando.";
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => $mensaje,
+                'maquinas_afectadas' => $maquinasAfectadas,
+                'planillas_movidas' => $ordenesAPriorizar->count(),
+                'planillas_paradas' => $planillasParadas,
+            ]);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+
+            Log::error('Error al priorizar múltiples obras:', [
+                'message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al priorizar obras: ' . $e->getMessage()
             ], 500);
         }
     }

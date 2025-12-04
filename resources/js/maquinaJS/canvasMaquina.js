@@ -1357,7 +1357,8 @@ window.renderizarGrupoSVG = function renderizarGrupoSVG(grupo, gidx) {
                         window.mostrarPanelInfoElemento(elemento.id);
                     return;
                 }
-                abrirModalDividirElemento(elemento.id, etiquetaClick);
+                console.log('Elemento para dividir:', elemento.id, 'barras:', elemento.barras, 'objeto:', elemento);
+                abrirModalDividirElemento(elemento.id, elemento.barras || 0);
             });
             pathEl.addEventListener("contextmenu", function (e) {
                 e.preventDefault();
@@ -1943,14 +1944,31 @@ document.addEventListener("livewire:navigated", initCanvasMaquina);
 // =======================
 // Modal dividir elemento
 // =======================
-window.abrirModalDividirElemento = function abrirModalDividirElemento(elementoId) {
+window.abrirModalDividirElemento = function abrirModalDividirElemento(elementoId, barras) {
     const modal = document.getElementById("modalDividirElemento");
     const input = document.getElementById("dividir_elemento_id");
+    const inputBarrasTotales = document.getElementById("dividir_barras_totales");
+    const labelBarras = document.getElementById("labelBarrasActuales");
+    const inputBarrasAMover = document.getElementById("barras_a_mover");
+    const preview = document.getElementById("previewDivision");
     const form = document.getElementById("formDividirElemento");
+
     if (!modal || !input || !form) return;
+
     input.value = elementoId;
+
+    // Guardar barras totales y mostrar en el label
+    const barrasTotales = parseInt(barras) || 0;
+    if (inputBarrasTotales) inputBarrasTotales.value = barrasTotales;
+    if (labelBarras) labelBarras.textContent = barrasTotales;
+
+    // Limpiar campo de barras a mover y preview
+    if (inputBarrasAMover) inputBarrasAMover.value = '';
+    if (preview) preview.classList.add('hidden');
+
     if (window.rutaDividirElemento)
         form.setAttribute("action", window.rutaDividirElemento);
+
     modal.classList.remove("hidden");
 }
 window.enviarDivision = async function enviarDivision() {

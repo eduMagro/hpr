@@ -441,8 +441,8 @@ class ElementoController extends Controller
     public function dividirElemento(Request $request)
     {
         $request->validate([
-            'elemento_id' => 'required|exists:elementos,id',
-            'num_nuevos'  => 'required|integer|min:1',
+            'elemento_id'    => 'required|exists:elementos,id',
+            'barras_a_mover' => 'required|integer|min:1',
         ]);
 
         try {
@@ -450,101 +450,89 @@ class ElementoController extends Controller
 
                 /** @var \App\Models\Elemento $elemento */
                 $elemento = Elemento::lockForUpdate()
-                    ->with('etiquetaRelacion') // relación a Etiqueta (ajústala si el nombre difiere)
+                    ->with('etiquetaRelacion')
                     ->findOrFail($request->elemento_id);
 
-                // Partes = original + N nuevos
-                $nuevos      = (int) $request->num_nuevos;
-                $totalPartes = $nuevos + 1;
+                $barrasAMover = (int) $request->barras_a_mover;
+                $barrasTotal  = (int) ($elemento->barras ?? 0);
 
-                // === Reparto de PESO ===
-                $pesoTotal = (float) ($elemento->peso ?? 0);
-                $pesoBase  = $pesoTotal / $totalPartes;
-                // redondeo: ajusta la precisión a tu necesidad (3 decimales típico en kg)
-                $prec      = 3;
-                $pesos     = array_fill(0, $totalPartes, round($pesoBase, $prec));
-                // corrige para que la suma cuadre exactamente con el total
-                $diff = round($pesoTotal - array_sum($pesos), $prec);
-                $pesos[$totalPartes - 1] = round($pesos[$totalPartes - 1] + $diff, $prec);
-
-                // === Reparto de BARRAS (enteros) ===
-                $barrasTotal = (int) ($elemento->barras ?? 0);
-                $barrasBase  = intdiv($barrasTotal, $totalPartes);
-                $resto       = $barrasTotal % $totalPartes;
-                $barrasParts = array_fill(0, $totalPartes, $barrasBase);
-                for ($i = 0; $i < $resto; $i++) {
-                    $barrasParts[$i] += 1; // reparte +1 a las primeras $resto partes
+                // Validar que no se muevan todas o más barras
+                if ($barrasAMover >= $barrasTotal) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'No puedes mover todas o más barras de las que tiene el elemento.',
+                    ], 422);
                 }
 
-                // === Etiqueta base y sufijos por CODIGO (no por etiqueta_sub_id) ===
+                // Calcular barras que quedan en el original
+                $barrasOriginal = $barrasTotal - $barrasAMover;
+
+                // === Reparto proporcional de PESO ===
+                $pesoTotal    = (float) ($elemento->peso ?? 0);
+                $pesoPorBarra = $barrasTotal > 0 ? $pesoTotal / $barrasTotal : 0;
+                $prec         = 3;
+
+                $pesoOriginal = round($pesoPorBarra * $barrasOriginal, $prec);
+                $pesoNuevo    = round($pesoTotal - $pesoOriginal, $prec);
+
+                // === Reparto proporcional de TIEMPO DE FABRICACIÓN ===
+                $tiempoTotal     = (int) ($elemento->tiempo_fabricacion ?? 0);
+                $tiempoPorBarra  = $barrasTotal > 0 ? $tiempoTotal / $barrasTotal : 0;
+
+                $tiempoOriginal = (int) round($tiempoPorBarra * $barrasOriginal);
+                $tiempoNuevo    = $tiempoTotal - $tiempoOriginal;
+
+                // === Etiqueta base y sufijos por CODIGO ===
                 $etqOriginal = $elemento->etiquetaRelacion
                     ?: Etiqueta::lockForUpdate()->findOrFail($elemento->etiqueta_id);
 
-                // Tomamos el CODIGO de la etiqueta original como raíz
                 $baseCodigo = $etqOriginal->codigo ?: preg_replace('/[.\-]\d+$/', '', (string) $etqOriginal->etiqueta_sub_id);
 
-                // Bloquea la serie de ese codigo y obtiene el sufijo máximo ya usado para ese código
+                // Obtener el sufijo máximo ya usado para ese código
                 $maxSufijo = (int) DB::table('etiquetas')
                     ->where('codigo', $baseCodigo)
                     ->lockForUpdate()
                     ->selectRaw("COALESCE(MAX(CAST(SUBSTRING_INDEX(etiqueta_sub_id, '.', -1) AS UNSIGNED)), 0) AS max_suf")
                     ->value('max_suf');
 
-                // === Reparto de TIEMPO DE FABRICACIÓN (numérico, entero en minutos o segundos) ===
-                $tiempoTotal = (int) ($elemento->tiempo_fabricacion ?? 0);
-                $tiempoBase  = intdiv($tiempoTotal, $totalPartes);
-                $restoTiempo = $tiempoTotal % $totalPartes;
-                $tiempos     = array_fill(0, $totalPartes, $tiempoBase);
-                for ($i = 0; $i < $restoTiempo; $i++) {
-                    $tiempos[$i] += 1;
-                }
-
-                // === 1) Actualiza ORIGINAL
-                $elemento->peso               = $pesos[0];
-                $elemento->barras             = $barrasParts[0];
-                $elemento->tiempo_fabricacion = $tiempos[0];
+                // === 1) Actualiza ORIGINAL con las barras restantes ===
+                $elemento->peso               = $pesoOriginal;
+                $elemento->barras             = $barrasOriginal;
+                $elemento->tiempo_fabricacion = $tiempoOriginal;
                 $elemento->save();
 
-                // Si tu etiqueta representa solo ese elemento, actualiza su peso:
-                $etqOriginal->peso = $pesos[0];
+                $etqOriginal->peso = $pesoOriginal;
                 $etqOriginal->save();
 
-                // === 2) Crea N CLONES: cada uno con etiqueta nueva y sus pesos/barras ===
-                for ($i = 1; $i < $totalPartes; $i++) {
+                // === 2) Crear nueva etiqueta y elemento con las barras movidas ===
+                $maxSufijo++;
+                $nuevoSubId = sprintf('%s.%02d', $baseCodigo, $maxSufijo);
 
-                    // 2.1 Generar etiqueta_sub_id libre para ESTE codigo
+                while (DB::table('etiquetas')->where('etiqueta_sub_id', $nuevoSubId)->exists()) {
                     $maxSufijo++;
                     $nuevoSubId = sprintf('%s.%02d', $baseCodigo, $maxSufijo);
-                    // seguridad extra ante huecos ocupados (raro con lockForUpdate, pero por si acaso):
-                    while (DB::table('etiquetas')->where('etiqueta_sub_id', $nuevoSubId)->exists()) {
-                        $maxSufijo++;
-                        $nuevoSubId = sprintf('%s.%02d', $baseCodigo, $maxSufijo);
-                    }
-
-                    // 2.2 Clonar Etiqueta (replica campos, asigna codigo y sub_id, y PESO de la parte)
-                    $nuevaEtiqueta = $etqOriginal->replicate();
-                    $nuevaEtiqueta->codigo          = $baseCodigo;
-                    $nuevaEtiqueta->etiqueta_sub_id = $nuevoSubId;
-                    $nuevaEtiqueta->peso            = $pesos[$i];
-                    // (opcional) reset de tiempos/estados si procede:
-                    // $nuevaEtiqueta->fecha_inicio = null;
-                    // $nuevaEtiqueta->fecha_finalizacion = null;
-                    // $nuevaEtiqueta->estado = 'pendiente';
-                    $nuevaEtiqueta->save();
-
-                    // 2.3 Clonar Elemento con CODIGO nuevo y reparto de peso/barras
-                    $clon = $elemento->replicate(); // replica del ORIGINAL ya actualizado
-                    $clon->codigo         = Elemento::generarCodigo(); // tu generador ELyymmXXXX
-                    $clon->peso           = $pesos[$i];
-                    $clon->barras         = $barrasParts[$i];
-                    $clon->etiqueta_id    = $nuevaEtiqueta->id;
-                    $clon->etiqueta_sub_id = $nuevaEtiqueta->etiqueta_sub_id;
-                    $clon->save();
                 }
+
+                // Clonar Etiqueta
+                $nuevaEtiqueta = $etqOriginal->replicate();
+                $nuevaEtiqueta->codigo          = $baseCodigo;
+                $nuevaEtiqueta->etiqueta_sub_id = $nuevoSubId;
+                $nuevaEtiqueta->peso            = $pesoNuevo;
+                $nuevaEtiqueta->save();
+
+                // Clonar Elemento
+                $clon = $elemento->replicate();
+                $clon->codigo              = Elemento::generarCodigo();
+                $clon->peso                = $pesoNuevo;
+                $clon->barras              = $barrasAMover;
+                $clon->tiempo_fabricacion  = $tiempoNuevo;
+                $clon->etiqueta_id         = $nuevaEtiqueta->id;
+                $clon->etiqueta_sub_id     = $nuevaEtiqueta->etiqueta_sub_id;
+                $clon->save();
 
                 return response()->json([
                     'success' => true,
-                    'message' => 'El elemento se dividió correctamente en ' . $totalPartes . ' partes',
+                    'message' => "Division completada:<br><strong>Etiqueta original:</strong> {$barrasOriginal} barras ({$pesoOriginal} kg)<br><strong>Nueva etiqueta ({$nuevoSubId}):</strong> {$barrasAMover} barras ({$pesoNuevo} kg)",
                 ], 200);
             });
         } catch (\Throwable $e) {
