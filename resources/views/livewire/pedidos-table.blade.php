@@ -112,6 +112,7 @@
                 @forelse($lineas as $linea)
                     @php
                         $pedido = $linea->pedido;
+                        $pedidoCodigo = $pedido->codigo ?? null;
                         $estadoLinea = strtolower(trim($linea->estado));
                         $claseFondo = match($estadoLinea) {
                             'facturado' => 'bg-green-500',
@@ -140,10 +141,10 @@
                         </td>
                         <td class="border px-2 py-1 text-center align-middle">
                             <div class="inline-flex flex-col items-center gap-1">
-                                <span class="font-semibold">{{ $pedido->codigo ?? '—' }}</span>
-                                @if(!empty($linea->id))
+                                <span class="font-semibold">{{ $pedidoCodigo ?? '—' }}</span>
+                                @if(!empty($linea->id) && $pedidoCodigo)
                                     <a href="{{ route('entradas.index', [
-                                            'pedido_codigo' => $pedido->codigo,
+                                            'pedido_codigo' => $pedidoCodigo,
                                             'pedido_producto_id' => $linea->id,
                                         ]) }}"
                                         wire:navigate

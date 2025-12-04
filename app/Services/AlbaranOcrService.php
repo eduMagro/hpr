@@ -73,11 +73,13 @@ class AlbaranOcrService
         $base64 = base64_encode(file_get_contents($pathForVision));
         $prompt = $this->promptSegunProveedor($proveedor);
 
+        $model = env('OPENAI_MODEL', 'gpt-4.1-mini');
+
         $response = Http::withHeaders([
             'Authorization' => 'Bearer ' . $apiKey,
             'Content-Type'  => 'application/json',
         ])->timeout(120)->post('https://api.openai.com/v1/chat/completions', [
-            'model' => 'gpt-4o',
+            'model' => $model,
             'messages' => [
                 [
                     'role' => 'user',
@@ -303,43 +305,60 @@ class AlbaranOcrService
     protected function promptSegunProveedor(?string $proveedor): string
     {
         $basePrompt = <<<PROMPT
+Estás analizando un ALBARÁN DE ENTRADA de material ferralla de un proveedor.
+
 Devuelve SOLO un JSON (sin Markdown ni texto extra) con esta estructura:
 {
-  "proveedor": "",
   "albaran": "",
   "fecha": "YYYY-MM-DD",
   "pedido_codigo": "",
-  "pedido_cliente": "",
   "peso_total": null,
-  "piezas": null,
-  "bultos": null,
-  "producto": {
-    "descripcion": "",
-    "diametro": null,
-    "longitud": null,
-    "calidad": ""
-  },
-  "ubicacion_texto": "",
-  "line_items": [
+  "bultos_total": null,
+  "productos": [
     {
-      "colada": "",
-      "piezas": null,
-      "bultos": null,
-      "peso_kg": null
+      "descripcion": "",
+      "diametro": null,
+      "longitud": null,
+      "calidad": "",
+      "line_items": [
+        {
+          "colada": "",
+          "bultos": null,
+          "peso_kg": null
+        }
+      ]
     }
   ]
 }
-Reglas generales:
-- Usa números (no strings) para piezas/bultos/peso.
-- Si hay varias filas en la tabla, devuelve cada una en line_items con su colada y peso.
-- Si no encuentras un dato, usa null.
-- No devuelvas texto adicional fuera del JSON.
+
+CAMPOS IMPORTANTES:
+- albaran: Número de albarán del proveedor
+- fecha: Fecha del albarán (formato YYYY-MM-DD)
+- pedido_codigo: Número de pedido o referencia (si aparece)
+- peso_total: Peso total del albarán en kg
+- bultos_total: Número total de bultos/paquetes
+- productos: Array de productos, cada uno con:
+  * descripcion: Tipo (ej: "Corrugado B500SD", "Liso", etc.)
+  * diametro: Diámetro en mm (solo número: 8, 10, 12, 16, 20, etc.)
+  * longitud: Longitud en mm (si aparece)
+  * calidad: Calidad del acero (ej: "B500SD", "B400S", etc.)
+  * line_items: Array de coladas, cada una con:
+    - colada: Número de colada (ej: "25/41324")
+    - bultos: Número de bultos de ESA colada específica
+    - peso_kg: Peso en kg de esa colada
+
+REGLAS CRÍTICAS:
+- Usa números (no strings) para bultos/peso/diámetro
+- Cada producto diferente (diámetro, calidad) debe tener su propia entrada
+- Los bultos en line_items son el número de bultos de ESA colada, NO del total
+- Si no encuentras un dato, usa null
+- No devuelvas texto adicional fuera del JSON
 PROMPT;
 
         $mapa = [
-            'siderurgica' => $basePrompt . "\nNotas proveedor Siderúrgica Sevillana (SISE):\n- El albarán se llama 'N.º documento'.\n- Pedido cliente: es el código que sigue al texto 'Pedido cliente', NO la fecha siguiente.\n- Las coladas están listadas en la descripción; la tabla a la derecha muestra Piezas/Bultos/Net KG por fila, pero normalmente solo se usa Bultos. Deja piezas en null y usa Bultos como cantidad de bultos por colada.\n- Crea un line_items por cada colada y usa el peso de la tabla Net KG por fila.\n- Si ves un peso con formato '10.188', interpreta que son decimales. Convierte a kg multiplicando por 1000 si el contexto es toneladas (p. ej., Peso neto TOTAL 25.120 -> 25120 kg). Si faltan decimales tras un punto, rellena con ceros a la derecha.\n- El peso total está en la línea 'Peso neto TOTAL': a la derecha suelen aparecer bultos totales y peso total. Usa ese peso_total (en kg) y bultos_totales, ignorando 'Viaje', 'Peso bruto', 'Tara'.\n- Diametro y Longitud pueden tener decimales (.,) y están en la descripción: \"Diámetro\", \"L. barra\"; no los escales a enteros.\n- La calidad está en la línea \"Calidad: ...\" justo encima de las coladas; úsala en producto.calidad.\n- Deja piezas/bultos totales en null si solo se dan por línea.",
-            'megasa' => $basePrompt . "\nNotas proveedor Megasa:\n- La imagen puede estar rotada; interpreta el texto aunque esté en vertical.\n- Usa 'Código de albarán' como albaran. 'Código de pedido' como pedido_codigo. Fecha de descarga como fecha.\n- Tabla central con N.º Paquetes/Bultos/Bastones y peso bruto/neto. Total recibido/Total TM está abajo; convierte TM a kg multiplicando por 1000 y colócalo en peso_total.\n- Si ves la tabla con columna 'Coladas' a la izquierda y 'N.º de Paquete' a la derecha (sin líneas), cada grupo de paquetes pertenece a la colada de su fila (ej: 22598 -> [0225..0236], 222599 -> [0211]). Devuelve en line_items cada colada con array `paquetes` y `bultos` igual al número de paquetes. Deja peso_kg y piezas en null si no hay detalle por colada.\n- Si no hay coladas y solo un peso total en TM, crea un único line_item con peso_kg=peso_total y paquetes null.\n- Ignora QR/códigos de barras.",
-            'balboa' => $basePrompt . "\nNotas proveedor Balboa:\n- Formato Carta de Porte/Waybill. Usa 'N.º Expedición' o 'N.º Pedido' como albaran.\n- Tabla de rollos: cada fila tiene colada y 'Cantidad neta' o similar. Crea un line_item por fila con peso_kg.\n- Si hay códigos QR o barras, ignóralos para el JSON.\n- Interpreta la imagen aunque esté rotada.",
+            'siderurgica' => $basePrompt . "\nNotas CRÍTICAS para Siderúrgica Sevillana (SISE):\n\n1. IDENTIFICACIÓN:\n   - El albarán es el 'N.º documento'\n   - Pedido cliente: código después de 'Pedido cliente' (NO la fecha)\n\n2. ESTRUCTURA DE PRODUCTOS:\n   - Cada sección numerada (001, 002, etc.) es un PRODUCTO DIFERENTE\n   - Cada producto tiene: descripción, diámetro, longitud (L. barra), calidad\n   - Crea una entrada en 'productos' por cada sección numerada\n\n3. BULTOS - MUY IMPORTANTE:\n   - En la tabla derecha, mira la columna 'Bultos' de cada fila\n   - Cada fila de la tabla representa UNA COLADA con SU número de bultos\n   - Ejemplo: si ves '25/41324' con 'Bultos: 3', esa colada tiene 3 bultos\n   - NO cuentes el número de coladas como bultos\n   - El 'bultos_total' es la SUMA de todos los bultos de todas las coladas\n\n4. LINE_ITEMS (coladas):\n   - Cada fila de la tabla es un line_item\n   - colada: número de colada (ej: '25/41324')\n   - bultos: número de bultos de ESA fila (mira columna 'Bultos')\n   - peso_kg: peso neto de esa fila en kg (columna 'Net KG')\n\n5. PESOS:\n   - Si dice '25.120' en peso neto TOTAL, son 25120 kg (multiplica por 1000)\n   - Cada line_item tiene su peso_kg individual de la columna 'Net KG'\n\n6. VALIDACIÓN:\n   - Suma todos los bultos de line_items, debe coincidir con el resumen superior\n   - Si no coincide, revisa la columna 'Bultos' nuevamente\n\nEjemplo correcto:\nSi ves:\n  Producto 001: Descripción A, Ø12, Calidad B500\n  Tabla:\n    Colada 25/41324 | Bultos: 3 | Net KG: 9340\n    Colada 25/41612 | Bultos: 1 | Net KG: 3113\n    Colada 25/41613 | Bultos: 1 | Net KG: 3113\n\nDebes devolver:\n{\n  \"bultos_total\": 5,\n  \"productos\": [\n    {\n      \"descripcion\": \"Descripción A\",\n      \"diametro\": 12,\n      \"calidad\": \"B500\",\n      \"line_items\": [\n        {\"colada\": \"25/41324\", \"bultos\": 3, \"peso_kg\": 9340},\n        {\"colada\": \"25/41612\", \"bultos\": 1, \"peso_kg\": 3113},\n        {\"colada\": \"25/41613\", \"bultos\": 1, \"peso_kg\": 3113}\n      ]\n    }\n  ]\n}",
+            'megasa' => $basePrompt . "\nNotas proveedor Megasa:\n- La imagen puede estar rotada; interpreta el texto aunque esté en vertical.\n- Usa 'Código de albarán' como albaran. 'Código de pedido' como pedido_codigo. Fecha de descarga como fecha.\n- Tabla central con N.º Paquetes/Bultos/Bastones y peso bruto/neto. Total recibido/Total TM está abajo; convierte TM a kg multiplicando por 1000 y colócalo en peso_total.\n- Cada producto tiene su array de line_items con coladas.\n- Si ves la tabla con columna 'Coladas' a la izquierda y 'N.º de Paquete' a la derecha, cada grupo de paquetes pertenece a la colada de su fila.\n- Los bultos son el número de paquetes de cada colada.\n- Ignora QR/códigos de barras.",
+            'balboa' => $basePrompt . "\nNotas proveedor Balboa:\n- Formato Carta de Porte/Waybill. Usa 'N.º Expedición' o 'N.º Pedido' como albaran.\n- Tabla de rollos: cada fila tiene colada y 'Cantidad neta' o similar.\n- Crea un line_item por fila con peso_kg y bultos correspondientes.\n- Si hay códigos QR o barras, ignóralos para el JSON.\n- Interpreta la imagen aunque esté rotada.",
         ];
 
         return $mapa[$proveedor] ?? $basePrompt;
