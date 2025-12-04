@@ -1,6 +1,6 @@
 {
   "resources/css/app.css": {
-    "file": "assets/app.bX5PXsqq.css",
+    "file": "assets/app.C7KT7Cc5.css",
     "src": "resources/css/app.css",
     "isEntry": true
   },
@@ -58,7 +58,7 @@
     "isEntry": true
   },
   "resources/js/modules/calendario-salidas/index.js": {
-    "file": "assets/index.DWf5Ss5v.js",
+    "file": "assets/index.CImZUyNS.js",
     "name": "index",
     "src": "resources/js/modules/calendario-salidas/index.js",
     "isEntry": true

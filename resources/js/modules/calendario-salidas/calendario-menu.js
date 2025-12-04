@@ -1867,6 +1867,112 @@ async function cambiarFechasEntrega(planillasIds, calendar) {
                     container.querySelectorAll('.toggle-elementos').forEach(btn => btn.textContent = '▶');
                 });
 
+                // === FUNCIONALIDAD DE SELECCIÓN MASIVA ===
+
+                // Función para actualizar el contador y mostrar/ocultar la barra
+                function actualizarBarraSeleccion() {
+                    const checkboxes = container.querySelectorAll('.elemento-checkbox:checked');
+                    const cantidad = checkboxes.length;
+                    const barra = container.querySelector('#barra-acciones-masivas');
+                    const contador = container.querySelector('#contador-seleccionados');
+
+                    if (cantidad > 0) {
+                        barra?.classList.remove('hidden');
+                        if (contador) contador.textContent = cantidad;
+                    } else {
+                        barra?.classList.add('hidden');
+                    }
+                }
+
+                // Event listeners para checkboxes de elementos
+                container.querySelectorAll('.elemento-checkbox').forEach(checkbox => {
+                    checkbox.addEventListener('change', actualizarBarraSeleccion);
+                });
+
+                // Seleccionar todos los elementos visibles
+                container.querySelector('#seleccionar-todos-elementos')?.addEventListener('click', () => {
+                    // Primero expandir todos
+                    container.querySelectorAll('.elemento-row').forEach(el => el.classList.remove('hidden'));
+                    container.querySelectorAll('.toggle-elementos').forEach(btn => btn.textContent = '▼');
+                    // Luego seleccionar todos
+                    container.querySelectorAll('.elemento-checkbox').forEach(cb => {
+                        cb.checked = true;
+                    });
+                    actualizarBarraSeleccion();
+                });
+
+                // Seleccionar solo elementos sin fecha
+                container.querySelector('#seleccionar-sin-fecha')?.addEventListener('click', () => {
+                    // Primero expandir todos
+                    container.querySelectorAll('.elemento-row').forEach(el => el.classList.remove('hidden'));
+                    container.querySelectorAll('.toggle-elementos').forEach(btn => btn.textContent = '▼');
+                    // Deseleccionar todos primero
+                    container.querySelectorAll('.elemento-checkbox').forEach(cb => {
+                        cb.checked = false;
+                    });
+                    // Seleccionar solo los que no tienen fecha
+                    container.querySelectorAll('.elemento-checkbox').forEach(cb => {
+                        const elementoId = cb.dataset.elementoId;
+                        const fechaInput = container.querySelector(`.elemento-fecha[data-elemento-id="${elementoId}"]`);
+                        if (fechaInput && !fechaInput.value) {
+                            cb.checked = true;
+                        }
+                    });
+                    actualizarBarraSeleccion();
+                });
+
+                // Deseleccionar todos
+                container.querySelector('#deseleccionar-todos')?.addEventListener('click', () => {
+                    container.querySelectorAll('.elemento-checkbox').forEach(cb => {
+                        cb.checked = false;
+                    });
+                    actualizarBarraSeleccion();
+                });
+
+                // Aplicar fecha masiva a seleccionados
+                container.querySelector('#aplicar-fecha-masiva')?.addEventListener('click', () => {
+                    const fechaMasiva = container.querySelector('#fecha-masiva')?.value;
+                    if (!fechaMasiva) {
+                        alert('Por favor, selecciona una fecha para aplicar');
+                        return;
+                    }
+
+                    const checkboxes = container.querySelectorAll('.elemento-checkbox:checked');
+                    checkboxes.forEach(cb => {
+                        const elementoId = cb.dataset.elementoId;
+                        const fechaInput = container.querySelector(`.elemento-fecha[data-elemento-id="${elementoId}"]`);
+                        if (fechaInput) {
+                            fechaInput.value = fechaMasiva;
+                            fechaInput.dispatchEvent(new Event('change'));
+                        }
+                    });
+
+                    // Feedback visual
+                    const btn = container.querySelector('#aplicar-fecha-masiva');
+                    const textoOriginal = btn.textContent;
+                    btn.textContent = '✓ Aplicado';
+                    btn.classList.add('bg-green-600');
+                    setTimeout(() => {
+                        btn.textContent = textoOriginal;
+                        btn.classList.remove('bg-green-600');
+                    }, 1500);
+                });
+
+                // Limpiar fecha de seleccionados
+                container.querySelector('#limpiar-fecha-seleccionados')?.addEventListener('click', () => {
+                    const checkboxes = container.querySelectorAll('.elemento-checkbox:checked');
+                    checkboxes.forEach(cb => {
+                        const elementoId = cb.dataset.elementoId;
+                        const fechaInput = container.querySelector(`.elemento-fecha[data-elemento-id="${elementoId}"]`);
+                        if (fechaInput) {
+                            fechaInput.value = '';
+                            fechaInput.dispatchEvent(new Event('change'));
+                        }
+                    });
+                });
+
+                // === FIN FUNCIONALIDAD DE SELECCIÓN MASIVA ===
+
                 // Aplicar fecha de planilla a todos sus elementos
                 container.querySelectorAll('.aplicar-fecha-elementos').forEach(btn => {
                     btn.addEventListener('click', (e) => {
@@ -1884,7 +1990,7 @@ async function cambiarFechasEntrega(planillasIds, calendar) {
                     });
                 });
 
-                // 6) Ver figura del elemento (hover)
+                // 6) Ver figura del elemento (hover + click para seleccionar)
                 container.querySelectorAll('.ver-figura-elemento').forEach(btn => {
                     btn.addEventListener('mouseenter', (e) => {
                         const elementoId = btn.dataset.elementoId;
@@ -1903,6 +2009,17 @@ async function cambiarFechasEntrega(planillasIds, calendar) {
                                 modal.remove();
                             }
                         }, 100);
+                    });
+
+                    // Click en el ojo marca/desmarca el checkbox del elemento
+                    btn.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        const elementoId = btn.dataset.elementoId;
+                        const checkbox = container.querySelector(`.elemento-checkbox[data-elemento-id="${elementoId}"]`);
+                        if (checkbox) {
+                            checkbox.checked = !checkbox.checked;
+                            actualizarBarraSeleccion();
+                        }
                     });
                 });
 

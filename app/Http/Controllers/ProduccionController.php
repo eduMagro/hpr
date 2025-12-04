@@ -1839,6 +1839,7 @@ class ProduccionController extends Controller
             'elementos_id'      => 'sometimes|array',
             'elementos_id.*'    => 'integer|exists:elementos,id',
             'crear_nueva_posicion' => 'sometimes|boolean',
+            'usar_posicion_existente' => 'sometimes|boolean',
         ]);
 
         $planillaId   = (int) $request->id;
@@ -1848,6 +1849,7 @@ class ProduccionController extends Controller
         $forzar       = (bool) $request->boolean('forzar_movimiento');
         $subsetIds    = collect($request->input('elementos_id', []))->map(fn($v) => (int)$v);
         $crearNuevaPosicion = $request->boolean('crear_nueva_posicion', false);
+        $usarPosicionExistente = $request->boolean('usar_posicion_existente', false);
 
         Log::info("➡️ ReordenarPlanillas iniciado", [
             'planilla_id'       => $planillaId,
@@ -1901,7 +1903,8 @@ class ProduccionController extends Controller
             ->first();
 
         // Si existe un orden en la máquina destino y no es el mismo que el origen, verificar si realmente hay elementos allí
-        if ($ordenExistente && $maqOrigen !== $maqDestino && !$crearNuevaPosicion) {
+        // Solo pedir confirmación si NO se ha elegido crear nueva posición NI usar la existente
+        if ($ordenExistente && $maqOrigen !== $maqDestino && !$crearNuevaPosicion && !$usarPosicionExistente) {
             // Verificar si realmente hay elementos de esta planilla en esa máquina
             $elementosExistentes = Elemento::where('planilla_id', $planillaId)
                 ->where('maquina_id', $maqDestino)
