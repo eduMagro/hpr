@@ -1920,9 +1920,14 @@ class MaquinaController extends Controller
                 $planilla = $ordenPlanilla->planilla;
 
                 // Verificar que todas las etiquetas de esa planilla EN ESTA MÁQUINA tengan paquete asignado
+                // La máquina está en los elementos, no en las etiquetas
                 $etiquetasSinPaquete = $planilla->etiquetas()
-                    ->where('maquina_id', $maquina->id)
                     ->whereDoesntHave('paquete')
+                    ->whereHas('elementos', function ($q) use ($maquina) {
+                        $q->where('maquina_id', $maquina->id)
+                          ->orWhere('maquina_id_2', $maquina->id)
+                          ->orWhere('maquina_id_3', $maquina->id);
+                    })
                     ->count();
 
                 if ($etiquetasSinPaquete > 0) {
