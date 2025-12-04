@@ -31,7 +31,20 @@
                 <x-tabla.filtro-vacio />
                 <x-tabla.filtro-vacio />
                 <x-tabla.filtro-input model="usuario" placeholder="Usuario" />
-                <x-tabla.filtro-vacio />
+                @php
+                    $downloadQuery = request()->query();
+                    unset($downloadQuery['page']);
+                    $downloadUrl =
+                        route('entradas.descargarPdfFiltrados') .
+                        ($downloadQuery ? '?' . http_build_query($downloadQuery) : '');
+                @endphp
+                <th class="p-2 bg-white text-center align-middle">
+                    <a href="{{ $downloadUrl }}"
+                        class="w-full text-xs rounded px-2 py-2 text-white bg-gradient-to-r from-blue-600 to-blue-500 shadow-sm transition"
+                        title="Descargar PDFs de las entradas filtradas">
+                        DESCARGAR FILTRADOS
+                    </a>
+                </th>
                 <x-tabla.filtro-acciones />
             </x-tabla.filtro-row>
         </x-tabla.header>

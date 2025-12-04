@@ -24,6 +24,7 @@ use Throwable;
 use Illuminate\Support\Str;
 use Symfony\Component\HttpFoundation\Response;
 use Illuminate\Support\Facades\Storage;
+use ZipArchive;
 
 
 class EntradaController extends Controller
@@ -621,6 +622,58 @@ class EntradaController extends Controller
         $entrada->save();
 
         return redirect()->back()->with('success', 'PDF del albarán subido correctamente.');
+    }
+
+    public function descargarPdfFiltrados(Request $request)
+    {
+        $query = Entrada::query();
+        $this->aplicarFiltrosEntradas($query, $request);
+        $query->whereNotNull('pdf_albaran');
+
+        $entradas = $query->get();
+
+        if ($entradas->isEmpty()) {
+            return redirect()->back()->with('error', 'No hay archivos PDF asociados a las entradas filtradas.');
+        }
+
+        $disk = Storage::disk('private');
+        $zipPath = tempnam(sys_get_temp_dir(), 'entradas_pdf_');
+
+        if ($zipPath === false) {
+            return redirect()->back()->with('error', 'No se pudo preparar la descarga.');
+        }
+
+        $zip = new ZipArchive();
+        if ($zip->open($zipPath, ZipArchive::OVERWRITE) !== true) {
+            return redirect()->back()->with('error', 'No se pudo generar el archivo ZIP.');
+        }
+
+        $agregados = 0;
+        foreach ($entradas as $entrada) {
+            $relativePath = "albaranes_entrada/{$entrada->pdf_albaran}";
+            if (!$entrada->pdf_albaran || !$disk->exists($relativePath)) {
+                continue;
+            }
+
+            $nombre = 'entrada_' . $entrada->id;
+            if ($entrada->albaran) {
+                $nombre .= '_' . Str::slug($entrada->albaran);
+            }
+            $nombre .= '.pdf';
+
+            $zip->addFile($disk->path($relativePath), $nombre);
+            $agregados++;
+        }
+
+        $zip->close();
+
+        if ($agregados === 0) {
+            @unlink($zipPath);
+            return redirect()->back()->with('error', 'No se encontraron archivos PDF disponibles para descargar.');
+        }
+
+        return response()->download($zipPath, 'entradas_filtradas_' . now()->format('YmdHis') . '.zip')
+            ->deleteFileAfterSend(true);
     }
 
     public function descargarPdf($id)
