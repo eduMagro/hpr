@@ -592,9 +592,22 @@ document.addEventListener("DOMContentLoaded", function () {
             console.log("🔄 Detectado canvas, reemplazando por div contenedor");
 
             // Obtener dimensiones del canvas ANTES de reemplazarlo
-            // Usar las dimensiones del atributo width/height del canvas como base
-            ancho = contenedor.width || parseInt(contenedor.style.width) || 240;
-            alto = contenedor.height || parseInt(contenedor.style.height) || 80;
+            const canvasHeight = contenedor.getAttribute('height');
+            alto = canvasHeight ? parseInt(canvasHeight) : (contenedor.height || 80);
+
+            // Obtener el ancho del contenedor padre para no excederlo
+            const padre = contenedor.parentNode;
+            const padreRect = padre ? padre.getBoundingClientRect() : null;
+
+            // Usar el ancho del padre si está disponible, sino un valor seguro
+            if (padreRect && padreRect.width > 0) {
+                ancho = Math.floor(padreRect.width) - 4; // -4 para padding/border
+            } else {
+                // Fallback: usar un ancho que quepa en el panel (320px - padding)
+                ancho = 260;
+            }
+
+            console.log("📐 Dimensiones calculadas:", { ancho, alto });
 
             // Obtener estilos computados del canvas
             const computedStyles = window.getComputedStyle(contenedor);
@@ -602,9 +615,10 @@ document.addEventListener("DOMContentLoaded", function () {
             const div = document.createElement("div");
             div.id = containerId;
 
-            // Aplicar estilos copiados del CSS .elemento-drag canvas
-            div.style.width = "100%"; // Igual que el canvas original
-            div.style.height = alto + "px"; // Usar altura fija del canvas
+            // Aplicar estilos - usar 100% del ancho disponible
+            div.style.width = "100%";
+            div.style.maxWidth = ancho + "px";
+            div.style.height = alto + "px";
             div.style.display = "block";
             div.style.margin = "0";
             div.style.padding = "0";
@@ -619,14 +633,6 @@ document.addEventListener("DOMContentLoaded", function () {
 
             contenedor.parentNode.replaceChild(div, contenedor);
             contenedor = div;
-
-            // Intentar obtener dimensiones reales del contenedor padre visible
-            const parentRect = contenedor.parentNode ? contenedor.parentNode.getBoundingClientRect() : null;
-            if (parentRect && parentRect.width > 0) {
-                // Si el padre tiene ancho, usarlo (restando padding/border si aplica)
-                ancho = Math.min(parentRect.width - 4, ancho); // -4 para bordes
-            }
-            // Mantener alto fijo del canvas original
         } else {
             // Si no es canvas, obtener dimensiones del contenedor
             const rect = contenedor.getBoundingClientRect();
