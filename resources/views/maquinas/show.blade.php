@@ -285,7 +285,7 @@
                                                         }
 
                                                         const showLeft = JSON.parse(localStorage.getItem('showLeft') ??
-                                                            'false');
+                                                            'true');
                                                         const showRight = JSON.parse(localStorage.getItem(
                                                             'showRight') ?? 'true');
                                                         window.updateGridClasses(showLeft, showRight);
@@ -621,7 +621,7 @@
                                 gridActual.classList.add('una-planilla');
                             }
 
-                            const showLeft = JSON.parse(localStorage.getItem('showLeft') ?? 'false');
+                            const showLeft = JSON.parse(localStorage.getItem('showLeft') ?? 'true');
                             const showRight = JSON.parse(localStorage.getItem('showRight') ?? 'true');
                             window.updateGridClasses(showLeft, showRight);
                         }
