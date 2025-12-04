@@ -118,6 +118,8 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
     Route::resource('distribuidores', DistribuidorController::class)->names('distribuidores');
 
     // === ENTRADAS Y PEDIDOS ===
+    Route::get('/entradas/pdf/filtrados', [EntradaController::class, 'descargarPdfFiltrados'])
+        ->name('entradas.descargarPdfFiltrados');
     Route::resource('entradas', EntradaController::class)->names('entradas');
     Route::patch('/entradas/{id}/cerrar', [EntradaController::class, 'cerrar'])->name('entradas.cerrar');
     Route::post('/entradas/importar-albaran', [EntradaController::class, 'subirPdf'])
