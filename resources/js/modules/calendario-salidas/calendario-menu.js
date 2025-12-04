@@ -1415,7 +1415,7 @@ function esFinDeSemana(dateStr) {
  * @param {string} dimensiones - String de dimensiones del elemento
  * @param {HTMLElement} triggerBtn - Botón que disparó el evento
  */
-function mostrarFiguraElementoModal(elementoId, dimensiones, triggerBtn) {
+function mostrarFiguraElementoModal(elementoId, codigo, dimensiones, triggerBtn) {
     // Eliminar modal anterior si existe
     const modalAnterior = document.getElementById('modal-figura-elemento-overlay');
     if (modalAnterior) {
@@ -1425,7 +1425,7 @@ function mostrarFiguraElementoModal(elementoId, dimensiones, triggerBtn) {
     // Calcular posición cerca del botón
     const rect = triggerBtn.getBoundingClientRect();
     const tooltipWidth = 320;
-    const tooltipHeight = 200;
+    const tooltipHeight = 240;
 
     // Posicionar a la derecha del botón, o a la izquierda si no hay espacio
     let left = rect.right + 10;
@@ -1447,10 +1447,13 @@ function mostrarFiguraElementoModal(elementoId, dimensiones, triggerBtn) {
              style="z-index: 10001; left: ${left}px; top: ${top}px; width: ${tooltipWidth}px;"
              onmouseleave="this.remove()">
             <div class="flex items-center justify-between px-3 py-2 border-b bg-gray-100 rounded-t-lg">
-                <h3 class="text-xs font-semibold text-gray-700">Elemento #${elementoId}</h3>
+                <h3 class="text-xs font-semibold text-gray-700">${codigo || 'Elemento'}</h3>
             </div>
             <div class="p-2">
-                <div id="figura-elemento-container-${elementoId}" class="w-full h-40 bg-gray-50 rounded"></div>
+                <div id="figura-elemento-container-${elementoId}" class="w-full h-36 bg-gray-50 rounded"></div>
+                <div class="mt-2 px-1 py-1 bg-gray-100 rounded text-xs text-gray-600 font-mono break-all">
+                    ${dimensiones || 'Sin dimensiones'}
+                </div>
             </div>
         </div>
     `;
@@ -1499,6 +1502,9 @@ function construirFormularioFechas(planillas) {
                     // Escapar dimensiones para JSON
                     const dimensionesEscaped = tieneDimensiones ? el.dimensiones.replace(/"/g, '&quot;').replace(/'/g, '&#39;') : '';
 
+                    // Escapar código para atributo
+                    const codigoEscaped = codigoEl.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+
                     return `
                     <tr class="elemento-row elemento-planilla-${p.id} bg-gray-50 hidden">
                         <td class="px-2 py-1 text-xs text-gray-400 pl-4">
@@ -1512,8 +1518,9 @@ function construirFormularioFechas(planillas) {
                                 <button type="button"
                                         class="ver-figura-elemento text-blue-500 hover:text-blue-700 hover:bg-blue-100 rounded p-0.5 transition-colors"
                                         data-elemento-id="${el.id}"
+                                        data-elemento-codigo="${codigoEscaped}"
                                         data-dimensiones="${dimensionesEscaped}"
-                                        title="Ver figura del elemento">
+                                        title="Click para seleccionar, hover para ver figura">
                                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
@@ -1994,10 +2001,11 @@ async function cambiarFechasEntrega(planillasIds, calendar) {
                 container.querySelectorAll('.ver-figura-elemento').forEach(btn => {
                     btn.addEventListener('mouseenter', (e) => {
                         const elementoId = btn.dataset.elementoId;
+                        const codigo = btn.dataset.elementoCodigo?.replace(/&quot;/g, '"').replace(/&#39;/g, "'") || '';
                         const dimensiones = btn.dataset.dimensiones?.replace(/&quot;/g, '"').replace(/&#39;/g, "'") || '';
 
-                        if (dimensiones && typeof window.dibujarFiguraElemento === 'function') {
-                            mostrarFiguraElementoModal(elementoId, dimensiones, btn);
+                        if (typeof window.dibujarFiguraElemento === 'function') {
+                            mostrarFiguraElementoModal(elementoId, codigo, dimensiones, btn);
                         }
                     });
 
@@ -2013,12 +2021,24 @@ async function cambiarFechasEntrega(planillasIds, calendar) {
 
                     // Click en el ojo marca/desmarca el checkbox del elemento
                     btn.addEventListener('click', (e) => {
+                        e.preventDefault();
                         e.stopPropagation();
                         const elementoId = btn.dataset.elementoId;
                         const checkbox = container.querySelector(`.elemento-checkbox[data-elemento-id="${elementoId}"]`);
                         if (checkbox) {
                             checkbox.checked = !checkbox.checked;
-                            actualizarBarraSeleccion();
+                            // Llamar directamente a la lógica de actualización
+                            const checkboxes = container.querySelectorAll('.elemento-checkbox:checked');
+                            const cantidad = checkboxes.length;
+                            const barra = container.querySelector('#barra-acciones-masivas');
+                            const contador = container.querySelector('#contador-seleccionados');
+
+                            if (cantidad > 0) {
+                                barra?.classList.remove('hidden');
+                                if (contador) contador.textContent = cantidad;
+                            } else {
+                                barra?.classList.add('hidden');
+                            }
                         }
                     });
                 });

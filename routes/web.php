@@ -299,6 +299,7 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
     // Endpoints de priorización de obras
     Route::get('/api/produccion/obras-activas', [ProduccionController::class, 'obrasConPlanillasActivas'])->name('api.produccion.obras-activas');
     Route::post('/api/produccion/priorizar-obra', [ProduccionController::class, 'priorizarObra'])->name('api.produccion.priorizar-obra');
+    Route::post('/api/produccion/priorizar-obras', [ProduccionController::class, 'priorizarObras'])->name('api.produccion.priorizar-obras');
 
     //MSR20 BVBS
     Route::get('/maquinas/{maquina}/exportar-bvbs', [MaquinaController::class, 'exportarBVBS'])
