@@ -76,94 +76,94 @@
                     </tr>
 
                     <tr class="text-center text-xs uppercase">
-                        <th class="p-1 border">
+                        <th class="p-2 border">
                             <input type="text" wire:model.live.debounce.300ms="elemento_id"
-                                class="w-full text-xs border rounded px-1 py-0.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none"
+                                class="w-full text-xs border rounded px-2 py-1.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none"
                                 placeholder="ID...">
                         </th>
-                        <th class="p-1 border">
+                        <th class="p-2 border">
                             <input type="text" wire:model.live.debounce.300ms="codigo"
-                                class="w-full text-xs border rounded px-1 py-0.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none"
+                                class="w-full text-xs border rounded px-2 py-1.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none"
                                 placeholder="Código...">
                         </th>
-                        <th class="p-1 border">
+                        <th class="p-2 border">
                             <input type="text" wire:model.live.debounce.300ms="codigo_planilla"
-                                class="w-full text-xs border rounded px-1 py-0.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none"
+                                class="w-full text-xs border rounded px-2 py-1.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none"
                                 placeholder="Planilla...">
                         </th>
-                        <th class="p-1 border">
+                        <th class="p-2 border">
                             <input type="text" wire:model.live.debounce.300ms="etiqueta"
-                                class="w-full text-xs border rounded px-1 py-0.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none"
+                                class="w-full text-xs border rounded px-2 py-1.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none"
                                 placeholder="Etiqueta...">
                         </th>
-                        <th class="p-1 border">
+                        <th class="p-2 border">
                             <input type="text" wire:model.live.debounce.300ms="subetiqueta"
-                                class="w-full text-xs border rounded px-1 py-0.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none"
+                                class="w-full text-xs border rounded px-2 py-1.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none"
                                 placeholder="Subetiqueta...">
                         </th>
-                        <th class="p-1 border">
+                        <th class="p-2 border">
                             <input type="text" wire:model.live.debounce.300ms="dimensiones"
-                                class="w-full text-xs border rounded px-1 py-0.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none"
+                                class="w-full text-xs border rounded px-2 py-1.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none"
                                 placeholder="Dimensiones...">
                         </th>
-                        <th class="p-1 border">
+                        <th class="p-2 border">
                             <input type="text" wire:model.live.debounce.300ms="diametro"
-                                class="w-full text-xs border rounded px-1 py-0.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none"
+                                class="w-full text-xs border rounded px-2 py-1.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none"
                                 placeholder="Diámetro...">
                         </th>
-                        <th class="p-1 border">
+                        <th class="p-2 border">
                             <input type="text" wire:model.live.debounce.300ms="barras"
-                                class="w-full text-xs border rounded px-1 py-0.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none"
+                                class="w-full text-xs border rounded px-2 py-1.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none"
                                 placeholder="Barras...">
                         </th>
-                        <th class="p-1 border">
+                        <th class="p-2 border">
                             <input type="text" wire:model.live.debounce.300ms="maquina"
-                                class="w-full text-xs border rounded px-1 py-0.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none"
+                                class="w-full text-xs border rounded px-2 py-1.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none"
                                 placeholder="Máquina...">
                         </th>
-                        <th class="p-1 border">
+                        <th class="p-2 border">
                             <input type="text" wire:model.live.debounce.300ms="maquina_2"
-                                class="w-full text-xs border rounded px-1 py-0.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none"
+                                class="w-full text-xs border rounded px-2 py-1.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none"
                                 placeholder="Máquina 2...">
                         </th>
-                        <th class="p-1 border">
+                        <th class="p-2 border">
                             <input type="text" wire:model.live.debounce.300ms="maquina3"
-                                class="w-full text-xs border rounded px-1 py-0.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none"
+                                class="w-full text-xs border rounded px-2 py-1.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none"
                                 placeholder="Máquina 3...">
                         </th>
-                        <th class="p-1 border">
+                        <th class="p-2 border">
                             <input type="text" wire:model.live.debounce.300ms="producto1"
-                                class="w-full text-xs border rounded px-1 py-0.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none"
+                                class="w-full text-xs border rounded px-2 py-1.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none"
                                 placeholder="Producto 1...">
                         </th>
-                        <th class="p-1 border">
+                        <th class="p-2 border">
                             <input type="text" wire:model.live.debounce.300ms="producto2"
-                                class="w-full text-xs border rounded px-1 py-0.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none"
+                                class="w-full text-xs border rounded px-2 py-1.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none"
                                 placeholder="Producto 2...">
                         </th>
-                        <th class="p-1 border">
+                        <th class="p-2 border">
                             <input type="text" wire:model.live.debounce.300ms="producto3"
-                                class="w-full text-xs border rounded px-1 py-0.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none"
+                                class="w-full text-xs border rounded px-2 py-1.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none"
                                 placeholder="Producto 3...">
                         </th>
-                        <th class="p-1 border">
+                        <th class="p-2 border">
                             <input type="text" wire:model.live.debounce.300ms="figura"
-                                class="w-full text-xs border rounded px-1 py-0.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none"
+                                class="w-full text-xs border rounded px-2 py-1.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none"
                                 placeholder="Figura...">
                         </th>
-                        <th class="p-1 border">
+                        <th class="p-2 border">
                             <input type="text" wire:model.live.debounce.300ms="peso"
-                                class="w-full text-xs border rounded px-1 py-0.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none"
+                                class="w-full text-xs border rounded px-2 py-1.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none"
                                 placeholder="Peso...">
                         </th>
-                        <th class="p-1 border">
+                        <th class="p-2 border">
                             <input type="text" wire:model.live.debounce.300ms="longitud"
-                                class="w-full text-xs border rounded px-1 py-0.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none"
+                                class="w-full text-xs border rounded px-2 py-1.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none"
                                 placeholder="Longitud...">
                         </th>
-                        <th class="p-1 border">
+                        <th class="p-2 border">
                             <select wire:model.live="estado"
-                                class="w-full text-xs border rounded px-1 py-0.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none">
+                                class="w-full text-xs border rounded px-2 py-1.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none">
                                 <option value="">Todos</option>
                                 <option value="pendiente">Pendiente</option>
                                 <option value="fabricando">Fabricando</option>
@@ -171,7 +171,7 @@
                                 <option value="montaje">Montaje</option>
                             </select>
                         </th>
-                        <th class="p-1 border text-center align-middle">
+                        <th class="p-2 border text-center align-middle">
                             <div class="flex justify-center gap-2 items-center h-full">
                                 {{-- ♻️ Botón reset --}}
                                 <button wire:click="limpiarFiltros"

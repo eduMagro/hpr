@@ -33,55 +33,55 @@
                     </tr>
 
                     <tr class="text-center text-xs uppercase">
-                        <th class="p-1 border">
-                            <input type="text" wire:model.live.debounce.300ms="etiqueta_id" class="w-full text-xs border rounded px-1 py-0.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none" placeholder="ID...">
+                        <th class="p-2 border">
+                            <input type="text" wire:model.live.debounce.300ms="etiqueta_id" class="w-full text-xs border rounded px-2 py-1.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none" placeholder="ID...">
                         </th>
-                        <th class="p-1 border">
-                            <input type="text" wire:model.live.debounce.300ms="codigo" class="w-full text-xs border rounded px-1 py-0.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none" placeholder="Código...">
+                        <th class="p-2 border">
+                            <input type="text" wire:model.live.debounce.300ms="codigo" class="w-full text-xs border rounded px-2 py-1.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none" placeholder="Código...">
                         </th>
-                        <th class="p-1 border">
-                            <input type="text" wire:model.live.debounce.300ms="etiqueta_sub_id" class="w-full text-xs border rounded px-1 py-0.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none" placeholder="SubEtiqueta...">
+                        <th class="p-2 border">
+                            <input type="text" wire:model.live.debounce.300ms="etiqueta_sub_id" class="w-full text-xs border rounded px-2 py-1.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none" placeholder="SubEtiqueta...">
                         </th>
-                        <th class="p-1 border">
-                            <input type="text" wire:model.live.debounce.300ms="codigo_planilla" class="w-full text-xs border rounded px-1 py-0.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none" placeholder="Planilla...">
+                        <th class="p-2 border">
+                            <input type="text" wire:model.live.debounce.300ms="codigo_planilla" class="w-full text-xs border rounded px-2 py-1.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none" placeholder="Planilla...">
                         </th>
-                        <th class="p-1 border">
-                            <input type="text" wire:model.live.debounce.300ms="paquete" class="w-full text-xs border rounded px-1 py-0.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none" placeholder="Paquete...">
+                        <th class="p-2 border">
+                            <input type="text" wire:model.live.debounce.300ms="paquete" class="w-full text-xs border rounded px-2 py-1.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none" placeholder="Paquete...">
                         </th>
-                        <th class="p-1 border"></th> {{-- Op 1 --}}
-                        <th class="p-1 border"></th> {{-- Op 2 --}}
-                        <th class="p-1 border"></th> {{-- Ens 1 --}}
-                        <th class="p-1 border"></th> {{-- Ens 2 --}}
-                        <th class="p-1 border"></th> {{-- Sol 1 --}}
-                        <th class="p-1 border"></th> {{-- Sol 2 --}}
-                        <th class="p-1 border">
-                            <input type="text" wire:model.live.debounce.300ms="numero_etiqueta" class="w-full text-xs border rounded px-1 py-0.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none" placeholder="Número...">
+                        <th class="p-2 border"></th> {{-- Op 1 --}}
+                        <th class="p-2 border"></th> {{-- Op 2 --}}
+                        <th class="p-2 border"></th> {{-- Ens 1 --}}
+                        <th class="p-2 border"></th> {{-- Ens 2 --}}
+                        <th class="p-2 border"></th> {{-- Sol 1 --}}
+                        <th class="p-2 border"></th> {{-- Sol 2 --}}
+                        <th class="p-2 border">
+                            <input type="text" wire:model.live.debounce.300ms="numero_etiqueta" class="w-full text-xs border rounded px-2 py-1.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none" placeholder="Número...">
                         </th>
-                        <th class="p-1 border">
-                            <input type="text" wire:model.live.debounce.300ms="nombre" class="w-full text-xs border rounded px-1 py-0.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none" placeholder="Nombre...">
+                        <th class="p-2 border">
+                            <input type="text" wire:model.live.debounce.300ms="nombre" class="w-full text-xs border rounded px-2 py-1.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none" placeholder="Nombre...">
                         </th>
-                        <th class="p-1 border"></th> {{-- Marca --}}
-                        <th class="p-1 border"></th> {{-- Peso --}}
-                        <th class="p-1 border">
-                            <input type="date" wire:model.live.debounce.300ms="inicio_fabricacion" class="w-full text-xs border rounded px-1 py-0.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none">
+                        <th class="p-2 border"></th> {{-- Marca --}}
+                        <th class="p-2 border"></th> {{-- Peso --}}
+                        <th class="p-2 border">
+                            <input type="date" wire:model.live.debounce.300ms="inicio_fabricacion" class="w-full text-xs border rounded px-2 py-1.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none">
                         </th>
-                        <th class="p-1 border">
-                            <input type="date" wire:model.live.debounce.300ms="final_fabricacion" class="w-full text-xs border rounded px-1 py-0.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none">
+                        <th class="p-2 border">
+                            <input type="date" wire:model.live.debounce.300ms="final_fabricacion" class="w-full text-xs border rounded px-2 py-1.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none">
                         </th>
-                        <th class="p-1 border">
-                            <input type="date" wire:model.live.debounce.300ms="inicio_ensamblado" class="w-full text-xs border rounded px-1 py-0.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none">
+                        <th class="p-2 border">
+                            <input type="date" wire:model.live.debounce.300ms="inicio_ensamblado" class="w-full text-xs border rounded px-2 py-1.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none">
                         </th>
-                        <th class="p-1 border">
-                            <input type="date" wire:model.live.debounce.300ms="final_ensamblado" class="w-full text-xs border rounded px-1 py-0.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none">
+                        <th class="p-2 border">
+                            <input type="date" wire:model.live.debounce.300ms="final_ensamblado" class="w-full text-xs border rounded px-2 py-1.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none">
                         </th>
-                        <th class="p-1 border">
-                            <input type="date" wire:model.live.debounce.300ms="inicio_soldadura" class="w-full text-xs border rounded px-1 py-0.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none">
+                        <th class="p-2 border">
+                            <input type="date" wire:model.live.debounce.300ms="inicio_soldadura" class="w-full text-xs border rounded px-2 py-1.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none">
                         </th>
-                        <th class="p-1 border">
-                            <input type="date" wire:model.live.debounce.300ms="final_soldadura" class="w-full text-xs border rounded px-1 py-0.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none">
+                        <th class="p-2 border">
+                            <input type="date" wire:model.live.debounce.300ms="final_soldadura" class="w-full text-xs border rounded px-2 py-1.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none">
                         </th>
-                        <th class="p-1 border">
-                            <select wire:model.live="estado" class="w-full text-xs border rounded px-1 py-0.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none">
+                        <th class="p-2 border">
+                            <select wire:model.live="estado" class="w-full text-xs border rounded px-2 py-1.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none">
                                 <option value="">Todos</option>
                                 <option value="pendiente">Pendiente</option>
                                 <option value="fabricando">Fabricando</option>
@@ -90,7 +90,7 @@
                                 <option value="completada">Completada</option>
                             </select>
                         </th>
-                        <th class="p-1 border text-center align-middle">
+                        <th class="p-2 border text-center align-middle">
                             <div class="flex justify-center gap-2 items-center h-full">
                                 {{-- ♻️ Botón reset --}}
                                 <button wire:click="limpiarFiltros"

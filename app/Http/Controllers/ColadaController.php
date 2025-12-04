@@ -11,14 +11,7 @@ class ColadaController extends Controller
 {
     public function index()
     {
-        $coladas = Colada::with(['productoBase', 'fabricante'])
-            ->orderBy('created_at', 'desc')
-            ->paginate(25);
-
-        $productosBase = ProductoBase::orderBy('tipo')->orderBy('diametro')->get();
-        $fabricantes = Fabricante::orderBy('nombre')->get();
-
-        return view('coladas.index', compact('coladas', 'productosBase', 'fabricantes'));
+        return view('coladas.index');
     }
 
     public function store(Request $request)
