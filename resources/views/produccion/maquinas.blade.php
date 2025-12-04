@@ -751,18 +751,18 @@
             </div>
         </div>
 
-        <!-- Modal Priorizar Obra -->
+        <!-- Modal Priorizar Obras (hasta 5 posiciones) -->
         <div id="modalPriorizarObra"
-            class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
-            <div class="bg-white rounded-lg shadow-xl w-full max-w-lg mx-4">
+            class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50 overflow-y-auto">
+            <div class="bg-white rounded-lg shadow-xl w-full max-w-2xl mx-4 my-8">
                 <div class="bg-orange-500 text-white px-6 py-4 rounded-t-lg">
                     <h3 class="text-lg font-semibold flex items-center gap-2">
                         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"></path>
                         </svg>
-                        Priorizar Obra
+                        Priorizar Obras
                     </h3>
-                    <p class="text-sm opacity-90 mt-1">Mover todas las planillas de una obra al inicio de la cola</p>
+                    <p class="text-sm opacity-90 mt-1">Ordenar las primeras 5 posiciones de la cola por obra y fecha de entrega</p>
                 </div>
 
                 <!-- Loading state -->
@@ -773,23 +773,81 @@
 
                 <!-- Content state -->
                 <div id="priorizarObraContent" class="hidden p-6">
-                    <label class="block text-sm font-medium text-gray-700 mb-2">
-                        Selecciona obra y fecha de entrega:
-                    </label>
-                    <select id="selectObraPriorizar"
-                        class="w-full border border-gray-300 rounded-lg px-4 py-3 text-gray-700 focus:ring-2 focus:ring-orange-500 focus:border-orange-500">
-                        <option value="">-- Selecciona --</option>
-                    </select>
-                    <div id="infoPriorizacion" class="mt-3 p-3 bg-orange-50 border border-orange-200 rounded-lg hidden">
-                        <div class="flex items-center gap-2 text-orange-800">
+                    <p class="text-sm text-gray-600 mb-4">
+                        Selecciona hasta 5 obras con sus fechas de entrega. Las planillas se ordenarán en cada máquina según el orden indicado.
+                    </p>
+
+                    <!-- Selectores de prioridad -->
+                    <div class="space-y-3" id="prioridadesContainer">
+                        <!-- Posición 1 -->
+                        <div class="flex items-center gap-3 p-3 bg-gradient-to-r from-yellow-50 to-orange-50 border border-orange-200 rounded-lg">
+                            <span class="flex items-center justify-center w-8 h-8 bg-orange-500 text-white rounded-full font-bold text-sm shrink-0">1</span>
+                            <select id="selectPrioridad1" class="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-700 focus:ring-2 focus:ring-orange-500 focus:border-orange-500" onchange="actualizarInfoPrioridad(1)">
+                                <option value="">-- Sin selección --</option>
+                            </select>
+                            <button type="button" onclick="limpiarPrioridad(1)" class="text-gray-400 hover:text-red-500 p-1" title="Limpiar">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                            </button>
+                        </div>
+
+                        <!-- Posición 2 -->
+                        <div class="flex items-center gap-3 p-3 bg-gray-50 border border-gray-200 rounded-lg">
+                            <span class="flex items-center justify-center w-8 h-8 bg-gray-400 text-white rounded-full font-bold text-sm shrink-0">2</span>
+                            <select id="selectPrioridad2" class="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-700 focus:ring-2 focus:ring-orange-500 focus:border-orange-500" onchange="actualizarInfoPrioridad(2)">
+                                <option value="">-- Sin selección --</option>
+                            </select>
+                            <button type="button" onclick="limpiarPrioridad(2)" class="text-gray-400 hover:text-red-500 p-1" title="Limpiar">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                            </button>
+                        </div>
+
+                        <!-- Posición 3 -->
+                        <div class="flex items-center gap-3 p-3 bg-gray-50 border border-gray-200 rounded-lg">
+                            <span class="flex items-center justify-center w-8 h-8 bg-gray-400 text-white rounded-full font-bold text-sm shrink-0">3</span>
+                            <select id="selectPrioridad3" class="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-700 focus:ring-2 focus:ring-orange-500 focus:border-orange-500" onchange="actualizarInfoPrioridad(3)">
+                                <option value="">-- Sin selección --</option>
+                            </select>
+                            <button type="button" onclick="limpiarPrioridad(3)" class="text-gray-400 hover:text-red-500 p-1" title="Limpiar">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                            </button>
+                        </div>
+
+                        <!-- Posición 4 -->
+                        <div class="flex items-center gap-3 p-3 bg-gray-50 border border-gray-200 rounded-lg">
+                            <span class="flex items-center justify-center w-8 h-8 bg-gray-400 text-white rounded-full font-bold text-sm shrink-0">4</span>
+                            <select id="selectPrioridad4" class="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-700 focus:ring-2 focus:ring-orange-500 focus:border-orange-500" onchange="actualizarInfoPrioridad(4)">
+                                <option value="">-- Sin selección --</option>
+                            </select>
+                            <button type="button" onclick="limpiarPrioridad(4)" class="text-gray-400 hover:text-red-500 p-1" title="Limpiar">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                            </button>
+                        </div>
+
+                        <!-- Posición 5 -->
+                        <div class="flex items-center gap-3 p-3 bg-gray-50 border border-gray-200 rounded-lg">
+                            <span class="flex items-center justify-center w-8 h-8 bg-gray-400 text-white rounded-full font-bold text-sm shrink-0">5</span>
+                            <select id="selectPrioridad5" class="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-700 focus:ring-2 focus:ring-orange-500 focus:border-orange-500" onchange="actualizarInfoPrioridad(5)">
+                                <option value="">-- Sin selección --</option>
+                            </select>
+                            <button type="button" onclick="limpiarPrioridad(5)" class="text-gray-400 hover:text-red-500 p-1" title="Limpiar">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Resumen de selección -->
+                    <div id="infoPriorizacion" class="mt-4 p-3 bg-orange-50 border border-orange-200 rounded-lg hidden">
+                        <div class="flex items-center gap-2 text-orange-800 mb-2">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                             </svg>
-                            <span id="infoPlanillasCount" class="font-medium"></span>
+                            <span class="font-medium">Resumen de prioridades:</span>
                         </div>
+                        <ul id="resumenPrioridades" class="text-sm text-orange-700 space-y-1 ml-7"></ul>
                     </div>
-                    <p class="mt-3 text-sm text-gray-500">
-                        Las planillas seleccionadas se moverán a la posición 1 en cada máquina.
+
+                    <p class="mt-3 text-xs text-gray-500">
+                        Las planillas de las obras seleccionadas se ordenarán en cada máquina según la prioridad indicada. El resto de planillas mantendrán su orden relativo después de las priorizadas.
                     </p>
                 </div>
 
@@ -803,18 +861,24 @@
                 </div>
 
                 <!-- Botones de acción -->
-                <div class="bg-gray-50 px-6 py-4 rounded-b-lg flex justify-end gap-3 border-t border-gray-200">
-                    <button onclick="cerrarModalPriorizarObra()"
-                        class="bg-gray-300 hover:bg-gray-400 text-gray-700 px-4 py-2 rounded-lg transition-colors">
-                        Cancelar
+                <div class="bg-gray-50 px-6 py-4 rounded-b-lg flex justify-between items-center gap-3 border-t border-gray-200">
+                    <button type="button" onclick="limpiarTodasPrioridades()" class="text-gray-500 hover:text-gray-700 text-sm flex items-center gap-1">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                        Limpiar todo
                     </button>
-                    <button id="btnAplicarPriorizar" onclick="aplicarPriorizarObra()"
-                        class="bg-orange-500 hover:bg-orange-600 text-white px-6 py-2 rounded-lg transition-colors flex items-center gap-2 hidden">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"></path>
-                        </svg>
-                        Priorizar Obra
-                    </button>
+                    <div class="flex gap-3">
+                        <button onclick="cerrarModalPriorizarObra()"
+                            class="bg-gray-300 hover:bg-gray-400 text-gray-700 px-4 py-2 rounded-lg transition-colors">
+                            Cancelar
+                        </button>
+                        <button id="btnAplicarPriorizar" onclick="aplicarPriorizarObra()"
+                            class="bg-orange-500 hover:bg-orange-600 text-white px-6 py-2 rounded-lg transition-colors flex items-center gap-2 hidden">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"></path>
+                            </svg>
+                            Aplicar Prioridades
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -4993,7 +5057,7 @@
             }
 
             // ============================================================
-            // PRIORIZAR OBRA POR FECHA DE ENTREGA
+            // PRIORIZAR OBRAS POR FECHA DE ENTREGA (HASTA 5 POSICIONES)
             // ============================================================
 
             window.datosAgrupaciones = null;
@@ -5028,46 +5092,33 @@
                     // Guardar datos para usar al aplicar
                     window.datosAgrupaciones = agrupaciones;
 
-                    // Agrupar visualmente por obra
-                    const select = document.getElementById('selectObraPriorizar');
-                    select.innerHTML = '<option value="">-- Selecciona obra y fecha --</option>';
+                    // Poblar los 5 selectores
+                    for (let i = 1; i <= 5; i++) {
+                        const select = document.getElementById(`selectPrioridad${i}`);
+                        select.innerHTML = '<option value="">-- Sin selección --</option>';
 
-                    let currentObra = null;
-                    let optgroup = null;
+                        let currentObra = null;
+                        let optgroup = null;
 
-                    agrupaciones.forEach((grupo, index) => {
-                        // Crear optgroup si cambia la obra
-                        if (currentObra !== grupo.obra_id) {
-                            optgroup = document.createElement('optgroup');
-                            optgroup.label = `${grupo.cod_obra} - ${grupo.obra}`;
-                            select.appendChild(optgroup);
-                            currentObra = grupo.obra_id;
-                        }
+                        agrupaciones.forEach((grupo, index) => {
+                            // Crear optgroup si cambia la obra
+                            if (currentObra !== grupo.obra_id) {
+                                optgroup = document.createElement('optgroup');
+                                optgroup.label = `${grupo.cod_obra} - ${grupo.obra}`;
+                                select.appendChild(optgroup);
+                                currentObra = grupo.obra_id;
+                            }
 
-                        const option = document.createElement('option');
-                        option.value = index; // Índice en el array
-                        option.textContent = `📅 ${grupo.fecha_entrega_formatted} (${grupo.planillas_count} planillas)`;
-                        optgroup.appendChild(option);
-                    });
+                            const option = document.createElement('option');
+                            option.value = index;
+                            option.textContent = `${grupo.fecha_entrega_formatted} (${grupo.planillas_count} planillas)`;
+                            optgroup.appendChild(option);
+                        });
+                    }
 
                     loading.classList.add('hidden');
                     content.classList.remove('hidden');
 
-                    select.onchange = function() {
-                        const idx = this.value;
-                        if (idx !== '' && window.datosAgrupaciones[idx]) {
-                            const grupo = window.datosAgrupaciones[idx];
-                            btnAplicar.classList.remove('hidden');
-                            if (infoDiv) {
-                                infoDiv.classList.remove('hidden');
-                                document.getElementById('infoPlanillasCount').textContent =
-                                    `${grupo.planillas_count} planillas de "${grupo.cod_obra} - ${grupo.obra}" con entrega ${grupo.fecha_entrega_formatted}`;
-                            }
-                        } else {
-                            btnAplicar.classList.add('hidden');
-                            if (infoDiv) infoDiv.classList.add('hidden');
-                        }
-                    };
                 } catch (error) {
                     console.error('Error al cargar obras:', error);
                     Swal.fire({ icon: 'error', title: 'Error', text: 'No se pudieron cargar las obras' });
@@ -5075,37 +5126,113 @@
                 }
             }
 
+            function actualizarInfoPrioridad(posicion) {
+                actualizarResumenPrioridades();
+            }
+
+            function limpiarPrioridad(posicion) {
+                document.getElementById(`selectPrioridad${posicion}`).value = '';
+                actualizarResumenPrioridades();
+            }
+
+            function limpiarTodasPrioridades() {
+                for (let i = 1; i <= 5; i++) {
+                    document.getElementById(`selectPrioridad${i}`).value = '';
+                }
+                actualizarResumenPrioridades();
+            }
+
+            function actualizarResumenPrioridades() {
+                const infoDiv = document.getElementById('infoPriorizacion');
+                const resumenList = document.getElementById('resumenPrioridades');
+                const btnAplicar = document.getElementById('btnAplicarPriorizar');
+
+                const selecciones = obtenerSeleccionesPrioridad();
+
+                if (selecciones.length === 0) {
+                    infoDiv.classList.add('hidden');
+                    btnAplicar.classList.add('hidden');
+                    return;
+                }
+
+                resumenList.innerHTML = '';
+                selecciones.forEach((sel, idx) => {
+                    const li = document.createElement('li');
+                    li.innerHTML = `<strong>${idx + 1}.</strong> ${sel.grupo.cod_obra} - ${sel.grupo.fecha_entrega_formatted} <span class="text-orange-500">(${sel.grupo.planillas_count} planillas)</span>`;
+                    resumenList.appendChild(li);
+                });
+
+                infoDiv.classList.remove('hidden');
+                btnAplicar.classList.remove('hidden');
+            }
+
+            function obtenerSeleccionesPrioridad() {
+                const selecciones = [];
+                const indicesUsados = new Set();
+
+                for (let i = 1; i <= 5; i++) {
+                    const select = document.getElementById(`selectPrioridad${i}`);
+                    const idx = select.value;
+
+                    if (idx !== '' && window.datosAgrupaciones && window.datosAgrupaciones[idx]) {
+                        // Evitar duplicados
+                        if (!indicesUsados.has(idx)) {
+                            indicesUsados.add(idx);
+                            selecciones.push({
+                                posicion: i,
+                                indice: parseInt(idx),
+                                grupo: window.datosAgrupaciones[idx]
+                            });
+                        }
+                    }
+                }
+
+                return selecciones;
+            }
+
             function cerrarModalPriorizarObra() {
                 const modal = document.getElementById('modalPriorizarObra');
                 modal.classList.add('hidden');
                 modal.classList.remove('flex');
                 window.datosAgrupaciones = null;
+                // Limpiar selectores
+                for (let i = 1; i <= 5; i++) {
+                    const select = document.getElementById(`selectPrioridad${i}`);
+                    if (select) select.value = '';
+                }
             }
 
             async function aplicarPriorizarObra() {
-                const select = document.getElementById('selectObraPriorizar');
-                const idx = select.value;
+                const selecciones = obtenerSeleccionesPrioridad();
 
-                if (idx === '' || !window.datosAgrupaciones || !window.datosAgrupaciones[idx]) {
-                    Swal.fire({ icon: 'warning', title: 'Selección requerida', text: 'Por favor selecciona una opción' });
+                if (selecciones.length === 0) {
+                    Swal.fire({ icon: 'warning', title: 'Selección requerida', text: 'Por favor selecciona al menos una obra' });
                     return;
                 }
 
-                const grupo = window.datosAgrupaciones[idx];
+                // Preparar resumen para confirmación
+                let resumenHtml = '<div class="text-left"><ol class="list-decimal ml-5 space-y-1">';
+                let totalPlanillas = 0;
+                selecciones.forEach(sel => {
+                    resumenHtml += `<li><strong>${sel.grupo.cod_obra}</strong> - ${sel.grupo.fecha_entrega_formatted} (${sel.grupo.planillas_count} planillas)</li>`;
+                    totalPlanillas += sel.grupo.planillas_count;
+                });
+                resumenHtml += '</ol></div>';
+
                 const result = await Swal.fire({
                     icon: 'question',
-                    title: '¿Priorizar estas planillas?',
-                    html: `<strong>${grupo.planillas_count} planillas</strong> de <strong>${grupo.cod_obra} - ${grupo.obra}</strong><br>
-                           Fecha de entrega: <strong>${grupo.fecha_entrega_formatted}</strong><br><br>
-                           Se moverán al inicio de la cola en cada máquina.<br><br>
+                    title: '¿Aplicar estas prioridades?',
+                    html: `${resumenHtml}<br>
+                           <strong>Total: ${totalPlanillas} planillas</strong> se reordenarán según el orden indicado.<br><br>
                            <label class="flex items-center justify-center gap-2 cursor-pointer">
                                <input type="checkbox" id="pararFabricando" class="w-4 h-4 rounded border-gray-300 text-orange-600 focus:ring-orange-500">
-                               <span class="text-sm text-gray-700">Parar planillas en posición 1 que estén fabricando</span>
+                               <span class="text-sm text-gray-700">Parar planillas que estén fabricando si es necesario</span>
                            </label>`,
                     showCancelButton: true,
-                    confirmButtonText: 'Sí, priorizar',
+                    confirmButtonText: 'Sí, aplicar',
                     cancelButtonText: 'Cancelar',
                     confirmButtonColor: '#f97316',
+                    width: '500px',
                     preConfirm: () => {
                         return {
                             pararFabricando: document.getElementById('pararFabricando').checked
@@ -5117,18 +5244,24 @@
 
                 const pararFabricando = result.value?.pararFabricando || false;
 
-                Swal.fire({ title: 'Priorizando...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+                Swal.fire({ title: 'Aplicando prioridades...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
 
                 try {
-                    const response = await fetch('/api/produccion/priorizar-obra', {
+                    // Preparar datos para enviar al backend
+                    const prioridades = selecciones.map(sel => ({
+                        obra_id: sel.grupo.obra_id,
+                        planillas_ids: sel.grupo.planillas_ids,
+                        fecha_entrega: sel.grupo.fecha_entrega
+                    }));
+
+                    const response = await fetch('/api/produccion/priorizar-obras', {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
                             'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
                         },
                         body: JSON.stringify({
-                            obra_id: grupo.obra_id,
-                            planillas_ids: grupo.planillas_ids,
+                            prioridades: prioridades,
                             parar_fabricando: pararFabricando
                         })
                     });
@@ -5138,7 +5271,7 @@
 
                     Swal.fire({
                         icon: 'success',
-                        title: '¡Planillas priorizadas!',
+                        title: '¡Prioridades aplicadas!',
                         html: data.message,
                         confirmButtonColor: '#f97316'
                     });
@@ -5149,7 +5282,7 @@
                         calendar.refetchEvents();
                     }
                 } catch (error) {
-                    Swal.fire({ icon: 'error', title: 'Error', text: error.message || 'No se pudo priorizar' });
+                    Swal.fire({ icon: 'error', title: 'Error', text: error.message || 'No se pudieron aplicar las prioridades' });
                 }
             }
 
