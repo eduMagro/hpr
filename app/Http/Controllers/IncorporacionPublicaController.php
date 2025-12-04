@@ -200,15 +200,12 @@ class IncorporacionPublicaController extends Controller
             );
 
             // Actualizar datos personales y vincular usuario
-            // Si el OCR extrajo nombre/apellidos, actualizar también la incorporación
             $datosActualizacion = [
                 'dni' => strtoupper($validated['dni']),
                 'numero_afiliacion_ss' => $validated['numero_afiliacion_ss'],
                 'email' => strtolower($validated['email']),
                 'telefono' => $validated['telefono'],
                 'certificado_bancario' => $nombreCert,
-                'dni_frontal' => $nombreDniFrontal,
-                'dni_trasero' => $nombreDniTrasero,
                 'datos_completados_at' => now(),
                 'estado' => Incorporacion::ESTADO_DATOS_RECIBIDOS,
                 'user_id' => $usuario->id,
