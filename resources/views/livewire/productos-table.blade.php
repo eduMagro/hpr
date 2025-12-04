@@ -1,9 +1,9 @@
 <div class="h-full max-h-[calc(100%-35px)] flex flex-col min-h-0 space-y-3">
     <x-tabla.filtros-aplicados :filtros="$filtrosActivos" />
 
-    <div class="flex-1 min-h-0">
-        <x-tabla.wrapper minWidth="1000px">
-            <x-tabla.header>
+        <div class="flex-1 min-h-0 flex flex-col">
+            <x-tabla.wrapper minWidth="1000px">
+                <x-tabla.header>
                 {{-- Fila de encabezados --}}
                 <x-tabla.header-row>
                     <x-tabla.encabezado-ordenable campo="id" :sortActual="$sort" :orderActual="$order" texto="ID" />
@@ -181,11 +181,20 @@
                 @endforelse
             </x-tabla.body>
 
-            <x-tabla.footer-total colspan="16" label="Total peso filtrado" :value="number_format($totalPesoInicial, 2, ',', '.') . ' kg'" />
-        </x-tabla.wrapper>
-    </div>
+            </x-tabla.wrapper>
 
-    <x-tabla.paginacion-livewire :paginador="$productos" />
+            {{-- Total peso filtrado visible siempre --}}
+            <div class="mt-4 bg-gradient-to-r from-blue-50 to-blue-100 border-l-4 border-blue-500 rounded-r-lg p-3 shadow">
+                <div class="flex justify-end items-center gap-4 text-sm text-gray-700">
+                    <span class="font-semibold">Total peso filtrado:</span>
+                    <span class="text-base font-bold text-blue-800">
+                        {{ number_format($totalPesoInicial, 2, ',', '.') }} kg
+                    </span>
+                </div>
+            </div>
+        </div>
+
+        <x-tabla.paginacion-livewire :paginador="$productos" />
 
     {{-- Modal Editar Producto --}}
     <div id="modal-editar-producto"
