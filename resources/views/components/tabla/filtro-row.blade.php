@@ -1,6 +1,5 @@
 {{-- Fila de filtros con estilos consistentes --}}
 <tr
-    class="text-left text-[11px]
-           [&>th]:bg-transparent [&>th]:align-middle [&>th]:min-h-[42px] [&>th]:h-11 [&>th]:whitespace-nowrap">
+    class="bg-blue-500/90 text-white text-[11px] [&>th]:border [&>th]:border-white/40 [&>th]:px-2 [&>th]:py-1 [&>th]:align-middle [&>th]:text-left [&>th]:bg-transparent [&>th]:whitespace-nowrap">
     {{ $slot }}
 </tr>

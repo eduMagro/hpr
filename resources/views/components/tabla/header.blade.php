@@ -1,4 +1,4 @@
 {{-- Cabecera de tabla con estilos consistentes --}}
-<thead class="bg-gradient-to-tr from-gray-900 via-gray-800 to-gray-700 text-white text-10 sticky top-0 z-20 shadow-sm">
+<thead class="bg-blue-600 text-white uppercase text-xs shadow-inner border-b border-white/40 sticky top-0 z-20">
     {{ $slot }}
 </thead>

@@ -3,7 +3,7 @@
 
         <!-- Badge de planillas sin revisar -->
         @if ($planillasSinRevisar > 0)
-            <div class="mb-4 bg-yellow-100 border-l-4 border-yellow-500 p-4 rounded-r-lg shadow">
+            <div class="my-4 bg-yellow-100 border-l-4 border-yellow-500 p-4 rounded-r-lg shadow">
                 <div class="flex items-center justify-between">
                     <div class="flex items-center gap-3">
                         <span class="text-3xl">⚠️</span>

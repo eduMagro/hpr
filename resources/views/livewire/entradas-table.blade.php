@@ -40,7 +40,7 @@
                 @endphp
                 <th class="p-2 bg-white text-center align-middle">
                     <a href="{{ $downloadUrl }}"
-                        class="w-full text-xs rounded px-2 py-2 text-white bg-gradient-to-r from-blue-600 to-blue-500 shadow-sm transition"
+                        class="w-full text-xs rounded px-2 py-2 text-blue-600 bg-white shadow-sm transition"
                         title="Descargar PDFs de las entradas filtradas">
                         DESCARGAR FILTRADOS
                     </a>
@@ -144,11 +144,11 @@
                             <div class="flex items-center justify-center gap-1">
                                 <a href="{{ route('entradas.crearDescargarPdf', ['id' => $entrada->id, 'preview' => 1]) }}"
                                     target="_blank"
-                                    class="inline-flex h-10 px-3 items-center justify-center rounded-md bg-blue-600 text-white text-xs font-semibold shadow hover:bg-blue-700">
+                                    class="inline-flex py-2 px-3 items-center justify-center rounded-md bg-blue-600 text-white text-xs font-semibold shadow hover:bg-blue-700">
                                     Ver
                                 </a>
                                 <a href="{{ route('entradas.crearDescargarPdf', $entrada->id) }}" download
-                                    class="inline-flex h-10 px-3 items-center justify-center rounded-md bg-gray-700 text-white text-xs font-semibold shadow hover:bg-gray-800">
+                                    class="inline-flex py-2 px-3 items-center justify-center rounded-md bg-blue-200 text-blue-700 text-xs font-semibold shadow hover:bg-blue-300">
                                     Descargar
                                 </a>
                             </div>

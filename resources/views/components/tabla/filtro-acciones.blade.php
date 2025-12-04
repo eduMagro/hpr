@@ -1,5 +1,5 @@
 {{-- Celda de acciones con botón reset y otros botones opcionales --}}
-<th class="p-2 bg-white text-left align-middle">
+<th class="border border-transparent px-2 py-1 bg-transparent text-center align-middle">
     <div class="flex justify-center gap-2 items-center h-full">
         {{-- Botón reset (siempre presente) --}}
         <button type="button" wire:click="limpiarFiltros"

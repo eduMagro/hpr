@@ -90,27 +90,51 @@
                     <div
                         class="rounded-lg border border-gray-200 bg-white shadow-sm px-3 py-2 flex items-center justify-between gap-3">
                         <div class="flex items-center gap-2">
-                            <div class="bg-gray-800 text-white p-1.5 rounded-md">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none"
+                            <div class="bg-gradient-to-tr from-blue-500 to-blue-600 text-white p-1.5 rounded-md">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none"
                                     viewBox="0 0 24 24" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                         d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
                                 </svg>
                             </div>
                             <div>
-                                <p class="text-xs text-gray-600 leading-tight">Catálogo de Productos Base</p>
-                                <p class="text-[11px] text-gray-400">Pantalla completa · scroll interno</p>
+                                <p class="text-xl text-gray-600 leading-tight">Catálogo de Productos Base</p>
                             </div>
                         </div>
-                        <button @click="modalCatalogo = true"
-                            class="bg-gray-900 hover:bg-gray-800 text-white px-3 py-2 rounded-md text-xs font-semibold transition-all duration-150 flex items-center gap-1 shadow-sm">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none"
-                                viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M4 6h16M4 12h16M4 18h16" />
-                            </svg>
-                            <span>Ver catálogo</span>
-                        </button>
+                        <div class="flex items-center gap-2 font-semibold text-xs">
+                            <button @click="modalCatalogo = true"
+                                class="shrink-0 bg-gradient-to-tr from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-semibold py-2 px-4 rounded-lg shadow-md hover:shadow-lg transition-all duration-200 inline-flex items-center gap-2 text-sm">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none"
+                                    viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M4 6h16M4 12h16M4 18h16" />
+                                </svg>
+                                <span>Ver catálogo</span>
+                            </button>
+
+                            <button onclick="abrirModal()"
+                                class="shrink-0 bg-gradient-to-tr from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-semibold py-2 px-4 rounded-lg shadow-md hover:shadow-lg transition-all duration-200 inline-flex items-center gap-2 text-sm">
+                                <svg viewBox="0 0 512 512" version="1.1" xmlns="http://www.w3.org/2000/svg"
+                                    class="h-4 w-4" xmlns:xlink="http://www.w3.org/1999/xlink" fill="#ffffff"
+                                    stroke="#ffffff">
+                                    <g id="SVGRepo_bgCarrier" stroke-width="0"></g>
+                                    <g id="SVGRepo_tracerCarrier" stroke-linecap="round" stroke-linejoin="round"></g>
+                                    <g id="SVGRepo_iconCarrier">
+                                        <title>qr-code</title>
+                                        <g id="Page-1" stroke="none" stroke-width="1" fill="none"
+                                            fill-rule="evenodd">
+                                            <g id="qr-code" fill="#ffffff"
+                                                transform="translate(64.000000, 63.978667)">
+                                                <path
+                                                    d="M384,149.354667 L384,384.021333 L149.333333,384.021333 L149.348268,298.688 L191.997479,298.688 L191.982544,341.354667 L341.350789,341.354667 L341.350789,192.021333 L320,192.021 L320,192 L298.678,192 L298.678304,149.354667 L384,149.354667 Z M42.6666667,298.688 L42.6666667,341.370882 L106.666667,341.370882 L106.666667,384.021333 L-4.26325641e-14,384.021333 L-4.26325641e-14,298.688 L42.6666667,298.688 Z M298.666667,234.688 L298.666667,298.688 L234.666667,298.688 L234.666667,234.688 L298.666667,234.688 Z M256,0.0213333333 L256,192 L213.333,192 L213.333333,42.688 L42.6666667,42.688 L42.6666667,213.354667 L192,213.354333 L192,256.021333 L-4.26325641e-14,256.021333 L-4.26325641e-14,0.0213333333 L256,0.0213333333 Z M170.666667,85.3546667 L170.666667,170.688 L85.3333333,170.688 L85.3333333,85.3546667 L170.666667,85.3546667 Z M298.666667,1.42108547e-14 L384,0.0213333333 L384,85.3333333 L341.346136,85.312 L341.346136,42.6666667 L298.666667,42.6666667 L298.666667,1.42108547e-14 Z">
+                                                </path>
+                                            </g>
+                                        </g>
+                                    </g>
+                                </svg>
+                                QR
+                            </button>
+                        </div>
                     </div>
 
                     <div x-cloak x-show="modalCatalogo" x-transition:enter="transition ease-out duration-200"
@@ -132,12 +156,14 @@
                                     <div>
                                         <h3 class="text-base font-semibold text-gray-800">Catálogo de Productos Base
                                         </h3>
-                                        <p class="text-xs text-gray-600">Listado disponible en modal a pantalla completa
+                                        <p class="text-xs text-gray-600">Listado disponible en modal a pantalla
+                                            completa
                                         </p>
                                     </div>
                                 </div>
                                 <div class="flex items-center gap-2">
-                                    <span class="text-xs text-gray-500 hidden sm:inline">Presiona ESC para cerrar</span>
+                                    <span class="text-xs text-gray-500 hidden sm:inline">Presiona ESC para
+                                        cerrar</span>
                                     <button @click="modalCatalogo = false" class="text-gray-700 hover:text-gray-900">
                                         <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none"
                                             viewBox="0 0 24 24" stroke="currentColor">
@@ -207,15 +233,6 @@
                         </div>
                     </div>
                 </div>
-
-                <button onclick="abrirModal()"
-                    class="shrink-0 bg-gradient-to-r from-gray-800 to-gray-700 hover:from-gray-700 hover:to-gray-600 text-white font-semibold py-2 px-4 rounded-lg shadow-md hover:shadow-lg transition-all duration-200 inline-flex items-center gap-2 text-sm">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                        <path
-                            d="M2 6a2 2 0 012-2h6a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V6zM14.553 7.106A1 1 0 0014 8v4a1 1 0 00.553.894l2 1A1 1 0 0018 13V7a1 1 0 00-1.447-.894l-2 1z" />
-                    </svg>
-                    QR
-                </button>
             </div>
 
             <div class="flex-1 min-h-0">

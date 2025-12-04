@@ -5,11 +5,10 @@
     <div class="flex items-start justify-between gap-4">
         {{-- Izquierda: Selector de cantidad por página --}}
         <div class="flex-shrink-0">
-            <div class="inline-flex items-center gap-2 text-sm bg-white shadow-sm px-3 py-2 rounded-lg border border-gray-200">
+            <div class="inline-flex items-center gap-2 text-sm px-3 py-2 rounded-lg">
                 <label for="perPageSelect" class="text-gray-700">Mostrar</label>
-                <select wire:model.live="perPage"
-                        id="perPageSelect"
-                        class="border border-gray-300 rounded-lg px-3 py-2 pr-10 text-sm text-gray-800 bg-white focus:ring-2 focus:ring-gray-700 focus:border-gray-800">
+                <select wire:model.live="perPage" id="perPageSelect"
+                    class="border border-gray-300 rounded-lg px-3 py-2 pr-10 text-sm text-gray-800 bg-white focus:ring-2 focus:ring-gray-700 focus:border-gray-800">
                     @foreach ($perPageOptions as $option)
                         <option value="{{ $option }}">{{ $option }}</option>
                     @endforeach
@@ -19,21 +18,20 @@
         </div>
 
         {{-- Centro: Paginación y texto resumen juntos --}}
-        @if($paginador && $paginador->total() > 0)
+        @if ($paginador && $paginador->total() > 0)
             <div class="flex-grow flex flex-col items-center gap-2">
                 {{-- Botones de paginación arriba --}}
-                @if($paginador->hasPages())
-                    <nav class="inline-flex flex-wrap gap-1 bg-white px-2 py-1 rounded-md shadow border border-gray-200">
+                @if ($paginador->hasPages())
+                    <nav
+                        class="inline-flex flex-wrap gap-1 bg-white px-2 py-1 rounded-md shadow border border-gray-200">
                         {{-- Botón anterior --}}
                         @if ($paginador->onFirstPage())
                             <span class="px-3 py-1 text-xs text-gray-400 cursor-not-allowed">
                                 &laquo;
                             </span>
                         @else
-                            <button type="button"
-                                    wire:click="previousPage"
-                                    wire:loading.attr="disabled"
-                                    class="px-3 py-1 text-xs text-gray-700 hover:bg-gray-100 rounded transition disabled:opacity-50">
+                            <button type="button" wire:click="previousPage" wire:loading.attr="disabled"
+                                class="px-3 py-1 text-xs text-gray-700 hover:bg-gray-100 rounded transition disabled:opacity-50">
                                 &laquo;
                             </button>
                         @endif
@@ -71,14 +69,14 @@
 
                             {{-- Página actual --}}
                             @if ($page == $current)
-                                <span class="px-3 py-1 text-xs font-bold bg-gray-900 text-white rounded shadow border border-gray-800">
+                                <span
+                                    class="px-3 py-1 text-xs font-bold bg-blue-500 text-white rounded shadow border border-blue-400">
                                     {{ $page }}
                                 </span>
                             @else
-                                <button type="button"
-                                        wire:click="gotoPage({{ $page }})"
-                                        wire:loading.attr="disabled"
-                                        class="px-3 py-1 text-xs text-gray-700 hover:bg-gray-100 rounded transition disabled:opacity-50">
+                                <button type="button" wire:click="gotoPage({{ $page }})"
+                                    wire:loading.attr="disabled"
+                                    class="px-3 py-1 text-xs text-gray-700 hover:bg-gray-100 rounded transition disabled:opacity-50">
                                     {{ $page }}
                                 </button>
                             @endif
@@ -88,10 +86,8 @@
 
                         {{-- Botón siguiente --}}
                         @if ($paginador->hasMorePages())
-                            <button type="button"
-                                    wire:click="nextPage"
-                                    wire:loading.attr="disabled"
-                                    class="px-3 py-1 text-xs text-gray-700 hover:bg-gray-100 rounded transition disabled:opacity-50">
+                            <button type="button" wire:click="nextPage" wire:loading.attr="disabled"
+                                class="px-3 py-1 text-xs text-gray-700 hover:bg-gray-100 rounded transition disabled:opacity-50">
                                 &raquo;
                             </button>
                         @else
