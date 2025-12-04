@@ -1004,6 +1004,20 @@
                 max-height: 180px !important;
             }
 
+            /* Clases para sticky header optimizado */
+            .fc-header-sticky {
+                position: fixed !important;
+                top: 0 !important;
+                z-index: 1000 !important;
+                background-color: white !important;
+                box-shadow: 0 2px 4px rgba(0,0,0,0.1) !important;
+            }
+
+            .fc-header-section-sticky {
+                z-index: 999 !important;
+                width: 100% !important;
+            }
+
             /* Panel lateral */
             #panel_elementos.abierto {
                 transform: translateX(0);
@@ -1100,6 +1114,19 @@
                 flex-direction: column;
                 gap: 4px;
                 margin-bottom: 4px;
+                overflow: hidden;
+            }
+
+            /* Asegurar que los elementos no excedan el ancho del panel */
+            .elemento-drag {
+                max-width: 100%;
+                overflow: hidden;
+            }
+
+            .elemento-drag > div,
+            .elemento-drag > canvas {
+                max-width: 100% !important;
+                width: 100% !important;
             }
 
             .seccion-maquina-wrapper {
@@ -2411,63 +2438,127 @@
 
                     eventDidMount: function(info) {
                         const props = info.event.extendedProps;
-                        const tooltip = document.createElement('div');
-                        tooltip.className = 'fc-tooltip';
 
-                        // ⚠️ Información de revisión
+                        // 🔧 OPTIMIZACIÓN: Usar un único tooltip global en lugar de uno por evento
+                        // Guardar los datos del tooltip en el elemento para usarlos con event delegation
                         let estadoRevision = '';
                         if (props.revisada === false || props.revisada === 0) {
-                            estadoRevision =
-                                '<br><span class="text-red-400 font-bold">⚠️ SIN REVISAR - No iniciar producción</span>';
+                            estadoRevision = '<br><span class="text-red-400 font-bold">⚠️ SIN REVISAR - No iniciar producción</span>';
                         } else if (props.revisada === true || props.revisada === 1) {
-                            estadoRevision =
-                                `<br><span class="text-green-400">✅ Revisada por ${props.revisada_por || 'N/A'}</span>`;
+                            estadoRevision = `<br><span class="text-green-400">✅ Revisada por ${props.revisada_por || 'N/A'}</span>`;
                         }
 
-                        // Debug: mostrar elementos de este evento
                         const elementosDebug = props.codigos_elementos ? props.codigos_elementos.join(', ') : 'N/A';
                         const maquinaId = info.event.getResources()[0]?.id || 'N/A';
 
-                        tooltip.innerHTML = `
-                        <div class="bg-gray-900 text-white text-xs rounded px-2 py-1 shadow-md max-w-xs">
-                            <strong>${info.event.title}</strong><br>
-                            Obra: ${props.obra}<br>
-                            Estado producción: ${props.estado}<br>
-                            Máquina: <span class="text-blue-300">${maquinaId}</span><br>
-                            Elementos: <span class="text-purple-300">${elementosDebug}</span><br>
-                            Duración: <span class="text-cyan-300">${props.duracion_horas || 0} hrs</span><br>
-                            Fin programado: <span class="text-yellow-300">${props.fin_programado}</span><br>
-                            Fecha estimada entrega: <span class="text-green-300">${props.fecha_entrega}</span>${estadoRevision}
-                        </div>`;
-                        tooltip.style.display = 'none';
-                        document.body.appendChild(tooltip);
+                        // Guardar datos del tooltip en el elemento (sin crear elemento DOM)
+                        info.el._tooltipData = {
+                            title: info.event.title,
+                            obra: props.obra,
+                            estado: props.estado,
+                            maquinaId: maquinaId,
+                            elementos: elementosDebug,
+                            duracion: props.duracion_horas || 0,
+                            finProgramado: props.fin_programado,
+                            fechaEntrega: props.fecha_entrega,
+                            estadoRevision: estadoRevision
+                        };
+                    },
 
-                        info.el.addEventListener('mouseenter', function(e) {
-                            if (window.tooltipsDeshabilitados ||
-                                document.body.classList.contains('dragging-elemento') ||
-                                document.body.classList.contains('dragging-panel-elemento')) {
-                                tooltip.style.display = 'none';
-                                return;
-                            }
-                            tooltip.style.left = e.pageX + 10 + 'px';
-                            tooltip.style.top = e.pageY + 10 + 'px';
-                            tooltip.style.display = 'block';
-                        });
-                        info.el.addEventListener('mousemove', function(e) {
-                            if (window.tooltipsDeshabilitados ||
-                                document.body.classList.contains('dragging-elemento') ||
-                                document.body.classList.contains('dragging-panel-elemento')) {
-                                tooltip.style.display = 'none';
-                                return;
-                            }
-                            tooltip.style.left = e.pageX + 10 + 'px';
-                            tooltip.style.top = e.pageY + 10 + 'px';
-                        });
-                        info.el.addEventListener('mouseleave', function() {
-                            tooltip.style.display = 'none';
-                        });
+                    // 🔧 OPTIMIZACIÓN: Limpiar datos del tooltip cuando el evento se desmonta
+                    eventWillUnmount: function(info) {
+                        if (info.el._tooltipData) {
+                            delete info.el._tooltipData;
+                        }
                     }
                 });
+
+                // 🔧 OPTIMIZACIÓN: Tooltip global único con event delegation
+                let tooltipGlobal = document.getElementById('fc-tooltip-global');
+                if (!tooltipGlobal) {
+                    tooltipGlobal = document.createElement('div');
+                    tooltipGlobal.id = 'fc-tooltip-global';
+                    tooltipGlobal.className = 'fc-tooltip';
+                    tooltipGlobal.style.display = 'none';
+                    document.body.appendChild(tooltipGlobal);
+                }
+
+                // Event delegation para tooltips (un solo listener en lugar de cientos)
+                const calendarioContainer = document.getElementById('calendario');
+                if (calendarioContainer) {
+                    // Limpiar listeners anteriores
+                    if (window._maquinasCalendarState.tooltipMouseEnter) {
+                        calendarioContainer.removeEventListener('mouseenter', window._maquinasCalendarState.tooltipMouseEnter, true);
+                    }
+                    if (window._maquinasCalendarState.tooltipMouseMove) {
+                        calendarioContainer.removeEventListener('mousemove', window._maquinasCalendarState.tooltipMouseMove, true);
+                    }
+                    if (window._maquinasCalendarState.tooltipMouseLeave) {
+                        calendarioContainer.removeEventListener('mouseleave', window._maquinasCalendarState.tooltipMouseLeave, true);
+                    }
+
+                    function handleTooltipEnter(e) {
+                        const fcEvent = e.target.closest('.fc-event');
+                        if (!fcEvent || !fcEvent._tooltipData) return;
+
+                        if (window.tooltipsDeshabilitados ||
+                            document.body.classList.contains('dragging-elemento') ||
+                            document.body.classList.contains('dragging-panel-elemento')) {
+                            tooltipGlobal.style.display = 'none';
+                            return;
+                        }
+
+                        const data = fcEvent._tooltipData;
+                        tooltipGlobal.innerHTML = `
+                        <div class="bg-gray-900 text-white text-xs rounded px-2 py-1 shadow-md max-w-xs">
+                            <strong>${data.title}</strong><br>
+                            Obra: ${data.obra}<br>
+                            Estado producción: ${data.estado}<br>
+                            Máquina: <span class="text-blue-300">${data.maquinaId}</span><br>
+                            Elementos: <span class="text-purple-300">${data.elementos}</span><br>
+                            Duración: <span class="text-cyan-300">${data.duracion} hrs</span><br>
+                            Fin programado: <span class="text-yellow-300">${data.finProgramado}</span><br>
+                            Fecha estimada entrega: <span class="text-green-300">${data.fechaEntrega}</span>${data.estadoRevision}
+                        </div>`;
+                        tooltipGlobal.style.left = e.pageX + 10 + 'px';
+                        tooltipGlobal.style.top = e.pageY + 10 + 'px';
+                        tooltipGlobal.style.display = 'block';
+                    }
+
+                    function handleTooltipMove(e) {
+                        const fcEvent = e.target.closest('.fc-event');
+                        if (!fcEvent || !fcEvent._tooltipData || tooltipGlobal.style.display === 'none') return;
+
+                        if (window.tooltipsDeshabilitados ||
+                            document.body.classList.contains('dragging-elemento') ||
+                            document.body.classList.contains('dragging-panel-elemento')) {
+                            tooltipGlobal.style.display = 'none';
+                            return;
+                        }
+
+                        tooltipGlobal.style.left = e.pageX + 10 + 'px';
+                        tooltipGlobal.style.top = e.pageY + 10 + 'px';
+                    }
+
+                    function handleTooltipLeave(e) {
+                        const fcEvent = e.target.closest('.fc-event');
+                        const relatedFcEvent = e.relatedTarget?.closest('.fc-event');
+
+                        // Solo ocultar si salimos del evento y no entramos en otro
+                        if (fcEvent && fcEvent !== relatedFcEvent) {
+                            tooltipGlobal.style.display = 'none';
+                        }
+                    }
+
+                    // Guardar referencias y añadir listeners
+                    window._maquinasCalendarState.tooltipMouseEnter = handleTooltipEnter;
+                    window._maquinasCalendarState.tooltipMouseMove = handleTooltipMove;
+                    window._maquinasCalendarState.tooltipMouseLeave = handleTooltipLeave;
+
+                    calendarioContainer.addEventListener('mouseenter', handleTooltipEnter, true);
+                    calendarioContainer.addEventListener('mousemove', handleTooltipMove, true);
+                    calendarioContainer.addEventListener('mouseleave', handleTooltipLeave, true);
+                }
                 calendar.render();
                 window.calendar = calendar;
 
@@ -2581,57 +2672,46 @@
                     // Obtener la posición inicial del header
                     const headerInitialTop = headerSection.getBoundingClientRect().top + window.pageYOffset;
 
-                    // Escuchar scroll en la página (window)
-                    window.addEventListener('scroll', function() {
-                        const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+                    // Estado del sticky para evitar cambios innecesarios
+                    let isSticky = false;
+                    let scrollTicking = false;
 
-                        // Si el scroll pasa la posición del header, hacerlo sticky
-                        if (scrollTop > headerInitialTop - 10) {
-                            if (headerResources) {
-                                headerResources.style.position = 'fixed';
-                                headerResources.style.top = '0px';
-                                headerResources.style.zIndex = '1000';
-                                headerResources.style.backgroundColor = 'white';
-                                headerResources.style.boxShadow = '0 2px 4px rgba(0,0,0,0.1)';
-                            }
-                            if (headerTime) {
-                                headerTime.style.position = 'fixed';
-                                headerTime.style.top = '0px';
-                                headerTime.style.zIndex = '1000';
-                                headerTime.style.backgroundColor = 'white';
-                                headerTime.style.boxShadow = '0 2px 4px rgba(0,0,0,0.1)';
-                            }
-                            if (headerSection) {
-                                headerSection.style.position = 'fixed';
-                                headerSection.style.top = '0px';
-                                headerSection.style.zIndex = '999';
-                                headerSection.style.backgroundColor = 'white';
-                                headerSection.style.boxShadow = '0 2px 4px rgba(0,0,0,0.1)';
-                                headerSection.style.width = '100%';
-                            }
+                    // Función optimizada para aplicar estilos sticky
+                    function aplicarEstilosSticky(sticky) {
+                        if (sticky === isSticky) return; // No hacer nada si el estado no cambió
+                        isSticky = sticky;
+
+                        if (sticky) {
+                            // Aplicar sticky usando clases CSS en lugar de estilos inline
+                            if (headerResources) headerResources.classList.add('fc-header-sticky');
+                            if (headerTime) headerTime.classList.add('fc-header-sticky');
+                            if (headerSection) headerSection.classList.add('fc-header-sticky', 'fc-header-section-sticky');
                         } else {
-                            // Restaurar posición normal
-                            if (headerResources) {
-                                headerResources.style.position = '';
-                                headerResources.style.top = '';
-                                headerResources.style.zIndex = '';
-                                headerResources.style.boxShadow = '';
-                            }
-                            if (headerTime) {
-                                headerTime.style.position = '';
-                                headerTime.style.top = '';
-                                headerTime.style.zIndex = '';
-                                headerTime.style.boxShadow = '';
-                            }
-                            if (headerSection) {
-                                headerSection.style.position = '';
-                                headerSection.style.top = '';
-                                headerSection.style.zIndex = '';
-                                headerSection.style.boxShadow = '';
-                                headerSection.style.width = '';
-                            }
+                            // Quitar sticky
+                            if (headerResources) headerResources.classList.remove('fc-header-sticky');
+                            if (headerTime) headerTime.classList.remove('fc-header-sticky');
+                            if (headerSection) headerSection.classList.remove('fc-header-sticky', 'fc-header-section-sticky');
                         }
-                    }, { passive: true });
+                    }
+
+                    // Escuchar scroll con requestAnimationFrame para evitar jank
+                    function onScroll() {
+                        if (!scrollTicking) {
+                            requestAnimationFrame(() => {
+                                const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+                                aplicarEstilosSticky(scrollTop > headerInitialTop - 10);
+                                scrollTicking = false;
+                            });
+                            scrollTicking = true;
+                        }
+                    }
+
+                    // Guardar referencia para poder limpiar después
+                    if (window._maquinasCalendarState.scrollHandler) {
+                        window.removeEventListener('scroll', window._maquinasCalendarState.scrollHandler);
+                    }
+                    window._maquinasCalendarState.scrollHandler = onScroll;
+                    window.addEventListener('scroll', onScroll, { passive: true });
                 }, 500);
 
                 // 🎯 PANTALLA COMPLETA
@@ -3020,7 +3100,7 @@
                             const canvasId = `canvas-panel-${elemento.id}`;
 
                             div.innerHTML = `
-                            <canvas id="${canvasId}" width="280" height="120" draggable="false"></canvas>
+                            <canvas id="${canvasId}" width="260" height="100" draggable="false"></canvas>
                         `;
 
                             seccionElementos.appendChild(div);
@@ -3112,35 +3192,77 @@
                     }, 100);
 
                     // ✅ Ajustar calendario
-                    panel.classList.add('abierto');
                     overlay.classList.remove('hidden');
                     contenedorCalendario.classList.add('con-panel-abierto');
                     document.body.classList.add('panel-abierto');
 
-                    setTimeout(() => {
-                        calendar.updateSize();
-                    }, 300);
+                    // Función para dibujar SVGs de forma progresiva (no bloquea el thread)
+                    function dibujarSVGsProgresivo() {
+                        const secciones = lista.querySelectorAll('.seccion-maquina-wrapper');
+                        const todosElementos = [];
 
-                    // ✅ Dibujar los SVGs después de que el panel sea visible
-                    // Usamos requestAnimationFrame + setTimeout para asegurar que el panel esté completamente renderizado
-                    requestAnimationFrame(() => {
-                        setTimeout(() => {
-                            // Recorrer todas las secciones y dibujar sus elementos
-                            lista.querySelectorAll('.seccion-maquina-wrapper').forEach(seccion => {
-                                if (seccion._elementosParaDibujar) {
-                                    seccion._elementosParaDibujar.forEach(elem => {
-                                        window.dibujarFiguraElemento(
-                                            elem.canvasId,
-                                            elem.dimensiones,
-                                            elem.peso,
-                                            elem.diametro,
-                                            elem.barras
-                                        );
-                                    });
-                                }
-                            });
-                        }, 50);
-                    });
+                        // Recolectar todos los elementos a dibujar
+                        secciones.forEach(seccion => {
+                            if (seccion._elementosParaDibujar) {
+                                todosElementos.push(...seccion._elementosParaDibujar);
+                            }
+                        });
+
+                        // Dibujar en batches usando requestAnimationFrame
+                        let indice = 0;
+                        const BATCH_SIZE = 5; // Dibujar 5 elementos por frame
+
+                        function dibujarBatch() {
+                            const fin = Math.min(indice + BATCH_SIZE, todosElementos.length);
+
+                            for (let i = indice; i < fin; i++) {
+                                const elem = todosElementos[i];
+                                window.dibujarFiguraElemento(
+                                    elem.canvasId,
+                                    elem.dimensiones,
+                                    elem.peso,
+                                    elem.diametro,
+                                    elem.barras
+                                );
+                            }
+
+                            indice = fin;
+
+                            // Si quedan más elementos, programar siguiente batch
+                            if (indice < todosElementos.length) {
+                                requestAnimationFrame(dibujarBatch);
+                            }
+                        }
+
+                        // Iniciar dibujado
+                        if (todosElementos.length > 0) {
+                            requestAnimationFrame(dibujarBatch);
+                        }
+                    }
+
+                    // Usar transitionend para detectar cuando el panel está visible
+                    const onTransitionEnd = function(e) {
+                        // Solo procesar si es la transición de transform del panel
+                        if (e.propertyName === 'transform' && e.target === panel) {
+                            panel.removeEventListener('transitionend', onTransitionEnd);
+                            calendar.updateSize();
+                            dibujarSVGsProgresivo();
+                        }
+                    };
+
+                    panel.addEventListener('transitionend', onTransitionEnd);
+
+                    // Añadir clase para iniciar la transición
+                    panel.classList.add('abierto');
+
+                    // Fallback: si transitionend no se dispara en 500ms, dibujar de todos modos
+                    setTimeout(() => {
+                        if (panel.classList.contains('abierto')) {
+                            panel.removeEventListener('transitionend', onTransitionEnd);
+                            calendar.updateSize();
+                            dibujarSVGsProgresivo();
+                        }
+                    }, 500);
                 }
 
                 function cerrarPanel() {
@@ -3253,9 +3375,10 @@
                 // Overlay ya no captura clics (pointer-events: none) para permitir interacción con calendario
 
                 // Cerrar panel al hacer clic fuera del panel (en el área del calendario)
-                document.addEventListener('click', function(e) {
+                // 🔧 OPTIMIZACIÓN: Guardar referencia para poder limpiar el listener
+                function handleClickFueraPanel(e) {
                     const panel = document.getElementById('panel_elementos');
-                    const panelAbierto = panel.classList.contains('abierto');
+                    const panelAbierto = panel && panel.classList.contains('abierto');
 
                     if (panelAbierto && !panel.contains(e.target) && !e.target.closest('.fc-event')) {
                         // Solo cerrar si se hace clic fuera del panel y no en un elemento arrastrable
@@ -3264,7 +3387,14 @@
                             cerrarPanel();
                         }
                     }
-                });
+                }
+
+                // Limpiar listener anterior si existe
+                if (window._maquinasCalendarState.clickFueraPanelHandler) {
+                    document.removeEventListener('click', window._maquinasCalendarState.clickFueraPanelHandler);
+                }
+                window._maquinasCalendarState.clickFueraPanelHandler = handleClickFueraPanel;
+                document.addEventListener('click', handleClickFueraPanel);
 
                 // ================================
                 // SISTEMA DE FILTROS DE RESALTADO
@@ -3460,19 +3590,42 @@
                         let planillasResaltadas = 0;
                         let segmentosResaltados = 0;
 
+                        // 🔧 OPTIMIZACIÓN: Cachear querySelectorAll y crear mapa de elementos por ID
+                        const todosElementosDOM = document.querySelectorAll('.fc-event');
+                        const elementosPorEventoId = new Map();
+
+                        // Crear índice de elementos DOM por evento ID (O(n) en lugar de O(n²))
+                        todosElementosDOM.forEach(el => {
+                            // Por fcSeg
+                            if (el.fcSeg && el.fcSeg.eventRange.def.publicId) {
+                                const eventId = el.fcSeg.eventRange.def.publicId;
+                                if (!elementosPorEventoId.has(eventId)) {
+                                    elementosPorEventoId.set(eventId, []);
+                                }
+                                if (!elementosPorEventoId.get(eventId).includes(el)) {
+                                    elementosPorEventoId.get(eventId).push(el);
+                                }
+                            }
+                            // Por data-event-id
+                            const dataEventId = el.getAttribute('data-event-id') ||
+                                el.querySelector('[data-event-id]')?.getAttribute('data-event-id');
+                            if (dataEventId) {
+                                if (!elementosPorEventoId.has(dataEventId)) {
+                                    elementosPorEventoId.set(dataEventId, []);
+                                }
+                                if (!elementosPorEventoId.get(dataEventId).includes(el)) {
+                                    elementosPorEventoId.get(dataEventId).push(el);
+                                }
+                            }
+                        });
+
                         // Evaluar cada planilla
                         Object.entries(eventosPorPlanilla).forEach(([planillaId, data]) => {
-                            console.group(`📋 Planilla ${data.title}`);
-                            console.log('Segmentos:', data.eventos.length);
-                            console.log('Props:', data.props);
-
-                            const cumple = cumpleFiltros(data.eventos[
-                                0]); // Evaluar con el primer segmento
+                            const cumple = cumpleFiltros(data.eventos[0]); // Evaluar con el primer segmento
 
                             // Aplicar a TODOS los segmentos de esta planilla
                             data.eventos.forEach(evento => {
-                                // Buscar TODAS las representaciones DOM de este evento
-                                // Un evento puede tener múltiples elementos DOM si está en varias posiciones
+                                // 🔧 OPTIMIZACIÓN: Lookup O(1) en lugar de querySelectorAll O(n)
                                 const elementosDOM = [];
 
                                 // Primero intentar con evento.el
@@ -3480,32 +3633,15 @@
                                     elementosDOM.push(evento.el);
                                 }
 
-                                // Buscar todas las instancias DOM que coincidan con este evento ID
-                                const todosElementos = document.querySelectorAll('.fc-event');
-                                todosElementos.forEach(el => {
-                                    // Verificar por fcSeg
-                                    if (el.fcSeg && el.fcSeg.eventRange.def.publicId ===
-                                        evento.id) {
-                                        // Evitar duplicados
-                                        if (!elementosDOM.includes(el)) {
-                                            elementosDOM.push(el);
-                                        }
-                                    }
-                                    // También verificar por atributos data
-                                    const dataEventId = el.getAttribute(
-                                            'data-event-id') ||
-                                        el.querySelector('[data-event-id]')
-                                        ?.getAttribute('data-event-id');
-                                    if (dataEventId === evento.id && !elementosDOM
-                                        .includes(el)) {
+                                // Buscar en el mapa cacheado
+                                const elementosDelMapa = elementosPorEventoId.get(evento.id) || [];
+                                elementosDelMapa.forEach(el => {
+                                    if (!elementosDOM.includes(el)) {
                                         elementosDOM.push(el);
                                     }
                                 });
 
                                 if (elementosDOM.length === 0) {
-                                    console.warn(
-                                        '⚠️ No se encontró ningún elemento DOM para evento:',
-                                        evento.id);
                                     return;
                                 }
 
@@ -3518,10 +3654,8 @@
                                     if (cumple) {
                                         elementoDOM.classList.add('evento-resaltado',
                                             'pulsando');
-                                        console.log('✅ Elemento resaltado:', evento.id);
                                     } else {
                                         elementoDOM.classList.add('evento-opaco');
-                                        console.log('⚪ Elemento opacado:', evento.id);
                                     }
                                 });
 
@@ -3533,12 +3667,7 @@
 
                             if (cumple) {
                                 planillasResaltadas++;
-                                console.log('✅ RESALTADA (todos los segmentos)');
-                            } else {
-                                console.log('⚪ OPACADA (todos los segmentos)');
                             }
-
-                            console.groupEnd();
                         });
 
                         console.log(`━━━━━━━━━━━━━━━━`);
