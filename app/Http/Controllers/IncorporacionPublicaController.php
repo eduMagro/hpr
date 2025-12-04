@@ -61,8 +61,8 @@ class IncorporacionPublicaController extends Controller
 
         // Validación base - con imágenes o PDF del DNI
         $rules = [
-            'dni_frontal' => 'required|file|mimes:jpg,jpeg,png,pdf|max:5120',
-            'dni_trasero' => 'required|file|mimes:jpg,jpeg,png,pdf|max:5120',
+            'dni_frontal' => 'required|file|mimes:jpg,jpeg,png,pdf|max:15360',
+            'dni_trasero' => 'required|file|mimes:jpg,jpeg,png,pdf|max:15360',
             'dni' => 'nullable|string|size:9|regex:/^([0-9]{8}[A-Z]|[XYZ][0-9]{7}[A-Z])$/i', // Campo manual de respaldo
             'nombre_dni' => 'required|string|max:100',
             'primer_apellido_dni' => 'required|string|max:100',
@@ -70,31 +70,31 @@ class IncorporacionPublicaController extends Controller
             'numero_afiliacion_ss' => ['required', 'string', 'size:12', 'regex:/^[0-9]{12}$/'],
             'email' => 'required|email|max:255',
             'telefono' => ['required', 'string', 'regex:/^[0-9]{9}$/'],
-            'certificado_bancario' => 'required|file|mimes:pdf,jpg,jpeg,png|max:5120',
+            'certificado_bancario' => 'required|file|mimes:pdf,jpg,jpeg,png|max:15360',
         ];
 
         // Validación de formación según empresa (todos opcionales)
         if ($incorporacion->empresa_destino === Incorporacion::EMPRESA_HPR) {
-            $rules['formacion_curso_20h'] = 'nullable|file|mimes:pdf,jpg,jpeg,png|max:5120';
-            $rules['formacion_curso_6h'] = 'nullable|file|mimes:pdf,jpg,jpeg,png|max:5120';
+            $rules['formacion_curso_20h'] = 'nullable|file|mimes:pdf,jpg,jpeg,png|max:15360';
+            $rules['formacion_curso_6h'] = 'nullable|file|mimes:pdf,jpg,jpeg,png|max:15360';
             $rules['formacion_otros'] = 'nullable|array';
-            $rules['formacion_otros.*'] = 'file|mimes:pdf,jpg,jpeg,png|max:5120';
+            $rules['formacion_otros.*'] = 'file|mimes:pdf,jpg,jpeg,png|max:15360';
             $rules['formacion_otros_nombres'] = 'nullable|array';
             $rules['formacion_otros_nombres.*'] = 'nullable|string|max:255';
         } else {
-            $rules['formacion_generica'] = 'nullable|file|mimes:pdf,jpg,jpeg,png|max:5120';
-            $rules['formacion_especifica'] = 'nullable|file|mimes:pdf,jpg,jpeg,png|max:5120';
+            $rules['formacion_generica'] = 'nullable|file|mimes:pdf,jpg,jpeg,png|max:15360';
+            $rules['formacion_especifica'] = 'nullable|file|mimes:pdf,jpg,jpeg,png|max:15360';
         }
 
         $messages = [
             'dni_frontal.required' => 'El archivo del frente del DNI/NIE es obligatorio.',
             'dni_frontal.file' => 'El frente del DNI/NIE debe ser un archivo.',
             'dni_frontal.mimes' => 'El frente del DNI/NIE debe ser JPG, PNG o PDF.',
-            'dni_frontal.max' => 'El archivo del frente del DNI/NIE no puede superar 5MB.',
+            'dni_frontal.max' => 'El archivo del frente del DNI/NIE no puede superar 15MB.',
             'dni_trasero.required' => 'El archivo del reverso del DNI/NIE es obligatorio.',
             'dni_trasero.file' => 'El reverso del DNI/NIE debe ser un archivo.',
             'dni_trasero.mimes' => 'El reverso del DNI/NIE debe ser JPG, PNG o PDF.',
-            'dni_trasero.max' => 'El archivo del reverso del DNI/NIE no puede superar 5MB.',
+            'dni_trasero.max' => 'El archivo del reverso del DNI/NIE no puede superar 15MB.',
             'dni.size' => 'El DNI/NIE debe tener exactamente 9 caracteres.',
             'dni.regex' => 'El formato del DNI/NIE no es válido (DNI: 8 números + letra, NIE: X/Y/Z + 7 números + letra).',
             'nombre_dni.required' => 'El nombre es obligatorio.',
@@ -112,19 +112,19 @@ class IncorporacionPublicaController extends Controller
             'certificado_bancario.required' => 'El certificado bancario es obligatorio.',
             'certificado_bancario.file' => 'El certificado bancario debe ser un archivo.',
             'certificado_bancario.mimes' => 'El certificado bancario debe ser PDF, JPG o PNG.',
-            'certificado_bancario.max' => 'El certificado bancario no puede superar 5MB.',
+            'certificado_bancario.max' => 'El certificado bancario no puede superar 15MB.',
             'formacion_curso_20h.mimes' => 'El curso de 20H debe ser PDF, JPG o PNG.',
-            'formacion_curso_20h.max' => 'El curso de 20H no puede superar 5MB.',
+            'formacion_curso_20h.max' => 'El curso de 20H no puede superar 15MB.',
             'formacion_curso_6h.mimes' => 'El curso de 6H Ferralla debe ser PDF, JPG o PNG.',
-            'formacion_curso_6h.max' => 'El curso de 6H Ferralla no puede superar 5MB.',
+            'formacion_curso_6h.max' => 'El curso de 6H Ferralla no puede superar 15MB.',
             'formacion_otros.*.mimes' => 'Los archivos de otros cursos deben ser PDF, JPG o PNG.',
-            'formacion_otros.*.max' => 'Los archivos de otros cursos no pueden superar 5MB.',
+            'formacion_otros.*.max' => 'Los archivos de otros cursos no pueden superar 15MB.',
             'formacion_otros_nombres.*.string' => 'El nombre del curso debe ser texto.',
             'formacion_otros_nombres.*.max' => 'El nombre del curso no puede superar 255 caracteres.',
             'formacion_generica.mimes' => 'La formación genérica debe ser PDF, JPG o PNG.',
-            'formacion_generica.max' => 'La formación genérica no puede superar 5MB.',
+            'formacion_generica.max' => 'La formación genérica no puede superar 15MB.',
             'formacion_especifica.mimes' => 'La formación específica debe ser PDF, JPG o PNG.',
-            'formacion_especifica.max' => 'La formación específica no puede superar 5MB.',
+            'formacion_especifica.max' => 'La formación específica no puede superar 15MB.',
         ];
 
         $validated = $request->validate($rules, $messages);

@@ -183,7 +183,20 @@ class ProduccionController extends Controller
      */
     private function obtenerEventosMaquinasParaCarga(): array
     {
-        $maquinas = Maquina::where('tipo', '<>', 'grua')->get();
+        $primerasGruas = Maquina::where('tipo', 'grua')
+            ->whereNotNull('obra_id')
+            ->selectRaw('MIN(id) as id')
+            ->groupBy('obra_id')
+            ->pluck('id');
+
+        $maquinas = Maquina::where(function ($q) use ($primerasGruas) {
+                $q->where('tipo', '<>', 'grua')
+                  ->orWhereIn('id', $primerasGruas);
+            })
+            ->orderByRaw('CASE WHEN obra_id IS NULL THEN 1 ELSE 0 END')
+            ->orderBy('obra_id')
+            ->orderBy('tipo')
+            ->get();
 
         $elementos = Elemento::with(['planilla', 'planilla.obra', 'maquina', 'maquina_2', 'maquina_3'])
             ->whereHas('planilla', fn($q) => $q->whereIn('estado', ['pendiente', 'fabricando']))
@@ -686,8 +699,17 @@ class ProduccionController extends Controller
         $fechaFin    = $request->input('fechaFin');    // 'YYYY-MM-DD'
         $turnoFiltro = $request->input('turno');       // 'mañana' | 'tarde' | 'noche' | null
 
-        // 🔹 1. MÁQUINAS DISPONIBLES - TODAS excepto grúas
-        $maquinas = Maquina::where('tipo', '<>', 'grua')
+        // 🔹 1. MÁQUINAS DISPONIBLES - TODAS excepto grúas + primera grúa de cada obra
+        $primerasGruas = Maquina::where('tipo', 'grua')
+            ->whereNotNull('obra_id')
+            ->selectRaw('MIN(id) as id')
+            ->groupBy('obra_id')
+            ->pluck('id');
+
+        $maquinas = Maquina::where(function ($q) use ($primerasGruas) {
+                $q->where('tipo', '<>', 'grua')
+                  ->orWhereIn('id', $primerasGruas);
+            })
             ->orderByRaw('CASE WHEN obra_id IS NULL THEN 1 ELSE 0 END')  // NULL al final
             ->orderBy('obra_id')   // primero ordena por obra
             ->orderBy('tipo')      // luego por tipo dentro de cada obra
@@ -901,7 +923,16 @@ class ProduccionController extends Controller
     public function obtenerRecursos(Request $request)
     {
         try {
-            $maquinas = Maquina::where('tipo', '<>', 'grua')
+            $primerasGruas = Maquina::where('tipo', 'grua')
+                ->whereNotNull('obra_id')
+                ->selectRaw('MIN(id) as id')
+                ->groupBy('obra_id')
+                ->pluck('id');
+
+            $maquinas = Maquina::where(function ($q) use ($primerasGruas) {
+                    $q->where('tipo', '<>', 'grua')
+                      ->orWhereIn('id', $primerasGruas);
+                })
                 ->orderByRaw('CASE WHEN obra_id IS NULL THEN 1 ELSE 0 END')
                 ->orderBy('obra_id')
                 ->orderBy('tipo')
@@ -957,8 +988,17 @@ class ProduccionController extends Controller
 
         // Reutilizar exactamente la misma lógica que maquinas()
 
-        // 1. Obtener máquinas (necesarias para las colas)
-        $maquinas = Maquina::where('tipo', '<>', 'grua')
+        // 1. Obtener máquinas (necesarias para las colas) + primera grúa de cada obra
+        $primerasGruas = Maquina::where('tipo', 'grua')
+            ->whereNotNull('obra_id')
+            ->selectRaw('MIN(id) as id')
+            ->groupBy('obra_id')
+            ->pluck('id');
+
+        $maquinas = Maquina::where(function ($q) use ($primerasGruas) {
+                $q->where('tipo', '<>', 'grua')
+                  ->orWhereIn('id', $primerasGruas);
+            })
             ->orderByRaw('CASE WHEN obra_id IS NULL THEN 1 ELSE 0 END')
             ->orderBy('obra_id')
             ->orderBy('tipo')
@@ -1801,9 +1841,18 @@ class ProduccionController extends Controller
         $fechaFin    = $request->input('fechaFin');    // 'YYYY-MM-DD'
         $turnoFiltro = $request->input('turno');       // 'mañana' | 'tarde' | 'noche' | null
 
-        // 🔹 MÁQUINAS DISPONIBLES
+        // 🔹 MÁQUINAS DISPONIBLES + primera grúa de cada obra
+        $primerasGruas = Maquina::where('tipo', 'grua')
+            ->whereNotNull('obra_id')
+            ->selectRaw('MIN(id) as id')
+            ->groupBy('obra_id')
+            ->pluck('id');
+
         $maquinas = Maquina::whereNotNull('tipo')
-            ->where('tipo', '<>', 'grua')
+            ->where(function ($q) use ($primerasGruas) {
+                $q->where('tipo', '<>', 'grua')
+                  ->orWhereIn('id', $primerasGruas);
+            })
             ->orderByRaw('CASE WHEN obra_id IS NULL THEN 1 ELSE 0 END')  // NULL al final
             ->orderBy('obra_id')   // primero ordena por obra
             ->orderBy('tipo')      // luego por tipo dentro de cada obra
@@ -2978,9 +3027,20 @@ class ProduccionController extends Controller
 
     public function verOrdenesPlanillas(Request $request)
     {
+        $primerasGruas = Maquina::where('tipo', 'grua')
+            ->whereNotNull('obra_id')
+            ->selectRaw('MIN(id) as id')
+            ->groupBy('obra_id')
+            ->pluck('id');
+
         $maquinas = Maquina::query()
-            ->where('tipo', '!=', 'grua')
-            ->orderBy('nombre')
+            ->where(function ($q) use ($primerasGruas) {
+                $q->where('tipo', '!=', 'grua')
+                  ->orWhereIn('id', $primerasGruas);
+            })
+            ->orderByRaw('CASE WHEN obra_id IS NULL THEN 1 ELSE 0 END')
+            ->orderBy('obra_id')
+            ->orderBy('tipo')
             ->get();
 
         $localizacionMaquinas = Localizacion::query()

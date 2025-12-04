@@ -461,9 +461,11 @@ class PaqueteController extends Controller
                 }
             }
 
-            // 12) Retirar de la cola de ESTA máquina si ya no quedan etiquetas pendientes en ella
-            app(PlanillaColaService::class)
-                ->retirarSiPlanillaCompletamentePaquetizadaYCompletada($planilla, $maquina);
+            // 12) DESHABILITADO: La eliminación de la cola ahora solo se hace manualmente
+            // cuando el usuario hace clic en "Planilla Completada" desde la vista de máquina.
+            // Esto evita que se elimine prematuramente la posición antes de confirmar manualmente.
+            // app(PlanillaColaService::class)
+            //     ->retirarSiPlanillaCompletamentePaquetizadaYCompletada($planilla, $maquina);
 
             // 14) Guardar en sesión los IDs de elementos reempaquetados (para otras vistas/lógica)
             session(['elementos_reempaquetados' => $todosElementos->pluck('id')->toArray()]);

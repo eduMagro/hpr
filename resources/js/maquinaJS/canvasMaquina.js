@@ -1357,7 +1357,6 @@ window.renderizarGrupoSVG = function renderizarGrupoSVG(grupo, gidx) {
                         window.mostrarPanelInfoElemento(elemento.id);
                     return;
                 }
-                console.log('Elemento para dividir:', elemento.id, 'barras:', elemento.barras, 'objeto:', elemento);
                 abrirModalDividirElemento(elemento.id, elemento.barras || 0);
             });
             pathEl.addEventListener("contextmenu", function (e) {
@@ -1957,10 +1956,22 @@ window.abrirModalDividirElemento = function abrirModalDividirElemento(elementoId
 
     input.value = elementoId;
 
-    // Guardar barras totales y mostrar en el label
-    const barrasTotales = parseInt(barras) || 0;
+    // Si no tenemos barras, buscar en elementosAgrupadosScript
+    let barrasTotales = parseInt(barras) || 0;
+    if (barrasTotales === 0 && window.elementosAgrupadosScript) {
+        for (const grupo of window.elementosAgrupadosScript) {
+            if (grupo.elementos) {
+                const elem = grupo.elementos.find(e => String(e.id) === String(elementoId));
+                if (elem && elem.barras) {
+                    barrasTotales = parseInt(elem.barras) || 0;
+                    break;
+                }
+            }
+        }
+    }
+
     if (inputBarrasTotales) inputBarrasTotales.value = barrasTotales;
-    if (labelBarras) labelBarras.textContent = barrasTotales;
+    if (labelBarras) labelBarras.textContent = barrasTotales > 0 ? barrasTotales : '-';
 
     // Limpiar campo de barras a mover y preview
     if (inputBarrasAMover) inputBarrasAMover.value = '';

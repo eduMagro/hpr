@@ -284,7 +284,7 @@
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
                                 </svg>
                                 <p class="text-sm text-gray-600" id="text-bancario">Haz clic o arrastra el archivo aquí</p>
-                                <p class="text-xs text-gray-400 mt-1">PDF, JPG o PNG (máx. 5MB)</p>
+                                <p class="text-xs text-gray-400 mt-1">PDF, JPG o PNG (máx. 15MB)</p>
                             </div>
                             <input type="file" name="certificado_bancario" accept=".pdf,.jpg,.jpeg,.png" required
                                 onchange="updateFileName(this, 'text-bancario')">
