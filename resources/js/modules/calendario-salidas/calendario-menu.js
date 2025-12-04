@@ -1501,8 +1501,11 @@ function construirFormularioFechas(planillas) {
 
                     return `
                     <tr class="elemento-row elemento-planilla-${p.id} bg-gray-50 hidden">
-                        <td class="px-2 py-1 text-xs text-gray-400 pl-8">
+                        <td class="px-2 py-1 text-xs text-gray-400 pl-4">
                             <div class="flex items-center gap-1">
+                                <input type="checkbox" class="elemento-checkbox rounded border-gray-300 text-purple-600 focus:ring-purple-500 h-3.5 w-3.5"
+                                       data-elemento-id="${el.id}"
+                                       data-planilla-id="${p.id}">
                                 <span>↳</span>
                                 <span class="font-medium text-gray-600">${codigoEl}</span>
                                 ${tieneDimensiones ? `
@@ -1561,7 +1564,33 @@ ${elementosHtml}`;
     <div class="text-left">
       <div class="text-sm text-gray-600 mb-2">
         Edita la <strong>fecha estimada de entrega</strong> de planillas y elementos.
-        <span class="text-blue-600">▶</span> = expandir elementos
+        <span class="text-blue-600">▶</span> = expandir elementos, <span class="text-purple-600">☑</span> = seleccionar para asignar fecha masiva
+      </div>
+
+      <!-- Barra de acciones masivas para elementos -->
+      <div id="barra-acciones-masivas" class="mb-3 p-3 bg-purple-50 border border-purple-200 rounded-lg hidden">
+        <div class="flex flex-wrap items-center gap-3">
+          <div class="flex items-center gap-2">
+            <span class="text-sm font-medium text-purple-800">
+              <span id="contador-seleccionados">0</span> elementos seleccionados
+            </span>
+          </div>
+          <div class="flex items-center gap-2">
+            <label class="text-sm text-purple-700">Asignar fecha:</label>
+            <input type="date" id="fecha-masiva" class="swal2-input !m-0 !w-auto !text-sm !bg-white !border-purple-300">
+            <button type="button" id="aplicar-fecha-masiva" class="text-sm bg-purple-600 hover:bg-purple-700 text-white px-3 py-1.5 rounded font-medium transition-colors">
+              Aplicar a seleccionados
+            </button>
+          </div>
+          <div class="flex items-center gap-2 ml-auto">
+            <button type="button" id="limpiar-fecha-seleccionados" class="text-xs bg-gray-500 hover:bg-gray-600 text-white px-2 py-1 rounded" title="Quitar fecha de los seleccionados">
+              Limpiar fecha
+            </button>
+            <button type="button" id="deseleccionar-todos" class="text-xs bg-gray-400 hover:bg-gray-500 text-white px-2 py-1 rounded">
+              Deseleccionar
+            </button>
+          </div>
+        </div>
       </div>
 
       <!-- Sumatorio dinámico por fechas -->
@@ -1589,12 +1618,19 @@ ${elementosHtml}`;
         </table>
       </div>
 
-      <div class="mt-2 flex gap-2">
+      <div class="mt-2 flex flex-wrap gap-2">
         <button type="button" id="expandir-todos" class="text-xs bg-gray-200 hover:bg-gray-300 px-3 py-1 rounded">
           📂 Expandir todos
         </button>
         <button type="button" id="colapsar-todos" class="text-xs bg-gray-200 hover:bg-gray-300 px-3 py-1 rounded">
           📁 Colapsar todos
+        </button>
+        <span class="border-l border-gray-300 mx-1"></span>
+        <button type="button" id="seleccionar-todos-elementos" class="text-xs bg-purple-100 hover:bg-purple-200 text-purple-700 px-3 py-1 rounded">
+          ☑ Seleccionar todos los elementos
+        </button>
+        <button type="button" id="seleccionar-sin-fecha" class="text-xs bg-orange-100 hover:bg-orange-200 text-orange-700 px-3 py-1 rounded">
+          ☑ Seleccionar sin fecha
         </button>
       </div>
     </div>`;
