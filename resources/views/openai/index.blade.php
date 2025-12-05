@@ -191,6 +191,20 @@
                                         </div>
                                     </div>
 
+                                    <div class="flex justify-end mt-2">
+                                        <button type="button"
+                                            class="toggle-json-btn inline-flex items-center gap-1 px-3 py-1 text-[11px] font-semibold text-indigo-600 border border-indigo-200 rounded-lg hover:bg-indigo-50 transition"
+                                            data-result="{{ $idx }}"
+                                            data-show-label="Ver JSON"
+                                            data-hide-label="Ocultar JSON">
+                                            Ver JSON
+                                        </button>
+                                    </div>
+                                    <div id="jsonPayload-{{ $idx }}"
+                                        class="hidden bg-slate-950 text-slate-100 rounded-lg p-3 text-[11px] leading-tight overflow-auto max-h-64 mt-2 whitespace-pre-wrap">
+                                        <pre class="whitespace-pre-wrap break-words text-[11px]">{{ json_encode($resultado['parsed'] ?? [], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE) }}</pre>
+                                    </div>
+
                                     <!-- Productos -->
                                     @php
                                         $productos = $resultado['parsed']['productos'] ?? [];
@@ -242,6 +256,23 @@
                                                     </div>
                                                 @endforeach
                                             </div>
+                                        </div>
+                                    @endif
+                                    @php
+                                        $coladasResumen = collect($productos)
+                                            ->flatMap(fn($producto) => $producto['line_items'] ?? [])
+                                            ->filter(fn($item) => isset($item['colada']) || isset($item['bultos']) || isset($item['peso_kg']))
+                                            ->values();
+                                    @endphp
+                                    @if ($coladasResumen->count())
+                                        <div class="bg-blue-50 border border-blue-100 rounded-xl p-3 text-xs text-blue-900 space-y-1">
+                                            <p class="font-semibold text-sm text-blue-700">Coladas detectadas antes de continuar:</p>
+                                            <p>
+                                                <span class="font-semibold">[coladas]:</span>
+                                                @foreach ($coladasResumen as $colada)
+                                                    ({{ $colada['colada'] ?? '—' }} ({{ $colada['bultos'] ?? 0 }}) {{ isset($colada['peso_kg']) ? number_format($colada['peso_kg'], 3, ',', '.') : '—' }} kg)
+                                                @endforeach
+                                            </p>
                                         </div>
                                     @endif
 
@@ -1044,6 +1075,21 @@
                 const idx = btn.dataset.result;
                 document.getElementById(`viewMode-${idx}`).classList.add('hidden');
                 document.getElementById(`editMode-${idx}`).classList.remove('hidden');
+            });
+        });
+
+        document.querySelectorAll('.toggle-json-btn').forEach((btn) => {
+            btn.addEventListener('click', () => {
+                const idx = btn.dataset.result;
+                const payload = document.getElementById(`jsonPayload-${idx}`);
+                if (!payload) {
+                    return;
+                }
+
+                const isHidden = payload.classList.toggle('hidden');
+                const showLabel = btn.dataset.showLabel || 'Ver JSON';
+                const hideLabel = btn.dataset.hideLabel || 'Ocultar JSON';
+                btn.textContent = isHidden ? showLabel : hideLabel;
             });
         });
 

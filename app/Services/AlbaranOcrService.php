@@ -33,11 +33,11 @@ class AlbaranOcrService
         }
 
         return EntradaImportLog::create([
-            'user_id'         => $userId,
-            'file_path'       => $storedPath,
-            'raw_text'        => $rawText,
-            'parsed_payload'  => $parsed,
-            'status'          => 'parsed',
+            'user_id' => $userId,
+            'file_path' => $storedPath,
+            'raw_text' => $rawText,
+            'parsed_payload' => $parsed,
+            'status' => 'parsed',
         ]);
     }
 
@@ -77,27 +77,27 @@ class AlbaranOcrService
 
         $response = Http::withHeaders([
             'Authorization' => 'Bearer ' . $apiKey,
-            'Content-Type'  => 'application/json',
+            'Content-Type' => 'application/json',
         ])->timeout(120)->post('https://api.openai.com/v1/chat/completions', [
-            'model' => $model,
-            'messages' => [
-                [
-                    'role' => 'user',
-                    'content' => [
-                        ['type' => 'text', 'text' => $prompt],
+                    'model' => $model,
+                    'messages' => [
                         [
-                            'type' => 'image_url',
-                            'image_url' => [
-                                'url' => "data:{$mimeType};base64,{$base64}",
-                                'detail' => 'high',
+                            'role' => 'user',
+                            'content' => [
+                                ['type' => 'text', 'text' => $prompt],
+                                [
+                                    'type' => 'image_url',
+                                    'image_url' => [
+                                        'url' => "data:{$mimeType};base64,{$base64}",
+                                        'detail' => 'high',
+                                    ],
+                                ],
                             ],
                         ],
                     ],
-                ],
-            ],
-            'max_tokens' => 1200,
-            'temperature' => 0,
-        ]);
+                    'max_tokens' => 1200,
+                    'temperature' => 0,
+                ]);
 
         if (!$response->successful()) {
             $msg = $response->json('error.message') ?? 'OpenAI devolvió un error';
@@ -126,22 +126,22 @@ class AlbaranOcrService
         }
 
         $data = [
-            'albaran'       => $this->firstMatch('/(?:N[º\\.o]?\\s*documento\\s*[:\\-]?\\s*)([\\w\\/-]+)/i', $clean),
-            'fecha'         => $this->parseDate($clean),
+            'albaran' => $this->firstMatch('/(?:N[º\\.o]?\\s*documento\\s*[:\\-]?\\s*)([\\w\\/-]+)/i', $clean),
+            'fecha' => $this->parseDate($clean),
             'pedido_codigo' => $this->firstMatch('/Pedido\\s+(\\d{4}\\/[A-Z0-9]+)/i', $clean),
-            'pedido_cliente'=> $this->firstMatch('/Pedido\\s+cliente\\s*([A-Z0-9\\-\\/]+)/i', $clean),
-            'piezas'        => null,
-            'bultos'        => null,
-            'peso_total'    => $this->parseNumber($this->firstMatch('/Peso\\s+neto\\s+TOTAL\\s*([\\d\\.,]+)/i', $clean)
+            'pedido_cliente' => $this->firstMatch('/Pedido\\s+cliente\\s*([A-Z0-9\\-\\/]+)/i', $clean),
+            'piezas' => null,
+            'bultos' => null,
+            'peso_total' => $this->parseNumber($this->firstMatch('/Peso\\s+neto\\s+TOTAL\\s*([\\d\\.,]+)/i', $clean)
                 ?: $this->firstMatch('/Net\\s*KG\\s*[:\\-]?\\s*([\\d\\.,]+)/i', $clean)),
             'producto' => [
                 'descripcion' => $this->firstMatch('/(REDONDO[^\\n]+?CALIDAD[^\\n]+)/i', $text) ?? $this->firstMatch('/(CORRUGADO[^\\n]+)/i', $text),
-                'diametro'    => $this->parseNumber($this->firstMatch('/Di[aá]metro\\s*[:\\-]?\\s*([\\d\\.,]+)/i', $clean)),
-                'longitud'    => $this->parseNumber($this->firstMatch('/L\\.\\s*Barra\\s*[:\\-]?\\s*([\\d\\.,]+)/i', $clean)),
-                'calidad'     => $calidadCapturada,
+                'diametro' => $this->parseNumber($this->firstMatch('/Di[aá]metro\\s*[:\\-]?\\s*([\\d\\.,]+)/i', $clean)),
+                'longitud' => $this->parseNumber($this->firstMatch('/L\\.\\s*Barra\\s*[:\\-]?\\s*([\\d\\.,]+)/i', $clean)),
+                'calidad' => $calidadCapturada,
             ],
             'ubicacion_texto' => $this->firstMatch('/LUGAR DE ENTREGA\\s*([A-Z0-9 ,\\.\\-]+)/i', $clean),
-            'line_items'      => $this->parseLineItems($text),
+            'line_items' => $this->parseLineItems($text),
         ];
 
         // Intentar cruzar con base de datos
@@ -221,7 +221,7 @@ class AlbaranOcrService
         }
 
         return [
-            'id'   => $obra->id,
+            'id' => $obra->id,
             'obra' => $obra->obra,
         ];
     }
@@ -249,8 +249,8 @@ class AlbaranOcrService
             ->first();
 
         return [
-            'id'                 => $pedido->id,
-            'codigo'             => $pedido->codigo,
+            'id' => $pedido->id,
+            'codigo' => $pedido->codigo,
             'pedido_producto_id' => $linea?->id,
         ];
     }
@@ -291,9 +291,9 @@ class AlbaranOcrService
         if (preg_match_all($pattern, $text, $matches, PREG_SET_ORDER)) {
             foreach ($matches as $m) {
                 $lines[] = [
-                    'colada'  => trim($m[1]),
-                    'piezas'  => (int) $m[2],
-                    'bultos'  => (int) $m[3],
+                    'colada' => trim($m[1]),
+                    'piezas' => (int) $m[2],
+                    'bultos' => (int) $m[3],
                     'peso_kg' => $this->parseNumber($m[4]),
                 ];
             }
@@ -341,7 +341,7 @@ CAMPOS IMPORTANTES:
   * descripcion: Tipo (ej: "Corrugado B500SD", "Liso", etc.)
   * diametro: Diámetro en mm (solo número: 8, 10, 12, 16, 20, etc.)
   * longitud: Longitud en mm (si aparece)
-  * calidad: Calidad del acero (ej: "B500SD", "B400S", etc.)
+  * calidad: Calidad del acero (ej: "B500SD", "EURASOL 500SD", etc.)
   * line_items: Array de coladas, cada una con:
     - colada: Número de colada (ej: "25/41324")
     - bultos: Número de bultos de ESA colada específica
