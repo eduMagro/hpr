@@ -124,6 +124,9 @@
                                         <span class="simulacion-badge badge-warning">
                                             📦 {{ $sim['bultos_albaran'] ?? 0 }} bultos
                                         </span>
+                                        <span class="simulacion-badge badge-info">
+                                            🏷️ {{ count($sim['bultos_simulados'] ?? []) }} coladas
+                                        </span>
                                         @if ($sim['peso_total'])
                                             <span class="simulacion-badge badge-info">
                                                 ⚖️ {{ number_format($sim['peso_total'], 0, ',', '.') }} kg
@@ -595,110 +598,199 @@
                             <!-- Listado completo de TODOS los pedidos pendientes -->
                             @if (isset($sim['todas_las_lineas']) && count($sim['todas_las_lineas']) > 0)
                                 <div class="border-t border-gray-200 pt-4">
-                                    <details class="group">
-                                        <summary class="cursor-pointer list-none">
-                                            <div
-                                                class="flex items-center justify-between p-3 bg-gray-100 rounded-lg hover:bg-gray-200 transition">
-                                                <div class="flex items-center gap-2">
-                                                    <svg class="w-5 h-5 text-gray-600 transition-transform group-open:rotate-90"
-                                                        fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path stroke-linecap="round" stroke-linejoin="round"
-                                                            stroke-width="2" d="M9 5l7 7-7 7"></path>
-                                                    </svg>
-                                                    <span class="text-sm font-semibold text-gray-900">
-                                                        Ver todos los pedidos pendientes
-                                                        ({{ count($sim['todas_las_lineas']) }})
-                                                    </span>
+                                    <!-- Listado completo de TODOS los pedidos pendientes (MODAL) -->
+                                    @if (isset($sim['todas_las_lineas']) && count($sim['todas_las_lineas']) > 0)
+                                        <div class="border-t border-gray-200 pt-4">
+                                            <button type="button"
+                                                onclick="openPendingOrdersModal('{{ $idx }}')"
+                                                class="flex items-center justify-between w-full p-3 bg-gray-100 rounded-lg hover:bg-gray-200 transition text-left">
+                                                <span class="text-sm font-semibold text-gray-900">
+                                                    > Ver todos los pedidos pendientes
+                                                    ({{ count($sim['todas_las_lineas']) }})
+                                                </span>
+                                            </button>
+
+                                            <!-- Selected Order Display -->
+                                            <div id="selectedOrderContainer-{{ $idx }}"
+                                                class="hidden mt-3 p-4 bg-blue-50 border border-blue-200 rounded-lg relative">
+                                                <div class="flex items-start justify-between mb-2">
+                                                    <div>
+                                                        <p class="text-sm font-semibold text-blue-900">
+                                                            ✓ Pedido seleccionado manualmente: <span
+                                                                id="selectedOrderCode-{{ $idx }}"></span>
+                                                        </p>
+                                                        <p class="text-xs text-blue-700 mt-1"
+                                                            id="selectedOrderDetails-{{ $idx }}">
+                                                            <!-- Details populated by JS -->
+                                                        </p>
+                                                    </div>
+                                                    <button type="button"
+                                                        onclick="resetToRecommended('{{ $idx }}')"
+                                                        class="text-xs text-blue-600 underline hover:text-blue-800">
+                                                        Restaurar recomendado
+                                                    </button>
                                                 </div>
-                                                <span class="text-xs text-gray-600">Click para expandir</span>
+                                                <div class="mt-3">
+                                                    <label class="block text-xs font-medium text-blue-800 mb-1">Motivo
+                                                        del cambio de decisión (permitirá al sistema aprender de tus preferencias más adelante)</label>
+                                                    <input type="text" id="changeReason-{{ $idx }}"
+                                                        class="w-full text-sm rounded-md border-blue-300 focus:border-blue-500 focus:ring-blue-500"
+                                                        placeholder="Ej: El sistema recomendó X pero prefiero Y porque...">
+                                                </div>
                                             </div>
-                                        </summary>
-                                        <div class="mt-3 bg-white rounded-lg border border-gray-200 overflow-hidden">
-                                            <div class="overflow-x-auto">
-                                                <table class="min-w-full text-sm">
-                                                    <thead class="bg-gray-100 text-gray-700">
-                                                        <tr>
-                                                            <th class="px-4 py-2 text-left font-medium">Pedido</th>
-                                                            <th class="px-4 py-2 text-left font-medium">Fabricante</th>
-                                                            <th class="px-4 py-2 text-left font-medium">Producto</th>
-                                                            <th class="px-4 py-2 text-left font-medium">Obra</th>
-                                                            <th class="px-4 py-2 text-center font-medium">Pendiente
-                                                            </th>
-                                                            <th class="px-4 py-2 text-center font-medium">Recomendación
-                                                            </th>
-                                                            <th class="px-4 py-2 text-left font-medium">Estado</th>
-                                                            <th class="px-4 py-2 text-center font-medium">Acción</th>
-                                                        </tr>
-                                                    </thead>
-                                                    <tbody class="divide-y divide-gray-200">
-                                                        @foreach ($sim['todas_las_lineas'] as $linea)
-                                                            <tr
-                                                                class="hover:bg-gray-50 {{ $linea['coincide_diametro'] ? 'bg-green-50' : '' }}">
-                                                                <td class="px-4 py-3 font-medium text-gray-900">
-                                                                    {{ $linea['pedido_codigo'] }}
-                                                                    @if ($linea['coincide_diametro'])
-                                                                        <span
-                                                                            class="ml-1 text-xs text-green-600">✓</span>
-                                                                    @endif
-                                                                </td>
-                                                                <td class="px-4 py-3 text-gray-600 text-xs">
-                                                                    {{ $linea['fabricante'] }}</td>
-                                                                <td class="px-4 py-3 text-gray-700">
-                                                                    {{ $linea['producto'] }}</td>
-                                                                <td class="px-4 py-3 text-gray-700">
-                                                                    {{ $linea['obra'] }}</td>
-                                                                <td
-                                                                    class="px-4 py-3 text-center font-semibold text-gray-900">
-                                                                    {{ number_format($linea['cantidad_pendiente'], 0, ',', '.') }}
-                                                                    /
-                                                                    {{ number_format($linea['cantidad'], 0, ',', '.') }}
-                                                                    kg
-                                                                </td>
-                                                                <td class="px-4 py-3 text-center">
-                                                                    @php
-                                                                        $scoreColor =
-                                                                            $linea['score'] >= 150
-                                                                                ? 'bg-emerald-600'
-                                                                                : ($linea['score'] >= 50
-                                                                                    ? 'bg-green-500'
-                                                                                    : ($linea['score'] >= 0
-                                                                                        ? 'bg-yellow-400'
-                                                                                        : 'bg-red-500'));
-                                                                    @endphp
+
+                                            <!-- Modal Structure -->
+                                            <div id="pendingOrdersModal-{{ $idx }}"
+                                                class="fixed inset-0 z-50 hidden" aria-labelledby="modal-title"
+                                                role="dialog" aria-modal="true"
+                                                data-recommended-id="{{ $sim['linea_propuesta']['id'] }}">
+                                                <!-- Backdrop -->
+                                                <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"
+                                                    onclick="closePendingOrdersModal('{{ $idx }}')"></div>
+
+                                                <div class="fixed inset-0 z-10 overflow-y-auto">
+                                                    <div
+                                                        class="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0">
+                                                        <div
+                                                            class="relative transform overflow-hidden rounded-lg bg-white text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-7xl">
+                                                            <div class="bg-white px-4 pb-4 pt-5 sm:p-6 sm:pb-4">
+                                                                <div class="sm:flex sm:items-start">
                                                                     <div
-                                                                        class="flex items-center justify-center group relative">
-                                                                        <div
-                                                                            class="w-4 h-4 rounded-full {{ $scoreColor }} shadow-sm cursor-help">
+                                                                        class="mt-3 text-center sm:ml-4 sm:mt-0 sm:text-left w-full">
+                                                                        <h3 class="text-lg font-semibold leading-6 text-gray-900"
+                                                                            id="modal-title">
+                                                                            Pedidos Pendientes
+                                                                        </h3>
+                                                                        <div class="mt-4 max-h-[60vh] overflow-y-auto">
+                                                                            <table class="min-w-full text-sm">
+                                                                                <thead
+                                                                                    class="bg-gray-100 text-gray-700 sticky top-0 z-10">
+                                                                                    <tr>
+                                                                                        <th
+                                                                                            class="px-4 py-2 text-center font-medium">
+                                                                                            Pedido</th>
+                                                                                        <th
+                                                                                            class="px-4 py-2 text-left font-medium">
+                                                                                            Fabricante</th>
+                                                                                        <th
+                                                                                            class="px-4 py-2 text-left font-medium">
+                                                                                            Producto</th>
+                                                                                        <th
+                                                                                            class="px-4 py-2 text-left font-medium">
+                                                                                            Obra</th>
+                                                                                        <th
+                                                                                            class="px-4 py-2 text-center font-medium">
+                                                                                            Pendiente</th>
+                                                                                        <th
+                                                                                            class="px-4 py-2 text-center font-medium">
+                                                                                            Recomendación</th>
+                                                                                        <th
+                                                                                            class="px-4 py-2 text-center font-medium">
+                                                                                            Estado</th>
+                                                                                        <th
+                                                                                            class="px-4 py-2 text-center font-medium">
+                                                                                            Acción</th>
+                                                                                    </tr>
+                                                                                </thead>
+                                                                                <tbody
+                                                                                    class="divide-y divide-gray-200">
+                                                                                    @foreach ($sim['todas_las_lineas'] as $linea)
+                                                                                        <tr
+                                                                                            class="hover:bg-gray-50 {{ $linea['coincide_diametro'] ? 'bg-green-50' : '' }}">
+                                                                                            <td class="px-4 py-3 font-medium text-center text-gray-900">
+                                                                                                {{ $linea['pedido_codigo'] }}
+                                                                                                @if (isset($sim['linea_propuesta']) && $linea['id'] == $sim['linea_propuesta']['id'])
+                                                                                                    <span class="inline-flex items-center rounded-md bg-green-50 px-2 py-1 text-xs font-medium text-green-700 ring-1 ring-inset ring-green-600/20">Recomendado</span>
+                                                                                                @endif
+                                                                                            </td>
+                                                                                            <td
+                                                                                                class="px-4 py-3 text-gray-600 text-xs">
+                                                                                                {{ $linea['fabricante'] }}
+                                                                                            </td>
+                                                                                            <td
+                                                                                                class="px-4 py-3 text-gray-700">
+                                                                                                @if ($linea['coincide_diametro'])
+                                                                                                    <span class="ml-1 text-xs text-green-600">✓</span>
+                                                                                                @endif
+                                                                                                {{ $linea['producto'] }}
+                                                                                            </td>
+                                                                                            <td
+                                                                                                class="px-4 py-3 text-gray-700">
+                                                                                                {{ $linea['obra'] }}
+                                                                                            </td>
+                                                                                            <td
+                                                                                                class="px-4 py-3 text-center font-semibold text-gray-900">
+                                                                                                {{ number_format($linea['cantidad_pendiente'], 0, ',', '.') }}
+                                                                                                /
+                                                                                                {{ number_format($linea['cantidad'], 0, ',', '.') }}
+                                                                                                kg
+                                                                                            </td>
+                                                                                            <td
+                                                                                                class="px-4 py-3 text-center">
+                                                                                                @php
+                                                                                                    $scoreColor =
+                                                                                                        $linea[
+                                                                                                            'score'
+                                                                                                        ] >= 150
+                                                                                                            ? 'bg-emerald-600'
+                                                                                                            : ($linea[
+                                                                                                                'score'
+                                                                                                            ] >= 50
+                                                                                                                ? 'bg-green-500'
+                                                                                                                : ($linea[
+                                                                                                                    'score'
+                                                                                                                ] >= 0
+                                                                                                                    ? 'bg-yellow-400'
+                                                                                                                    : 'bg-red-500'));
+                                                                                                @endphp
+                                                                                                <div
+                                                                                                    class="flex items-center justify-center group relative">
+                                                                                                    <div class="w-4 h-4 rounded-full {{ $scoreColor }} shadow-sm cursor-help"
+                                                                                                        title="Score: {{ $linea['score'] }}">
+                                                                                                    </div>
+                                                                                                </div>
+                                                                                            </td>
+                                                                                            <td class="px-4 py-3">
+                                                                                                <span
+                                                                                                    class="text-xs px-2 py-1 rounded-full {{ $linea['estado'] === 'pendiente' ? 'bg-yellow-100 text-yellow-700' : 'bg-blue-100 text-blue-700' }}">
+                                                                                                    {{ ucfirst($linea['estado']) }}
+                                                                                                </span>
+                                                                                            </td>
+                                                                                            <td
+                                                                                                class="px-4 py-3 text-center">
+                                                                                                @php
+                                                                                                    $isProposed = isset($sim['linea_propuesta']) && $linea['id'] == $sim['linea_propuesta']['id'];
+                                                                                                @endphp
+                                                                                                <button type="button"
+                                                                                                    id="btn-select-{{ $idx }}-{{ $linea['id'] }}"
+                                                                                                    class="selection-btn-{{ $idx }} text-xs px-3 py-1 rounded transition {{ $isProposed ? 'bg-green-600 text-white cursor-default' : 'bg-blue-600 text-white hover:bg-blue-700' }}"
+                                                                                                    {{ $isProposed ? 'disabled' : '' }}
+                                                                                                    onclick="seleccionarLineaManual({{ json_encode($linea) }}, '{{ $idx }}')">
+                                                                                                    {{ $isProposed ? 'Seleccionado' : 'Seleccionar' }}
+                                                                                                </button>
+                                                                                            </td>
+                                                                                        </tr>
+                                                                                    @endforeach
+                                                                                </tbody>
+                                                                            </table>
                                                                         </div>
                                                                     </div>
-                                                                </td>
-                                                                <td class="px-4 py-3">
-                                                                    <span
-                                                                        class="text-xs px-2 py-1 rounded-full {{ $linea['estado'] === 'pendiente' ? 'bg-yellow-100 text-yellow-700' : 'bg-blue-100 text-blue-700' }}">
-                                                                        {{ ucfirst($linea['estado']) }}
-                                                                    </span>
-                                                                </td>
-                                                                <td class="px-4 py-3 text-center">
-                                                                    <button type="button"
-                                                                        class="text-xs px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 transition"
-                                                                        onclick="seleccionarLineaManual({{ $linea['id'] }}, '{{ $idx }}')">
-                                                                        Seleccionar
-                                                                    </button>
-                                                                </td>
-                                                            </tr>
-                                                        @endforeach
-                                                    </tbody>
-                                                </table>
-                                            </div>
-                                            <div class="p-3 bg-gray-50 border-t border-gray-200 text-xs text-gray-600">
-                                                <span class="inline-flex items-center gap-1">
-                                                    <span
-                                                        class="inline-block w-3 h-3 bg-green-50 border border-green-200 rounded"></span>
-                                                    = Coincide con diámetro escaneado
-                                                </span>
+                                                                </div>
+                                                            </div>
+                                                            <div
+                                                                class="bg-gray-50 px-4 py-3 sm:flex sm:flex-row-reverse sm:px-6">
+                                                                <button type="button"
+                                                                    class="mt-3 inline-flex w-full justify-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50 sm:mt-0 sm:w-auto"
+                                                                    onclick="closePendingOrdersModal('{{ $idx }}')">
+                                                                    Cerrar
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
                                             </div>
                                         </div>
-                                    </details>
+                                    @endif
                                 </div>
                             @endif
 
@@ -785,36 +877,49 @@
                                 <div id="estadoFinalSection-{{ $idx }}"
                                     data-cantidad-inicial="{{ $sim['linea_propuesta']['cantidad_recepcionada'] }}"
                                     data-cantidad-total="{{ $sim['linea_propuesta']['cantidad'] }}">
-                                    <h3 class="text-base font-semibold text-gray-900 mb-3">
-                                        📊 Estado final simulado de la línea
+                                    <h3
+                                        class="text-base font-semibold text-gray-900 mb-3 flex items-center justify-between">
+                                        <span class="flex items-center gap-2">
+                                            📊 Estado final simulado de la línea
+                                            <span id="applyingLabel-{{ $idx }}"
+                                                class="text-xs font-normal px-2 py-1 rounded-full bg-green-100 text-green-700">Recomendado</span>
+                                        </span>
                                     </h3>
                                     <div class="bg-indigo-50 border border-indigo-200 rounded-lg p-4">
                                         <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
                                             <div>
-                                                <p class="text-xs text-indigo-600 font-medium">Cantidad pendiente actual
+                                                <p class="text-xs text-indigo-600 font-medium">Cantidad pendiente
+                                                    actual
                                                 </p>
-                                                <p class="text-2xl font-bold text-indigo-900" id="cantidadPendienteActual-{{ $idx }}">
-                                                    {{ number_format($sim['linea_propuesta']['cantidad_pendiente'], 0, ',', '.') }} kg
+                                                <p class="text-2xl font-bold text-indigo-900"
+                                                    id="cantidadPendienteActual-{{ $idx }}">
+                                                    {{ number_format($sim['linea_propuesta']['cantidad_pendiente'], 0, ',', '.') }}
+                                                    kg
                                                 </p>
                                             </div>
                                             <div>
                                                 <p class="text-xs text-indigo-600 font-medium">Kg a recepcionar
                                                 </p>
-                                                <p class="text-2xl font-bold text-indigo-900" id="kgRecepcionar-{{ $idx }}">
-                                                    {{ number_format(collect($sim['bultos_simulados'])->sum('peso_kg'), 0, ',', '.') }} kg
+                                                <p class="text-2xl font-bold text-indigo-900"
+                                                    id="kgRecepcionar-{{ $idx }}">
+                                                    {{ number_format(collect($sim['bultos_simulados'])->sum('peso_kg'), 0, ',', '.') }}
+                                                    kg
                                                 </p>
                                             </div>
                                             <div>
-                                                <p class="text-xs text-indigo-600 font-medium">Kg pendientes después</p>
-                                                <p class="text-2xl font-bold text-indigo-900" id="kgPendientesDespues-{{ $idx }}">
-                                                    {{ number_format($sim['linea_propuesta']['cantidad_pendiente'] - collect($sim['bultos_simulados'])->sum('peso_kg'), 0, ',', '.') }} kg
+                                                <p class="text-xs text-indigo-600 font-medium">Kg pendientes después
+                                                </p>
+                                                <p class="text-2xl font-bold text-indigo-900"
+                                                    id="kgPendientesDespues-{{ $idx }}">
+                                                    {{ number_format($sim['linea_propuesta']['cantidad_pendiente'] - collect($sim['bultos_simulados'])->sum('peso_kg'), 0, ',', '.') }}
+                                                    kg
                                                 </p>
                                             </div>
                                             <div>
                                                 <p class="text-xs text-indigo-600 font-medium">Nuevo estado</p>
                                                 <p id="nuevoEstado-{{ $idx }}"
-                                                    class="text-lg font-bold {{ ($sim['linea_propuesta']['cantidad_recepcionada'] + collect($sim['bultos_simulados'])->sum('peso_kg')) >= $sim['linea_propuesta']['cantidad'] ? 'text-green-600' : 'text-blue-600' }}">
-                                                    {{ ($sim['linea_propuesta']['cantidad_recepcionada'] + collect($sim['bultos_simulados'])->sum('peso_kg')) >= $sim['linea_propuesta']['cantidad'] ? 'Completado' : 'Parcial' }}
+                                                    class="text-lg font-bold {{ $sim['linea_propuesta']['cantidad_recepcionada'] + collect($sim['bultos_simulados'])->sum('peso_kg') >= $sim['linea_propuesta']['cantidad'] ? 'text-green-600' : 'text-blue-600' }}">
+                                                    {{ $sim['linea_propuesta']['cantidad_recepcionada'] + collect($sim['bultos_simulados'])->sum('peso_kg') >= $sim['linea_propuesta']['cantidad'] ? 'Completado' : 'Parcial' }}
                                                 </p>
                                             </div>
                                         </div>
@@ -1120,25 +1225,161 @@
             });
         });
 
-        // Función para seleccionar manualmente una línea de pedido
-        window.seleccionarLineaManual = function(lineaId, resultadoIdx) {
-            // Aquí puedes implementar la lógica para:
-            // 1. Guardar la línea seleccionada
-            // 2. Actualizar la vista para mostrar esta línea como propuesta
-            // 3. Cerrar el acordeón
-            console.log(`Línea seleccionada manualmente: #${lineaId} para resultado ${resultadoIdx}`);
-
-            // Marcar visualmente la línea seleccionada
-            const row = event.target.closest('tr');
-            const tbody = row.parentElement;
-            tbody.querySelectorAll('tr').forEach(tr => {
-                tr.classList.remove('ring-2', 'ring-blue-500', 'bg-blue-50');
-            });
-            row.classList.add('ring-2', 'ring-blue-500', 'bg-blue-50');
-
-            // Mostrar mensaje de confirmación
-            alert(`Línea de pedido #${lineaId} seleccionada. Cuando confirmes, se activará esta línea.`);
+        // Función para abrir/cerrar modal
+        window.openPendingOrdersModal = function(idx) {
+            document.getElementById(`pendingOrdersModal-${idx}`).classList.remove('hidden');
         };
+
+        window.closePendingOrdersModal = function(idx) {
+            document.getElementById(`pendingOrdersModal-${idx}`).classList.add('hidden');
+        };
+
+        // Variables globales para almacenar el estado original (recomendado) por cada resultado
+        // Se inicializan en el DOM o lazy loaded
+        const originalRecommendations = {};
+
+        // Función auxiliar para actualizar estado visual de botones
+        window.updateSelectionButtons = function(idx, selectedId) {
+            document.querySelectorAll(`.selection-btn-${idx}`).forEach(btn => {
+                // Reset (blue state)
+                btn.disabled = false;
+                btn.textContent = 'Seleccionar';
+                btn.classList.remove('bg-green-600', 'cursor-default');
+                btn.classList.add('bg-blue-600', 'hover:bg-blue-700');
+
+                // Set Selected (green state)
+                if (btn.id === `btn-select-${idx}-${selectedId}`) {
+                    btn.disabled = true;
+                    btn.textContent = 'Seleccionado';
+                    btn.classList.remove('bg-blue-600', 'hover:bg-blue-700');
+                    btn.classList.add('bg-green-600', 'cursor-default');
+                }
+            });
+        };
+
+        // Función para seleccionar manualmente una línea de pedido
+        window.seleccionarLineaManual = function(linea, resultadoIdx) {
+            // Verificar si la línea seleccionada es la recomendada
+            const modal = document.getElementById(`pendingOrdersModal-${resultadoIdx}`);
+            const recommendedId = modal.getAttribute('data-recommended-id');
+
+            // Actualizar botones visualmente
+            updateSelectionButtons(resultadoIdx, linea.id);
+
+            // Si se selecciona la recomendada, restaurar y salir
+            if (linea.id == recommendedId) {
+                resetToRecommended(resultadoIdx);
+                // No cerramos el modal aquí para que el usuario vea el cambio a "Seleccionado", 
+                // o si prefiere cerrar, puede hacerlo. Pero la lógica original decía "restaurar y salir".
+                // El usuario pidió "cambia el boton seleccionar por seleccionado". 
+                // Si el usuario elige el recomendado, visualmente se marca.
+                // Reset data logic:
+                // resetToRecommended(resultadoIdx); 
+                // BUT resetToRecommended might hide the manual selection UI which is correct.
+                // We should probably allow the user to see it. 
+                // Let's stick to closing it if it was the behavior used before, or maybe keep it open?
+                // The previous code closed it: closePendingOrdersModal(resultadoIdx);
+                // I will keep closing it for usability unless they want to keep exploring.
+                // Actually, if I update the button state, maybe I shouldn't close it instantly? 
+                // Let's close it as per previous flow to avoid confusion, but updating buttons ensures consistency if reopened.
+                closePendingOrdersModal(resultadoIdx);
+                return;
+            }
+
+            // Guardar estado original si no existe
+            const finalSection = document.getElementById(`estadoFinalSection-${resultadoIdx}`);
+            if (!originalRecommendations[resultadoIdx]) {
+                originalRecommendations[resultadoIdx] = {
+                    cantidadPendiente: parseFloat(finalSection.dataset.cantidadInicial) || 0,
+                    cantidadTotal: parseFloat(finalSection.dataset.cantidadTotal) || 0,
+                    pedidoCodigo: '{{-- This would be hard to capture effectively without passing it, but we can assume we resort to text --}}'
+                };
+            }
+
+            // Actualizar vista de selección manual
+            const container = document.getElementById(`selectedOrderContainer-${resultadoIdx}`);
+            const codeSpan = document.getElementById(`selectedOrderCode-${resultadoIdx}`);
+            const detailsP = document.getElementById(`selectedOrderDetails-${resultadoIdx}`);
+            
+            container.classList.remove('hidden');
+            codeSpan.textContent = linea.pedido_codigo;
+            detailsP.innerHTML = `<strong>Producto:</strong> ${linea.producto} | <strong>Obra:</strong> ${linea.obra} | <strong>Pendiente:</strong> ${new Intl.NumberFormat('es-ES').format(linea.cantidad_pendiente)} kg`;
+
+            // Actualizar Label
+            const applyingLabel = document.getElementById(`applyingLabel-${resultadoIdx}`);
+            applyingLabel.textContent = "Selección Manual";
+            applyingLabel.className = "text-xs font-normal px-2 py-1 rounded-full bg-blue-100 text-blue-700";
+
+            // Actualizar datos de simulación final
+            if (finalSection) {
+                // Actualizar los datasets para que updateColadaTotals calcule bien
+                finalSection.dataset.cantidadInicial = linea.cantidad_recepcionada || (linea.cantidad - linea.cantidad_pendiente);
+                finalSection.dataset.cantidadTotal = linea.cantidad;
+
+                // Forzar actualización de totales
+                updateColadaTotals(resultadoIdx);
+            }
+
+            // Cerrar modal
+            closePendingOrdersModal(resultadoIdx);
+        };
+
+        window.resetToRecommended = function(idx) {
+            // Restaurar botones visualmente al recomendado
+            const modal = document.getElementById(`pendingOrdersModal-${idx}`);
+            const recommendedId = modal.getAttribute('data-recommended-id');
+            updateSelectionButtons(idx, recommendedId);
+
+            // Ocultar contenedor de selección manual
+            document.getElementById(`selectedOrderContainer-${idx}`).classList.add('hidden');
+            document.getElementById(`changeReason-${idx}`).value = ''; // Limpiar razón
+
+            // Restaurar Label
+            const applyingLabel = document.getElementById(`applyingLabel-${idx}`);
+            applyingLabel.textContent = "Recomendado";
+            applyingLabel.className = "text-xs font-normal px-2 py-1 rounded-full bg-green-100 text-green-700";
+
+            // Restaurar valores originales en Final Section
+            if (originalRecommendations[idx]) {
+                const finalSection = document.getElementById(`estadoFinalSection-${idx}`);
+                // NOTE: We need to restore the ORIGINAL PHP values. 
+                // Since I cannot easily read them back from JS variable if I didn't store them all, 
+                // I should have stored them in data-attributes of the reset button or similar.
+                // Or I can just reload them from the DOM if I hadn't overwritten them? 
+                // No, I overwrote the datasets.
+
+                // Better approach: Store original values in data attributes of the container ON LOAD (or first time)
+                // Actually, I can use a separate attribute 'data-original-cantidad-inicial' 
+            }
+
+            // To Fix Reset Logic:
+            // I will rely on `originalRecommendations` which I populated on first selection.
+            // However, that only populates IF I select something.
+            // Wait, `originalRecommendations[idx]` has what I need?
+
+            const finalSection = document.getElementById(`estadoFinalSection-${idx}`);
+            // Let's grab the originals from a backup attribute I should add in the view or handle here.
+
+            // Quick fix: I'll read the 'original' values from attributes I will add to the HTML in a moment.
+            // OR I can just reload the page... No, that's bad.
+
+            if (finalSection.dataset.originalCantidadInicial !== undefined) {
+                finalSection.dataset.cantidadInicial = finalSection.dataset.originalCantidadInicial;
+                finalSection.dataset.cantidadTotal = finalSection.dataset.originalCantidadTotal;
+                updateColadaTotals(idx);
+            }
+        };
+
+        // Patch updateColadaTotals to store original values if not present
+        const originalUpdateColadaTotals = updateColadaTotals;
+        updateColadaTotals = function(idx) {
+            const finalSection = document.getElementById(`estadoFinalSection-${idx}`);
+            if (finalSection && finalSection.dataset.originalCantidadInicial === undefined) {
+                finalSection.dataset.originalCantidadInicial = finalSection.dataset.cantidadInicial;
+                finalSection.dataset.originalCantidadTotal = finalSection.dataset.cantidadTotal;
+            }
+            originalUpdateColadaTotals(idx);
+        }
 
         // Botón "Confirmar y seguir" (después de editar)
         document.querySelectorAll('.confirm-edit').forEach((btn) => {
