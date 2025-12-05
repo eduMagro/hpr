@@ -1858,8 +1858,12 @@
                                         // Remover el evento temporal que se creó
                                         info.event.remove();
 
-                                        // Recargar eventos desde el servidor
+                                        // Recargar recursos y eventos desde el servidor
+                                        calendar.refetchResources();
                                         calendar.refetchEvents();
+
+                                        // Refrescar panel lateral si está abierto
+                                        refrescarPanelElementos();
 
                                         const Toast = Swal.mixin({
                                             toast: true,
@@ -1890,7 +1894,8 @@
                                                     .maquinaOriginal,
                                                 nueva_posicion: nuevaPosicion,
                                                 elementos_id: dataMovimiento.elementosIds,
-                                                crear_nueva_posicion: false
+                                                crear_nueva_posicion: false,
+                                                usar_posicion_existente: true
                                             })
                                         });
 
@@ -1907,8 +1912,12 @@
                                         // Remover el evento temporal que se creó
                                         info.event.remove();
 
-                                        // Recargar eventos desde el servidor
+                                        // Recargar recursos y eventos desde el servidor
+                                        calendar.refetchResources();
                                         calendar.refetchEvents();
+
+                                        // Refrescar panel lateral si está abierto
+                                        refrescarPanelElementos();
 
                                         const Toast = Swal.mixin({
                                             toast: true,
@@ -1942,8 +1951,12 @@
                                 // Remover el evento temporal que se creó
                                 info.event.remove();
 
-                                // Recargar eventos desde el servidor
+                                // Recargar recursos y eventos desde el servidor
+                                calendar.refetchResources();
                                 calendar.refetchEvents();
+
+                                // Refrescar panel lateral si está abierto
+                                refrescarPanelElementos();
 
                                 const Toast = Swal.mixin({
                                     toast: true,
@@ -2966,6 +2979,24 @@
 
                 // Variable global para guardar el planillaId actual del panel
                 let planillaIdActualPanel = null;
+                let codigoPlanillaActualPanel = null;
+
+                // Función para refrescar el panel de elementos si está abierto
+                async function refrescarPanelElementos() {
+                    if (!planillaIdActualPanel) return;
+
+                    const panel = document.getElementById('panel_elementos');
+                    if (!panel || panel.classList.contains('translate-x-full')) return;
+
+                    try {
+                        const response = await fetch(`/elementos/por-ids?planilla_id=${planillaIdActualPanel}`);
+                        const elementos = await response.json();
+                        console.log('🔄 Panel refrescado con', elementos.length, 'elementos');
+                        mostrarPanelElementos(elementos, planillaIdActualPanel, codigoPlanillaActualPanel);
+                    } catch (error) {
+                        console.error('❌ Error al refrescar panel:', error);
+                    }
+                }
 
                 // Función para mostrar panel de elementos
                 function mostrarPanelElementos(elementos, planillaId, codigo) {
@@ -2998,8 +3029,9 @@
                         return;
                     }
 
-                    // Guardar el planillaId actual
+                    // Guardar el planillaId y codigo actual
                     planillaIdActualPanel = planillaId;
+                    codigoPlanillaActualPanel = codigo;
                     console.log('✅ planillaIdActualPanel establecido:', planillaIdActualPanel);
 
                     if (panelCodigo) panelCodigo.textContent = codigo;
@@ -3272,8 +3304,9 @@
                     window.MultiSelectElementos.limpiarSelecciones();
                     document.body.classList.remove('panel-abierto');
 
-                    // Limpiar planillaId actual
+                    // Limpiar planillaId y codigo actual
                     planillaIdActualPanel = null;
+                    codigoPlanillaActualPanel = null;
                     console.log('🧹 planillaIdActualPanel limpiado');
 
                     const panelElementos = document.getElementById('panel_elementos');
