@@ -69,11 +69,11 @@ Route::get('/sistema', [PageController::class, 'sistema'])->middleware(['auth', 
 Route::get('/atajos', [AtajosController::class, 'index'])->middleware(['auth', 'verified'])->name('atajos.index');
 
 // Rutas antiguas redirigidas (compatibilidad)
-Route::get('/inventario', function() {
+Route::get('/inventario', function () {
     return redirect()->route('secciones.produccion');
 })->middleware(['auth', 'verified'])->name('secciones.inventario');
 
-Route::get('/compras', function() {
+Route::get('/compras', function () {
     return redirect()->route('secciones.logistica');
 })->middleware(['auth', 'verified'])->name('secciones.compras');
 
