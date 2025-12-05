@@ -123,11 +123,6 @@ class OpenAIController extends Controller
         $lineasPendientes = \App\Models\PedidoProducto::query()
             ->with(['pedido.fabricante', 'productoBase', 'obra'])
             ->whereHas('pedido', function($q) use ($fabricanteId, $pedidoCodigo) {
-                // Filtrar por fabricante (OBLIGATORIO - todos los pedidos tienen fabricante)
-                if ($fabricanteId) {
-                    $q->where('fabricante_id', $fabricanteId);
-                }
-
                 // Si hay código de pedido, intentar coincidir
                 if ($pedidoCodigo) {
                     $q->where('codigo', 'LIKE', "%{$pedidoCodigo}%");
@@ -137,10 +132,42 @@ class OpenAIController extends Controller
             ->get();
 
         // Preparar información y scoring de líneas pendientes
-        $lineasConScoring = $lineasPendientes->map(function($linea) use ($diametrosEscaneados, $pesoTotal, $pedidoCodigo) {
+        $hoy = now();
+
+        // Encontrar el pedido más antiguo para calcular puntuación por regla de 3
+        $pedidoMasAntiguo = $lineasPendientes->min(function($linea) {
+            return $linea->pedido->created_at;
+        });
+        $diasMaximos = $pedidoMasAntiguo ? $pedidoMasAntiguo->diffInDays($hoy) : 0;
+        $puntajeAntiguedadMaximo = 10; // Puntos máximos por antigüedad
+
+        $lineasConScoring = $lineasPendientes->map(function($linea) use ($diametrosEscaneados, $pesoTotal, $pedidoCodigo, $fabricanteId, $hoy, $diasMaximos, $puntajeAntiguedadMaximo) {
             $score = 0;
             $razones = [];
             $incompatibilidades = [];
+
+            if (!$linea->obra && !$linea->obra_manual) {
+                \Log::info('Pedido pendiente sin obra detectado', [
+                    'linea_id' => $linea->id,
+                    'codigo' => $linea->codigo,
+                    'pedido_codigo' => $linea->pedido?->codigo,
+                    'pedido_id' => $linea->pedido_id,
+                ]);
+            }
+
+            // SCORING 0: Fabricante (El más importante)
+            if ($fabricanteId) {
+                if ($linea->pedido->fabricante_id == $fabricanteId) {
+                    $score += 200; // Impacto masivo
+                    $razones[] = "✓ Fabricante coincide con el seleccionado";
+                } elseif (is_null($linea->pedido->fabricante_id)) {
+                    $score += 50; // Prioridad media (mejor que distinto)
+                    $razones[] = "⚠ Pedido sin fabricante asignado (prioridad media)";
+                } else {
+                    $score -= 50; // Penalización
+                    $incompatibilidades[] = "⚠ Fabricante distinto al seleccionado (" . ($linea->pedido->fabricante->nombre ?? 'Desconocido') . ")";
+                }
+            }
 
             // Obtener diámetro del producto base
             $diametroLinea = $linea->productoBase->diametro ?? null;
@@ -162,21 +189,41 @@ class OpenAIController extends Controller
                 $razones[] = "≈ Código de pedido similar";
             }
 
+            $hoy = now();
+
             // SCORING 3: Cantidad pendiente suficiente
             $cantidadPendienteKg = ($linea->cantidad ?? 0) - ($linea->cantidad_recepcionada ?? 0);
-            if ($cantidadPendienteKg >= $pesoTotal) {
+            if ($pesoTotal <= $cantidadPendienteKg) {
                 $score += 10;
                 $razones[] = "✓ Cantidad pendiente suficiente ({$cantidadPendienteKg} kg)";
             } else {
-                $incompatibilidades[] = "⚠ Cantidad pendiente insuficiente ({$cantidadPendienteKg} kg < {$pesoTotal} kg)";
+                $sobra = $pesoTotal - $cantidadPendienteKg;
+                $incompatibilidades[] = "⚠ Cantidad importada supera la pendiente en {$sobra} kg ({$cantidadPendienteKg} kg esperados < {$pesoTotal} kg)";
             }
 
-            // SCORING 4: Antigüedad del pedido (priorizar más antiguos)
-            $diasDesdeCreacion = $linea->pedido->created_at->diffInDays(now());
-            if ($diasDesdeCreacion > 7) {
-                $score += 5;
-                $razones[] = "⏰ Pedido antiguo ({$diasDesdeCreacion} días)";
+            // SCORING 4: Antigüedad del pedido (regla de 3 basada en el más antiguo)
+            $diasDesdeCreacion = $linea->pedido->created_at->diffInDays($hoy);
+            if ($diasMaximos > 0) {
+                // Regla de 3: el pedido más antiguo obtiene el máximo puntaje
+                $puntajeAntiguedad = ($diasDesdeCreacion / $diasMaximos) * $puntajeAntiguedadMaximo;
+                $score += $puntajeAntiguedad;
+
+                if ($diasDesdeCreacion == $diasMaximos) {
+                    $razones[] = "✓ Pedido MÁS ANTIGUO ({$diasDesdeCreacion} días) - máxima prioridad";
+                } elseif ($puntajeAntiguedad >= 7) {
+                    $razones[] = "✓ Pedido muy antiguo ({$diasDesdeCreacion} días)";
+                } elseif ($puntajeAntiguedad >= 5) {
+                    $razones[] = "✓ Pedido antiguo ({$diasDesdeCreacion} días)";
+                } elseif ($puntajeAntiguedad >= 3) {
+                    $razones[] = "✓ Pedido con antigüedad media ({$diasDesdeCreacion} días)";
+                } else {
+                    $razones[] = "⚠ Pedido reciente ({$diasDesdeCreacion} días) - prioridad baja";
+                }
+            } else {
+                // Si todos los pedidos tienen la misma fecha, no hay diferencia de antigüedad
+                $razones[] = "≈ Mismo día que otros pedidos";
             }
+
 
             // Obtener fabricante (TODOS los pedidos tienen fabricante)
             $fabricante = $linea->pedido->fabricante->nombre ?? '(sin fabricante)';
@@ -193,7 +240,7 @@ class OpenAIController extends Controller
                 'id' => $linea->id,
                 'pedido_codigo' => $linea->pedido->codigo ?? '(sin código)',
                 'fabricante' => $fabricante,
-                'obra' => $linea->obra->nombre ?? $linea->obra_manual ?? '(sin obra)',
+                'obra' => $linea->obra->obra ?? $linea->obra_manual ?? '(sin obra)',
                 'producto' => $productoDescripcion,
                 'diametro' => $diametroLinea,
                 'cantidad' => $linea->cantidad ?? 0,
@@ -213,20 +260,38 @@ class OpenAIController extends Controller
 
         // Obtener TODAS las líneas pendientes/parciales (sin filtro de fabricante)
         // Para que el usuario pueda elegir manualmente si lo desea
-        $todasLasLineas = \App\Models\PedidoProducto::query()
+        $todasLasLineasQuery = \App\Models\PedidoProducto::query()
             ->with(['pedido.fabricante', 'productoBase', 'obra'])
             ->whereIn('estado', ['pendiente', 'parcial'])
             ->whereHas('pedido', function($q) {
                 // Solo pedidos que NO estén completados/cancelados/facturados
                 $q->whereNotIn('estado', ['completado', 'cancelado', 'facturado']);
             })
-            ->get()
-            ->map(function($linea) use ($diametrosEscaneados, $pesoTotal, $pedidoCodigo) {
+            ->get();
+
+        // Encontrar el pedido más antiguo de TODAS las líneas para calcular puntuación
+        $pedidoMasAntiguoTodas = $todasLasLineasQuery->min(function($linea) {
+            return $linea->pedido->created_at;
+        });
+        $diasMaximosTodas = $pedidoMasAntiguoTodas ? $pedidoMasAntiguoTodas->diffInDays(now()) : 0;
+
+        $todasLasLineas = $todasLasLineasQuery->map(function($linea) use ($diametrosEscaneados, $pesoTotal, $pedidoCodigo, $fabricanteId, $diasMaximosTodas, $puntajeAntiguedadMaximo) {
                 // Calcular scoring para cada línea (mismo algoritmo que arriba)
                 $score = 0;
                 $cantidadPendiente = ($linea->cantidad ?? 0) - ($linea->cantidad_recepcionada ?? 0);
                 $diametroLinea = $linea->productoBase->diametro ?? null;
                 $fabricante = $linea->pedido->fabricante->nombre ?? '(sin fabricante)';
+
+                // SCORING 0: Fabricante
+                if ($fabricanteId) {
+                    if ($linea->pedido->fabricante_id == $fabricanteId) {
+                        $score += 200;
+                    } elseif (is_null($linea->pedido->fabricante_id)) {
+                        $score += 50;
+                    } else {
+                        $score -= 50;
+                    }
+                }
 
                 // SCORING 1: Diámetro
                 if ($diametroLinea && in_array($diametroLinea, $diametrosEscaneados)) {
@@ -245,10 +310,11 @@ class OpenAIController extends Controller
                     $score += 10;
                 }
 
-                // SCORING 4: Antigüedad
+                // SCORING 4: Antigüedad (regla de 3 basada en el más antiguo)
                 $diasDesdeCreacion = $linea->pedido->created_at->diffInDays(now());
-                if ($diasDesdeCreacion > 7) {
-                    $score += 5;
+                if ($diasMaximosTodas > 0) {
+                    $puntajeAntiguedad = ($diasDesdeCreacion / $diasMaximosTodas) * $puntajeAntiguedadMaximo;
+                    $score += $puntajeAntiguedad;
                 }
 
                 $productoDescripcion = $linea->productoBase->nombre ?? null;
@@ -265,7 +331,7 @@ class OpenAIController extends Controller
                     'id' => $linea->id,
                     'pedido_codigo' => $linea->pedido->codigo ?? '(sin código)',
                     'fabricante' => $fabricante,
-                    'obra' => $linea->obra->nombre ?? $linea->obra_manual ?? '(sin obra)',
+                    'obra' => $linea->obra->obra ?? $linea->obra_manual ?? '(sin obra)',
                     'producto' => $productoDescripcion,
                     'diametro' => $diametroLinea,
                     'cantidad' => $linea->cantidad ?? 0,

@@ -147,7 +147,8 @@
                                 <div class="flex items-center justify-between mb-3">
                                     <div>
                                         <h3 class="text-sm font-semibold text-gray-900">Datos extraídos por IA</h3>
-                                        <p class="text-xs text-gray-500">Revisa la información escaneada del albarán.</p>
+                                        <p class="text-xs text-gray-500">Revisa la información escaneada del albarán.
+                                        </p>
                                     </div>
                                 </div>
 
@@ -157,27 +158,33 @@
                                     <div class="mt-3 grid grid-cols-2 md:grid-cols-3 gap-3 text-sm text-gray-700">
                                         <div class="flex flex-col">
                                             <span class="text-xs text-gray-500">Albarán</span>
-                                            <span class="font-semibold extracted-value" data-field="albaran">{{ $resultado['parsed']['albaran'] ?? '—' }}</span>
+                                            <span class="font-semibold extracted-value"
+                                                data-field="albaran">{{ $resultado['parsed']['albaran'] ?? '—' }}</span>
                                         </div>
                                         <div class="flex flex-col">
                                             <span class="text-xs text-gray-500">Fecha</span>
-                                            <span class="font-semibold extracted-value" data-field="fecha">{{ $resultado['parsed']['fecha'] ?? '—' }}</span>
+                                            <span class="font-semibold extracted-value"
+                                                data-field="fecha">{{ $resultado['parsed']['fecha'] ?? '—' }}</span>
                                         </div>
                                         <div class="flex flex-col">
                                             <span class="text-xs text-gray-500">Pedido cliente</span>
-                                            <span class="font-semibold extracted-value" data-field="pedido_cliente">{{ $resultado['parsed']['pedido_cliente'] ?? '—' }}</span>
+                                            <span class="font-semibold extracted-value"
+                                                data-field="pedido_cliente">{{ $resultado['parsed']['pedido_cliente'] ?? '—' }}</span>
                                         </div>
                                         <div class="flex flex-col">
                                             <span class="text-xs text-gray-500">Pedido código</span>
-                                            <span class="font-semibold extracted-value" data-field="pedido_codigo">{{ $resultado['parsed']['pedido_codigo'] ?? '—' }}</span>
+                                            <span class="font-semibold extracted-value"
+                                                data-field="pedido_codigo">{{ $resultado['parsed']['pedido_codigo'] ?? '—' }}</span>
                                         </div>
                                         <div class="flex flex-col">
                                             <span class="text-xs text-gray-500">Peso total (kg)</span>
-                                            <span class="font-semibold extracted-value" data-field="peso_total">{{ isset($resultado['parsed']['peso_total']) ? number_format($resultado['parsed']['peso_total'], 2, ',', '.') : '—' }}</span>
+                                            <span class="font-semibold extracted-value"
+                                                data-field="peso_total">{{ isset($resultado['parsed']['peso_total']) ? number_format($resultado['parsed']['peso_total'], 2, ',', '.') : '—' }}</span>
                                         </div>
                                         <div class="flex flex-col">
                                             <span class="text-xs text-gray-500">Bultos total</span>
-                                            <span class="font-semibold extracted-value" data-field="bultos_total">{{ $resultado['parsed']['bultos_total'] ?? '—' }}</span>
+                                            <span class="font-semibold extracted-value"
+                                                data-field="bultos_total">{{ $resultado['parsed']['bultos_total'] ?? '—' }}</span>
                                         </div>
                                     </div>
 
@@ -185,38 +192,45 @@
                                     @php
                                         $productos = $resultado['parsed']['productos'] ?? [];
                                     @endphp
-                                    @if(count($productos) > 0)
+                                    @if (count($productos) > 0)
                                         <div class="mt-4">
-                                            <h4 class="text-xs font-semibold text-gray-700 mb-2">Productos escaneados:</h4>
+                                            <h4 class="text-xs font-semibold text-gray-700 mb-2">Productos escaneados:
+                                            </h4>
                                             <div class="space-y-2">
-                                                @foreach($productos as $prodIdx => $producto)
+                                                @foreach ($productos as $prodIdx => $producto)
                                                     <div class="bg-gray-50 border border-gray-200 rounded-lg p-3">
                                                         <div class="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs">
                                                             <div>
                                                                 <span class="text-gray-500">Descripción:</span>
-                                                                <span class="font-semibold ml-1">{{ $producto['descripcion'] ?? '—' }}</span>
+                                                                <span
+                                                                    class="font-semibold ml-1">{{ $producto['descripcion'] ?? '—' }}</span>
                                                             </div>
                                                             <div>
                                                                 <span class="text-gray-500">Diámetro:</span>
-                                                                <span class="font-semibold ml-1">{{ $producto['diametro'] ?? '—' }}</span>
+                                                                <span
+                                                                    class="font-semibold ml-1">{{ $producto['diametro'] ?? '—' }}</span>
                                                             </div>
                                                             <div>
                                                                 <span class="text-gray-500">Longitud:</span>
-                                                                <span class="font-semibold ml-1">{{ $producto['longitud'] ?? '—' }}</span>
+                                                                <span
+                                                                    class="font-semibold ml-1">{{ $producto['longitud'] ?? '—' }}</span>
                                                             </div>
                                                             <div>
                                                                 <span class="text-gray-500">Calidad:</span>
-                                                                <span class="font-semibold ml-1">{{ $producto['calidad'] ?? '—' }}</span>
+                                                                <span
+                                                                    class="font-semibold ml-1">{{ $producto['calidad'] ?? '—' }}</span>
                                                             </div>
                                                         </div>
-                                                        @if(isset($producto['line_items']) && count($producto['line_items']) > 0)
+                                                        @if (isset($producto['line_items']) && count($producto['line_items']) > 0)
                                                             <div class="mt-2 text-xs">
                                                                 <span class="text-gray-500">Coladas:</span>
                                                                 <div class="mt-1 flex flex-wrap gap-1">
-                                                                    @foreach($producto['line_items'] as $item)
-                                                                        <span class="inline-flex items-center px-2 py-0.5 rounded bg-blue-100 text-blue-700">
+                                                                    @foreach ($producto['line_items'] as $item)
+                                                                        <span
+                                                                            class="inline-flex items-center px-2 py-0.5 rounded bg-blue-100 text-blue-700">
                                                                             {{ $item['colada'] ?? '?' }}
-                                                                            <span class="ml-1 text-blue-600">({{ $item['bultos'] ?? 1 }})</span>
+                                                                            <span
+                                                                                class="ml-1 text-blue-600">({{ $item['bultos'] ?? 1 }})</span>
                                                                         </span>
                                                                     @endforeach
                                                                 </div>
@@ -230,10 +244,14 @@
 
                                     <!-- Botones de acción -->
                                     <div class="flex gap-3 mt-4 pt-4 border-t border-gray-200">
-                                        <button type="button" class="flex-1 px-4 py-2 bg-emerald-600 text-white rounded-lg font-semibold text-sm hover:bg-emerald-700 transition confirm-scanned" data-result="{{ $idx }}">
+                                        <button type="button"
+                                            class="flex-1 px-4 py-2 bg-emerald-600 text-white rounded-lg font-semibold text-sm hover:bg-emerald-700 transition confirm-scanned"
+                                            data-result="{{ $idx }}">
                                             ✓ Continuar con lo escaneado
                                         </button>
-                                        <button type="button" class="flex-1 px-4 py-2 bg-amber-600 text-white rounded-lg font-semibold text-sm hover:bg-amber-700 transition modify-scanned" data-result="{{ $idx }}">
+                                        <button type="button"
+                                            class="flex-1 px-4 py-2 bg-amber-600 text-white rounded-lg font-semibold text-sm hover:bg-amber-700 transition modify-scanned"
+                                            data-result="{{ $idx }}">
                                             ✎ Modificar lo escaneado
                                         </button>
                                     </div>
@@ -243,42 +261,56 @@
                                 <div id="editMode-{{ $idx }}" class="hidden space-y-4">
                                     <div class="bg-amber-50 border border-amber-200 rounded-lg p-3">
                                         <p class="text-xs text-amber-800">
-                                            <strong>Modo edición:</strong> Modifica, agrega o elimina datos según sea necesario.
+                                            <strong>Modo edición:</strong> Modifica, agrega o elimina datos según sea
+                                            necesario.
                                         </p>
                                     </div>
 
                                     <!-- Datos generales editables -->
                                     <div>
-                                        <h5 class="text-xs font-semibold text-gray-700 mb-2">Datos generales del albarán</h5>
+                                        <h5 class="text-xs font-semibold text-gray-700 mb-2">Datos generales del
+                                            albarán</h5>
                                         <div class="grid grid-cols-2 md:grid-cols-3 gap-3">
                                             <label class="text-xs text-gray-700 font-medium flex flex-col gap-1">
                                                 Albarán
-                                                <input type="text" class="general-edit-field rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500" data-field="albaran"
+                                                <input type="text"
+                                                    class="general-edit-field rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                                    data-field="albaran"
                                                     value="{{ $resultado['parsed']['albaran'] ?? '' }}">
                                             </label>
                                             <label class="text-xs text-gray-700 font-medium flex flex-col gap-1">
                                                 Fecha
-                                                <input type="date" class="general-edit-field rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500" data-field="fecha"
+                                                <input type="date"
+                                                    class="general-edit-field rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                                    data-field="fecha"
                                                     value="{{ $resultado['parsed']['fecha'] ?? '' }}">
                                             </label>
                                             <label class="text-xs text-gray-700 font-medium flex flex-col gap-1">
                                                 Pedido cliente
-                                                <input type="text" class="general-edit-field rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500" data-field="pedido_cliente"
+                                                <input type="text"
+                                                    class="general-edit-field rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                                    data-field="pedido_cliente"
                                                     value="{{ $resultado['parsed']['pedido_cliente'] ?? '' }}">
                                             </label>
                                             <label class="text-xs text-gray-700 font-medium flex flex-col gap-1">
                                                 Pedido código
-                                                <input type="text" class="general-edit-field rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500" data-field="pedido_codigo"
+                                                <input type="text"
+                                                    class="general-edit-field rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                                    data-field="pedido_codigo"
                                                     value="{{ $resultado['parsed']['pedido_codigo'] ?? '' }}">
                                             </label>
                                             <label class="text-xs text-gray-700 font-medium flex flex-col gap-1">
                                                 Peso total (kg)
-                                                <input type="number" step="0.01" class="general-edit-field rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500" data-field="peso_total"
+                                                <input type="number" step="0.01"
+                                                    class="general-edit-field rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                                    data-field="peso_total"
                                                     value="{{ $resultado['parsed']['peso_total'] ?? '' }}">
                                             </label>
                                             <label class="text-xs text-gray-700 font-medium flex flex-col gap-1">
                                                 Bultos total
-                                                <input type="number" class="general-edit-field rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500" data-field="bultos_total"
+                                                <input type="number"
+                                                    class="general-edit-field rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                                    data-field="bultos_total"
                                                     value="{{ $resultado['parsed']['bultos_total'] ?? '' }}">
                                             </label>
                                         </div>
@@ -288,38 +320,51 @@
                                     <div>
                                         <div class="flex items-center justify-between mb-2">
                                             <h5 class="text-xs font-semibold text-gray-700">Productos</h5>
-                                            <button type="button" class="add-producto-btn text-xs px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700 transition" data-result="{{ $idx }}">
+                                            <button type="button"
+                                                class="add-producto-btn text-xs px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700 transition"
+                                                data-result="{{ $idx }}">
                                                 + Agregar producto
                                             </button>
                                         </div>
                                         <div id="productosContainer-{{ $idx }}" class="space-y-3">
-                                            @foreach(($resultado['parsed']['productos'] ?? []) as $prodIdx => $producto)
-                                                <div class="producto-edit-block bg-gray-50 border border-gray-300 rounded-lg p-3" data-producto-index="{{ $prodIdx }}">
+                                            @foreach ($resultado['parsed']['productos'] ?? [] as $prodIdx => $producto)
+                                                <div class="producto-edit-block bg-gray-50 border border-gray-300 rounded-lg p-3"
+                                                    data-producto-index="{{ $prodIdx }}">
                                                     <div class="flex items-center justify-between mb-2">
-                                                        <span class="text-xs font-semibold text-gray-700">Producto {{ $prodIdx + 1 }}</span>
-                                                        <button type="button" class="remove-producto-btn text-xs px-2 py-1 bg-red-600 text-white rounded hover:bg-red-700 transition">
+                                                        <span class="text-xs font-semibold text-gray-700">Producto
+                                                            {{ $prodIdx + 1 }}</span>
+                                                        <button type="button"
+                                                            class="remove-producto-btn text-xs px-2 py-1 bg-red-600 text-white rounded hover:bg-red-700 transition">
                                                             Eliminar
                                                         </button>
                                                     </div>
                                                     <div class="grid grid-cols-2 md:grid-cols-4 gap-2 mb-3">
                                                         <label class="text-xs text-gray-600 flex flex-col gap-1">
                                                             Descripción
-                                                            <input type="text" class="producto-field rounded border border-gray-300 px-2 py-1 text-xs focus:ring-1 focus:ring-blue-500" data-field="descripcion"
+                                                            <input type="text"
+                                                                class="producto-field rounded border border-gray-300 px-2 py-1 text-xs focus:ring-1 focus:ring-blue-500"
+                                                                data-field="descripcion"
                                                                 value="{{ $producto['descripcion'] ?? '' }}">
                                                         </label>
                                                         <label class="text-xs text-gray-600 flex flex-col gap-1">
                                                             Diámetro
-                                                            <input type="text" class="producto-field rounded border border-gray-300 px-2 py-1 text-xs focus:ring-1 focus:ring-blue-500" data-field="diametro"
+                                                            <input type="text"
+                                                                class="producto-field rounded border border-gray-300 px-2 py-1 text-xs focus:ring-1 focus:ring-blue-500"
+                                                                data-field="diametro"
                                                                 value="{{ $producto['diametro'] ?? '' }}">
                                                         </label>
                                                         <label class="text-xs text-gray-600 flex flex-col gap-1">
                                                             Longitud
-                                                            <input type="text" class="producto-field rounded border border-gray-300 px-2 py-1 text-xs focus:ring-1 focus:ring-blue-500" data-field="longitud"
+                                                            <input type="text"
+                                                                class="producto-field rounded border border-gray-300 px-2 py-1 text-xs focus:ring-1 focus:ring-blue-500"
+                                                                data-field="longitud"
                                                                 value="{{ $producto['longitud'] ?? '' }}">
                                                         </label>
                                                         <label class="text-xs text-gray-600 flex flex-col gap-1">
                                                             Calidad
-                                                            <input type="text" class="producto-field rounded border border-gray-300 px-2 py-1 text-xs focus:ring-1 focus:ring-blue-500" data-field="calidad"
+                                                            <input type="text"
+                                                                class="producto-field rounded border border-gray-300 px-2 py-1 text-xs focus:ring-1 focus:ring-blue-500"
+                                                                data-field="calidad"
                                                                 value="{{ $producto['calidad'] ?? '' }}">
                                                         </label>
                                                     </div>
@@ -327,21 +372,32 @@
                                                     <!-- Coladas del producto -->
                                                     <div>
                                                         <div class="flex items-center justify-between mb-1">
-                                                            <span class="text-xs font-medium text-gray-600">Coladas</span>
-                                                            <button type="button" class="add-colada-btn text-xs px-2 py-0.5 bg-blue-600 text-white rounded hover:bg-blue-700 transition">
+                                                            <span
+                                                                class="text-xs font-medium text-gray-600">Coladas</span>
+                                                            <button type="button"
+                                                                class="add-colada-btn text-xs px-2 py-0.5 bg-blue-600 text-white rounded hover:bg-blue-700 transition">
                                                                 + Agregar colada
                                                             </button>
                                                         </div>
                                                         <div class="coladas-container space-y-1">
-                                                            @foreach(($producto['line_items'] ?? []) as $coladaIdx => $colada)
-                                                                <div class="colada-edit-row flex gap-2 items-center" data-colada-index="{{ $coladaIdx }}">
-                                                                    <input type="text" placeholder="Colada" class="colada-field flex-1 rounded border border-gray-300 px-2 py-1 text-xs focus:ring-1 focus:ring-blue-500" data-field="colada"
+                                                            @foreach ($producto['line_items'] ?? [] as $coladaIdx => $colada)
+                                                                <div class="colada-edit-row flex gap-2 items-center"
+                                                                    data-colada-index="{{ $coladaIdx }}">
+                                                                    <input type="text" placeholder="Colada"
+                                                                        class="colada-field flex-1 rounded border border-gray-300 px-2 py-1 text-xs focus:ring-1 focus:ring-blue-500"
+                                                                        data-field="colada"
                                                                         value="{{ $colada['colada'] ?? '' }}">
-                                                                    <input type="number" placeholder="Bultos" class="colada-field w-20 rounded border border-gray-300 px-2 py-1 text-xs focus:ring-1 focus:ring-blue-500" data-field="bultos"
+                                                                    <input type="number" placeholder="Bultos"
+                                                                        class="colada-field w-20 rounded border border-gray-300 px-2 py-1 text-xs focus:ring-1 focus:ring-blue-500"
+                                                                        data-field="bultos"
                                                                         value="{{ $colada['bultos'] ?? '' }}">
-                                                                    <input type="number" step="0.01" placeholder="Peso (kg)" class="colada-field w-24 rounded border border-gray-300 px-2 py-1 text-xs focus:ring-1 focus:ring-blue-500" data-field="peso_kg"
+                                                                    <input type="number" step="0.01"
+                                                                        placeholder="Peso (kg)"
+                                                                        class="colada-field w-24 rounded border border-gray-300 px-2 py-1 text-xs focus:ring-1 focus:ring-blue-500"
+                                                                        data-field="peso_kg"
                                                                         value="{{ $colada['peso_kg'] ?? '' }}">
-                                                                    <button type="button" class="remove-colada-btn text-xs px-2 py-1 bg-red-500 text-white rounded hover:bg-red-600 transition">
+                                                                    <button type="button"
+                                                                        class="remove-colada-btn text-xs px-2 py-1 bg-red-500 text-white rounded hover:bg-red-600 transition">
                                                                         ✕
                                                                     </button>
                                                                 </div>
@@ -354,7 +410,9 @@
                                     </div>
 
                                     <div class="flex justify-end pt-3 border-t border-gray-300">
-                                        <button type="button" class="px-6 py-2 bg-blue-600 text-white rounded-lg font-semibold text-sm hover:bg-blue-700 transition confirm-edit" data-result="{{ $idx }}">
+                                        <button type="button"
+                                            class="px-6 py-2 bg-blue-600 text-white rounded-lg font-semibold text-sm hover:bg-blue-700 transition confirm-edit"
+                                            data-result="{{ $idx }}">
                                             Confirmar y seguir
                                         </button>
                                     </div>
@@ -374,14 +432,14 @@
                                             <table class="min-w-full text-sm">
                                                 <thead class="bg-gray-100 text-gray-700">
                                                     <tr>
-                                                        <th class="px-4 py-2 text-left font-medium">Línea</th>
                                                         <th class="px-4 py-2 text-left font-medium">Pedido</th>
                                                         <th class="px-4 py-2 text-left font-medium">Producto</th>
                                                         <th class="px-4 py-2 text-left font-medium">Obra</th>
                                                         <th class="px-4 py-2 text-center font-medium">Pendiente</th>
-                                                        <th class="px-4 py-2 text-left font-medium">Estado</th>
-                                                        <th class="px-4 py-2 text-center font-medium">Score</th>
-                                                        <th class="px-4 py-2 text-left font-medium">Creada</th>
+                                                        <th class="px-4 py-2 text-center font-medium">Estado</th>
+                                                        <th class="px-4 py-2 text-center font-medium">Recomendación
+                                                        </th>
+                                                        <th class="px-4 py-2 text-center font-medium">Fecha pedido</th>
                                                     </tr>
                                                 </thead>
                                                 <tbody class="divide-y divide-gray-200">
@@ -389,21 +447,21 @@
                                                         <tr
                                                             class="hover:bg-gray-50 {{ $loop->first ? 'bg-green-50' : '' }}">
                                                             <td class="px-4 py-3 font-medium text-gray-900">
-                                                                #{{ $linea['id'] }}
+                                                                {{ $linea['pedido_codigo'] }}
                                                                 @if ($loop->first)
                                                                     <span
                                                                         class="ml-2 text-xs bg-green-600 text-white px-2 py-0.5 rounded-full">PROPUESTA</span>
                                                                 @endif
                                                             </td>
                                                             <td class="px-4 py-3 text-gray-700">
-                                                                {{ $linea['pedido_codigo'] }}</td>
-                                                            <td class="px-4 py-3 text-gray-700">
                                                                 {{ $linea['producto'] }}</td>
-                                                            <td class="px-4 py-3 text-gray-700">{{ $linea['obra'] }}
+                                                            <td class="px-4 py-3 text-gray-700">
+                                                                {{ $linea['obra'] ?? ($sim['lugar_entrega'] ?? '—') }}
                                                             </td>
                                                             <td
                                                                 class="px-4 py-3 text-center font-semibold text-gray-900">
-                                                                {{ number_format($linea['cantidad_pendiente'], 0, ',', '.') }} /
+                                                                {{ number_format($linea['cantidad_pendiente'], 0, ',', '.') }}
+                                                                /
                                                                 {{ number_format($linea['cantidad'], 0, ',', '.') }} kg
                                                             </td>
                                                             <td class="px-4 py-3">
@@ -413,20 +471,32 @@
                                                                 </span>
                                                             </td>
                                                             <td class="px-4 py-3 text-center">
-                                                                <span class="font-bold {{ $linea['es_viable'] ? 'text-green-600' : 'text-red-600' }}">
-                                                                    {{ $linea['score'] }}
-                                                                </span>
+                                                                @php
+                                                                    $scoreColor =
+                                                                        $linea['score'] >= 150
+                                                                            ? 'bg-emerald-600'
+                                                                            : ($linea['score'] >= 50
+                                                                                ? 'bg-green-500'
+                                                                                : ($linea['score'] >= 0
+                                                                                    ? 'bg-yellow-400'
+                                                                                    : 'bg-red-500'));
+                                                                @endphp
+                                                                <div
+                                                                    class="flex items-center justify-center group relative">
+                                                                    <div
+                                                                        class="w-4 h-4 rounded-full {{ $scoreColor }} shadow-sm cursor-help">
+                                                                    </div>
+                                                                </div>
+
                                                                 @if (count($linea['razones']) > 0 || count($linea['incompatibilidades']) > 0)
-                                                                    <button type="button"
-                                                                        onclick="this.nextElementSibling.classList.toggle('hidden')"
-                                                                        class="ml-1 text-xs text-blue-600 hover:text-blue-800">
-                                                                        ℹ️
-                                                                    </button>
-                                                                    <div class="hidden absolute z-10 bg-white border border-gray-300 rounded-lg shadow-lg p-3 text-xs max-w-xs">
+                                                                    <div
+                                                                        class="hidden absolute z-10 bg-white border border-gray-300 rounded-lg shadow-lg p-3 text-xs max-w-xs text-left right-0 mt-1">
                                                                         @if (count($linea['razones']) > 0)
                                                                             <div class="mb-2">
-                                                                                <strong class="text-green-700">Razones:</strong>
-                                                                                <ul class="list-disc list-inside text-green-600">
+                                                                                <strong
+                                                                                    class="text-green-700">Razones:</strong>
+                                                                                <ul
+                                                                                    class="list-disc list-inside text-green-600">
                                                                                     @foreach ($linea['razones'] as $razon)
                                                                                         <li>{{ $razon }}</li>
                                                                                     @endforeach
@@ -435,8 +505,10 @@
                                                                         @endif
                                                                         @if (count($linea['incompatibilidades']) > 0)
                                                                             <div>
-                                                                                <strong class="text-red-700">Incompatibilidades:</strong>
-                                                                                <ul class="list-disc list-inside text-red-600">
+                                                                                <strong
+                                                                                    class="text-red-700">Incompatibilidades:</strong>
+                                                                                <ul
+                                                                                    class="list-disc list-inside text-red-600">
                                                                                     @foreach ($linea['incompatibilidades'] as $incomp)
                                                                                         <li>{{ $incomp }}</li>
                                                                                     @endforeach
@@ -446,7 +518,7 @@
                                                                     </div>
                                                                 @endif
                                                             </td>
-                                                            <td class="px-4 py-3 text-gray-600">
+                                                            <td class="px-4 py-3 text-gray-600 text-center">
                                                                 {{ $linea['fecha_creacion'] }}</td>
                                                         </tr>
                                                     @endforeach
@@ -460,20 +532,31 @@
                                             <div class="flex items-start justify-between mb-2">
                                                 <div>
                                                     <p class="text-sm font-semibold text-green-900">
-                                                        ✓ Línea propuesta: #{{ $sim['linea_propuesta']['id'] }}
+                                                        ✓ Línea propuesta:
+                                                        {{ $sim['linea_propuesta']['pedido_codigo'] }}
                                                     </p>
                                                     <p class="text-xs text-green-700 mt-1">
-                                                        <strong>Pedido:</strong> {{ $sim['linea_propuesta']['pedido_codigo'] }} |
-                                                        <strong>Fabricante:</strong> {{ $sim['linea_propuesta']['fabricante'] }}
+                                                        <strong>Fabricante:</strong>
+                                                        {{ $sim['linea_propuesta']['fabricante'] }}
                                                     </p>
                                                     <p class="text-xs text-green-700">
-                                                        <strong>Producto:</strong> {{ $sim['linea_propuesta']['producto'] }} |
+                                                        <strong>Producto:</strong>
+                                                        {{ $sim['linea_propuesta']['producto'] }} |
                                                         <strong>Obra:</strong> {{ $sim['linea_propuesta']['obra'] }}
                                                     </p>
                                                 </div>
                                                 <div class="text-right">
-                                                    <span class="text-2xl font-bold text-green-700">{{ $sim['linea_propuesta']['score'] }}</span>
-                                                    <p class="text-xs text-green-600">puntos</p>
+                                                    @php
+                                                        $propScore = $sim['linea_propuesta']['score'];
+                                                        $propColor =
+                                                            $propScore >= 150
+                                                                ? 'bg-emerald-600'
+                                                                : ($propScore >= 50
+                                                                    ? 'bg-green-500'
+                                                                    : ($propScore >= 0
+                                                                        ? 'bg-yellow-400'
+                                                                        : 'bg-red-500'));
+                                                    @endphp
                                                 </div>
                                             </div>
                                             @if (count($sim['linea_propuesta']['razones']) > 0)
@@ -488,7 +571,8 @@
                                             @endif
                                             @if (count($sim['linea_propuesta']['incompatibilidades']) > 0)
                                                 <div class="mt-2 pt-2 border-t border-green-200">
-                                                    <p class="text-xs font-semibold text-red-700 mb-1">Advertencias:</p>
+                                                    <p class="text-xs font-semibold text-red-700 mb-1">Advertencias:
+                                                    </p>
                                                     <ul class="text-xs text-red-700 space-y-1 pl-4">
                                                         @foreach ($sim['linea_propuesta']['incompatibilidades'] as $incomp)
                                                             <li>{{ $incomp }}</li>
@@ -513,13 +597,17 @@
                                 <div class="border-t border-gray-200 pt-4">
                                     <details class="group">
                                         <summary class="cursor-pointer list-none">
-                                            <div class="flex items-center justify-between p-3 bg-gray-100 rounded-lg hover:bg-gray-200 transition">
+                                            <div
+                                                class="flex items-center justify-between p-3 bg-gray-100 rounded-lg hover:bg-gray-200 transition">
                                                 <div class="flex items-center gap-2">
-                                                    <svg class="w-5 h-5 text-gray-600 transition-transform group-open:rotate-90" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                                                    <svg class="w-5 h-5 text-gray-600 transition-transform group-open:rotate-90"
+                                                        fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round"
+                                                            stroke-width="2" d="M9 5l7 7-7 7"></path>
                                                     </svg>
                                                     <span class="text-sm font-semibold text-gray-900">
-                                                        Ver todos los pedidos pendientes ({{ count($sim['todas_las_lineas']) }})
+                                                        Ver todos los pedidos pendientes
+                                                        ({{ count($sim['todas_las_lineas']) }})
                                                     </span>
                                                 </div>
                                                 <span class="text-xs text-gray-600">Click para expandir</span>
@@ -530,48 +618,70 @@
                                                 <table class="min-w-full text-sm">
                                                     <thead class="bg-gray-100 text-gray-700">
                                                         <tr>
-                                                            <th class="px-4 py-2 text-left font-medium">ID</th>
                                                             <th class="px-4 py-2 text-left font-medium">Pedido</th>
                                                             <th class="px-4 py-2 text-left font-medium">Fabricante</th>
                                                             <th class="px-4 py-2 text-left font-medium">Producto</th>
                                                             <th class="px-4 py-2 text-left font-medium">Obra</th>
-                                                            <th class="px-4 py-2 text-center font-medium">Pendiente</th>
-                                                            <th class="px-4 py-2 text-center font-medium">Score</th>
+                                                            <th class="px-4 py-2 text-center font-medium">Pendiente
+                                                            </th>
+                                                            <th class="px-4 py-2 text-center font-medium">Recomendación
+                                                            </th>
                                                             <th class="px-4 py-2 text-left font-medium">Estado</th>
                                                             <th class="px-4 py-2 text-center font-medium">Acción</th>
                                                         </tr>
                                                     </thead>
                                                     <tbody class="divide-y divide-gray-200">
                                                         @foreach ($sim['todas_las_lineas'] as $linea)
-                                                            <tr class="hover:bg-gray-50 {{ $linea['coincide_diametro'] ? 'bg-green-50' : '' }}">
+                                                            <tr
+                                                                class="hover:bg-gray-50 {{ $linea['coincide_diametro'] ? 'bg-green-50' : '' }}">
                                                                 <td class="px-4 py-3 font-medium text-gray-900">
-                                                                    #{{ $linea['id'] }}
+                                                                    {{ $linea['pedido_codigo'] }}
                                                                     @if ($linea['coincide_diametro'])
-                                                                        <span class="ml-1 text-xs text-green-600">✓</span>
+                                                                        <span
+                                                                            class="ml-1 text-xs text-green-600">✓</span>
                                                                     @endif
                                                                 </td>
-                                                                <td class="px-4 py-3 text-gray-700">{{ $linea['pedido_codigo'] }}</td>
-                                                                <td class="px-4 py-3 text-gray-600 text-xs">{{ $linea['fabricante'] }}</td>
-                                                                <td class="px-4 py-3 text-gray-700">{{ $linea['producto'] }}</td>
-                                                                <td class="px-4 py-3 text-gray-700">{{ $linea['obra'] }}</td>
-                                                                <td class="px-4 py-3 text-center font-semibold text-gray-900">
-                                                                    {{ number_format($linea['cantidad_pendiente'], 0, ',', '.') }} /
-                                                                    {{ number_format($linea['cantidad'], 0, ',', '.') }} kg
+                                                                <td class="px-4 py-3 text-gray-600 text-xs">
+                                                                    {{ $linea['fabricante'] }}</td>
+                                                                <td class="px-4 py-3 text-gray-700">
+                                                                    {{ $linea['producto'] }}</td>
+                                                                <td class="px-4 py-3 text-gray-700">
+                                                                    {{ $linea['obra'] }}</td>
+                                                                <td
+                                                                    class="px-4 py-3 text-center font-semibold text-gray-900">
+                                                                    {{ number_format($linea['cantidad_pendiente'], 0, ',', '.') }}
+                                                                    /
+                                                                    {{ number_format($linea['cantidad'], 0, ',', '.') }}
+                                                                    kg
                                                                 </td>
                                                                 <td class="px-4 py-3 text-center">
-                                                                    <span class="font-bold text-lg {{ $linea['score'] >= 50 ? 'text-green-600' : ($linea['score'] >= 30 ? 'text-yellow-600' : 'text-gray-600') }}">
-                                                                        {{ $linea['score'] }}
-                                                                    </span>
+                                                                    @php
+                                                                        $scoreColor =
+                                                                            $linea['score'] >= 150
+                                                                                ? 'bg-emerald-600'
+                                                                                : ($linea['score'] >= 50
+                                                                                    ? 'bg-green-500'
+                                                                                    : ($linea['score'] >= 0
+                                                                                        ? 'bg-yellow-400'
+                                                                                        : 'bg-red-500'));
+                                                                    @endphp
+                                                                    <div
+                                                                        class="flex items-center justify-center group relative">
+                                                                        <div
+                                                                            class="w-4 h-4 rounded-full {{ $scoreColor }} shadow-sm cursor-help">
+                                                                        </div>
+                                                                    </div>
                                                                 </td>
                                                                 <td class="px-4 py-3">
-                                                                    <span class="text-xs px-2 py-1 rounded-full {{ $linea['estado'] === 'pendiente' ? 'bg-yellow-100 text-yellow-700' : 'bg-blue-100 text-blue-700' }}">
+                                                                    <span
+                                                                        class="text-xs px-2 py-1 rounded-full {{ $linea['estado'] === 'pendiente' ? 'bg-yellow-100 text-yellow-700' : 'bg-blue-100 text-blue-700' }}">
                                                                         {{ ucfirst($linea['estado']) }}
                                                                     </span>
                                                                 </td>
                                                                 <td class="px-4 py-3 text-center">
                                                                     <button type="button"
-                                                                            class="text-xs px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 transition"
-                                                                            onclick="seleccionarLineaManual({{ $linea['id'] }}, '{{ $idx }}')">
+                                                                        class="text-xs px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 transition"
+                                                                        onclick="seleccionarLineaManual({{ $linea['id'] }}, '{{ $idx }}')">
                                                                         Seleccionar
                                                                     </button>
                                                                 </td>
@@ -582,7 +692,8 @@
                                             </div>
                                             <div class="p-3 bg-gray-50 border-t border-gray-200 text-xs text-gray-600">
                                                 <span class="inline-flex items-center gap-1">
-                                                    <span class="inline-block w-3 h-3 bg-green-50 border border-green-200 rounded"></span>
+                                                    <span
+                                                        class="inline-block w-3 h-3 bg-green-50 border border-green-200 rounded"></span>
                                                     = Coincide con diámetro escaneado
                                                 </span>
                                             </div>
@@ -597,7 +708,8 @@
                                     📦 Coladas a recepcionar
                                 </h3>
                                 <p class="text-xs text-gray-600 mb-2">
-                                    Selecciona las coladas que deseas recepcionar ahora. Puedes desmarcar las que NO quieras procesar en este momento.
+                                    Selecciona las coladas que deseas recepcionar ahora. Puedes desmarcar las que NO
+                                    quieras procesar en este momento.
                                 </p>
                                 @if (count($sim['bultos_simulados']) > 0)
                                     <div class="bg-gray-50 rounded-lg border border-gray-200 overflow-hidden">
@@ -606,11 +718,9 @@
                                                 <thead class="bg-gray-100 text-gray-700">
                                                     <tr>
                                                         <th class="px-4 py-2 text-center font-medium">
-                                                            <input type="checkbox"
-                                                                   id="checkAll-{{ $idx }}"
-                                                                   class="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                                                                   checked
-                                                                   onchange="document.querySelectorAll('.colada-checkbox-{{ $idx }}').forEach(cb => cb.checked = this.checked)">
+                                                            <input type="checkbox" id="checkAll-{{ $idx }}"
+                                                                class="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                                                                checked>
                                                         </th>
                                                         <th class="px-4 py-2 text-left font-medium">Colada</th>
                                                         <th class="px-4 py-2 text-center font-medium">Bultos</th>
@@ -622,36 +732,43 @@
                                                         <tr class="hover:bg-gray-50">
                                                             <td class="px-4 py-3 text-center">
                                                                 <input type="checkbox"
-                                                                       name="coladas_seleccionadas[{{ $idx }}][]"
-                                                                       value="{{ $bultoIdx }}"
-                                                                       class="colada-checkbox-{{ $idx }} rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                                                                       data-colada="{{ $bulto['colada'] }}"
-                                                                       data-bultos="{{ $bulto['bultos'] ?? 1 }}"
-                                                                       data-peso="{{ $bulto['peso_kg'] ?? 0 }}"
-                                                                       checked>
+                                                                    name="coladas_seleccionadas[{{ $idx }}][]"
+                                                                    value="{{ $bultoIdx }}"
+                                                                    class="colada-checkbox-{{ $idx }} rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                                                                    data-colada="{{ $bulto['colada'] }}"
+                                                                    data-bultos="{{ $bulto['bultos'] ?? 1 }}"
+                                                                    data-peso="{{ $bulto['peso_kg'] ?? 0 }}" checked>
                                                             </td>
-                                                            <td class="px-4 py-3 text-gray-700 font-mono font-semibold">
+                                                            <td
+                                                                class="px-4 py-3 text-gray-700 font-mono font-semibold">
                                                                 {{ $bulto['colada'] }}
                                                             </td>
-                                                            <td class="px-4 py-3 text-center font-semibold text-gray-900">
+                                                            <td
+                                                                class="px-4 py-3 text-center font-semibold text-gray-900">
                                                                 {{ $bulto['bultos'] ?? 1 }}
                                                             </td>
-                                                            <td class="px-4 py-3 text-right font-semibold text-gray-900">
-                                                                {{ $bulto['peso_kg'] ? number_format($bulto['peso_kg'], 0, ',', '.') : '—' }} kg
+                                                            <td
+                                                                class="px-4 py-3 text-right font-semibold text-gray-900">
+                                                                {{ $bulto['peso_kg'] ? number_format($bulto['peso_kg'], 0, ',', '.') : '—' }}
+                                                                kg
                                                             </td>
                                                         </tr>
                                                     @endforeach
                                                 </tbody>
                                                 <tfoot class="bg-gray-50 border-t-2 border-gray-300">
                                                     <tr>
-                                                        <td colspan="2" class="px-4 py-3 text-sm font-semibold text-gray-700 text-right">
+                                                        <td colspan="2"
+                                                            class="px-4 py-3 text-sm font-semibold text-gray-700 text-right">
                                                             TOTALES SELECCIONADOS:
                                                         </td>
-                                                        <td class="px-4 py-3 text-center text-sm font-bold text-blue-700" id="totalBultos-{{ $idx }}">
+                                                        <td class="px-4 py-3 text-center text-sm font-bold text-blue-700"
+                                                            id="totalBultos-{{ $idx }}">
                                                             {{ collect($sim['bultos_simulados'])->sum('bultos') }}
                                                         </td>
-                                                        <td class="px-4 py-3 text-right text-sm font-bold text-blue-700" id="totalPeso-{{ $idx }}">
-                                                            {{ number_format(collect($sim['bultos_simulados'])->sum('peso_kg'), 0, ',', '.') }} kg
+                                                        <td class="px-4 py-3 text-right text-sm font-bold text-blue-700"
+                                                            id="totalPeso-{{ $idx }}">
+                                                            {{ number_format(collect($sim['bultos_simulados'])->sum('peso_kg'), 0, ',', '.') }}
+                                                            kg
                                                         </td>
                                                     </tr>
                                                 </tfoot>
@@ -664,32 +781,40 @@
                             </div>
 
                             <!-- Simulación: Estado Final -->
-                            @if ($sim['estado_final_simulado'])
-                                <div>
+                            @if ($sim['linea_propuesta'])
+                                <div id="estadoFinalSection-{{ $idx }}"
+                                    data-cantidad-inicial="{{ $sim['linea_propuesta']['cantidad_recepcionada'] }}"
+                                    data-cantidad-total="{{ $sim['linea_propuesta']['cantidad'] }}">
                                     <h3 class="text-base font-semibold text-gray-900 mb-3">
                                         📊 Estado final simulado de la línea
                                     </h3>
                                     <div class="bg-indigo-50 border border-indigo-200 rounded-lg p-4">
-                                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
                                             <div>
-                                                <p class="text-xs text-indigo-600 font-medium">Cantidad recepcionada
+                                                <p class="text-xs text-indigo-600 font-medium">Cantidad pendiente actual
                                                 </p>
-                                                <p class="text-2xl font-bold text-indigo-900">
-                                                    {{ $sim['estado_final_simulado']['cantidad_recepcionada_nueva'] }}
-                                                    <span class="text-sm text-indigo-600">/
-                                                        {{ $sim['estado_final_simulado']['cantidad_total'] }}</span>
+                                                <p class="text-2xl font-bold text-indigo-900" id="cantidadPendienteActual-{{ $idx }}">
+                                                    {{ number_format($sim['linea_propuesta']['cantidad_pendiente'], 0, ',', '.') }} kg
                                                 </p>
                                             </div>
                                             <div>
-                                                <p class="text-xs text-indigo-600 font-medium">Progreso</p>
-                                                <p class="text-2xl font-bold text-indigo-900">
-                                                    {{ $sim['estado_final_simulado']['progreso'] }}%</p>
+                                                <p class="text-xs text-indigo-600 font-medium">Kg a recepcionar
+                                                </p>
+                                                <p class="text-2xl font-bold text-indigo-900" id="kgRecepcionar-{{ $idx }}">
+                                                    {{ number_format(collect($sim['bultos_simulados'])->sum('peso_kg'), 0, ',', '.') }} kg
+                                                </p>
+                                            </div>
+                                            <div>
+                                                <p class="text-xs text-indigo-600 font-medium">Kg pendientes después</p>
+                                                <p class="text-2xl font-bold text-indigo-900" id="kgPendientesDespues-{{ $idx }}">
+                                                    {{ number_format($sim['linea_propuesta']['cantidad_pendiente'] - collect($sim['bultos_simulados'])->sum('peso_kg'), 0, ',', '.') }} kg
+                                                </p>
                                             </div>
                                             <div>
                                                 <p class="text-xs text-indigo-600 font-medium">Nuevo estado</p>
-                                                <p
-                                                    class="text-lg font-bold {{ $sim['estado_final_simulado']['estado_nuevo'] === 'completado' ? 'text-green-600' : 'text-blue-600' }}">
-                                                    {{ ucfirst($sim['estado_final_simulado']['estado_nuevo']) }}
+                                                <p id="nuevoEstado-{{ $idx }}"
+                                                    class="text-lg font-bold {{ ($sim['linea_propuesta']['cantidad_recepcionada'] + collect($sim['bultos_simulados'])->sum('peso_kg')) >= $sim['linea_propuesta']['cantidad'] ? 'text-green-600' : 'text-blue-600' }}">
+                                                    {{ ($sim['linea_propuesta']['cantidad_recepcionada'] + collect($sim['bultos_simulados'])->sum('peso_kg')) >= $sim['linea_propuesta']['cantidad'] ? 'Completado' : 'Parcial' }}
                                                 </p>
                                             </div>
                                         </div>
@@ -707,7 +832,8 @@
                                                 <option value="{{ $linea['id'] }}"
                                                     {{ $loop->first ? 'selected' : '' }}>
                                                     Línea #{{ $linea['id'] }} - {{ $linea['producto'] }}
-                                                    ({{ $linea['cantidad_pendiente'] }} kg pendientes - Score: {{ $linea['score'] }})
+                                                    ({{ $linea['cantidad_pendiente'] }} kg pendientes - Score:
+                                                    {{ $linea['score'] }})
                                                 </option>
                                             @endforeach
                                         </select>
@@ -873,7 +999,8 @@
 
             document.querySelectorAll('.add-colada-btn').forEach((btn) => {
                 btn.addEventListener('click', (e) => {
-                    const container = e.target.closest('.producto-edit-block').querySelector('.coladas-container');
+                    const container = e.target.closest('.producto-edit-block').querySelector(
+                        '.coladas-container');
                     const numColadas = container.querySelectorAll('.colada-edit-row').length;
 
                     const newColadaHTML = `
@@ -918,7 +1045,7 @@
         attachProductoListeners();
         attachRemoveListeners();
 
-        // Función para actualizar totales de coladas seleccionadas
+        // Función para actualizar totales de coladas seleccionadas y estado final
         function updateColadaTotals(idx) {
             const checkboxes = document.querySelectorAll(`.colada-checkbox-${idx}:checked`);
             let totalBultos = 0;
@@ -929,15 +1056,67 @@
                 totalPeso += parseFloat(cb.dataset.peso) || 0;
             });
 
+            // Actualizar totales de bultos y peso
             document.getElementById(`totalBultos-${idx}`).textContent = totalBultos;
-            document.getElementById(`totalPeso-${idx}`).textContent = new Intl.NumberFormat('es-ES').format(totalPeso) + ' kg';
+            document.getElementById(`totalPeso-${idx}`).textContent = new Intl.NumberFormat('es-ES').format(totalPeso) +
+                ' kg';
+
+            // Actualizar estado final simulado
+            const estadoFinalSection = document.getElementById(`estadoFinalSection-${idx}`);
+            if (estadoFinalSection) {
+                const cantidadInicial = parseFloat(estadoFinalSection.dataset.cantidadInicial) || 0;
+                const cantidadTotal = parseFloat(estadoFinalSection.dataset.cantidadTotal) || 0;
+                const cantidadPendienteActual = cantidadTotal - cantidadInicial;
+
+                // Calcular nuevos valores
+                const kgRecepcionar = totalPeso;
+                const kgPendientesDespues = cantidadPendienteActual - kgRecepcionar;
+                const cantidadRecepcionadaNueva = cantidadInicial + kgRecepcionar;
+                const nuevoEstado = cantidadRecepcionadaNueva >= cantidadTotal ? 'Completado' : 'Parcial';
+
+                // Actualizar UI
+                document.getElementById(`cantidadPendienteActual-${idx}`).textContent =
+                    new Intl.NumberFormat('es-ES').format(cantidadPendienteActual) + ' kg';
+                document.getElementById(`kgRecepcionar-${idx}`).textContent =
+                    new Intl.NumberFormat('es-ES').format(kgRecepcionar) + ' kg';
+                document.getElementById(`kgPendientesDespues-${idx}`).textContent =
+                    new Intl.NumberFormat('es-ES').format(kgPendientesDespues) + ' kg';
+
+                const nuevoEstadoElement = document.getElementById(`nuevoEstado-${idx}`);
+                nuevoEstadoElement.textContent = nuevoEstado;
+
+                // Actualizar colores según estado
+                if (nuevoEstado === 'Completado') {
+                    nuevoEstadoElement.className = 'text-lg font-bold text-green-600';
+                } else {
+                    nuevoEstadoElement.className = 'text-lg font-bold text-blue-600';
+                }
+            }
         }
+
+        // Añadir listeners a checkboxes "marcar/desmarcar todos"
+        document.querySelectorAll('[id^="checkAll-"]').forEach(checkAllBox => {
+            checkAllBox.addEventListener('change', function() {
+                const idx = this.id.replace('checkAll-', '');
+                const checkboxes = document.querySelectorAll(`.colada-checkbox-${idx}`);
+                checkboxes.forEach(cb => cb.checked = this.checked);
+                updateColadaTotals(idx);
+            });
+        });
 
         // Añadir listeners a todos los checkboxes de coladas
         document.querySelectorAll('[class*="colada-checkbox-"]').forEach(cb => {
             cb.addEventListener('change', function() {
                 const idx = this.className.match(/colada-checkbox-(\d+)/)[1];
                 updateColadaTotals(idx);
+
+                // Actualizar estado del checkbox "marcar todos"
+                const allCheckboxes = document.querySelectorAll(`.colada-checkbox-${idx}`);
+                const checkedCheckboxes = document.querySelectorAll(`.colada-checkbox-${idx}:checked`);
+                const checkAllBox = document.getElementById(`checkAll-${idx}`);
+                if (checkAllBox) {
+                    checkAllBox.checked = allCheckboxes.length === checkedCheckboxes.length;
+                }
             });
         });
 
