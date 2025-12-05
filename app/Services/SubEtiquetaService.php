@@ -12,49 +12,6 @@ use Illuminate\Support\Str;
 class SubEtiquetaService
 {
     /**
-     * Reubica subetiqueta según la máquina destino.
-     * - MSR20: Agrupa elementos con hermanos del mismo código padre
-     * - Resto: Un elemento por etiqueta_sub_id
-     * Devuelve [subIdDestino, subIdOriginal]
-     */
-    public function reubicarParaProduccion(Elemento $elemento, int $nuevaMaquinaReal): array
-    {
-        $subIdOriginal = $elemento->getOriginal('etiqueta_sub_id') ?? $elemento->etiqueta_sub_id;
-        $padre         = Etiqueta::lockForUpdate()->findOrFail($elemento->etiqueta_id);
-
-        $codigoPadre   = (string) $padre->codigo;
-        $prefijoPadre  = $codigoPadre . '.';
-
-        $maq = Maquina::findOrFail($nuevaMaquinaReal);
-        $esMSR20 = strtoupper($maq->codigo ?? '') === 'MSR20';
-
-        Log::info('🔁 Reubicar (producción)', [
-            'elemento'      => $elemento->id,
-            'sub_original'  => $subIdOriginal,
-            'maquina_real'  => $nuevaMaquinaReal,
-            'maquina_codigo' => $maq->codigo,
-            'es_MSR20'      => $esMSR20,
-        ]);
-
-        // MSR20: agrupa con hermanos, resto: un elemento por sub
-        $subDestino = $esMSR20
-            ? $this->modoEncarretado($elemento, $padre, $prefijoPadre, $nuevaMaquinaReal, $subIdOriginal)
-            : $this->modoBarra($elemento, $padre, $prefijoPadre, $subIdOriginal);
-
-        // Nada cambió
-        if ($subDestino === $subIdOriginal) {
-            Log::info('✅ Sin cambios de sub', ['sub' => $subDestino]);
-            return [$subDestino, $subIdOriginal];
-        }
-
-        // Recalcular pesos (sub-origen, sub-destino y padre)
-        $this->recalcularPesos($codigoPadre, array_filter([$subIdOriginal, $subDestino]));
-
-        Log::info('🏁 Reubicación OK', ['de' => $subIdOriginal, 'a' => $subDestino]);
-        return [$subDestino, $subIdOriginal];
-    }
-
-    /**
      * Reubica subetiqueta según tipo de material de la máquina destino.
      * Devuelve [subIdDestino, subIdOriginal]
      */

@@ -24,7 +24,6 @@ use App\Models\Festivo;
 use Throwable;
 use Illuminate\Validation\Rule;
 use Illuminate\Support\Facades\File;
-use App\Services\SubEtiquetaService;
 
 function toCarbon($valor, $format = 'd/m/Y H:i')
 {
@@ -1492,19 +1491,8 @@ class ProduccionController extends Controller
             DB::transaction(function () use ($planillaId, $maqOrigen, $maqDestino, $posNueva, $compatibles, $subsetIds, $forzar, $crearNuevaPosicion) {
                 // 3) Movimiento (parcial si venía forzado)
                 if ($compatibles->isNotEmpty()) {
-                    // Usar SubEtiquetaService para reubicar subetiquetas correctamente
-                    $subEtiquetaService = app(SubEtiquetaService::class);
-
-                    foreach ($compatibles as $elemento) {
-                        // Actualizar maquina_id
-                        $elemento->maquina_id = $maqDestino;
-                        $elemento->save();
-
-                        // Reubicar subetiqueta: MSR20 agrupa con hermanos, resto un elemento por sub
-                        $subEtiquetaService->reubicarParaProduccion($elemento, $maqDestino);
-                    }
-
-                    Log::info("➡️ Elementos actualizados a máquina destino con reubicación de subetiquetas", [
+                    Elemento::whereIn('id', $compatibles->pluck('id'))->update(['maquina_id' => $maqDestino]);
+                    Log::info("➡️ Elementos actualizados a máquina destino", [
                         'destino' => $maqDestino,
                         'ids'     => $compatibles->pluck('id')->values(),
                     ]);

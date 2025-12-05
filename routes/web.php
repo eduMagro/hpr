@@ -63,11 +63,11 @@ Route::get('/comercial', [PageController::class, 'comercial'])->middleware(['aut
 Route::get('/sistema', [PageController::class, 'sistema'])->middleware(['auth', 'verified'])->name('secciones.sistema');
 
 // Rutas antiguas redirigidas (compatibilidad)
-Route::get('/inventario', function () {
+Route::get('/inventario', function() {
     return redirect()->route('secciones.produccion');
 })->middleware(['auth', 'verified'])->name('secciones.inventario');
 
-Route::get('/compras', function () {
+Route::get('/compras', function() {
     return redirect()->route('secciones.logistica');
 })->middleware(['auth', 'verified'])->name('secciones.compras');
 
