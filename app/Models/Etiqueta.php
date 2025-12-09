@@ -73,10 +73,11 @@ class Etiqueta extends Model
     /**
      * Relación: Una etiqueta puede tener múltiples elementos
      * Los elementos son las barras o estribos individuales
+     * Usa etiqueta_sub_id para distinguir subetiquetas correctamente
      */
     public function elementos()
     {
-        return $this->hasMany(Elemento::class, 'etiqueta_id');
+        return $this->hasMany(Elemento::class, 'etiqueta_sub_id', 'etiqueta_sub_id');
     }
 
     /**

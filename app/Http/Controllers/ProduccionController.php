@@ -4399,4 +4399,210 @@ class ProduccionController extends Controller
 
         return response()->json($resultado);
     }
+
+    /**
+     * Obtener resumen del estado de producción
+     * Muestra estadísticas y planillas con retraso agrupadas por cliente/obra/fecha
+     */
+    public function obtenerResumen()
+    {
+        try {
+            // Estadísticas generales de planillas en producción
+            $planillasEnProduccion = Planilla::whereIn('estado', ['pendiente', 'fabricando'])
+                ->whereHas('ordenProduccion')
+                ->with(['obra.cliente', 'ordenProduccion.maquina', 'elementos'])
+                ->get();
+
+            $planillasRevisadas = $planillasEnProduccion->where('revisada', 1)->count();
+            $planillasNoRevisadas = $planillasEnProduccion->where('revisada', 0)->count();
+            $totalPlanillas = $planillasEnProduccion->count();
+
+            // Identificar planillas con retraso
+            // Una planilla tiene retraso si su fecha_fin_programada > fecha_estimada_entrega
+            $hoy = Carbon::today();
+            $planillasConRetraso = [];
+
+            foreach ($planillasEnProduccion as $planilla) {
+                $fechaEntrega = $planilla->getRawOriginal('fecha_estimada_entrega');
+                if (!$fechaEntrega) continue;
+
+                $fechaEntregaCarbon = Carbon::parse($fechaEntrega);
+
+                // Obtener la orden_planilla para saber la máquina y calcular fecha fin programada
+                $ordenPlanilla = $planilla->ordenProduccion;
+                if (!$ordenPlanilla) continue;
+
+                // Calcular fecha fin programada basada en posición y tiempo estimado
+                // Simplificación: usar fecha_entrega como referencia
+                $fechaFinProgramada = null;
+
+                // Si tenemos elementos con tiempos, calcular
+                $tiempoTotalSegundos = $planilla->elementos
+                    ->whereNotNull('tiempo_fabricacion')
+                    ->sum('tiempo_fabricacion');
+
+                if ($tiempoTotalSegundos > 0 && $ordenPlanilla->maquina_id) {
+                    // Calcular basado en posición en cola usando la relación cargada
+                    $maquina = $ordenPlanilla->maquina;
+                    if ($maquina) {
+                        // Simplificar: usar posición como estimación de días
+                        $diasTrabajo = max(1, ceil($ordenPlanilla->posicion / 2));
+                        $fechaFinProgramada = Carbon::today()->addWeekdays($diasTrabajo);
+                    }
+                }
+
+                // Si no pudimos calcular, usar una estimación simple
+                if (!$fechaFinProgramada) {
+                    $fechaFinProgramada = Carbon::today()->addDays($ordenPlanilla->posicion);
+                }
+
+                // Verificar si hay retraso
+                if ($fechaFinProgramada->gt($fechaEntregaCarbon)) {
+                    $diasRetraso = $fechaFinProgramada->diffInDays($fechaEntregaCarbon);
+
+                    $planillasConRetraso[] = [
+                        'planilla_id' => $planilla->id,
+                        'planilla_codigo' => $planilla->codigo,
+                        'seccion' => $planilla->seccion ?? '',
+                        'descripcion' => $planilla->descripcion ?? '',
+                        'ensamblado' => $planilla->ensamblado ?? '',
+                        'obra_id' => $planilla->obra_id,
+                        'cliente_id' => $planilla->obra?->cliente_id,
+                        'cliente_nombre' => $planilla->obra?->cliente?->empresa ?? 'Sin cliente',
+                        'obra_codigo' => $planilla->obra?->cod_obra ?? 'N/A',
+                        'obra_nombre' => $planilla->obra?->obra ?? 'Sin obra',
+                        'fecha_entrega' => $fechaEntregaCarbon->format('d/m/Y'),
+                        'fecha_entrega_raw' => $fechaEntregaCarbon->format('Y-m-d'),
+                        'fin_programado' => $fechaFinProgramada->format('d/m/Y'),
+                        'dias_retraso' => $diasRetraso,
+                        'maquina_id' => $ordenPlanilla->maquina_id,
+                        'maquina_codigo' => $ordenPlanilla->maquina->codigo ?? 'N/A',
+                        'posicion' => $ordenPlanilla->posicion,
+                    ];
+                }
+            }
+
+            // Agrupar por cliente > obra > fecha_entrega
+            $clientesConRetraso = [];
+
+            foreach ($planillasConRetraso as $planilla) {
+                $clienteId = $planilla['cliente_id'] ?? 0;
+                $obraId = $planilla['obra_id'] ?? 0;
+                $fechaEntrega = $planilla['fecha_entrega_raw'];
+
+                // Inicializar cliente si no existe
+                if (!isset($clientesConRetraso[$clienteId])) {
+                    $clientesConRetraso[$clienteId] = [
+                        'cliente_id' => $clienteId,
+                        'cliente_nombre' => $planilla['cliente_nombre'],
+                        'obras' => [],
+                    ];
+                }
+
+                // Inicializar obra si no existe
+                if (!isset($clientesConRetraso[$clienteId]['obras'][$obraId])) {
+                    $clientesConRetraso[$clienteId]['obras'][$obraId] = [
+                        'obra_id' => $obraId,
+                        'obra_codigo' => $planilla['obra_codigo'],
+                        'obra_nombre' => $planilla['obra_nombre'],
+                        'fechas' => [],
+                    ];
+                }
+
+                // Inicializar fecha si no existe
+                if (!isset($clientesConRetraso[$clienteId]['obras'][$obraId]['fechas'][$fechaEntrega])) {
+                    $clientesConRetraso[$clienteId]['obras'][$obraId]['fechas'][$fechaEntrega] = [
+                        'fecha_entrega' => $planilla['fecha_entrega'],
+                        'planillas' => [],
+                    ];
+                }
+
+                // Agregar planilla
+                $clientesConRetraso[$clienteId]['obras'][$obraId]['fechas'][$fechaEntrega]['planillas'][] = [
+                    'planilla_id' => $planilla['planilla_id'],
+                    'planilla_codigo' => $planilla['planilla_codigo'],
+                    'seccion' => $planilla['seccion'],
+                    'descripcion' => $planilla['descripcion'],
+                    'ensamblado' => $planilla['ensamblado'],
+                    'maquina_codigo' => $planilla['maquina_codigo'],
+                    'fin_programado' => $planilla['fin_programado'],
+                    'dias_retraso' => $planilla['dias_retraso'],
+                ];
+            }
+
+            // Convertir a arrays indexados para JSON
+            $clientesArray = [];
+            foreach ($clientesConRetraso as $cliente) {
+                $obrasArray = [];
+                foreach ($cliente['obras'] as $obra) {
+                    $fechasArray = array_values($obra['fechas']);
+                    $obrasArray[] = [
+                        'obra_id' => $obra['obra_id'],
+                        'obra_codigo' => $obra['obra_codigo'],
+                        'obra_nombre' => $obra['obra_nombre'],
+                        'fechas' => $fechasArray,
+                    ];
+                }
+                $clientesArray[] = [
+                    'cliente_id' => $cliente['cliente_id'],
+                    'cliente_nombre' => $cliente['cliente_nombre'],
+                    'obras' => $obrasArray,
+                ];
+            }
+
+            // Obtener resumen de máquinas
+            $maquinas = Maquina::with(['ordenPlanillas.planilla.elementos'])->get();
+            $maquinasResumen = [];
+
+            foreach ($maquinas as $maquina) {
+                $planillasEnCola = $maquina->ordenPlanillas->count();
+                $kilosTotales = 0;
+                $tiempoTotalSegundos = 0;
+
+                foreach ($maquina->ordenPlanillas as $op) {
+                    if ($op->planilla) {
+                        $kilosTotales += $op->planilla->elementos->sum('peso') / 1000; // convertir a kg
+                        $tiempoTotalSegundos += $op->planilla->elementos->sum('tiempo_fabricacion');
+                    }
+                }
+
+                $horas = floor($tiempoTotalSegundos / 3600);
+                $minutos = floor(($tiempoTotalSegundos % 3600) / 60);
+
+                $maquinasResumen[] = [
+                    'id' => $maquina->id,
+                    'codigo' => $maquina->codigo,
+                    'tipo' => $maquina->tipo ?? '',
+                    'planillas_en_cola' => $planillasEnCola,
+                    'kilos_totales' => round($kilosTotales, 2),
+                    'kilos_formateado' => number_format($kilosTotales, 0, ',', '.') . ' kg',
+                    'tiempo_total_segundos' => $tiempoTotalSegundos,
+                    'tiempo_formateado' => $horas . 'h ' . $minutos . 'm',
+                ];
+            }
+
+            return response()->json([
+                'success' => true,
+                'resumen' => [
+                    'planillas_revisadas' => $planillasRevisadas,
+                    'planillas_no_revisadas' => $planillasNoRevisadas,
+                    'total_planillas' => $totalPlanillas,
+                    'planillas_con_retraso' => count($planillasConRetraso),
+                ],
+                'clientes_con_retraso' => $clientesArray,
+                'maquinas' => $maquinasResumen,
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Error al obtener resumen de producción', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al obtener resumen: ' . $e->getMessage()
+            ], 500);
+        }
+    }
 }

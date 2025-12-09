@@ -781,7 +781,7 @@ class PaqueteController extends Controller
                 $query->select('id', 'etiqueta_sub_id', 'paquete_id', 'peso', 'estado')
                     ->withCount('elementos')
                     ->with(['elementos' => function ($q) {
-                        $q->select('id', 'codigo', 'dimensiones', 'etiqueta_id');
+                        $q->select('id', 'codigo', 'dimensiones', 'etiqueta_sub_id');
                     }]);
             }, 'ubicacion:id,nombre'])
                 ->where('planilla_id', $planillaId);

@@ -385,6 +385,7 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
     Route::put('/planificacion/comentario/{id}', [PlanificacionController::class, 'guardarComentario']);
     Route::put('/planificacion/empresa-transporte/{id}', [PlanificacionController::class, 'actualizarEmpresaTransporte'])->name('planificacion.actualizarEmpresaTransporte');
     Route::post('/planillas/{planilla}/reimportar', [PlanillaController::class, 'reimportar'])->name('planillas.crearReimportar');
+    Route::post('/planillas/{planilla}/resetear', [PlanillaController::class, 'resetearPlanilla'])->name('planillas.resetear');
     Route::post('/planillas/completar', [PlanillaController::class, 'completar'])->name('planillas.completar');
     Route::get('/planificacion/index', [PlanificacionController::class, 'index'])->name('planificacion.index');
     Route::get('/planificacion/totales', [PlanificacionController::class, 'getTotalesAjax']);

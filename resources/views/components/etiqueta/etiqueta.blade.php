@@ -142,7 +142,8 @@
 
 <div class="etiqueta-wrapper">
     <div class="etiqueta-card proceso estado-{{ $estado }}" id="etiqueta-{{ $safeSubId }}"
-        data-estado="{{ $estado }}">
+        data-estado="{{ $estado }}"
+        data-en-paquete="{{ $etiqueta->paquete_id ? 'true' : 'false' }}">
 
         <!-- Botones -->
         <div class="absolute top-2 right-2 flex items-center gap-2 no-print z-10">
@@ -496,27 +497,45 @@
                 return;
             }
 
-            // Éxito
+            // Éxito - Actualizar UI inmediatamente sin recargar
+            const nuevoEstado = data.estado;
+
+            // Buscar el contenedor de la etiqueta y actualizar su estado visual
+            const etiquetaContainer = document.querySelector(`[data-etiqueta-id="${etiquetaSubId}"]`)?.closest('.etiqueta-card');
+
+            if (etiquetaContainer) {
+                // Remover clases de estado anteriores
+                const estadosValidos = ['pendiente', 'fabricando', 'fabricada', 'completada', 'en-paquete'];
+                estadosValidos.forEach(est => {
+                    etiquetaContainer.classList.remove(`estado-${est}`);
+                });
+
+                // Añadir nueva clase de estado
+                etiquetaContainer.classList.add(`estado-${nuevoEstado}`);
+
+                // Actualizar el atributo data-estado
+                etiquetaContainer.dataset.estado = nuevoEstado;
+            }
+
+            // Mostrar mensaje de éxito
             await Swal.fire({
                 icon: 'success',
                 title: 'Cambio revertido',
                 html: `
                     <p>${data.message}</p>
                     <p class="text-sm text-gray-600 mt-2">
-                        Estado actual: <strong>${data.estado}</strong>
+                        Estado actual: <strong>${nuevoEstado}</strong>
                     </p>
                 `,
-                timer: 2500,
+                timer: 2000,
                 showConfirmButton: false,
             });
 
-            // Refrescar la vista para ver los cambios
+            // Refrescar la vista para sincronizar todos los datos (sin recargar página)
             if (typeof window.refrescarEtiquetasMaquina === 'function') {
-                window.refrescarEtiquetasMaquina();
-            } else {
-                // Fallback: recargar la página
-                location.reload();
+                await window.refrescarEtiquetasMaquina();
             }
+            // NO hacer location.reload() - la UI ya está actualizada
 
         } catch (error) {
             console.error('Error al deshacer etiqueta:', error);

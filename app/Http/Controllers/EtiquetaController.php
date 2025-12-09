@@ -1771,7 +1771,7 @@ class EtiquetaController extends Controller
                     // ─────────────────────────────────────────────────────────────────────
 
                     // 🔄 GUARDAR HISTORIAL ANTES DE CAMBIOS (para sistema UNDO)
-                    EtiquetaHistorial::registrarCambio(
+                    $historialResult = EtiquetaHistorial::registrarCambio(
                         $etiqueta,
                         'iniciar_fabricacion',
                         'fabricando',
@@ -1779,6 +1779,11 @@ class EtiquetaController extends Controller
                         Auth::id(),
                         [] // No hay consumo de productos en este paso
                     );
+                    Log::info('📝 Historial pendiente→fabricando', [
+                        'etiqueta_sub_id' => $etiqueta->etiqueta_sub_id,
+                        'historial_id' => $historialResult?->id ?? 'NULL',
+                        'guardado' => $historialResult !== null,
+                    ]);
 
                     if ($etiqueta->planilla) {
                         if (is_null($etiqueta->planilla->fecha_inicio)) {
@@ -2723,24 +2728,32 @@ class EtiquetaController extends Controller
     public function deshacerEtiqueta(string $etiquetaSubId)
     {
         try {
-            // Verificar si hay cambios que deshacer
-            if (!EtiquetaHistorial::puedeDeshacer($etiquetaSubId)) {
+            // Obtener la etiqueta actual
+            $etiqueta = Etiqueta::where('etiqueta_sub_id', $etiquetaSubId)->first();
+
+            if (!$etiqueta) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Etiqueta no encontrada.',
+                    'puede_deshacer' => false,
+                ], 404);
+            }
+
+            // Verificar si hay cambios que deshacer en el historial
+            $ultimoCambio = EtiquetaHistorial::ultimoCambio($etiquetaSubId);
+
+            // CASO ESPECIAL: No hay historial pero la etiqueta está en "fabricando"
+            // Esto puede pasar con etiquetas que iniciaron fabricación antes de implementar el historial
+            if (!$ultimoCambio && $etiqueta->estado === 'fabricando') {
+                return $this->deshacerFabricandoSinHistorial($etiqueta);
+            }
+
+            if (!$ultimoCambio) {
                 return response()->json([
                     'success' => false,
                     'message' => 'No hay cambios que deshacer para esta etiqueta.',
                     'puede_deshacer' => false,
                 ], 400);
-            }
-
-            // Obtener el último cambio no revertido
-            $ultimoCambio = EtiquetaHistorial::ultimoCambio($etiquetaSubId);
-
-            if (!$ultimoCambio) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'No se encontró el historial de cambios.',
-                    'puede_deshacer' => false,
-                ], 404);
             }
 
             // Ejecutar la reversión
@@ -2782,6 +2795,74 @@ class EtiquetaController extends Controller
                 'message' => 'Error al deshacer el cambio: ' . $e->getMessage(),
             ], 500);
         }
+    }
+
+    /**
+     * Deshace una etiqueta en estado "fabricando" cuando no hay historial
+     * Esto maneja el caso de etiquetas que iniciaron fabricación antes de implementar el sistema de historial
+     *
+     * @param Etiqueta $etiqueta
+     * @return \Illuminate\Http\JsonResponse
+     */
+    private function deshacerFabricandoSinHistorial(Etiqueta $etiqueta): \Illuminate\Http\JsonResponse
+    {
+        return DB::transaction(function () use ($etiqueta) {
+            $cambios = [];
+
+            // 1. Restaurar elementos a estado pendiente y limpiar operarios
+            $elementosActualizados = $etiqueta->elementos()
+                ->where('estado', 'fabricando')
+                ->update([
+                    'estado' => 'pendiente',
+                    'users_id' => null,
+                    'users_id_2' => null,
+                ]);
+            $cambios[] = "Elementos restaurados: {$elementosActualizados}";
+
+            // 2. Restaurar etiqueta a pendiente
+            $etiqueta->update([
+                'estado' => 'pendiente',
+                'fecha_inicio' => null,
+                'operario1_id' => null,
+                'operario2_id' => null,
+            ]);
+            $cambios[] = "Etiqueta restaurada a estado: pendiente";
+
+            // 3. Verificar si la planilla debe volver a pendiente
+            if ($etiqueta->planilla) {
+                $planilla = $etiqueta->planilla->fresh();
+
+                // Si ninguna etiqueta está en proceso, restaurar planilla a pendiente
+                $hayEtiquetasEnProceso = $planilla->etiquetas()
+                    ->whereIn('estado', ['fabricando', 'completada', 'fabricada', 'en-paquete'])
+                    ->exists();
+
+                if (!$hayEtiquetasEnProceso && $planilla->estado !== 'pendiente') {
+                    $planilla->update([
+                        'estado' => 'pendiente',
+                        'fecha_inicio' => null,
+                        'fecha_finalizacion' => null,
+                    ]);
+                    $cambios[] = "Planilla restaurada a estado: pendiente";
+                }
+            }
+
+            Log::info('UNDO sin historial: fabricando → pendiente', [
+                'etiqueta_sub_id' => $etiqueta->etiqueta_sub_id,
+                'cambios' => $cambios,
+                'usuario_id' => Auth::id(),
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Cambio revertido exitosamente (sin historial previo). Estado restaurado a: pendiente',
+                'estado' => 'pendiente',
+                'estado_anterior' => 'fabricando',
+                'cambios_realizados' => $cambios,
+                'puede_deshacer' => false,
+                'proximo_estado' => null,
+            ], 200);
+        });
     }
 
     /**
@@ -2836,14 +2917,24 @@ class EtiquetaController extends Controller
      */
     public function puedeDeshacer(string $etiquetaSubId)
     {
+        $etiqueta = Etiqueta::where('etiqueta_sub_id', $etiquetaSubId)->first();
+        $estadoActual = $etiqueta?->estado;
+
         $puedeDeshacer = EtiquetaHistorial::puedeDeshacer($etiquetaSubId);
         $ultimoCambio = $puedeDeshacer ? EtiquetaHistorial::ultimoCambio($etiquetaSubId) : null;
 
+        // Caso especial: etiqueta en fabricando sin historial (legacy)
+        $puedeUndoLegacy = !$puedeDeshacer && $estadoActual === 'fabricando';
+
         return response()->json([
-            'puede_deshacer' => $puedeDeshacer,
-            'estado_actual' => Etiqueta::where('etiqueta_sub_id', $etiquetaSubId)->value('estado'),
-            'estado_anterior' => $ultimoCambio ? $ultimoCambio->snapshot_etiqueta['estado'] : null,
-            'accion_a_deshacer' => $ultimoCambio ? $ultimoCambio->accion : null,
+            'puede_deshacer' => $puedeDeshacer || $puedeUndoLegacy,
+            'estado_actual' => $estadoActual,
+            'estado_anterior' => $ultimoCambio
+                ? $ultimoCambio->snapshot_etiqueta['estado']
+                : ($puedeUndoLegacy ? 'pendiente' : null),
+            'accion_a_deshacer' => $ultimoCambio
+                ? $ultimoCambio->accion
+                : ($puedeUndoLegacy ? 'iniciar_fabricacion (legacy)' : null),
         ]);
     }
 }

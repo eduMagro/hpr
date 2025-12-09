@@ -5542,6 +5542,7 @@
                     }
 
                     const data = await response.json();
+                    console.log('Respuesta resumen:', JSON.stringify(data, null, 2));
 
                     if (data.success) {
                         // Llenar estadísticas
@@ -5567,19 +5568,24 @@
 
                                 let obrasHtml = '';
                                 let totalPlanillas = 0;
-                                cliente.obras.forEach(obra => {
+
+                                // Verificar que cliente.obras existe y es un array
+                                const obras = cliente.obras || [];
+                                obras.forEach(obra => {
                                     // Contar planillas de todas las fechas
                                     let planillasObra = 0;
-                                    obra.fechas.forEach(fecha => {
-                                        planillasObra += fecha.planillas.length;
+                                    const fechas = obra.fechas || [];
+                                    fechas.forEach(fecha => {
+                                        planillasObra += (fecha.planillas || []).length;
                                     });
                                     totalPlanillas += planillasObra;
 
                                     // Generar HTML para cada fecha de entrega
                                     let fechasHtml = '';
-                                    obra.fechas.forEach(fecha => {
+                                    fechas.forEach(fecha => {
                                         let planillasHtml = '';
-                                        fecha.planillas.forEach(planilla => {
+                                        const planillas = fecha.planillas || [];
+                                        planillas.forEach(planilla => {
                                             planillasHtml += `
                                                 <tr class="hover:bg-gray-50">
                                                     <td class="px-3 py-2">
@@ -5609,7 +5615,7 @@
                                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
                                                     </svg>
                                                     <span class="text-sm font-medium text-green-800">Entrega: ${fecha.fecha_entrega}</span>
-                                                    <span class="text-xs text-green-600">(${fecha.planillas.length} planilla${fecha.planillas.length > 1 ? 's' : ''})</span>
+                                                    <span class="text-xs text-green-600">(${planillas.length} planilla${planillas.length > 1 ? 's' : ''})</span>
                                                 </div>
                                                 <table class="min-w-full text-sm">
                                                     <thead class="bg-gray-50">

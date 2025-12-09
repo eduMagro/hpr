@@ -105,7 +105,7 @@ class Elemento extends Model
 
     public function etiquetaRelacion()
     {
-        return $this->belongsTo(Etiqueta::class, 'etiqueta_id');
+        return $this->belongsTo(Etiqueta::class, 'etiqueta_sub_id', 'etiqueta_sub_id');
     }
     // En Etiqueta.php
     public function subetiquetas()

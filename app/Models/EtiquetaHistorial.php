@@ -327,38 +327,45 @@ class EtiquetaHistorial extends Model
             if (!empty($this->snapshot_planilla)) {
                 $planilla = Planilla::find($this->snapshot_planilla['id']);
                 if ($planilla) {
+                    $planilla->refresh(); // Recargar datos actualizados
                     $estadoAnteriorPlanilla = $this->snapshot_planilla['estado'];
                     $estadoActualPlanilla = $planilla->getRawOriginal('estado');
+                    $estadoEtiquetaRestaurado = $snapshot['estado'];
 
-                    // Solo revertir si el estado actual es diferente y la planilla cambió por esta etiqueta
-                    if ($estadoActualPlanilla !== $estadoAnteriorPlanilla) {
-                        // Verificar si hay otras etiquetas que mantengan el estado actual
-                        $otrasEtiquetasFabricando = $planilla->etiquetas()
-                            ->where('id', '!=', $this->etiqueta_id)
-                            ->whereIn('estado', ['fabricando', 'completada', 'fabricada'])
+                    // Verificar si TODAS las etiquetas de la planilla están en pendiente
+                    $todasPendientes = $planilla->etiquetas()
+                        ->where('estado', '!=', 'pendiente')
+                        ->doesntExist();
+
+                    if ($todasPendientes) {
+                        // Todas las etiquetas están pendientes, restaurar planilla completamente
+                        $planilla->update([
+                            'estado' => 'pendiente',
+                            'fecha_inicio' => null,
+                            'fecha_finalizacion' => null,
+                        ]);
+                        $resultado['cambios'][] = "Planilla restaurada a estado: pendiente (todas las etiquetas pendientes)";
+                    } elseif ($estadoActualPlanilla !== $estadoAnteriorPlanilla) {
+                        // Verificar si hay otras etiquetas en proceso
+                        $hayEnProceso = $planilla->etiquetas()
+                            ->whereIn('estado', ['fabricando', 'completada', 'fabricada', 'en-paquete'])
                             ->exists();
 
-                        if (!$otrasEtiquetasFabricando && $estadoAnteriorPlanilla === 'pendiente') {
-                            // Ninguna otra etiqueta en proceso, revertir a pendiente
-                            $planilla->estado = $estadoAnteriorPlanilla;
-                            $planilla->fecha_inicio = $this->snapshot_planilla['fecha_inicio'];
-                            $planilla->fecha_finalizacion = $this->snapshot_planilla['fecha_finalizacion'];
-                            $planilla->save();
-                            $resultado['cambios'][] = "Planilla restaurada a estado: {$estadoAnteriorPlanilla}";
-                        } elseif ($estadoActualPlanilla === 'completada') {
-                            // La planilla estaba completada, verificar si debe volver a fabricando
-                            $todasCompletadas = $planilla->etiquetas()
-                                ->where('id', '!=', $this->etiqueta_id)
-                                ->whereNotIn('estado', ['completada', 'fabricada', 'en-paquete'])
-                                ->doesntExist();
-
-                            if (!$todasCompletadas) {
-                                // Hay etiquetas sin completar (incluyendo la que estamos revirtiendo)
-                                $planilla->estado = 'fabricando';
-                                $planilla->fecha_finalizacion = null;
-                                $planilla->save();
-                                $resultado['cambios'][] = "Planilla restaurada a estado: fabricando";
-                            }
+                        if (!$hayEnProceso && $estadoAnteriorPlanilla === 'pendiente') {
+                            // Ninguna etiqueta en proceso, revertir a pendiente
+                            $planilla->update([
+                                'estado' => 'pendiente',
+                                'fecha_inicio' => null,
+                                'fecha_finalizacion' => null,
+                            ]);
+                            $resultado['cambios'][] = "Planilla restaurada a estado: pendiente";
+                        } elseif ($estadoActualPlanilla === 'completada' && $estadoEtiquetaRestaurado !== 'completada') {
+                            // La planilla estaba completada pero la etiqueta ya no lo está
+                            $planilla->update([
+                                'estado' => 'fabricando',
+                                'fecha_finalizacion' => null,
+                            ]);
+                            $resultado['cambios'][] = "Planilla restaurada a estado: fabricando";
                         }
                     }
                 }

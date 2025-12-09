@@ -339,6 +339,7 @@
                     <div class="flex items-center gap-2" x-data="{
                         showLeft: JSON.parse(localStorage.getItem('showLeft') ?? 'true'),
                         showRight: JSON.parse(localStorage.getItem('showRight') ?? 'true'),
+                        filtroEstado: localStorage.getItem('filtroEstadoEtiqueta') ?? 'todos',
                         toggleLeft() {
                             this.showLeft = !this.showLeft;
                             localStorage.setItem('showLeft', JSON.stringify(this.showLeft));
@@ -355,6 +356,11 @@
                             this.showRight = !this.showRight;
                             localStorage.setItem('showRight', JSON.stringify(this.showRight));
                             window.dispatchEvent(new CustomEvent('toggleRight'));
+                        },
+                        setFiltroEstado(estado) {
+                            this.filtroEstado = estado;
+                            localStorage.setItem('filtroEstadoEtiqueta', estado);
+                            window.dispatchEvent(new CustomEvent('filtroEstadoChanged', { detail: estado }));
                         }
                     }">
                         <button @click="toggleLeft()"
@@ -396,6 +402,49 @@
                                 </svg>
                             </span>
                         </button>
+
+                        {{-- Separador visual --}}
+                        <div class="h-6 w-px bg-gray-300 mx-1"></div>
+
+                        {{-- Filtros de estado de etiquetas --}}
+                        <div class="flex items-center gap-1 bg-gray-100 rounded-lg p-1">
+                            <button @click="setFiltroEstado('todos')"
+                                class="px-2 py-1 rounded text-xs font-medium transition-all duration-200"
+                                :class="filtroEstado === 'todos' ? 'bg-white text-gray-800 shadow-sm' : 'text-gray-600 hover:text-gray-800'"
+                                title="Ver todas las etiquetas">
+                                Todas
+                            </button>
+                            <button @click="setFiltroEstado('sin-paquete')"
+                                class="px-2 py-1 rounded text-xs font-medium transition-all duration-200"
+                                :class="filtroEstado === 'sin-paquete' ? 'bg-purple-500 text-white shadow-sm' : 'text-gray-600 hover:text-gray-800'"
+                                title="Ver todas menos las empaquetadas">
+                                Sin paquete
+                            </button>
+                            <button @click="setFiltroEstado('en-paquete')"
+                                class="px-2 py-1 rounded text-xs font-medium transition-all duration-200"
+                                :class="filtroEstado === 'en-paquete' ? 'bg-blue-500 text-white shadow-sm' : 'text-gray-600 hover:text-gray-800'"
+                                title="Ver solo las empaquetadas">
+                                En paquete
+                            </button>
+                            <button @click="setFiltroEstado('pendiente')"
+                                class="px-2 py-1 rounded text-xs font-medium transition-all duration-200"
+                                :class="filtroEstado === 'pendiente' ? 'bg-gray-500 text-white shadow-sm' : 'text-gray-600 hover:text-gray-800'"
+                                title="Ver solo pendientes">
+                                Pendientes
+                            </button>
+                            <button @click="setFiltroEstado('fabricando')"
+                                class="px-2 py-1 rounded text-xs font-medium transition-all duration-200"
+                                :class="filtroEstado === 'fabricando' ? 'bg-yellow-500 text-white shadow-sm' : 'text-gray-600 hover:text-gray-800'"
+                                title="Ver solo fabricando">
+                                Fabricando
+                            </button>
+                            <button @click="setFiltroEstado('completada')"
+                                class="px-2 py-1 rounded text-xs font-medium transition-all duration-200"
+                                :class="filtroEstado === 'completada' ? 'bg-green-500 text-white shadow-sm' : 'text-gray-600 hover:text-gray-800'"
+                                title="Ver solo completadas">
+                                Completadas
+                            </button>
+                        </div>
                     </div>
 
                     {{-- Botón Exportar BVBs para MSR20 --}}
@@ -629,6 +678,10 @@
 
                     console.log('✅ Etiquetas refrescadas correctamente');
 
+                    // Re-aplicar filtro de estado después de refrescar
+                    const filtroActual = localStorage.getItem('filtroEstadoEtiqueta') ?? 'todos';
+                    window.aplicarFiltroEstadoEtiquetas(filtroActual);
+
                 } catch (error) {
                     console.error('❌ Error al refrescar etiquetas:', error);
                     // Si falla, recargar la página como fallback
@@ -636,6 +689,49 @@
                     window.location.reload();
                 }
             };
+
+            /**
+             * Aplica el filtro de estado a las etiquetas
+             * @param {string} estado - 'todos', 'sin-paquete', 'en-paquete', 'pendiente', 'fabricando', 'completada'
+             */
+            window.aplicarFiltroEstadoEtiquetas = function(estado) {
+                const etiquetas = document.querySelectorAll('.etiqueta-card');
+
+                etiquetas.forEach(etiqueta => {
+                    const estadoEtiqueta = etiqueta.dataset.estado || 'pendiente';
+                    const enPaquete = etiqueta.dataset.enPaquete === 'true';
+                    const wrapper = etiqueta.closest('.etiqueta-wrapper') || etiqueta.parentElement;
+
+                    let mostrar = false;
+
+                    if (estado === 'todos') {
+                        mostrar = true;
+                    } else if (estado === 'sin-paquete') {
+                        mostrar = !enPaquete;
+                    } else if (estado === 'en-paquete') {
+                        mostrar = enPaquete;
+                    } else if (estadoEtiqueta === estado) {
+                        mostrar = true;
+                    }
+
+                    wrapper.style.display = mostrar ? '' : 'none';
+                });
+
+                console.log(`🔍 Filtro aplicado: ${estado}`);
+            };
+
+            // Escuchar cambios en el filtro de estado
+            window.addEventListener('filtroEstadoChanged', function(e) {
+                window.aplicarFiltroEstadoEtiquetas(e.detail);
+            });
+
+            // Aplicar filtro inicial al cargar la página
+            document.addEventListener('DOMContentLoaded', function() {
+                const filtroInicial = localStorage.getItem('filtroEstadoEtiqueta') ?? 'todos';
+                setTimeout(() => {
+                    window.aplicarFiltroEstadoEtiquetas(filtroInicial);
+                }, 500); // Esperar a que se rendericen las etiquetas
+            });
         </script>
 
         <!-- ✅ Vite: Bundle de máquinas -->
