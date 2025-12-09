@@ -18,6 +18,7 @@ use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
 use App\Models\Maquina;
+use App\Models\EtiquetaHistorial;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Validation\ValidationException;
@@ -2695,5 +2696,143 @@ class EtiquetaController extends Controller
                 'message' => 'Error al eliminar la etiqueta. Intente nuevamente. ' . $e->getMessage()
             ], 500);
         }
+    }
+
+    // ============================================================================
+    // SISTEMA DE DESHACER (UNDO)
+    // ============================================================================
+
+    /**
+     * Deshace el último cambio de una etiqueta
+     * Revierte estado, elementos, productos consumidos y planilla si aplica
+     *
+     * @param string $etiquetaSubId El etiqueta_sub_id de la etiqueta
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function deshacerEtiqueta(string $etiquetaSubId)
+    {
+        try {
+            // Verificar si hay cambios que deshacer
+            if (!EtiquetaHistorial::puedeDeshacer($etiquetaSubId)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No hay cambios que deshacer para esta etiqueta.',
+                    'puede_deshacer' => false,
+                ], 400);
+            }
+
+            // Obtener el último cambio no revertido
+            $ultimoCambio = EtiquetaHistorial::ultimoCambio($etiquetaSubId);
+
+            if (!$ultimoCambio) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No se encontró el historial de cambios.',
+                    'puede_deshacer' => false,
+                ], 404);
+            }
+
+            // Ejecutar la reversión
+            $resultado = $ultimoCambio->revertir(Auth::id());
+
+            if (!$resultado['success']) {
+                return response()->json([
+                    'success' => false,
+                    'message' => $resultado['message'],
+                ], 400);
+            }
+
+            // Obtener la etiqueta actualizada
+            $etiqueta = Etiqueta::where('etiqueta_sub_id', $etiquetaSubId)->first();
+
+            // Verificar si hay más cambios que deshacer
+            $puedeDeshacer = EtiquetaHistorial::puedeDeshacer($etiquetaSubId);
+            $proximoCambio = $puedeDeshacer ? EtiquetaHistorial::ultimoCambio($etiquetaSubId) : null;
+
+            return response()->json([
+                'success' => true,
+                'message' => $resultado['message'],
+                'estado' => $etiqueta->estado ?? $ultimoCambio->snapshot_etiqueta['estado'],
+                'estado_anterior' => $ultimoCambio->estado_nuevo,
+                'cambios_realizados' => $resultado['cambios'],
+                'puede_deshacer' => $puedeDeshacer,
+                'proximo_estado' => $proximoCambio ? $proximoCambio->snapshot_etiqueta['estado'] : null,
+            ], 200);
+
+        } catch (\Exception $e) {
+            Log::error('Error al deshacer etiqueta', [
+                'etiqueta_sub_id' => $etiquetaSubId,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al deshacer el cambio: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Obtiene el historial de cambios de una etiqueta
+     *
+     * @param string $etiquetaSubId
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function historialEtiqueta(string $etiquetaSubId)
+    {
+        try {
+            $historial = EtiquetaHistorial::where('etiqueta_sub_id', $etiquetaSubId)
+                ->orderByDesc('id')
+                ->limit(20)
+                ->get()
+                ->map(function ($item) {
+                    return [
+                        'id' => $item->id,
+                        'accion' => $item->accion,
+                        'estado_anterior' => $item->estado_anterior,
+                        'estado_nuevo' => $item->estado_nuevo,
+                        'descripcion' => $item->descripcion,
+                        'fecha' => $item->created_at->format('d/m/Y H:i:s'),
+                        'revertido' => $item->revertido,
+                        'puede_revertir' => !$item->revertido,
+                    ];
+                });
+
+            $puedeDeshacer = EtiquetaHistorial::puedeDeshacer($etiquetaSubId);
+            $ultimoCambio = $puedeDeshacer ? EtiquetaHistorial::ultimoCambio($etiquetaSubId) : null;
+
+            return response()->json([
+                'success' => true,
+                'historial' => $historial,
+                'puede_deshacer' => $puedeDeshacer,
+                'ultimo_estado_reversible' => $ultimoCambio ? $ultimoCambio->snapshot_etiqueta['estado'] : null,
+            ], 200);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al obtener historial: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Verifica si una etiqueta puede deshacer cambios
+     *
+     * @param string $etiquetaSubId
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function puedeDeshacer(string $etiquetaSubId)
+    {
+        $puedeDeshacer = EtiquetaHistorial::puedeDeshacer($etiquetaSubId);
+        $ultimoCambio = $puedeDeshacer ? EtiquetaHistorial::ultimoCambio($etiquetaSubId) : null;
+
+        return response()->json([
+            'puede_deshacer' => $puedeDeshacer,
+            'estado_actual' => Etiqueta::where('etiqueta_sub_id', $etiquetaSubId)->value('estado'),
+            'estado_anterior' => $ultimoCambio ? $ultimoCambio->snapshot_etiqueta['estado'] : null,
+            'accion_a_deshacer' => $ultimoCambio ? $ultimoCambio->accion : null,
+        ]);
     }
 }

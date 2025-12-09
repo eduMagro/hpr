@@ -146,6 +146,13 @@
 
         <!-- Botones -->
         <div class="absolute top-2 right-2 flex items-center gap-2 no-print z-10">
+            <!-- Botón Deshacer (UNDO) -->
+            <button type="button"
+                class="btn-deshacer bg-amber-500 text-white px-3 py-1 rounded shadow-sm hover:bg-amber-600 hover:shadow-md transition-all duration-200 flex items-center gap-1"
+                data-etiqueta-id="{{ $etiqueta->etiqueta_sub_id }}" title="Deshacer último cambio (Ctrl+Z)">
+                <span class="text-lg">↩️</span>
+            </button>
+
             <!-- Selector de modo de impresión -->
             <select id="modo-impresion-{{ $etiqueta->id }}"
                 class="border border-gray-300 rounded px-2 py-1 text-sm bg-white shadow-sm hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
