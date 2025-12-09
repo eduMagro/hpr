@@ -70,6 +70,7 @@ class UsersTable extends Component
     #[Url]
     public $order = 'asc';
 
+    #[Url(keep: true)]
     public $perPage = 15;
 
     // Cuando cambia cualquier filtro, resetear a la página 1

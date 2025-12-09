@@ -59,6 +59,10 @@ Route::get('/produccion', [PageController::class, 'produccion'])->middleware(['a
 Route::get('/seccion-planificacion', [PageController::class, 'planificacionSeccion'])->middleware(['auth', 'verified'])->name('secciones.planificacion');
 Route::get('/logistica', [PageController::class, 'logistica'])->middleware(['auth', 'verified'])->name('secciones.logistica');
 Route::get('/recursos-humanos', [PageController::class, 'recursosHumanos'])->middleware(['auth', 'verified'])->name('secciones.recursos-humanos');
+Route::get('/incorporaciones', function () {
+    return redirect()->route('secciones.recursos-humanos');
+})->middleware(['auth', 'verified'])->name('incorporaciones.index');
+Route::get('/atajos', [PageController::class, 'atajos'])->middleware(['auth', 'verified'])->name('atajos.index');
 Route::get('/comercial', [PageController::class, 'comercial'])->middleware(['auth', 'verified'])->name('secciones.comercial');
 Route::get('/sistema', [PageController::class, 'sistema'])->middleware(['auth', 'verified'])->name('secciones.sistema');
 
@@ -114,6 +118,8 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
     Route::resource('distribuidores', DistribuidorController::class)->names('distribuidores');
 
     // === ENTRADAS Y PEDIDOS ===
+    Route::get('/entradas/pdf/filtrados', [EntradaController::class, 'descargarPdfFiltrados'])
+        ->name('entradas.descargarPdfFiltrados');
     Route::resource('entradas', EntradaController::class)->names('entradas');
     Route::patch('/entradas/{id}/cerrar', [EntradaController::class, 'cerrar'])->name('entradas.cerrar');
     Route::post('/entradas/importar-albaran', [EntradaController::class, 'subirPdf'])
@@ -155,6 +161,7 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
     // Rutas específicas de productos (antes del resource)
     Route::get('productos/{id}/edit-data', [ProductoController::class, 'getEditData'])->name('productos.getEditData');
     Route::get('productos/{id}/consumir', [ProductoController::class, 'consumir'])->name('productos.editarConsumir');
+    Route::post('productos/consumir-lote', [ProductoController::class, 'consumirLoteAjax'])->name('productos.consumirLote');
 
     Route::resource('productos', ProductoController::class);
     // Route::post('/productos/crear-desde-recepcion', [PedidoController::class, 'crearDesdeRecepcion'])->name('productos.crear.desde.recepcion');
@@ -162,6 +169,10 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
     Route::post('productos/generar-exportar', [ProductoController::class, 'GenerarYExportar'])->name('productos.generar.crearExportar');
     Route::post('/productos/{codigo}/reasignar', [ProductoController::class, 'editarUbicacionInventario'])
         ->name('productos.editarUbicacionInventario');
+    Route::post('/productos/{codigo}/restablecer', [ProductoController::class, 'restablecerDesdeInventario'])
+        ->name('productos.restablecerInventario');
+    Route::post('/productos/{codigo}/liberar-maquina', [ProductoController::class, 'liberarFabricandoInventario'])
+        ->name('productos.liberarMaquinaInventario');
 
     Route::get('/ubicaciones/inventario', [UbicacionController::class, 'inventario'])->name('ubicaciones.verInventario');
     Route::resource('ubicaciones', UbicacionController::class);

@@ -55,6 +55,7 @@ class PaquetesTable extends Component
     #[Url]
     public $order = 'desc';
 
+    #[Url(keep: true)]
     public $perPage = 10;
 
     // Cuando cambia cualquier filtro, resetear a la página 1

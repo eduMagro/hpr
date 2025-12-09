@@ -6,11 +6,11 @@
 ])
 
 <tfoot>
-    <tr class="bg-gradient-to-r from-blue-50 to-blue-100 border-t border-blue-300">
-        <td colspan="{{ $colspan }}" class="px-6 py-3">
+    <tr class="bg-white border-t border-gray-200">
+        <td colspan="{{ $colspan }}" class="px-6 py-3 sticky right-0 bg-white">
             <div class="flex justify-end items-center gap-4 text-sm text-gray-700">
                 <span class="font-semibold">{{ $label }}:</span>
-                <span class="text-base font-bold text-blue-800">
+                <span class="text-base font-bold text-emerald-700">
                     {{ $value }}
                 </span>
             </div>

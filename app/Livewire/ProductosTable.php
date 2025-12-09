@@ -57,7 +57,7 @@ class ProductosTable extends Component
     public $order = 'desc';
 
     #[Url(keep: true)]
-    public $perPage = 15;
+    public $perPage = 10;
 
     // Cuando cambia cualquier filtro, resetear a la página 1
     public function updated($property)

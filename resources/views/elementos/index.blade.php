@@ -94,7 +94,7 @@
                 "</strong> en orden <strong>$orden</strong>";
         }
     @endphp
-    <div class="w-full p-4 sm:p-2">
+    <div class="w-full sm:p-2">
         <x-tabla.filtros-aplicados :filtros="$filtrosActivos" />
 
         <!-- Banner de revisión de planilla -->

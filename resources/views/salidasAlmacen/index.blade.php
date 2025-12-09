@@ -14,15 +14,15 @@
                 <thead class="bg-blue-500 text-white text-10">
                     <!-- Títulos -->
                     <tr class="text-xs uppercase">
-                        <th class="p-2 border">ID Línea</th>
-                        <th class="p-2 border">{!! $ordenables['codigo'] ?? 'Código Salida' !!}</th>
-                        <th class="p-2 border">Código Albarán</th>
-                        <th class="p-2 border">{!! $ordenables['cliente'] ?? 'Cliente' !!}</th>
-                        <th class="p-2 border">Producto Base</th>
-                        <th class="p-2 border">Cantidad (kg)</th>
-                        <th class="p-2 border">Precio Unitario</th>
-                        <th class="p-2 border">{!! $ordenables['estado'] ?? 'Estado' !!}</th>
-                        <th class="p-2 border">Acciones</th>
+                        <th class="p-2">ID Línea</th>
+                        <th class="p-2">{!! $ordenables['codigo'] ?? 'Código Salida' !!}</th>
+                        <th class="p-2">Código Albarán</th>
+                        <th class="p-2">{!! $ordenables['cliente'] ?? 'Cliente' !!}</th>
+                        <th class="p-2">Producto Base</th>
+                        <th class="p-2">Cantidad (kg)</th>
+                        <th class="p-2">Precio Unitario</th>
+                        <th class="p-2">{!! $ordenables['estado'] ?? 'Estado' !!}</th>
+                        <th class="p-2">Acciones</th>
                     </tr>
 
                     <!-- Filtros -->

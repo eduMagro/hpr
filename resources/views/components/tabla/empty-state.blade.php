@@ -5,7 +5,7 @@
 ])
 
 <tr>
-    <td colspan="{{ $colspan }}" class="text-center py-4 text-gray-500">
+    <td colspan="{{ $colspan }}" class="text-center py-5 text-gray-500 bg-gray-50">
         {{ $mensaje }}
     </td>
 </tr>

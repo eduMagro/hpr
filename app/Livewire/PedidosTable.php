@@ -23,6 +23,9 @@ class PedidosTable extends Component
     public $codigo_linea = '';
 
     #[Url]
+    public $pedido_producto_id = '';
+
+    #[Url]
     public $codigo = '';
 
     #[Url]
@@ -61,6 +64,7 @@ class PedidosTable extends Component
     #[Url]
     public $order = 'desc';
 
+    #[Url(keep: true)]
     public $perPage = 10;
 
     // Cuando cambia cualquier filtro, resetear a la página 1
@@ -84,7 +88,7 @@ class PedidosTable extends Component
     public function limpiarFiltros()
     {
         $this->reset([
-            'codigo_linea', 'codigo', 'pedido_global_id', 'fabricante_id', 'distribuidor_id',
+            'codigo_linea', 'pedido_producto_id', 'codigo', 'pedido_global_id', 'fabricante_id', 'distribuidor_id',
             'obra_id', 'producto_tipo', 'producto_diametro', 'producto_longitud',
             'fecha_pedido', 'fecha_entrega', 'estado'
         ]);
@@ -97,6 +101,9 @@ class PedidosTable extends Component
 
         if (!empty($this->codigo_linea)) {
             $filtros[] = "<strong>Código Línea:</strong> {$this->codigo_linea}";
+        }
+        if (!empty($this->pedido_producto_id)) {
+            $filtros[] = "<strong>Pedido Producto ID:</strong> {$this->pedido_producto_id}";
         }
         if (!empty($this->codigo)) {
             $filtros[] = "<strong>Código:</strong> {$this->codigo}";
@@ -158,6 +165,18 @@ class PedidosTable extends Component
         // Código
         if (!empty($this->codigo)) {
             $query->where('codigo', 'like', '%' . trim($this->codigo) . '%');
+        }
+
+        // ID de línea (pedido_productos.id)
+        if (!empty($this->pedido_producto_id)) {
+            $raw = trim((string) $this->pedido_producto_id);
+            $query->whereHas('lineas', function ($q) use ($raw) {
+                if (preg_match('/^=\s*(\d+)$/', $raw, $m)) {
+                    $q->where('pedido_productos.id', (int) $m[1]);
+                } else {
+                    $q->whereRaw('CAST(pedido_productos.id AS CHAR) LIKE ?', ['%' . $raw . '%']);
+                }
+            });
         }
 
         // Pedido Global

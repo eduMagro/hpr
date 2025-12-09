@@ -1,7 +1,7 @@
 <x-app-layout>
     <x-slot name="title">Movimientos - {{ config('app.name') }}</x-slot>
 
-    <div class="w-full px-6 py-4">
+    <div class="w-full md:flex md:flex-col md:h-[calc(100vh-110px)] md:overflow-hidden md:gap-3">
 
         @livewire('movimientos-table')
         <!-- SCRIPT PARA IMPRIMIR QR -->

@@ -1,7 +1,7 @@
 <x-app-layout>
     <x-slot name="header">
         <h2 class="text-lg font-semibold text-gray-800">
-            <a href="{{ route('productos.index') }}" wire:navigate class="text-blue-600">
+            <a href="{{ route('productos.index') }}" class="text-blue-600">
                 {{ __('Materiales') }}
             </a>
             <span class="mx-2">/</span>

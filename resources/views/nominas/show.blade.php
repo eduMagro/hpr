@@ -117,11 +117,11 @@
                         <table class="w-full text-xs text-center border-collapse min-h-[620px]">
                             <thead class="bg-gray-300 text-black font-bold uppercase">
                                 <tr>
-                                    <th class="p-2 border border-gray-400">Cuantía</th>
-                                    <th class="p-2 border border-gray-400">Precio</th>
-                                    <th class="p-2 border border-gray-400" colspan="2">Concepto</th>
-                                    <th class="p-2 border border-gray-400">Devengos</th>
-                                    <th class="p-2 border border-gray-400">Deducciones</th>
+                                    <th class="p-2 border-gray-400">Cuantía</th>
+                                    <th class="p-2 border-gray-400">Precio</th>
+                                    <th class="p-2 border-gray-400" colspan="2">Concepto</th>
+                                    <th class="p-2 border-gray-400">Devengos</th>
+                                    <th class="p-2 border-gray-400">Deducciones</th>
                                 </tr>
                             </thead>
                             <tbody class="text-gray-800">

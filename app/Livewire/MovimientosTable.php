@@ -71,6 +71,7 @@ class MovimientosTable extends Component
     #[Url]
     public $order = 'desc';
 
+    #[Url(keep: true)]
     public $perPage = 15;
 
     // Cuando cambia cualquier filtro, resetear a la página 1

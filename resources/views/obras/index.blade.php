@@ -7,7 +7,7 @@
         </h2>
     </x-slot>
 
-    <div class="w-full px-6 py-4">
+    <div class="w-full">
         <div class="flex flex-wrap gap-4 mb-4">
             <button class="btn btn-secondary mb-3" type="button" data-bs-toggle="collapse"
                 data-bs-target="#filtrosBusqueda">
@@ -91,14 +91,14 @@
             <table class="w-full min-w-[800px] border border-gray-300 rounded-lg">
                 <thead class="bg-blue-500 text-white text-xs uppercase text-center">
                     <tr>
-                        <th class="p-2 border">{!! ordenarColumna('obra', 'Nombre Obra') !!}</th>
-                        <th class="p-2 border">{!! ordenarColumna('cod_obra', 'Código Obra') !!}</th>
-                        <th class="p-2 border">{!! ordenarColumna('cliente', 'Cliente') !!}</th>
-                        <th class="p-2 border">{!! ordenarColumna('cod_cliente', 'Código Cliente') !!}</th>
-                        <th class="p-2 border">{!! ordenarColumna('latitud', 'Latitud') !!}</th>
-                        <th class="p-2 border">{!! ordenarColumna('longitud', 'Longitud') !!}</th>
-                        <th class="p-2 border">{!! ordenarColumna('distancia', 'Radio') !!}</th>
-                        <th class="p-2 border">Acciones</th>
+                        <th class="p-2">{!! ordenarColumna('obra', 'Nombre Obra') !!}</th>
+                        <th class="p-2">{!! ordenarColumna('cod_obra', 'Código Obra') !!}</th>
+                        <th class="p-2">{!! ordenarColumna('cliente', 'Cliente') !!}</th>
+                        <th class="p-2">{!! ordenarColumna('cod_cliente', 'Código Cliente') !!}</th>
+                        <th class="p-2">{!! ordenarColumna('latitud', 'Latitud') !!}</th>
+                        <th class="p-2">{!! ordenarColumna('longitud', 'Longitud') !!}</th>
+                        <th class="p-2">{!! ordenarColumna('distancia', 'Radio') !!}</th>
+                        <th class="p-2">Acciones</th>
                     </tr>
                     <tr>
                         <form method="GET" action="{{ route('obras.index') }}">

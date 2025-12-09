@@ -3,11 +3,11 @@
     'rutaExportar' => null, // Ruta para exportar, opcional
 ])
 
-<th class="p-1 border text-center align-middle">
+<th class="p-2 bg-white text-left align-middle">
     <div class="flex justify-center gap-2 items-center h-full">
         {{-- 🔍 Botón buscar --}}
         <button type="submit"
-            class="bg-blue-600 hover:bg-blue-700 text-white px-2 py-1 rounded text-xs flex items-center justify-center"
+            class="bg-gray-900 hover:bg-gray-800 text-white px-3 py-2 rounded text-xs flex items-center justify-center shadow-sm"
             title="Buscar">
             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"
                 stroke-width="2">
@@ -18,7 +18,7 @@
 
         {{-- ♻️ Botón reset --}}
         <a href="{{ route($ruta) }}" wire:navigate
-            class="bg-yellow-500 hover:bg-yellow-600 text-white px-2 py-1 rounded text-xs flex items-center justify-center"
+            class="bg-orange-400 hover:bg-orange-500 text-white px-3 py-2 rounded text-xs flex items-center justify-center shadow-sm"
             title="Restablecer filtros">
             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24"
                 stroke="currentColor" stroke-width="2">
@@ -29,7 +29,8 @@
 
         {{-- 📤 Botón exportar Excel --}}
         @if ($rutaExportar)
-            <a href="{{ route($rutaExportar, request()->query()) }}" wire:navigate title="Descarga los registros en Excel"
+            <a href="{{ route($rutaExportar, request()->query()) }}" wire:navigate
+                title="Descarga los registros en Excel"
                 class="bg-green-600 hover:bg-green-700 text-white rounded text-xs flex items-center justify-center">
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" class="h-6 w-8">
                     <path fill="#21A366"

@@ -2,7 +2,17 @@
   "permissions": {
     "allow": [
       "Bash(mysql:*)",
-      "Bash(php artisan tinker:*)"
+      "Bash(php artisan tinker:*)",
+      "Bash(done)",
+      "Bash(for:*)",
+      "Bash(do sed -i 's/focus:ring-blue-900/focus:ring-gray-600/g' \"$file\")",
+      "Bash(do echo \"Verificando $file...\")",
+      "Bash(php -l:*)",
+      "Bash(echo:*)",
+      "Bash(do echo \"=== $file ===\")",
+      "Bash(php artisan config:clear:*)",
+      "Bash(php artisan:*)",
+      "Bash(npm run build:*)"
     ],
     "deny": [],
     "ask": []

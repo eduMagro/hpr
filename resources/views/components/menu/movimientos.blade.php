@@ -34,7 +34,7 @@
         'entradas.index' => '⬅️ Entradas',
         'salidas-ferralla.index' => '➡️ Salidas',
     ] as $ruta => $texto)
-                <a href="{{ route($ruta) }}" wire:navigate
+                <a href="{{ route($ruta) }}" wire:navigate="false"
                     class="block px-2 py-3 text-sm font-medium transition
                     {{ $rutaActual === $ruta
                         ? $colores['bgLite'] . ' ' . $colores['activoTxt'] . ' font-semibold'
@@ -53,7 +53,7 @@
         'entradas.index' => '⬅️ Entradas',
         'salidas-ferralla.index' => '➡️ Salidas',
     ] as $ruta => $texto)
-            <a href="{{ route($ruta) }}" wire:navigate
+            <a href="{{ route($ruta) }}" wire:navigate="false"
                 class="flex-1 text-center px-4 py-2 font-semibold transition
                 {{ $loop->first ? 'rounded-l-lg' : '' }} {{ $loop->last ? 'rounded-r-lg' : '' }}
                 {{ $rutaActual === $ruta

@@ -31,7 +31,7 @@
 
     <!-- ✅ Librerías que no bloquean renderizado - Versionadas para evitar problemas de caché -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" defer></script>
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.14.5/dist/sweetalert2.all.min.js" defer></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.14.5/dist/sweetalert2.all.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js" defer></script>
 
     <!-- ✅ FullCalendar (solo si es necesario en esta vista) -->
@@ -104,8 +104,13 @@
         }
 
         @keyframes shimmer {
-            0% { transform: translateX(-100%); }
-            100% { transform: translateX(100%); }
+            0% {
+                transform: translateX(-100%);
+            }
+
+            100% {
+                transform: translateX(100%);
+            }
         }
     </style>
 </head>
@@ -113,19 +118,19 @@
 <body class="font-sans antialiased transition-colors duration-200">
     <div class="flex h-screen bg-gray-100 dark:bg-gray-900 overflow-hidden">
         <!-- Sidebar Menu Enhanced -->
-            <x-sidebar-menu-enhanced />
+        <x-sidebar-menu-enhanced />
 
         <!-- Main Content Area -->
         <div class="flex-1 flex flex-col overflow-hidden">
             <!-- Top Header Enhanced -->
-                <x-top-header-enhanced />
+            <x-top-header-enhanced />
 
             <!-- Alerts -->
             @include('layouts.alerts')
 
             <!-- Page Content -->
             <main class="flex-1 overflow-y-auto bg-neutral-100 dark:bg-gray-900 transition-colors">
-                <div class="py-6 px-4 sm:px-6 lg:px-8">
+                <div class="py-2 px-2 sm:px-6 lg:px-8 h-full">
                     <!-- Breadcrumbs -->
                     <x-breadcrumbs />
 
@@ -140,17 +145,33 @@
                     @endisset
 
                     <!-- Main Content -->
-                    <div class="transition-colors">
+                    <div class="transition-colors h-auto">
                         {{ $slot }}
                     </div>
                 </div>
             </main>
         </div>
     </div>
+
+    <!-- Modales globales (fuera del contenedor con overflow-hidden) -->
+    @stack('modals')
+
     <!-- Livewire Scripts -->
     @livewireScripts
 
     @stack('scripts')
+
+    <script data-navigate-once>
+        // Desactiva wire:navigate en enlaces para evitar navegaciones SPA con errores de fetch
+        function disableWireNavigate() {
+            document.querySelectorAll('a[wire\\:navigate]').forEach((link) => {
+                link.removeAttribute('wire:navigate');
+            });
+        }
+
+        document.addEventListener('DOMContentLoaded', disableWireNavigate);
+        document.addEventListener('livewire:navigated', disableWireNavigate);
+    </script>
 
     <!-- Dark Mode Support Script -->
     <script data-navigate-once>
@@ -294,13 +315,18 @@
                     document.title = doc.title;
 
                     // Scroll to top
-                    window.scrollTo({ top: 0, behavior: 'instant' });
+                    window.scrollTo({
+                        top: 0,
+                        behavior: 'instant'
+                    });
 
                     // Actualizar URL después de un delay para evitar conflictos con Livewire
                     if (pushState) {
                         setTimeout(() => {
                             console.log('🔗 Actualizando URL a:', url);
-                            window.history.pushState({ spa: true }, '', url);
+                            window.history.pushState({
+                                spa: true
+                            }, '', url);
                         }, 100);
                     }
 
@@ -326,7 +352,11 @@
 
                     const script = document.createElement('script');
                     // Copiar atributos (src, type, etc)
-                    for (const { name, value } of Array.from(oldScript.attributes)) {
+                    for (const {
+                            name,
+                            value
+                        }
+                        of Array.from(oldScript.attributes)) {
                         script.setAttribute(name, value);
                     }
                     // Copiar contenido inline

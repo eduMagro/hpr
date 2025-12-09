@@ -1,6 +1,6 @@
 <div>
 
-    <div class="w-full p-4 sm:p-2">
+    <div class="w-full sm:p-2">
         <x-tabla.filtros-aplicados :filtros="$filtrosActivos" />
 
         <!-- Banner de revisión de planilla -->
@@ -50,155 +50,172 @@
         @endif
 
         <!-- Tabla de elementos con scroll horizontal -->
-        <div class="w-full overflow-x-auto bg-white shadow-lg rounded-lg">
-            <table class="w-full min-w-[1000px] border border-gray-300 rounded-lg">
-                <thead class="bg-blue-500 text-white text-10">
-                    <tr class="text-center text-xs uppercase">
-                        <x-tabla.encabezado-ordenable campo="id" :sortActual="$sort" :orderActual="$order" texto="ID" />
-                        <x-tabla.encabezado-ordenable campo="codigo" :sortActual="$sort" :orderActual="$order" texto="Código" />
-                        <x-tabla.encabezado-ordenable campo="codigo_planilla" :sortActual="$sort" :orderActual="$order" texto="Planilla" />
-                        <x-tabla.encabezado-ordenable campo="etiqueta" :sortActual="$sort" :orderActual="$order" texto="Etiqueta" />
-                        <x-tabla.encabezado-ordenable campo="subetiqueta" :sortActual="$sort" :orderActual="$order" texto="Subetiqueta" />
-                        <x-tabla.encabezado-ordenable campo="dimensiones" :sortActual="$sort" :orderActual="$order" texto="Dimensiones" />
-                        <x-tabla.encabezado-ordenable campo="diametro" :sortActual="$sort" :orderActual="$order" texto="Diámetro" />
-                        <x-tabla.encabezado-ordenable campo="barras" :sortActual="$sort" :orderActual="$order" texto="Barras" />
-                        <x-tabla.encabezado-ordenable campo="maquina" :sortActual="$sort" :orderActual="$order" texto="Maq. 1" />
-                        <x-tabla.encabezado-ordenable campo="maquina_2" :sortActual="$sort" :orderActual="$order" texto="Maq. 2" />
-                        <x-tabla.encabezado-ordenable campo="maquina3" :sortActual="$sort" :orderActual="$order" texto="Maq. 3" />
-                        <x-tabla.encabezado-ordenable campo="producto1" :sortActual="$sort" :orderActual="$order" texto="M. Prima 1" />
-                        <x-tabla.encabezado-ordenable campo="producto2" :sortActual="$sort" :orderActual="$order" texto="M. Prima 2" />
-                        <x-tabla.encabezado-ordenable campo="producto3" :sortActual="$sort" :orderActual="$order" texto="M. Prima 3" />
-                        <x-tabla.encabezado-ordenable campo="figura" :sortActual="$sort" :orderActual="$order" texto="Figura" />
-                        <x-tabla.encabezado-ordenable campo="peso" :sortActual="$sort" :orderActual="$order" texto="Peso (kg)" wire:navigate />
-                        <x-tabla.encabezado-ordenable campo="longitud" :sortActual="$sort" :orderActual="$order" texto="Longitud (m)" wire:navigate />
-                        <x-tabla.encabezado-ordenable campo="estado" :sortActual="$sort" :orderActual="$order" texto="Estado" />
-                        <th class="p-2 border">Acciones</th>
-                    </tr>
+        <div class="w-full overflow-x-auto rounded-xl">
+            <div class="inline-block min-w-full align-middle bg-white border border-gray-200 shadow-lg rounded-xl">
+                <table class="min-w-full min-w-[1200px] text-sm text-gray-800">
+                    <x-tabla.header>
+                        <x-tabla.header-row>
+                            <x-tabla.encabezado-ordenable campo="id" :sortActual="$sort" :orderActual="$order"
+                                texto="ID" />
+                            <x-tabla.encabezado-ordenable campo="codigo" :sortActual="$sort" :orderActual="$order"
+                                texto="Código" />
+                            <x-tabla.encabezado-ordenable campo="codigo_planilla" :sortActual="$sort" :orderActual="$order"
+                                texto="Planilla" />
+                            <x-tabla.encabezado-ordenable campo="etiqueta" :sortActual="$sort" :orderActual="$order"
+                                texto="Etiqueta" />
+                            <x-tabla.encabezado-ordenable campo="subetiqueta" :sortActual="$sort" :orderActual="$order"
+                                texto="Subetiqueta" />
+                            <x-tabla.encabezado-ordenable campo="dimensiones" :sortActual="$sort" :orderActual="$order"
+                                texto="Dimensiones" />
+                            <x-tabla.encabezado-ordenable campo="diametro" :sortActual="$sort" :orderActual="$order"
+                                texto="Diámetro" />
+                            <x-tabla.encabezado-ordenable campo="barras" :sortActual="$sort" :orderActual="$order"
+                                texto="Barras" />
+                            <x-tabla.encabezado-ordenable campo="maquina" :sortActual="$sort" :orderActual="$order"
+                                texto="Maq. 1" />
+                            <x-tabla.encabezado-ordenable campo="maquina_2" :sortActual="$sort" :orderActual="$order"
+                                texto="Maq. 2" />
+                            <x-tabla.encabezado-ordenable campo="maquina3" :sortActual="$sort" :orderActual="$order"
+                                texto="Maq. 3" />
+                            <x-tabla.encabezado-ordenable campo="producto1" :sortActual="$sort" :orderActual="$order"
+                                texto="M. Prima 1" />
+                            <x-tabla.encabezado-ordenable campo="producto2" :sortActual="$sort" :orderActual="$order"
+                                texto="M. Prima 2" />
+                            <x-tabla.encabezado-ordenable campo="producto3" :sortActual="$sort" :orderActual="$order"
+                                texto="M. Prima 3" />
+                            <x-tabla.encabezado-ordenable campo="figura" :sortActual="$sort" :orderActual="$order"
+                                texto="Figura" />
+                            <x-tabla.encabezado-ordenable campo="peso" :sortActual="$sort" :orderActual="$order"
+                                texto="Peso (kg)" wire:navigate />
+                            <x-tabla.encabezado-ordenable campo="longitud" :sortActual="$sort" :orderActual="$order"
+                                texto="Longitud (m)" wire:navigate />
+                            <x-tabla.encabezado-ordenable campo="estado" :sortActual="$sort" :orderActual="$order"
+                                texto="Estado" />
+                            <th class="p-2">Acciones</th>
+                        </x-tabla.header-row>
 
-                    <tr class="text-center text-xs uppercase">
-                        <th class="p-1 border">
-                            <input type="text" wire:model.live.debounce.300ms="elemento_id"
-                                class="w-full text-xs border rounded px-1 py-0.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none"
-                                placeholder="ID...">
-                        </th>
-                        <th class="p-1 border">
-                            <input type="text" wire:model.live.debounce.300ms="codigo"
-                                class="w-full text-xs border rounded px-1 py-0.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none"
-                                placeholder="Código...">
-                        </th>
-                        <th class="p-1 border">
-                            <input type="text" wire:model.live.debounce.300ms="codigo_planilla"
-                                class="w-full text-xs border rounded px-1 py-0.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none"
-                                placeholder="Planilla...">
-                        </th>
-                        <th class="p-1 border">
-                            <input type="text" wire:model.live.debounce.300ms="etiqueta"
-                                class="w-full text-xs border rounded px-1 py-0.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none"
-                                placeholder="Etiqueta...">
-                        </th>
-                        <th class="p-1 border">
-                            <input type="text" wire:model.live.debounce.300ms="subetiqueta"
-                                class="w-full text-xs border rounded px-1 py-0.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none"
-                                placeholder="Subetiqueta...">
-                        </th>
-                        <th class="p-1 border">
-                            <input type="text" wire:model.live.debounce.300ms="dimensiones"
-                                class="w-full text-xs border rounded px-1 py-0.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none"
-                                placeholder="Dimensiones...">
-                        </th>
-                        <th class="p-1 border">
-                            <input type="text" wire:model.live.debounce.300ms="diametro"
-                                class="w-full text-xs border rounded px-1 py-0.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none"
-                                placeholder="Diámetro...">
-                        </th>
-                        <th class="p-1 border">
-                            <input type="text" wire:model.live.debounce.300ms="barras"
-                                class="w-full text-xs border rounded px-1 py-0.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none"
-                                placeholder="Barras...">
-                        </th>
-                        <th class="p-1 border">
-                            <input type="text" wire:model.live.debounce.300ms="maquina"
-                                class="w-full text-xs border rounded px-1 py-0.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none"
-                                placeholder="Máquina...">
-                        </th>
-                        <th class="p-1 border">
-                            <input type="text" wire:model.live.debounce.300ms="maquina_2"
-                                class="w-full text-xs border rounded px-1 py-0.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none"
-                                placeholder="Máquina 2...">
-                        </th>
-                        <th class="p-1 border">
-                            <input type="text" wire:model.live.debounce.300ms="maquina3"
-                                class="w-full text-xs border rounded px-1 py-0.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none"
-                                placeholder="Máquina 3...">
-                        </th>
-                        <th class="p-1 border">
-                            <input type="text" wire:model.live.debounce.300ms="producto1"
-                                class="w-full text-xs border rounded px-1 py-0.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none"
-                                placeholder="Producto 1...">
-                        </th>
-                        <th class="p-1 border">
-                            <input type="text" wire:model.live.debounce.300ms="producto2"
-                                class="w-full text-xs border rounded px-1 py-0.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none"
-                                placeholder="Producto 2...">
-                        </th>
-                        <th class="p-1 border">
-                            <input type="text" wire:model.live.debounce.300ms="producto3"
-                                class="w-full text-xs border rounded px-1 py-0.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none"
-                                placeholder="Producto 3...">
-                        </th>
-                        <th class="p-1 border">
-                            <input type="text" wire:model.live.debounce.300ms="figura"
-                                class="w-full text-xs border rounded px-1 py-0.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none"
-                                placeholder="Figura...">
-                        </th>
-                        <th class="p-1 border">
-                            <input type="text" wire:model.live.debounce.300ms="peso"
-                                class="w-full text-xs border rounded px-1 py-0.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none"
-                                placeholder="Peso...">
-                        </th>
-                        <th class="p-1 border">
-                            <input type="text" wire:model.live.debounce.300ms="longitud"
-                                class="w-full text-xs border rounded px-1 py-0.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none"
-                                placeholder="Longitud...">
-                        </th>
-                        <th class="p-1 border">
-                            <select wire:model.live="estado"
-                                class="w-full text-xs border rounded px-1 py-0.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none">
-                                <option value="">Todos</option>
-                                <option value="pendiente">Pendiente</option>
-                                <option value="fabricando">Fabricando</option>
-                                <option value="fabricado">Fabricado</option>
-                                <option value="montaje">Montaje</option>
-                            </select>
-                        </th>
-                        <th class="p-1 border text-center align-middle">
-                            <div class="flex justify-center gap-2 items-center h-full">
-                                {{-- ♻️ Botón reset --}}
-                                <button wire:click="limpiarFiltros"
-                                    class="bg-yellow-500 hover:bg-yellow-600 text-white px-2 py-1 rounded text-xs flex items-center justify-center"
-                                    title="Restablecer filtros">
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none"
-                                        viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                        <path stroke-linecap="round" stroke-linejoin="round"
-                                            d="M4 4v5h.582M20 20v-5h-.581M4.582 9A7.5 7.5 0 0112 4.5a7.5 7.5 0 016.418 3.418M19.418 15A7.5 7.5 0 0112 19.5a7.5 7.5 0 01-6.418-3.418" />
-                                    </svg>
-                                </button>
-                            </div>
-                        </th>
-                    </tr>
-                </thead>
+                        <x-tabla.filtro-row>
+                            <th class="p-2 bg-gray-50">
+                                <input type="text" wire:model.live.debounce.300ms="elemento_id"
+                                    class="w-full text-xs border border-gray-300 rounded px-2 py-2 text-gray-800 bg-gray-50 shadow-sm focus:border-gray-700 focus:ring-2 focus:ring-gray-600 focus:outline-none transition"
+                                    placeholder="ID...">
+                            </th>
+                            <th class="p-2 bg-gray-50">
+                                <input type="text" wire:model.live.debounce.300ms="codigo"
+                                    class="w-full text-xs border border-gray-300 rounded px-2 py-2 text-gray-800 bg-gray-50 shadow-sm focus:border-gray-700 focus:ring-2 focus:ring-gray-600 focus:outline-none transition"
+                                    placeholder="Código...">
+                            </th>
+                            <th class="p-2 bg-gray-50">
+                                <input type="text" wire:model.live.debounce.300ms="codigo_planilla"
+                                    class="w-full text-xs border border-gray-300 rounded px-2 py-2 text-gray-800 bg-gray-50 shadow-sm focus:border-gray-700 focus:ring-2 focus:ring-gray-600 focus:outline-none transition"
+                                    placeholder="Planilla...">
+                            </th>
+                            <th class="p-2 bg-gray-50">
+                                <input type="text" wire:model.live.debounce.300ms="etiqueta"
+                                    class="w-full text-xs border border-gray-300 rounded px-2 py-2 text-gray-800 bg-gray-50 shadow-sm focus:border-gray-700 focus:ring-2 focus:ring-gray-600 focus:outline-none transition"
+                                    placeholder="Etiqueta...">
+                            </th>
+                            <th class="p-2 bg-gray-50">
+                                <input type="text" wire:model.live.debounce.300ms="subetiqueta"
+                                    class="w-full text-xs border border-gray-300 rounded px-2 py-2 text-gray-800 bg-gray-50 shadow-sm focus:border-gray-700 focus:ring-2 focus:ring-gray-600 focus:outline-none transition"
+                                    placeholder="Subetiqueta...">
+                            </th>
+                            <th class="p-2 bg-gray-50">
+                                <input type="text" wire:model.live.debounce.300ms="dimensiones"
+                                    class="w-full text-xs border border-gray-300 rounded px-2 py-2 text-gray-800 bg-gray-50 shadow-sm focus:border-gray-700 focus:ring-2 focus:ring-gray-600 focus:outline-none transition"
+                                    placeholder="Dimensiones...">
+                            </th>
+                            <th class="p-2 bg-gray-50">
+                                <input type="text" wire:model.live.debounce.300ms="diametro"
+                                    class="w-full text-xs border border-gray-300 rounded px-2 py-2 text-gray-800 bg-gray-50 shadow-sm focus:border-gray-700 focus:ring-2 focus:ring-gray-600 focus:outline-none transition"
+                                    placeholder="Diámetro...">
+                            </th>
+                            <th class="p-2 bg-gray-50">
+                                <input type="text" wire:model.live.debounce.300ms="barras"
+                                    class="w-full text-xs border border-gray-300 rounded px-2 py-2 text-gray-800 bg-gray-50 shadow-sm focus:border-gray-700 focus:ring-2 focus:ring-gray-600 focus:outline-none transition"
+                                    placeholder="Barras...">
+                            </th>
+                            <th class="p-2 bg-gray-50">
+                                <input type="text" wire:model.live.debounce.300ms="maquina"
+                                    class="w-full text-xs border border-gray-300 rounded px-2 py-2 text-gray-800 bg-gray-50 shadow-sm focus:border-gray-700 focus:ring-2 focus:ring-gray-600 focus:outline-none transition"
+                                    placeholder="Máquina...">
+                            </th>
+                            <th class="p-2 bg-gray-50">
+                                <input type="text" wire:model.live.debounce.300ms="maquina_2"
+                                    class="w-full text-xs border border-gray-300 rounded px-2 py-2 text-gray-800 bg-gray-50 shadow-sm focus:border-gray-700 focus:ring-2 focus:ring-gray-600 focus:outline-none transition"
+                                    placeholder="Máquina 2...">
+                            </th>
+                            <th class="p-2 bg-gray-50">
+                                <input type="text" wire:model.live.debounce.300ms="maquina3"
+                                    class="w-full text-xs border border-gray-300 rounded px-2 py-2 text-gray-800 bg-gray-50 shadow-sm focus:border-gray-700 focus:ring-2 focus:ring-gray-600 focus:outline-none transition"
+                                    placeholder="Máquina 3...">
+                            </th>
+                            <th class="p-2 bg-gray-50">
+                                <input type="text" wire:model.live.debounce.300ms="producto1"
+                                    class="w-full text-xs border border-gray-300 rounded px-2 py-2 text-gray-800 bg-gray-50 shadow-sm focus:border-gray-700 focus:ring-2 focus:ring-gray-600 focus:outline-none transition"
+                                    placeholder="Producto 1...">
+                            </th>
+                            <th class="p-2 bg-gray-50">
+                                <input type="text" wire:model.live.debounce.300ms="producto2"
+                                    class="w-full text-xs border border-gray-300 rounded px-2 py-2 text-gray-800 bg-gray-50 shadow-sm focus:border-gray-700 focus:ring-2 focus:ring-gray-600 focus:outline-none transition"
+                                    placeholder="Producto 2...">
+                            </th>
+                            <th class="p-2 bg-gray-50">
+                                <input type="text" wire:model.live.debounce.300ms="producto3"
+                                    class="w-full text-xs border border-gray-300 rounded px-2 py-2 text-gray-800 bg-gray-50 shadow-sm focus:border-gray-700 focus:ring-2 focus:ring-gray-600 focus:outline-none transition"
+                                    placeholder="Producto 3...">
+                            </th>
+                            <th class="p-2 bg-gray-50">
+                                <input type="text" wire:model.live.debounce.300ms="figura"
+                                    class="w-full text-xs border border-gray-300 rounded px-2 py-2 text-gray-800 bg-gray-50 shadow-sm focus:border-gray-700 focus:ring-2 focus:ring-gray-600 focus:outline-none transition"
+                                    placeholder="Figura...">
+                            </th>
+                            <th class="p-2 bg-gray-50">
+                                <input type="text" wire:model.live.debounce.300ms="peso"
+                                    class="w-full text-xs border border-gray-300 rounded px-2 py-2 text-gray-800 bg-gray-50 shadow-sm focus:border-gray-700 focus:ring-2 focus:ring-gray-600 focus:outline-none transition"
+                                    placeholder="Peso...">
+                            </th>
+                            <th class="p-2 bg-gray-50">
+                                <input type="text" wire:model.live.debounce.300ms="longitud"
+                                    class="w-full text-xs border border-gray-300 rounded px-2 py-2 text-gray-800 bg-gray-50 shadow-sm focus:border-gray-700 focus:ring-2 focus:ring-gray-600 focus:outline-none transition"
+                                    placeholder="Longitud...">
+                            </th>
+                            <th class="p-2 bg-gray-50">
+                                <select wire:model.live="estado"
+                                    class="w-full text-xs border border-gray-300 rounded px-2 py-2 text-gray-800 bg-gray-50 shadow-sm focus:border-gray-700 focus:ring-2 focus:ring-gray-600 focus:outline-none transition">
+                                    <option value="">Todos</option>
+                                    <option value="pendiente">Pendiente</option>
+                                    <option value="fabricando">Fabricando</option>
+                                    <option value="fabricado">Fabricado</option>
+                                    <option value="montaje">Montaje</option>
+                                </select>
+                            </th>
+                            <th class="p-2 bg-white text-left align-middle">
+                                <div class="flex justify-center gap-2 items-center h-full">
+                                    {{-- ♻️ Botón reset --}}
+                                    <button wire:click="limpiarFiltros"
+                                        class="bg-orange-400 hover:bg-orange-500 text-white px-3 py-2 rounded text-xs flex items-center justify-center shadow-sm"
+                                        title="Restablecer filtros">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none"
+                                            viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                            <path stroke-linecap="round" stroke-linejoin="round"
+                                                d="M4 4v5h.582M20 20v-5h-.581M4.582 9A7.5 7.5 0 0112 4.5a7.5 7.5 0 016.418 3.418M19.418 15A7.5 7.5 0 0112 19.5a7.5 7.5 0 01-6.418-3.418" />
+                                        </svg>
+                                    </button>
+                                </div>
+                            </th>
+                        </x-tabla.filtro-row>
+                    </x-tabla.header>
 
-                <tbody class="text-gray-700 text-sm">
-                    @forelse ($elementos as $elemento)
-                        <tr tabindex="0"
-                            wire:key="elemento-{{ $elemento->id }}"
-                            x-data="{
-                            editando: false,
-                            seleccionada: false,
-                            elemento: @js($elemento),
-                            original: JSON.parse(JSON.stringify(@js($elemento)))
-                        }"
-                            @dblclick="if(!$event.target.closest('input, select, button, a')) {
+                    <tbody class="text-gray-700 text-sm">
+                        @forelse ($elementos as $elemento)
+                            <tr tabindex="0" wire:key="elemento-{{ $elemento->id }}" x-data="{
+                                editando: false,
+                                seleccionada: false,
+                                elemento: @js($elemento),
+                                original: JSON.parse(JSON.stringify(@js($elemento)))
+                            }"
+                                @dblclick="if(!$event.target.closest('input, select, button, a')) {
                                 if(!editando) {
                                     editando = true;
                                 } else {
@@ -206,289 +223,288 @@
                                     editando = false;
                                 }
                             }"
-                            @keydown.enter.stop="if(editando) { guardarCambios(elemento); editando = false; }"
-                            :class="{
-                                'bg-yellow-100': editando,
-                                'bg-blue-100': seleccionada,
-                                'hover:bg-blue-50': !seleccionada && !editando
-                            }"
-                            class="border-b odd:bg-gray-100 even:bg-gray-50 cursor-pointer text-xs uppercase transition-colors">
+                                @keydown.enter.stop="if(editando) { guardarCambios(elemento); editando = false; }"
+                                :class="{
+                                    'bg-yellow-100': editando,
+                                    'bg-gray-200': seleccionada,
+                                    'hover:bg-gray-200': !seleccionada && !editando
+                                }"
+                                class="border-b odd:bg-gray-100 even:bg-gray-50 cursor-pointer text-xs uppercase transition-colors group">
 
-                            <!-- ID -->
-                            <td class="px-1 py-3 text-center border">
-                                <template x-if="!editando">
-                                    <span x-text="elemento.id"></span>
-                                </template>
-                                <input x-show="editando" style="display: none;" type="text" x-model="elemento.id"
-                                    class="form-control form-control-sm w-full text-xs border rounded px-1 py-0.5">
-                            </td>
+                                <!-- ID -->
+                                <td class="px-1 py-3 text-center border">
+                                    <template x-if="!editando">
+                                        <span x-text="elemento.id"></span>
+                                    </template>
+                                    <input x-show="editando" x-cloak type="text" x-model="elemento.id"
+                                        class="form-control form-control-sm w-full text-xs border rounded px-1 py-0.5">
+                                </td>
 
-                            <!-- CODIGO -->
-                            <td class="px-1 py-3 text-center border">
-                                <template x-if="!editando">
-                                    <span x-text="elemento.codigo"></span>
-                                </template>
-                                <input x-show="editando" style="display: none;" type="text" x-model="elemento.codigo"
-                                    class="form-control form-control-sm w-full text-xs border rounded px-1 py-0.5">
-                            </td>
+                                <!-- CODIGO -->
+                                <td class="px-1 py-3 text-center border">
+                                    <template x-if="!editando">
+                                        <span x-text="elemento.codigo"></span>
+                                    </template>
+                                    <input x-show="editando" x-cloak type="text" x-model="elemento.codigo"
+                                        class="form-control form-control-sm w-full text-xs border rounded px-1 py-0.5">
+                                </td>
 
-                            <!-- PLANILLA -->
-                            <td class="px-2 py-2 text-center border">
-                                <a href="{{ route('elementos.index', ['planilla_id' => $elemento->planilla_id]) }}" wire:navigate
-                                    class="text-blue-500 hover:underline">
-                                    {{ $elemento->planilla->codigo_limpio ?? 'N/A' }}
-                                </a>
-                            </td>
+                                <!-- PLANILLA -->
+                                <td class="px-2 py-2 text-center border">
+                                    <a href="{{ route('elementos.index', ['planilla_id' => $elemento->planilla_id]) }}"
+                                        wire:navigate
+                                        class="text-indigo-600 hover:text-indigo-500  group-hover:underline font-semibold transition">
+                                        {{ $elemento->planilla->codigo_limpio ?? 'N/A' }}
+                                    </a>
+                                </td>
 
-                            <!-- ETIQUETA -->
-                            <td class="px-2 py-2 text-center border">
-                                <a href="{{ route('etiquetas.index', ['id' => $elemento->etiquetaRelacion?->id ?? '#']) }}" wire:navigate
-                                    class="text-blue-500 hover:underline">
-                                    {{ $elemento->etiquetaRelacion?->id ?? 'N/A' }}
-                                </a>
-                            </td>
+                                <!-- ETIQUETA -->
+                                <td class="px-2 py-2 text-center border">
+                                    <a href="{{ route('etiquetas.index', ['codigo' => $elemento->etiquetaRelacion?->codigo]) }}"
+                                        class="text-indigo-600 hover:text-indigo-500 group-hover:underline font-semibold transition">
+                                        {{ $elemento->etiquetaRelacion?->codigo ?? 'N/A' }}
+                                    </a>
+                                </td>
 
-                            <!-- SUBETIQUETA -->
-                            <td class="px-2 py-2 text-center border">
-                                <a href="{{ route('etiquetas.index', ['id' => $elemento->etiquetaRelacion?->id ?? '#']) }}" wire:navigate
-                                    class="text-blue-500 hover:underline">
-                                    {{ $elemento->subetiqueta ?? 'N/A' }}
-                                </a>
-                            </td>
+                                <!-- SUBETIQUETA -->
+                                <td class="px-2 py-2 text-center border">
+                                    <a href="{{ route('etiquetas.index', ['etiqueta_sub_id' => $elemento->etiqueta_sub_id]) }}"
+                                        class="text-indigo-600 hover:text-indigo-500 group-hover:underline font-semibold transition">
+                                        {{ $elemento->subetiqueta ?? 'N/A' }}
+                                    </a>
+                                </td>
 
-                            <!-- DIMENSIONES -->
-                            <td class="px-1 py-3 text-center border">
-                                <span>{{ $elemento->dimensiones ?? 'N/A' }}</span>
-                            </td>
+                                <!-- DIMENSIONES -->
+                                <td class="px-1 py-3 text-center border">
+                                    <span>{{ $elemento->dimensiones ?? 'N/A' }}</span>
+                                </td>
 
-                            <!-- DIAMETRO_MM -->
-                            <td class="px-1 py-3 text-center border">
-                                <template x-if="!editando">
-                                    <span x-text="elemento.diametro_mm"></span>
-                                </template>
-                                <input x-show="editando" style="display: none;" type="number" x-model="elemento.diametro"
-                                    class="form-control form-control-sm w-full text-xs border rounded px-1 py-0.5">
-                            </td>
+                                <!-- DIAMETRO_MM -->
+                                <td class="px-1 py-3 text-center border">
+                                    <template x-if="!editando">
+                                        <span x-text="elemento.diametro_mm"></span>
+                                    </template>
+                                    <input x-show="editando" x-cloak type="number" x-model="elemento.diametro"
+                                        class="form-control form-control-sm w-full text-xs border rounded px-1 py-0.5">
+                                </td>
 
-                            <!-- BARRAS -->
-                            <td class="px-1 py-3 text-center border">
-                                <template x-if="!editando">
-                                    <span x-text="elemento.barras"></span>
-                                </template>
-                                <input x-show="editando" style="display: none;" type="number" x-model="elemento.barras"
-                                    class="form-control form-control-sm w-full text-xs border rounded px-1 py-0.5">
-                            </td>
+                                <!-- BARRAS -->
+                                <td class="px-1 py-3 text-center border">
+                                    <template x-if="!editando">
+                                        <span x-text="elemento.barras"></span>
+                                    </template>
+                                    <input x-show="editando" x-cloak type="number" x-model="elemento.barras"
+                                        class="form-control form-control-sm w-full text-xs border rounded px-1 py-0.5">
+                                </td>
 
-                            <!-- MAQUINA 1 -->
-                            <td class="px-1 py-3 text-center border">
-                                <div class="flex items-center justify-center gap-1">
+                                <!-- MAQUINA 1 -->
+                                <td class="px-1 py-3 text-center border">
+                                    <div class="flex items-center justify-center gap-1">
+                                        <select
+                                            class="text-xs border border-gray-300 rounded px-2 py-2 flex-1 text-gray-800 bg-white shadow-sm focus:border-gray-700 focus:ring-2 focus:ring-gray-600 focus:outline-none transition"
+                                            data-id="{{ $elemento->id }}" data-field="maquina_id"
+                                            onchange="actualizarCampoElemento(this)">
+                                            <option value="">N/A</option>
+                                            @foreach ($maquinas->whereIn('tipo', ['cortadora_dobladora', 'estribadora', 'cortadora manual']) as $maquina)
+                                                <option value="{{ $maquina->id }}" @selected($elemento->maquina_id === $maquina->id)>
+                                                    {{ $maquina->nombre }}
+                                                </option>
+                                            @endforeach
+                                        </select>
+                                        <div class="w-8 h-8 bg-blue-100 border border-blue-200 text-gray-700 rounded hover:bg-blue-200 flex items-center justify-center abrir-modal-dibujo flex-shrink-0 cursor-pointer transition"
+                                            data-id="{{ $elemento->id }}" data-codigo="{{ $elemento->codigo }}"
+                                            data-dimensiones="{{ $elemento->dimensiones }}"
+                                            data-peso="{{ $elemento->peso_kg }}"
+                                            title="Ver figura del elemento (solo hover)" wire:navigate>
+                                            <svg xmlns="http://www.w3.org/2000/svg"
+                                                class="h-4 w-4 pointer-events-none" fill="none"
+                                                viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                                <path stroke-linecap="round" stroke-linejoin="round"
+                                                    d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                                <path stroke-linecap="round" stroke-linejoin="round"
+                                                    d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                            </svg>
+                                        </div>
+                                    </div>
+                                </td>
+
+                                <!-- MAQUINA 2 -->
+                                <td class="px-1 py-3 text-center border">
                                     <select
-                                        class="text-xs border rounded px-1 py-0.5 flex-1 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none"
-                                        data-id="{{ $elemento->id }}" data-field="maquina_id"
+                                        class="text-xs border border-gray-300 rounded px-2 py-2 text-gray-800 bg-white shadow-sm focus:border-gray-700 focus:ring-2 focus:ring-gray-600 focus:outline-none transition"
+                                        data-id="{{ $elemento->id }}" data-field="maquina_id_2"
                                         onchange="actualizarCampoElemento(this)">
                                         <option value="">N/A</option>
-                                        @foreach ($maquinas->whereIn('tipo', ['cortadora_dobladora', 'estribadora', 'cortadora manual']) as $maquina)
-                                            <option value="{{ $maquina->id }}" @selected($elemento->maquina_id === $maquina->id)>
+                                        @foreach ($maquinas->whereIn('tipo', ['cortadora_dobladora', 'estribadora', 'cortadora_manual', 'dobladora_manual', 'soldadora']) as $maquina)
+                                            <option value="{{ $maquina->id }}" @selected($elemento->maquina_id_2 === $maquina->id)>
                                                 {{ $maquina->nombre }}
                                             </option>
                                         @endforeach
                                     </select>
-                                    <div
-                                        class="w-6 h-6 bg-blue-100 text-blue-600 rounded hover:bg-blue-200 flex items-center justify-center abrir-modal-dibujo flex-shrink-0 cursor-pointer"
-                                        data-id="{{ $elemento->id }}" data-codigo="{{ $elemento->codigo }}"
-                                        data-dimensiones="{{ $elemento->dimensiones }}"
-                                        data-peso="{{ $elemento->peso_kg }}" title="Ver figura del elemento (solo hover)" wire:navigate>
-                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 pointer-events-none" fill="none"
-                                            viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                            <path stroke-linecap="round" stroke-linejoin="round"
-                                                d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                            <path stroke-linecap="round" stroke-linejoin="round"
-                                                d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                                        </svg>
-                                    </div>
-                                </div>
-                            </td>
+                                </td>
 
-                            <!-- MAQUINA 2 -->
-                            <td class="px-1 py-3 text-center border">
-                                <select
-                                    class="text-xs border rounded px-1 py-0.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none"
-                                    data-id="{{ $elemento->id }}" data-field="maquina_id_2"
-                                    onchange="actualizarCampoElemento(this)">
-                                    <option value="">N/A</option>
-                                    @foreach ($maquinas->whereIn('tipo', ['cortadora_dobladora', 'estribadora', 'cortadora_manual', 'dobladora_manual', 'soldadora']) as $maquina)
-                                        <option value="{{ $maquina->id }}" @selected($elemento->maquina_id_2 === $maquina->id)>
-                                            {{ $maquina->nombre }}
-                                        </option>
-                                    @endforeach
-                                </select>
-                            </td>
+                                <!-- MAQUINA 3 -->
+                                <td class="px-1 py-3 text-center border">
+                                    <select
+                                        class="text-xs border border-gray-300 rounded px-2 py-2 text-gray-800 bg-white shadow-sm focus:border-gray-700 focus:ring-2 focus:ring-gray-600 focus:outline-none transition"
+                                        data-id="{{ $elemento->id }}" data-field="maquina_id_3"
+                                        onchange="actualizarCampoElemento(this)">
+                                        <option value="">N/A</option>
+                                        @foreach ($maquinas->whereIn('tipo', ['soldadora', 'ensambladora']) as $maquina)
+                                            <option value="{{ $maquina->id }}" @selected($elemento->maquina_id_3 === $maquina->id)>
+                                                {{ $maquina->nombre }}
+                                            </option>
+                                        @endforeach
+                                    </select>
+                                </td>
 
-                            <!-- MAQUINA 3 -->
-                            <td class="px-1 py-3 text-center border">
-                                <select
-                                    class="text-xs border rounded px-1 py-0.5 text-blue-900 bg-white focus:border-blue-900 focus:ring-1 focus:ring-blue-900 focus:outline-none"
-                                    data-id="{{ $elemento->id }}" data-field="maquina_id_3"
-                                    onchange="actualizarCampoElemento(this)">
-                                    <option value="">N/A</option>
-                                    @foreach ($maquinas->whereIn('tipo', ['soldadora', 'ensambladora']) as $maquina)
-                                        <option value="{{ $maquina->id }}" @selected($elemento->maquina_id_3 === $maquina->id)>
-                                            {{ $maquina->nombre }}
-                                        </option>
-                                    @endforeach
-                                </select>
-                            </td>
+                                <!-- PRODUCTO 1 -->
+                                <td class="px-2 py-2 text-center border">
+                                    <a href="{{ route('productos.index', ['id' => $elemento->producto_id]) }}"
+                                        wire:navigate
+                                        class="text-indigo-600 hover:text-indigo-500 group-hover:underline font-semibold transition">
+                                        {{ $elemento->producto?->codigo ?? 'N/A' }}
+                                    </a>
+                                </td>
 
-                            <!-- PRODUCTO 1 -->
-                            <td class="px-2 py-2 text-center border">
-                                <a href="{{ route('productos.index', ['id' => $elemento->producto_id]) }}" wire:navigate
-                                    class="text-blue-500 hover:underline">
-                                    {{ $elemento->producto?->codigo ?? 'N/A' }}
-                                </a>
-                            </td>
+                                <!-- PRODUCTO 2 -->
+                                <td class="px-2 py-2 text-center border">
+                                    <a href="{{ route('productos.index', ['id' => $elemento->producto_id_2]) }}"
+                                        wire:navigate
+                                        class="text-indigo-600 hover:text-indigo-500 group-hover:underline font-semibold transition">
+                                        {{ $elemento->producto2?->codigo ?? 'N/A' }}
+                                    </a>
+                                </td>
 
-                            <!-- PRODUCTO 2 -->
-                            <td class="px-2 py-2 text-center border">
-                                <a href="{{ route('productos.index', ['id' => $elemento->producto_id_2]) }}" wire:navigate
-                                    class="text-blue-500 hover:underline">
-                                    {{ $elemento->producto2?->codigo ?? 'N/A' }}
-                                </a>
-                            </td>
+                                <!-- PRODUCTO 3 -->
+                                <td class="px-2 py-2 text-center border">
+                                    <a href="{{ route('productos.index', ['id' => $elemento->producto_id_3]) }}"
+                                        wire:navigate
+                                        class="text-indigo-600 hover:text-indigo-500 group-hover:underline font-semibold transition">
+                                        {{ $elemento->producto3?->codigo ?? 'N/A' }}
+                                    </a>
+                                </td>
 
-                            <!-- PRODUCTO 3 -->
-                            <td class="px-2 py-2 text-center border">
-                                <a href="{{ route('productos.index', ['id' => $elemento->producto_id_3]) }}" wire:navigate
-                                    class="text-blue-500 hover:underline">
-                                    {{ $elemento->producto3?->codigo ?? 'N/A' }}
-                                </a>
-                            </td>
-
-                            <!-- FIGURA -->
-                            <td class="px-1 py-3 text-center border">
-                                <template x-if="!editando">
-                                    <span x-text="elemento.figura"></span>
-                                </template>
-                                <input x-show="editando" style="display: none;" type="text" x-model="elemento.figura"
-                                    class="form-control form-control-sm w-full text-xs border rounded px-1 py-0.5">
-                            </td>
-
-                            <!-- PESO_KG -->
-                            <td class="px-1 py-3 text-center border">
-                                <template x-if="!editando">
-                                    <span x-text="elemento.peso_kg"></span>
-                                </template>
-                                <input x-show="editando" style="display: none;" type="number" x-model="elemento.peso"
-                                    class="form-control form-control-sm w-full text-xs border rounded px-1 py-0.5">
-                            </td>
-
-                            <!-- LONGITUD_M -->
-                            <td class="px-1 py-3 text-center border">
-                                <template x-if="!editando">
-                                    <span x-text="elemento.longitud_m"></span>
-                                </template>
-                                <input x-show="editando" style="display: none;" type="number" x-model="elemento.longitud"
-                                    class="form-control form-control-sm w-full text-xs border rounded px-1 py-0.5">
-                            </td>
-
-                            <!-- ESTADO -->
-                            <td class="px-1 py-3 text-center border">
-                                <template x-if="!editando">
-                                    <span x-text="elemento.estado"></span>
-                                </template>
-                                <select x-show="editando" style="display: none;" x-model="elemento.estado"
-                                    class="form-select w-full text-xs border rounded px-1 py-0.5">
-                                    <option value="pendiente">Pendiente</option>
-                                    <option value="fabricando">Fabricando</option>
-                                    <option value="fabricado">Fabricado</option>
-                                </select>
-                            </td>
-
-                            <!-- BOTONES -->
-                            <td class="px-1 py-2 border text-xs font-bold">
-                                <div class="flex items-center space-x-2 justify-center">
-                                    <!-- Mostrar solo en modo edición -->
-                                    <button x-show="editando" style="display: none;" @click="guardarCambios(elemento); editando = false"
-                                        class="w-6 h-6 bg-green-100 text-green-600 rounded hover:bg-green-200 flex items-center justify-center"
-                                        title="Guardar cambios">
-                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none"
-                                            viewBox="0 0 24 24" stroke="currentColor">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                d="M5 13l4 4L19 7" />
-                                        </svg>
-                                    </button>
-                                    <button x-show="editando" style="display: none;"
-                                        @click="elemento = JSON.parse(JSON.stringify(original)); editando = false"
-                                        class="w-6 h-6 bg-red-100 text-red-600 rounded hover:bg-red-200 flex items-center justify-center"
-                                        title="Cancelar edición">
-                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none"
-                                            viewBox="0 0 24 24" stroke="currentColor">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                d="M6 18L18 6M6 6l12 12" />
-                                        </svg>
-                                    </button>
-
-                                    <!-- Mostrar solo cuando NO está en modo edición -->
+                                <!-- FIGURA -->
+                                <td class="px-1 py-3 text-center border">
                                     <template x-if="!editando">
-                                        <div class="flex items-center space-x-2">
-                                            <button @click="editando = true"
-                                                class="w-6 h-6 bg-blue-100 text-blue-600 rounded hover:bg-blue-200 flex items-center justify-center"
-                                                title="Editar">
-                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4"
-                                                    fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                    <path stroke-linecap="round" stroke-linejoin="round"
-                                                        stroke-width="2"
-                                                        d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                                                </svg>
-                                            </button>
-                                            <form action="{{ route('elementos.destroy', $elemento->id) }}"
-                                                method="POST"
-                                                onsubmit="return confirm('¿Eliminar elemento {{ $elemento->codigo }}?');">
-                                                @csrf
-                                                @method('DELETE')
-                                                <button type="submit"
-                                                    class="w-6 h-6 bg-red-100 text-red-600 rounded hover:bg-red-200 flex items-center justify-center"
-                                                    title="Eliminar">
+                                        <span x-text="elemento.figura"></span>
+                                    </template>
+                                    <input x-show="editando" x-cloak type="text" x-model="elemento.figura"
+                                        class="form-control form-control-sm w-full text-xs border rounded px-1 py-0.5">
+                                </td>
+
+                                <!-- PESO_KG -->
+                                <td class="px-1 py-3 text-center border">
+                                    <template x-if="!editando">
+                                        <span x-text="elemento.peso_kg"></span>
+                                    </template>
+                                    <input x-show="editando" x-cloak type="number" x-model="elemento.peso"
+                                        class="form-control form-control-sm w-full text-xs border rounded px-1 py-0.5">
+                                </td>
+
+                                <!-- LONGITUD_M -->
+                                <td class="px-1 py-3 text-center border">
+                                    <template x-if="!editando">
+                                        <span x-text="elemento.longitud_m"></span>
+                                    </template>
+                                    <input x-show="editando" x-cloak type="number" x-model="elemento.longitud"
+                                        class="form-control form-control-sm w-full text-xs border rounded px-1 py-0.5">
+                                </td>
+
+                                <!-- ESTADO -->
+                                <td class="px-1 py-3 text-center border">
+                                    <template x-if="!editando">
+                                        <span x-text="elemento.estado"></span>
+                                    </template>
+                                    <select x-show="editando" x-cloak x-model="elemento.estado"
+                                        class="form-select w-full text-xs border rounded px-1 py-0.5">
+                                        <option value="pendiente">Pendiente</option>
+                                        <option value="fabricando">Fabricando</option>
+                                        <option value="fabricado">Fabricado</option>
+                                    </select>
+                                </td>
+
+                                <!-- BOTONES -->
+                                <td class="px-1 py-2 border text-xs font-bold">
+                                    <div class="flex items-center space-x-2 justify-center">
+                                        <!-- Mostrar solo en modo edición -->
+                                        <button x-show="editando" x-cloak
+                                            @click="guardarCambios(elemento); editando = false"
+                                            class="w-6 h-6 bg-green-100 text-green-600 rounded hover:bg-green-200 flex items-center justify-center"
+                                            title="Guardar cambios">
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none"
+                                                viewBox="0 0 24 24" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                    d="M5 13l4 4L19 7" />
+                                            </svg>
+                                        </button>
+                                        <button x-show="editando" x-cloak
+                                            @click="elemento = JSON.parse(JSON.stringify(original)); editando = false"
+                                            class="w-6 h-6 bg-red-100 text-red-600 rounded hover:bg-red-200 flex items-center justify-center"
+                                            title="Cancelar edición">
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none"
+                                                viewBox="0 0 24 24" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                    d="M6 18L18 6M6 6l12 12" />
+                                            </svg>
+                                        </button>
+
+                                        <!-- Mostrar solo cuando NO está en modo edición -->
+                                        <template x-if="!editando">
+                                            <div class="flex items-center space-x-2">
+                                                <button @click="editando = true"
+                                                    class="w-6 h-6 bg-gray-200 text-gray-800 rounded hover:bg-gray-300 flex items-center justify-center"
+                                                    title="Editar">
                                                     <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4"
                                                         fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                         <path stroke-linecap="round" stroke-linejoin="round"
                                                             stroke-width="2"
-                                                            d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                            d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                                                     </svg>
                                                 </button>
-                                            </form>
-                                        </div>
-                                    </template>
-                                </div>
-                            </td>
-                        </tr>
-                    @empty
-                        <tr>
-                            <td colspan="19" class="text-center py-4 text-gray-500">
-                                No hay elementos registrados
-                            </td>
-                        </tr>
-                    @endforelse
-                </tbody>
+                                                <form action="{{ route('elementos.destroy', $elemento->id) }}"
+                                                    method="POST"
+                                                    onsubmit="return confirm('¿Eliminar elemento {{ $elemento->codigo }}?');">
+                                                    @csrf
+                                                    @method('DELETE')
+                                                    <button type="submit"
+                                                        class="w-6 h-6 bg-red-100 text-red-600 rounded hover:bg-red-200 flex items-center justify-center"
+                                                        title="Eliminar">
+                                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4"
+                                                            fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                            <path stroke-linecap="round" stroke-linejoin="round"
+                                                                stroke-width="2"
+                                                                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                        </svg>
+                                                    </button>
+                                                </form>
+                                            </div>
+                                        </template>
+                                    </div>
+                                </td>
+                            </tr>
+                        @empty
+                            <tr>
+                                <td colspan="19" class="text-center py-4 text-gray-500">
+                                    No hay elementos registrados
+                                </td>
+                            </tr>
+                        @endforelse
+                    </tbody>
 
-                <tfoot>
-                    <tr class="bg-gradient-to-r from-blue-50 to-blue-100 border-t border-blue-300">
-                        <td colspan="19" class="px-6 py-3">
-                            <div class="flex justify-end items-center gap-4 text-sm text-gray-700">
-                                <span class="font-semibold">Total peso filtrado:</span>
-                                <span class="text-base font-bold text-blue-800">
-                                    {{ number_format($totalPesoFiltrado, 2, ',', '.') }} kg
-                                </span>
-                            </div>
-                        </td>
-                    </tr>
-                </tfoot>
-            </table>
+                </table>
+            </div>
         </div>
 
-        <!-- Paginación Livewire -->
-        <div class="mt-4">
-            {{ $elementos->links('vendor.livewire.tailwind') }}
-        </div>
+        <x-tabla.paginacion-livewire :paginador="$elementos">
+            <div class="inline-flex items-center gap-3 px-4 py-2 bg-white border border-gray-200 rounded-lg shadow-sm">
+                <span class="font-semibold">Total peso filtrado:</span>
+                <span class="text-base font-bold text-emerald-700">
+                    {{ number_format($totalPesoFiltrado, 2, ',', '.') }} kg
+                </span>
+            </div>
+        </x-tabla.paginacion-livewire>
 
         <!-- Modal de dibujo -->
         <div id="modal-dibujo" class="hidden fixed inset-0 flex justify-end items-center pr-96 pointer-events-none"
@@ -503,7 +519,7 @@
     </div>
 
     <!-- Loading indicator flotante -->
-    <div wire:loading class="fixed top-4 right-4 bg-blue-500 text-white px-4 py-2 rounded-lg shadow-lg z-50">
+    <div wire:loading class="fixed top-4 right-4 bg-gray-900 text-white px-4 py-2 rounded-lg shadow-lg z-50">
         <div class="flex items-center gap-2">
             <svg class="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                 <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor"
@@ -521,7 +537,7 @@
         <!-- Vite: elementos-bundle -->
         @vite(['resources/js/elementosJs/elementos-bundle.js'])
         <!-- <script src="{{ asset('js/elementosJs/guardarCambios.js') }}" defer></script>
-        <script src="{{ asset('js/elementosJs/figuraElemento.js') }}" defer></script> -->
+                                                                            <script src="{{ asset('js/elementosJs/figuraElemento.js') }}" defer></script> -->
         <script>
             function actualizarCampoElemento(input) {
                 const id = input.dataset.id;

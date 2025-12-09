@@ -212,4 +212,12 @@ class PageController extends Controller
     {
         return view('secciones.logistica');
     }
+
+    /**
+     * Muesta una breve guía de atajos de teclado disponibles.
+     */
+    public function atajos()
+    {
+        return view('atajos.index');
+    }
 }

@@ -4,7 +4,7 @@
     <x-menu.salidas.salidas />
     <x-menu.salidas.salidas2 />
     <x-menu.salidas.salidasAlmacen />
-    <div class="w-full px-6 py-4">
+    <div class="w-full">
         <div x-data="crearPedidoAlmacen()" class="max-w-4xl mx-auto px-6 py-4 space-y-6">
 
             {{-- 1) Buscador de disponibilidad por Producto Base --}}
@@ -78,10 +78,10 @@
                         <thead class="bg-gray-100/80 sticky top-0 z-10">
                             <tr class="text-xs uppercase tracking-wide text-gray-600">
 
-                                <th class="p-2 border">Diám.</th>
-                                <th class="p-2 border">Long.</th>
-                                <th class="p-2 border">Nº Paquetes</th>
-                                <th class="p-2 border">Peso total (kg)</th>
+                                <th class="p-2">Diám.</th>
+                                <th class="p-2">Long.</th>
+                                <th class="p-2">Nº Paquetes</th>
+                                <th class="p-2">Peso total (kg)</th>
                             </tr>
                         </thead>
                         <tbody>
