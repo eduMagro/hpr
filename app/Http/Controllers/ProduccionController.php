@@ -603,9 +603,31 @@ class ProduccionController extends Controller
         $initialDate = $this->calcularInitialDate();
 
         // 🆕 Configuración del calendario (horas visibles y días a mostrar)
+        // Calcular fecha máxima basándose en el fin programado más alto de los eventos
+        $fechaMaxima = null;
+        foreach ($planillasEventos as $evento) {
+            if (!empty($evento['end'])) {
+                try {
+                    $endCarbon = Carbon::parse($evento['end']);
+                    if (!$fechaMaxima || $endCarbon->gt($fechaMaxima)) {
+                        $fechaMaxima = $endCarbon;
+                    }
+                } catch (\Exception $e) {
+                    // Ignorar eventos con fechas inválidas
+                }
+            }
+        }
+
+        // Calcular días desde la fecha inicial hasta la fecha máxima
+        $fechaInicial = Carbon::parse($initialDate);
+        $diasCalculados = 7; // Mínimo 7 días
+        if ($fechaMaxima) {
+            $diasCalculados = max(7, $fechaInicial->diffInDays($fechaMaxima) + 2); // +2 días de margen
+        }
+
         $fechaMaximaCalendario = [
             'horas' => 24, // Horas máximas visibles en el calendario (slotMaxTime)
-            'dias' => 7,   // Días a mostrar en la vista personalizada
+            'dias' => $diasCalculados, // Días calculados según el último fin programado
         ];
 
         // 🆕 Preparar datos de máquinas para JavaScript
