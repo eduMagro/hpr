@@ -1233,13 +1233,13 @@ class PlanillaController extends Controller
 
             // 4. Resetear elementos (incluyendo maquina_id para que el servicio los reasigne)
             // Nota: elementos NO tiene fecha_inicio/fecha_finalizacion ni operarios - eso está en etiquetas
+            // Nota: etiqueta_id NO se resetea porque es la relación estructural con la etiqueta padre
             $elementosReseteados = $planilla->elementos()->count();
             $planilla->elementos()->update([
                 'estado' => 'pendiente',
                 'paquete_id' => null,
                 'producto_id' => null,
                 'producto_id_2' => null,
-                'etiqueta_id' => null,
                 'maquina_id' => null,
                 'orden_planilla_id' => null,
             ]);
