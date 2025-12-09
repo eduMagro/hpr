@@ -1,7 +1,7 @@
 <x-app-layout>
     <x-slot name="title">Elementos - {{ config('app.name') }}</x-slot>
 
-    <div class="w-full p-4 sm:p-2">
+    <div class="w-full md:p-4 sm:p-2">
         <!-- Desktop -->
         <div class="hidden md:block">
             @livewire('elementos-table')

@@ -9,7 +9,7 @@
         </h2>
     </x-slot>
 
-    <div class="container mx-auto px-4 py-6">
+    <div class="container mx-auto md:px-4 md:py-6">
         <form method="POST" action="{{ route('productos.update', $producto->id) }}"
             class="max-w-lg mx-auto bg-white p-6 rounded-lg shadow-md">
             @csrf

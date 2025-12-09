@@ -1,5 +1,5 @@
 <div>
-    <div class="w-full p-4 sm:p-2">
+    <div class="w-full md:p-4 sm:p-2">
         <x-tabla.filtros-aplicados :filtros="$filtrosActivos" />
 
         <!-- Tabla con filtros Livewire -->

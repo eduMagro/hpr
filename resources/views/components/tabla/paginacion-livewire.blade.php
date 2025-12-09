@@ -96,8 +96,8 @@
                     </nav>
                 @endif
 
-                {{-- Texto resumen debajo de la paginación --}}
-                <div class="text-sm text-gray-700">
+                {{-- Texto resumen debajo de la paginación - Desktop --}}
+                <div class="hidden md:block text-sm text-gray-700">
                     Mostrando
                     <span class="font-semibold">{{ $paginador->firstItem() ?? 0 }}</span>
                     a
@@ -105,6 +105,15 @@
                     de
                     <span class="font-semibold">{{ $paginador->total() }}</span>
                     resultados
+                </div>
+
+                {{-- Texto resumen debajo de la paginación - Móvil --}}
+                <div class="md:hidden text-xs text-gray-700 text-center">
+                    <span class="font-semibold">{{ $paginador->firstItem() ?? 0 }}</span>
+                    -
+                    <span class="font-semibold">{{ $paginador->lastItem() ?? 0 }}</span>
+                    de
+                    <span class="font-semibold">{{ $paginador->total() }}</span>
                 </div>
             </div>
         @endif

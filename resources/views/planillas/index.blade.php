@@ -79,8 +79,7 @@
             <div class="bg-gradient-to-tr from-gray-900 to-gray-700 text-white rounded-xl p-3 shadow-lg">
                 <div class="flex items-center justify-between gap-2">
                     <div class="flex-1">
-                        <p class="text-[10px] uppercase tracking-wide text-gray-300">Planillas</p>
-                        <h2 class="text-base font-semibold">Seguimiento</h2>
+                        <h2 class="text-base font-semibold">Planillas</h2>
                     </div>
                     <div class="flex items-center gap-1.5">
                         <button type="button"

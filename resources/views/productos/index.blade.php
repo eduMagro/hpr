@@ -12,7 +12,8 @@
 
     <div class="w-full md:flex md:flex-col md:gap-3 md:h-[calc(100vh-100px)] md:overflow-hidden">
         <!-- Botones superiores -->
-        <div class="mb-4 flex flex-wrap items-center justify-center md:justify-end gap-2 px-2 md:mb-0 md:flex-shrink-0">
+        <div
+            class="mb-4 flex max-sm:hidden flex-wrap items-center justify-center md:justify-end gap-2 px-2 md:mb-0 md:flex-shrink-0">
             @if (auth()->check() && auth()->id() === 1)
                 <x-tabla.boton-azul :href="route('entradas.create')" class="text-sm px-4 py-2">
                     ➕ Nueva Entrada
@@ -241,48 +242,133 @@
         </div>
 
         <!-- 📱 Vista móvil renovada -->
-        <div class="block md:hidden">
-            <div class="space-y-2 mb-4">
-                <div class="bg-gradient-to-r from-gray-900 to-gray-700 text-white rounded-xl p-3 shadow-lg">
+        <div class="block md:hidden" x-data="{ filtrosAbiertos: false }">
+            <div class="mb-4">
+                <div class="bg-gradient-to-r from-blue-700 to-blue-600 text-white p-3 shadow-lg cursor-pointer"
+                    :class="filtrosAbiertos ? 'rounded-t-xl' : 'rounded-xl'"
+                    @click="filtrosAbiertos = !filtrosAbiertos">
                     <div class="flex items-center justify-between gap-2">
-                        <div class="flex-1">
-                            <p class="text-[10px] uppercase tracking-wide text-gray-300">Inventario</p>
+                        <div class="flex items-center gap-2 flex-1">
+                            {{-- Ícono toggle filtros --}}
+                            <div class="text-white">
+                                <svg x-show="!filtrosAbiertos" class="w-5 h-5" fill="none" stroke="currentColor"
+                                    viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M19 9l-7 7-7-7" />
+                                </svg>
+                                <svg x-show="filtrosAbiertos" class="w-5 h-5" fill="none" stroke="currentColor"
+                                    viewBox="0 0 24 24" style="display: none;">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M5 15l7-7 7 7" />
+                                </svg>
+                            </div>
                             <h2 class="text-base font-semibold">Materiales</h2>
                         </div>
-                        <button onclick="abrirModal()"
-                            class="bg-white/15 text-white text-[10px] font-semibold px-2 py-1.5 rounded-lg shadow hover:bg-white/25 transition">
+                        <button onclick="abrirModal()" @click.stop
+                            class="bg-white/15 flex items-center gap-1 text-white text-[10px] font-semibold px-2 py-1.5 rounded-lg shadow hover:bg-white/25 transition">
+                            <svg viewBox="0 0 512 512" version="1.1" xmlns="http://www.w3.org/2000/svg"
+                                class="h-4 w-4" xmlns:xlink="http://www.w3.org/1999/xlink" fill="#ffffff"
+                                stroke="#ffffff">
+                                <g id="SVGRepo_bgCarrier" stroke-width="0"></g>
+                                <g id="SVGRepo_tracerCarrier" stroke-linecap="round" stroke-linejoin="round"></g>
+                                <g id="SVGRepo_iconCarrier">
+                                    <title>qr-code</title>
+                                    <g id="Page-1" stroke="none" stroke-width="1" fill="none"
+                                        fill-rule="evenodd">
+                                        <g id="qr-code" fill="#ffffff" transform="translate(64.000000, 63.978667)">
+                                            <path
+                                                d="M384,149.354667 L384,384.021333 L149.333333,384.021333 L149.348268,298.688 L191.997479,298.688 L191.982544,341.354667 L341.350789,341.354667 L341.350789,192.021333 L320,192.021 L320,192 L298.678,192 L298.678304,149.354667 L384,149.354667 Z M42.6666667,298.688 L42.6666667,341.370882 L106.666667,341.370882 L106.666667,384.021333 L-4.26325641e-14,384.021333 L-4.26325641e-14,298.688 L42.6666667,298.688 Z M298.666667,234.688 L298.666667,298.688 L234.666667,298.688 L234.666667,234.688 L298.666667,234.688 Z M256,0.0213333333 L256,192 L213.333,192 L213.333333,42.688 L42.6666667,42.688 L42.6666667,213.354667 L192,213.354333 L192,256.021333 L-4.26325641e-14,256.021333 L-4.26325641e-14,0.0213333333 L256,0.0213333333 Z M170.666667,85.3546667 L170.666667,170.688 L85.3333333,170.688 L85.3333333,85.3546667 L170.666667,85.3546667 Z M298.666667,1.42108547e-14 L384,0.0213333333 L384,85.3333333 L341.346136,85.312 L341.346136,42.6666667 L298.666667,42.6666667 L298.666667,1.42108547e-14 Z">
+                                            </path>
+                                        </g>
+                                    </g>
+                                </g>
+                            </svg>
                             QR
                         </button>
                     </div>
                 </div>
 
-                <div class="bg-white border border-gray-200 rounded-xl shadow-sm p-3">
+                <div x-show="filtrosAbiertos" x-collapse
+                    class="bg-white border border-gray-200 rounded-b-xl shadow-sm p-3">
                     <form method="GET" action="{{ route('productos.index') }}" class="space-y-2">
-                        <div class="flex flex-col gap-1">
-                            <label for="codigo" class="text-[10px] font-semibold text-gray-700">Código QR</label>
-                            <x-tabla.input name="codigo" label="" placeholder="Buscar por QR..." autofocus
-                                autocomplete="off" />
+                        <div class="grid grid-cols-2 gap-2">
+                            {{-- Código QR --}}
+                            <div class="flex flex-col gap-1">
+                                <label class="text-[10px] font-semibold text-gray-700">Código QR</label>
+                                <input type="text" name="codigo" value="{{ request('codigo') }}"
+                                    placeholder="Buscar..."
+                                    class="w-full px-2 py-1.5 border border-gray-300 rounded-lg text-xs text-gray-800 focus:outline-none focus:ring-1 focus:ring-gray-700" />
+                            </div>
+
+                            {{-- Fabricante --}}
+                            <div class="flex flex-col gap-1">
+                                <label class="text-[10px] font-semibold text-gray-700">Fabricante</label>
+                                <input type="text" name="fabricante" value="{{ request('fabricante') }}"
+                                    placeholder="Buscar..."
+                                    class="w-full px-2 py-1.5 border border-gray-300 rounded-lg text-xs text-gray-800 focus:outline-none focus:ring-1 focus:ring-gray-700" />
+                            </div>
+
+                            {{-- Tipo --}}
+                            <div class="flex flex-col gap-1">
+                                <label class="text-[10px] font-semibold text-gray-700">Tipo</label>
+                                <input type="text" name="tipo" value="{{ request('tipo') }}"
+                                    placeholder="Buscar..."
+                                    class="w-full px-2 py-1.5 border border-gray-300 rounded-lg text-xs text-gray-800 focus:outline-none focus:ring-1 focus:ring-gray-700" />
+                            </div>
+
+                            {{-- Diámetro --}}
+                            <div class="flex flex-col gap-1">
+                                <label class="text-[10px] font-semibold text-gray-700">Diámetro (mm)</label>
+                                <input type="text" name="diametro" value="{{ request('diametro') }}"
+                                    placeholder="Ej: 12"
+                                    class="w-full px-2 py-1.5 border border-gray-300 rounded-lg text-xs text-gray-800 focus:outline-none focus:ring-1 focus:ring-gray-700" />
+                            </div>
+
+                            {{-- N° Colada --}}
+                            <div class="flex flex-col gap-1">
+                                <label class="text-[10px] font-semibold text-gray-700">N° Colada</label>
+                                <input type="text" name="n_colada" value="{{ request('n_colada') }}"
+                                    placeholder="Buscar..."
+                                    class="w-full px-2 py-1.5 border border-gray-300 rounded-lg text-xs text-gray-800 focus:outline-none focus:ring-1 focus:ring-gray-700" />
+                            </div>
+
+                            {{-- N° Paquete --}}
+                            <div class="flex flex-col gap-1">
+                                <label class="text-[10px] font-semibold text-gray-700">N° Paquete</label>
+                                <input type="text" name="n_paquete" value="{{ request('n_paquete') }}"
+                                    placeholder="Buscar..."
+                                    class="w-full px-2 py-1.5 border border-gray-300 rounded-lg text-xs text-gray-800 focus:outline-none focus:ring-1 focus:ring-gray-700" />
+                            </div>
+
+                            {{-- Estado --}}
+                            <div class="flex flex-col gap-1 col-span-2">
+                                <label class="text-[10px] font-semibold text-gray-700">Estado</label>
+                                <select name="estado"
+                                    class="w-full px-2 py-1.5 border border-gray-300 rounded-lg text-xs text-gray-800 focus:outline-none focus:ring-1 focus:ring-gray-700">
+                                    <option value="">Todos</option>
+                                    <option value="almacenado" @selected(request('estado') === 'almacenado')>Almacenado</option>
+                                    <option value="fabricando" @selected(request('estado') === 'fabricando')>Fabricando</option>
+                                    <option value="consumido" @selected(request('estado') === 'consumido')>Consumido</option>
+                                </select>
+                            </div>
+
+                            {{-- Ubicación --}}
+                            <div class="flex flex-col gap-1 col-span-2">
+                                <label class="text-[10px] font-semibold text-gray-700">Ubicación</label>
+                                <input type="text" name="ubicacion" value="{{ request('ubicacion') }}"
+                                    placeholder="Buscar..."
+                                    class="w-full px-2 py-1.5 border border-gray-300 rounded-lg text-xs text-gray-800 focus:outline-none focus:ring-1 focus:ring-gray-700" />
+                            </div>
                         </div>
 
-                        <div class="flex flex-col gap-1">
-                            <label for="producto_base_id" class="text-[10px] font-semibold text-gray-700">Producto
-                                base</label>
-                            <select id="producto_base_id" name="producto_base_id"
-                                class="w-full px-2 py-1.5 border border-gray-300 rounded-lg text-xs text-gray-800 focus:outline-none focus:ring-1 focus:ring-gray-700">
-                                <option value="" disabled selected>Seleccione un producto base</option>
-                                <option value="">NINGUNO</option>
-                                @foreach ($productosBase as $producto)
-                                    <option value="{{ $producto->id }}"
-                                        {{ old('producto_base_id') == $producto->id ? 'selected' : '' }}>
-                                        {{ strtoupper($producto->tipo) }} |
-                                        Ø{{ $producto->diametro }}{{ $producto->longitud ? ' | ' . $producto->longitud . ' m' : '' }}
-                                    </option>
-                                @endforeach
-                            </select>
-                        </div>
-
-                        <div class="flex items-center justify-between gap-2">
-                            <x-tabla.botones-filtro ruta="productos.index" />
+                        <div class="flex items-center justify-end gap-2">
+                            @include('components.tabla.limpiar-filtros', [
+                                'href' => route('productos.index'),
+                            ])
+                            <button type="submit"
+                                class="bg-blue-700 text-white text-xs font-semibold px-3 py-1.5 rounded-lg shadow hover:bg-blue-800">
+                                Filtrar
+                            </button>
                         </div>
                     </form>
                 </div>
@@ -292,11 +378,11 @@
                 @forelse($registrosProductos as $producto)
                     <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
                         <div
-                            class="bg-gradient-to-r from-gray-900 to-gray-700 text-white px-3 py-2 flex items-start justify-between gap-2">
-                            <div class="flex-1 min-w-0">
+                            class="bg-gradient-to-r from-blue-700 to-blue-600 text-white px-3 py-2 flex items-center justify-between gap-2">
+                            <div class="flex items-center gap-2 min-w-0">
                                 <h3 class="text-sm font-semibold tracking-tight truncate">{{ $producto->codigo }}</h3>
                                 <span
-                                    class="inline-flex items-center px-1.5 py-0.5 rounded-md text-[9px] font-semibold bg-emerald-500/20 text-emerald-100 border border-emerald-400/30 mt-1">
+                                    class="inline-flex items-center px-1.5 py-0.5 rounded-md text-[10px] uppercase font-semibold bg-emerald-500/50 text-emerald-100 border border-emerald-400/30">
                                     {{ $producto->estado }}
                                 </span>
                             </div>
@@ -313,7 +399,7 @@
                         </div>
 
                         <div class="p-2.5 space-y-2">
-                            <div class="grid grid-cols-2 gap-2 text-[10px]">
+                            <div class="flex flex-wrap gap-2 text-[10px]">
                                 <div>
                                     <p class="text-[9px] uppercase tracking-wide text-gray-500">Fabricante</p>
                                     <p class="font-semibold text-gray-900 truncate">
@@ -342,17 +428,22 @@
                                 </div>
                             </div>
 
-                            <div class="rounded-lg bg-gray-50 border border-gray-200 p-2 flex items-center gap-2">
-                                <div
-                                    class="h-7 w-7 rounded-md bg-gradient-to-tr from-gray-800 to-gray-700 flex items-center justify-center text-white flex-shrink-0">
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none"
-                                        viewBox="0 0 24 24" stroke="currentColor">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                            d="M3 7h18M3 12h18M3 17h18" />
+                            <div class="flex items-center gap-1 justify-start w-full">
+                                <div class="flex min-w-0 items-center">
+                                    <svg class="h-5 w-5" viewBox="0 0 48.00 48.00" xmlns="http://www.w3.org/2000/svg"
+                                        fill="#225CE5" stroke="#225CE5" stroke-width="0.00048000000000000007">
+                                        <g id="SVGRepo_bgCarrier" stroke-width="0"></g>
+                                        <g id="SVGRepo_tracerCarrier" stroke-linecap="round" stroke-linejoin="round"
+                                            stroke="#CCCCCC" stroke-width="0.768"></g>
+                                        <g id="SVGRepo_iconCarrier">
+                                            <path d="M0 0h48v48H0z" fill="none"></path>
+                                            <g id="Shopicon">
+                                                <path
+                                                    d="M24,44c0,0,14-12,14-26c0-7.732-6.268-14-14-14s-14,6.268-14,14C10,32,24,44,24,44z M24,16c1.105,0,2,0.895,2,2 c0,1.105-0.895,2-2,2c-1.105,0-2-0.895-2-2C22,16.895,22.895,16,24,16z">
+                                                </path>
+                                            </g>
+                                        </g>
                                     </svg>
-                                </div>
-                                <div class="flex-1 min-w-0">
-                                    <p class="text-[9px] uppercase tracking-wide text-gray-500">Ubicación</p>
                                     @if (isset($producto->ubicacion->nombre))
                                         <p class="font-semibold text-gray-900 text-[10px] truncate">
                                             {{ $producto->ubicacion->nombre }}</p>
@@ -363,6 +454,7 @@
                                         <p class="font-semibold text-gray-900 text-[10px] truncate">No está ubicada</p>
                                     @endif
                                 </div>
+
                             </div>
 
                             @php
@@ -372,13 +464,13 @@
                             @endphp
 
                             @if ($esOficina || $esGruista)
-                                <div class="grid grid-cols-2 gap-1 pt-1 text-[10px] font-semibold">
+                                <div class="flex gap-1 justify-end text-xs font-semibold">
                                     <a href="{{ route('productos.show', $producto->id) }}" wire:navigate
-                                        class="bg-gray-900 text-white rounded-lg px-2 py-1 text-center shadow hover:bg-gray-800">
+                                        class="bg-gray-600 text-white rounded-lg px-2 py-1 text-center shadow hover:bg-gray-800 flex items-center">
                                         Ver
                                     </a>
                                     <a href="{{ route('productos.edit', $producto->id) }}" wire:navigate
-                                        class="bg-gray-700 text-white rounded-lg px-2 py-1 text-center shadow hover:bg-gray-600">
+                                        class="bg-orange-400 text-white rounded-lg px-2 py-1 text-center shadow hover:bg-gray-600 flex items-center">
                                         Editar
                                     </a>
                                     <button onclick="abrirModalMovimientoLibre('{{ $producto->codigo }}')"
@@ -388,7 +480,7 @@
 
                                     <a href="{{ route('productos.editarConsumir', $producto->id) }}" wire:navigate
                                         data-consumir="{{ route('productos.editarConsumir', $producto->id) }}"
-                                        class="btn-consumir bg-red-500 text-white rounded-lg px-2 py-1 text-center shadow hover:bg-red-600">
+                                        class="btn-consumir bg-blue-600 text-white rounded-lg px-2 py-1 text-center shadow hover:bg-red-600 flex items-center">
                                         Consumir
                                     </a>
 
@@ -397,8 +489,21 @@
                                         @csrf
                                         @method('DELETE')
                                         <button type="submit"
-                                            class="btn-eliminar w-full bg-gray-200 text-gray-800 rounded-lg px-2 py-1 text-center font-semibold shadow hover:bg-gray-300">
-                                            Eliminar
+                                            class="btn-eliminar w-full h-full bg-red-600 text-gray-800 rounded-lg px-2 py-1 text-center font-semibold shadow hover:bg-gray-300">
+                                            <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none"
+                                                xmlns="http://www.w3.org/2000/svg">
+                                                <g id="SVGRepo_bgCarrier" stroke-width="0"></g>
+                                                <g id="SVGRepo_tracerCarrier" stroke-linecap="round"
+                                                    stroke-linejoin="round"></g>
+                                                <g id="SVGRepo_iconCarrier">
+                                                    <path
+                                                        d="M3 6.38597C3 5.90152 3.34538 5.50879 3.77143 5.50879L6.43567 5.50832C6.96502 5.49306 7.43202 5.11033 7.61214 4.54412C7.61688 4.52923 7.62232 4.51087 7.64185 4.44424L7.75665 4.05256C7.8269 3.81241 7.8881 3.60318 7.97375 3.41617C8.31209 2.67736 8.93808 2.16432 9.66147 2.03297C9.84457 1.99972 10.0385 1.99986 10.2611 2.00002H13.7391C13.9617 1.99986 14.1556 1.99972 14.3387 2.03297C15.0621 2.16432 15.6881 2.67736 16.0264 3.41617C16.1121 3.60318 16.1733 3.81241 16.2435 4.05256L16.3583 4.44424C16.3778 4.51087 16.3833 4.52923 16.388 4.54412C16.5682 5.11033 17.1278 5.49353 17.6571 5.50879H20.2286C20.6546 5.50879 21 5.90152 21 6.38597C21 6.87043 20.6546 7.26316 20.2286 7.26316H3.77143C3.34538 7.26316 3 6.87043 3 6.38597Z"
+                                                        fill="#ffffff"></path>
+                                                    <path fill-rule="evenodd" clip-rule="evenodd"
+                                                        d="M11.5956 22.0001H12.4044C15.1871 22.0001 16.5785 22.0001 17.4831 21.1142C18.3878 20.2283 18.4803 18.7751 18.6654 15.8686L18.9321 11.6807C19.0326 10.1037 19.0828 9.31524 18.6289 8.81558C18.1751 8.31592 17.4087 8.31592 15.876 8.31592H8.12404C6.59127 8.31592 5.82488 8.31592 5.37105 8.81558C4.91722 9.31524 4.96744 10.1037 5.06788 11.6807L5.33459 15.8686C5.5197 18.7751 5.61225 20.2283 6.51689 21.1142C7.42153 22.0001 8.81289 22.0001 11.5956 22.0001ZM10.2463 12.1886C10.2051 11.7548 9.83753 11.4382 9.42537 11.4816C9.01321 11.525 8.71251 11.9119 8.75372 12.3457L9.25372 17.6089C9.29494 18.0427 9.66247 18.3593 10.0746 18.3159C10.4868 18.2725 10.7875 17.8856 10.7463 17.4518L10.2463 12.1886ZM14.5746 11.4816C14.9868 11.525 15.2875 11.9119 15.2463 12.3457L14.7463 17.6089C14.7051 18.0427 14.3375 18.3593 13.9254 18.3159C13.5132 18.2725 13.2125 17.8856 13.2537 17.4518L13.7537 12.1886C13.7949 11.7548 14.1625 11.4382 14.5746 11.4816Z"
+                                                        fill="#ffffff"></path>
+                                                </g>
+                                            </svg>
                                         </button>
                                     </form>
                                 </div>
@@ -411,6 +516,100 @@
                         No hay productos disponibles.
                     </div>
                 @endforelse
+
+                {{-- Paginación móvil --}}
+                @if ($registrosProductos->total() > 0)
+                    <div class="space-y-2 py-2 pb-4">
+                        {{-- Información de resultados --}}
+                        <div class="text-center">
+                            <p class="text-xs text-gray-700">
+                                Mostrando
+                                <span class="font-semibold">{{ $registrosProductos->firstItem() ?? 0 }}</span>
+                                -
+                                <span class="font-semibold">{{ $registrosProductos->lastItem() ?? 0 }}</span>
+                                de
+                                <span class="font-semibold">{{ $registrosProductos->total() }}</span>
+                                resultados
+                            </p>
+                        </div>
+
+                        {{-- Navegación de páginas --}}
+                        <div class="flex justify-center items-center gap-3">
+                            @php
+                                $current = $registrosProductos->currentPage();
+                                $last = $registrosProductos->lastPage();
+                                $range = 1; // Mostrar 1 página antes y después en móvil
+                                $pages = [];
+
+                                // Siempre mostrar la primera página
+                                $pages[] = 1;
+
+                                // Páginas alrededor de la actual
+                                for ($i = max(2, $current - $range); $i <= min($last - 1, $current + $range); $i++) {
+                                    $pages[] = $i;
+                                }
+
+                                // Siempre mostrar la última página
+                                if ($last > 1) {
+                                    $pages[] = $last;
+                                }
+
+                                $pages = array_unique($pages);
+                                sort($pages);
+                            @endphp
+
+                            {{-- Botón anterior --}}
+                            @if ($registrosProductos->onFirstPage())
+                                <span
+                                    class="px-2 py-1.5 text-xs text-gray-400 bg-gray-50 border border-gray-100 rounded">
+                                    &laquo;
+                                </span>
+                            @else
+                                <a href="{{ $registrosProductos->previousPageUrl() }}"
+                                    class="px-2 py-1.5 text-xs text-gray-700 font-semibold bg-white border border-gray-200 rounded hover:bg-gray-100">
+                                    &laquo;
+                                </a>
+                            @endif
+
+                            {{-- Páginas --}}
+                            @php $prevPage = 0; @endphp
+                            @foreach ($pages as $page)
+                                {{-- Mostrar puntos suspensivos si hay un salto --}}
+                                @if ($prevPage > 0 && $page > $prevPage + 1)
+                                    <span class="px-1 text-xs text-gray-400">&hellip;</span>
+                                @endif
+
+                                {{-- Página actual --}}
+                                @if ($page == $current)
+                                    <span
+                                        class="p-1.5 px-2 text-xs font-bold bg-blue-500 text-white rounded shadow border border-blue-400">
+                                        {{ $page }}
+                                    </span>
+                                @else
+                                    <a href="{{ $registrosProductos->url($page) }}"
+                                        class="p-1.5 px-2 text-xs text-gray-700 bg-white border border-gray-200 rounded hover:bg-gray-100">
+                                        {{ $page }}
+                                    </a>
+                                @endif
+
+                                @php $prevPage = $page; @endphp
+                            @endforeach
+
+                            {{-- Botón siguiente --}}
+                            @if ($registrosProductos->hasMorePages())
+                                <a href="{{ $registrosProductos->nextPageUrl() }}"
+                                    class="p-1.5 px-2 text-xs text-gray-700 font-semibold bg-white border border-gray-200 rounded hover:bg-gray-100">
+                                    &raquo;
+                                </a>
+                            @else
+                                <span
+                                    class="p-1.5 px-2 text-xs text-gray-400 bg-gray-50 border border-gray-100 rounded">
+                                    &raquo;
+                                </span>
+                            @endif
+                        </div>
+                    </div>
+                @endif
             </div>
         </div>
 
@@ -541,7 +740,8 @@
         </form>
 
         <!-- Modal Crear Producto Base -->
-        <div id="modalProductoBase" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden items-center justify-center">
+        <div id="modalProductoBase"
+            class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden items-center justify-center">
             <div class="bg-white rounded-lg shadow-lg p-6 w-full max-w-md relative">
                 <h2 class="text-xl font-semibold mb-4">Nuevo Producto Base</h2>
 
@@ -560,21 +760,24 @@
                     </div>
 
                     <div>
-                        <label for="pb_diametro" class="block text-sm font-medium text-gray-700 mb-1">Diametro (mm) *</label>
+                        <label for="pb_diametro" class="block text-sm font-medium text-gray-700 mb-1">Diametro (mm)
+                            *</label>
                         <input type="number" id="pb_diametro" name="diametro" required min="1"
                             class="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                             placeholder="Ej: 12">
                     </div>
 
                     <div id="pb_longitud_container">
-                        <label for="pb_longitud" class="block text-sm font-medium text-gray-700 mb-1">Longitud (m)</label>
+                        <label for="pb_longitud" class="block text-sm font-medium text-gray-700 mb-1">Longitud
+                            (m)</label>
                         <input type="number" id="pb_longitud" name="longitud" min="1"
                             class="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                             placeholder="Ej: 12 (solo para barras)">
                     </div>
 
                     <div>
-                        <label for="pb_descripcion" class="block text-sm font-medium text-gray-700 mb-1">Descripcion</label>
+                        <label for="pb_descripcion"
+                            class="block text-sm font-medium text-gray-700 mb-1">Descripcion</label>
                         <textarea id="pb_descripcion" name="descripcion" rows="2"
                             class="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                             placeholder="Descripcion opcional..."></textarea>

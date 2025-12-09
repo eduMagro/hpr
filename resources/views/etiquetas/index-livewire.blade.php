@@ -1,61 +1,64 @@
 <x-app-layout>
     <x-slot name="title">Etiquetas - {{ config('app.name') }}</x-slot>
 
-    <div class="w-full p-4 sm:p-2">
+    <div class="w-full md:p-4 sm:p-2">
         <!-- Desktop: tabla Livewire -->
         <div class="hidden md:block">
             @livewire('etiquetas-table')
         </div>
 
         <!-- Móvil: tarjetas -->
-        <div class="block md:hidden space-y-4">
-            <div class="bg-gradient-to-r from-gray-900 to-gray-700 text-white rounded-2xl p-4 shadow-lg">
-                <p class="text-sm font-semibold uppercase tracking-wide text-gray-300">Etiquetas</p>
-                <p class="text-xs text-gray-200 mt-1">Filtra por código, subetiqueta, planilla o estado.</p>
-            </div>
+        <div class="block md:hidden space-y-2">
+            <div>
+                <div class="bg-gradient-to-r from-gray-900 to-gray-700 text-white rounded-t-2xl p-4 shadow-lg">
+                    <p class="text-sm font-semibold uppercase tracking-wide text-gray-300">Etiquetas</p>
+                </div>
 
-            <div class="bg-white border border-gray-200 rounded-xl shadow-sm p-3">
-                <form method="GET" action="{{ route('etiquetas.index') }}" class="space-y-2">
-                    <div class="grid grid-cols-2 gap-2">
-                        <div class="flex flex-col gap-1">
-                            <label class="text-[10px] font-semibold text-gray-700">Código</label>
-                            <input type="text" name="codigo" value="{{ request('codigo') }}" placeholder="Buscar..."
-                                class="w-full px-2 py-1.5 border border-gray-300 rounded-lg text-xs text-gray-800 focus:outline-none focus:ring-1 focus:ring-gray-700" />
+                <div class="bg-white border border-gray-200 rounded-b-2xl shadow-sm p-3">
+                    <form method="GET" action="{{ route('etiquetas.index') }}" class="space-y-2">
+                        <div class="grid grid-cols-2 gap-2">
+                            <div class="flex flex-col gap-1">
+                                <label class="text-[10px] font-semibold text-gray-700">Código</label>
+                                <input type="text" name="codigo" value="{{ request('codigo') }}"
+                                    placeholder="Buscar..."
+                                    class="w-full px-2 py-1.5 border border-gray-300 rounded-lg text-xs text-gray-800 focus:outline-none focus:ring-1 focus:ring-gray-700" />
+                            </div>
+                            <div class="flex flex-col gap-1">
+                                <label class="text-[10px] font-semibold text-gray-700">SubEtiqueta</label>
+                                <input type="text" name="etiqueta_sub_id" value="{{ request('etiqueta_sub_id') }}"
+                                    placeholder="Buscar..."
+                                    class="w-full px-2 py-1.5 border border-gray-300 rounded-lg text-xs text-gray-800 focus:outline-none focus:ring-1 focus:ring-gray-700" />
+                            </div>
+                            <div class="flex flex-col gap-1">
+                                <label class="text-[10px] font-semibold text-gray-700">Planilla</label>
+                                <input type="text" name="codigo_planilla" value="{{ request('codigo_planilla') }}"
+                                    placeholder="Buscar..."
+                                    class="w-full px-2 py-1.5 border border-gray-300 rounded-lg text-xs text-gray-800 focus:outline-none focus:ring-1 focus:ring-gray-700" />
+                            </div>
+                            <div class="flex flex-col gap-1">
+                                <label class="text-[10px] font-semibold text-gray-700">Estado</label>
+                                <select name="estado"
+                                    class="w-full px-2 py-1.5 border border-gray-300 rounded-lg text-xs text-gray-800 focus:outline-none focus:ring-1 focus:ring-gray-700">
+                                    <option value="">Todos</option>
+                                    <option value="pendiente" @selected(request('estado') === 'pendiente')>Pendiente</option>
+                                    <option value="fabricando" @selected(request('estado') === 'fabricando')>Fabricando</option>
+                                    <option value="ensamblando" @selected(request('estado') === 'ensamblando')>Ensamblando</option>
+                                    <option value="soldando" @selected(request('estado') === 'soldando')>Soldando</option>
+                                    <option value="completada" @selected(request('estado') === 'completada')>Completada</option>
+                                </select>
+                            </div>
                         </div>
-                        <div class="flex flex-col gap-1">
-                            <label class="text-[10px] font-semibold text-gray-700">SubEtiqueta</label>
-                            <input type="text" name="etiqueta_sub_id" value="{{ request('etiqueta_sub_id') }}"
-                                placeholder="Buscar..."
-                                class="w-full px-2 py-1.5 border border-gray-300 rounded-lg text-xs text-gray-800 focus:outline-none focus:ring-1 focus:ring-gray-700" />
+                        <div class="flex items-center justify-end gap-2">
+                            @include('components.tabla.limpiar-filtros', [
+                                'href' => route('etiquetas.index'),
+                            ])
+                            <button type="submit"
+                                class="bg-gray-900 text-white text-xs font-semibold px-3 py-1.5 rounded-lg shadow hover:bg-gray-800">
+                                Filtrar
+                            </button>
                         </div>
-                        <div class="flex flex-col gap-1">
-                            <label class="text-[10px] font-semibold text-gray-700">Planilla</label>
-                            <input type="text" name="codigo_planilla" value="{{ request('codigo_planilla') }}"
-                                placeholder="Buscar..."
-                                class="w-full px-2 py-1.5 border border-gray-300 rounded-lg text-xs text-gray-800 focus:outline-none focus:ring-1 focus:ring-gray-700" />
-                        </div>
-                        <div class="flex flex-col gap-1">
-                            <label class="text-[10px] font-semibold text-gray-700">Estado</label>
-                            <select name="estado"
-                                class="w-full px-2 py-1.5 border border-gray-300 rounded-lg text-xs text-gray-800 focus:outline-none focus:ring-1 focus:ring-gray-700">
-                                <option value="">Todos</option>
-                                <option value="pendiente" @selected(request('estado') === 'pendiente')>Pendiente</option>
-                                <option value="fabricando" @selected(request('estado') === 'fabricando')>Fabricando</option>
-                                <option value="ensamblando" @selected(request('estado') === 'ensamblando')>Ensamblando</option>
-                                <option value="soldando" @selected(request('estado') === 'soldando')>Soldando</option>
-                                <option value="completada" @selected(request('estado') === 'completada')>Completada</option>
-                            </select>
-                        </div>
-                    </div>
-                    <div class="flex items-center justify-between gap-2">
-                        <a href="{{ route('etiquetas.index') }}"
-                            class="text-xs text-gray-600 hover:text-gray-900">Limpiar</a>
-                        <button type="submit"
-                            class="bg-gray-900 text-white text-xs font-semibold px-3 py-1.5 rounded-lg shadow hover:bg-gray-800">
-                            Filtrar
-                        </button>
-                    </div>
-                </form>
+                    </form>
+                </div>
             </div>
 
             @php
@@ -79,6 +82,11 @@
                     $query->where('estado', request('estado'));
                 }
 
+                // Obtener el total de resultados
+                $totalResultados = $query->count();
+                $totalPaginas = $totalResultados > 0 ? (int) ceil($totalResultados / $perPage) : 1;
+                $mobilePage = min($mobilePage, $totalPaginas); // No permitir páginas mayores al total
+
                 $etiquetasMobile = $query
                     ->latest()
                     ->skip(($mobilePage - 1) * $perPage)
@@ -89,6 +97,10 @@
                 if ($hayMasEtiquetas) {
                     $etiquetasMobile = $etiquetasMobile->take($perPage);
                 }
+
+                // Calcular firstItem y lastItem
+                $firstItem = ($mobilePage - 1) * $perPage + 1;
+                $lastItem = min($mobilePage * $perPage, $totalResultados);
             @endphp
 
             <div class="space-y-2">
@@ -97,20 +109,19 @@
                         <div
                             class="bg-gradient-to-tr from-gray-900 to-gray-700 text-white px-3 py-2 flex items-center justify-between gap-2">
                             <div class="flex-1 min-w-0">
-                                <p class="text-[9px] text-gray-300">SubEtiqueta</p>
                                 <h3 class="text-sm font-semibold tracking-tight truncate">
                                     {{ $etiqueta->etiqueta_sub_id }}</h3>
                             </div>
                             <div class="text-right flex-shrink-0">
                                 <span
-                                    class="inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-semibold bg-white/10 border border-white/20">
+                                    class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-white/10 border border-white/20">
                                     {{ strtoupper($etiqueta->estado ?? '—') }}
                                 </span>
                             </div>
                         </div>
 
                         <div class="p-2.5 space-y-2 text-xs text-gray-700">
-                            <div class="grid grid-cols-2 gap-2 text-[10px]">
+                            <div class="flex flex-wrap justify-around gap-2 text-xs">
                                 <div>
                                     <p class="text-[9px] uppercase tracking-wide text-gray-500">Planilla</p>
                                     <p class="font-semibold text-gray-900 truncate">
@@ -180,32 +191,93 @@
                 @endforelse
 
                 @if ($etiquetasMobile->count() > 0)
-                    <div class="flex justify-between items-center gap-2 pt-2">
-                        @if ($mobilePage > 1)
-                            <a href="{{ route('etiquetas.index', array_merge(request()->except('mpage'), ['mpage' => $mobilePage - 1])) }}"
-                                class="px-3 py-1.5 rounded-lg bg-gray-100 text-gray-800 text-xs font-semibold border border-gray-200 hover:bg-gray-200">
-                                ← Anterior
-                            </a>
-                        @else
-                            <span
-                                class="px-3 py-1.5 rounded-lg bg-gray-50 text-gray-400 text-xs font-semibold border border-gray-100">
-                                ← Anterior
-                            </span>
-                        @endif
+                    <div class="space-y-2 py-2 pb-4">
+                        {{-- Información de resultados --}}
+                        <div class="text-center">
+                            <p class="text-xs text-gray-700">
+                                Mostrando
+                                <span class="font-semibold">{{ $firstItem }}</span>
+                                -
+                                <span class="font-semibold">{{ $lastItem }}</span>
+                                de
+                                <span class="font-semibold">{{ $totalResultados }}</span>
+                                resultados
+                            </p>
+                        </div>
 
-                        <span class="text-xs text-gray-600">Página {{ $mobilePage }}</span>
+                        {{-- Navegación de páginas --}}
+                        <div class="flex justify-center items-center gap-3">
+                            @php
+                                $current = $mobilePage;
+                                $last = $totalPaginas;
+                                $range = 1; // Mostrar 1 página antes y después en móvil
+                                $pages = [];
 
-                        @if ($hayMasEtiquetas)
-                            <a href="{{ route('etiquetas.index', array_merge(request()->except('mpage'), ['mpage' => $mobilePage + 1])) }}"
-                                class="px-3 py-1.5 rounded-lg bg-gray-100 text-gray-800 text-xs font-semibold border border-gray-200 hover:bg-gray-200">
-                                Siguiente →
-                            </a>
-                        @else
-                            <span
-                                class="px-3 py-1.5 rounded-lg bg-gray-50 text-gray-400 text-xs font-semibold border border-gray-100">
-                                Siguiente →
-                            </span>
-                        @endif
+                                // Siempre mostrar la primera página
+                                $pages[] = 1;
+
+                                // Páginas alrededor de la actual
+                                for ($i = max(2, $current - $range); $i <= min($last - 1, $current + $range); $i++) {
+                                    $pages[] = $i;
+                                }
+
+                                // Siempre mostrar la última página
+                                if ($last > 1) {
+                                    $pages[] = $last;
+                                }
+
+                                $pages = array_unique($pages);
+                                sort($pages);
+                            @endphp
+
+                            {{-- Botón anterior --}}
+                            @if ($mobilePage > 1)
+                                <a href="{{ route('etiquetas.index', array_merge(request()->except('mpage'), ['mpage' => $mobilePage - 1])) }}"
+                                    class="p-1.5 text-xs text-gray-700 font-semibold bg-white border border-gray-200 rounded hover:bg-gray-100">
+                                    &laquo;
+                                </a>
+                            @else
+                                <span class="p-1.5 text-xs text-gray-400 bg-gray-50 border border-gray-100 rounded">
+                                    &laquo;
+                                </span>
+                            @endif
+
+                            {{-- Páginas --}}
+                            @php $prevPage = 0; @endphp
+                            @foreach ($pages as $page)
+                                {{-- Mostrar puntos suspensivos si hay un salto --}}
+                                @if ($prevPage > 0 && $page > $prevPage + 1)
+                                    <span class="px-1 text-xs text-gray-400">&hellip;</span>
+                                @endif
+
+                                {{-- Página actual --}}
+                                @if ($page == $current)
+                                    <span
+                                        class="p-1.5 text-xs font-bold bg-blue-500 text-white rounded shadow border border-blue-400">
+                                        {{ $page }}
+                                    </span>
+                                @else
+                                    <a href="{{ route('etiquetas.index', array_merge(request()->except('mpage'), ['mpage' => $page])) }}"
+                                        class="p-1.5 text-xs text-gray-700 bg-white border border-gray-200 rounded hover:bg-gray-100">
+                                        {{ $page }}
+                                    </a>
+                                @endif
+
+                                @php $prevPage = $page; @endphp
+                            @endforeach
+
+                            {{-- Botón siguiente --}}
+                            @if ($mobilePage < $totalPaginas)
+                                <a href="{{ route('etiquetas.index', array_merge(request()->except('mpage'), ['mpage' => $mobilePage + 1])) }}"
+                                    class="p-1.5 text-xs text-gray-700 font-semibold bg-white border border-gray-200 rounded hover:bg-gray-100">
+                                    &raquo;
+                                </a>
+                            @else
+                                <span class="p-1.5 text-xs text-gray-400 bg-gray-50 border border-gray-100 rounded">
+                                    &raquo;
+                                </span>
+                            @endif
+                        </div>
                     </div>
                 @endif
             </div>
