@@ -135,7 +135,7 @@
 
                 <tbody class="text-gray-700 text-sm">
                     @forelse ($paquetes as $paquete)
-                        <tr
+                        <tr wire:key="paquete-{{ $paquete->id }}"
                             class="border-b odd:bg-gray-100 even:bg-gray-50 hover:bg-blue-200 transition-colors text-xs uppercase">
                             <td class="p-2 text-center border">{{ $paquete->id }}</td>
                             <td class="p-2 text-center border">{{ $paquete->codigo }}</td>

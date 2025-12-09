@@ -120,7 +120,8 @@
 
             <tbody>
                 @forelse($movimientos as $movimiento)
-                    <tr class="border-b odd:bg-gray-100 even:bg-gray-50 hover:bg-blue-200 text-xs leading-none">
+                    <tr wire:key="movimiento-{{ $movimiento->id }}"
+                        class="border-b odd:bg-gray-100 even:bg-gray-50 hover:bg-blue-200 text-xs leading-none">
                         <td class="px-2 py-4 text-center border">{{ $movimiento->id }}</td>
 
                         <td class="px-6 py-4 text-center border">{{ ucfirst($movimiento->tipo ?? 'N/A') }}</td>
