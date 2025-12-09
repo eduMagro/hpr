@@ -724,28 +724,46 @@ class PlanillaProcessor
             }
         }
 
-        // Usar firstOrCreate para evitar duplicados por race condition
-        $subRow = Etiqueta::firstOrCreate(
-            ['etiqueta_sub_id' => $subId],
-            $data
-        );
+        // Usar try-catch para manejar race conditions
+        try {
+            $subRow = Etiqueta::firstOrCreate(
+                ['etiqueta_sub_id' => $subId],
+                $data
+            );
+        } catch (\Illuminate\Database\QueryException $e) {
+            // Si hay error de duplicado, obtener el registro existente
+            if ($e->errorInfo[1] == 1062) {
+                $subRow = Etiqueta::where('etiqueta_sub_id', $subId)->first();
+            } else {
+                throw $e;
+            }
+        }
 
         return [$subId, (int)$subRow->id];
     }
 
     protected function asegurarSubetiquetaExiste(string $subId, Etiqueta $padre): int
     {
-        // Usar firstOrCreate para evitar duplicados por race condition
-        $row = Etiqueta::firstOrCreate(
-            ['etiqueta_sub_id' => $subId],
-            [
-                'codigo' => $padre->codigo,
-                'planilla_id' => $padre->planilla_id,
-                'nombre' => $padre->nombre,
-                'estado' => $padre->estado ?? 'pendiente',
-                'peso' => 0.0,
-            ]
-        );
+        // Usar try-catch para manejar race conditions
+        try {
+            $row = Etiqueta::firstOrCreate(
+                ['etiqueta_sub_id' => $subId],
+                [
+                    'codigo' => $padre->codigo,
+                    'planilla_id' => $padre->planilla_id,
+                    'nombre' => $padre->nombre,
+                    'estado' => $padre->estado ?? 'pendiente',
+                    'peso' => 0.0,
+                ]
+            );
+        } catch (\Illuminate\Database\QueryException $e) {
+            // Si hay error de duplicado, obtener el registro existente
+            if ($e->errorInfo[1] == 1062) {
+                $row = Etiqueta::where('etiqueta_sub_id', $subId)->first();
+            } else {
+                throw $e;
+            }
+        }
 
         return (int)$row->id;
     }

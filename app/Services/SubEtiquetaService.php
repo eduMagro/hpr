@@ -324,14 +324,22 @@ class SubEtiquetaService
             if (Schema::hasColumn('etiquetas', $col)) $data[$col] = $padre->$col;
         }
 
-        // Usar firstOrCreate para evitar duplicados por race condition
-        $created = Etiqueta::firstOrCreate(
-            ['etiqueta_sub_id' => $subId],
-            $data
-        );
+        // Usar try-catch para manejar race conditions
+        try {
+            $created = Etiqueta::firstOrCreate(
+                ['etiqueta_sub_id' => $subId],
+                $data
+            );
 
-        if ($created->wasRecentlyCreated) {
-            Log::info('🧱 Fila sub creada', ['sub' => $subId]);
+            if ($created->wasRecentlyCreated) {
+                Log::info('🧱 Fila sub creada', ['sub' => $subId]);
+            }
+        } catch (\Illuminate\Database\QueryException $e) {
+            // Si hay error de duplicado, simplemente ignorar (ya existe)
+            if ($e->errorInfo[1] != 1062) {
+                throw $e;
+            }
+            Log::info('ℹ️ Sub ya existía (race condition evitada)', ['sub' => $subId]);
         }
     }
 
