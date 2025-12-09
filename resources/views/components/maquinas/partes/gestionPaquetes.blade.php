@@ -81,6 +81,16 @@
                         <p class="text-xs text-gray-500" x-text="paquete.ubicacion"></p>
                     </div>
                     <div class="flex items-center gap-2">
+                        {{-- Botón Imprimir QR --}}
+                        <button @click="imprimirQRPaquete(paquete)"
+                            class="w-6 h-6 bg-green-100 text-green-600 rounded hover:bg-green-200 flex items-center justify-center transition"
+                            title="Imprimir QR del paquete">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none"
+                                viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round"
+                                    d="M4 4h4v4H4V4zm6 0h4v4h-4V4zm6 0h4v4h-4V4zM4 10h4v4H4v-4zm6 10h4v-4h-4v4zm6 0h4v-4h-4v4z" />
+                            </svg>
+                        </button>
                         {{-- Botón Ver elementos del paquete --}}
                         <button @click="verElementosPaquete(paquete.id)"
                             class="w-6 h-6 bg-blue-100 text-blue-600 rounded hover:bg-blue-200 flex items-center justify-center transition"
@@ -513,6 +523,29 @@
                     console.error('Error al eliminar paquete:', error);
                     await Swal.fire('Error', error.message, 'error');
                 }
+            },
+
+            imprimirQRPaquete(paquete) {
+                if (typeof generateAndPrintQRPaquete !== 'function') {
+                    console.error('La función generateAndPrintQRPaquete no está disponible');
+                    Swal.fire('Error', 'No se pudo cargar la función de impresión QR', 'error');
+                    return;
+                }
+
+                // Obtener etiquetas del paquete
+                const etiquetas = paquete.etiquetas ? paquete.etiquetas.map(e => e.codigo).join(', ') : '';
+
+                generateAndPrintQRPaquete({
+                    codigo: paquete.codigo || '',
+                    planilla: paquete.planilla_codigo || '',
+                    cliente: paquete.cliente || '',
+                    obra: paquete.obra || '',
+                    descripcion: paquete.descripcion || '',
+                    seccion: paquete.seccion || '',
+                    ensamblado: paquete.ensamblado || '',
+                    peso: paquete.peso || '0',
+                    etiquetas: etiquetas
+                });
             },
 
             async verElementosPaquete(paqueteId) {

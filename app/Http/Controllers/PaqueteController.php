@@ -774,7 +774,7 @@ class PaqueteController extends Controller
     public function obtenerPaquetesPorPlanilla($planillaId, \Illuminate\Http\Request $request)
     {
         try {
-            $planilla = \App\Models\Planilla::findOrFail($planillaId);
+            $planilla = \App\Models\Planilla::with(['cliente', 'obra'])->findOrFail($planillaId);
 
             // Obtener paquetes de esta planilla con sus etiquetas y elementos
             $query = Paquete::with(['etiquetas' => function ($query) {
@@ -794,7 +794,7 @@ class PaqueteController extends Controller
 
             $paquetes = $query->orderBy('created_at', 'desc')->get();
 
-            $paquetesFormateados = $paquetes->map(function ($paquete) {
+            $paquetesFormateados = $paquetes->map(function ($paquete) use ($planilla) {
                 return [
                     'id' => $paquete->id,
                     'codigo' => $paquete->codigo,
@@ -802,6 +802,13 @@ class PaqueteController extends Controller
                     'cantidad_etiquetas' => $paquete->etiquetas->count(),
                     'ubicacion' => optional($paquete->ubicacion)->nombre ?? 'Sin ubicación',
                     'created_at' => $paquete->created_at->format('d/m/Y H:i'),
+                    // Datos para QR
+                    'planilla_codigo' => $planilla->codigo_limpio ?? $planilla->codigo ?? '',
+                    'cliente' => $planilla->cliente->empresa ?? '',
+                    'obra' => $planilla->obra->obra ?? '',
+                    'descripcion' => $planilla->descripcion ?? '',
+                    'seccion' => $planilla->seccion ?? '',
+                    'ensamblado' => $planilla->ensamblado ?? '',
                     'etiquetas' => $paquete->etiquetas->map(function ($etiqueta) {
                         return [
                             'codigo' => $etiqueta->etiqueta_sub_id,
