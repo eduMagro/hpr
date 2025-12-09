@@ -2359,12 +2359,13 @@ class ProduccionController extends Controller
             })
             ->map(function ($asignacion) use ($colorPorEstado) {
                 $color = $colorPorEstado($asignacion->estado);
+                $fechaStr = Carbon::parse($asignacion->fecha)->format('Y-m-d');
 
                 return [
                     'id'         => 'turno-' . $asignacion->id,
                     'title'      => $asignacion->user?->nombre_completo ?? 'Desconocido',
-                    'start'      => $asignacion->fecha . 'T06:00:00',
-                    'end'        => $asignacion->fecha . 'T14:00:00',
+                    'start'      => $fechaStr . 'T06:00:00',
+                    'end'        => $fechaStr . 'T14:00:00',
                     'resourceId' => $asignacion->obra_id ?? 'sin-obra',
                     'extendedProps' => [
                         'user_id' => $asignacion->user_id,
@@ -2475,17 +2476,67 @@ class ProduccionController extends Controller
     }
 
     /**
-     * Almacena un nuevo evento ficticio de obra (cuando se arrastra al calendario)
+     * Almacena eventos ficticios de obra (individual o múltiple con rango de fechas)
      */
     public function storeEventoFicticio(Request $request)
     {
+        // Asignación múltiple (selección + rango de fechas)
+        if ($request->has('trabajador_ficticio_ids')) {
+            $request->validate([
+                'trabajador_ficticio_ids'   => 'required|array',
+                'trabajador_ficticio_ids.*' => 'exists:trabajadores_ficticios,id',
+                'obra_id'                   => 'nullable',
+                'fecha_inicio'              => 'required|date',
+                'fecha_fin'                 => 'required|date|after_or_equal:fecha_inicio',
+            ]);
+
+            $obraId = $request->obra_id === 'sin-obra' ? null : $request->obra_id;
+            $fechaInicio = Carbon::parse($request->fecha_inicio);
+            $fechaFin = Carbon::parse($request->fecha_fin);
+            $eventosCreados = [];
+
+            foreach ($request->trabajador_ficticio_ids as $trabajadorFicticioId) {
+                $fecha = $fechaInicio->copy();
+                while ($fecha->lte($fechaFin)) {
+                    // Verificar si ya existe evento para este trabajador en esta fecha y obra
+                    $existe = EventoFicticioObra::where('trabajador_ficticio_id', $trabajadorFicticioId)
+                        ->where('fecha', $fecha->toDateString())
+                        ->where('obra_id', $obraId)
+                        ->exists();
+
+                    if (!$existe) {
+                        $evento = EventoFicticioObra::create([
+                            'trabajador_ficticio_id' => $trabajadorFicticioId,
+                            'fecha'                  => $fecha->toDateString(),
+                            'obra_id'                => $obraId,
+                        ]);
+                        $eventosCreados[] = $evento->id;
+                    }
+                    $fecha->addDay();
+                }
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => count($eventosCreados) . ' eventos ficticios creados',
+                'eventos_creados' => $eventosCreados,
+            ]);
+        }
+
+        // Asignación individual (drag & drop)
         $validated = $request->validate([
             'trabajador_ficticio_id' => 'required|exists:trabajadores_ficticios,id',
             'fecha'                  => 'required|date',
-            'obra_id'                => 'nullable|exists:obras,id',
+            'obra_id'                => 'nullable',
         ]);
 
-        $evento = EventoFicticioObra::create($validated);
+        $obraId = $request->obra_id === 'sin-obra' ? null : $request->obra_id;
+
+        $evento = EventoFicticioObra::create([
+            'trabajador_ficticio_id' => $validated['trabajador_ficticio_id'],
+            'fecha'                  => $validated['fecha'],
+            'obra_id'                => $obraId,
+        ]);
         $evento->load('trabajadorFicticio');
 
         return response()->json([
@@ -2510,6 +2561,36 @@ class ProduccionController extends Controller
     }
 
     /**
+     * Actualiza un evento ficticio (fecha y/o obra)
+     */
+    public function updateEventoFicticio(Request $request, $id)
+    {
+        $request->validate([
+            'fecha'   => 'required|date',
+            'obra_id' => 'nullable',
+        ]);
+
+        $evento = EventoFicticioObra::findOrFail($id);
+
+        $obraId = $request->obra_id;
+        if ($obraId === 'sin-obra' || $obraId === '' || $obraId === null) {
+            $obraId = null;
+        } else {
+            $obraId = (int) $obraId;
+        }
+
+        $evento->update([
+            'fecha'   => $request->fecha,
+            'obra_id' => $obraId,
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Evento ficticio actualizado correctamente',
+        ]);
+    }
+
+    /**
      * Elimina un evento ficticio de obra
      */
     public function destroyEventoFicticio($id)
@@ -2520,6 +2601,44 @@ class ProduccionController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Evento ficticio eliminado correctamente',
+        ]);
+    }
+
+    /**
+     * Mover eventos ficticios a otra obra
+     */
+    public function moverEventosFicticios(Request $request)
+    {
+        $request->validate([
+            'evento_ids'   => 'required|array',
+            'evento_ids.*' => 'integer',
+            'obra_id'      => 'nullable',
+        ]);
+
+        $ids = collect($request->evento_ids)->map(fn($id) => (int) $id)->filter()->values()->toArray();
+
+        if (empty($ids)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'No se proporcionaron IDs válidos.'
+            ], 400);
+        }
+
+        $obraId = $request->obra_id;
+        if ($obraId === 'sin-obra' || $obraId === '' || $obraId === null) {
+            $obraId = null;
+        } else {
+            $obraId = (int) $obraId;
+        }
+
+        $actualizados = EventoFicticioObra::whereIn('id', $ids)->update([
+            'obra_id' => $obraId
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => "Se movieron {$actualizados} eventos ficticios correctamente.",
+            'actualizados' => $actualizados
         ]);
     }
 
@@ -2693,17 +2812,30 @@ class ProduccionController extends Controller
 
             // 1) ELEMENTOS: UPDATE
             if (!empty($data['elementos_updates'])) {
+                /** @var SubEtiquetaService $subEtiquetaService */
+                $subEtiquetaService = app(SubEtiquetaService::class);
+
                 foreach ($data['elementos_updates'] as $e) {
                     // estado anterior
                     $before = DB::table('elementos')->where('id', $e['id'])->first();
+                    $maquinaAnterior = $before ? $before->maquina_id : null;
+                    $nuevaMaquinaId = (int) $e['maquina_id'];
 
                     DB::table('elementos')
                         ->where('id', $e['id'])
                         ->update([
-                            'maquina_id' => $e['maquina_id'],
+                            'maquina_id' => $nuevaMaquinaId,
                             'orden_planilla_id' => $e['orden_planilla_id'],
                             'updated_at' => now(),
                         ]);
+
+                    // 🏷️ Si cambió de máquina, reubicar subetiquetas
+                    if ($maquinaAnterior !== null && (int) $maquinaAnterior !== $nuevaMaquinaId) {
+                        $elemento = Elemento::find($e['id']);
+                        if ($elemento) {
+                            $subEtiquetaService->reubicarParaProduccion($elemento, $nuevaMaquinaId);
+                        }
+                    }
 
                     $audit[] = [
                         'event'  => 'elemento.update',
@@ -3482,15 +3614,21 @@ class ProduccionController extends Controller
                     ]);
 
                     // 2. Actualizar elemento con nueva máquina y orden_planilla_id
-                    $elemento->maquina_id = $mov['maquina_nueva_id'];
+                    $nuevaMaquinaId = (int) $mov['maquina_nueva_id'];
+                    $elemento->maquina_id = $nuevaMaquinaId;
                     $elemento->orden_planilla_id = $ordenPlanillaDestino->id;
                     $elemento->save();
+
+                    // 🏷️ Reubicar subetiquetas usando SubEtiquetaService
+                    /** @var SubEtiquetaService $subEtiquetaService */
+                    $subEtiquetaService = app(SubEtiquetaService::class);
+                    $subEtiquetaService->reubicarParaProduccion($elemento, $nuevaMaquinaId);
 
                     Log::info('⚖️ BALANCEO: Elemento movido', [
                         'elemento' => $elemento->codigo,
                         'planilla' => $planillaId,
                         'maquina_origen' => $maquinaAnterior,
-                        'maquina_destino' => $mov['maquina_nueva_id'],
+                        'maquina_destino' => $nuevaMaquinaId,
                         'orden_planilla_id' => $ordenPlanillaDestino->id
                     ]);
 
@@ -3718,9 +3856,12 @@ class ProduccionController extends Controller
             // Rastrear planillas afectadas por máquina
             $planillasAfectadas = []; // [planilla_id => ['maquina_anterior' => id, 'maquina_nueva' => id]]
 
+            /** @var SubEtiquetaService $subEtiquetaService */
+            $subEtiquetaService = app(SubEtiquetaService::class);
+
             foreach ($redistribuciones as $redistribucion) {
                 $elemento = Elemento::find($redistribucion['elemento_id']);
-                $nuevaMaquinaId = $redistribucion['nueva_maquina_id'];
+                $nuevaMaquinaId = (int) $redistribucion['nueva_maquina_id'];
 
                 if (!$elemento) continue;
 
@@ -3730,6 +3871,9 @@ class ProduccionController extends Controller
                 // Actualizar máquina del elemento
                 $elemento->maquina_id = $nuevaMaquinaId;
                 $elemento->save();
+
+                // 🏷️ Reubicar subetiquetas usando SubEtiquetaService
+                $subEtiquetaService->reubicarParaProduccion($elemento, $nuevaMaquinaId);
 
                 $elementosMovidos++;
 

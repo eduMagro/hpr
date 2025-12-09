@@ -212,14 +212,16 @@
 
         // Inicializar event listeners para selección de fichas de trabajadores
         function inicializarFichasTrabajadores() {
-            document.querySelectorAll('#external-events-servicios .fc-event, #external-events-hpr .fc-event').forEach(eventEl => {
+            document.querySelectorAll('#external-events-servicios .fc-event, #external-events-hpr .fc-event, #external-events-ficticios .fc-event').forEach(eventEl => {
                 // Remover listeners anteriores si existen
                 eventEl.replaceWith(eventEl.cloneNode(true));
             });
 
-            // Agregar listeners a las fichas
-            document.querySelectorAll('#external-events-servicios .fc-event, #external-events-hpr .fc-event').forEach(eventEl => {
+            // Agregar listeners a las fichas (normales y ficticias)
+            document.querySelectorAll('#external-events-servicios .fc-event, #external-events-hpr .fc-event, #external-events-ficticios .fc-event').forEach(eventEl => {
                 eventEl.addEventListener('click', (e) => {
+                    // Ignorar si se hace click en botón eliminar
+                    if (e.target.closest('.btn-eliminar-trabajador-ficticio')) return;
                     e.stopPropagation();
                     eventEl.classList.toggle('bg-yellow-300');
                     eventEl.classList.toggle('seleccionado');
@@ -277,22 +279,13 @@
                 return;
             }
 
-            // Log de todos los clicks para debug
-            if (e.target.classList.contains('btn-eliminar') || e.target.closest('.btn-eliminar')) {
-                console.log('[DEBUG] Click en o cerca de btn-eliminar', e.target);
-            }
-
             const btnEliminar = e.target.closest('.btn-eliminar');
             if (btnEliminar) {
-                console.log('[BTN ELIMINAR] Click detectado en botón');
-                e.stopPropagation(); // 🔴 Detiene el eventClick de FullCalendar
+                e.stopPropagation();
                 e.preventDefault();
 
                 const idCompleto = btnEliminar.dataset.id;
-                console.log('[BTN ELIMINAR] ID completo:', idCompleto);
-
                 const idEvento = idCompleto.replace('turno-', '');
-                console.log('[BTN ELIMINAR] ID sin prefijo:', idEvento);
 
                 Swal.fire({
                     title: '¿Eliminar asignación de obra?',
@@ -415,6 +408,10 @@
             const ids = Array.from(window.eventosSeleccionados.keys());
             const obraTexto = selectObra.options[selectObra.selectedIndex].text;
 
+            // Separar IDs de eventos normales y ficticios
+            const idsNormales = ids.filter(id => id.startsWith('turno-'));
+            const idsFicticios = ids.filter(id => id.startsWith('ficticio-')).map(id => parseInt(id.replace('ficticio-', '')));
+
             Swal.fire({
                 title: '¿Mover eventos?',
                 text: `Se moverán ${ids.length} evento(s) a "${obraTexto}"`,
@@ -424,24 +421,49 @@
                 cancelButtonText: 'Cancelar'
             }).then((result) => {
                 if (result.isConfirmed) {
-                    fetch('{{ route('asignaciones-turnos.moverEventos') }}', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'X-CSRF-TOKEN': '{{ csrf_token() }}'
-                        },
-                        body: JSON.stringify({
-                            asignacion_ids: ids,
-                            obra_id: obraId
-                        })
-                    })
-                    .then(res => res.json())
-                    .then(data => {
-                        if (data.success) {
+                    const promesas = [];
+
+                    // Mover eventos normales
+                    if (idsNormales.length > 0) {
+                        promesas.push(
+                            fetch('{{ route('asignaciones-turnos.moverEventos') }}', {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                                },
+                                body: JSON.stringify({
+                                    asignacion_ids: idsNormales,
+                                    obra_id: obraId
+                                })
+                            }).then(res => res.json())
+                        );
+                    }
+
+                    // Mover eventos ficticios
+                    if (idsFicticios.length > 0) {
+                        promesas.push(
+                            fetch('{{ route('eventos-ficticios-obra.mover') }}', {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                                },
+                                body: JSON.stringify({
+                                    evento_ids: idsFicticios,
+                                    obra_id: obraId
+                                })
+                            }).then(res => res.json())
+                        );
+                    }
+
+                    Promise.all(promesas)
+                    .then(results => {
+                        const todoOk = results.every(r => r.success);
+                        if (todoOk) {
                             Swal.fire({
                                 icon: 'success',
                                 title: '✅ Eventos movidos',
-                                text: data.message,
                                 timer: 2000,
                                 showConfirmButton: false
                             });
@@ -451,7 +473,7 @@
                             window.calendarioObras.refetchEvents();
                             setTimeout(() => actualizarEstadoFichasTrabajadores(), 200);
                         } else {
-                            Swal.fire('❌ Error', data.message, 'error');
+                            Swal.fire('❌ Error', 'Algunos eventos no se pudieron mover.', 'error');
                         }
                     })
                     .catch(error => {
@@ -522,17 +544,14 @@
 
             const totalDiasSemana = diasSemana.length;
 
-            console.log('[SEMANA] Rango calculado:', diasSemana[0], 'a', diasSemana[diasSemana.length - 1]);
-
             // Obtener todos los eventos del calendario
             const eventos = cal.getEvents();
 
             // Contar días asignados por trabajador
             const diasPorTrabajador = {};
-            const eventosUsuario84 = [];
 
             eventos.forEach(evento => {
-                const userId = String(evento.extendedProps?.user_id); // Convertir a string
+                const userId = String(evento.extendedProps?.user_id);
                 const fechaEvento = evento.startStr.split('T')[0];
 
                 // Ignorar eventos provisionales, temporales o festivos
@@ -544,44 +563,8 @@
                 // Solo contabilizar eventos cuyo turno sea "montaje"
                 const esTurnoMontaje = turnoNombre && turnoNombre === 'montaje';
 
-                // Determinar si debe ignorarse
-                let debeIgnorar = false;
-                let motivo = '';
-
-                if (esProvisional) {
-                    debeIgnorar = true;
-                    motivo = 'provisional';
-                } else if (esFestivo) {
-                    debeIgnorar = true;
-                    motivo = 'festivo';
-                } else if (esTemporal) {
-                    debeIgnorar = true;
-                    motivo = 'temporal';
-                } else if (!esTurnoMontaje) {
-                    debeIgnorar = true;
-                    motivo = 'turno: ' + (turnoNombre || 'sin turno') + ' (solo se contabiliza montaje)';
-                }
-
-                if (debeIgnorar) {
-                    console.log('[IGNORADO] Evento no contabilizado:', {
-                        id: evento.id,
-                        titulo: evento.title,
-                        fecha: fechaEvento,
-                        turno: turnoNombre || 'sin turno',
-                        motivo: motivo
-                    });
+                if (esProvisional || esFestivo || esTemporal || !esTurnoMontaje) {
                     return;
-                }
-
-                // Guardar eventos del usuario 84 para debug
-                if (userId === '84') {
-                    eventosUsuario84.push({
-                        id: evento.id,
-                        fecha: fechaEvento,
-                        titulo: evento.title,
-                        provisional: evento.extendedProps?.provisional,
-                        estaEnSemana: diasSemana.includes(fechaEvento)
-                    });
                 }
 
                 if (userId && userId !== 'undefined' && diasSemana.includes(fechaEvento)) {
@@ -589,19 +572,8 @@
                         diasPorTrabajador[userId] = new Set();
                     }
                     diasPorTrabajador[userId].add(fechaEvento);
-
-                    // Log de eventos contabilizados
-                    console.log('[CONTABILIZADO] Usuario:', userId, 'Fecha:', fechaEvento, 'ID:', evento.id, 'Título:', evento.title);
                 }
             });
-
-            // Log detallado del usuario 84
-            if (eventosUsuario84.length > 0) {
-                console.log('[USUARIO 84] Total eventos encontrados:', eventosUsuario84.length);
-                console.log('[USUARIO 84] Eventos:', eventosUsuario84);
-                console.log('[USUARIO 84] Días contados:', diasPorTrabajador['84']?.size || 0);
-                console.log('[USUARIO 84] Fechas únicas:', Array.from(diasPorTrabajador['84'] || []));
-            }
 
             // Actualizar fichas de trabajadores
             const fichas = document.querySelectorAll('.fc-event[data-id]');
@@ -697,50 +669,88 @@
                     // Obra seleccionada
                     const obraId = info.resource?.id;
 
-                    // IDs de trabajadores
-                    const userIds = seleccionados.map(e => e.dataset.id);
+                    // Separar trabajadores normales de ficticios
+                    const normales = seleccionados.filter(e => e.dataset.ficticio !== 'true');
+                    const ficticios = seleccionados.filter(e => e.dataset.ficticio === 'true');
 
-                    // 🔥 Llamada directa al endpoint (sin confirmación)
-                    fetch('{{ route('asignaciones-turnos.asignarObraMultiple') }}', {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                                'X-CSRF-TOKEN': '{{ csrf_token() }}',
-                            },
-                            body: JSON.stringify({
-                                user_ids: userIds,
-                                obra_id: obraId,
-                                fecha_inicio: fechaInicio,
-                                fecha_fin: fechaFin
-                            })
-                        })
-                        .then(r => r.json())
-                        .then(data => {
-                            if (data.success) {
-                                // Deseleccionar todos los trabajadores
-                                document.querySelectorAll('.fc-event.seleccionado').forEach(el => {
-                                    el.classList.remove('seleccionado', 'bg-yellow-300');
-                                });
+                    const promesas = [];
 
-                                window.calendarioObras.refetchEvents();
+                    // Asignar trabajadores normales
+                    if (normales.length > 0) {
+                        const userIds = normales.map(e => e.dataset.id);
+                        promesas.push(
+                            fetch('{{ route('asignaciones-turnos.asignarObraMultiple') }}', {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                                },
+                                body: JSON.stringify({
+                                    user_ids: userIds,
+                                    obra_id: obraId,
+                                    fecha_inicio: fechaInicio,
+                                    fecha_fin: fechaFin
+                                })
+                            }).then(r => r.json())
+                        );
+                    }
 
-                                // Actualizar estado de fichas
-                                setTimeout(() => actualizarEstadoFichasTrabajadores(), 200);
-                            } else {
-                                Swal.fire('❌ Error al asignar');
-                            }
-                        });
+                    // Asignar trabajadores ficticios
+                    if (ficticios.length > 0) {
+                        const ficticioIds = ficticios.map(e => e.dataset.id.replace('ficticio-', ''));
+                        promesas.push(
+                            fetch('{{ route('eventos-ficticios-obra.store') }}', {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                                },
+                                body: JSON.stringify({
+                                    trabajador_ficticio_ids: ficticioIds,
+                                    obra_id: obraId,
+                                    fecha_inicio: fechaInicio,
+                                    fecha_fin: fechaFin
+                                })
+                            }).then(r => r.json())
+                        );
+                    }
+
+                    if (promesas.length === 0) {
+                        return;
+                    }
+
+                    Promise.all(promesas).then(results => {
+                        const todoOk = results.every(r => r.success);
+                        if (todoOk) {
+                            // Deseleccionar todos los trabajadores
+                            document.querySelectorAll('.fc-event.seleccionado').forEach(el => {
+                                el.classList.remove('seleccionado', 'bg-yellow-300');
+                            });
+
+                            window.calendarioObras.refetchEvents();
+
+                            // Actualizar estado de fichas
+                            setTimeout(() => actualizarEstadoFichasTrabajadores(), 200);
+                        } else {
+                            Swal.fire('❌ Error al asignar');
+                        }
+                    }).catch(err => {
+                        console.error('Error en asignación:', err);
+                        Swal.fire('❌ Error al asignar');
+                    });
                 },
                 events: {
                     url: '{{ route('asignaciones-turnos.verEventosObra') }}',
                     method: 'GET',
-                    failure: function() {
+                    failure: function(error) {
+                        console.error('Error al cargar eventos:', error);
                         Swal.fire('Error al cargar eventos');
                     },
-                    success: function(events) {
-                        console.log('[EVENTOS RECIBIDOS]', events);
-                        console.log('[TOTAL EVENTOS]', events.length);
-                        console.log('[RESOURCES DISPONIBLES]', window.obrasResources);
+                    success: function(events, xhr) {
+                        const trabajadores = events.filter(e => e.id?.startsWith('turno-')).length;
+                        const ficticios = events.filter(e => e.id?.startsWith('ficticio-')).length;
+                        const festivos = events.filter(e => e.id?.startsWith('festivo-')).length;
+                        console.log(`Eventos cargados: ${trabajadores} trabajadores, ${ficticios} ficticios, ${festivos} festivos`);
                         return events;
                     }
                 },
@@ -753,9 +763,8 @@
                     actualizarPanelEventosSeleccionados();
                 },
                 eventClick(info) {
-                    // Si es click en botón eliminar, no hacer nada aquí
-                    if (info.jsEvent && info.jsEvent.target.closest('.btn-eliminar')) {
-                        console.log('[EVENT CLICK] Ignorando, es botón eliminar');
+                    // Si es click en botón eliminar (normal o ficticio), no hacer nada aquí
+                    if (info.jsEvent && (info.jsEvent.target.closest('.btn-eliminar') || info.jsEvent.target.closest('.btn-eliminar-ficticio'))) {
                         return;
                     }
 
@@ -861,8 +870,6 @@
                     // Trabajador normal
                     const userId = dataId;
 
-                    console.log('Obra ID enviado:', obraId);
-
                     // Evento provisional
                     const eventoTemporal = window.calendarioObras.addEvent({
                         id: 'temp-' + Date.now() + '-' + userId,
@@ -940,20 +947,23 @@
                 eventDidMount(info) {
                     const foto = info.event.extendedProps.foto;
 
-                    const content = `
+                    // Solo mostrar tooltip con foto si existe
+                    if (foto) {
+                        const content = `
     <img src="${foto}" class="w-18 h-18 rounded-full object-cover ring-2 ring-blue-400 shadow-lg">
 `;
 
-                    tippy(info.el, {
-                        content: content,
-                        allowHTML: true,
-                        placement: 'top',
-                        theme: 'transparent-avatar',
-                        interactive: false,
-                        arrow: false,
-                        delay: [100, 0],
-                        offset: [0, 10],
-                    });
+                        tippy(info.el, {
+                            content: content,
+                            allowHTML: true,
+                            placement: 'top',
+                            theme: 'transparent-avatar',
+                            interactive: false,
+                            arrow: false,
+                            delay: [100, 0],
+                            offset: [0, 10],
+                        });
+                    }
                     info.el.addEventListener('contextmenu', function(e) {
                         e.preventDefault(); // Evita el menú del navegador
 
@@ -1068,6 +1078,7 @@
                     const nuevaObraId = eventoArrastrado.getResources()[0]?.id ?? null;
                     const nuevaFecha = eventoArrastrado.startStr.split('T')[0];
                     const eventoId = eventoArrastrado.id;
+                    const esFicticio = eventoId.startsWith('ficticio-');
 
                     // Verificar si el evento arrastrado está seleccionado
                     const estaSeleccionado = window.eventosSeleccionados.has(eventoId);
@@ -1077,27 +1088,53 @@
                     if (estaSeleccionado && hayMultiplesSeleccionados) {
                         const ids = Array.from(window.eventosSeleccionados.keys());
 
-                        console.log('📦 Drop múltiple - Moviendo', ids.length, 'eventos a obra:', nuevaObraId);
+                        // Separar IDs de eventos normales y ficticios
+                        const idsNormales = ids.filter(id => id.startsWith('turno-'));
+                        const idsFicticios = ids.filter(id => id.startsWith('ficticio-')).map(id => parseInt(id.replace('ficticio-', '')));
 
-                        // Mover todos los eventos seleccionados a la nueva obra (manteniendo sus fechas)
-                        fetch('{{ route('asignaciones-turnos.moverEventos') }}', {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                                'X-CSRF-TOKEN': '{{ csrf_token() }}'
-                            },
-                            body: JSON.stringify({
-                                asignacion_ids: ids,
-                                obra_id: nuevaObraId
-                            })
-                        })
-                        .then(res => res.json())
-                        .then(data => {
-                            if (data.success) {
+                        const promesas = [];
+
+                        // Mover eventos normales
+                        if (idsNormales.length > 0) {
+                            promesas.push(
+                                fetch('{{ route('asignaciones-turnos.moverEventos') }}', {
+                                    method: 'POST',
+                                    headers: {
+                                        'Content-Type': 'application/json',
+                                        'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                                    },
+                                    body: JSON.stringify({
+                                        asignacion_ids: idsNormales,
+                                        obra_id: nuevaObraId
+                                    })
+                                }).then(res => res.json())
+                            );
+                        }
+
+                        // Mover eventos ficticios
+                        if (idsFicticios.length > 0) {
+                            promesas.push(
+                                fetch('{{ route('eventos-ficticios-obra.mover') }}', {
+                                    method: 'POST',
+                                    headers: {
+                                        'Content-Type': 'application/json',
+                                        'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                                    },
+                                    body: JSON.stringify({
+                                        evento_ids: idsFicticios,
+                                        obra_id: nuevaObraId
+                                    })
+                                }).then(res => res.json())
+                            );
+                        }
+
+                        Promise.all(promesas)
+                        .then(results => {
+                            const todoOk = results.every(r => r.success);
+                            if (todoOk) {
                                 Swal.fire({
                                     icon: 'success',
                                     title: '✅ Eventos movidos',
-                                    text: `Se movieron ${data.actualizados} eventos`,
                                     toast: true,
                                     position: 'top-end',
                                     timer: 2000,
@@ -1110,7 +1147,7 @@
                                 setTimeout(() => actualizarEstadoFichasTrabajadores(), 200);
                             } else {
                                 info.revert();
-                                Swal.fire('❌ Error', data.message, 'error');
+                                Swal.fire('❌ Error', 'Algunos eventos no se pudieron mover.', 'error');
                             }
                         })
                         .catch(error => {
@@ -1122,16 +1159,12 @@
                         return; // Salir, ya procesamos el drop múltiple
                     }
 
-                    // Drop individual (comportamiento original)
-                    const asignacionId = eventoId.replace('turno-', '');
+                    // Drop individual
+                    if (esFicticio) {
+                        // Evento ficticio individual
+                        const ficticioId = eventoId.replace('ficticio-', '');
 
-                    console.log('📦 Drop individual:', {
-                        id: asignacionId,
-                        obra_id: nuevaObraId,
-                        fecha: nuevaFecha
-                    });
-
-                    fetch(`/asignaciones-turnos/${asignacionId}/update-obra`, {
+                        fetch(`/eventos-ficticios-obra/${ficticioId}`, {
                             method: 'PUT',
                             headers: {
                                 'Content-Type': 'application/json',
@@ -1142,20 +1175,14 @@
                                 fecha: nuevaFecha
                             })
                         })
-                        .then(response => {
-                            if (!response.ok) {
-                                throw new Error('Error al actualizar');
-                            }
-                            return response.json();
-                        })
+                        .then(response => response.json())
                         .then(data => {
                             if (!data.success) {
                                 throw new Error(data.message ?? 'Error inesperado');
                             }
-                            console.log('✅ Asignación actualizada correctamente:', data);
                         })
                         .catch(error => {
-                            console.error('❌ Error en actualización de obra:', error);
+                            console.error('Error en actualización de evento ficticio:', error);
                             info.revert();
                             Swal.fire({
                                 icon: 'error',
@@ -1163,6 +1190,42 @@
                                 text: error.message
                             });
                         });
+                    } else {
+                        // Evento normal individual
+                        const asignacionId = eventoId.replace('turno-', '');
+
+                        fetch(`/asignaciones-turnos/${asignacionId}/update-obra`, {
+                                method: 'PUT',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                                },
+                                body: JSON.stringify({
+                                    obra_id: nuevaObraId === '' ? null : nuevaObraId,
+                                    fecha: nuevaFecha
+                                })
+                            })
+                            .then(response => {
+                                if (!response.ok) {
+                                    throw new Error('Error al actualizar');
+                                }
+                                return response.json();
+                            })
+                            .then(data => {
+                                if (!data.success) {
+                                    throw new Error(data.message ?? 'Error inesperado');
+                                }
+                            })
+                            .catch(error => {
+                                console.error('Error en actualización de obra:', error);
+                                info.revert();
+                                Swal.fire({
+                                    icon: 'error',
+                                    title: 'Error al actualizar',
+                                    text: error.message
+                                });
+                            });
+                    }
                 }
             });
 
@@ -1199,7 +1262,6 @@
                 }
             }
 
-            console.log('🔄 Inicializando calendario de trabajadores por obra');
             inicializarCalendarioObras();
         }
 
@@ -1214,7 +1276,6 @@
             document.addEventListener('livewire:navigating', function() {
                 if (window.calendarioObras) {
                     try {
-                        console.log('🧹 Limpiando calendario de trabajadores por obra');
                         window.calendarioObras.destroy();
                         window.calendarioObras = null;
                     } catch (e) {

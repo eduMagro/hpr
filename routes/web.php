@@ -481,6 +481,8 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
     Route::post('/trabajadores-ficticios', [ProduccionController::class, 'storeTrabajadorFicticio'])->name('trabajadores-ficticios.store');
     Route::delete('/trabajadores-ficticios/{id}', [ProduccionController::class, 'destroyTrabajadorFicticio'])->name('trabajadores-ficticios.destroy');
     Route::post('/eventos-ficticios-obra', [ProduccionController::class, 'storeEventoFicticio'])->name('eventos-ficticios-obra.store');
+    Route::post('/eventos-ficticios-obra/mover', [ProduccionController::class, 'moverEventosFicticios'])->name('eventos-ficticios-obra.mover');
+    Route::put('/eventos-ficticios-obra/{id}', [ProduccionController::class, 'updateEventoFicticio'])->name('eventos-ficticios-obra.update');
     Route::delete('/eventos-ficticios-obra/{id}', [ProduccionController::class, 'destroyEventoFicticio'])->name('eventos-ficticios-obra.destroy');
 
     // === NOMINAS Y FISCALIDAD ===
