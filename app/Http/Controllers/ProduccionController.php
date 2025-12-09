@@ -1419,6 +1419,7 @@ class ProduccionController extends Controller
             'elementos_id'      => 'sometimes|array',
             'elementos_id.*'    => 'integer|exists:elementos,id',
             'crear_nueva_posicion' => 'sometimes|boolean',
+            'usar_posicion_existente' => 'sometimes|boolean',
         ]);
 
         $planillaId   = (int) $request->id;
@@ -1428,6 +1429,7 @@ class ProduccionController extends Controller
         $forzar       = (bool) $request->boolean('forzar_movimiento');
         $subsetIds    = collect($request->input('elementos_id', []))->map(fn($v) => (int)$v);
         $crearNuevaPosicion = $request->boolean('crear_nueva_posicion', false);
+        $usarPosicionExistente = $request->boolean('usar_posicion_existente', false);
 
         Log::info("➡️ ReordenarPlanillas iniciado", [
             'planilla_id'       => $planillaId,
@@ -1481,7 +1483,7 @@ class ProduccionController extends Controller
             ->first();
 
         // Si existe un orden en la máquina destino y no es el mismo que el origen, verificar si realmente hay elementos allí
-        if ($ordenExistente && $maqOrigen !== $maqDestino && !$crearNuevaPosicion) {
+        if ($ordenExistente && $maqOrigen !== $maqDestino && !$crearNuevaPosicion && !$usarPosicionExistente) {
             // Verificar si realmente hay elementos de esta planilla en esa máquina
             $elementosExistentes = Elemento::where('planilla_id', $planillaId)
                 ->where('maquina_id', $maqDestino)
@@ -1499,7 +1501,7 @@ class ProduccionController extends Controller
         }
 
         try {
-            DB::transaction(function () use ($planillaId, $maqOrigen, $maqDestino, $posNueva, $compatibles, $subsetIds, $forzar, $crearNuevaPosicion) {
+            DB::transaction(function () use ($planillaId, $maqOrigen, $maqDestino, $posNueva, $compatibles, $subsetIds, $forzar, $crearNuevaPosicion, $usarPosicionExistente) {
                 // 3) Movimiento (parcial si venía forzado)
                 if ($compatibles->isNotEmpty()) {
                     // Usar SubEtiquetaService para reubicar subetiquetas correctamente
@@ -1529,36 +1531,45 @@ class ProduccionController extends Controller
                     ->where('maquina_id', $maqDestino)
                     ->first();
 
-                // Si el usuario quiere crear una nueva posición, siempre crear un nuevo OrdenPlanilla
-                if ($crearNuevaPosicion && $ordenDestino) {
-                    // Ya existe uno, pero el usuario quiere crear una nueva posición
-                    // En este caso, NO reutilizamos el existente, creamos uno nuevo
-                    $ordenDestino = null;
-                }
+                // Si el usuario quiere usar la posición existente, simplemente usar el ordenDestino que ya existe
+                if ($usarPosicionExistente && $ordenDestino) {
+                    Log::info("✅ Usando posición existente", [
+                        'orden_id' => $ordenDestino->id,
+                        'posicion' => $ordenDestino->posicion,
+                    ]);
+                    // No hacer nada más con el orden, ya existe y se reutiliza
+                } else {
+                    // Si el usuario quiere crear una nueva posición, siempre crear un nuevo OrdenPlanilla
+                    if ($crearNuevaPosicion && $ordenDestino) {
+                        // Ya existe uno, pero el usuario quiere crear una nueva posición
+                        // En este caso, NO reutilizamos el existente, creamos uno nuevo
+                        $ordenDestino = null;
+                    }
 
-                if (!$ordenDestino) {
-                    // 🆕 Si se está creando una nueva posición, insertarla en la posición deseada
-                    // y desplazar las demás. Si no, añadirla al final.
-                    if ($crearNuevaPosicion) {
-                        // Desplazar posiciones >= $posNueva
-                        OrdenPlanilla::where('maquina_id', $maqDestino)
-                            ->where('posicion', '>=', $posNueva)
-                            ->increment('posicion');
+                    if (!$ordenDestino) {
+                        // 🆕 Si se está creando una nueva posición, insertarla en la posición deseada
+                        // y desplazar las demás. Si no, añadirla al final.
+                        if ($crearNuevaPosicion) {
+                            // Desplazar posiciones >= $posNueva
+                            OrdenPlanilla::where('maquina_id', $maqDestino)
+                                ->where('posicion', '>=', $posNueva)
+                                ->increment('posicion');
 
-                        $ordenDestino = OrdenPlanilla::create([
-                            'planilla_id' => $planillaId,
-                            'maquina_id'  => $maqDestino,
-                            'posicion'    => $posNueva,
-                        ]);
-                        Log::info("➕ Orden creado en nueva posición", ['posicion' => $posNueva, 'crear_nueva' => true]);
-                    } else {
-                        $maxPos = (int) (OrdenPlanilla::where('maquina_id', $maqDestino)->max('posicion') ?? 0);
-                        $ordenDestino = OrdenPlanilla::create([
-                            'planilla_id' => $planillaId,
-                            'maquina_id'  => $maqDestino,
-                            'posicion'    => $maxPos + 1,
-                        ]);
-                        Log::info("➕ Orden creado al final", ['posicion' => $maxPos + 1, 'crear_nueva' => false]);
+                            $ordenDestino = OrdenPlanilla::create([
+                                'planilla_id' => $planillaId,
+                                'maquina_id'  => $maqDestino,
+                                'posicion'    => $posNueva,
+                            ]);
+                            Log::info("➕ Orden creado en nueva posición", ['posicion' => $posNueva, 'crear_nueva' => true]);
+                        } else {
+                            $maxPos = (int) (OrdenPlanilla::where('maquina_id', $maqDestino)->max('posicion') ?? 0);
+                            $ordenDestino = OrdenPlanilla::create([
+                                'planilla_id' => $planillaId,
+                                'maquina_id'  => $maqDestino,
+                                'posicion'    => $maxPos + 1,
+                            ]);
+                            Log::info("➕ Orden creado al final", ['posicion' => $maxPos + 1, 'crear_nueva' => false]);
+                        }
                     }
                 }
 
@@ -1588,8 +1599,8 @@ class ProduccionController extends Controller
                 }
 
                 // 5) Reordenar en destino a la posición deseada
-                // ⚠️ SOLO si NO se acaba de crear con la posición correcta
-                if (!$crearNuevaPosicion) {
+                // ⚠️ SOLO si NO se acaba de crear con la posición correcta y NO se está usando posición existente
+                if (!$crearNuevaPosicion && !$usarPosicionExistente) {
                     $this->reordenarPosicionEnMaquina($maqDestino, $planillaId, $posNueva);
                 }
             });
