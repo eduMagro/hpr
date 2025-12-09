@@ -180,7 +180,7 @@
 
             <!-- Page Content -->
             <main class="flex-1 overflow-y-auto bg-neutral-100 dark:bg-gray-900 transition-colors">
-                <div class="py-2 px-2 sm:px-6 lg:px-8 h-full">
+                <div class="py-2 h-full">
                     <!-- Breadcrumbs -->
                     <x-breadcrumbs />
 
@@ -345,12 +345,17 @@
 
                     this.executeScripts(newScripts);
                     document.title = doc.title;
-                    window.scrollTo({ top: 0, behavior: 'instant' });
+                    window.scrollTo({
+                        top: 0,
+                        behavior: 'instant'
+                    });
 
                     if (pushState) {
                         setTimeout(() => {
                             console.log('🔗 Actualizando URL a:', url);
-                            window.history.pushState({ spa: true }, '', url);
+                            window.history.pushState({
+                                spa: true
+                            }, '', url);
                         }, 100);
                     }
 
@@ -373,7 +378,10 @@
                     if (!forceReload && this.executedScripts.has(signature)) return;
 
                     const script = document.createElement('script');
-                    Array.from(oldScript.attributes).forEach(({ name, value }) => {
+                    Array.from(oldScript.attributes).forEach(({
+                        name,
+                        value
+                    }) => {
                         script.setAttribute(name, value);
                     });
 
