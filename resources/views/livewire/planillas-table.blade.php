@@ -360,10 +360,37 @@
         </div>
     </div>
 
+    {{-- Form para eliminar --}}
+    <form id="formulario-eliminar" method="POST" style="display:none;">
+        @csrf
+        @method('DELETE')
+    </form>
+
     {{-- SweetAlert2 --}}
     @if (!isset($swalLoaded))
         <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     @endif
+
+    <script>
+        function confirmarEliminacion(actionUrl) {
+            Swal.fire({
+                title: '¿Estás seguro?',
+                text: "¡No podrás revertir esta acción!",
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#d33',
+                cancelButtonColor: '#3085d6',
+                confirmButtonText: 'Sí, eliminar',
+                cancelButtonText: 'Cancelar'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    const formulario = document.getElementById('formulario-eliminar');
+                    formulario.action = actionUrl;
+                    formulario.submit();
+                }
+            });
+        }
+    </script>
 
     <script>
         let planillaIdReimportar = null;

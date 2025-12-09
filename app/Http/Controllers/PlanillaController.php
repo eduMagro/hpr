@@ -1232,20 +1232,13 @@ class PlanillaController extends Controller
             $ordenPlanillaService->eliminarOrdenDePlanilla($planilla->id);
 
             // 4. Resetear elementos (incluyendo maquina_id para que el servicio los reasigne)
+            // Nota: elementos NO tiene fecha_inicio/fecha_finalizacion ni operarios - eso está en etiquetas
             $elementosReseteados = $planilla->elementos()->count();
             $planilla->elementos()->update([
                 'estado' => 'pendiente',
-                'fecha_inicio' => null,
-                'fecha_finalizacion' => null,
                 'paquete_id' => null,
                 'producto_id' => null,
                 'producto_id_2' => null,
-                'operario1_id' => null,
-                'operario2_id' => null,
-                'soldador1_id' => null,
-                'soldador2_id' => null,
-                'ensamblador1_id' => null,
-                'ensamblador2_id' => null,
                 'etiqueta_id' => null,
                 'maquina_id' => null,
                 'orden_planilla_id' => null,
