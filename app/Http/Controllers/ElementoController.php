@@ -619,48 +619,39 @@ class ElementoController extends Controller
             $request->validate([
                 'maquina_id' => 'required|exists:maquinas,id',
             ]);
-            Log::info("Entrando al metodo...");
-            $elemento = Elemento::findOrFail($id);
-            $nuevaMaquinaId = $request->maquina_id;
+            Log::info("Entrando al metodo cambioMaquina...");
 
-            if ($elemento->maquina_id == $nuevaMaquinaId) {
-                Log::info("El elemento ya pertenece a esa maquina");
-            }
+            return DB::transaction(function () use ($request, $id) {
+                $elemento = Elemento::lockForUpdate()->findOrFail($id);
+                $nuevaMaquinaId = (int) $request->maquina_id;
 
-            $prefijo = (int) $elemento->etiqueta_sub_id;
-
-            // Buscar hermanos en la nueva máquina con mismo prefijo
-            $hermano = Elemento::where('maquina_id', $nuevaMaquinaId)
-                ->where('etiqueta_sub_id', 'like', "$prefijo.%")
-                ->first();
-            Log::info("Buscando a mirmano");
-
-            if ($hermano) {
-                $elemento->etiqueta_sub_id = $hermano->etiqueta_sub_id;
-            } else {
-                $sufijos = Elemento::where('etiqueta_sub_id', 'like', "$prefijo.%")
-                    ->pluck('etiqueta_sub_id')
-                    ->map(fn($e) => (int) explode('.', $e)[1])
-                    ->toArray();
-                $next = empty($sufijos) ? 1 : (max($sufijos) + 1);
-                $elemento->etiqueta_sub_id = "$prefijo.$next";
-            }
-
-            $elemento->maquina_id = $nuevaMaquinaId;
-            $elemento->save();
-            // Marcar la alerta como completada
-            $alertaId = $request->query('alerta_id');
-
-            if ($alertaId) {
-                $alerta = Alerta::find($alertaId);
-                if ($alerta) {
-                    $alerta->completada = true;
-                    $alerta->save();
-                    Log::info("Alerta {$alertaId} completada");
+                if ($elemento->maquina_id == $nuevaMaquinaId) {
+                    Log::info("El elemento ya pertenece a esa maquina");
                 }
-            }
 
-            return redirect()->route('dashboard')->with('success', 'Cambio de máquina aplicado correctamente.');
+                // Actualizar máquina del elemento
+                $elemento->maquina_id = $nuevaMaquinaId;
+                $elemento->save();
+
+                // Usar SubEtiquetaService para reubicar subetiquetas correctamente
+                /** @var SubEtiquetaService $svc */
+                $svc = app(SubEtiquetaService::class);
+                $svc->reubicarParaProduccion($elemento, $nuevaMaquinaId);
+
+                // Marcar la alerta como completada
+                $alertaId = $request->query('alerta_id');
+
+                if ($alertaId) {
+                    $alerta = Alerta::find($alertaId);
+                    if ($alerta) {
+                        $alerta->completada = true;
+                        $alerta->save();
+                        Log::info("Alerta {$alertaId} completada");
+                    }
+                }
+
+                return redirect()->route('dashboard')->with('success', 'Cambio de máquina aplicado correctamente.');
+            });
         } catch (\Exception $e) {
             Log::error("Error al cambiar máquina de elemento {$id}: {$e->getMessage()}");
             return back()->with('error', 'No se pudo cambiar la máquina del elemento.');
@@ -958,35 +949,9 @@ class ElementoController extends Controller
                 }
             }
 
-            // 🚚 Si cambió la máquina, recalcular etiqueta_sub_id
-            if (
-                array_key_exists('maquina_id', $validated)
-                && $validated['maquina_id'] != $elemento->maquina_id
-            ) {
-                $nuevoMaquinaId = $validated['maquina_id'];
-                $prefijo = (int) $elemento->etiqueta_sub_id; // parte antes del punto
-
-                // 1) Buscar hermanos en la máquina destino con ese mismo prefijo
-                $hermano = Elemento::where('maquina_id', $nuevoMaquinaId)
-                    ->where('etiqueta_sub_id', 'like', "$prefijo.%")
-                    ->first();
-
-                if ($hermano) {
-                    // Si existe, reutilizar la misma etiqueta_sub_id
-                    $validated['etiqueta_sub_id'] = $hermano->etiqueta_sub_id;
-                } else {
-                    // 2) No hay hermanos; generar siguiente sufijo libre
-                    $sufijos = Elemento::where('etiqueta_sub_id', 'like', "$prefijo.%")
-                        ->pluck('etiqueta_sub_id')
-                        ->map(function ($full) use ($prefijo) {
-                            return (int) explode('.', $full)[1];
-                        })
-                        ->toArray();
-
-                    $next = empty($sufijos) ? 1 : (max($sufijos) + 1);
-                    $validated['etiqueta_sub_id'] = "$prefijo.$next";
-                }
-            }
+            // 🚚 Si cambió la máquina, usar SubEtiquetaService para reubicar subetiquetas
+            $maquinaCambio = array_key_exists('maquina_id', $validated)
+                && $validated['maquina_id'] != $elemento->maquina_id;
 
             // Actualizar resto de campos
             $elemento->fill($validated);
@@ -1002,10 +967,10 @@ class ElementoController extends Controller
             }
 
 
-            // Si cambió de máquina, actualizar orden_planillas
-            if (array_key_exists('maquina_id', $validated) && $validated['maquina_id'] != $elemento->getOriginal('maquina_id')) {
+            // Si cambió de máquina, actualizar orden_planillas y reubicar subetiquetas
+            if ($maquinaCambio) {
                 $planillaId = $elemento->planilla_id;
-                $nuevaMaquinaId = $validated['maquina_id'];
+                $nuevaMaquinaId = (int) $validated['maquina_id'];
                 $maquinaAnteriorId = $elemento->getOriginal('maquina_id');
 
                 // 1. Obtener o crear OrdenPlanilla en nueva máquina
@@ -1026,6 +991,11 @@ class ElementoController extends Controller
                 // 🔗 Actualizar orden_planilla_id del elemento
                 $elemento->orden_planilla_id = $ordenPlanilla->id;
                 $elemento->save();
+
+                // 🏷️ Usar SubEtiquetaService para reubicar subetiquetas correctamente
+                /** @var SubEtiquetaService $svc */
+                $svc = app(SubEtiquetaService::class);
+                $svc->reubicarParaProduccion($elemento, $nuevaMaquinaId);
 
                 // 2. Eliminar de la máquina anterior si ya no hay elementos
                 $quedan = \App\Models\Elemento::where('planilla_id', $planillaId)

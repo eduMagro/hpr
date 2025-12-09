@@ -1245,16 +1245,17 @@ class AsignacionTurnoController extends Controller
     public function asignarObraMultiple(Request $request)
     {
         Log::debug('🪵 asignarObra multiple payload:', $request->all()); // 👈 Log de entrada
-        // 👇 Forzar null si viene cadena vacía
-        if ($request->obra_id === '') {
+        // 👇 Forzar null si viene cadena vacía o "sin-obra"
+        if (in_array($request->obra_id, ['', 'sin-obra', null], true)) {
             $request->merge(['obra_id' => null]);
+        } else {
+            $request->merge(['obra_id' => (int) $request->obra_id]);
         }
 
         $request->validate([
             'user_ids' => 'required|array',
             'user_ids.*' => 'exists:users,id',
             'obra_id' => ['nullable', 'integer', 'exists:obras,id'],
-
             'fecha_inicio' => 'required|date',
             'fecha_fin' => 'required|date|after_or_equal:fecha_inicio',
         ]);
@@ -1331,6 +1332,7 @@ class AsignacionTurnoController extends Controller
         $inicioAnterior = $inicioSemana->copy()->subWeek();
         $finAnterior = $inicioAnterior->copy()->endOfWeek();
 
+        // Repetir asignaciones normales
         $asignaciones = AsignacionTurno::whereBetween('fecha', [$inicioAnterior, $finAnterior])->get();
 
         foreach ($asignaciones as $asignacion) {
@@ -1352,6 +1354,25 @@ class AsignacionTurnoController extends Controller
             }
         }
 
+        // Repetir eventos ficticios
+        $eventosFicticios = \App\Models\EventoFicticioObra::whereBetween('fecha', [$inicioAnterior, $finAnterior])->get();
+
+        foreach ($eventosFicticios as $evento) {
+            $nuevaFecha = Carbon::parse($evento->fecha)->addWeek();
+            $existe = \App\Models\EventoFicticioObra::where('trabajador_ficticio_id', $evento->trabajador_ficticio_id)
+                ->whereDate('fecha', $nuevaFecha)
+                ->where('obra_id', $evento->obra_id)
+                ->exists();
+
+            if (!$existe) {
+                \App\Models\EventoFicticioObra::create([
+                    'trabajador_ficticio_id' => $evento->trabajador_ficticio_id,
+                    'obra_id' => $evento->obra_id,
+                    'fecha' => $nuevaFecha,
+                ]);
+            }
+        }
+
         return response()->json(['success' => true]);
     }
 
@@ -1367,6 +1388,7 @@ class AsignacionTurnoController extends Controller
         $inicioAnterior = $inicioSemana->copy()->subWeek();
         $finAnterior = $inicioAnterior->copy()->endOfWeek();
 
+        // Repetir asignaciones normales
         $asignaciones = AsignacionTurno::whereBetween('fecha', [$inicioAnterior, $finAnterior])
             ->where('obra_id', $obraId)
             ->get();
@@ -1394,9 +1416,33 @@ class AsignacionTurnoController extends Controller
             }
         }
 
+        // Repetir eventos ficticios de la misma obra
+        $eventosFicticios = \App\Models\EventoFicticioObra::whereBetween('fecha', [$inicioAnterior, $finAnterior])
+            ->where('obra_id', $obraId)
+            ->get();
+
+        $copiadasFicticias = 0;
+        foreach ($eventosFicticios as $evento) {
+            $nuevaFecha = Carbon::parse($evento->fecha)->addWeek();
+            $existe = \App\Models\EventoFicticioObra::where('trabajador_ficticio_id', $evento->trabajador_ficticio_id)
+                ->whereDate('fecha', $nuevaFecha)
+                ->where('obra_id', $obraId)
+                ->exists();
+
+            if (!$existe) {
+                \App\Models\EventoFicticioObra::create([
+                    'trabajador_ficticio_id' => $evento->trabajador_ficticio_id,
+                    'obra_id' => $evento->obra_id,
+                    'fecha' => $nuevaFecha,
+                ]);
+                $copiadasFicticias++;
+            }
+        }
+
+        $total = $copiadas + $copiadasFicticias;
         return response()->json([
             'success' => true,
-            'message' => "Se copiaron {$copiadas} asignaciones."
+            'message' => "Se copiaron {$total} asignaciones ({$copiadas} normales, {$copiadasFicticias} ficticias)."
         ]);
     }
 

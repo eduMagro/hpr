@@ -69,11 +69,11 @@ Route::get('/sistema', [PageController::class, 'sistema'])->middleware(['auth', 
 Route::get('/atajos', [AtajosController::class, 'index'])->middleware(['auth', 'verified'])->name('atajos.index');
 
 // Rutas antiguas redirigidas (compatibilidad)
-Route::get('/inventario', function() {
+Route::get('/inventario', function () {
     return redirect()->route('secciones.produccion');
 })->middleware(['auth', 'verified'])->name('secciones.inventario');
 
-Route::get('/compras', function() {
+Route::get('/compras', function () {
     return redirect()->route('secciones.logistica');
 })->middleware(['auth', 'verified'])->name('secciones.compras');
 
@@ -476,6 +476,14 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
     Route::resource('obras', ObraController::class);
     Route::post('/obras/actualizar-tipo', [ObraController::class, 'updateTipo'])->name('obras.updateTipo');
     Route::get('/asignaciones-turno/eventos-obra', [ProduccionController::class, 'eventosObra'])->name('asignaciones-turnos.verEventosObra');
+
+    // === TRABAJADORES Y EVENTOS FICTICIOS OBRA ===
+    Route::post('/trabajadores-ficticios', [ProduccionController::class, 'storeTrabajadorFicticio'])->name('trabajadores-ficticios.store');
+    Route::delete('/trabajadores-ficticios/{id}', [ProduccionController::class, 'destroyTrabajadorFicticio'])->name('trabajadores-ficticios.destroy');
+    Route::post('/eventos-ficticios-obra', [ProduccionController::class, 'storeEventoFicticio'])->name('eventos-ficticios-obra.store');
+    Route::post('/eventos-ficticios-obra/mover', [ProduccionController::class, 'moverEventosFicticios'])->name('eventos-ficticios-obra.mover');
+    Route::put('/eventos-ficticios-obra/{id}', [ProduccionController::class, 'updateEventoFicticio'])->name('eventos-ficticios-obra.update');
+    Route::delete('/eventos-ficticios-obra/{id}', [ProduccionController::class, 'destroyEventoFicticio'])->name('eventos-ficticios-obra.destroy');
 
     // === NOMINAS Y FISCALIDAD ===
     Route::resource('empresas', EmpresaController::class)->names('empresas');
