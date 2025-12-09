@@ -23,8 +23,8 @@
     </div>
 
     {{-- Calendario a ancho completo --}}
-    <div class="calendario-full-width py-4">
-        <div class="bg-white py-4 px-2">
+    <div class="calendario-full-width">
+        <div class="bg-white py-6">
             <div id="calendario" class="fc-calendario" data-config='@json($config, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT)'></div>
         </div>
     </div>
@@ -38,25 +38,8 @@
     <style>
         /* Calendario a ancho completo - salir del contenedor padre */
         .calendario-full-width {
-            width: calc(100% + 2rem);
-            margin-left: -1rem;
-            margin-right: -1rem;
-        }
-
-        @media (min-width: 640px) {
-            .calendario-full-width {
-                width: calc(100% + 3rem);
-                margin-left: -1.5rem;
-                margin-right: -1.5rem;
-            }
-        }
-
-        @media (min-width: 1024px) {
-            .calendario-full-width {
-                width: calc(100% + 4rem);
-                margin-left: -2rem;
-                margin-right: -2rem;
-            }
+            width: 100%;
+            margin: auto;
         }
 
         .fc {
@@ -72,7 +55,8 @@
         /* Header del calendario - mismo color que sidebar */
         .fc .fc-toolbar {
             padding: 1rem;
-            background: #111827; /* gray-900 */
+            background: #111827;
+            /* gray-900 */
             border-radius: 12px 12px 0 0;
             margin-bottom: 0 !important;
         }
