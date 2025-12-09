@@ -6,30 +6,3 @@
             d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3m-4 0h14" />
     </svg>
 </a>
-
-
-<form id="formulario-eliminar" method="POST" style="display:none;">
-    @csrf
-    @method('DELETE')
-</form>
-
-<script>
-    function confirmarEliminacion(actionUrl) {
-        Swal.fire({
-            title: '¿Estás seguro?',
-            text: "¡No podrás revertir esta acción!",
-            icon: 'warning',
-            showCancelButton: true,
-            confirmButtonColor: '#d33',
-            cancelButtonColor: '#3085d6',
-            confirmButtonText: 'Sí, eliminar',
-            cancelButtonText: 'Cancelar'
-        }).then((result) => {
-            if (result.isConfirmed) {
-                const formulario = document.getElementById('formulario-eliminar');
-                formulario.action = actionUrl;
-                formulario.submit();
-            }
-        });
-    }
-</script>
