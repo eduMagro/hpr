@@ -1481,9 +1481,30 @@ class PedidoController extends Controller
                 'producto_base_id' => $validated['producto_base_id'],
             ]);
 
+            // Recargar relaciones para devolver datos actualizados
+            $linea->load(['obra', 'productoBase']);
+
+            // Construir texto del lugar de entrega
+            $lugarEntrega = '—';
+            if ($linea->obra_id) {
+                $lugarEntrega = $linea->obra->obra ?? '—';
+            } elseif ($linea->obra_manual) {
+                $lugarEntrega = $linea->obra_manual;
+            }
+
+            // Construir texto del producto
+            $productoTexto = ucfirst($linea->productoBase->tipo ?? '') . ' Ø' . ($linea->productoBase->diametro ?? '');
+            if ($linea->productoBase->tipo === 'barra' && $linea->productoBase->longitud) {
+                $productoTexto .= ' x ' . $linea->productoBase->longitud . ' m';
+            }
+
             return response()->json([
                 'success' => true,
-                'message' => 'Línea actualizada correctamente'
+                'message' => 'Línea actualizada correctamente',
+                'data' => [
+                    'lugar_entrega' => $lugarEntrega,
+                    'producto' => $productoTexto,
+                ]
             ]);
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
             return response()->json([

@@ -1769,6 +1769,17 @@ class EtiquetaController extends Controller
                     //    - Marcamos elementos en máquina como "fabricando" y asignamos operarios.
                     //    - Ponemos la etiqueta en "fabricando".
                     // ─────────────────────────────────────────────────────────────────────
+
+                    // 🔄 GUARDAR HISTORIAL ANTES DE CAMBIOS (para sistema UNDO)
+                    EtiquetaHistorial::registrarCambio(
+                        $etiqueta,
+                        'iniciar_fabricacion',
+                        'fabricando',
+                        $maquina->id,
+                        Auth::id(),
+                        [] // No hay consumo de productos en este paso
+                    );
+
                     if ($etiqueta->planilla) {
                         if (is_null($etiqueta->planilla->fecha_inicio)) {
                             $etiqueta->planilla->fecha_inicio = now();

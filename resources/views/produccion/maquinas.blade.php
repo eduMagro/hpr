@@ -199,6 +199,17 @@
                         </svg>
                         <span class="text-sm font-medium hidden md:inline">Resumen</span>
                     </button>
+
+                    <!-- Botón de deshacer última operación -->
+                    <button onclick="deshacerUltimaOperacion()" id="deshacer-btn"
+                        title="Deshacer última operación"
+                        class="px-3 py-2 bg-gradient-to-r from-gray-600 to-gray-700 hover:from-gray-700 hover:to-gray-800 text-white rounded-lg transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105 flex items-center gap-2 group disabled:opacity-50 disabled:cursor-not-allowed"
+                        disabled>
+                        <svg class="w-5 h-5 transition-transform group-hover:scale-110" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"></path>
+                        </svg>
+                        <span class="text-sm font-medium hidden md:inline">Deshacer</span>
+                    </button>
                 </div>
 
                 <!-- Botón de pantalla completa en esquina superior derecha -->
@@ -614,18 +625,24 @@
                 </div>
 
                 <!-- Botones de acción -->
-                <div class="bg-gray-50 px-6 py-4 rounded-b-lg flex justify-end gap-3 border-t border-gray-200">
-                    <button onclick="cerrarModalOptimizar()"
-                        class="bg-gray-300 hover:bg-gray-400 text-gray-700 px-4 py-2 rounded-lg transition-colors">
-                        Cancelar
-                    </button>
-                    <button id="btnAplicarOptimizacion" onclick="aplicarOptimizacion()"
-                        class="bg-purple-600 hover:bg-purple-700 text-white px-6 py-2 rounded-lg transition-colors flex items-center gap-2 hidden">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-                        </svg>
-                        Aplicar Optimización
-                    </button>
+                <div class="bg-gray-50 px-6 py-4 rounded-b-lg flex justify-between items-center border-t border-gray-200">
+                    <label class="flex items-center gap-2 text-sm text-gray-600 cursor-pointer">
+                        <input type="checkbox" id="chkOptimizarFabricando" class="w-4 h-4 text-purple-600 rounded border-gray-300 focus:ring-purple-500">
+                        <span>Incluir planillas en posición 1 y fabricando</span>
+                    </label>
+                    <div class="flex gap-3">
+                        <button onclick="cerrarModalOptimizar()"
+                            class="bg-gray-300 hover:bg-gray-400 text-gray-700 px-4 py-2 rounded-lg transition-colors">
+                            Cancelar
+                        </button>
+                        <button id="btnAplicarOptimizacion" onclick="aplicarOptimizacion()"
+                            class="bg-purple-600 hover:bg-purple-700 text-white px-6 py-2 rounded-lg transition-colors flex items-center gap-2 hidden">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                            </svg>
+                            Aplicar Optimización
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -735,18 +752,24 @@
                 </div>
 
                 <!-- Botones de acción -->
-                <div class="bg-gray-50 px-6 py-4 rounded-b-lg flex justify-end gap-3 border-t border-gray-200">
-                    <button onclick="cerrarModalBalanceo()"
-                        class="bg-gray-300 hover:bg-gray-400 text-gray-700 px-4 py-2 rounded-lg transition-colors">
-                        Cancelar
-                    </button>
-                    <button id="btnAplicarBalanceo" onclick="aplicarBalanceo()"
-                        class="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-lg transition-colors flex items-center gap-2 hidden">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-                        </svg>
-                        Aplicar Balanceo
-                    </button>
+                <div class="bg-gray-50 px-6 py-4 rounded-b-lg flex justify-between items-center border-t border-gray-200">
+                    <label class="flex items-center gap-2 text-sm text-gray-600 cursor-pointer">
+                        <input type="checkbox" id="chkBalancearFabricando" class="w-4 h-4 text-green-600 rounded border-gray-300 focus:ring-green-500">
+                        <span>Incluir planillas en posición 1 y fabricando</span>
+                    </label>
+                    <div class="flex gap-3">
+                        <button onclick="cerrarModalBalanceo()"
+                            class="bg-gray-300 hover:bg-gray-400 text-gray-700 px-4 py-2 rounded-lg transition-colors">
+                            Cancelar
+                        </button>
+                        <button id="btnAplicarBalanceo" onclick="aplicarBalanceo()"
+                            class="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-lg transition-colors flex items-center gap-2 hidden">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                            </svg>
+                            Aplicar Balanceo
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -861,12 +884,18 @@
                 </div>
 
                 <!-- Botones de acción -->
-                <div class="bg-gray-50 px-6 py-4 rounded-b-lg flex justify-between items-center gap-3 border-t border-gray-200">
-                    <button type="button" onclick="limpiarTodasPrioridades()" class="text-gray-500 hover:text-gray-700 text-sm flex items-center gap-1">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
-                        Limpiar todo
-                    </button>
-                    <div class="flex gap-3">
+                <div class="bg-gray-50 px-6 py-4 rounded-b-lg border-t border-gray-200">
+                    <div class="flex justify-between items-center mb-3">
+                        <button type="button" onclick="limpiarTodasPrioridades()" class="text-gray-500 hover:text-gray-700 text-sm flex items-center gap-1">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                            Limpiar todo
+                        </button>
+                        <label class="flex items-center gap-2 text-sm text-gray-600 cursor-pointer">
+                            <input type="checkbox" id="chkPriorizarFabricando" class="w-4 h-4 text-orange-500 rounded border-gray-300 focus:ring-orange-500">
+                            <span>Incluir planillas en posición 1 y fabricando</span>
+                        </label>
+                    </div>
+                    <div class="flex justify-end gap-3">
                         <button onclick="cerrarModalPriorizarObra()"
                             class="bg-gray-300 hover:bg-gray-400 text-gray-700 px-4 py-2 rounded-lg transition-colors">
                             Cancelar
@@ -4936,13 +4965,15 @@
                 });
 
                 try {
+                    const incluirFabricando = document.getElementById('chkOptimizarFabricando')?.checked || false;
+
                     const response = await fetch('/api/produccion/optimizar-aplicar', {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
                             'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
                         },
-                        body: JSON.stringify({ redistribuciones })
+                        body: JSON.stringify({ redistribuciones, incluir_fabricando: incluirFabricando })
                     });
 
                     if (!response.ok) {
@@ -4965,6 +4996,9 @@
                         calendar.refetchResources();
                         calendar.refetchEvents();
                     }
+
+                    // Actualizar botón de deshacer
+                    actualizarBotonDeshacer();
 
                 } catch (error) {
                     console.error('Error al aplicar optimización:', error);
@@ -5178,13 +5212,15 @@
                 });
 
                 try {
+                    const incluirFabricando = document.getElementById('chkBalancearFabricando')?.checked || false;
+
                     const response = await fetch('/api/produccion/balancear-carga-aplicar', {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
                             'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
                         },
-                        body: JSON.stringify({ movimientos })
+                        body: JSON.stringify({ movimientos, incluir_fabricando: incluirFabricando })
                     });
 
                     if (!response.ok) {
@@ -5193,10 +5229,15 @@
 
                     const data = await response.json();
 
+                    let mensajeHtml = `Se han redistribuido <strong>${data.procesados}</strong> elemento(s) exitosamente.`;
+                    if (data.omitidos > 0) {
+                        mensajeHtml += `<br><small class="text-gray-500">(${data.omitidos} omitidos por estar fabricando)</small>`;
+                    }
+
                     Swal.fire({
                         icon: 'success',
                         title: '¡Balanceo aplicado!',
-                        html: `Se han redistribuido <strong>${data.procesados}</strong> elemento(s) exitosamente.`,
+                        html: mensajeHtml,
                         confirmButtonColor: '#16a34a'
                     });
 
@@ -5207,6 +5248,9 @@
                         calendar.refetchResources();
                         calendar.refetchEvents();
                     }
+
+                    // Actualizar botón de deshacer
+                    actualizarBotonDeshacer();
 
                 } catch (error) {
                     console.error('Error al aplicar balanceo:', error);
@@ -5428,6 +5472,12 @@
                         fecha_entrega: sel.grupo.fecha_entrega
                     }));
 
+                    // Obtener el valor del checkbox del modal
+                    const incluirFabricando = document.getElementById('chkPriorizarFabricando')?.checked || false;
+
+                    // Extraer solo los IDs de obras
+                    const obrasIds = prioridades.map(p => p.obra_id);
+
                     const response = await fetch('/api/produccion/priorizar-obras', {
                         method: 'POST',
                         headers: {
@@ -5435,8 +5485,8 @@
                             'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
                         },
                         body: JSON.stringify({
-                            prioridades: prioridades,
-                            parar_fabricando: pararFabricando
+                            obras: obrasIds,
+                            incluir_fabricando: incluirFabricando
                         })
                     });
 
@@ -5455,6 +5505,9 @@
                         calendar.refetchResources();
                         calendar.refetchEvents();
                     }
+
+                    // Actualizar botón de deshacer
+                    actualizarBotonDeshacer();
                 } catch (error) {
                     Swal.fire({ icon: 'error', title: 'Error', text: error.message || 'No se pudieron aplicar las prioridades' });
                 }
@@ -5667,6 +5720,143 @@
                     content.classList.add('hidden');
                     icon.classList.remove('rotate-90');
                 }
+            }
+
+            // ============================================================
+            // DESHACER ÚLTIMA OPERACIÓN
+            // ============================================================
+
+            // Verificar si hay snapshot disponible al cargar la página
+            async function verificarSnapshotDisponible() {
+                try {
+                    const response = await fetch('/api/produccion/ultimo-snapshot', {
+                        method: 'GET',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                        }
+                    });
+
+                    const data = await response.json();
+                    const btn = document.getElementById('deshacer-btn');
+
+                    if (data.success && data.snapshot) {
+                        btn.disabled = false;
+                        btn.title = `Deshacer: ${data.snapshot.tipo_operacion} (${data.snapshot.created_at})`;
+                    } else {
+                        btn.disabled = true;
+                        btn.title = 'No hay operaciones para deshacer';
+                    }
+                } catch (error) {
+                    console.error('Error verificando snapshot:', error);
+                }
+            }
+
+            // Ejecutar al cargar y después de cada operación
+            document.addEventListener('DOMContentLoaded', verificarSnapshotDisponible);
+
+            async function deshacerUltimaOperacion() {
+                try {
+                    // Primero verificar qué se va a deshacer
+                    const checkResponse = await fetch('/api/produccion/ultimo-snapshot', {
+                        method: 'GET',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                        }
+                    });
+
+                    const checkData = await checkResponse.json();
+
+                    if (!checkData.success || !checkData.snapshot) {
+                        Swal.fire({
+                            icon: 'info',
+                            title: 'Sin cambios',
+                            text: 'No hay operaciones para deshacer'
+                        });
+                        return;
+                    }
+
+                    const snapshot = checkData.snapshot;
+                    const tipoTexto = {
+                        'optimizar_planillas': 'Optimizar Planillas',
+                        'balancear_carga': 'Balancear Carga',
+                        'priorizar_obras': 'Priorizar Obras'
+                    }[snapshot.tipo_operacion] || snapshot.tipo_operacion;
+
+                    // Confirmar con el usuario
+                    const result = await Swal.fire({
+                        icon: 'warning',
+                        title: '¿Deshacer última operación?',
+                        html: `
+                            <div class="text-left">
+                                <p class="mb-2"><strong>Operación:</strong> ${tipoTexto}</p>
+                                <p class="mb-2"><strong>Realizada:</strong> ${snapshot.created_at}</p>
+                                <p class="mb-2"><strong>Por:</strong> ${snapshot.user}</p>
+                            </div>
+                            <p class="mt-4 text-sm text-gray-500">Esta acción restaurará el estado anterior de las planillas y elementos.</p>
+                        `,
+                        showCancelButton: true,
+                        confirmButtonText: 'Sí, deshacer',
+                        cancelButtonText: 'Cancelar',
+                        confirmButtonColor: '#6b7280'
+                    });
+
+                    if (!result.isConfirmed) return;
+
+                    // Mostrar loading
+                    Swal.fire({
+                        title: 'Deshaciendo...',
+                        html: 'Restaurando estado anterior',
+                        allowOutsideClick: false,
+                        didOpen: () => Swal.showLoading()
+                    });
+
+                    // Ejecutar restauración
+                    const response = await fetch('/api/produccion/restaurar-snapshot', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                        },
+                        body: JSON.stringify({ snapshot_id: snapshot.id })
+                    });
+
+                    const data = await response.json();
+
+                    if (data.success) {
+                        Swal.fire({
+                            icon: 'success',
+                            title: '¡Operación deshecha!',
+                            text: data.message,
+                            confirmButtonColor: '#6b7280'
+                        });
+
+                        // Refrescar calendario
+                        if (typeof calendar !== 'undefined') {
+                            calendar.refetchResources();
+                            calendar.refetchEvents();
+                        }
+
+                        // Verificar si hay más snapshots
+                        verificarSnapshotDisponible();
+                    } else {
+                        throw new Error(data.message || 'Error al deshacer');
+                    }
+
+                } catch (error) {
+                    console.error('Error al deshacer:', error);
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: error.message || 'No se pudo deshacer la operación'
+                    });
+                }
+            }
+
+            // Actualizar botón después de cada operación exitosa
+            function actualizarBotonDeshacer() {
+                verificarSnapshotDisponible();
             }
 
             // ============================================================

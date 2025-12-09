@@ -2,6 +2,43 @@
 @tailwind components;
 @tailwind utilities;
 
+/* === Colores corporativos HPR (azul oscuro) === */
+:root {
+    --hpr-primary: #1e3a5f;
+    --hpr-primary-light: #2d5a87;
+    --hpr-primary-dark: #152a45;
+    --hpr-primary-hover: #264a73;
+}
+
+/* Clases para navegación con color corporativo */
+.bg-hpr-primary {
+    background-color: var(--hpr-primary);
+}
+
+.bg-hpr-primary-light {
+    background-color: var(--hpr-primary-light);
+}
+
+.bg-hpr-primary-dark {
+    background-color: var(--hpr-primary-dark);
+}
+
+.hover\:bg-hpr-primary-hover:hover {
+    background-color: var(--hpr-primary-hover);
+}
+
+.border-hpr-primary {
+    border-color: var(--hpr-primary);
+}
+
+.border-hpr-primary-light {
+    border-color: var(--hpr-primary-light);
+}
+
+.focus\:ring-hpr-primary:focus {
+    --tw-ring-color: var(--hpr-primary);
+}
+
 /* === FIX GLOBAL: Prevenir desplazamiento de TODOS los selects === */
 select,
 select:focus,

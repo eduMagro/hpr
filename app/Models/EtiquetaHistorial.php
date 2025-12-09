@@ -83,75 +83,105 @@ class EtiquetaHistorial extends Model
         ?int $maquinaId = null,
         ?int $usuarioId = null,
         array $productosConsumidos = []
-    ): self {
-        // Cargar relaciones necesarias
-        $etiqueta->loadMissing(['elementos', 'planilla']);
+    ): ?self {
+        try {
+            // Cargar relaciones necesarias
+            $etiqueta->loadMissing(['elementos', 'planilla']);
 
-        // Snapshot de la etiqueta
-        $snapshotEtiqueta = [
-            'id' => $etiqueta->id,
-            'estado' => $etiqueta->estado,
-            'paquete_id' => $etiqueta->paquete_id,
-            'fecha_inicio' => $etiqueta->fecha_inicio,
-            'fecha_finalizacion' => $etiqueta->fecha_finalizacion,
-            'fecha_inicio_ensamblado' => $etiqueta->fecha_inicio_ensamblado,
-            'fecha_finalizacion_ensamblado' => $etiqueta->fecha_finalizacion_ensamblado,
-            'fecha_inicio_soldadura' => $etiqueta->fecha_inicio_soldadura,
-            'fecha_finalizacion_soldadura' => $etiqueta->fecha_finalizacion_soldadura,
-            'operario1_id' => $etiqueta->operario1_id,
-            'operario2_id' => $etiqueta->operario2_id,
-            'peso' => $etiqueta->peso,
-        ];
+            // Helper para convertir fechas a formato MySQL
+            $formatearFecha = function($fecha) {
+                if (empty($fecha)) return null;
+                if (is_string($fecha)) {
+                    // Si ya tiene formato MySQL, devolverlo
+                    if (preg_match('/^\d{4}-\d{2}-\d{2}/', $fecha)) {
+                        return substr($fecha, 0, 19); // Truncar a Y-m-d H:i:s
+                    }
+                    return $fecha;
+                }
+                if ($fecha instanceof \DateTimeInterface) {
+                    return $fecha->format('Y-m-d H:i:s');
+                }
+                return null;
+            };
 
-        // Snapshot de elementos
-        $snapshotElementos = $etiqueta->elementos->map(function ($elemento) {
-            return [
-                'id' => $elemento->id,
-                'estado' => $elemento->estado,
-                'producto_id' => $elemento->producto_id,
-                'producto_id_2' => $elemento->producto_id_2,
-                'producto_id_3' => $elemento->producto_id_3,
+            // Snapshot de la etiqueta
+            $snapshotEtiqueta = [
+                'id' => $etiqueta->id,
+                'estado' => $etiqueta->estado,
+                'paquete_id' => $etiqueta->paquete_id,
+                'fecha_inicio' => $formatearFecha($etiqueta->getRawOriginal('fecha_inicio')),
+                'fecha_finalizacion' => $formatearFecha($etiqueta->getRawOriginal('fecha_finalizacion')),
+                'fecha_inicio_ensamblado' => $formatearFecha($etiqueta->getRawOriginal('fecha_inicio_ensamblado')),
+                'fecha_finalizacion_ensamblado' => $formatearFecha($etiqueta->getRawOriginal('fecha_finalizacion_ensamblado')),
+                'fecha_inicio_soldadura' => $formatearFecha($etiqueta->getRawOriginal('fecha_inicio_soldadura')),
+                'fecha_finalizacion_soldadura' => $formatearFecha($etiqueta->getRawOriginal('fecha_finalizacion_soldadura')),
+                'operario1_id' => $etiqueta->operario1_id,
+                'operario2_id' => $etiqueta->operario2_id,
+                'peso' => $etiqueta->peso,
             ];
-        })->toArray();
 
-        // Snapshot de productos consumidos (con peso anterior)
-        $snapshotProductos = [];
-        foreach ($productosConsumidos as $prod) {
-            $snapshotProductos[] = [
-                'id' => $prod['id'],
-                'codigo' => $prod['codigo'] ?? null,
-                'peso_consumido' => $prod['consumido'] ?? $prod['peso_consumido'] ?? 0,
-                'peso_stock_anterior' => $prod['peso_stock_anterior'] ?? ($prod['peso_stock'] + ($prod['consumido'] ?? 0)),
-                'estado_anterior' => $prod['estado_anterior'] ?? 'consumiendo',
-            ];
+            // Snapshot de elementos
+            $snapshotElementos = $etiqueta->elementos->map(function ($elemento) {
+                return [
+                    'id' => $elemento->id,
+                    'estado' => $elemento->estado,
+                    'producto_id' => $elemento->producto_id,
+                    'producto_id_2' => $elemento->producto_id_2,
+                    'producto_id_3' => $elemento->producto_id_3,
+                    'users_id' => $elemento->users_id,
+                    'users_id_2' => $elemento->users_id_2,
+                ];
+            })->toArray();
+
+            // Snapshot de productos consumidos (con peso anterior)
+            $snapshotProductos = [];
+            foreach ($productosConsumidos as $prod) {
+                $prodId = $prod['id'] ?? ($prod->id ?? null);
+                if (!$prodId) continue;
+
+                $snapshotProductos[] = [
+                    'id' => $prodId,
+                    'codigo' => $prod['codigo'] ?? ($prod->codigo ?? null),
+                    'peso_consumido' => (float) ($prod['consumido'] ?? $prod['peso_consumido'] ?? 0),
+                    'peso_stock_anterior' => (float) ($prod['peso_stock_anterior'] ?? ($prod['peso_stock'] ?? 0)),
+                    'estado_anterior' => $prod['estado_anterior'] ?? ($prod['estado'] ?? 'consumiendo'),
+                ];
+            }
+
+            // Snapshot de planilla
+            $snapshotPlanilla = null;
+            if ($etiqueta->planilla) {
+                $snapshotPlanilla = [
+                    'id' => $etiqueta->planilla->id,
+                    'estado' => $etiqueta->planilla->getRawOriginal('estado'),
+                    'fecha_inicio' => $formatearFecha($etiqueta->planilla->getRawOriginal('fecha_inicio')),
+                    'fecha_finalizacion' => $formatearFecha($etiqueta->planilla->getRawOriginal('fecha_finalizacion')),
+                ];
+            }
+
+            return self::create([
+                'etiqueta_id' => $etiqueta->id,
+                'etiqueta_sub_id' => $etiqueta->etiqueta_sub_id,
+                'maquina_id' => $maquinaId,
+                'usuario_id' => $usuarioId,
+                'accion' => $accion,
+                'estado_anterior' => $etiqueta->estado,
+                'estado_nuevo' => $estadoNuevo,
+                'snapshot_etiqueta' => $snapshotEtiqueta,
+                'snapshot_elementos' => $snapshotElementos,
+                'snapshot_productos' => $snapshotProductos,
+                'snapshot_planilla' => $snapshotPlanilla,
+                'paquete_id_anterior' => $etiqueta->paquete_id,
+                'revertido' => false,
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Error al registrar historial de etiqueta', [
+                'etiqueta_sub_id' => $etiqueta->etiqueta_sub_id ?? 'N/A',
+                'accion' => $accion,
+                'error' => $e->getMessage(),
+            ]);
+            return null; // No fallar la operación principal
         }
-
-        // Snapshot de planilla
-        $snapshotPlanilla = null;
-        if ($etiqueta->planilla) {
-            $snapshotPlanilla = [
-                'id' => $etiqueta->planilla->id,
-                'estado' => $etiqueta->planilla->getRawOriginal('estado'),
-                'fecha_inicio' => $etiqueta->planilla->getRawOriginal('fecha_inicio'),
-                'fecha_finalizacion' => $etiqueta->planilla->getRawOriginal('fecha_finalizacion'),
-            ];
-        }
-
-        return self::create([
-            'etiqueta_id' => $etiqueta->id,
-            'etiqueta_sub_id' => $etiqueta->etiqueta_sub_id,
-            'maquina_id' => $maquinaId,
-            'usuario_id' => $usuarioId,
-            'accion' => $accion,
-            'estado_anterior' => $etiqueta->estado,
-            'estado_nuevo' => $estadoNuevo,
-            'snapshot_etiqueta' => $snapshotEtiqueta,
-            'snapshot_elementos' => $snapshotElementos,
-            'snapshot_productos' => $snapshotProductos,
-            'snapshot_planilla' => $snapshotPlanilla,
-            'paquete_id_anterior' => $etiqueta->paquete_id,
-            'revertido' => false,
-        ]);
     }
 
     /**
@@ -219,15 +249,35 @@ class EtiquetaHistorial extends Model
 
             $snapshot = $this->snapshot_etiqueta;
 
+            // Guardar paquete_id actual ANTES del update (para verificar después si hay que eliminar el paquete)
+            $paqueteIdAntesDeCambio = $etiqueta->paquete_id;
+
+            // Helper para normalizar fechas (convierte ISO a MySQL format)
+            $normalizarFecha = function($fecha) {
+                if (empty($fecha)) return null;
+                if (is_string($fecha)) {
+                    // Si tiene T o Z es formato ISO, convertir
+                    if (str_contains($fecha, 'T') || str_contains($fecha, 'Z')) {
+                        try {
+                            return \Carbon\Carbon::parse($fecha)->format('Y-m-d H:i:s');
+                        } catch (\Exception $e) {
+                            return null;
+                        }
+                    }
+                    return $fecha;
+                }
+                return $fecha;
+            };
+
             $etiqueta->update([
                 'estado' => $snapshot['estado'],
                 'paquete_id' => $snapshot['paquete_id'],
-                'fecha_inicio' => $snapshot['fecha_inicio'],
-                'fecha_finalizacion' => $snapshot['fecha_finalizacion'],
-                'fecha_inicio_ensamblado' => $snapshot['fecha_inicio_ensamblado'] ?? null,
-                'fecha_finalizacion_ensamblado' => $snapshot['fecha_finalizacion_ensamblado'] ?? null,
-                'fecha_inicio_soldadura' => $snapshot['fecha_inicio_soldadura'] ?? null,
-                'fecha_finalizacion_soldadura' => $snapshot['fecha_finalizacion_soldadura'] ?? null,
+                'fecha_inicio' => $normalizarFecha($snapshot['fecha_inicio']),
+                'fecha_finalizacion' => $normalizarFecha($snapshot['fecha_finalizacion']),
+                'fecha_inicio_ensamblado' => $normalizarFecha($snapshot['fecha_inicio_ensamblado'] ?? null),
+                'fecha_finalizacion_ensamblado' => $normalizarFecha($snapshot['fecha_finalizacion_ensamblado'] ?? null),
+                'fecha_inicio_soldadura' => $normalizarFecha($snapshot['fecha_inicio_soldadura'] ?? null),
+                'fecha_finalizacion_soldadura' => $normalizarFecha($snapshot['fecha_finalizacion_soldadura'] ?? null),
                 'operario1_id' => $snapshot['operario1_id'] ?? null,
                 'operario2_id' => $snapshot['operario2_id'] ?? null,
             ]);
@@ -244,6 +294,8 @@ class EtiquetaHistorial extends Model
                             'producto_id' => $elemData['producto_id'],
                             'producto_id_2' => $elemData['producto_id_2'],
                             'producto_id_3' => $elemData['producto_id_3'],
+                            'users_id' => $elemData['users_id'] ?? null,
+                            'users_id_2' => $elemData['users_id_2'] ?? null,
                         ]);
                     }
                 }
@@ -312,7 +364,33 @@ class EtiquetaHistorial extends Model
                 }
             }
 
-            // 5. Marcar este registro como revertido
+            // 5. GESTIONAR PAQUETE (si la etiqueta estaba en un paquete antes del undo)
+            $paqueteIdDelSnapshot = $snapshot['paquete_id'] ?? null;
+
+            // Si la etiqueta estaba en un paquete ANTES del undo y el snapshot dice que NO debería estar
+            if ($paqueteIdAntesDeCambio && !$paqueteIdDelSnapshot) {
+                $paquete = Paquete::find($paqueteIdAntesDeCambio);
+                if ($paquete) {
+                    $codigoPaquete = $paquete->codigo;
+                    $resultado['cambios'][] = "Etiqueta removida del paquete {$codigoPaquete}";
+
+                    // Verificar si el paquete quedó vacío (ya no tiene etiquetas asociadas)
+                    $etiquetasRestantes = Etiqueta::where('paquete_id', $paquete->id)->count();
+
+                    if ($etiquetasRestantes === 0) {
+                        // Eliminar el paquete vacío
+                        $paquete->delete();
+                        $resultado['cambios'][] = "Paquete {$codigoPaquete} eliminado (quedó vacío)";
+                        Log::info('Paquete eliminado por quedar vacío tras undo', [
+                            'paquete_id' => $paqueteIdAntesDeCambio,
+                            'paquete_codigo' => $codigoPaquete,
+                            'etiqueta_sub_id' => $this->etiqueta_sub_id,
+                        ]);
+                    }
+                }
+            }
+
+            // 6. Marcar este registro como revertido
             $this->update([
                 'revertido' => true,
                 'revertido_at' => now(),
@@ -342,5 +420,59 @@ class EtiquetaHistorial extends Model
         $estadoNuevo = $this->estado_nuevo;
 
         return "{$this->accion}: {$estadoAnt} → {$estadoNuevo}";
+    }
+
+    // ==================== MANTENIMIENTO ====================
+
+    /**
+     * Limpia registros de historial antiguos para evitar crecimiento descontrolado.
+     * Por defecto elimina registros revertidos con más de 30 días y
+     * registros no revertidos con más de 90 días.
+     *
+     * @param int $diasRevertidos Días para eliminar registros ya revertidos
+     * @param int $diasNoRevertidos Días para eliminar registros no revertidos
+     * @return int Cantidad de registros eliminados
+     */
+    public static function limpiarHistorialAntiguo(int $diasRevertidos = 30, int $diasNoRevertidos = 90): int
+    {
+        $eliminados = 0;
+
+        // Eliminar registros revertidos antiguos (ya no sirven para UNDO)
+        $eliminados += self::where('revertido', true)
+            ->where('created_at', '<', now()->subDays($diasRevertidos))
+            ->delete();
+
+        // Eliminar registros muy antiguos (aunque no estén revertidos)
+        $eliminados += self::where('created_at', '<', now()->subDays($diasNoRevertidos))
+            ->delete();
+
+        if ($eliminados > 0) {
+            Log::info('Limpieza de historial de etiquetas', [
+                'registros_eliminados' => $eliminados,
+                'dias_revertidos' => $diasRevertidos,
+                'dias_no_revertidos' => $diasNoRevertidos,
+            ]);
+        }
+
+        return $eliminados;
+    }
+
+    /**
+     * Obtiene estadísticas del historial para monitoreo
+     *
+     * @return array
+     */
+    public static function estadisticas(): array
+    {
+        return [
+            'total' => self::count(),
+            'pendientes_revertir' => self::where('revertido', false)->count(),
+            'revertidos' => self::where('revertido', true)->count(),
+            'ultima_semana' => self::where('created_at', '>=', now()->subWeek())->count(),
+            'por_accion' => self::selectRaw('accion, COUNT(*) as total')
+                ->groupBy('accion')
+                ->pluck('total', 'accion')
+                ->toArray(),
+        ];
     }
 }

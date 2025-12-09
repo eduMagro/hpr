@@ -10,8 +10,10 @@ use App\Models\Ubicacion;
 use App\Models\Elemento;
 use App\Models\Maquina;
 use App\Models\Movimiento;
+use App\Models\EtiquetaHistorial;
 use Exception;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\ValidationException;
 use Illuminate\Support\Facades\DB;
 use App\Services\PlanillaColaService;
@@ -588,6 +590,19 @@ class PaqueteController extends Controller
 
             if (count($etiquetasYaAsignadas) > 0) {
                 Log::warning('Etiquetas ya asignadas a otro paquete: ' . implode(', ', $etiquetasYaAsignadas));
+            }
+
+            // 🔄 GUARDAR HISTORIAL ANTES DE ASIGNAR AL PAQUETE (para sistema UNDO)
+            $etiquetas = Etiqueta::whereIn('etiqueta_sub_id', $subIds)->get();
+            foreach ($etiquetas as $etiqueta) {
+                EtiquetaHistorial::registrarCambio(
+                    $etiqueta,
+                    'empaquetar',
+                    'en-paquete',
+                    null, // No hay máquina en esta operación
+                    Auth::id(),
+                    [] // No hay consumo de productos
+                );
             }
 
             // Asignar el paquete a las etiquetas correctas

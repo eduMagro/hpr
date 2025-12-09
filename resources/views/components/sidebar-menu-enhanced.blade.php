@@ -473,7 +473,7 @@
             <!-- Búsqueda -->
             <div class="relative">
                 <button @click="searchOpen = true"
-                    class="w-full flex items-center space-x-3 px-3 py-2 rounded-lg bg-gray-800 hover:bg-gray-700 transition text-sm group">
+                    class="w-full flex items-center space-x-3 px-3 py-2 rounded-lg bg-gray-800 hover:bg-white/20 transition text-sm group">
                     <svg class="w-5 h-5 flex-shrink-0 text-gray-400 group-hover:text-white transition"
                         fill="none" stroke="currentColor"
                         viewBox="0 0 24 24">
@@ -525,7 +525,7 @@
                     </template>
                     <template x-for="fav in favorites" :key="fav.route">
                         <div
-                            class="flex items-center group px-3 py-2 rounded-lg hover:bg-gray-700 transition">
+                            class="flex items-center group px-3 py-2 rounded-lg hover:bg-gray-800 transition">
                             <a :href="fav.url || `{{ url('/') }}${getRouteUrl(fav.route)}`"
                                 wire:navigate
                                 class="flex items-center space-x-2 flex-1 min-w-0">

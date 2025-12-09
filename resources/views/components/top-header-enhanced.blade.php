@@ -80,7 +80,7 @@
                     <button @click="open = !open" @click.away="open = false"
                         class="flex items-center space-x-2 px-3 py-2 text-sm font-medium text-gray-300 dark:text-gray-300 hover:bg-gray-700 dark:hover:bg-gray-700 rounded-lg transition">
                         <div
-                            class="w-8 h-8 bg-gray-900 dark:bg-gray-950 rounded-full flex items-center justify-center text-white font-bold text-sm border-2 border-gray-300">
+                            class="w-8 h-8 bg-gray-800 dark:bg-gray-950 rounded-full flex items-center justify-center text-white font-bold text-sm border-2 border-gray-600">
                             {{ strtoupper(substr(Auth::user()->nombre_completo, 0, 1)) }}
                         </div>
                         <span class="hidden sm:block">{{ Auth::user()->nombre_completo }}</span>

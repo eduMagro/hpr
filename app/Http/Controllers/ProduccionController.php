@@ -23,6 +23,8 @@ use Illuminate\Support\Arr;
 use App\Models\Festivo;
 use App\Models\EventoFicticioObra;
 use App\Models\TrabajadorFicticio;
+use App\Models\SnapshotProduccion;
+use App\Models\Etiqueta;
 use Throwable;
 use Illuminate\Validation\Rule;
 use Illuminate\Support\Facades\File;
@@ -600,6 +602,11 @@ class ProduccionController extends Controller
 
         $initialDate = $this->calcularInitialDate();
 
+        // 🆕 Configuración del calendario (horas visibles y días a mostrar)
+        $fechaMaximaCalendario = [
+            'horas' => 24, // Horas máximas visibles en el calendario (slotMaxTime)
+            'dias' => 7,   // Días a mostrar en la vista personalizada
+        ];
 
         // 🆕 Preparar datos de máquinas para JavaScript
         $maquinasParaJS = $maquinas->map(function ($m) {
@@ -622,6 +629,7 @@ class ProduccionController extends Controller
             'realDetallado'     => $realDetallado,     // { maquina_id: { turno: [ {peso,fecha} ] } }
             'resources'                        => $resources,
             'fechaInicioCalendario'            => $fechaInicioCalendario,
+            'fechaMaximaCalendario'            => $fechaMaximaCalendario,
             'turnosLista'         => $turnosLista,
             // Devolvemos también los filtros para reflejarlos en la vista/JS
             'filtro_fecha_inicio'              => $fechaInicio,
@@ -3573,6 +3581,7 @@ class ProduccionController extends Controller
     {
         try {
             $movimientos = $request->input('movimientos', []);
+            $incluirFabricando = $request->boolean('incluir_fabricando', false);
 
             if (empty($movimientos)) {
                 return response()->json([
@@ -3587,8 +3596,22 @@ class ProduccionController extends Controller
 
             DB::beginTransaction();
 
+            // Crear snapshot antes de la operación
+            $this->crearSnapshotProduccion('balancear_carga');
+
+            // Si no incluir fabricando, obtener IDs de planillas en posición 1 y fabricando
+            $planillasExcluidas = [];
+            if (!$incluirFabricando) {
+                $planillasExcluidas = OrdenPlanilla::where('posicion', 1)
+                    ->whereHas('planilla', fn($q) => $q->where('estado', 'fabricando'))
+                    ->pluck('planilla_id')
+                    ->toArray();
+            }
+
             $procesados = 0;
+            $omitidos = 0;
             $errores = [];
+            $planillasAfectadas = [];
 
             foreach ($movimientos as $mov) {
                 try {
@@ -3596,6 +3619,12 @@ class ProduccionController extends Controller
 
                     if (!$elemento) {
                         $errores[] = "Elemento {$mov['elemento_id']} no encontrado";
+                        continue;
+                    }
+
+                    // Saltar elementos de planillas en posición 1 y fabricando
+                    if (in_array($elemento->planilla_id, $planillasExcluidas)) {
+                        $omitidos++;
                         continue;
                     }
 
@@ -3655,6 +3684,11 @@ class ProduccionController extends Controller
 
                     $procesados++;
 
+                    // Registrar planilla afectada
+                    if ($planillaId && !in_array($planillaId, $planillasAfectadas)) {
+                        $planillasAfectadas[] = $planillaId;
+                    }
+
                 } catch (\Exception $e) {
                     $errores[] = "Error moviendo elemento {$mov['elemento_id']}: " . $e->getMessage();
                     Log::error('Error moviendo elemento', [
@@ -3664,19 +3698,36 @@ class ProduccionController extends Controller
                 }
             }
 
+            // Marcar planillas afectadas como no revisadas
+            if (!empty($planillasAfectadas)) {
+                Planilla::whereIn('id', $planillasAfectadas)
+                    ->update(['revisada' => 0]);
+
+                Log::info('📋 Planillas marcadas como no revisadas (balancear)', [
+                    'planillas_ids' => $planillasAfectadas,
+                ]);
+            }
+
             DB::commit();
 
             Log::info('⚖️ BALANCEO: Redistribución completada', [
                 'procesados' => $procesados,
+                'omitidos' => $omitidos,
                 'errores' => count($errores)
             ]);
+
+            $mensaje = "Balanceo aplicado: $procesados elementos redistribuidos";
+            if ($omitidos > 0) {
+                $mensaje .= " ({$omitidos} omitidos por estar fabricando)";
+            }
 
             return response()->json([
                 'success' => true,
                 'procesados' => $procesados,
+                'omitidos' => $omitidos,
                 'total' => count($movimientos),
                 'errores' => $errores,
-                'message' => "Balanceo aplicado: $procesados elementos redistribuidos"
+                'message' => $mensaje
             ]);
 
         } catch (\Exception $e) {
@@ -3845,13 +3896,29 @@ class ProduccionController extends Controller
             'redistribuciones' => 'required|array',
             'redistribuciones.*.elemento_id' => 'required|integer|exists:elementos,id',
             'redistribuciones.*.nueva_maquina_id' => 'required|integer|exists:maquinas,id',
+            'incluir_fabricando' => 'boolean',
         ]);
+
+        $incluirFabricando = $request->boolean('incluir_fabricando', false);
 
         DB::beginTransaction();
 
         try {
+            // Crear snapshot antes de la operación
+            $this->crearSnapshotProduccion('optimizar_planillas');
+
+            // Si no incluir fabricando, obtener IDs de planillas en posición 1 y fabricando
+            $planillasExcluidas = [];
+            if (!$incluirFabricando) {
+                $planillasExcluidas = OrdenPlanilla::where('posicion', 1)
+                    ->whereHas('planilla', fn($q) => $q->where('estado', 'fabricando'))
+                    ->pluck('planilla_id')
+                    ->toArray();
+            }
+
             $redistribuciones = $request->input('redistribuciones');
             $elementosMovidos = 0;
+            $elementosOmitidos = 0;
 
             // Rastrear planillas afectadas por máquina
             $planillasAfectadas = []; // [planilla_id => ['maquina_anterior' => id, 'maquina_nueva' => id]]
@@ -3867,6 +3934,12 @@ class ProduccionController extends Controller
 
                 $maquinaAnterior = $elemento->maquina_id;
                 $planillaId = $elemento->planilla_id;
+
+                // Saltar elementos de planillas en posición 1 y fabricando
+                if (in_array($planillaId, $planillasExcluidas)) {
+                    $elementosOmitidos++;
+                    continue;
+                }
 
                 // Actualizar máquina del elemento
                 $elemento->maquina_id = $nuevaMaquinaId;
@@ -3956,13 +4029,29 @@ class ProduccionController extends Controller
                 }
             }
 
+            // Marcar planillas afectadas como no revisadas
+            if (!empty($planillasAfectadas)) {
+                Planilla::whereIn('id', array_keys($planillasAfectadas))
+                    ->update(['revisada' => 0]);
+
+                Log::info('📋 Planillas marcadas como no revisadas (optimizar)', [
+                    'planillas_ids' => array_keys($planillasAfectadas),
+                ]);
+            }
+
             DB::commit();
+
+            $mensaje = "Se redistribuyeron {$elementosMovidos} elementos";
+            if ($elementosOmitidos > 0) {
+                $mensaje .= " ({$elementosOmitidos} omitidos por estar fabricando)";
+            }
 
             return response()->json([
                 'success' => true,
                 'elementos_movidos' => $elementosMovidos,
+                'elementos_omitidos' => $elementosOmitidos,
                 'planillas_actualizadas' => count($planillasAfectadas),
-                'message' => "Se redistribuyeron {$elementosMovidos} elementos de " . count($planillasAfectadas) . " planillas exitosamente"
+                'message' => $mensaje
             ]);
 
         } catch (\Exception $e) {
@@ -3978,5 +4067,336 @@ class ProduccionController extends Controller
                 'message' => $e->getMessage()
             ], 500);
         }
+    }
+
+    /**
+     * Crear snapshot del estado actual de producción
+     */
+    private function crearSnapshotProduccion(string $tipoOperacion): SnapshotProduccion
+    {
+        // Capturar estado actual de orden_planillas
+        $ordenPlanillasData = DB::table('orden_planillas')
+            ->select('id', 'planilla_id', 'maquina_id', 'posicion')
+            ->get()
+            ->toArray();
+
+        // Capturar estado actual de elementos (solo campos relevantes para producción)
+        $elementosData = Elemento::whereNotIn('estado', ['completado', 'fabricado'])
+            ->select('id', 'maquina_id', 'orden_planilla_id', 'etiqueta_id', 'etiqueta_sub_id')
+            ->get()
+            ->toArray();
+
+        // Crear snapshot
+        $snapshot = SnapshotProduccion::create([
+            'tipo_operacion' => $tipoOperacion,
+            'user_id' => auth()->id(),
+            'orden_planillas_data' => $ordenPlanillasData,
+            'elementos_data' => $elementosData,
+        ]);
+
+        Log::info("📸 Snapshot creado para operación: {$tipoOperacion}", [
+            'snapshot_id' => $snapshot->id,
+            'orden_planillas_count' => count($ordenPlanillasData),
+            'elementos_count' => count($elementosData),
+        ]);
+
+        return $snapshot;
+    }
+
+    /**
+     * Obtener el último snapshot disponible
+     */
+    public function obtenerUltimoSnapshot()
+    {
+        $snapshot = SnapshotProduccion::latest()->first();
+
+        if (!$snapshot) {
+            return response()->json([
+                'success' => false,
+                'message' => 'No hay cambios para deshacer'
+            ]);
+        }
+
+        return response()->json([
+            'success' => true,
+            'snapshot' => [
+                'id' => $snapshot->id,
+                'tipo_operacion' => $snapshot->tipo_operacion,
+                'created_at' => $snapshot->created_at->format('d/m/Y H:i:s'),
+                'user' => $snapshot->user?->name ?? 'Sistema',
+            ]
+        ]);
+    }
+
+    /**
+     * Restaurar el último snapshot (deshacer última operación)
+     */
+    public function restaurarSnapshot(Request $request)
+    {
+        $snapshotId = $request->input('snapshot_id');
+
+        $snapshot = $snapshotId
+            ? SnapshotProduccion::find($snapshotId)
+            : SnapshotProduccion::latest()->first();
+
+        if (!$snapshot) {
+            return response()->json([
+                'success' => false,
+                'message' => 'No hay snapshot para restaurar'
+            ], 404);
+        }
+
+        DB::beginTransaction();
+
+        try {
+            $ordenPlanillasData = $snapshot->orden_planillas_data;
+            $elementosData = $snapshot->elementos_data;
+
+            // 1. Restaurar orden_planillas
+            // Primero eliminamos todos los registros actuales
+            DB::table('orden_planillas')->delete();
+
+            // Luego insertamos los del snapshot
+            foreach ($ordenPlanillasData as $op) {
+                DB::table('orden_planillas')->insert([
+                    'id' => $op['id'],
+                    'planilla_id' => $op['planilla_id'],
+                    'maquina_id' => $op['maquina_id'],
+                    'posicion' => $op['posicion'],
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+            }
+
+            // 2. Restaurar elementos
+            foreach ($elementosData as $elem) {
+                Elemento::where('id', $elem['id'])->update([
+                    'maquina_id' => $elem['maquina_id'],
+                    'orden_planilla_id' => $elem['orden_planilla_id'],
+                    'etiqueta_id' => $elem['etiqueta_id'],
+                    'etiqueta_sub_id' => $elem['etiqueta_sub_id'],
+                ]);
+            }
+
+            DB::commit();
+
+            // Eliminar el snapshot usado
+            $tipoOperacion = $snapshot->tipo_operacion;
+            $snapshot->delete();
+
+            Log::info("⏪ Snapshot restaurado: {$tipoOperacion}", [
+                'snapshot_id' => $snapshot->id,
+                'user_id' => auth()->id(),
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => "Operación '{$tipoOperacion}' deshecha correctamente"
+            ]);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+
+            Log::error('Error al restaurar snapshot', [
+                'snapshot_id' => $snapshot->id,
+                'error' => $e->getMessage()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al restaurar: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Priorizar obras - mover planillas de obras seleccionadas al principio de la cola
+     */
+    public function priorizarObras(Request $request)
+    {
+        $request->validate([
+            'obras' => 'required|array|min:1|max:5',
+            'obras.*' => 'required|integer|exists:obras,id',
+            'incluir_fabricando' => 'boolean',
+        ]);
+
+        $obrasIds = $request->input('obras');
+        $incluirFabricando = $request->boolean('incluir_fabricando', false);
+
+        DB::beginTransaction();
+
+        try {
+            // Crear snapshot antes de la operación
+            $this->crearSnapshotProduccion('priorizar_obras');
+
+            $maquinas = Maquina::pluck('id');
+            $cambiosRealizados = 0;
+            $omitidos = 0;
+            $planillasAfectadas = [];
+
+            foreach ($maquinas as $maquinaId) {
+                // Obtener todas las orden_planillas de esta máquina ordenadas por posición actual
+                $ordenPlanillas = OrdenPlanilla::where('maquina_id', $maquinaId)
+                    ->with('planilla')
+                    ->orderBy('posicion')
+                    ->get();
+
+                if ($ordenPlanillas->isEmpty()) continue;
+
+                // Identificar la planilla en posición 1 si está fabricando (para no moverla)
+                $planillaFabricandoPos1 = null;
+                if (!$incluirFabricando) {
+                    $primeraOp = $ordenPlanillas->first();
+                    if ($primeraOp && $primeraOp->posicion === 1 && $primeraOp->planilla?->estado === 'fabricando') {
+                        $planillaFabricandoPos1 = $primeraOp;
+                    }
+                }
+
+                // Separar en priorizadas y no priorizadas (excluyendo la fabricando en pos 1)
+                $priorizadas = collect();
+                $noPriorizadas = collect();
+
+                foreach ($ordenPlanillas as $op) {
+                    // Si es la planilla fabricando en posición 1, no la movemos
+                    if ($planillaFabricandoPos1 && $op->id === $planillaFabricandoPos1->id) {
+                        continue;
+                    }
+
+                    $obraId = $op->planilla?->obra_id;
+
+                    if ($obraId && in_array($obraId, $obrasIds)) {
+                        // Asignar prioridad según el orden en el array de obras
+                        $op->_prioridad = array_search($obraId, $obrasIds);
+                        $priorizadas->push($op);
+                    } else {
+                        $noPriorizadas->push($op);
+                    }
+                }
+
+                // Ordenar priorizadas por el orden de selección del usuario
+                $priorizadas = $priorizadas->sortBy('_prioridad');
+
+                // Combinar: primero las priorizadas, luego las demás
+                $nuevoOrden = $priorizadas->merge($noPriorizadas);
+
+                // Si hay planilla fabricando en pos 1, empezamos desde posición 2
+                $posicionInicial = $planillaFabricandoPos1 ? 2 : 1;
+                if ($planillaFabricandoPos1) {
+                    $omitidos++;
+                }
+
+                // Actualizar posiciones
+                $posicion = $posicionInicial;
+                foreach ($nuevoOrden as $op) {
+                    if ($op->posicion !== $posicion) {
+                        $op->posicion = $posicion;
+                        $op->save();
+                        $cambiosRealizados++;
+
+                        // Registrar planilla afectada
+                        if ($op->planilla_id && !in_array($op->planilla_id, $planillasAfectadas)) {
+                            $planillasAfectadas[] = $op->planilla_id;
+                        }
+                    }
+                    $posicion++;
+                }
+            }
+
+            // Marcar planillas afectadas como no revisadas
+            if (!empty($planillasAfectadas)) {
+                Planilla::whereIn('id', $planillasAfectadas)
+                    ->update(['revisada' => 0]);
+
+                Log::info('📋 Planillas marcadas como no revisadas (priorizar)', [
+                    'planillas_ids' => $planillasAfectadas,
+                ]);
+            }
+
+            DB::commit();
+
+            Log::info('🎯 Obras priorizadas', [
+                'obras_ids' => $obrasIds,
+                'cambios' => $cambiosRealizados,
+                'omitidos' => $omitidos,
+                'user_id' => auth()->id(),
+            ]);
+
+            $mensaje = "Priorización completada. {$cambiosRealizados} cambios realizados.";
+            if ($omitidos > 0) {
+                $mensaje .= " ({$omitidos} planillas en fabricación no afectadas)";
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => $mensaje,
+                'cambios' => $cambiosRealizados,
+                'omitidos' => $omitidos
+            ]);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+
+            Log::error('Error al priorizar obras', [
+                'obras_ids' => $obrasIds,
+                'error' => $e->getMessage()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al priorizar: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Obtener obras con planillas activas para el modal de priorización
+     * Agrupa por obra y fecha de entrega
+     */
+    public function obrasConPlanillasActivas()
+    {
+        // Obtener planillas activas (pendiente o fabricando) que estén en orden_planillas
+        $planillas = Planilla::whereIn('estado', ['pendiente', 'fabricando'])
+            ->whereHas('ordenProduccion')
+            ->with(['obra:id,obra,cod_obra'])
+            ->select('id', 'codigo', 'obra_id', 'fecha_estimada_entrega', 'estado')
+            ->get();
+
+        // Agrupar por obra_id y fecha_estimada_entrega
+        $agrupaciones = [];
+
+        foreach ($planillas as $planilla) {
+            if (!$planilla->obra_id) continue;
+
+            $fechaEntrega = $planilla->getRawOriginal('fecha_estimada_entrega')
+                ? Carbon::parse($planilla->getRawOriginal('fecha_estimada_entrega'))->format('Y-m-d')
+                : 'sin-fecha';
+
+            $key = $planilla->obra_id . '_' . $fechaEntrega;
+
+            if (!isset($agrupaciones[$key])) {
+                $agrupaciones[$key] = [
+                    'obra_id' => $planilla->obra_id,
+                    'cod_obra' => $planilla->obra?->cod_obra ?? 'N/A',
+                    'obra' => $planilla->obra?->obra ?? 'Sin obra',
+                    'fecha_entrega' => $fechaEntrega,
+                    'fecha_entrega_formatted' => $fechaEntrega !== 'sin-fecha'
+                        ? Carbon::parse($fechaEntrega)->format('d/m/Y')
+                        : 'Sin fecha',
+                    'planillas_count' => 0,
+                    'planillas_codigos' => [],
+                ];
+            }
+
+            $agrupaciones[$key]['planillas_count']++;
+            $agrupaciones[$key]['planillas_codigos'][] = $planilla->codigo;
+        }
+
+        // Ordenar por obra y luego por fecha de entrega
+        $resultado = collect($agrupaciones)->sortBy([
+            ['cod_obra', 'asc'],
+            ['fecha_entrega', 'asc'],
+        ])->values()->toArray();
+
+        return response()->json($resultado);
     }
 }

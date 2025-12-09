@@ -301,6 +301,10 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
     Route::post('/api/produccion/priorizar-obra', [ProduccionController::class, 'priorizarObra'])->name('api.produccion.priorizar-obra');
     Route::post('/api/produccion/priorizar-obras', [ProduccionController::class, 'priorizarObras'])->name('api.produccion.priorizar-obras');
 
+    // Endpoints de snapshot/undo
+    Route::get('/api/produccion/ultimo-snapshot', [ProduccionController::class, 'obtenerUltimoSnapshot'])->name('api.produccion.ultimo-snapshot');
+    Route::post('/api/produccion/restaurar-snapshot', [ProduccionController::class, 'restaurarSnapshot'])->name('api.produccion.restaurar-snapshot');
+
     //MSR20 BVBS
     Route::get('/maquinas/{maquina}/exportar-bvbs', [MaquinaController::class, 'exportarBVBS'])
         ->name('maquinas.exportar-bvbs');
