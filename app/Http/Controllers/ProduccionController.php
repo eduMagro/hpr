@@ -476,10 +476,13 @@ class ProduccionController extends Controller
             ];
         })->values();
 
-        // 🔹 2. ELEMENTOS ACTIVOS (para eventos del calendario)
-        $elementos = Elemento::with(['planilla', 'planilla.obra', 'maquina', 'maquina_2', 'maquina_3'])
-            ->whereHas('planilla', fn($q) => $q->whereIn('estado', ['pendiente', 'fabricando']))
+        // 🔹 2. ELEMENTOS ACTIVOS (OPTIMIZADO: una sola consulta para calendario y cálculos)
+        $elementos = Elemento::with(['planilla', 'planilla.obra', 'maquina', 'maquina_2', 'maquina_3', 'etiquetaRelacion'])
+            ->whereHas('planilla', fn($q) => $q->whereIn('estado', ['pendiente', 'fabricando', 'completada']))
             ->get();
+
+        // Filtrar solo pendiente/fabricando para el calendario
+        $elementosCalendario = $elementos->filter(fn($e) => in_array($e->planilla?->estado, ['pendiente', 'fabricando']));
         $maquinaReal = function ($e) {
             $tipo1 = optional($e->maquina)->tipo;      // según maquina_id
             $tipo2 = optional($e->maquina_2)->tipo;    // según maquina_id_2
@@ -509,7 +512,7 @@ class ProduccionController extends Controller
             return $e->maquina_id;
         };
 
-        $planillasAgrupadas = $elementos
+        $planillasAgrupadas = $elementosCalendario
             ->groupBy(function ($e) use ($maquinaReal) {
                 $maquinaId = $maquinaReal($e);
                 return $e->planilla_id . '-' . $maquinaId;
@@ -527,26 +530,25 @@ class ProduccionController extends Controller
             ->filter(fn($data) => !is_null($data['maquina_id']));
 
 
-        // 🔹 3. Calcular colas iniciales de cada máquina
+        // 🔹 3. Calcular colas iniciales de cada máquina (OPTIMIZADO: una sola query)
+        $maquinaIds = $maquinas->pluck('id')->all();
+        $ultimasPlanillasPorMaquina = DB::table('planillas')
+            ->join('elementos', 'planillas.id', '=', 'elementos.planilla_id')
+            ->whereIn('elementos.maquina_id', $maquinaIds)
+            ->where('planillas.estado', 'fabricando')
+            ->whereNull('planillas.deleted_at')
+            ->whereNull('elementos.deleted_at')
+            ->select('elementos.maquina_id', DB::raw('MAX(planillas.fecha_inicio) as fecha_inicio'))
+            ->groupBy('elementos.maquina_id')
+            ->pluck('fecha_inicio', 'maquina_id');
+
         $colasMaquinas = [];
+        $maxFecha = Carbon::now()->addYear();
         foreach ($maquinas as $m) {
-            $ultimaPlanillaFabricando = Planilla::whereHas('elementos', fn($q) => $q->where('maquina_id', $m->id))
-                ->where('estado', 'fabricando')
-                ->orderByDesc('fecha_inicio')
-                ->first();
+            $fechaInicioRaw = $ultimasPlanillasPorMaquina[$m->id] ?? null;
+            $fechaInicioCola = $fechaInicioRaw ? toCarbon($fechaInicioRaw) : Carbon::now();
 
-            $fechaInicioCola = optional($ultimaPlanillaFabricando)->fecha_inicio
-                ? toCarbon($ultimaPlanillaFabricando->fecha_inicio)
-                : Carbon::now();
-
-            // Validar que la fecha no esté demasiado lejos en el futuro
-            $maxFecha = Carbon::now()->addYear();
             if ($fechaInicioCola->gt($maxFecha)) {
-                Log::warning('COLA MAQUINA: fecha_inicio demasiado lejana, usando now()', [
-                    'maquina_id' => $m->id,
-                    'fecha_inicio' => $fechaInicioCola->toIso8601String(),
-                    'planilla_id' => optional($ultimaPlanillaFabricando)->id,
-                ]);
                 $fechaInicioCola = Carbon::now();
             }
 
@@ -567,69 +569,49 @@ class ProduccionController extends Controller
             abort(500, $e->getMessage());
         }
 
-        // 🔹 Planificado vs Real (con filtros opcionales que ya recoges por Request si quieres)
+        // 🔹 Planificado vs Real (OPTIMIZADO: reutiliza elementos ya cargados)
         [$cargaTurnoResumen, $planDetallado, $realDetallado] =
-            $this->calcularPlanificadoYRealPorTurno($maquinas, $fechaInicio ?? null, $fechaFin ?? null, $turnoFiltro ?? null);
+            $this->calcularPlanificadoYRealPorTurno($maquinas, $fechaInicio ?? null, $fechaFin ?? null, $turnoFiltro ?? null, $elementos);
 
 
-        // 🔹 7. Fecha de inicio del calendario (la más antigua en fabricación)
-        $planillasEnFabricacion = OrdenPlanilla::where('posicion', 1)
-            ->whereHas('planilla', fn($q) => $q->where('estado', 'fabricando'))
-            ->with('planilla')
-            ->get();
-
-        $planillaMasAntigua = $planillasEnFabricacion
-            ->filter(fn($op) => $op->planilla && $op->planilla->fecha_inicio)
-            ->sortBy('planilla.fecha_inicio')
-            ->first();
-
-        $fechaInicioBruta = $planillaMasAntigua?->planilla?->fecha_inicio;
-
-        $fechaCarbon = null;
-        try {
-            $fechaCarbon = is_string($fechaInicioBruta)
-                ? Carbon::createFromFormat('d/m/Y H:i', $fechaInicioBruta)
-                : $fechaInicioBruta;
-        } catch (\Exception $e) {
-            Log::error('❌ Error al convertir fecha_inicio', [
-                'valor' => $fechaInicioBruta,
-                'error' => $e->getMessage()
-            ]);
-        }
-
-        $fechaInicioCalendario = $fechaCarbon?->toDateString() ?? now()->toDateString();
-        $turnosLista = Turno::orderBy('orden')->orderBy('hora_inicio')->get(); // Turnos completos con estado activo
-
+        // 🔹 7. Fecha de inicio del calendario (OPTIMIZADO: reutiliza calcularInitialDate)
         $initialDate = $this->calcularInitialDate();
+        $fechaInicioCalendario = Carbon::parse($initialDate)->toDateString();
+        $turnosLista = Turno::orderBy('orden')->orderBy('hora_inicio')->get();
 
         // 🆕 Configuración del calendario (horas visibles y días a mostrar)
-        // Calcular fecha máxima basándose en el fin programado más alto de los eventos
-        $fechaMaxima = null;
-        foreach ($planillasEventos as $evento) {
-            if (!empty($evento['end'])) {
-                try {
-                    $endCarbon = Carbon::parse($evento['end']);
-                    if (!$fechaMaxima || $endCarbon->gt($fechaMaxima)) {
-                        $fechaMaxima = $endCarbon;
+        $horasCalculadas = 168; // Mínimo 7 días = 168 horas
+        $diasCalculados = 7;
+
+        try {
+            // Calcular fecha máxima basándose en el fin programado más alto de los eventos
+            $fechaMaxima = null;
+            foreach ($planillasEventos as $evento) {
+                if (!empty($evento['end'])) {
+                    try {
+                        $endCarbon = Carbon::parse($evento['end']);
+                        if (!$fechaMaxima || $endCarbon->gt($fechaMaxima)) {
+                            $fechaMaxima = $endCarbon;
+                        }
+                    } catch (\Exception $e) {
+                        // Ignorar eventos con fechas inválidas
                     }
-                } catch (\Exception $e) {
-                    // Ignorar eventos con fechas inválidas
                 }
             }
-        }
 
-        // Calcular horas desde la fecha inicial hasta la fecha máxima
-        $fechaInicial = Carbon::parse($initialDate)->startOfDay();
-        $horasCalculadas = 24 * 7; // Mínimo 7 días = 168 horas
-        $diasCalculados = 7;
-        if ($fechaMaxima) {
-            $horasCalculadas = max(168, $fechaInicial->diffInHours($fechaMaxima) + 24); // +24 horas de margen
-            $diasCalculados = max(7, ceil($horasCalculadas / 24));
+            // Calcular horas desde la fecha inicial hasta la fecha máxima
+            if ($fechaMaxima && $initialDate) {
+                $fechaInicial = Carbon::parse($initialDate)->startOfDay();
+                $horasCalculadas = max(168, $fechaInicial->diffInHours($fechaMaxima) + 24); // +24 horas de margen
+                $diasCalculados = max(7, (int) ceil($horasCalculadas / 24));
+            }
+        } catch (\Exception $e) {
+            Log::error('❌ Error calculando fechaMaximaCalendario', ['error' => $e->getMessage()]);
         }
 
         $fechaMaximaCalendario = [
-            'horas' => $horasCalculadas, // Horas máximas visibles en el calendario (slotMaxTime)
-            'dias' => $diasCalculados, // Días calculados según el último fin programado
+            'horas' => (int) $horasCalculadas,
+            'dias' => (int) $diasCalculados,
         ];
 
         // 🆕 Preparar datos de máquinas para JavaScript
@@ -898,9 +880,12 @@ class ProduccionController extends Controller
      *  - planDetalladoConFechas[mq][turno] = [ {peso, fecha} ]  (planificado, para filtrar en cliente)
      *  - realDetalladoConFechas[mq][turno] = [ {peso, fecha} ]  (real, para filtrar en cliente)
      */
-    private function calcularPlanificadoYRealPorTurno($maquinas, ?string $fechaInicio = null, ?string $fechaFin = null, ?string $turnoFiltro = null): array
+    private function calcularPlanificadoYRealPorTurno($maquinas, ?string $fechaInicio = null, ?string $fechaFin = null, ?string $turnoFiltro = null, $elementosPreCargados = null): array
     {
-        $turnosDefinidos = Turno::all(); // nombre, hora_inicio, hora_fin (HH:MM)
+        static $turnosDefinidos = null;
+        if ($turnosDefinidos === null) {
+            $turnosDefinidos = Turno::all(); // nombre, hora_inicio, hora_fin (HH:MM)
+        }
 
         $resolverMaquinaElemento = function (Elemento $e) {
             $tipo = optional($e->maquina)->tipo;
@@ -921,7 +906,8 @@ class ProduccionController extends Controller
             return ($horaHHmm >= $ini || $horaHHmm < $fin);
         };
 
-        $elementos = Elemento::with(['planilla', 'planilla.obra', 'maquina', 'maquina_2', 'maquina_3', 'etiquetaRelacion'])
+        // OPTIMIZADO: Reutilizar elementos pre-cargados si están disponibles
+        $elementos = $elementosPreCargados ?? Elemento::with(['planilla', 'planilla.obra', 'maquina', 'maquina_2', 'maquina_3', 'etiquetaRelacion'])
             ->whereHas('planilla', fn($q) => $q->whereIn('estado', ['pendiente', 'fabricando', 'completada']))
             ->get();
 
@@ -1345,19 +1331,6 @@ class ProduccionController extends Controller
 
                     $segmentosSiguienteDia = $this->obtenerSegmentosLaborablesDia($siguienteDia);
 
-                    Log::info('🔍 TRAMOS: Verificando continuidad', [
-                        'dia_procesado' => $diaActual->format('Y-m-d'),
-                        'dia_siguiente' => $siguienteDia->format('Y-m-d'),
-                        'cursor' => $cursor->format('Y-m-d H:i:s'),
-                        'restante_segundos' => $restante,
-                        'ultimo_segmento_fin' => $ultimoSegmentoHoy ? $ultimoSegmentoHoy['fin']->format('Y-m-d H:i:s') : 'N/A',
-                        'ultimo_segmento_fin_timestamp' => $ultimoSegmentoHoy ? $ultimoSegmentoHoy['fin']->timestamp : 'N/A',
-                        'segmentos_hoy_count' => count($segmentos),
-                        'segmentos_manana_count' => count($segmentosSiguienteDia),
-                        'primer_segmento_manana_inicio' => !empty($segmentosSiguienteDia) ? $segmentosSiguienteDia[0]['inicio']->format('Y-m-d H:i:s') : 'N/A',
-                        'primer_segmento_manana_inicio_timestamp' => !empty($segmentosSiguienteDia) ? $segmentosSiguienteDia[0]['inicio']->timestamp : 'N/A',
-                    ]);
-
                     // Si hay segmentos mañana y el último segmento de hoy conecta con el primero de mañana
                     if (!empty($segmentosSiguienteDia)) {
                         $primerSegmentoManana = $segmentosSiguienteDia[0];
@@ -1365,13 +1338,9 @@ class ProduccionController extends Controller
                         // Verificar si son continuos (ej: turno noche 22:00 hoy → 06:00 mañana)
                         if ($ultimoSegmentoHoy &&
                             $ultimoSegmentoHoy['fin']->equalTo($primerSegmentoManana['inicio'])) {
-                            Log::info('✅ TRAMOS: Continuidad detectada, NO cortando');
-                            // ✅ Son continuos, avanzar al día siguiente SIN crear corte
-                            // Mover el cursor al día siguiente para continuar procesando
+                            // Son continuos, avanzar al día siguiente SIN crear corte
                             $cursor = $siguienteDia->copy()->startOfDay();
                             continue;
-                        } else {
-                            Log::info('❌ TRAMOS: Sin continuidad, creando corte');
                         }
                     }
 
@@ -1889,26 +1858,11 @@ class ProduccionController extends Controller
 
                     // CONSOLIDAR: Si hay múltiples subgrupos para la misma planilla/máquina, unificarlos
                     if ($subGrupos->count() > 1) {
-                        Log::warning('🔄 EVENTOS: Múltiples orden_planilla_id detectados, consolidando', [
-                            'planilla' => $planilla->codigo_limpio,
-                            'maquina_id' => $maquinaId,
-                            'num_subgrupos' => $subGrupos->count(),
-                            'subgrupos_keys' => $subGrupos->keys()->toArray()
-                        ]);
-
                         // Usar el primer orden_planilla_id y consolidar todos los elementos
                         $primerOrdenKey = $subGrupos->keys()->first();
                         $todosElementos = $subGrupos->flatten();
                         $subGrupos = collect([$primerOrdenKey => $todosElementos]);
                     }
-
-                    Log::info('🔍 EVENTOS: Generando eventos', [
-                        'planilla' => $planilla->codigo_limpio,
-                        'maquina_id' => $maquinaId,
-                        'num_subgrupos' => $subGrupos->count(),
-                        'subgrupos_keys' => $subGrupos->keys()->toArray(),
-                        'elementos_por_subgrupo' => $subGrupos->map(fn($sg) => $sg->count())->toArray()
-                    ]);
 
                     // Procesar cada sub-grupo como un evento independiente
                     foreach ($subGrupos as $ordenKey => $subGrupo) {
@@ -2024,16 +1978,6 @@ class ProduccionController extends Controller
                         if (isset($ordenId) && $ordenId !== null) {
                             $eventoId .= '-ord' . $ordenId;
                         }
-
-                        Log::info('✅ EVENTOS: Creando evento', [
-                            'evento_id' => $eventoId,
-                            'planilla' => $planilla->codigo_limpio,
-                            'maquina_id' => $maquinaId,
-                            'orden_key' => $ordenKey,
-                            'inicio' => $eventoInicio->toIso8601String(),
-                            'fin' => $eventoFin->toIso8601String(),
-                            'elementos' => $subGrupo->count()
-                        ]);
 
                         $planillasEventos->push([
                             'id'              => $eventoId,
