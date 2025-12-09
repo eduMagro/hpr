@@ -4265,16 +4265,16 @@ class ProduccionController extends Controller
                     $obraId = $op->planilla?->obra_id;
 
                     if ($obraId && in_array($obraId, $obrasIds)) {
-                        // Asignar prioridad según el orden en el array de obras
-                        $op->_prioridad = array_search($obraId, $obrasIds);
-                        $priorizadas->push($op);
+                        // Guardar con prioridad según el orden en el array de obras
+                        $prioridad = array_search($obraId, $obrasIds);
+                        $priorizadas->push(['op' => $op, 'prioridad' => $prioridad]);
                     } else {
                         $noPriorizadas->push($op);
                     }
                 }
 
-                // Ordenar priorizadas por el orden de selección del usuario
-                $priorizadas = $priorizadas->sortBy('_prioridad');
+                // Ordenar priorizadas por el orden de selección del usuario y extraer solo el objeto
+                $priorizadas = $priorizadas->sortBy('prioridad')->pluck('op');
 
                 // Combinar: primero las priorizadas, luego las demás
                 $nuevoOrden = $priorizadas->merge($noPriorizadas);
