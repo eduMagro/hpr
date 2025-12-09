@@ -21,6 +21,8 @@ use Illuminate\Support\Str;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Arr;
 use App\Models\Festivo;
+use App\Models\EventoFicticioObra;
+use App\Models\TrabajadorFicticio;
 use Throwable;
 use Illuminate\Validation\Rule;
 use Illuminate\Support\Facades\File;
@@ -2312,9 +2314,12 @@ class ProduccionController extends Controller
             }
         }
 
+        $trabajadoresFicticios = TrabajadorFicticio::orderBy('nombre')->get();
+
         return view('produccion.trabajadoresObra', [
             'trabajadoresServicios' => $trabajadoresServicios,
             'trabajadoresHpr'       => $trabajadoresHpr,
+            'trabajadoresFicticios' => $trabajadoresFicticios,
             'resources'             => $resources,
             'eventos'               => $eventos,
             'obras'                 => $todasLasObras,
@@ -2370,9 +2375,152 @@ class ProduccionController extends Controller
                     'borderColor'     => $color,
                     'textColor'       => $color === '#ef4444' ? '#ffffff' : null,
                 ];
-            })->values();
+            })->values()->toArray();
 
-        return response()->json($eventos);
+        // Obtener IDs de obras activas (tipo montaje) + sin-obra
+        $obrasActivas = Obra::where('tipo', 'montaje')->pluck('id')->toArray();
+        $resourceIds = array_merge(['sin-obra'], array_map('strval', $obrasActivas));
+
+        // Añadir festivos
+        $festivosEventos = collect(Festivo::eventosCalendario())
+            ->filter(function ($e) use ($inicio, $fin) {
+                $fechaFestivo = $e['start'];
+                return $fechaFestivo >= substr($inicio, 0, 10) && $fechaFestivo <= substr($fin, 0, 10);
+            })
+            ->map(function ($e) use ($resourceIds) {
+                $start = Carbon::parse($e['start'])->startOfDay();
+                $end   = $start->copy()->addDay();
+
+                return [
+                    'id'              => $e['id'],
+                    'title'           => $e['title'],
+                    'start'           => $start->toIso8601String(),
+                    'end'             => $end->toIso8601String(),
+                    'allDay'          => true,
+                    'resourceIds'     => $resourceIds,
+                    'backgroundColor' => '#ff0000',
+                    'borderColor'     => '#b91c1c',
+                    'textColor'       => '#ffffff',
+                    'editable'        => false,
+                    'classNames'      => ['evento-festivo'],
+                    'extendedProps'   => [
+                        'es_festivo' => true,
+                        'festivo_id' => $e['extendedProps']['festivo_id'] ?? null,
+                    ],
+                ];
+            })
+            ->values()
+            ->toArray();
+
+        // Añadir eventos ficticios
+        $eventosFicticios = EventoFicticioObra::with('trabajadorFicticio')
+            ->whereBetween('fecha', [substr($inicio, 0, 10), substr($fin, 0, 10)])
+            ->get()
+            ->map(function ($ef) {
+                return [
+                    'id'              => 'ficticio-' . $ef->id,
+                    'title'           => $ef->trabajadorFicticio?->nombre ?? 'Ficticio',
+                    'start'           => $ef->fecha->format('Y-m-d') . 'T06:00:00',
+                    'end'             => $ef->fecha->format('Y-m-d') . 'T14:00:00',
+                    'resourceId'      => $ef->obra_id ?? 'sin-obra',
+                    'backgroundColor' => '#9ca3af',
+                    'borderColor'     => '#6b7280',
+                    'textColor'       => '#ffffff',
+                    'extendedProps'   => [
+                        'es_ficticio'            => true,
+                        'ficticio_id'            => $ef->id,
+                        'trabajador_ficticio_id' => $ef->trabajador_ficticio_id,
+                    ],
+                ];
+            })
+            ->toArray();
+
+        return response()->json(array_merge($eventos, $festivosEventos, $eventosFicticios));
+    }
+
+    /**
+     * Almacena un nuevo trabajador ficticio
+     */
+    public function storeTrabajadorFicticio(Request $request)
+    {
+        $validated = $request->validate([
+            'nombre' => 'required|string|max:255',
+        ]);
+
+        $trabajador = TrabajadorFicticio::create($validated);
+
+        return response()->json([
+            'success'    => true,
+            'message'    => 'Trabajador ficticio creado correctamente',
+            'trabajador' => $trabajador,
+        ]);
+    }
+
+    /**
+     * Elimina un trabajador ficticio y sus eventos asociados
+     */
+    public function destroyTrabajadorFicticio($id)
+    {
+        $trabajador = TrabajadorFicticio::findOrFail($id);
+
+        // Eliminar eventos asociados
+        EventoFicticioObra::where('trabajador_ficticio_id', $id)->delete();
+
+        $trabajador->delete();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Trabajador ficticio eliminado correctamente',
+        ]);
+    }
+
+    /**
+     * Almacena un nuevo evento ficticio de obra (cuando se arrastra al calendario)
+     */
+    public function storeEventoFicticio(Request $request)
+    {
+        $validated = $request->validate([
+            'trabajador_ficticio_id' => 'required|exists:trabajadores_ficticios,id',
+            'fecha'                  => 'required|date',
+            'obra_id'                => 'nullable|exists:obras,id',
+        ]);
+
+        $evento = EventoFicticioObra::create($validated);
+        $evento->load('trabajadorFicticio');
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Evento ficticio creado correctamente',
+            'evento'  => [
+                'id'              => 'ficticio-' . $evento->id,
+                'title'           => $evento->trabajadorFicticio?->nombre ?? 'Ficticio',
+                'start'           => $evento->fecha->format('Y-m-d') . 'T06:00:00',
+                'end'             => $evento->fecha->format('Y-m-d') . 'T14:00:00',
+                'resourceId'      => $evento->obra_id ?? 'sin-obra',
+                'backgroundColor' => '#9ca3af',
+                'borderColor'     => '#6b7280',
+                'textColor'       => '#ffffff',
+                'extendedProps'   => [
+                    'es_ficticio'            => true,
+                    'ficticio_id'            => $evento->id,
+                    'trabajador_ficticio_id' => $evento->trabajador_ficticio_id,
+                ],
+            ],
+        ]);
+    }
+
+    /**
+     * Elimina un evento ficticio de obra
+     */
+    public function destroyEventoFicticio($id)
+    {
+        $evento = EventoFicticioObra::findOrFail($id);
+        $evento->delete();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Evento ficticio eliminado correctamente',
+        ]);
     }
 
     /**
