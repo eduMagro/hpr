@@ -726,44 +726,29 @@ class PlanillaProcessor
             }
         }
 
-        // Verificar si ya existe
-        $subRow = Etiqueta::where('etiqueta_sub_id', $subId)->first();
-        if ($subRow) {
-            return [$subId, (int)$subRow->id];
-        }
-
-        // Usar INSERT IGNORE para evitar errores de duplicado
+        // Usar updateOrCreate que maneja duplicados correctamente
         $data['etiqueta_sub_id'] = $subId;
-        \Illuminate\Support\Facades\DB::table('etiquetas')->insertOrIgnore($data);
-
-        // Obtener el registro (ya sea recién creado o existente por race condition)
-        $subRow = Etiqueta::where('etiqueta_sub_id', $subId)->first();
+        $subRow = Etiqueta::updateOrCreate(
+            ['etiqueta_sub_id' => $subId],
+            $data
+        );
 
         return [$subId, (int)$subRow->id];
     }
 
     protected function asegurarSubetiquetaExiste(string $subId, Etiqueta $padre): int
     {
-        // Verificar si ya existe
-        $row = Etiqueta::where('etiqueta_sub_id', $subId)->first();
-        if ($row) {
-            return (int)$row->id;
-        }
-
-        // Usar INSERT IGNORE para evitar errores de duplicado
-        \Illuminate\Support\Facades\DB::table('etiquetas')->insertOrIgnore([
-            'codigo' => $padre->codigo,
-            'etiqueta_sub_id' => $subId,
-            'planilla_id' => $padre->planilla_id,
-            'nombre' => $padre->nombre,
-            'estado' => $padre->estado ?? 'pendiente',
-            'peso' => 0.0,
-            'created_at' => now(),
-            'updated_at' => now(),
-        ]);
-
-        // Obtener el registro
-        $row = Etiqueta::where('etiqueta_sub_id', $subId)->first();
+        // Usar updateOrCreate que maneja duplicados correctamente
+        $row = Etiqueta::updateOrCreate(
+            ['etiqueta_sub_id' => $subId],
+            [
+                'codigo' => $padre->codigo,
+                'planilla_id' => $padre->planilla_id,
+                'nombre' => $padre->nombre,
+                'estado' => $padre->estado ?? 'pendiente',
+                'peso' => 0.0,
+            ]
+        );
 
         return (int)$row->id;
     }

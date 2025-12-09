@@ -276,15 +276,21 @@
                                             $tieneElementosEnOtrasMaquinas = isset($otrosElementos[$etiqueta?->id]) && $otrosElementos[$etiqueta?->id]->isNotEmpty();
                                         @endphp
 
-                                        <div class="hover:border-blue-400 hover:shadow-md transition-all duration-200">
-                                            <x-etiqueta.etiqueta :etiqueta="$etiqueta" :planilla="$planilla" :maquina-tipo="$maquina->tipo" />
+                                        @if ($etiqueta)
+                                            <div class="hover:border-blue-400 hover:shadow-md transition-all duration-200">
+                                                <x-etiqueta.etiqueta :etiqueta="$etiqueta" :planilla="$planilla" :maquina-tipo="$maquina->tipo" />
 
-                                            @if ($tieneElementosEnOtrasMaquinas)
-                                                <div class="mt-2 pt-2 border-t border-gray-200 text-center">
-                                                    <span class="text-amber-600 font-semibold text-xs">⚠️ En otras máq.</span>
-                                                </div>
-                                            @endif
-                                        </div>
+                                                @if ($tieneElementosEnOtrasMaquinas)
+                                                    <div class="mt-2 pt-2 border-t border-gray-200 text-center">
+                                                        <span class="text-amber-600 font-semibold text-xs">⚠️ En otras máq.</span>
+                                                    </div>
+                                                @endif
+                                            </div>
+                                        @else
+                                            <div class="p-4 bg-yellow-50 border border-yellow-200 rounded text-center text-yellow-700 text-sm">
+                                                ⚠️ Etiqueta no encontrada: {{ $etiquetaSubId }}
+                                            </div>
+                                        @endif
                                     @empty
                                         <div class="text-center p-8 text-sm text-gray-500 bg-gray-50 rounded-lg">
                                             Sin subetiquetas pendientes
