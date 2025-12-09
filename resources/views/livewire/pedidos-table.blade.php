@@ -599,11 +599,20 @@ async function guardarLinea(lineaId, pedidoId) {
         const data = await response.json();
 
         if (response.ok && data.success) {
+            // Actualizar las celdas de vista con los nuevos datos
+            const lugarEntregaView = document.querySelector(`.lugar-entrega-view-${lineaId}`);
+            const productoView = document.querySelector(`.producto-view-${lineaId}`);
+
+            if (lugarEntregaView && data.data?.lugar_entrega) {
+                lugarEntregaView.textContent = data.data.lugar_entrega;
+            }
+
+            if (productoView && data.data?.producto) {
+                productoView.textContent = data.data.producto;
+            }
+
             // Cancelar el modo edición
             cancelarEdicionLinea(lineaId);
-
-            // Refrescar el componente Livewire
-            Livewire.dispatch('$refresh');
 
             if (typeof Swal !== 'undefined') {
                 Swal.fire({

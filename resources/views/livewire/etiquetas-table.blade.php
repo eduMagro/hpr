@@ -256,68 +256,68 @@
                             </td>
 
                             <!-- Fecha Inicio Fabricación (editable) -->
-                            <td class="p-2 text-center border">
+                            <td class="p-2 text-center border whitespace-nowrap">
                                 <template x-if="!editando">
-                                    <span x-text="etiqueta.fecha_inicio ? etiqueta.fecha_inicio.split(' ')[0] : ''"></span>
+                                    <span x-text="etiqueta.fecha_inicio ? etiqueta.fecha_inicio : ''"></span>
                                 </template>
-                                <input x-show="editando" type="date"
-                                    :value="etiqueta.fecha_inicio ? etiqueta.fecha_inicio.split(' ')[0] : ''"
-                                    @input="etiqueta.fecha_inicio = $event.target.value"
+                                <input x-show="editando" type="datetime-local"
+                                    :value="etiqueta.fecha_inicio ? etiqueta.fecha_inicio.replace(' ', 'T') : ''"
+                                    @input="etiqueta.fecha_inicio = $event.target.value.replace('T', ' ')"
                                     class="w-full text-xs border rounded px-1 py-0.5">
                             </td>
 
                             <!-- Fecha Finalización Fabricación (editable) -->
-                            <td class="p-2 text-center border">
+                            <td class="p-2 text-center border whitespace-nowrap">
                                 <template x-if="!editando">
-                                    <span x-text="etiqueta.fecha_finalizacion ? etiqueta.fecha_finalizacion.split(' ')[0] : ''"></span>
+                                    <span x-text="etiqueta.fecha_finalizacion ? etiqueta.fecha_finalizacion : ''"></span>
                                 </template>
-                                <input x-show="editando" type="date"
-                                    :value="etiqueta.fecha_finalizacion ? etiqueta.fecha_finalizacion.split(' ')[0] : ''"
-                                    @input="etiqueta.fecha_finalizacion = $event.target.value"
+                                <input x-show="editando" type="datetime-local"
+                                    :value="etiqueta.fecha_finalizacion ? etiqueta.fecha_finalizacion.replace(' ', 'T') : ''"
+                                    @input="etiqueta.fecha_finalizacion = $event.target.value.replace('T', ' ')"
                                     class="w-full text-xs border rounded px-1 py-0.5">
                             </td>
 
                             <!-- Fecha Inicio Ensamblado (editable) -->
-                            <td class="p-2 text-center border">
+                            <td class="p-2 text-center border whitespace-nowrap">
                                 <template x-if="!editando">
-                                    <span x-text="etiqueta.fecha_inicio_ensamblado ? etiqueta.fecha_inicio_ensamblado.split(' ')[0] : ''"></span>
+                                    <span x-text="etiqueta.fecha_inicio_ensamblado ? etiqueta.fecha_inicio_ensamblado : ''"></span>
                                 </template>
-                                <input x-show="editando" type="date"
-                                    :value="etiqueta.fecha_inicio_ensamblado ? etiqueta.fecha_inicio_ensamblado.split(' ')[0] : ''"
-                                    @input="etiqueta.fecha_inicio_ensamblado = $event.target.value"
+                                <input x-show="editando" type="datetime-local"
+                                    :value="etiqueta.fecha_inicio_ensamblado ? etiqueta.fecha_inicio_ensamblado.replace(' ', 'T') : ''"
+                                    @input="etiqueta.fecha_inicio_ensamblado = $event.target.value.replace('T', ' ')"
                                     class="w-full text-xs border rounded px-1 py-0.5">
                             </td>
 
                             <!-- Fecha Finalización Ensamblado (editable) -->
-                            <td class="p-2 text-center border">
+                            <td class="p-2 text-center border whitespace-nowrap">
                                 <template x-if="!editando">
-                                    <span x-text="etiqueta.fecha_finalizacion_ensamblado ? etiqueta.fecha_finalizacion_ensamblado.split(' ')[0] : ''"></span>
+                                    <span x-text="etiqueta.fecha_finalizacion_ensamblado ? etiqueta.fecha_finalizacion_ensamblado : ''"></span>
                                 </template>
-                                <input x-show="editando" type="date"
-                                    :value="etiqueta.fecha_finalizacion_ensamblado ? etiqueta.fecha_finalizacion_ensamblado.split(' ')[0] : ''"
-                                    @input="etiqueta.fecha_finalizacion_ensamblado = $event.target.value"
+                                <input x-show="editando" type="datetime-local"
+                                    :value="etiqueta.fecha_finalizacion_ensamblado ? etiqueta.fecha_finalizacion_ensamblado.replace(' ', 'T') : ''"
+                                    @input="etiqueta.fecha_finalizacion_ensamblado = $event.target.value.replace('T', ' ')"
                                     class="w-full text-xs border rounded px-1 py-0.5">
                             </td>
 
                             <!-- Fecha Inicio Soldadura (editable) -->
-                            <td class="p-2 text-center border">
+                            <td class="p-2 text-center border whitespace-nowrap">
                                 <template x-if="!editando">
-                                    <span x-text="etiqueta.fecha_inicio_soldadura ? etiqueta.fecha_inicio_soldadura.split(' ')[0] : ''"></span>
+                                    <span x-text="etiqueta.fecha_inicio_soldadura ? etiqueta.fecha_inicio_soldadura : ''"></span>
                                 </template>
-                                <input x-show="editando" type="date"
-                                    :value="etiqueta.fecha_inicio_soldadura ? etiqueta.fecha_inicio_soldadura.split(' ')[0] : ''"
-                                    @input="etiqueta.fecha_inicio_soldadura = $event.target.value"
+                                <input x-show="editando" type="datetime-local"
+                                    :value="etiqueta.fecha_inicio_soldadura ? etiqueta.fecha_inicio_soldadura.replace(' ', 'T') : ''"
+                                    @input="etiqueta.fecha_inicio_soldadura = $event.target.value.replace('T', ' ')"
                                     class="w-full text-xs border rounded px-1 py-0.5">
                             </td>
 
                             <!-- Fecha Finalización Soldadura (editable) -->
-                            <td class="p-2 text-center border">
+                            <td class="p-2 text-center border whitespace-nowrap">
                                 <template x-if="!editando">
-                                    <span x-text="etiqueta.fecha_finalizacion_soldadura ? etiqueta.fecha_finalizacion_soldadura.split(' ')[0] : ''"></span>
+                                    <span x-text="etiqueta.fecha_finalizacion_soldadura ? etiqueta.fecha_finalizacion_soldadura : ''"></span>
                                 </template>
-                                <input x-show="editando" type="date"
-                                    :value="etiqueta.fecha_finalizacion_soldadura ? etiqueta.fecha_finalizacion_soldadura.split(' ')[0] : ''"
-                                    @input="etiqueta.fecha_finalizacion_soldadura = $event.target.value"
+                                <input x-show="editando" type="datetime-local"
+                                    :value="etiqueta.fecha_finalizacion_soldadura ? etiqueta.fecha_finalizacion_soldadura.replace(' ', 'T') : ''"
+                                    @input="etiqueta.fecha_finalizacion_soldadura = $event.target.value.replace('T', ' ')"
                                     class="w-full text-xs border rounded px-1 py-0.5">
                             </td>
 

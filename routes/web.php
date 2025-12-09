@@ -301,6 +301,10 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
     Route::post('/api/produccion/priorizar-obra', [ProduccionController::class, 'priorizarObra'])->name('api.produccion.priorizar-obra');
     Route::post('/api/produccion/priorizar-obras', [ProduccionController::class, 'priorizarObras'])->name('api.produccion.priorizar-obras');
 
+    // Endpoints de snapshot/undo
+    Route::get('/api/produccion/ultimo-snapshot', [ProduccionController::class, 'obtenerUltimoSnapshot'])->name('api.produccion.ultimo-snapshot');
+    Route::post('/api/produccion/restaurar-snapshot', [ProduccionController::class, 'restaurarSnapshot'])->name('api.produccion.restaurar-snapshot');
+
     //MSR20 BVBS
     Route::get('/maquinas/{maquina}/exportar-bvbs', [MaquinaController::class, 'exportarBVBS'])
         ->name('maquinas.exportar-bvbs');
@@ -381,6 +385,7 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
     Route::put('/planificacion/comentario/{id}', [PlanificacionController::class, 'guardarComentario']);
     Route::put('/planificacion/empresa-transporte/{id}', [PlanificacionController::class, 'actualizarEmpresaTransporte'])->name('planificacion.actualizarEmpresaTransporte');
     Route::post('/planillas/{planilla}/reimportar', [PlanillaController::class, 'reimportar'])->name('planillas.crearReimportar');
+    Route::post('/planillas/{planilla}/resetear', [PlanillaController::class, 'resetearPlanilla'])->name('planillas.resetear');
     Route::post('/planillas/completar', [PlanillaController::class, 'completar'])->name('planillas.completar');
     Route::get('/planificacion/index', [PlanificacionController::class, 'index'])->name('planificacion.index');
     Route::get('/planificacion/totales', [PlanificacionController::class, 'getTotalesAjax']);

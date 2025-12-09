@@ -10,8 +10,10 @@ use App\Models\Ubicacion;
 use App\Models\Elemento;
 use App\Models\Maquina;
 use App\Models\Movimiento;
+use App\Models\EtiquetaHistorial;
 use Exception;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\ValidationException;
 use Illuminate\Support\Facades\DB;
 use App\Services\PlanillaColaService;
@@ -590,6 +592,19 @@ class PaqueteController extends Controller
                 Log::warning('Etiquetas ya asignadas a otro paquete: ' . implode(', ', $etiquetasYaAsignadas));
             }
 
+            // 🔄 GUARDAR HISTORIAL ANTES DE ASIGNAR AL PAQUETE (para sistema UNDO)
+            $etiquetas = Etiqueta::whereIn('etiqueta_sub_id', $subIds)->get();
+            foreach ($etiquetas as $etiqueta) {
+                EtiquetaHistorial::registrarCambio(
+                    $etiqueta,
+                    'empaquetar',
+                    'en-paquete',
+                    null, // No hay máquina en esta operación
+                    Auth::id(),
+                    [] // No hay consumo de productos
+                );
+            }
+
             // Asignar el paquete a las etiquetas correctas
             Etiqueta::whereIn('etiqueta_sub_id', $subIds)
                 ->update(['paquete_id' => $paqueteId]);
@@ -766,7 +781,7 @@ class PaqueteController extends Controller
                 $query->select('id', 'etiqueta_sub_id', 'paquete_id', 'peso', 'estado')
                     ->withCount('elementos')
                     ->with(['elementos' => function ($q) {
-                        $q->select('id', 'codigo', 'dimensiones', 'etiqueta_id');
+                        $q->select('id', 'codigo', 'dimensiones', 'etiqueta_sub_id');
                     }]);
             }, 'ubicacion:id,nombre'])
                 ->where('planilla_id', $planillaId);

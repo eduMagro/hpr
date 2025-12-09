@@ -15,6 +15,15 @@ class Etiqueta extends Model
 
     protected $appends = ['peso_kg'];
 
+    protected $casts = [
+        'fecha_inicio' => 'datetime:Y-m-d H:i',
+        'fecha_finalizacion' => 'datetime:Y-m-d H:i',
+        'fecha_inicio_ensamblado' => 'datetime:Y-m-d H:i',
+        'fecha_finalizacion_ensamblado' => 'datetime:Y-m-d H:i',
+        'fecha_inicio_soldadura' => 'datetime:Y-m-d H:i',
+        'fecha_finalizacion_soldadura' => 'datetime:Y-m-d H:i',
+    ];
+
     protected $fillable = [
         'codigo',
         'etiqueta_sub_id',
@@ -64,10 +73,11 @@ class Etiqueta extends Model
     /**
      * Relación: Una etiqueta puede tener múltiples elementos
      * Los elementos son las barras o estribos individuales
+     * Usa etiqueta_sub_id para distinguir subetiquetas correctamente
      */
     public function elementos()
     {
-        return $this->hasMany(Elemento::class, 'etiqueta_id');
+        return $this->hasMany(Elemento::class, 'etiqueta_sub_id', 'etiqueta_sub_id');
     }
 
     /**
@@ -179,6 +189,33 @@ class Etiqueta extends Model
     }
 
     // ==================== MÉTODOS ÚTILES ====================
+
+    /**
+     * Genera un nuevo código de subetiqueta basado en el código padre
+     * Formato: CODIGO.XX donde XX es el siguiente número disponible
+     *
+     * @param string $codigoPadre El código de la etiqueta padre (ej: ETQ2512001)
+     * @return string El nuevo código de subetiqueta (ej: ETQ2512001.03)
+     */
+    public static function generarCodigoSubEtiqueta(string $codigoPadre): string
+    {
+        // Buscar el último sufijo usado para este código padre
+        $ultimaSub = self::where('etiqueta_sub_id', 'like', $codigoPadre . '.%')
+            ->orderByRaw("CAST(SUBSTRING_INDEX(etiqueta_sub_id, '.', -1) AS UNSIGNED) DESC")
+            ->value('etiqueta_sub_id');
+
+        if ($ultimaSub) {
+            // Extraer el número y sumarle 1
+            $partes = explode('.', $ultimaSub);
+            $ultimoNumero = (int) end($partes);
+            $siguienteNumero = $ultimoNumero + 1;
+        } else {
+            // No hay subetiquetas, empezar en 01
+            $siguienteNumero = 1;
+        }
+
+        return $codigoPadre . '.' . str_pad($siguienteNumero, 2, '0', STR_PAD_LEFT);
+    }
 
     /**
      * Obtiene el total de elementos en esta etiqueta

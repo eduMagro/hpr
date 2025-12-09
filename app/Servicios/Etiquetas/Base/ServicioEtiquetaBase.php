@@ -2,8 +2,6 @@
 
 namespace App\Servicios\Etiquetas\Base;
 
-namespace App\Servicios\Etiquetas\Base;
-
 use App\Models\Etiqueta;
 use App\Models\EtiquetaHistorial;
 use App\Models\Maquina;

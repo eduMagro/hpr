@@ -254,6 +254,17 @@
                             </td>
                             <td class="px-2 py-2 border text-xs font-bold">
                                 <div class="flex items-center space-x-2 justify-center">
+                                    <!-- Botón Resetear -->
+                                    <button onclick="resetearPlanilla({{ $planilla->id }}, '{{ $planilla->codigo_limpio }}')"
+                                        class="w-6 h-6 bg-red-100 text-red-600 rounded hover:bg-red-200 flex items-center justify-center"
+                                        title="Resetear planilla a estado inicial">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none"
+                                            viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                            <path stroke-linecap="round" stroke-linejoin="round"
+                                                d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                                        </svg>
+                                    </button>
+
                                     <!-- Botón Reimportar -->
                                     <button onclick="abrirModalReimportar({{ $planilla->id }})"
                                         class="w-6 h-6 bg-yellow-100 text-yellow-600 rounded hover:bg-yellow-200 flex items-center justify-center"
@@ -384,6 +395,85 @@
                 cerrarModalReimportar();
             }
         });
+
+        // Función para resetear planilla
+        async function resetearPlanilla(planillaId, codigo) {
+            const result = await Swal.fire({
+                title: '¿Resetear planilla?',
+                html: `
+                    <div class="text-left">
+                        <p class="mb-3">Se reseteará la planilla <strong>${codigo}</strong> a su estado inicial:</p>
+                        <ul class="list-disc ml-5 text-sm text-gray-600">
+                            <li>Estado de planilla → <strong>Pendiente</strong></li>
+                            <li>Etiquetas → Estado pendiente, sin operarios</li>
+                            <li>Elementos → Estado pendiente, sin operarios</li>
+                            <li>Paquetes → <strong class="text-red-600">Se eliminarán</strong></li>
+                            <li>Fechas de fabricación → <strong>Se borrarán</strong></li>
+                        </ul>
+                        <p class="mt-3 text-red-600 font-semibold">⚠️ Esta acción no se puede deshacer</p>
+                    </div>
+                `,
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#dc2626',
+                cancelButtonColor: '#6b7280',
+                confirmButtonText: 'Sí, resetear',
+                cancelButtonText: 'Cancelar'
+            });
+
+            if (!result.isConfirmed) return;
+
+            try {
+                Swal.fire({
+                    title: 'Reseteando planilla...',
+                    text: 'Por favor espera',
+                    allowOutsideClick: false,
+                    didOpen: () => Swal.showLoading()
+                });
+
+                const response = await fetch(`/planillas/${planillaId}/resetear`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                    }
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    const maquinas = data.detalles.maquinas_asignadas?.length > 0
+                        ? data.detalles.maquinas_asignadas.join(', ')
+                        : 'Ninguna';
+
+                    await Swal.fire({
+                        icon: 'success',
+                        title: 'Planilla reseteada',
+                        html: `
+                            <p>${data.message}</p>
+                            <div class="mt-3 text-sm text-gray-600">
+                                <p>Paquetes eliminados: <strong>${data.detalles.paquetes_eliminados}</strong></p>
+                                <p>Etiquetas reseteadas: <strong>${data.detalles.etiquetas_reseteadas}</strong></p>
+                                <p>Elementos reseteados: <strong>${data.detalles.elementos_reseteados}</strong></p>
+                                <p>Máquina asignada: <strong>${maquinas}</strong></p>
+                            </div>
+                        `,
+                        confirmButtonText: 'Aceptar'
+                    });
+
+                    // Recargar la tabla
+                    window.location.reload();
+                } else {
+                    throw new Error(data.message || 'Error desconocido');
+                }
+            } catch (error) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: error.message || 'No se pudo resetear la planilla'
+                });
+            }
+        }
 
         // Listener para mensajes de Livewire
         document.addEventListener('livewire:init', () => {
