@@ -181,11 +181,13 @@ class SubEtiquetaService
         ?string $subIdOriginal
     ): string {
         $codigoPadre = (string) $padre->codigo;
+        $maxElementosPorSub = 5; // Límite de elementos por etiqueta_sub_id
 
         // 1) Localizar HERMANOS: mismo etiqueta_id + mismo prefijo y YA en esa máquina (según obtenerMaquinaReal)
         $hermanos = Elemento::where('etiqueta_id', $elemento->etiqueta_id)
             ->whereNotNull('etiqueta_sub_id')
             ->where('etiqueta_sub_id', 'like', $prefijoPadre . '%')
+            ->where('id', '!=', $elemento->id) // Excluir el elemento actual
             ->get()
             ->filter(fn($e) => (int) $this->obtenerMaquinaReal($e) === $nuevaMaquinaReal);
 
@@ -193,6 +195,7 @@ class SubEtiquetaService
             'total'   => $hermanos->count(),
             'prefijo' => $prefijoPadre,
             'maq'     => $nuevaMaquinaReal,
+            'max_por_sub' => $maxElementosPorSub,
         ]);
 
         if ($hermanos->isEmpty()) {
@@ -208,53 +211,60 @@ class SubEtiquetaService
                 $this->eliminarSubSiVacia($subIdOriginal);
             }
 
-            Log::info('🆕 [Encarretado] Creo y asigno sub nueva', ['sub' => $subNuevo]);
+            Log::info('🆕 [Encarretado] Creo y asigno sub nueva (sin hermanos)', ['sub' => $subNuevo]);
             return $subNuevo;
         }
 
-        // 3) Elegir SUB CANÓNICA: la de sufijo más bajo entre los hermanos
-        $subsDestino = $hermanos->pluck('etiqueta_sub_id')->unique()->values();
-        $subCanon = $subsDestino
-            ->sortBy(function ($sid) {
+        // 3) Agrupar hermanos por etiqueta_sub_id y contar
+        $subsCounts = $hermanos->groupBy('etiqueta_sub_id')->map->count();
+
+        // 4) Buscar una sub que tenga espacio (menos de $maxElementosPorSub elementos)
+        $subConEspacio = $subsCounts
+            ->sortBy(function ($count, $sid) {
+                // Ordenar por sufijo numérico para preferir las más bajas
                 return (int) (preg_match('/\.(\d+)$/', (string) $sid, $m) ? $m[1] : 9999);
             })
+            ->filter(fn($count) => $count < $maxElementosPorSub)
+            ->keys()
             ->first();
-        $subCanon = (string) $subCanon;
 
-        Log::info('👑 [Encarretado] Sub canónica elegida', [
-            'sub_canon' => $subCanon,
-            'todas_subs_en_maquina' => $subsDestino->all(),
-        ]);
+        if ($subConEspacio) {
+            // Hay espacio en una sub existente
+            $subDestino = (string) $subConEspacio;
 
-        // 4) UNIFICAR: mover TODOS los elementos de las otras subs → sub canónica
-        foreach ($subsDestino as $sid) {
-            $sid = (string) $sid;
-            if ($sid === $subCanon) continue;
+            Log::info('✅ [Encarretado] Sub con espacio encontrada', [
+                'sub' => $subDestino,
+                'elementos_actuales' => $subsCounts[$subDestino],
+                'max' => $maxElementosPorSub,
+            ]);
+        } else {
+            // Todas las subs están llenas, crear una nueva
+            $subDestino = Etiqueta::generarCodigoSubEtiqueta($codigoPadre);
+            $this->asegurarFilaSub($subDestino, $padre);
 
-            $movidos = Elemento::where('etiqueta_sub_id', $sid)->update(['etiqueta_sub_id' => $subCanon]);
-            Log::info('🔁 [Encarretado] Unifico sub en canónica', ['de' => $sid, 'a' => $subCanon, 'movidos' => $movidos]);
-
-            // limpiar solo si quedó vacía
-            $this->eliminarSubSiVacia($sid);
-        }
-
-        // 5) Asegurar que ESTE elemento apunta a la sub canónica
-        if ($elemento->etiqueta_sub_id !== $subCanon) {
-            $elemento->etiqueta_sub_id = $subCanon;
-            $elemento->save();
-            Log::info('📌 [Encarretado] Elemento reasignado a sub canónica', [
-                'elemento' => $elemento->id,
-                'sub'      => $subCanon,
+            Log::info('🆕 [Encarretado] Todas las subs llenas, creo nueva', [
+                'sub' => $subDestino,
+                'subs_llenas' => $subsCounts->all(),
             ]);
         }
 
-        // 6) Si su sub original ya no tiene elementos, limpiarla (por si no estaba entre las unificadas)
-        if ($subIdOriginal && $subIdOriginal !== $subCanon) {
+        // 5) Asignar el elemento a la sub destino
+        if ($elemento->etiqueta_sub_id !== $subDestino) {
+            $elemento->etiqueta_sub_id = $subDestino;
+            $elemento->save();
+            Log::info('📌 [Encarretado] Elemento asignado a sub', [
+                'elemento' => $elemento->id,
+                'sub'      => $subDestino,
+            ]);
+        }
+
+        // 6) Si su sub original ya no tiene elementos, limpiarla
+        if ($subIdOriginal && $subIdOriginal !== $subDestino) {
             $this->eliminarSubSiVacia($subIdOriginal);
         }
 
-        // 7) Devolver sub final (canónica). Pesos se recalculan fuera.
-        return $subCanon;
+        // 7) Devolver sub final. Pesos se recalculan fuera.
+        return $subDestino;
     }
 
 
@@ -281,11 +291,8 @@ class SubEtiquetaService
     /** Crea fila de etiquetas para la sub (copia datos del padre) si no existe. */
     protected function asegurarFilaSub(string $subId, Etiqueta $padre): void
     {
-        if (Etiqueta::where('etiqueta_sub_id', $subId)->exists()) return;
-
         $data = [
             'codigo'          => $padre->codigo,
-            'etiqueta_sub_id' => $subId,
             'planilla_id'     => $padre->planilla_id,
             'nombre'          => $padre->nombre,
             'estado'          => $padre->estado ?? 'pendiente',
@@ -317,8 +324,15 @@ class SubEtiquetaService
             if (Schema::hasColumn('etiquetas', $col)) $data[$col] = $padre->$col;
         }
 
-        Etiqueta::create($data);
-        Log::info('🧱 Fila sub creada', ['sub' => $subId]);
+        // Usar firstOrCreate para evitar duplicados por race condition
+        $created = Etiqueta::firstOrCreate(
+            ['etiqueta_sub_id' => $subId],
+            $data
+        );
+
+        if ($created->wasRecentlyCreated) {
+            Log::info('🧱 Fila sub creada', ['sub' => $subId]);
+        }
     }
 
     /** Recalcula pesos para una lista de sub-ids y para el padre. */

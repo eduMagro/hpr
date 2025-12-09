@@ -7,18 +7,17 @@
             <table class="w-full min-w-[1600px] border border-gray-300 rounded-lg">
                 <thead class="bg-blue-500 text-white text-10">
                     <tr class="text-center text-xs uppercase">
-                        <th class="p-2 border cursor-pointer" wire:click="wire:click="sortBy('id')" wire:navigate">
+                        <th class="p-2 border cursor-pointer" wire:click="sortBy('id')">
                             ID @if ($sort === 'id')
                                 {{ $order === 'asc' ? '▲' : '▼' }}
                             @endif
                         </th>
-                        <th class="p-2 border cursor-pointer" wire:click="wire:click="sortBy('codigo')" wire:navigate">
+                        <th class="p-2 border cursor-pointer" wire:click="sortBy('codigo')">
                             Código @if ($sort === 'codigo')
                                 {{ $order === 'asc' ? '▲' : '▼' }}
                             @endif
                         </th>
-                        <th class="p-2 border cursor-pointer" wire:click="wire:click="sortBy('planilla_id')"
-                            wire:navigate">
+                        <th class="p-2 border cursor-pointer" wire:click="sortBy('planilla_id')">
                             Planilla @if ($sort === 'planilla_id')
                                 {{ $order === 'asc' ? '▲' : '▼' }}
                             @endif
@@ -29,19 +28,18 @@
                         <th class="p-2 border">Cliente</th>
                         <th class="p-2 border">Nave</th>
                         <th class="p-2 border">Ubicación</th>
-                        <th class="p-2 border cursor-pointer" wire:click="wire:click="sortBy('estado')" wire:navigate">
+                        <th class="p-2 border cursor-pointer" wire:click="sortBy('estado')">
                             Estado @if ($sort === 'estado')
                                 {{ $order === 'asc' ? '▲' : '▼' }}
                             @endif
                         </th>
                         <th class="p-2 border">Elementos</th>
-                        <th class="p-2 border cursor-pointer" wire:click="wire:click="sortBy('peso')" wire:navigate">
+                        <th class="p-2 border cursor-pointer" wire:click="sortBy('peso')">
                             Peso (Kg) @if ($sort === 'peso')
                                 {{ $order === 'asc' ? '▲' : '▼' }}
                             @endif
                         </th>
-                        <th class="p-2 border cursor-pointer" wire:click="wire:click="sortBy('created_at')"
-                            wire:navigate">
+                        <th class="p-2 border cursor-pointer" wire:click="sortBy('created_at')">
                             Fecha Creación @if ($sort === 'created_at')
                                 {{ $order === 'asc' ? '▲' : '▼' }}
                             @endif
@@ -231,10 +229,17 @@
                                 <div class="flex flex-row justify-center items-center gap-3">
                                     {{-- Botón QR --}}
                                     <button
-                                        onclick="onclick="generateAndPrintQR('{{ $paquete->codigo }}', '{{ $paquete->planilla->codigo_limpio }}'
-                                        , 'PAQUETE' )" wire:navigate"
-                                        class="w-6 h-6 bg-green-100 text-green-600 rounded hover:bg-green-200 flex items-center justify-center"
-                                        title="Generar QR">
+                                        class="btn-qr-paquete w-6 h-6 bg-green-100 text-green-600 rounded hover:bg-green-200 flex items-center justify-center"
+                                        data-codigo="{{ $paquete->codigo }}"
+                                        data-planilla="{{ $paquete->planilla->codigo_limpio ?? '' }}"
+                                        data-cliente="{{ $paquete->planilla->cliente->empresa ?? '' }}"
+                                        data-obra="{{ $paquete->planilla->obra->obra ?? '' }}"
+                                        data-descripcion="{{ $paquete->planilla->descripcion ?? '' }}"
+                                        data-seccion="{{ $paquete->planilla->seccion ?? '' }}"
+                                        data-ensamblado="{{ $paquete->planilla->ensamblado ?? '' }}"
+                                        data-peso="{{ number_format($paquete->peso ?? 0, 2, ',', '.') }}"
+                                        data-etiquetas="{{ $paquete->etiquetas->pluck('etiqueta_sub_id')->filter()->implode(', ') }}"
+                                        title="Imprimir QR">
                                         <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none"
                                             viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                                             <path stroke-linecap="round" stroke-linejoin="round"
@@ -421,6 +426,24 @@
     <!-- SCRIPT PARA IMPRIMIR QR -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <script src="{{ asset('js/imprimirQrS.js') }}"></script>
+    <script>
+        document.addEventListener('click', function(e) {
+            const btn = e.target.closest('.btn-qr-paquete');
+            if (btn) {
+                generateAndPrintQRPaquete({
+                    codigo: btn.dataset.codigo,
+                    planilla: btn.dataset.planilla,
+                    cliente: btn.dataset.cliente,
+                    obra: btn.dataset.obra,
+                    descripcion: btn.dataset.descripcion,
+                    seccion: btn.dataset.seccion,
+                    ensamblado: btn.dataset.ensamblado,
+                    peso: btn.dataset.peso,
+                    etiquetas: btn.dataset.etiquetas
+                });
+            }
+        });
+    </script>
     <script src="{{ asset('js/elementosJs/figuraElemento.js') }}" defer></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 </div>

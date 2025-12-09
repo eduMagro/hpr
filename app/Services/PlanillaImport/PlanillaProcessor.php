@@ -688,70 +688,66 @@ class PlanillaProcessor
     {
         $subId = $this->codigoService->generarCodigoSubetiqueta($padre->codigo);
 
-        $subRow = Etiqueta::firstWhere('etiqueta_sub_id', $subId);
-
-        if (!$subRow) {
-            $data = [
-                'codigo' => $padre->codigo,
-                'etiqueta_sub_id' => $subId,
-                'planilla_id' => $padre->planilla_id,
-                'nombre' => $padre->nombre,
-                'estado' => $padre->estado ?? 'pendiente',
-                'peso' => 0.0,
-            ];
-
-            // Copiar campos adicionales si existen
-            $camposOpcionales = [
-                'producto_id',
-                'producto_id_2',
-                'ubicacion_id',
-                'operario1_id',
-                'operario2_id',
-                'soldador1_id',
-                'soldador2_id',
-                'ensamblador1_id',
-                'ensamblador2_id',
-                'marca',
-                'paquete_id',
-                'numero_etiqueta',
-                'fecha_inicio',
-                'fecha_finalizacion',
-                'fecha_inicio_ensamblado',
-                'fecha_finalizacion_ensamblado',
-                'fecha_inicio_soldadura',
-                'fecha_finalizacion_soldadura'
-            ];
-
-            foreach ($camposOpcionales as $campo) {
-                if (Schema::hasColumn('etiquetas', $campo)) {
-                    $data[$campo] = $padre->$campo;
-                }
-            }
-
-            $subRow = Etiqueta::create($data);
-        }
-
-        return [$subId, (int)$subRow->id];
-    }
-
-    protected function asegurarSubetiquetaExiste(string $subId, Etiqueta $padre): int
-    {
-        $row = Etiqueta::firstWhere('etiqueta_sub_id', $subId);
-
-        if ($row) {
-            return (int)$row->id;
-        }
-
         $data = [
             'codigo' => $padre->codigo,
-            'etiqueta_sub_id' => $subId,
             'planilla_id' => $padre->planilla_id,
             'nombre' => $padre->nombre,
             'estado' => $padre->estado ?? 'pendiente',
             'peso' => 0.0,
         ];
 
-        return (int)Etiqueta::create($data)->id;
+        // Copiar campos adicionales si existen
+        $camposOpcionales = [
+            'producto_id',
+            'producto_id_2',
+            'ubicacion_id',
+            'operario1_id',
+            'operario2_id',
+            'soldador1_id',
+            'soldador2_id',
+            'ensamblador1_id',
+            'ensamblador2_id',
+            'marca',
+            'paquete_id',
+            'numero_etiqueta',
+            'fecha_inicio',
+            'fecha_finalizacion',
+            'fecha_inicio_ensamblado',
+            'fecha_finalizacion_ensamblado',
+            'fecha_inicio_soldadura',
+            'fecha_finalizacion_soldadura'
+        ];
+
+        foreach ($camposOpcionales as $campo) {
+            if (Schema::hasColumn('etiquetas', $campo)) {
+                $data[$campo] = $padre->$campo;
+            }
+        }
+
+        // Usar firstOrCreate para evitar duplicados por race condition
+        $subRow = Etiqueta::firstOrCreate(
+            ['etiqueta_sub_id' => $subId],
+            $data
+        );
+
+        return [$subId, (int)$subRow->id];
+    }
+
+    protected function asegurarSubetiquetaExiste(string $subId, Etiqueta $padre): int
+    {
+        // Usar firstOrCreate para evitar duplicados por race condition
+        $row = Etiqueta::firstOrCreate(
+            ['etiqueta_sub_id' => $subId],
+            [
+                'codigo' => $padre->codigo,
+                'planilla_id' => $padre->planilla_id,
+                'nombre' => $padre->nombre,
+                'estado' => $padre->estado ?? 'pendiente',
+                'peso' => 0.0,
+            ]
+        );
+
+        return (int)$row->id;
     }
 
     protected function recalcularPesosEtiquetas(Etiqueta $padre): void
