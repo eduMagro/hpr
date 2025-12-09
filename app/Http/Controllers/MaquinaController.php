@@ -2048,4 +2048,33 @@ class MaquinaController extends Controller
             ], 500);
         }
     }
+
+    /**
+     * Comprimir etiquetas: agrupa elementos hermanos en mismas subetiquetas (máx 5 por sub).
+     * Solo para MSR20 o máquinas tipo encarretado.
+     */
+    public function comprimirEtiquetas(Request $request, $id)
+    {
+        $maquina = Maquina::findOrFail($id);
+
+        /** @var \App\Services\SubEtiquetaService $svc */
+        $svc = app(\App\Services\SubEtiquetaService::class);
+        $resultado = $svc->comprimirEtiquetasPorMaquina((int) $id);
+
+        return response()->json($resultado);
+    }
+
+    /**
+     * Descomprimir etiquetas: separa elementos en subetiquetas individuales (1 elemento = 1 sub).
+     */
+    public function descomprimirEtiquetas(Request $request, $id)
+    {
+        $maquina = Maquina::findOrFail($id);
+
+        /** @var \App\Services\SubEtiquetaService $svc */
+        $svc = app(\App\Services\SubEtiquetaService::class);
+        $resultado = $svc->descomprimirEtiquetasPorMaquina((int) $id);
+
+        return response()->json($resultado);
+    }
 }
