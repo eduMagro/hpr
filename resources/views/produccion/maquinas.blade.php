@@ -1647,7 +1647,7 @@
                         }
                     },
 
-                    // Transformar fechas de eventos para vista de 360 horas
+                    // Transformar fechas de eventos para vista de horas extendidas
                     eventDataTransform: function(eventData) {
                         const initialDateStr = "{{ $initialDate }}";
                         const initialDate = new Date(initialDateStr);
@@ -1666,26 +1666,11 @@
 
                         // Solo procesar eventos dentro del rango dinámico
                         if (horasStart >= 0 && horasStart < horasMaximas) {
-                            // Convertir a formato que FullCalendar entienda para vista extendida
-                            // Usar el initialDate como base y añadir las horas como minutos desde medianoche
                             const nuevoStart = new Date(initialDate);
                             nuevoStart.setTime(initialDate.getTime() + msStart);
 
                             const nuevoEnd = new Date(initialDate);
                             nuevoEnd.setTime(initialDate.getTime() + msEnd);
-
-                            // Debug
-                            if (!window._evtDebug) window._evtDebug = 0;
-                            if (window._evtDebug < 3) {
-                                console.log('📅 Transform:', {
-                                    title: eventData.title,
-                                    horasStart: horasStart.toFixed(1),
-                                    horasEnd: horasEnd.toFixed(1),
-                                    originalStart: eventData.start,
-                                    nuevoStart: nuevoStart.toISOString()
-                                });
-                                window._evtDebug++;
-                            }
 
                             eventData.start = nuevoStart;
                             eventData.end = nuevoEnd;

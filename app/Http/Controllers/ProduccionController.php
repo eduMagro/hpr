@@ -618,15 +618,17 @@ class ProduccionController extends Controller
             }
         }
 
-        // Calcular días desde la fecha inicial hasta la fecha máxima
-        $fechaInicial = Carbon::parse($initialDate);
-        $diasCalculados = 7; // Mínimo 7 días
+        // Calcular horas desde la fecha inicial hasta la fecha máxima
+        $fechaInicial = Carbon::parse($initialDate)->startOfDay();
+        $horasCalculadas = 24 * 7; // Mínimo 7 días = 168 horas
+        $diasCalculados = 7;
         if ($fechaMaxima) {
-            $diasCalculados = max(7, $fechaInicial->diffInDays($fechaMaxima) + 2); // +2 días de margen
+            $horasCalculadas = max(168, $fechaInicial->diffInHours($fechaMaxima) + 24); // +24 horas de margen
+            $diasCalculados = max(7, ceil($horasCalculadas / 24));
         }
 
         $fechaMaximaCalendario = [
-            'horas' => 24, // Horas máximas visibles en el calendario (slotMaxTime)
+            'horas' => $horasCalculadas, // Horas máximas visibles en el calendario (slotMaxTime)
             'dias' => $diasCalculados, // Días calculados según el último fin programado
         ];
 
