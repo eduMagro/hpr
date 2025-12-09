@@ -1629,7 +1629,7 @@
                     },
                     locale: 'es',
                     timeZone: 'local', // Fechas ISO8601 con offset se interpretan correctamente
-                    initialDate: "{{ $initialDate }}",
+                    initialDate: "{{ $initialDate ?: now()->format('Y-m-d H:i:s') }}",
                     // ✅ CAMBIO: Usar endpoints dinámicos en lugar de datos estáticos
                     resources: {
                         url: '{{ route('api.produccion.recursos') }}',
@@ -1649,20 +1649,26 @@
 
                     // Transformar fechas de eventos para vista de horas extendidas
                     eventDataTransform: function(eventData) {
-                        const initialDateStr = "{{ $initialDate }}";
+                        const initialDateStr = "{{ $initialDate ?: now()->format('Y-m-d H:i:s') }}";
+                        if (!initialDateStr) return eventData;
+
                         const initialDate = new Date(initialDateStr);
+                        if (isNaN(initialDate.getTime())) return eventData;
+
                         initialDate.setHours(0, 0, 0, 0);
 
                         // Parsear fechas del evento
                         const startDate = new Date(eventData.start);
                         const endDate = new Date(eventData.end);
 
+                        if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) return eventData;
+
                         // Calcular horas desde el inicio del calendario
                         const msStart = startDate.getTime() - initialDate.getTime();
                         const msEnd = endDate.getTime() - initialDate.getTime();
                         const horasStart = msStart / (1000 * 60 * 60);
                         const horasEnd = msEnd / (1000 * 60 * 60);
-                        const horasMaximas = {{ $fechaMaximaCalendario["horas"] }};
+                        const horasMaximas = {{ $fechaMaximaCalendario["horas"] ?? 168 }};
 
                         // Solo procesar eventos dentro del rango dinámico
                         if (horasStart >= 0 && horasStart < horasMaximas) {

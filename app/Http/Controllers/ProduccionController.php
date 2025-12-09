@@ -822,35 +822,42 @@ class ProduccionController extends Controller
 
     private function calcularInitialDate(): string
     {
-        $planillasPrimeraPos = OrdenPlanilla::with(['planilla:id,estado,fecha_inicio'])
-            ->where('posicion', 1)
-            ->get()
-            ->pluck('planilla')
-            ->filter();
+        try {
+            $planillasPrimeraPos = OrdenPlanilla::with(['planilla:id,estado,fecha_inicio'])
+                ->where('posicion', 1)
+                ->get()
+                ->pluck('planilla')
+                ->filter();
 
-        $fabricando = $planillasPrimeraPos->filter(
-            fn($p) => strcasecmp((string)$p->estado, 'fabricando') === 0
-        );
+            $fabricando = $planillasPrimeraPos->filter(
+                fn($p) => $p && strcasecmp((string)$p->estado, 'fabricando') === 0
+            );
 
-        if ($fabricando->isNotEmpty()) {
-            $minFecha = $fabricando
-                ->pluck('fecha_inicio')
-                ->filter()
-                ->min();
+            if ($fabricando->isNotEmpty()) {
+                $minFecha = $fabricando
+                    ->pluck('fecha_inicio')
+                    ->filter()
+                    ->min();
 
-            if ($minFecha) {
-                try {
-                    // ⚡ Forzar formato europeo: "d/m/Y H:i"
-                    return Carbon::createFromFormat('d/m/Y H:i', $minFecha)
-                        ->toDateTimeString(); // "YYYY-MM-DD HH:MM:SS"
-                } catch (\Exception $e) {
-                    // Si falla, como fallback intentamos parsear normal (YYYY-MM-DD HH:MM:SS)
-                    return Carbon::parse($minFecha)->toDateTimeString();
+                if ($minFecha) {
+                    try {
+                        // ⚡ Forzar formato europeo: "d/m/Y H:i"
+                        return Carbon::createFromFormat('d/m/Y H:i', $minFecha)
+                            ->toDateTimeString(); // "YYYY-MM-DD HH:MM:SS"
+                    } catch (\Exception $e) {
+                        // Si falla, como fallback intentamos parsear normal (YYYY-MM-DD HH:MM:SS)
+                        return Carbon::parse($minFecha)->toDateTimeString();
+                    }
                 }
             }
+        } catch (\Exception $e) {
+            Log::error('❌ Error en calcularInitialDate', [
+                'error' => $e->getMessage()
+            ]);
         }
 
-        return now()->toDateString();
+        // Fallback: fecha actual en formato ISO
+        return now()->format('Y-m-d H:i:s');
     }
     /**
      * 🔧 Obtiene la fecha real de finalización según el tipo de máquina
