@@ -2,7 +2,14 @@
     <!-- Session Status -->
     <x-auth-session-status class="mb-4" :status="session('status')" />
 
-    <form method="POST" action="{{ route('login') }}">
+    <!-- Mensaje de sesión expirada -->
+    @if (session('message'))
+        <div class="mb-4 p-4 bg-yellow-100 border border-yellow-400 text-yellow-700 rounded-lg">
+            {{ session('message') }}
+        </div>
+    @endif
+
+    <form method="POST" action="{{ route('login') }}" id="loginForm">
         @csrf
 
         <!-- Email Address -->
@@ -40,22 +47,8 @@
 
         </div>
 
-        <!-- Remember Me -->
-        <div class="block mt-4">
-            <label for="remember_me" class="inline-flex items-center">
-                <input id="remember_me" type="checkbox"
-                    class="rounded border-gray-300 text-indigo-600 shadow-sm focus:ring-indigo-500" name="remember"
-                    checked>
-                <span class="ms-2 text-sm text-gray-600">{{ __('Recuerdame') }}</span>
-            </label>
-        </div>
-        <div class="block mt-4">
-            <label for="recordar_correo" class="inline-flex items-center">
-                <input id="recordar_correo" type="checkbox"
-                    class="rounded border-gray-300 text-indigo-600 shadow-sm focus:ring-indigo-500" checked>
-                <span class="ms-2 text-sm text-gray-600">Recordar correo</span>
-            </label>
-        </div>
+        <!-- Sesión persistente siempre activa -->
+        <input type="hidden" name="remember" value="1">
 
         <div class="flex items-center justify-between mt-4">
             @if (Route::has('password.request'))
@@ -65,7 +58,7 @@
                     {{ __('¿Olvidaste tu contraseña?') }}
                 </a>
             @endif
-            <x-primary-button class="ms-3">
+            <x-primary-button class="ms-3" id="loginButton">
                 {{ __('Iniciar Sesión') }}
             </x-primary-button>
         </div>
@@ -73,25 +66,30 @@
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             const emailInput = document.getElementById('email');
-            const recordarCheckbox = document.getElementById('recordar_correo');
+            const loginForm = document.getElementById('loginForm');
+            const loginButton = document.getElementById('loginButton');
+            let isSubmitting = false;
 
             // Al cargar, si hay un correo guardado en localStorage, lo rellenamos
             const correoGuardado = localStorage.getItem('correoRecordado');
             if (correoGuardado) {
                 emailInput.value = correoGuardado;
-                recordarCheckbox.checked = true;
-            } else {
-                recordarCheckbox.checked = true; // ✅ Activado por defecto aunque no haya correo aún
             }
 
-
-            // Al enviar el formulario, guardamos o borramos el correo según el checkbox
-            document.querySelector('form').addEventListener('submit', function() {
-                if (recordarCheckbox.checked) {
-                    localStorage.setItem('correoRecordado', emailInput.value);
-                } else {
-                    localStorage.removeItem('correoRecordado');
+            // Prevenir doble submit del formulario y guardar correo siempre
+            loginForm.addEventListener('submit', function(e) {
+                if (isSubmitting) {
+                    e.preventDefault();
+                    return false;
                 }
+
+                isSubmitting = true;
+                loginButton.disabled = true;
+                loginButton.innerHTML = 'Iniciando...';
+                loginButton.classList.add('opacity-50', 'cursor-not-allowed');
+
+                // Guardar correo siempre
+                localStorage.setItem('correoRecordado', emailInput.value);
             });
 
             // Toggle password visibility
@@ -101,15 +99,10 @@
             const eyeSlashIcon = document.getElementById('eyeSlashIcon');
 
             togglePassword.addEventListener('click', function() {
-                // Alternar el tipo de input entre password y text
                 const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
                 passwordInput.setAttribute('type', type);
-
-                // Alternar la visibilidad de los iconos
                 eyeIcon.classList.toggle('hidden');
                 eyeSlashIcon.classList.toggle('hidden');
-
-                // Actualizar el aria-label para accesibilidad
                 this.setAttribute('aria-label', type === 'password' ? 'Mostrar contraseña' : 'Ocultar contraseña');
             });
         });

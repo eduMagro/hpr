@@ -6,13 +6,21 @@ return [
     'prefijos_operario' => [
         'produccion.trabajadores',
         'users.',
+        'users.verEventos-turnos',
+        'users.verResumen-asistencia',
         'alertas.',
         'productos.',
         'pedidos.',
         'ayuda.',
         'maquinas.',
-        'entradas.',   // ✅ acceso permitido
-        'movimientos.', // ✅ acceso permitido
+        'etiquetas.',      // ✅ acceso para fabricar etiquetas
+        'elementos.',      // ✅ acceso para dividir/cambiar máquina elementos
+        'subetiquetas.',   // ✅ acceso para crear/mover subetiquetas
+        'paquetes.',       // ✅ acceso para crear/gestionar paquetes
+        'localizaciones.', // ✅ acceso para ubicar paquetes en mapa
+        'api.',            // ✅ acceso a rutas API (productos, paquetes, etc.)
+        'entradas.',       // ✅ acceso permitido
+        'movimientos.',    // ✅ acceso permitido
         'ubicaciones.',
     ],
 
@@ -61,6 +69,8 @@ return [
         'alertas.verMarcarLeidas',
         'alertas.verSinLeer',
         'vacaciones.solicitar',
+        'users.verEventos-turnos',
+        'users.verResumen-asistencia',
     ],
 
     // 📌 Correos con acceso total

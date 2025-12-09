@@ -47,6 +47,7 @@ class MaquinaController extends Controller
             $hoy = Carbon::today();
             $maniana = Carbon::tomorrow();
 
+            // Primero buscar asignación CON máquina asignada
             $asignacion = AsignacionTurno::where('user_id', $usuario->id)
                 ->whereDate('fecha', $hoy)
                 ->whereNotNull('maquina_id')
@@ -54,7 +55,7 @@ class MaquinaController extends Controller
                 ->first();
 
             if (!$asignacion) {
-                // 👉 No encontró turno para hoy, probamos para mañana
+                // Probar para mañana con máquina asignada
                 $asignacion = AsignacionTurno::where('user_id', $usuario->id)
                     ->whereDate('fecha', $maniana)
                     ->whereNotNull('maquina_id')
@@ -62,24 +63,46 @@ class MaquinaController extends Controller
                     ->first();
             }
 
+            // Si tiene máquina asignada, redirigir a ella
+            if ($asignacion) {
+                $maquinaId = $asignacion->maquina_id;
+                $turnoId   = $asignacion->turno_id;
 
-            if (!$asignacion) {
+                // Buscar compañero
+                $compañero = AsignacionTurno::where('maquina_id', $maquinaId)
+                    ->where('turno_id', $turnoId)
+                    ->where('user_id', '!=', $usuario->id)
+                    ->latest()
+                    ->first();
+
+                session(['compañero_id' => optional($compañero)->user_id]);
+
+                return redirect()->route('maquinas.show', ['maquina' => $maquinaId]);
+            }
+
+            // Buscar asignación SIN máquina (para que pueda elegir una)
+            $asignacionSinMaquina = AsignacionTurno::where('user_id', $usuario->id)
+                ->whereDate('fecha', $hoy)
+                ->whereNull('maquina_id')
+                ->first();
+
+            if (!$asignacionSinMaquina) {
+                $asignacionSinMaquina = AsignacionTurno::where('user_id', $usuario->id)
+                    ->whereDate('fecha', $maniana)
+                    ->whereNull('maquina_id')
+                    ->first();
+            }
+
+            // Si no tiene ninguna asignación, no ha fichado
+            if (!$asignacionSinMaquina) {
                 abort(403, 'No has fichado entrada');
             }
 
-            $maquinaId = $asignacion->maquina_id;
-            $turnoId   = $asignacion->turno_id;
-
-            // Buscar compañero
-            $compañero = AsignacionTurno::where('maquina_id', $maquinaId)
-                ->where('turno_id', $turnoId)
-                ->where('user_id', '!=', $usuario->id)
-                ->latest()
-                ->first();
-
-            session(['compañero_id' => optional($compañero)->user_id]);
-
-            return redirect()->route('maquinas.show', ['maquina' => $maquinaId]);
+            // Tiene asignación pero sin máquina: mostrar selector de máquinas
+            $maquinasDisponibles = Maquina::orderBy('nombre')->get(['id', 'codigo', 'nombre']);
+            return view('maquinas.seleccionar-maquina', [
+                'maquinas' => $maquinasDisponibles
+            ]);
         }
 
         /* ───────────────────────────────────────────
@@ -123,6 +146,7 @@ class MaquinaController extends Controller
         })
             ->orderBy('obra')
             ->get();
+
         // ▸ 2.3 Render vista
         return view('maquinas.index', compact(
             'registrosMaquina',
@@ -160,9 +184,20 @@ class MaquinaController extends Controller
 
         // 2) Rama GRÚA: devolver pronto con variables neutras de máquina
         if ($this->esGrua($maquina)) {
-            $grua = $this->cargarContextoGrua($maquina);
+            // ⚠️ IMPORTANTE: Activar movimientos ANTES de cargar el contexto
+            // para que los nuevos movimientos aparezcan en la primera carga
             $this->activarMovimientosSalidasHoy();
             $this->activarMovimientosSalidasAlmacenHoy();
+            $this->activarMovimientosPreparacionPaquete($maquina);
+
+            // 🔧 MODO FABRICACIÓN: Si viene el parámetro fabricar_planilla, mostrar vista de fabricación
+            $fabricarPlanillaId = request('fabricar_planilla');
+            if ($fabricarPlanillaId) {
+                return $this->mostrarGruaComoMaquinaFabricacion($maquina, $fabricarPlanillaId, $base);
+            }
+
+            // Ahora sí cargar el contexto con los movimientos ya creados
+            $grua = $this->cargarContextoGrua($maquina);
             return view('maquinas.show', array_merge(
                 $base,
                 [
@@ -197,16 +232,12 @@ class MaquinaController extends Controller
         $posicion1 = request('posicion_1');
         $posicion2 = request('posicion_2');
 
-        // Si no hay posiciones en el request, buscar las primeras dos posiciones con planillas revisadas
+        // Si no hay posiciones en el request, buscar solo la primera posición con planilla revisada
         if (is_null($posicion1) && is_null($posicion2)) {
             foreach ($ordenesPlanillas as $orden) {
                 if ($orden->planilla && $orden->planilla->revisada) {
-                    if (is_null($posicion1)) {
-                        $posicion1 = $orden->posicion;
-                    } elseif (is_null($posicion2)) {
-                        $posicion2 = $orden->posicion;
-                        break; // Ya tenemos las dos posiciones
-                    }
+                    $posicion1 = $orden->posicion;
+                    break; // Solo la primera posición revisada por defecto
                 }
             }
         }
@@ -416,17 +447,23 @@ class MaquinaController extends Controller
         $posicionAPlanilla = $ordenManual->flip();
 
         // 4) Obtener todas las posiciones disponibles (solo planillas REVISADAS)
-        $posicionesDisponibles = [];
-        foreach ($ordenManual as $planillaId => $posicion) {
-            if ($porPlanilla->has($planillaId)) {
-                $planilla = $porPlanilla[$planillaId]->first()->planilla;
-                // Solo incluir posiciones con planillas revisadas
-                if ($planilla && $planilla->revisada) {
-                    $posicionesDisponibles[] = $posicion;
-                }
-            }
-        }
-        sort($posicionesDisponibles);
+        // Consultamos directamente OrdenPlanilla con la relación planilla cargada
+        // para incluir TODAS las planillas revisadas en la cola, no solo las que tienen elementos
+        $posicionesDisponibles = OrdenPlanilla::where('maquina_id', $maquina->id)
+            ->with('planilla')
+            ->orderBy('posicion', 'asc')
+            ->get()
+            ->filter(function ($orden) use ($porPlanilla) {
+                // Incluir solo si:
+                // 1. La planilla existe y está revisada
+                // 2. Y tiene elementos en esta máquina (está en $porPlanilla)
+                return $orden->planilla
+                    && $orden->planilla->revisada
+                    && $porPlanilla->has($orden->planilla_id);
+            })
+            ->pluck('posicion')
+            ->values()
+            ->toArray();
 
         // 5) Seleccionar planillas según las posiciones solicitadas
         // ⚠️ SOLO planillas REVISADAS pueden ser mostradas
@@ -491,10 +528,21 @@ class MaquinaController extends Controller
         $ubicacion = Ubicacion::where('descripcion', 'like', "%{$maquina->codigo}%")->first();
         $maquinas  = Maquina::orderBy('nombre')->get();
 
-        $productosBaseCompatibles = ProductoBase::where('tipo', $maquina->tipo_material)
-            ->whereBetween('diametro', [$maquina->diametro_min, $maquina->diametro_max])
+        $productosBaseCompatibles = ProductoBase::whereRaw('LOWER(tipo) = ?', [strtolower($maquina->tipo_material ?? '')])
+            ->whereBetween('diametro', [$maquina->diametro_min ?? 0, $maquina->diametro_max ?? 100])
             ->orderBy('diametro')
             ->get();
+
+        // Debug temporal - puedes quitar esto después
+        if ($productosBaseCompatibles->isEmpty()) {
+            \Log::warning('Sin productos base compatibles para máquina', [
+                'maquina_id' => $maquina->id,
+                'maquina_nombre' => $maquina->nombre,
+                'tipo_material' => $maquina->tipo_material,
+                'diametro_min' => $maquina->diametro_min,
+                'diametro_max' => $maquina->diametro_max,
+            ]);
+        }
 
         $usuario1 = auth()->user();
         $usuario1->name = html_entity_decode($usuario1->name, ENT_QUOTES, 'UTF-8');
@@ -530,7 +578,7 @@ class MaquinaController extends Controller
             ->get();
 
 
-        // PENDIENTES: eager load estrecho + columns mínimos + misma nave
+        // PENDIENTES: eager load estrecho + columns mínimos + misma nave + coladas
         $movimientosPendientes = Movimiento::with([
             'solicitadoPor:id,name',
             'producto.ubicacion:id,nombre',
@@ -539,6 +587,7 @@ class MaquinaController extends Controller
             'pedido.fabricante:id,nombre',
             'pedido.distribuidor:id,nombre',
             'pedidoProducto:id,pedido_id,codigo,producto_base_id,cantidad,cantidad_recepcionada,obra_id,estado,fecha_estimada_entrega',
+            'pedidoProducto.coladas', // ✅ Cargar las coladas asociadas a la línea de pedido
         ])
             ->where('estado', 'pendiente')
             ->where('nave_id', $obraId)              // ⬅️ solo movimientos de la misma nave
@@ -839,45 +888,72 @@ class MaquinaController extends Controller
         // 👉 Fecha actual (sin hora)
         $hoy = Carbon::today();
 
-        // 🔎 Buscar todas las salidas programadas para hoy
-        $salidasHoy = Salida::whereDate('fecha_salida', $hoy)->get();
-        $naveA = Obra::buscarDeCliente('Paco Reyes', 'Nave A');
+        // 🔎 Buscar todas las salidas programadas para hoy con sus paquetes
+        $salidasHoy = Salida::with(['paquetes', 'camion', 'empresaTransporte', 'salidaClientes.obra', 'salidaClientes.cliente'])
+            ->whereDate('fecha_salida', $hoy)
+            ->get();
+
         foreach ($salidasHoy as $salida) {
-            // 🔎 Comprobar si ya existe un movimiento asociado a esta salida
-            $existeMovimiento = Movimiento::where('salida_id', $salida->id)
-                ->where('tipo', 'salida')
-                ->exists();
+            // 👉 Agrupar paquetes por nave_id
+            $paquetesPorNave = $salida->paquetes->groupBy('nave_id')->filter(function ($grupo, $naveId) {
+                return $naveId !== null; // Solo naves válidas
+            });
 
-            if (!$existeMovimiento) {
+            // Si no hay paquetes con nave, no crear movimiento
+            if ($paquetesPorNave->isEmpty()) {
+                continue;
+            }
 
-                // 👉 Datos básicos
-                $camion = optional($salida->camion)->modelo ?? 'Sin modelo';
-                $empresaTransporte = optional($salida->empresaTransporte)->nombre ?? 'Sin empresa';
-                $horaSalida = \Carbon\Carbon::parse($salida->fecha_salida)->format('H:i');
-                $codigoSalida = $salida->codigo_salida;
-                // 👉 Armar listado de obras y clientes relacionados
-                $obrasClientes = $salida->salidaClientes->map(function ($sc) {
-                    $obra = optional($sc->obra)->obra ?? 'Sin obra';
-                    $cliente = optional($sc->cliente)->empresa ?? 'Sin cliente';
-                    return "$obra - $cliente";
-                })->filter()->implode(', ');
+            // 👉 Datos básicos de la salida (comunes para todos los movimientos)
+            $camion = optional($salida->camion)->modelo ?? 'Sin modelo';
+            $empresaTransporte = optional($salida->empresaTransporte)->nombre ?? 'Sin empresa';
+            $horaSalida = \Carbon\Carbon::parse($salida->fecha_salida)->format('H:i');
+            $codigoSalida = $salida->codigo_salida;
 
-                // 👉 Construir la descripción final (sin usar optional de nuevo)
-                $descripcion = "$codigoSalida. Se solicita carga del camión ($camion) - ($empresaTransporte) para [$obrasClientes], tiene que estar listo a las $horaSalida";
+            // 👉 Armar listado de obras y clientes relacionados
+            $obrasClientes = $salida->salidaClientes->map(function ($sc) {
+                $obra = optional($sc->obra)->obra ?? 'Sin obra';
+                $cliente = optional($sc->cliente)->empresa ?? 'Sin cliente';
+                return "$obra - $cliente";
+            })->filter()->implode(', ');
 
+            // 👉 Crear un movimiento por cada nave donde haya paquetes
+            foreach ($paquetesPorNave as $naveId => $paquetesEnNave) {
+                // 🔎 Comprobar si ya existe un movimiento para esta salida Y esta nave
+                $existeMovimiento = Movimiento::where('salida_id', $salida->id)
+                    ->where('tipo', 'salida')
+                    ->where('nave_id', $naveId)
+                    ->exists();
 
-                // ⚡ Crear movimiento nuevo
-                Movimiento::create([
-                    'tipo' => 'salida',
-                    'salida_id' => $salida->id,
-                    'nave_id'         => $naveA?->id,
-                    'estado' => 'pendiente',
-                    'fecha_solicitud' => now(),
-                    'solicitado_por' => null,
-                    'prioridad' => 2,
-                    'descripcion' => $descripcion,
-                    // 👉 Rellena otros campos si lo necesitas, por ejemplo prioridad o descripción
-                ]);
+                if (!$existeMovimiento) {
+                    // 👉 Obtener nombre de la nave para la descripción
+                    $nave = Obra::find($naveId);
+                    $nombreNave = $nave->obra ?? 'Nave desconocida';
+                    $numPaquetes = $paquetesEnNave->count();
+                    $pesoTotal = $paquetesEnNave->sum('peso');
+
+                    // 👉 Construir la descripción con info de la nave
+                    $descripcion = "$codigoSalida. [$nombreNave] Cargar $numPaquetes paquete(s) (" . number_format($pesoTotal, 0) . " kg) - Camión ($camion) - ($empresaTransporte) para [$obrasClientes], listo a las $horaSalida";
+
+                    // ⚡ Crear movimiento para esta nave
+                    Movimiento::create([
+                        'tipo' => 'salida',
+                        'salida_id' => $salida->id,
+                        'nave_id' => $naveId,
+                        'estado' => 'pendiente',
+                        'fecha_solicitud' => now(),
+                        'solicitado_por' => null,
+                        'prioridad' => 2,
+                        'descripcion' => $descripcion,
+                    ]);
+
+                    Log::info("✅ Movimiento de salida creado para nave $nombreNave", [
+                        'salida_id' => $salida->id,
+                        'nave_id' => $naveId,
+                        'paquetes' => $numPaquetes,
+                        'peso' => $pesoTotal,
+                    ]);
+                }
             }
         }
     }
@@ -931,6 +1007,274 @@ class MaquinaController extends Controller
         }
     }
 
+    /**
+     * Busca elementos con elaborado=0 que necesitan ser fabricados para mañana.
+     *
+     * Lógica:
+     * 1. Buscar elementos con elaborado=0 cuya fecha de entrega es mañana
+     * 2. La fecha de entrega puede venir del propio elemento (fecha_entrega) o de su planilla (fecha_estimada_entrega)
+     * 3. Si el elemento tiene fecha_entrega, usar esa. Si no, usar la de la planilla.
+     * 4. Crear movimientos agrupados por planilla para que se preparen esos elementos
+     */
+    private function activarMovimientosPreparacionPaquete(Maquina $grua): void
+    {
+        $manana = Carbon::tomorrow();
+
+        Log::info("🔎 [Grúa] Buscando elementos sin elaborar (elaborado=0) con fecha de entrega para mañana ({$manana->format('d/m/Y')})");
+
+        // 1. Buscar elementos con elaborado=0 que tienen fecha de entrega para mañana
+        // Puede ser por fecha_entrega del elemento o por fecha_estimada_entrega de la planilla
+        $elementosSinElaborar = Elemento::with(['planilla.cliente', 'planilla.obra', 'maquina'])
+            ->where('elaborado', 0)
+            ->where(function ($query) use ($manana) {
+                // Elementos con fecha_entrega propia para mañana
+                $query->whereDate('fecha_entrega', $manana)
+                    // O elementos sin fecha_entrega propia pero cuya planilla tiene fecha_estimada_entrega para mañana
+                    ->orWhere(function ($q) use ($manana) {
+                        $q->whereNull('fecha_entrega')
+                            ->whereHas('planilla', function ($planillaQuery) use ($manana) {
+                                $planillaQuery->whereDate('fecha_estimada_entrega', $manana);
+                            });
+                    });
+            })
+            ->get();
+
+        if ($elementosSinElaborar->isEmpty()) {
+            Log::info("ℹ️ No hay elementos sin elaborar con fecha de entrega para mañana");
+            return;
+        }
+
+        Log::info("📦 Encontrados {$elementosSinElaborar->count()} elementos sin elaborar para mañana");
+
+        // 2. Agrupar por planilla para crear movimientos más específicos
+        $elementosPorPlanilla = $elementosSinElaborar->groupBy('planilla_id');
+
+        foreach ($elementosPorPlanilla as $planillaId => $elementos) {
+            // Verificar si ya existe un movimiento pendiente para esta planilla
+            $existeMovimiento = Movimiento::where('tipo', 'Preparación elementos')
+                ->where('estado', 'pendiente')
+                ->whereRaw("descripcion LIKE ?", ["%planilla_id:{$planillaId}%"])
+                ->exists();
+
+            if ($existeMovimiento) {
+                Log::info("⏭️ Ya existe movimiento pendiente para planilla {$planillaId}");
+                continue;
+            }
+
+            $planilla = $elementos->first()->planilla;
+
+            if (!$planilla) {
+                Log::warning("⚠️ Elemento sin planilla asociada, planilla_id: {$planillaId}");
+                continue;
+            }
+
+            $cliente = $planilla->cliente?->empresa ?? 'Cliente desconocido';
+            $obra = $planilla->obra?->obra ?? 'Obra desconocida';
+            $codigoPlanilla = $planilla->codigo ?? $planillaId;
+            $numElementos = $elementos->count();
+            $pesoTotal = $elementos->sum('peso');
+
+            // Determinar la fecha de entrega efectiva (la más temprana de los elementos)
+            $fechaEntregaEfectiva = $elementos->map(function ($elemento) {
+                return $elemento->fecha_entrega ?? $elemento->planilla?->getRawOriginal('fecha_estimada_entrega');
+            })->filter()->min();
+
+            // Resumen de diámetros
+            $resumenDiametros = $elementos
+                ->groupBy('diametro')
+                ->map(fn($grupo, $diametro) => $grupo->count() . "xØ{$diametro}")
+                ->implode(', ');
+
+            // Obtener máquinas donde están asignados estos elementos
+            $maquinasAsignadas = $elementos
+                ->filter(fn($e) => $e->maquina_id)
+                ->pluck('maquina.nombre')
+                ->unique()
+                ->implode(', ') ?: 'Sin asignar';
+
+            $descripcion = sprintf(
+                "⚠️ URGENTE: Fabricar %d elementos (%.1f kg) de planilla %s [%s / %s]. Diámetros: %s. Máquinas: %s. [planilla_id:%d]",
+                $numElementos,
+                $pesoTotal,
+                $codigoPlanilla,
+                $cliente,
+                $obra,
+                $resumenDiametros,
+                $maquinasAsignadas,
+                $planillaId
+            );
+
+            // Crear movimiento
+            Movimiento::create([
+                'tipo'            => 'Preparación elementos',
+                'nave_id'         => $grua->obra_id,
+                'estado'          => 'pendiente',
+                'prioridad'       => 1, // Alta prioridad porque es para mañana
+                'fecha_solicitud' => now(),
+                'descripcion'     => $descripcion,
+            ]);
+
+            Log::info("✅ Movimiento 'Preparación elementos' creado", [
+                'planilla_id' => $planillaId,
+                'planilla_codigo' => $codigoPlanilla,
+                'elementos_sin_elaborar' => $numElementos,
+                'peso_total' => $pesoTotal,
+                'maquinas' => $maquinasAsignadas,
+                'fecha_entrega_efectiva' => $fechaEntregaEfectiva,
+            ]);
+        }
+    }
+
+
+    /**
+     * Muestra la grúa en modo fabricación, cargando los elementos de una planilla específica
+     * como si fuera una máquina normal de producción.
+     */
+    private function mostrarGruaComoMaquinaFabricacion(Maquina $maquina, int $planillaId, array $base)
+    {
+        $planilla = Planilla::with(['cliente', 'obra'])->find($planillaId);
+
+        if (!$planilla) {
+            return redirect()->route('maquinas.show', $maquina->id)
+                ->with('error', 'Planilla no encontrada.');
+        }
+
+        // Obtener elementos de la planilla con elaborado=0
+        $elementosFiltrados = Elemento::with([
+            'planilla',
+            'etiquetaRelacion',
+            'subetiquetas',
+            'maquina',
+            'producto',
+            'producto2',
+            'producto3'
+        ])
+            ->where('planilla_id', $planillaId)
+            ->where('elaborado', 0)
+            ->get();
+
+        if ($elementosFiltrados->isEmpty()) {
+            return redirect()->route('maquinas.show', $maquina->id)
+                ->with('info', 'No hay elementos pendientes de fabricar en esta planilla.');
+        }
+
+        // Construir datasets para la vista (mismo formato que máquinas normales)
+        $pesosElementos = $elementosFiltrados
+            ->map(fn($e) => ['id' => $e->id, 'peso' => $e->peso])
+            ->values()
+            ->toArray();
+
+        $ordenSub = function ($grupo, $subId) {
+            if (preg_match('/^(.*?)[\.\-](\d+)$/', $subId, $m)) {
+                return sprintf('%s-%010d', $m[1], (int)$m[2]);
+            }
+            return $subId . '-0000000000';
+        };
+
+        $etiquetasData = $elementosFiltrados
+            ->filter(fn($e) => !empty($e->etiqueta_sub_id))
+            ->groupBy('etiqueta_sub_id')
+            ->sortBy($ordenSub)
+            ->map(fn($grupo, $subId) => [
+                'codigo'    => (string)$subId,
+                'elementos' => $grupo->pluck('id')->toArray(),
+                'pesoTotal' => $grupo->sum('peso'),
+            ])
+            ->values();
+
+        $elementosAgrupados = $elementosFiltrados
+            ->groupBy('etiqueta_sub_id')
+            ->sortBy($ordenSub);
+
+        $elementosAgrupadosScript = $elementosAgrupados->map(fn($grupo) => [
+            'etiqueta'  => $grupo->first()->etiquetaRelacion,
+            'planilla'  => $grupo->first()->planilla,
+            'elementos' => $grupo->map(fn($e) => [
+                'id'          => $e->id,
+                'codigo'      => $e->codigo,
+                'dimensiones' => $e->dimensiones,
+                'estado'      => $e->estado,
+                'peso'        => $e->peso_kg,
+                'diametro'    => $e->diametro_mm,
+                'longitud'    => $e->longitud_cm,
+                'barras'      => $e->barras,
+                'figura'      => $e->figura,
+                'coladas'     => [
+                    'colada1' => $e->producto ? $e->producto->n_colada : null,
+                    'colada2' => $e->producto2 ? $e->producto2->n_colada : null,
+                    'colada3' => $e->producto3 ? $e->producto3->n_colada : null,
+                ],
+            ])->values(),
+        ])->values();
+
+        // Sugerencias de productos base (vacías para grúa)
+        $sugerenciasPorElemento = [];
+
+        // Turno de hoy
+        $turnoHoy = AsignacionTurno::where('user_id', auth()->id())
+            ->whereDate('fecha', now())
+            ->with('maquina')
+            ->first();
+
+        // Movimientos pendientes y completados
+        $movimientosPendientes = collect();
+        $movimientosCompletados = collect();
+
+        // Máquinas disponibles de la misma nave (excluyendo grúas)
+        $maquinasDisponibles = Maquina::select('id', 'nombre', 'codigo', 'diametro_min', 'diametro_max', 'obra_id')
+            ->where('obra_id', $maquina->obra_id)
+            ->where('tipo', '!=', 'grua')
+            ->orderBy('nombre')
+            ->get();
+
+        // Variables adicionales para tipo-normal
+        $elementosPorPlanilla = $elementosFiltrados->groupBy('planilla_id');
+        $esBarra = strcasecmp($maquina->tipo_material ?? '', 'barra') === 0;
+
+        $longitudesPorDiametro = $esBarra
+            ? $elementosFiltrados->groupBy('diametro')->map(fn($g) => $g->pluck('longitud')->unique()->sort()->values())
+            : collect();
+
+        $diametroPorEtiqueta = $elementosFiltrados
+            ->filter(fn($e) => !empty($e->etiqueta_sub_id))
+            ->groupBy('etiqueta_sub_id')
+            ->map(fn($g) => $g->first()->diametro);
+
+        return view('maquinas.show', array_merge(
+            $base,
+            [
+                'maquina'                   => $maquina,
+                'elementosMaquina'          => $elementosFiltrados,
+                'pesosElementos'            => $pesosElementos,
+                'etiquetasData'             => $etiquetasData,
+                'elementosAgrupados'        => $elementosAgrupados,
+                'elementosAgrupadosScript'  => $elementosAgrupadosScript,
+                'sugerenciasPorElemento'    => $sugerenciasPorElemento,
+                'planillasActivas'          => collect([$planilla]),
+                'turnoHoy'                  => $turnoHoy,
+                'movimientosPendientes'     => $movimientosPendientes,
+                'movimientosCompletados'    => $movimientosCompletados,
+                'ubicacionesDisponiblesPorProductoBase' => [],
+                'pedidosActivos'            => collect(),
+                'ordenManual'               => collect(),
+                'posicionesDisponibles'     => collect(),
+                'maquinasDisponibles'       => $maquinasDisponibles,
+                // Variables adicionales para tipo-normal
+                'productoBaseSolicitados'   => collect(),
+                'elementosPorPlanilla'      => $elementosPorPlanilla,
+                'esBarra'                   => $esBarra,
+                'longitudesPorDiametro'     => $longitudesPorDiametro,
+                'diametroPorEtiqueta'       => $diametroPorEtiqueta,
+                'posicion1'                 => null,
+                'posicion2'                 => null,
+                // Indicador de modo fabricación en grúa
+                'modoFabricacionGrua'       => true,
+                'planillaFabricacion'       => $planilla,
+                // Ubicación (null para grúa, se asigna después en el mapa)
+                'ubicacion'                 => null,
+            ]
+        ));
+    }
 
     public function create()
     {
@@ -1587,9 +1931,14 @@ class MaquinaController extends Controller
                 $planilla = $ordenPlanilla->planilla;
 
                 // Verificar que todas las etiquetas de esa planilla EN ESTA MÁQUINA tengan paquete asignado
+                // La máquina está en los elementos, no en las etiquetas
                 $etiquetasSinPaquete = $planilla->etiquetas()
-                    ->where('maquina_id', $maquina->id)
                     ->whereDoesntHave('paquete')
+                    ->whereHas('elementos', function ($q) use ($maquina) {
+                        $q->where('maquina_id', $maquina->id)
+                          ->orWhere('maquina_id_2', $maquina->id)
+                          ->orWhere('maquina_id_3', $maquina->id);
+                    })
                     ->count();
 
                 if ($etiquetasSinPaquete > 0) {

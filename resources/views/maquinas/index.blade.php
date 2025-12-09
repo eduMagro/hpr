@@ -23,6 +23,14 @@
             <h1 class="text-2xl font-bold text-gray-900">Máquinas</h1>
 
             <div class="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
+                {{-- Filtro de nave --}}
+                <select id="naveFilter" class="border border-gray-300 rounded-lg px-4 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white">
+                    <option value="">Todas las naves</option>
+                    @foreach ($obras as $obra)
+                        <option value="{{ $obra->id }}">{{ $obra->obra }}</option>
+                    @endforeach
+                </select>
+
                 {{-- Filtro de máquina --}}
                 <select id="machineFilter" class="border border-gray-300 rounded-lg px-4 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white">
                     <option value="">Todas las máquinas ({{ $registrosMaquina->count() }})</option>
@@ -41,7 +49,7 @@
         {{-- Grid responsive para las tarjetas --}}
         <div id="machinesGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-6">
             @forelse($registrosMaquina as $maquina)
-                <div id="maquina-{{ $maquina->id }}" data-machine-id="{{ $maquina->id }}"
+                <div id="maquina-{{ $maquina->id }}" data-machine-id="{{ $maquina->id }}" data-obra-id="{{ $maquina->obra_id }}"
                     class="machine-card bg-white border border-gray-200 rounded-xl shadow-md overflow-hidden flex flex-col h-full">
 
                     {{-- Imagen responsive --}}
@@ -320,14 +328,19 @@
     <script>
         (function() {
             const machineFilter = document.getElementById('machineFilter');
+            const naveFilter = document.getElementById('naveFilter');
             const allMachineCards = document.querySelectorAll('.machine-card');
 
-            // Filtrar máquinas por select
-            machineFilter.addEventListener('change', function() {
-                const selectedId = this.value;
+            // Función para aplicar ambos filtros
+            function applyFilters() {
+                const selectedMachineId = machineFilter.value;
+                const selectedNaveId = naveFilter.value;
 
                 allMachineCards.forEach(card => {
-                    if (selectedId === '' || card.dataset.machineId === selectedId) {
+                    const matchesMachine = selectedMachineId === '' || card.dataset.machineId === selectedMachineId;
+                    const matchesNave = selectedNaveId === '' || card.dataset.obraId === selectedNaveId;
+
+                    if (matchesMachine && matchesNave) {
                         card.style.display = '';
                     } else {
                         card.style.display = 'none';
@@ -335,10 +348,16 @@
                 });
 
                 // Scroll al top si se filtró
-                if (selectedId) {
+                if (selectedMachineId || selectedNaveId) {
                     window.scrollTo({ top: 0, behavior: 'smooth' });
                 }
-            });
+            }
+
+            // Filtrar máquinas por select
+            machineFilter.addEventListener('change', applyFilters);
+
+            // Filtrar por nave
+            naveFilter.addEventListener('change', applyFilters);
 
             // Modal de edición
             const modal = document.getElementById('editModal');

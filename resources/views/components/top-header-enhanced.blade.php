@@ -19,14 +19,15 @@
             }, 400);
         });
     }
-}" x-cloak
+}"
     class="bg-gray-900 dark:bg-gray-950 border-b border-gray-800 dark:border-gray-700 shadow-sm flex-shrink-0 transition-colors">
     <!-- Primary Navigation Menu -->
     <div class="w-full">
         <div class="flex justify-between items-center h-14">
             <!-- Logo & Title -->
             <div class="flex items-center space-x-4 relative overflow-hidden">
-                <!-- Botón hamburguesa para móvil -->
+                <!-- Botón hamburguesa para móvil (solo usuarios con sidebar) -->
+                @if(auth()->user()->esOficina())
                 <button @click="$dispatch('toggle-sidebar')"
                     class="md:hidden p-2 rounded-lg text-gray-600 dark:text-gray-300 hover:bg-gray-700 dark:hover:bg-gray-700 transition">
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -34,8 +35,10 @@
                             d="M4 6h16M4 12h16M4 18h16"></path>
                     </svg>
                 </button>
+                @endif
 
-                <!-- Logo del Top Header (visible cuando sidebar está cerrado) -->
+                <!-- Logo del Top Header (visible cuando sidebar está cerrado, o siempre para operarios) -->
+                @if(auth()->user()->esOficina())
                 <a x-show="!sidebarOpen && !isToggling" x-transition:enter="transition-all duration-200 delay-200"
                     x-transition:enter-start="opacity-0 transform -translate-y-16"
                     x-transition:enter-end="opacity-100 transform translate-y-0"
@@ -46,6 +49,14 @@
                     <x-application-logo
                         class="block h-8 w-auto fill-current text-gray-800 dark:text-gray-200 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition" />
                 </a>
+                @else
+                <!-- Logo siempre visible para operarios (no tienen sidebar) -->
+                <a href="{{ route('dashboard') }}" wire:navigate
+                    class="flex items-center space-x-3 group relative z-50 pl-4">
+                    <x-application-logo
+                        class="block h-8 w-auto fill-current text-gray-800 dark:text-gray-200 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition" />
+                </a>
+                @endif
             </div>
 
             <!-- Right Side - User Actions -->
@@ -61,7 +72,7 @@
                     </svg>
                     <!-- Badge de notificaciones (se oculta automáticamente cuando no hay mensajes) -->
                     <span id="alerta-count"
-                        class="absolute top-1 right-1 hidden bg-red-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center"></span>
+                        class="absolute top-1 right-1 bg-red-500 text-white text-xs font-bold rounded-full w-5 h-5 items-center justify-center hidden"></span>
                 </a>
 
                 <!-- User Dropdown -->
@@ -157,8 +168,10 @@
                     if (data.cantidad > 0) {
                         badge.textContent = data.cantidad;
                         badge.classList.remove('hidden');
+                        badge.classList.add('flex');
                     } else {
                         badge.classList.add('hidden');
+                        badge.classList.remove('flex');
                     }
                 }
             })

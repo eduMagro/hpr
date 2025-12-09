@@ -179,6 +179,26 @@
                         </svg>
                         <span class="text-sm font-medium hidden md:inline">Balancear Carga</span>
                     </button>
+
+                    <!-- Botón de priorizar obra -->
+                    <button onclick="abrirModalPriorizarObra()" id="priorizar-obra-btn"
+                        title="Priorizar todas las planillas de una obra"
+                        class="px-3 py-2 bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white rounded-lg transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105 flex items-center gap-2 group">
+                        <svg class="w-5 h-5 transition-transform group-hover:scale-110" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"></path>
+                        </svg>
+                        <span class="text-sm font-medium hidden md:inline">Priorizar Obra</span>
+                    </button>
+
+                    <!-- Botón de resumen -->
+                    <button onclick="abrirModalResumen()" id="resumen-btn"
+                        title="Ver resumen del calendario"
+                        class="px-3 py-2 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white rounded-lg transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105 flex items-center gap-2 group">
+                        <svg class="w-5 h-5 transition-transform group-hover:scale-110" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                        </svg>
+                        <span class="text-sm font-medium hidden md:inline">Resumen</span>
+                    </button>
                 </div>
 
                 <!-- Botón de pantalla completa en esquina superior derecha -->
@@ -234,8 +254,15 @@
                 </button>
             </div>
 
+            <!-- Filtro por máquina -->
+            <div class="px-4 py-2 bg-gray-50 border-b">
+                <select id="panel_filtro_maquina" class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                    <option value="todas">Todas las máquinas</option>
+                </select>
+            </div>
+
             <div id="panel_lista"
-                class="flex-1 overflow-y-auto p-4 space-y-3
+                class="flex-1 overflow-y-auto p-3 space-y-1
                    [&::-webkit-scrollbar]:w-2
                    [&::-webkit-scrollbar-track]:bg-gray-200
                    [&::-webkit-scrollbar-thumb]:bg-blue-600
@@ -253,7 +280,6 @@
             <span id="numero_posicion">1</span>
         </div>
 
-
         <!-- Modal para ver figura dibujada -->
         <div id="modal-dibujo" class="hidden fixed inset-0 flex justify-center items-center z-[9999] bg-black bg-opacity-50">
             <div class="bg-white rounded-lg p-5 w-3/4 max-w-4xl max-h-[90vh] overflow-auto relative shadow-lg border border-gray-300 m-4">
@@ -269,7 +295,7 @@
             </div>
         </div>
 
-        <!-- Scripts externos -->
+        <!-- Scripts externos FullCalendar -->
         <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.css">
         <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js"></script>
         <script src="https://cdn.jsdelivr.net/npm/fullcalendar-scheduler@6.1.8/index.global.min.js"></script>
@@ -725,6 +751,238 @@
             </div>
         </div>
 
+        <!-- Modal Priorizar Obras (hasta 5 posiciones) -->
+        <div id="modalPriorizarObra"
+            class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50 overflow-y-auto">
+            <div class="bg-white rounded-lg shadow-xl w-full max-w-2xl mx-4 my-8">
+                <div class="bg-orange-500 text-white px-6 py-4 rounded-t-lg">
+                    <h3 class="text-lg font-semibold flex items-center gap-2">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"></path>
+                        </svg>
+                        Priorizar Obras
+                    </h3>
+                    <p class="text-sm opacity-90 mt-1">Ordenar las primeras 5 posiciones de la cola por obra y fecha de entrega</p>
+                </div>
+
+                <!-- Loading state -->
+                <div id="priorizarObraLoading" class="p-8 text-center">
+                    <div class="inline-block animate-spin rounded-full h-10 w-10 border-b-2 border-orange-500"></div>
+                    <p class="mt-4 text-gray-600">Cargando obras...</p>
+                </div>
+
+                <!-- Content state -->
+                <div id="priorizarObraContent" class="hidden p-6">
+                    <p class="text-sm text-gray-600 mb-4">
+                        Selecciona hasta 5 obras con sus fechas de entrega. Las planillas se ordenarán en cada máquina según el orden indicado.
+                    </p>
+
+                    <!-- Selectores de prioridad -->
+                    <div class="space-y-3" id="prioridadesContainer">
+                        <!-- Posición 1 -->
+                        <div class="flex items-center gap-3 p-3 bg-gradient-to-r from-yellow-50 to-orange-50 border border-orange-200 rounded-lg">
+                            <span class="flex items-center justify-center w-8 h-8 bg-orange-500 text-white rounded-full font-bold text-sm shrink-0">1</span>
+                            <select id="selectPrioridad1" class="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-700 focus:ring-2 focus:ring-orange-500 focus:border-orange-500" onchange="actualizarInfoPrioridad(1)">
+                                <option value="">-- Sin selección --</option>
+                            </select>
+                            <button type="button" onclick="limpiarPrioridad(1)" class="text-gray-400 hover:text-red-500 p-1" title="Limpiar">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                            </button>
+                        </div>
+
+                        <!-- Posición 2 -->
+                        <div class="flex items-center gap-3 p-3 bg-gray-50 border border-gray-200 rounded-lg">
+                            <span class="flex items-center justify-center w-8 h-8 bg-gray-400 text-white rounded-full font-bold text-sm shrink-0">2</span>
+                            <select id="selectPrioridad2" class="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-700 focus:ring-2 focus:ring-orange-500 focus:border-orange-500" onchange="actualizarInfoPrioridad(2)">
+                                <option value="">-- Sin selección --</option>
+                            </select>
+                            <button type="button" onclick="limpiarPrioridad(2)" class="text-gray-400 hover:text-red-500 p-1" title="Limpiar">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                            </button>
+                        </div>
+
+                        <!-- Posición 3 -->
+                        <div class="flex items-center gap-3 p-3 bg-gray-50 border border-gray-200 rounded-lg">
+                            <span class="flex items-center justify-center w-8 h-8 bg-gray-400 text-white rounded-full font-bold text-sm shrink-0">3</span>
+                            <select id="selectPrioridad3" class="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-700 focus:ring-2 focus:ring-orange-500 focus:border-orange-500" onchange="actualizarInfoPrioridad(3)">
+                                <option value="">-- Sin selección --</option>
+                            </select>
+                            <button type="button" onclick="limpiarPrioridad(3)" class="text-gray-400 hover:text-red-500 p-1" title="Limpiar">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                            </button>
+                        </div>
+
+                        <!-- Posición 4 -->
+                        <div class="flex items-center gap-3 p-3 bg-gray-50 border border-gray-200 rounded-lg">
+                            <span class="flex items-center justify-center w-8 h-8 bg-gray-400 text-white rounded-full font-bold text-sm shrink-0">4</span>
+                            <select id="selectPrioridad4" class="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-700 focus:ring-2 focus:ring-orange-500 focus:border-orange-500" onchange="actualizarInfoPrioridad(4)">
+                                <option value="">-- Sin selección --</option>
+                            </select>
+                            <button type="button" onclick="limpiarPrioridad(4)" class="text-gray-400 hover:text-red-500 p-1" title="Limpiar">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                            </button>
+                        </div>
+
+                        <!-- Posición 5 -->
+                        <div class="flex items-center gap-3 p-3 bg-gray-50 border border-gray-200 rounded-lg">
+                            <span class="flex items-center justify-center w-8 h-8 bg-gray-400 text-white rounded-full font-bold text-sm shrink-0">5</span>
+                            <select id="selectPrioridad5" class="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-700 focus:ring-2 focus:ring-orange-500 focus:border-orange-500" onchange="actualizarInfoPrioridad(5)">
+                                <option value="">-- Sin selección --</option>
+                            </select>
+                            <button type="button" onclick="limpiarPrioridad(5)" class="text-gray-400 hover:text-red-500 p-1" title="Limpiar">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Resumen de selección -->
+                    <div id="infoPriorizacion" class="mt-4 p-3 bg-orange-50 border border-orange-200 rounded-lg hidden">
+                        <div class="flex items-center gap-2 text-orange-800 mb-2">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg>
+                            <span class="font-medium">Resumen de prioridades:</span>
+                        </div>
+                        <ul id="resumenPrioridades" class="text-sm text-orange-700 space-y-1 ml-7"></ul>
+                    </div>
+
+                    <p class="mt-3 text-xs text-gray-500">
+                        Las planillas de las obras seleccionadas se ordenarán en cada máquina según la prioridad indicada. El resto de planillas mantendrán su orden relativo después de las priorizadas.
+                    </p>
+                </div>
+
+                <!-- Empty state -->
+                <div id="priorizarObraEmpty" class="hidden p-8 text-center">
+                    <svg class="w-16 h-16 mx-auto text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"></path>
+                    </svg>
+                    <h3 class="text-lg font-semibold text-gray-800 mb-2">Sin obras activas</h3>
+                    <p class="text-gray-600">No hay obras con planillas pendientes en la cola de producción.</p>
+                </div>
+
+                <!-- Botones de acción -->
+                <div class="bg-gray-50 px-6 py-4 rounded-b-lg flex justify-between items-center gap-3 border-t border-gray-200">
+                    <button type="button" onclick="limpiarTodasPrioridades()" class="text-gray-500 hover:text-gray-700 text-sm flex items-center gap-1">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                        Limpiar todo
+                    </button>
+                    <div class="flex gap-3">
+                        <button onclick="cerrarModalPriorizarObra()"
+                            class="bg-gray-300 hover:bg-gray-400 text-gray-700 px-4 py-2 rounded-lg transition-colors">
+                            Cancelar
+                        </button>
+                        <button id="btnAplicarPriorizar" onclick="aplicarPriorizarObra()"
+                            class="bg-orange-500 hover:bg-orange-600 text-white px-6 py-2 rounded-lg transition-colors flex items-center gap-2 hidden">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"></path>
+                            </svg>
+                            Aplicar Prioridades
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal Resumen del Calendario -->
+        <div id="modalResumen"
+            class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50 overflow-y-auto">
+            <div class="bg-white rounded-lg shadow-xl w-full max-w-5xl mx-4 my-8 max-h-[90vh] flex flex-col">
+                <div class="bg-blue-600 text-white px-6 py-4 rounded-t-lg">
+                    <h3 class="text-lg font-semibold flex items-center gap-2">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                        </svg>
+                        Resumen del Calendario de Producción
+                    </h3>
+                    <p class="text-sm opacity-90 mt-1">Vista general del estado de las planillas y carga de máquinas</p>
+                </div>
+
+                <!-- Loading state -->
+                <div id="resumenLoading" class="p-12 text-center">
+                    <div class="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+                    <p class="mt-4 text-gray-600">Cargando resumen del calendario...</p>
+                </div>
+
+                <!-- Content state -->
+                <div id="resumenContent" class="hidden flex-1 overflow-y-auto">
+                    <!-- Estadísticas superiores -->
+                    <div class="p-6 bg-gray-50 border-b border-gray-200">
+                        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                            <div class="bg-green-50 border border-green-200 rounded-lg p-4">
+                                <div class="text-sm text-green-600 font-medium">Planillas Revisadas</div>
+                                <div id="estadRevisadas" class="text-3xl font-bold text-green-700">0</div>
+                            </div>
+                            <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                                <div class="text-sm text-yellow-600 font-medium">Sin Revisar</div>
+                                <div id="estadNoRevisadas" class="text-3xl font-bold text-yellow-700">0</div>
+                            </div>
+                            <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                                <div class="text-sm text-blue-600 font-medium">Total en Cola</div>
+                                <div id="estadTotalPlanillas" class="text-3xl font-bold text-blue-700">0</div>
+                            </div>
+                            <div class="bg-red-50 border border-red-200 rounded-lg p-4">
+                                <div class="text-sm text-red-600 font-medium">Fuera de Tiempo</div>
+                                <div id="estadFueraTiempo" class="text-3xl font-bold text-red-700">0</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Sección de Planillas Fuera de Tiempo -->
+                    <div class="p-6 border-b border-gray-200">
+                        <h4 class="font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                            <svg class="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg>
+                            Planillas Fuera de Tiempo
+                        </h4>
+                        <div id="contenedorClientesRetraso" class="space-y-4">
+                            <!-- Se llenará dinámicamente -->
+                        </div>
+                        <div id="sinPlanillasRetraso" class="hidden text-center py-8 text-gray-500">
+                            <svg class="w-12 h-12 mx-auto text-green-500 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg>
+                            <p>No hay planillas fuera de tiempo</p>
+                        </div>
+                    </div>
+
+                    <!-- Sección de Carga por Máquina -->
+                    <div class="p-6">
+                        <h4 class="font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                            <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
+                            </svg>
+                            Carga por Máquina
+                        </h4>
+                        <div class="overflow-x-auto">
+                            <table class="min-w-full divide-y divide-gray-200 text-sm">
+                                <thead class="bg-gray-50">
+                                    <tr>
+                                        <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Máquina</th>
+                                        <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Tipo</th>
+                                        <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Planillas en Cola</th>
+                                        <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Kilos Totales</th>
+                                        <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Tiempo de Trabajo</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tablaMaquinas" class="bg-white divide-y divide-gray-200">
+                                    <!-- Se llenará dinámicamente -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Botones de acción -->
+                <div class="bg-gray-50 px-6 py-4 rounded-b-lg flex justify-end gap-3 border-t border-gray-200">
+                    <button onclick="cerrarModalResumen()"
+                        class="bg-gray-300 hover:bg-gray-400 text-gray-700 px-4 py-2 rounded-lg transition-colors">
+                        Cerrar
+                    </button>
+                </div>
+            </div>
+        </div>
+
         <style>
             /* Contenedor calendario */
             #contenedor-calendario {
@@ -746,92 +1004,133 @@
                 max-height: 180px !important;
             }
 
+            /* Clases para sticky header optimizado */
+            .fc-header-sticky {
+                position: fixed !important;
+                top: 0 !important;
+                z-index: 1000 !important;
+                background-color: white !important;
+                box-shadow: 0 2px 4px rgba(0,0,0,0.1) !important;
+            }
+
+            .fc-header-section-sticky {
+                z-index: 999 !important;
+                width: 100% !important;
+            }
+
             /* Panel lateral */
             #panel_elementos.abierto {
                 transform: translateX(0);
             }
 
-            /* Elementos arrastrables */
+            /* Elementos arrastrables - Compacto */
             .elemento-drag {
                 background: white;
-                border: 2px solid #e5e7eb;
-                border-radius: 8px;
-                padding: 12px;
+                border: 1px solid #e5e7eb;
+                border-radius: 4px;
+                padding: 2px;
                 cursor: move;
-                transition: all 0.2s;
+                transition: all 0.15s;
                 position: relative;
+                line-height: 0;
             }
 
             .elemento-drag:hover {
                 border-color: #3b82f6;
-                box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-                transform: translateY(-2px);
+                box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
             }
 
             .elemento-drag.fc-dragging {
                 opacity: 0.5;
             }
 
+            /* Elemento original mientras se arrastra */
+            .elemento-drag.dragging-original {
+                opacity: 0.4;
+                border: 2px dashed #3b82f6;
+                background: #eff6ff;
+            }
+
             /* Elemento seleccionado */
             .elemento-drag.seleccionado {
                 border-color: #2563eb;
                 background-color: #eff6ff;
-                box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.2);
+                box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.2);
             }
 
             .elemento-drag.seleccionado::before {
                 content: '✓';
                 position: absolute;
-                top: 8px;
-                right: 8px;
+                top: 4px;
+                right: 4px;
                 background-color: #2563eb;
                 color: white;
-                width: 24px;
-                height: 24px;
+                width: 18px;
+                height: 18px;
                 border-radius: 50%;
                 display: flex;
                 align-items: center;
                 justify-content: center;
                 font-weight: bold;
-                font-size: 14px;
+                font-size: 11px;
                 z-index: 10;
             }
 
-            .elemento-drag canvas {
+            .elemento-drag canvas,
+            .elemento-drag > div {
                 width: 100%;
                 height: 120px;
                 border: 1px solid #e5e7eb;
-                border-radius: 4px;
-                margin-bottom: 8px;
+                border-radius: 3px;
+                background: white;
             }
 
             .elemento-info-mini {
                 display: flex;
                 justify-content: space-between;
-                font-size: 0.875rem;
+                font-size: 0.75rem;
             }
 
-            /* Secciones de máquina en el panel */
+            /* Secciones de máquina en el panel - Compacto */
             .seccion-maquina-header {
-                margin: 0 -16px 12px -16px;
+                margin: 0 -12px 6px -12px;
             }
 
             .seccion-maquina-header:first-child {
-                margin-top: -16px;
+                margin-top: -12px;
             }
 
             .seccion-maquina-header > div {
                 position: sticky;
                 top: 0;
                 z-index: 5;
-                box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+                box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+                padding: 6px 12px !important;
+                font-size: 0.8rem;
             }
 
             .seccion-maquina-elementos {
                 display: flex;
                 flex-direction: column;
-                gap: 12px;
-                margin-bottom: 20px;
+                gap: 4px;
+                margin-bottom: 4px;
+                overflow: hidden;
+            }
+
+            /* Asegurar que los elementos no excedan el ancho del panel */
+            .elemento-drag {
+                max-width: 100%;
+                overflow: hidden;
+            }
+
+            .elemento-drag > div,
+            .elemento-drag > canvas {
+                max-width: 100% !important;
+                width: 100% !important;
+            }
+
+            .seccion-maquina-wrapper {
+                margin-bottom: 2px;
             }
 
             /* Badge con contador de selección */
@@ -871,18 +1170,32 @@
                 max-width: 100% !important;
                 overflow: hidden !important;
                 box-sizing: border-box !important;
+                margin: 0 !important;
+                padding: 0 !important;
             }
 
             /* Asegurar que los eventos se ajusten al contenedor de la celda */
             .fc-timegrid-event-harness {
                 left: 0 !important;
                 right: 0 !important;
+                margin: 0 !important;
+                padding: 0 !important;
             }
 
             .fc-timegrid-event {
                 left: 0 !important;
                 right: 0 !important;
                 width: 100% !important;
+                margin: 0 !important;
+            }
+
+            /* Eliminar espacios entre eventos */
+            .fc-timegrid-event-harness + .fc-timegrid-event-harness {
+                margin-top: 0 !important;
+            }
+
+            .fc-timegrid-event .fc-event-main {
+                padding: 4px 6px !important;
             }
 
             /* ===== EVENTOS SIN REVISAR ===== */
@@ -942,7 +1255,29 @@
                 text-align: center;
             }
 
-            /* ===== ETIQUETAS DE TURNOS CON FECHA ===== */
+            /* ===== MARCADOR DE INICIO DE TURNO (sin deformar altura) ===== */
+            .slot-turno-inicio {
+                background: linear-gradient(90deg, #3b82f6 0%, rgba(59, 130, 246, 0.05) 100%);
+                position: relative;
+            }
+
+            .slot-turno-inicio::before {
+                content: '';
+                position: absolute;
+                left: 0;
+                top: 0;
+                bottom: 0;
+                width: 3px;
+                background: #3b82f6;
+            }
+
+            .hora-turno {
+                font-weight: 700 !important;
+                color: #1e40af !important;
+                font-size: 10px !important;
+            }
+
+            /* ===== ETIQUETAS DE TURNOS CON FECHA (OBSOLETO - YA NO SE USA) ===== */
             .turno-con-fecha {
                 position: relative;
                 padding: 3px 2px;
@@ -1103,15 +1438,78 @@
                 height: 100%;
                 line-height: 48px;
             }
+
+            /* Ocultar todos los tooltips cuando se arrastra un elemento del panel */
+            body.dragging-panel-elemento .fc-tooltip,
+            body.dragging-panel-elemento [data-tippy-root],
+            body.dragging-panel-elemento .tippy-box {
+                display: none !important;
+                visibility: hidden !important;
+                opacity: 0 !important;
+                pointer-events: none !important;
+            }
+
         </style>
-        <script data-navigate-once>
-            function inicializarCalendarioMaquinas() {
-                const maquinas = @json($resources);
-                const planillas = @json($planillasEventos);
-                const cargaTurnoResumen = @json($cargaTurnoResumen);
-                const planDetallado = @json($planDetallado);
-                const realDetallado = @json($realDetallado);
-                const turnosActivos = @json($turnosLista);
+        {{-- Datos del calendario - se actualiza en cada navegación --}}
+        <script id="calendario-maquinas-data" type="application/json">
+            {
+                "maquinas": @json($resources),
+                "planillas": @json($planillasEventos),
+                "cargaTurnoResumen": @json($cargaTurnoResumen),
+                "planDetallado": @json($planDetallado),
+                "realDetallado": @json($realDetallado),
+                "turnosActivos": @json($turnosLista)
+            }
+        </script>
+        <script>
+            // Variables globales para el sistema de drag (fuera de la función para persistir entre reinicializaciones)
+            window._maquinasCalendarState = window._maquinasCalendarState || {
+                moverIndicadorHandler: null,
+                dragoverHandler: null,
+                dragleaveHandler: null,
+                initialized: false
+            };
+
+            // Hacer la función global para que el layout pueda llamarla
+            window.inicializarCalendarioMaquinas = function() {
+                // 🧹 LIMPIEZA: Remover listeners anteriores antes de registrar nuevos
+                if (window._maquinasCalendarState.moverIndicadorHandler) {
+                    document.removeEventListener('mousemove', window._maquinasCalendarState.moverIndicadorHandler);
+                    document.removeEventListener('drag', window._maquinasCalendarState.moverIndicadorHandler);
+                }
+
+                // Limpiar listeners del calendario anterior
+                const oldCalendarioEl = document.getElementById('calendario');
+                if (oldCalendarioEl) {
+                    if (window._maquinasCalendarState.dragoverHandler) {
+                        oldCalendarioEl.removeEventListener('dragover', window._maquinasCalendarState.dragoverHandler);
+                    }
+                    if (window._maquinasCalendarState.dragleaveHandler) {
+                        oldCalendarioEl.removeEventListener('dragleave', window._maquinasCalendarState.dragleaveHandler);
+                    }
+                }
+
+                // Destruir calendario anterior si existe
+                if (window.calendar && typeof window.calendar.destroy === 'function') {
+                    window.calendar.destroy();
+                }
+
+                // Limpiar tooltips residuales
+                document.querySelectorAll('.fc-tooltip').forEach(t => t.remove());
+
+                // Leer datos actualizados del DOM (se actualizan en cada navegación)
+                const dataEl = document.getElementById('calendario-maquinas-data');
+                if (!dataEl) {
+                    console.error('No se encontraron datos del calendario');
+                    return;
+                }
+                const calendarData = JSON.parse(dataEl.textContent);
+                const maquinas = calendarData.maquinas;
+                const planillas = calendarData.planillas;
+                const cargaTurnoResumen = calendarData.cargaTurnoResumen;
+                const planDetallado = calendarData.planDetallado;
+                const realDetallado = calendarData.realDetallado;
+                const turnosActivos = calendarData.turnosActivos;
 
                 // Variable global para el calendario
                 let calendar;
@@ -1124,7 +1522,7 @@
                 let elementoArrastrandose = null;
                 let eventoArrastrandose = null;
                 let mostrarIndicador = false;
-                let tooltipsDeshabilitados = false;
+                window.tooltipsDeshabilitados = false;
 
                 // 🎯 Listener GLOBAL de mousemove para el indicador
                 document.addEventListener('mousemove', function(e) {
@@ -1184,16 +1582,24 @@
                                 days: 1
                             },
                             slotMinTime: '00:00:00',
-                            slotMaxTime: '360:00:00',
+                            slotMaxTime: '{{ $fechaMaximaCalendario["horas"] }}:00:00',
                             slotDuration: '01:00:00',
                             dayHeaderContent: function(arg) {
                                 return '';
                             },
-                            buttonText: '15 días'
+                            buttonText: '{{ $fechaMaximaCalendario["dias"] }} días',
+                            // Extender el rango visible hasta el último fin programado
+                            visibleRange: function(currentDate) {
+                                const start = new Date(currentDate);
+                                start.setHours(0, 0, 0, 0);
+                                const end = new Date(start);
+                                end.setDate(end.getDate() + {{ $fechaMaximaCalendario["dias"] }});
+                                return { start: start, end: end };
+                            }
                         }
                     },
                     locale: 'es',
-                    timeZone: 'Europe/Madrid',
+                    timeZone: 'local', // Fechas ISO8601 con offset se interpretan correctamente
                     initialDate: "{{ $initialDate }}",
                     // ✅ CAMBIO: Usar endpoints dinámicos en lugar de datos estáticos
                     resources: {
@@ -1211,12 +1617,63 @@
                             alert('Error al cargar los eventos. Revisa la consola.');
                         }
                     },
+
+                    // Transformar fechas de eventos para vista de 360 horas
+                    eventDataTransform: function(eventData) {
+                        const initialDateStr = "{{ $initialDate }}";
+                        const initialDate = new Date(initialDateStr);
+                        initialDate.setHours(0, 0, 0, 0);
+
+                        // Parsear fechas del evento
+                        const startDate = new Date(eventData.start);
+                        const endDate = new Date(eventData.end);
+
+                        // Calcular horas desde el inicio del calendario
+                        const msStart = startDate.getTime() - initialDate.getTime();
+                        const msEnd = endDate.getTime() - initialDate.getTime();
+                        const horasStart = msStart / (1000 * 60 * 60);
+                        const horasEnd = msEnd / (1000 * 60 * 60);
+                        const horasMaximas = {{ $fechaMaximaCalendario["horas"] }};
+
+                        // Solo procesar eventos dentro del rango dinámico
+                        if (horasStart >= 0 && horasStart < horasMaximas) {
+                            // Convertir a formato que FullCalendar entienda para vista extendida
+                            // Usar el initialDate como base y añadir las horas como minutos desde medianoche
+                            const nuevoStart = new Date(initialDate);
+                            nuevoStart.setTime(initialDate.getTime() + msStart);
+
+                            const nuevoEnd = new Date(initialDate);
+                            nuevoEnd.setTime(initialDate.getTime() + msEnd);
+
+                            // Debug
+                            if (!window._evtDebug) window._evtDebug = 0;
+                            if (window._evtDebug < 3) {
+                                console.log('📅 Transform:', {
+                                    title: eventData.title,
+                                    horasStart: horasStart.toFixed(1),
+                                    horasEnd: horasEnd.toFixed(1),
+                                    originalStart: eventData.start,
+                                    nuevoStart: nuevoStart.toISOString()
+                                });
+                                window._evtDebug++;
+                            }
+
+                            eventData.start = nuevoStart;
+                            eventData.end = nuevoEnd;
+                        }
+
+                        return eventData;
+                    },
+
                     height: 900, // Altura fija para permitir scroll en la página
                     scrollTime: '06:00:00',
                     editable: true,
                     eventResizableFromStart: false,
                     eventDurationEditable: false,
                     droppable: true, // ✅ Habilitar drop de elementos externos
+                    slotEventOverlap: false, // ✅ Eventos NO se solapan (se apilan verticalmente sin espacios)
+                    dragRevertDuration: 300, // Duración de animación de revert
+                    dragScroll: true, // Permitir scroll mientras se arrastra
 
                     headerToolbar: {
                         left: '',
@@ -1263,14 +1720,23 @@
                                 return;
                             }
 
-                            const maquinaDestinoId = parseInt(info.event.getResources()[0].id);
-                            const maquinaDestinoNombre = info.event.getResources()[0].title;
+                            const recursos = info.event.getResources();
+                            if (!recursos || recursos.length === 0 || !recursos[0]) {
+                                console.error('❌ No se pudo obtener el recurso destino');
+                                info.revert();
+                                return;
+                            }
+                            const maquinaDestinoId = parseInt(recursos[0].id);
+                            const maquinaDestinoNombre = recursos[0].title;
                             console.log('🎯 Máquina destino:', maquinaDestinoId, maquinaDestinoNombre);
 
                             // Calcular la posición correcta donde se soltó el elemento
                             const eventosOrdenados = calendar.getEvents()
-                                .filter(ev => ev.getResources().some(r => r.id == maquinaDestinoId))
-                                .sort((a, b) => a.start - b.start);
+                                .filter(ev => {
+                                    const evResources = ev.getResources();
+                                    return evResources && evResources.length > 0 && evResources[0] && evResources[0].id == maquinaDestinoId;
+                                })
+                                .sort((a, b) => (a.start || 0) - (b.start || 0));
 
                             // Encontrar posición basada en el tiempo donde se soltó
                             let nuevaPosicion = 1;
@@ -1392,8 +1858,12 @@
                                         // Remover el evento temporal que se creó
                                         info.event.remove();
 
-                                        // Recargar eventos desde el servidor
+                                        // Recargar recursos y eventos desde el servidor
+                                        calendar.refetchResources();
                                         calendar.refetchEvents();
+
+                                        // Refrescar panel lateral si está abierto
+                                        refrescarPanelElementos();
 
                                         const Toast = Swal.mixin({
                                             toast: true,
@@ -1424,7 +1894,8 @@
                                                     .maquinaOriginal,
                                                 nueva_posicion: nuevaPosicion,
                                                 elementos_id: dataMovimiento.elementosIds,
-                                                crear_nueva_posicion: false
+                                                crear_nueva_posicion: false,
+                                                usar_posicion_existente: true
                                             })
                                         });
 
@@ -1441,8 +1912,12 @@
                                         // Remover el evento temporal que se creó
                                         info.event.remove();
 
-                                        // Recargar eventos desde el servidor
+                                        // Recargar recursos y eventos desde el servidor
+                                        calendar.refetchResources();
                                         calendar.refetchEvents();
+
+                                        // Refrescar panel lateral si está abierto
+                                        refrescarPanelElementos();
 
                                         const Toast = Swal.mixin({
                                             toast: true,
@@ -1476,8 +1951,12 @@
                                 // Remover el evento temporal que se creó
                                 info.event.remove();
 
-                                // Recargar eventos desde el servidor
+                                // Recargar recursos y eventos desde el servidor
+                                calendar.refetchResources();
                                 calendar.refetchEvents();
+
+                                // Refrescar panel lateral si está abierto
+                                refrescarPanelElementos();
 
                                 const Toast = Swal.mixin({
                                     toast: true,
@@ -1517,7 +1996,9 @@
                     },
 
                     slotLaneClassNames: function(arg) {
-                        const hour = arg.date.getHours();
+                        // Usar arg.text para obtener la hora (arg.date devuelve 1970 con slotMaxTime extendido)
+                        const horaSlot = parseInt(arg.text, 10) || 0;
+                        const hour = horaSlot % 24;
                         if (hour > 6 && hour <= 14) return ['turno-manana'];
                         if (hour >= 14 && hour <= 22) return ['turno-tarde'];
                         if (hour >= 22 || hour <= 6) return ['turno-noche'];
@@ -1525,35 +2006,27 @@
                     },
 
                     slotLabelContent: function(arg) {
-                        // Inicializar contador de slots si no existe
-                        if (!calendar._slotCounter) {
-                            calendar._slotCounter = 0;
-                            calendar._lastViewStart = null;
-                        }
+                        // Obtener la fecha inicial del calendario
+                        const initialDateStr = "{{ $initialDate }}";
+                        // Parsear la fecha correctamente para evitar problemas de zona horaria
+                        const [year, month, day] = initialDateStr.split('-').map(Number);
+                        const calendarInitialDate = new Date(year, month - 1, day, 0, 0, 0, 0);
 
-                        // Reiniciar contador si cambia la vista
-                        const currentViewStart = calendar.view.currentStart.getTime();
-                        if (calendar._lastViewStart !== currentViewStart) {
-                            calendar._slotCounter = 0;
-                            calendar._lastViewStart = currentViewStart;
-                        }
+                        // arg.text contiene solo la hora del día (0-23), NO las horas acumuladas
+                        // arg.date SÍ avanza correctamente aunque muestre 1970
+                        // Usamos arg.date para calcular los días transcurridos
+                        const slotDate = arg.date;
+                        const horaDelDia = parseInt(arg.text, 10) || 0;
+                        const minutos = 0; // Los slots son de 1 hora
 
-                        // Obtener el inicio de la vista
-                        const viewStart = new Date(calendar.view.currentStart);
+                        // Calcular días adicionales desde la fecha base de FullCalendar (1970-01-01)
+                        // La fecha 1970-01-01T00:00:00Z corresponde al día 0
+                        const fechaBase1970 = new Date(Date.UTC(1970, 0, 1, 0, 0, 0));
+                        const diasDesde1970 = Math.floor((slotDate.getTime() - fechaBase1970.getTime()) / (24 * 60 * 60 * 1000));
 
-                        // Calcular la hora absoluta desde el inicio basándose en el contador
-                        const horaAbsoluta = calendar._slotCounter;
-                        const diasCompletos = Math.floor(horaAbsoluta / 24);
-                        const horaDelDia = horaAbsoluta % 24;
-                        const minutos = 0; // Los slots son de hora en hora
-
-                        // Calcular la fecha real
-                        const fechaReal = new Date(viewStart);
-                        fechaReal.setDate(fechaReal.getDate() + diasCompletos);
+                        // Calcular la fecha real del slot sumando los días a la fecha inicial del calendario
+                        const fechaReal = new Date(calendarInitialDate.getTime() + (diasDesde1970 * 24 * 60 * 60 * 1000));
                         fechaReal.setHours(horaDelDia, minutos, 0, 0);
-
-                        // Incrementar contador para el siguiente slot
-                        calendar._slotCounter++;
 
                         // Formatear la hora para mostrar
                         const timeText =
@@ -1562,7 +2035,7 @@
                         // Determinar si este slot corresponde a un inicio de turno basado en turnos activos
                         let esTurno = false;
                         let nombreTurno = '';
-                        let fechaMostrar = new Date(fechaReal);
+                        let fechaMostrar = new Date(fechaReal.getTime());
                         let turnoEncontrado = null;
 
                         // Buscar si esta hora corresponde al inicio de algún turno activo
@@ -1588,20 +2061,23 @@
 
                                 nombreTurno = `${emoji} ${turno.nombre}`;
 
-                                // Si el turno tiene offset negativo, mostrar fecha del día siguiente
+                                // Si el turno tiene offset negativo (turno de noche),
+                                // la fecha laboral es el día siguiente
                                 if (turno.offset_dias_inicio < 0) {
-                                    fechaMostrar = new Date(fechaReal.getTime());
-                                    fechaMostrar.setDate(fechaMostrar.getDate() + 1);
+                                    fechaMostrar = new Date(fechaReal.getTime() + (24 * 60 * 60 * 1000));
                                 }
 
                                 break;
                             }
                         }
 
+                        // ✅ TODAS las filas tienen la misma altura (solo hora)
+                        // El marcador de turno se hace con la línea azul (turno-inicio) y tooltip
                         let contenido = '';
+                        let tooltip = '';
 
                         if (esTurno) {
-                            // Formatear fecha para mostrar
+                            // Formatear fecha para tooltip
                             const dia = fechaMostrar.getDate().toString().padStart(2, '0');
                             const mes = (fechaMostrar.getMonth() + 1).toString().padStart(2, '0');
                             const año = fechaMostrar.getFullYear();
@@ -1610,14 +2086,15 @@
                             }).toUpperCase();
                             const fechaFormateada = `${dia}/${mes}/${año}`;
 
+                            tooltip = `${nombreTurno} - ${nombreDia} ${fechaFormateada}`;
+
+                            // Mostrar solo la hora con un pequeño indicador
                             contenido = `
-            <div class="turno-con-fecha">
-                <div class="fecha-turno">${nombreDia}<br>${fechaFormateada}</div>
-                <div class="hora-text">${timeText}</div>
-                <span class="turno-label">${nombreTurno}</span>
+            <div class="slot-label-wrapper slot-turno-inicio" title="${tooltip}">
+                <div class="hora-text hora-turno">${timeText}</div>
             </div>`;
                         } else {
-                            // Horas normales sin fecha
+                            // Horas normales
                             contenido = `
             <div class="slot-label-wrapper">
                 <div class="hora-text">${timeText}</div>
@@ -1713,7 +2190,7 @@
                     eventDragStart: function(info) {
                         eventoArrastrandose = info.event;
                         mostrarIndicador = true;
-                        tooltipsDeshabilitados = true;
+                        window.tooltipsDeshabilitados = true;
 
                         // Ocultar todos los tooltips existentes
                         document.querySelectorAll('.fc-tooltip').forEach(t => t.style.display = 'none');
@@ -1722,7 +2199,7 @@
                         const recursoId = info.event.getResources()[0]?.id;
                         if (recursoId) {
                             const eventosOrdenados = calendar.getEvents()
-                                .filter(ev => ev.getResources().some(r => r.id == recursoId) && ev.id !==
+                                .filter(ev => ev.getResources().some(r => r && r.id == recursoId) && ev.id !==
                                     info.event.id)
                                 .sort((a, b) => a.start - b.start);
 
@@ -1747,7 +2224,7 @@
 
                             if (recursoId) {
                                 const eventosOrdenados = calendar.getEvents()
-                                    .filter(ev => ev.getResources().some(r => r.id == recursoId) && ev
+                                    .filter(ev => ev.getResources().some(r => r && r.id == recursoId) && ev
                                         .id !== draggedEvent.id)
                                     .sort((a, b) => a.start - b.start);
 
@@ -1774,7 +2251,7 @@
                     eventDragStop: function(info) {
                         eventoArrastrandose = null;
                         mostrarIndicador = false;
-                        tooltipsDeshabilitados = false;
+                        window.tooltipsDeshabilitados = false;
                         if (indicadorPosicion) {
                             indicadorPosicion.classList.add('hidden');
                             indicadorPosicion.style.display = 'none';
@@ -1811,7 +2288,7 @@
                         }
 
                         const eventosOrdenados = calendar.getEvents()
-                            .filter(ev => ev.getResources().some(r => r.id == maquinaDestinoId))
+                            .filter(ev => ev.getResources().some(r => r && r.id == maquinaDestinoId))
                             .sort((a, b) => a.start - b.start);
                         const nuevaPosicion = eventosOrdenados.findIndex(ev => ev.id === info.event.id) + 1;
 
@@ -1974,57 +2451,191 @@
 
                     eventDidMount: function(info) {
                         const props = info.event.extendedProps;
-                        const tooltip = document.createElement('div');
-                        tooltip.className = 'fc-tooltip';
 
-                        // ⚠️ Información de revisión
+                        // 🔧 OPTIMIZACIÓN: Usar un único tooltip global en lugar de uno por evento
+                        // Guardar los datos del tooltip en el elemento para usarlos con event delegation
                         let estadoRevision = '';
                         if (props.revisada === false || props.revisada === 0) {
-                            estadoRevision =
-                                '<br><span class="text-red-400 font-bold">⚠️ SIN REVISAR - No iniciar producción</span>';
+                            estadoRevision = '<br><span class="text-red-400 font-bold">⚠️ SIN REVISAR - No iniciar producción</span>';
                         } else if (props.revisada === true || props.revisada === 1) {
-                            estadoRevision =
-                                `<br><span class="text-green-400">✅ Revisada por ${props.revisada_por || 'N/A'}</span>`;
+                            estadoRevision = `<br><span class="text-green-400">✅ Revisada por ${props.revisada_por || 'N/A'}</span>`;
                         }
 
-                        // Debug: mostrar elementos de este evento
                         const elementosDebug = props.codigos_elementos ? props.codigos_elementos.join(', ') : 'N/A';
                         const maquinaId = info.event.getResources()[0]?.id || 'N/A';
 
-                        tooltip.innerHTML = `
-                        <div class="bg-gray-900 text-white text-xs rounded px-2 py-1 shadow-md max-w-xs">
-                            <strong>${info.event.title}</strong><br>
-                            Obra: ${props.obra}<br>
-                            Estado producción: ${props.estado}<br>
-                            Máquina: <span class="text-blue-300">${maquinaId}</span><br>
-                            Elementos: <span class="text-purple-300">${elementosDebug}</span><br>
-                            Duración: <span class="text-cyan-300">${props.duracion_horas || 0} hrs</span><br>
-                            Fin programado: <span class="text-yellow-300">${props.fin_programado}</span><br>
-                            Fecha estimada entrega: <span class="text-green-300">${props.fecha_entrega}</span>${estadoRevision}
-                        </div>`;
-                        tooltip.style.display = 'none';
-                        document.body.appendChild(tooltip);
+                        // Guardar datos del tooltip en el elemento (sin crear elemento DOM)
+                        info.el._tooltipData = {
+                            title: info.event.title,
+                            obra: props.obra,
+                            estado: props.estado,
+                            maquinaId: maquinaId,
+                            elementos: elementosDebug,
+                            duracion: props.duracion_horas || 0,
+                            finProgramado: props.fin_programado,
+                            fechaEntrega: props.fecha_entrega,
+                            estadoRevision: estadoRevision
+                        };
+                    },
 
-                        info.el.addEventListener('mouseenter', function(e) {
-                            if (!tooltipsDeshabilitados) {
-                                tooltip.style.left = e.pageX + 10 + 'px';
-                                tooltip.style.top = e.pageY + 10 + 'px';
-                                tooltip.style.display = 'block';
-                            }
-                        });
-                        info.el.addEventListener('mousemove', function(e) {
-                            if (!tooltipsDeshabilitados) {
-                                tooltip.style.left = e.pageX + 10 + 'px';
-                                tooltip.style.top = e.pageY + 10 + 'px';
-                            }
-                        });
-                        info.el.addEventListener('mouseleave', function() {
-                            tooltip.style.display = 'none';
-                        });
+                    // 🔧 OPTIMIZACIÓN: Limpiar datos del tooltip cuando el evento se desmonta
+                    eventWillUnmount: function(info) {
+                        if (info.el._tooltipData) {
+                            delete info.el._tooltipData;
+                        }
                     }
                 });
+
+                // 🔧 OPTIMIZACIÓN: Tooltip global único con event delegation
+                let tooltipGlobal = document.getElementById('fc-tooltip-global');
+                if (!tooltipGlobal) {
+                    tooltipGlobal = document.createElement('div');
+                    tooltipGlobal.id = 'fc-tooltip-global';
+                    tooltipGlobal.className = 'fc-tooltip';
+                    tooltipGlobal.style.display = 'none';
+                    document.body.appendChild(tooltipGlobal);
+                }
+
+                // Event delegation para tooltips (un solo listener en lugar de cientos)
+                const calendarioContainer = document.getElementById('calendario');
+                if (calendarioContainer) {
+                    // Limpiar listeners anteriores
+                    if (window._maquinasCalendarState.tooltipMouseEnter) {
+                        calendarioContainer.removeEventListener('mouseenter', window._maquinasCalendarState.tooltipMouseEnter, true);
+                    }
+                    if (window._maquinasCalendarState.tooltipMouseMove) {
+                        calendarioContainer.removeEventListener('mousemove', window._maquinasCalendarState.tooltipMouseMove, true);
+                    }
+                    if (window._maquinasCalendarState.tooltipMouseLeave) {
+                        calendarioContainer.removeEventListener('mouseleave', window._maquinasCalendarState.tooltipMouseLeave, true);
+                    }
+
+                    function handleTooltipEnter(e) {
+                        const fcEvent = e.target.closest('.fc-event');
+                        if (!fcEvent || !fcEvent._tooltipData) return;
+
+                        if (window.tooltipsDeshabilitados ||
+                            document.body.classList.contains('dragging-elemento') ||
+                            document.body.classList.contains('dragging-panel-elemento')) {
+                            tooltipGlobal.style.display = 'none';
+                            return;
+                        }
+
+                        const data = fcEvent._tooltipData;
+                        tooltipGlobal.innerHTML = `
+                        <div class="bg-gray-900 text-white text-xs rounded px-2 py-1 shadow-md max-w-xs">
+                            <strong>${data.title}</strong><br>
+                            Obra: ${data.obra}<br>
+                            Estado producción: ${data.estado}<br>
+                            Máquina: <span class="text-blue-300">${data.maquinaId}</span><br>
+                            Elementos: <span class="text-purple-300">${data.elementos}</span><br>
+                            Duración: <span class="text-cyan-300">${data.duracion} hrs</span><br>
+                            Fin programado: <span class="text-yellow-300">${data.finProgramado}</span><br>
+                            Fecha estimada entrega: <span class="text-green-300">${data.fechaEntrega}</span>${data.estadoRevision}
+                        </div>`;
+                        tooltipGlobal.style.left = e.pageX + 10 + 'px';
+                        tooltipGlobal.style.top = e.pageY + 10 + 'px';
+                        tooltipGlobal.style.display = 'block';
+                    }
+
+                    function handleTooltipMove(e) {
+                        const fcEvent = e.target.closest('.fc-event');
+                        if (!fcEvent || !fcEvent._tooltipData || tooltipGlobal.style.display === 'none') return;
+
+                        if (window.tooltipsDeshabilitados ||
+                            document.body.classList.contains('dragging-elemento') ||
+                            document.body.classList.contains('dragging-panel-elemento')) {
+                            tooltipGlobal.style.display = 'none';
+                            return;
+                        }
+
+                        tooltipGlobal.style.left = e.pageX + 10 + 'px';
+                        tooltipGlobal.style.top = e.pageY + 10 + 'px';
+                    }
+
+                    function handleTooltipLeave(e) {
+                        const fcEvent = e.target.closest('.fc-event');
+                        const relatedFcEvent = e.relatedTarget?.closest('.fc-event');
+
+                        // Solo ocultar si salimos del evento y no entramos en otro
+                        if (fcEvent && fcEvent !== relatedFcEvent) {
+                            tooltipGlobal.style.display = 'none';
+                        }
+                    }
+
+                    // Guardar referencias y añadir listeners
+                    window._maquinasCalendarState.tooltipMouseEnter = handleTooltipEnter;
+                    window._maquinasCalendarState.tooltipMouseMove = handleTooltipMove;
+                    window._maquinasCalendarState.tooltipMouseLeave = handleTooltipLeave;
+
+                    calendarioContainer.addEventListener('mouseenter', handleTooltipEnter, true);
+                    calendarioContainer.addEventListener('mousemove', handleTooltipMove, true);
+                    calendarioContainer.addEventListener('mouseleave', handleTooltipLeave, true);
+                }
                 calendar.render();
                 window.calendar = calendar;
+
+                // 🎯 Listener para calcular posición cuando se arrastra elemento del panel sobre el calendario
+                const calendarDragTarget = document.getElementById('calendario');
+                if (calendarDragTarget) {
+                    calendarDragTarget.addEventListener('dragover', function(e) {
+                        // Solo procesar si estamos arrastrando un elemento del panel
+                        if (!elementoArrastrandose || !mostrarIndicador) return;
+
+                        // Encontrar la columna de recurso (máquina) bajo el cursor
+                        const elementoBajo = document.elementFromPoint(e.clientX, e.clientY);
+                        if (!elementoBajo) return;
+
+                        // Buscar la columna del recurso
+                        const columna = elementoBajo.closest('.fc-timegrid-col');
+                        if (!columna) return;
+
+                        // Obtener el ID del recurso desde data-resource-id
+                        const resourceId = columna.dataset.resourceId;
+                        if (!resourceId) return;
+
+                        // Obtener todos los eventos de esta máquina
+                        const eventosOrdenados = calendar.getEvents()
+                            .filter(ev => ev.getResources().some(r => r && r.id == resourceId))
+                            .sort((a, b) => a.start - b.start);
+
+                        // Calcular la posición basada en la posición Y del cursor
+                        // Obtener el slot de tiempo bajo el cursor
+                        const slotLane = elementoBajo.closest('.fc-timegrid-slot-lane') ||
+                                        elementoBajo.closest('.fc-timegrid-slot');
+
+                        let posicionDestino = eventosOrdenados.length + 1; // Por defecto al final
+
+                        if (slotLane) {
+                            const slotTime = slotLane.dataset.time;
+                            if (slotTime) {
+                                // Convertir el tiempo del slot a una fecha para comparar
+                                const [hours, minutes] = slotTime.split(':').map(Number);
+                                const initialDateStr = "{{ $initialDate }}";
+                                const [year, month, day] = initialDateStr.split('-').map(Number);
+                                const initialDate = new Date(year, month - 1, day, 0, 0, 0, 0);
+
+                                // Calcular la fecha/hora del slot
+                                const slotDate = new Date(initialDate.getTime() + (hours * 60 + minutes) * 60 * 1000);
+
+                                // Encontrar la posición donde caería este elemento
+                                posicionDestino = 1;
+                                for (let i = 0; i < eventosOrdenados.length; i++) {
+                                    if (slotDate < eventosOrdenados[i].start) {
+                                        posicionDestino = i + 1;
+                                        break;
+                                    }
+                                    posicionDestino = i + 2;
+                                }
+                            }
+                        }
+
+                        // Actualizar el indicador de posición
+                        if (numeroPosicion) {
+                            numeroPosicion.textContent = posicionDestino;
+                        }
+                    });
+                }
 
                 // 🎯 Aplicar líneas separadoras de turnos dinámicamente
                 window.aplicarLineasTurnos = function() {
@@ -2037,6 +2648,8 @@
                     turnosActivos.forEach(turno => {
                         if (!turno.activo || !turno.hora_inicio) return;
 
+                        // ✅ Usar la hora directamente sin compensación
+                        // El backend envía fechas con timezone correcto (+01:00)
                         const horaInicio = turno.hora_inicio.substring(0, 5); // "06:00" de "06:00:00"
                         const selector = `.fc-timegrid-slot[data-time="${horaInicio}:00"]`;
                         const slots = document.querySelectorAll(selector);
@@ -2072,57 +2685,46 @@
                     // Obtener la posición inicial del header
                     const headerInitialTop = headerSection.getBoundingClientRect().top + window.pageYOffset;
 
-                    // Escuchar scroll en la página (window)
-                    window.addEventListener('scroll', function() {
-                        const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+                    // Estado del sticky para evitar cambios innecesarios
+                    let isSticky = false;
+                    let scrollTicking = false;
 
-                        // Si el scroll pasa la posición del header, hacerlo sticky
-                        if (scrollTop > headerInitialTop - 10) {
-                            if (headerResources) {
-                                headerResources.style.position = 'fixed';
-                                headerResources.style.top = '0px';
-                                headerResources.style.zIndex = '1000';
-                                headerResources.style.backgroundColor = 'white';
-                                headerResources.style.boxShadow = '0 2px 4px rgba(0,0,0,0.1)';
-                            }
-                            if (headerTime) {
-                                headerTime.style.position = 'fixed';
-                                headerTime.style.top = '0px';
-                                headerTime.style.zIndex = '1000';
-                                headerTime.style.backgroundColor = 'white';
-                                headerTime.style.boxShadow = '0 2px 4px rgba(0,0,0,0.1)';
-                            }
-                            if (headerSection) {
-                                headerSection.style.position = 'fixed';
-                                headerSection.style.top = '0px';
-                                headerSection.style.zIndex = '999';
-                                headerSection.style.backgroundColor = 'white';
-                                headerSection.style.boxShadow = '0 2px 4px rgba(0,0,0,0.1)';
-                                headerSection.style.width = '100%';
-                            }
+                    // Función optimizada para aplicar estilos sticky
+                    function aplicarEstilosSticky(sticky) {
+                        if (sticky === isSticky) return; // No hacer nada si el estado no cambió
+                        isSticky = sticky;
+
+                        if (sticky) {
+                            // Aplicar sticky usando clases CSS en lugar de estilos inline
+                            if (headerResources) headerResources.classList.add('fc-header-sticky');
+                            if (headerTime) headerTime.classList.add('fc-header-sticky');
+                            if (headerSection) headerSection.classList.add('fc-header-sticky', 'fc-header-section-sticky');
                         } else {
-                            // Restaurar posición normal
-                            if (headerResources) {
-                                headerResources.style.position = '';
-                                headerResources.style.top = '';
-                                headerResources.style.zIndex = '';
-                                headerResources.style.boxShadow = '';
-                            }
-                            if (headerTime) {
-                                headerTime.style.position = '';
-                                headerTime.style.top = '';
-                                headerTime.style.zIndex = '';
-                                headerTime.style.boxShadow = '';
-                            }
-                            if (headerSection) {
-                                headerSection.style.position = '';
-                                headerSection.style.top = '';
-                                headerSection.style.zIndex = '';
-                                headerSection.style.boxShadow = '';
-                                headerSection.style.width = '';
-                            }
+                            // Quitar sticky
+                            if (headerResources) headerResources.classList.remove('fc-header-sticky');
+                            if (headerTime) headerTime.classList.remove('fc-header-sticky');
+                            if (headerSection) headerSection.classList.remove('fc-header-sticky', 'fc-header-section-sticky');
                         }
-                    }, { passive: true });
+                    }
+
+                    // Escuchar scroll con requestAnimationFrame para evitar jank
+                    function onScroll() {
+                        if (!scrollTicking) {
+                            requestAnimationFrame(() => {
+                                const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+                                aplicarEstilosSticky(scrollTop > headerInitialTop - 10);
+                                scrollTicking = false;
+                            });
+                            scrollTicking = true;
+                        }
+                    }
+
+                    // Guardar referencia para poder limpiar después
+                    if (window._maquinasCalendarState.scrollHandler) {
+                        window.removeEventListener('scroll', window._maquinasCalendarState.scrollHandler);
+                    }
+                    window._maquinasCalendarState.scrollHandler = onScroll;
+                    window.addEventListener('scroll', onScroll, { passive: true });
                 }, 500);
 
                 // 🎯 PANTALLA COMPLETA
@@ -2208,29 +2810,59 @@
                 let ultimoRecursoDetectado = null;
                 let ultimaTiempoDetectado = null;
 
-                calendarioEl.addEventListener('dragover', function(e) {
+                // Handler de dragover como función nombrada para poder eliminarla
+                function handleDragover(e) {
                     if (!elementoArrastrandose) return;
 
                     e.preventDefault();
 
                     const elementosBajoMouse = document.elementsFromPoint(e.clientX, e.clientY);
 
-                    // Buscar cualquier elemento que tenga data-resource-id
+                    // Buscar el resourceId - FullCalendar usa diferentes estructuras
                     let resourceId = null;
+
                     for (const el of elementosBajoMouse) {
-                        if (el.dataset.resourceId) {
+                        // Método 1: data-resource-id directo
+                        if (el.dataset && el.dataset.resourceId) {
                             resourceId = el.dataset.resourceId;
                             break;
                         }
-                        let parent = el.parentElement;
-                        while (parent && !resourceId) {
-                            if (parent.dataset.resourceId) {
-                                resourceId = parent.dataset.resourceId;
+
+                        // Método 2: Buscar en fc-timegrid-col con data-resource-id
+                        const colWithResource = el.closest('[data-resource-id]');
+                        if (colWithResource) {
+                            resourceId = colWithResource.dataset.resourceId;
+                            break;
+                        }
+
+                        // Método 3: Buscar columna de timegrid y extraer de su posición
+                        const timeGridCol = el.closest('.fc-timegrid-col');
+                        if (timeGridCol && timeGridCol.dataset.resourceId) {
+                            resourceId = timeGridCol.dataset.resourceId;
+                            break;
+                        }
+
+                        // Método 4: Buscar en la fila del recurso
+                        const resourceLane = el.closest('.fc-timegrid-col-frame');
+                        if (resourceLane) {
+                            const parentCol = resourceLane.closest('[data-resource-id]');
+                            if (parentCol) {
+                                resourceId = parentCol.dataset.resourceId;
                                 break;
                             }
-                            parent = parent.parentElement;
                         }
-                        if (resourceId) break;
+                    }
+
+                    // Si aún no encontramos, intentar por posición X
+                    if (!resourceId) {
+                        const allResourceCols = calendarioEl.querySelectorAll('.fc-timegrid-col[data-resource-id]');
+                        for (const col of allResourceCols) {
+                            const rect = col.getBoundingClientRect();
+                            if (e.clientX >= rect.left && e.clientX <= rect.right) {
+                                resourceId = col.dataset.resourceId;
+                                break;
+                            }
+                        }
                     }
 
                     if (!resourceId) {
@@ -2240,55 +2872,77 @@
                         return;
                     }
 
-                    // Obtener todos los eventos de esa máquina ordenados
-                    const eventosOrdenados = calendar.getEvents()
-                        .filter(ev => ev.getResources().some(r => r.id == resourceId))
-                        .sort((a, b) => a.start - b.start);
+                    // Obtener la columna de la máquina
+                    const columna = calendarioEl.querySelector(`.fc-timegrid-col[data-resource-id="${resourceId}"]`);
+                    if (!columna) {
+                        if (numeroPosicion) numeroPosicion.textContent = '?';
+                        return;
+                    }
 
-                    // Buscar evento más cercano bajo el cursor para estimar posición
-                    let eventoMasCercano = null;
-                    let distanciaMinima = Infinity;
+                    // Obtener todos los eventos VISIBLES de esa máquina, ordenados por posición Y
+                    const eventosEnColumna = [];
+                    const eventosDOM = columna.querySelectorAll('.fc-event:not(.fc-event-mirror)');
 
-                    eventosOrdenados.forEach(evento => {
-                        const eventoEls = document.querySelectorAll(
-                            `.fc-event[data-event-id="${evento.id}"]`);
-                        eventoEls.forEach(eventoEl => {
-                            const rect = eventoEl.getBoundingClientRect();
-                            const distancia = Math.abs(e.clientY - (rect.top + rect.height /
-                                2));
-                            if (distancia < distanciaMinima) {
-                                distanciaMinima = distancia;
-                                eventoMasCercano = evento;
-                            }
+                    eventosDOM.forEach(eventoEl => {
+                        const rect = eventoEl.getBoundingClientRect();
+                        eventosEnColumna.push({
+                            el: eventoEl,
+                            top: rect.top,
+                            bottom: rect.bottom,
+                            centerY: rect.top + rect.height / 2
                         });
                     });
 
+                    // Ordenar por posición vertical (de arriba a abajo)
+                    eventosEnColumna.sort((a, b) => a.top - b.top);
+
                     let posicionCalculada = 1;
 
-                    if (eventoMasCercano) {
-                        const indexCercano = eventosOrdenados.findIndex(ev => ev.id === eventoMasCercano.id);
-                        const eventoEl = document.querySelector(
-                            `.fc-event[data-event-id="${eventoMasCercano.id}"]`);
-                        if (eventoEl) {
-                            const rect = eventoEl.getBoundingClientRect();
-                            const mitadAltura = rect.top + (rect.height / 2);
-
-                            if (e.clientY < mitadAltura) {
-                                posicionCalculada = indexCercano + 1;
-                            } else {
-                                posicionCalculada = indexCercano + 2;
-                            }
-                        } else {
-                            posicionCalculada = indexCercano + 1;
-                        }
-                    } else {
+                    if (eventosEnColumna.length === 0) {
+                        // No hay eventos, posición 1
                         posicionCalculada = 1;
+                    } else {
+                        // Calcular posición basándose en la posición Y del cursor
+                        let encontrado = false;
+
+                        for (let i = 0; i < eventosEnColumna.length; i++) {
+                            const evento = eventosEnColumna[i];
+
+                            if (e.clientY < evento.centerY) {
+                                // Cursor está arriba del centro de este evento
+                                posicionCalculada = i + 1;
+                                encontrado = true;
+                                break;
+                            }
+                        }
+
+                        // Si no encontramos ninguno, insertar al final
+                        if (!encontrado) {
+                            posicionCalculada = eventosEnColumna.length + 1;
+                        }
                     }
 
                     if (numeroPosicion) {
                         numeroPosicion.textContent = posicionCalculada;
                     }
-                });
+                }
+
+                // Handler de dragleave como función nombrada
+                function handleDragleave(e) {
+                    const rect = calendarioEl.getBoundingClientRect();
+                    if (e.clientX < rect.left || e.clientX > rect.right ||
+                        e.clientY < rect.top || e.clientY > rect.bottom) {
+                        if (numeroPosicion) {
+                            numeroPosicion.textContent = '?';
+                        }
+                    }
+                }
+
+                // Registrar los handlers y guardar referencias para limpieza
+                calendarioEl.addEventListener('dragover', handleDragover);
+                calendarioEl.addEventListener('dragleave', handleDragleave);
+                window._maquinasCalendarState.dragoverHandler = handleDragover;
+                window._maquinasCalendarState.dragleaveHandler = handleDragleave;
 
                 // Función para actualizar eventos sin recargar
                 function actualizarEventosSinRecargar(eventosNuevos, maquinasAfectadas = null) {
@@ -2325,6 +2979,24 @@
 
                 // Variable global para guardar el planillaId actual del panel
                 let planillaIdActualPanel = null;
+                let codigoPlanillaActualPanel = null;
+
+                // Función para refrescar el panel de elementos si está abierto
+                async function refrescarPanelElementos() {
+                    if (!planillaIdActualPanel) return;
+
+                    const panel = document.getElementById('panel_elementos');
+                    if (!panel || panel.classList.contains('translate-x-full')) return;
+
+                    try {
+                        const response = await fetch(`/elementos/por-ids?planilla_id=${planillaIdActualPanel}`);
+                        const elementos = await response.json();
+                        console.log('🔄 Panel refrescado con', elementos.length, 'elementos');
+                        mostrarPanelElementos(elementos, planillaIdActualPanel, codigoPlanillaActualPanel);
+                    } catch (error) {
+                        console.error('❌ Error al refrescar panel:', error);
+                    }
+                }
 
                 // Función para mostrar panel de elementos
                 function mostrarPanelElementos(elementos, planillaId, codigo) {
@@ -2357,8 +3029,9 @@
                         return;
                     }
 
-                    // Guardar el planillaId actual
+                    // Guardar el planillaId y codigo actual
                     planillaIdActualPanel = planillaId;
+                    codigoPlanillaActualPanel = codigo;
                     console.log('✅ planillaIdActualPanel establecido:', planillaIdActualPanel);
 
                     if (panelCodigo) panelCodigo.textContent = codigo;
@@ -2370,6 +3043,7 @@
                         if (!acc[maquinaId]) {
                             acc[maquinaId] = {
                                 nombre: elemento.maquina ? elemento.maquina.nombre : 'Sin asignar',
+                                codigo: elemento.maquina ? elemento.maquina.codigo : null,
                                 elementos: []
                             };
                         }
@@ -2377,21 +3051,62 @@
                         return acc;
                     }, {});
 
+                    // Poblar el select de filtro por máquina
+                    const selectFiltro = document.getElementById('panel_filtro_maquina');
+                    if (selectFiltro) {
+                        selectFiltro.innerHTML = '<option value="todas">Todas las máquinas</option>';
+                        Object.entries(elementosPorMaquina).forEach(([maquinaId, grupo]) => {
+                            const option = document.createElement('option');
+                            option.value = maquinaId;
+                            option.textContent = `${grupo.codigo ? grupo.codigo + ' - ' : ''}${grupo.nombre} (${grupo.elementos.length})`;
+                            selectFiltro.appendChild(option);
+                        });
+
+                        // Event listener para navegar a la sección seleccionada
+                        selectFiltro.onchange = function() {
+                            const maquinaSeleccionada = this.value;
+                            if (maquinaSeleccionada === 'todas') {
+                                // Mostrar todas las secciones y scroll al inicio
+                                lista.querySelectorAll('.seccion-maquina-wrapper').forEach(s => s.style.display = 'block');
+                                lista.scrollTop = 0;
+                            } else {
+                                // Mostrar solo la sección seleccionada
+                                lista.querySelectorAll('.seccion-maquina-wrapper').forEach(s => {
+                                    s.style.display = s.dataset.maquinaId === maquinaSeleccionada ? 'block' : 'none';
+                                });
+                                // Scroll a la sección
+                                const seccion = lista.querySelector(`.seccion-maquina-wrapper[data-maquina-id="${maquinaSeleccionada}"]`);
+                                if (seccion) {
+                                    seccion.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                                }
+                            }
+                        };
+                    }
+
                     // Crear secciones por máquina
                     Object.entries(elementosPorMaquina).forEach(([maquinaId, grupo]) => {
+                        // Crear wrapper para la sección completa
+                        const seccionWrapper = document.createElement('div');
+                        seccionWrapper.className = 'seccion-maquina-wrapper';
+                        seccionWrapper.dataset.maquinaId = maquinaId;
+
                         // Crear header de la sección
                         const seccionHeader = document.createElement('div');
                         seccionHeader.className = 'seccion-maquina-header';
                         seccionHeader.innerHTML = `
-                            <div class="bg-blue-500 text-white px-4 py-2 rounded-md font-semibold text-sm mb-3">
-                                ${grupo.nombre} (${grupo.elementos.length})
+                            <div class="bg-blue-500 text-white px-3 py-1.5 rounded font-medium text-xs">
+                                ${grupo.codigo ? grupo.codigo + ' - ' : ''}${grupo.nombre} (${grupo.elementos.length})
                             </div>
                         `;
-                        lista.appendChild(seccionHeader);
+                        seccionWrapper.appendChild(seccionHeader);
+                        lista.appendChild(seccionWrapper);
 
                         // Crear contenedor de elementos de esta máquina
                         const seccionElementos = document.createElement('div');
-                        seccionElementos.className = 'seccion-maquina-elementos mb-4';
+                        seccionElementos.className = 'seccion-maquina-elementos';
+
+                        // Array para almacenar los datos de los elementos a dibujar después
+                        const elementosParaDibujar = [];
 
                         grupo.elementos.forEach(elemento => {
                             const div = document.createElement('div');
@@ -2402,6 +3117,7 @@
                             div.dataset.elementoId = elemento.id;
                             div.dataset.planillaId = planillaId;
                             div.dataset.maquinaOriginal = elemento.maquina_id;
+                            div.dataset.posicion = elemento.posicion || '1';
 
                             div.dataset.event = JSON.stringify({
                                 title: elemento.codigo,
@@ -2416,7 +3132,7 @@
                             const canvasId = `canvas-panel-${elemento.id}`;
 
                             div.innerHTML = `
-                            <canvas id="${canvasId}" width="240" height="120" draggable="false"></canvas>
+                            <canvas id="${canvasId}" width="260" height="100" draggable="false"></canvas>
                         `;
 
                             seccionElementos.appendChild(div);
@@ -2428,22 +3144,75 @@
                                 window.MultiSelectElementos.toggleSeleccion(div);
                             });
 
-                            setTimeout(() => {
-                                window.dibujarFiguraElemento(
-                                    canvasId,
-                                    elemento.dimensiones,
-                                    elemento.peso,
-                                    elemento.diametro,
-                                    elemento.barras
-                                );
-                            }, 10);
+                            // ✅ Evento de dragstart en cada elemento
+                            div.addEventListener('dragstart', function(e) {
+                                // Ocultar ghost nativo del navegador
+                                const img = new Image();
+                                img.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
+                                e.dataTransfer.setDragImage(img, 0, 0);
+
+                                elementoArrastrandose = div;
+                                mostrarIndicador = true;
+                                window.tooltipsDeshabilitados = true;
+
+                                // Añadir clase al body para ocultar tooltips via CSS
+                                document.body.classList.add('dragging-panel-elemento');
+
+                                // Ocultar y eliminar tooltips existentes
+                                document.querySelectorAll('.fc-tooltip').forEach(t => {
+                                    t.style.display = 'none';
+                                    t.remove();
+                                });
+
+                                // Mostrar indicador con posición inicial (se actualizará en dragover)
+                                if (numeroPosicion) {
+                                    numeroPosicion.textContent = '?';
+                                }
+
+                                div.classList.add('dragging-original');
+                            });
+
+                            div.addEventListener('dragend', function() {
+                                elementoArrastrandose = null;
+                                mostrarIndicador = false;
+                                window.tooltipsDeshabilitados = false;
+
+                                // Quitar clase del body
+                                document.body.classList.remove('dragging-panel-elemento');
+
+                                if (indicadorPosicion) {
+                                    indicadorPosicion.classList.add('hidden');
+                                    indicadorPosicion.style.display = 'none';
+                                }
+                                div.classList.remove('dragging-original');
+
+                                // Limpiar tooltips duplicados
+                                document.querySelectorAll('.fc-tooltip').forEach(t => t.remove());
+                            });
+
+                            // Almacenar datos para dibujar después de que el panel sea visible
+                            elementosParaDibujar.push({
+                                canvasId,
+                                dimensiones: elemento.dimensiones,
+                                peso: elemento.peso,
+                                diametro: elemento.diametro,
+                                barras: elemento.barras
+                            });
                         });
 
-                        lista.appendChild(seccionElementos);
+                        // Guardar referencia para dibujar después
+                        seccionWrapper._elementosParaDibujar = elementosParaDibujar;
+
+                        seccionWrapper.appendChild(seccionElementos);
                     });
 
-                    // Configurar FullCalendar.Draggable con timeout para asegurar que se ejecuta
+                    // Configurar FullCalendar.Draggable
                     setTimeout(() => {
+                        // Destruir draggable anterior si existe
+                        if (lista._fcDraggable) {
+                            lista._fcDraggable.destroy();
+                        }
+
                         const draggable = new FullCalendar.Draggable(lista, {
                             itemSelector: '.elemento-drag',
                             eventData: function(eventEl) {
@@ -2451,49 +3220,81 @@
                             }
                         });
 
-                        // Usar eventos nativos del DOM
-                        lista.addEventListener('mousedown', function(e) {
-                            const target = e.target.closest('.elemento-drag');
-                            if (target) {
-                                setTimeout(() => {
-                                    elementoArrastrandose = target;
-                                    mostrarIndicador = true;
-                                    tooltipsDeshabilitados = true;
-                                    if (numeroPosicion) {
-                                        numeroPosicion.textContent = '?';
-                                    }
-                                    document.querySelectorAll('.fc-tooltip').forEach(t => t
-                                        .style.display = 'none');
-                                }, 50);
-                            }
-                        });
-
-                        document.addEventListener('mouseup', function(e) {
-                            if (elementoArrastrandose) {
-                                setTimeout(() => {
-                                    elementoArrastrandose = null;
-                                    mostrarIndicador = false;
-                                    tooltipsDeshabilitados = false;
-                                    if (indicadorPosicion) {
-                                        indicadorPosicion.classList.add('hidden');
-                                        indicadorPosicion.style.display = 'none';
-                                    }
-                                    document.querySelectorAll('.fc-tooltip').forEach(t => t
-                                        .remove());
-                                }, 100);
-                            }
-                        });
+                        lista._fcDraggable = draggable;
                     }, 100);
 
                     // ✅ Ajustar calendario
-                    panel.classList.add('abierto');
                     overlay.classList.remove('hidden');
                     contenedorCalendario.classList.add('con-panel-abierto');
                     document.body.classList.add('panel-abierto');
 
+                    // Función para dibujar SVGs de forma progresiva (no bloquea el thread)
+                    function dibujarSVGsProgresivo() {
+                        const secciones = lista.querySelectorAll('.seccion-maquina-wrapper');
+                        const todosElementos = [];
+
+                        // Recolectar todos los elementos a dibujar
+                        secciones.forEach(seccion => {
+                            if (seccion._elementosParaDibujar) {
+                                todosElementos.push(...seccion._elementosParaDibujar);
+                            }
+                        });
+
+                        // Dibujar en batches usando requestAnimationFrame
+                        let indice = 0;
+                        const BATCH_SIZE = 5; // Dibujar 5 elementos por frame
+
+                        function dibujarBatch() {
+                            const fin = Math.min(indice + BATCH_SIZE, todosElementos.length);
+
+                            for (let i = indice; i < fin; i++) {
+                                const elem = todosElementos[i];
+                                window.dibujarFiguraElemento(
+                                    elem.canvasId,
+                                    elem.dimensiones,
+                                    elem.peso,
+                                    elem.diametro,
+                                    elem.barras
+                                );
+                            }
+
+                            indice = fin;
+
+                            // Si quedan más elementos, programar siguiente batch
+                            if (indice < todosElementos.length) {
+                                requestAnimationFrame(dibujarBatch);
+                            }
+                        }
+
+                        // Iniciar dibujado
+                        if (todosElementos.length > 0) {
+                            requestAnimationFrame(dibujarBatch);
+                        }
+                    }
+
+                    // Usar transitionend para detectar cuando el panel está visible
+                    const onTransitionEnd = function(e) {
+                        // Solo procesar si es la transición de transform del panel
+                        if (e.propertyName === 'transform' && e.target === panel) {
+                            panel.removeEventListener('transitionend', onTransitionEnd);
+                            calendar.updateSize();
+                            dibujarSVGsProgresivo();
+                        }
+                    };
+
+                    panel.addEventListener('transitionend', onTransitionEnd);
+
+                    // Añadir clase para iniciar la transición
+                    panel.classList.add('abierto');
+
+                    // Fallback: si transitionend no se dispara en 500ms, dibujar de todos modos
                     setTimeout(() => {
-                        calendar.updateSize();
-                    }, 300);
+                        if (panel.classList.contains('abierto')) {
+                            panel.removeEventListener('transitionend', onTransitionEnd);
+                            calendar.updateSize();
+                            dibujarSVGsProgresivo();
+                        }
+                    }, 500);
                 }
 
                 function cerrarPanel() {
@@ -2503,8 +3304,9 @@
                     window.MultiSelectElementos.limpiarSelecciones();
                     document.body.classList.remove('panel-abierto');
 
-                    // Limpiar planillaId actual
+                    // Limpiar planillaId y codigo actual
                     planillaIdActualPanel = null;
+                    codigoPlanillaActualPanel = null;
                     console.log('🧹 planillaIdActualPanel limpiado');
 
                     const panelElementos = document.getElementById('panel_elementos');
@@ -2606,9 +3408,10 @@
                 // Overlay ya no captura clics (pointer-events: none) para permitir interacción con calendario
 
                 // Cerrar panel al hacer clic fuera del panel (en el área del calendario)
-                document.addEventListener('click', function(e) {
+                // 🔧 OPTIMIZACIÓN: Guardar referencia para poder limpiar el listener
+                function handleClickFueraPanel(e) {
                     const panel = document.getElementById('panel_elementos');
-                    const panelAbierto = panel.classList.contains('abierto');
+                    const panelAbierto = panel && panel.classList.contains('abierto');
 
                     if (panelAbierto && !panel.contains(e.target) && !e.target.closest('.fc-event')) {
                         // Solo cerrar si se hace clic fuera del panel y no en un elemento arrastrable
@@ -2617,7 +3420,14 @@
                             cerrarPanel();
                         }
                     }
-                });
+                }
+
+                // Limpiar listener anterior si existe
+                if (window._maquinasCalendarState.clickFueraPanelHandler) {
+                    document.removeEventListener('click', window._maquinasCalendarState.clickFueraPanelHandler);
+                }
+                window._maquinasCalendarState.clickFueraPanelHandler = handleClickFueraPanel;
+                document.addEventListener('click', handleClickFueraPanel);
 
                 // ================================
                 // SISTEMA DE FILTROS DE RESALTADO
@@ -2813,19 +3623,42 @@
                         let planillasResaltadas = 0;
                         let segmentosResaltados = 0;
 
+                        // 🔧 OPTIMIZACIÓN: Cachear querySelectorAll y crear mapa de elementos por ID
+                        const todosElementosDOM = document.querySelectorAll('.fc-event');
+                        const elementosPorEventoId = new Map();
+
+                        // Crear índice de elementos DOM por evento ID (O(n) en lugar de O(n²))
+                        todosElementosDOM.forEach(el => {
+                            // Por fcSeg
+                            if (el.fcSeg && el.fcSeg.eventRange.def.publicId) {
+                                const eventId = el.fcSeg.eventRange.def.publicId;
+                                if (!elementosPorEventoId.has(eventId)) {
+                                    elementosPorEventoId.set(eventId, []);
+                                }
+                                if (!elementosPorEventoId.get(eventId).includes(el)) {
+                                    elementosPorEventoId.get(eventId).push(el);
+                                }
+                            }
+                            // Por data-event-id
+                            const dataEventId = el.getAttribute('data-event-id') ||
+                                el.querySelector('[data-event-id]')?.getAttribute('data-event-id');
+                            if (dataEventId) {
+                                if (!elementosPorEventoId.has(dataEventId)) {
+                                    elementosPorEventoId.set(dataEventId, []);
+                                }
+                                if (!elementosPorEventoId.get(dataEventId).includes(el)) {
+                                    elementosPorEventoId.get(dataEventId).push(el);
+                                }
+                            }
+                        });
+
                         // Evaluar cada planilla
                         Object.entries(eventosPorPlanilla).forEach(([planillaId, data]) => {
-                            console.group(`📋 Planilla ${data.title}`);
-                            console.log('Segmentos:', data.eventos.length);
-                            console.log('Props:', data.props);
-
-                            const cumple = cumpleFiltros(data.eventos[
-                                0]); // Evaluar con el primer segmento
+                            const cumple = cumpleFiltros(data.eventos[0]); // Evaluar con el primer segmento
 
                             // Aplicar a TODOS los segmentos de esta planilla
                             data.eventos.forEach(evento => {
-                                // Buscar TODAS las representaciones DOM de este evento
-                                // Un evento puede tener múltiples elementos DOM si está en varias posiciones
+                                // 🔧 OPTIMIZACIÓN: Lookup O(1) en lugar de querySelectorAll O(n)
                                 const elementosDOM = [];
 
                                 // Primero intentar con evento.el
@@ -2833,32 +3666,15 @@
                                     elementosDOM.push(evento.el);
                                 }
 
-                                // Buscar todas las instancias DOM que coincidan con este evento ID
-                                const todosElementos = document.querySelectorAll('.fc-event');
-                                todosElementos.forEach(el => {
-                                    // Verificar por fcSeg
-                                    if (el.fcSeg && el.fcSeg.eventRange.def.publicId ===
-                                        evento.id) {
-                                        // Evitar duplicados
-                                        if (!elementosDOM.includes(el)) {
-                                            elementosDOM.push(el);
-                                        }
-                                    }
-                                    // También verificar por atributos data
-                                    const dataEventId = el.getAttribute(
-                                            'data-event-id') ||
-                                        el.querySelector('[data-event-id]')
-                                        ?.getAttribute('data-event-id');
-                                    if (dataEventId === evento.id && !elementosDOM
-                                        .includes(el)) {
+                                // Buscar en el mapa cacheado
+                                const elementosDelMapa = elementosPorEventoId.get(evento.id) || [];
+                                elementosDelMapa.forEach(el => {
+                                    if (!elementosDOM.includes(el)) {
                                         elementosDOM.push(el);
                                     }
                                 });
 
                                 if (elementosDOM.length === 0) {
-                                    console.warn(
-                                        '⚠️ No se encontró ningún elemento DOM para evento:',
-                                        evento.id);
                                     return;
                                 }
 
@@ -2871,10 +3687,8 @@
                                     if (cumple) {
                                         elementoDOM.classList.add('evento-resaltado',
                                             'pulsando');
-                                        console.log('✅ Elemento resaltado:', evento.id);
                                     } else {
                                         elementoDOM.classList.add('evento-opaco');
-                                        console.log('⚪ Elemento opacado:', evento.id);
                                     }
                                 });
 
@@ -2886,12 +3700,7 @@
 
                             if (cumple) {
                                 planillasResaltadas++;
-                                console.log('✅ RESALTADA (todos los segmentos)');
-                            } else {
-                                console.log('⚪ OPACADA (todos los segmentos)');
                             }
-
-                            console.groupEnd();
                         });
 
                         console.log(`━━━━━━━━━━━━━━━━`);
@@ -3385,39 +4194,8 @@
                 inicializarCalendarioMaquinas();
             }
 
-            // Reinicializar en navegación Livewire
-            document.addEventListener('livewire:navigated', function() {
-                // Solo inicializar si estamos en la página de máquinas
-                const calendarioEl = document.getElementById('calendario');
-                if (calendarioEl && calendarioEl.dataset.calendarType === 'maquinas') {
-                    console.log('🔄 Reinicializando calendario de máquinas después de navegación');
-
-                    // Destruir calendario anterior si existe
-                    if (window.calendar) {
-                        try {
-                            window.calendar.destroy();
-                            window.calendar = null;
-                        } catch (e) {
-                            console.warn('Error al destruir calendario anterior:', e);
-                        }
-                    }
-
-                    inicializarCalendarioMaquinas();
-                }
-            });
-
-            // Limpiar al salir de la página
-            document.addEventListener('livewire:navigating', function() {
-                if (window.calendar) {
-                    try {
-                        console.log('🧹 Limpiando calendario de máquinas');
-                        window.calendar.destroy();
-                        window.calendar = null;
-                    } catch (e) {
-                        console.warn('Error al limpiar calendario:', e);
-                    }
-                }
-            });
+            // Nota: La reinicialización en livewire:navigated se maneja desde el layout principal (app.blade.php)
+            // para evitar problemas de timing con la carga de scripts
 
             // ============================================================
             // FUNCIONES GLOBALES (fuera de inicializarCalendarioMaquinas)
@@ -4437,6 +5215,457 @@
                         title: 'Error',
                         text: 'No se pudo aplicar el balanceo. Por favor intenta de nuevo.'
                     });
+                }
+            }
+
+            // ============================================================
+            // PRIORIZAR OBRAS POR FECHA DE ENTREGA (HASTA 5 POSICIONES)
+            // ============================================================
+
+            window.datosAgrupaciones = null;
+
+            async function abrirModalPriorizarObra() {
+                const modal = document.getElementById('modalPriorizarObra');
+                const loading = document.getElementById('priorizarObraLoading');
+                const content = document.getElementById('priorizarObraContent');
+                const empty = document.getElementById('priorizarObraEmpty');
+                const btnAplicar = document.getElementById('btnAplicarPriorizar');
+                const infoDiv = document.getElementById('infoPriorizacion');
+
+                modal.classList.remove('hidden');
+                modal.classList.add('flex');
+                loading.classList.remove('hidden');
+                content.classList.add('hidden');
+                empty.classList.add('hidden');
+                btnAplicar.classList.add('hidden');
+                if (infoDiv) infoDiv.classList.add('hidden');
+
+                try {
+                    const response = await fetch('/api/produccion/obras-activas');
+                    if (!response.ok) throw new Error('Error al obtener obras');
+                    const agrupaciones = await response.json();
+
+                    if (agrupaciones.length === 0) {
+                        loading.classList.add('hidden');
+                        empty.classList.remove('hidden');
+                        return;
+                    }
+
+                    // Guardar datos para usar al aplicar
+                    window.datosAgrupaciones = agrupaciones;
+
+                    // Poblar los 5 selectores
+                    for (let i = 1; i <= 5; i++) {
+                        const select = document.getElementById(`selectPrioridad${i}`);
+                        select.innerHTML = '<option value="">-- Sin selección --</option>';
+
+                        let currentObra = null;
+                        let optgroup = null;
+
+                        agrupaciones.forEach((grupo, index) => {
+                            // Crear optgroup si cambia la obra
+                            if (currentObra !== grupo.obra_id) {
+                                optgroup = document.createElement('optgroup');
+                                optgroup.label = `${grupo.cod_obra} - ${grupo.obra}`;
+                                select.appendChild(optgroup);
+                                currentObra = grupo.obra_id;
+                            }
+
+                            // Mostrar códigos de planillas (máx 3, luego "...")
+                            const codigos = grupo.planillas_codigos || [];
+                            let codigosText = '';
+                            if (codigos.length > 0) {
+                                const mostrar = codigos.slice(0, 3).join(', ');
+                                codigosText = codigos.length > 3
+                                    ? ` [${mostrar}...]`
+                                    : ` [${mostrar}]`;
+                            }
+
+                            const option = document.createElement('option');
+                            option.value = index;
+                            option.textContent = `${grupo.fecha_entrega_formatted} (${grupo.planillas_count} pl.)${codigosText}`;
+                            optgroup.appendChild(option);
+                        });
+                    }
+
+                    loading.classList.add('hidden');
+                    content.classList.remove('hidden');
+
+                } catch (error) {
+                    console.error('Error al cargar obras:', error);
+                    Swal.fire({ icon: 'error', title: 'Error', text: 'No se pudieron cargar las obras' });
+                    cerrarModalPriorizarObra();
+                }
+            }
+
+            function actualizarInfoPrioridad(posicion) {
+                actualizarResumenPrioridades();
+            }
+
+            function limpiarPrioridad(posicion) {
+                document.getElementById(`selectPrioridad${posicion}`).value = '';
+                actualizarResumenPrioridades();
+            }
+
+            function limpiarTodasPrioridades() {
+                for (let i = 1; i <= 5; i++) {
+                    document.getElementById(`selectPrioridad${i}`).value = '';
+                }
+                actualizarResumenPrioridades();
+            }
+
+            function actualizarResumenPrioridades() {
+                const infoDiv = document.getElementById('infoPriorizacion');
+                const resumenList = document.getElementById('resumenPrioridades');
+                const btnAplicar = document.getElementById('btnAplicarPriorizar');
+
+                const selecciones = obtenerSeleccionesPrioridad();
+
+                if (selecciones.length === 0) {
+                    infoDiv.classList.add('hidden');
+                    btnAplicar.classList.add('hidden');
+                    return;
+                }
+
+                resumenList.innerHTML = '';
+                selecciones.forEach((sel, idx) => {
+                    const codigos = sel.grupo.planillas_codigos || [];
+                    const codigosText = codigos.length > 0 ? ` - ${codigos.join(', ')}` : '';
+                    const li = document.createElement('li');
+                    li.innerHTML = `<strong>${idx + 1}.</strong> ${sel.grupo.cod_obra} - ${sel.grupo.fecha_entrega_formatted} <span class="text-orange-500">(${sel.grupo.planillas_count} pl.)</span><br><span class="text-xs text-gray-600 ml-4">${codigosText}</span>`;
+                    resumenList.appendChild(li);
+                });
+
+                infoDiv.classList.remove('hidden');
+                btnAplicar.classList.remove('hidden');
+            }
+
+            function obtenerSeleccionesPrioridad() {
+                const selecciones = [];
+                const indicesUsados = new Set();
+
+                for (let i = 1; i <= 5; i++) {
+                    const select = document.getElementById(`selectPrioridad${i}`);
+                    const idx = select.value;
+
+                    if (idx !== '' && window.datosAgrupaciones && window.datosAgrupaciones[idx]) {
+                        // Evitar duplicados
+                        if (!indicesUsados.has(idx)) {
+                            indicesUsados.add(idx);
+                            selecciones.push({
+                                posicion: i,
+                                indice: parseInt(idx),
+                                grupo: window.datosAgrupaciones[idx]
+                            });
+                        }
+                    }
+                }
+
+                return selecciones;
+            }
+
+            function cerrarModalPriorizarObra() {
+                const modal = document.getElementById('modalPriorizarObra');
+                modal.classList.add('hidden');
+                modal.classList.remove('flex');
+                window.datosAgrupaciones = null;
+                // Limpiar selectores
+                for (let i = 1; i <= 5; i++) {
+                    const select = document.getElementById(`selectPrioridad${i}`);
+                    if (select) select.value = '';
+                }
+            }
+
+            async function aplicarPriorizarObra() {
+                const selecciones = obtenerSeleccionesPrioridad();
+
+                if (selecciones.length === 0) {
+                    Swal.fire({ icon: 'warning', title: 'Selección requerida', text: 'Por favor selecciona al menos una obra' });
+                    return;
+                }
+
+                // Preparar resumen para confirmación
+                let resumenHtml = '<div class="text-left"><ol class="list-decimal ml-5 space-y-1">';
+                let totalPlanillas = 0;
+                selecciones.forEach(sel => {
+                    resumenHtml += `<li><strong>${sel.grupo.cod_obra}</strong> - ${sel.grupo.fecha_entrega_formatted} (${sel.grupo.planillas_count} planillas)</li>`;
+                    totalPlanillas += sel.grupo.planillas_count;
+                });
+                resumenHtml += '</ol></div>';
+
+                const result = await Swal.fire({
+                    icon: 'question',
+                    title: '¿Aplicar estas prioridades?',
+                    html: `${resumenHtml}<br>
+                           <strong>Total: ${totalPlanillas} planillas</strong> se reordenarán según el orden indicado.<br><br>
+                           <label class="flex items-center justify-center gap-2 cursor-pointer">
+                               <input type="checkbox" id="pararFabricando" class="w-4 h-4 rounded border-gray-300 text-orange-600 focus:ring-orange-500">
+                               <span class="text-sm text-gray-700">Parar planillas que estén fabricando si es necesario</span>
+                           </label>`,
+                    showCancelButton: true,
+                    confirmButtonText: 'Sí, aplicar',
+                    cancelButtonText: 'Cancelar',
+                    confirmButtonColor: '#f97316',
+                    width: '500px',
+                    preConfirm: () => {
+                        return {
+                            pararFabricando: document.getElementById('pararFabricando').checked
+                        };
+                    }
+                });
+
+                if (!result.isConfirmed) return;
+
+                const pararFabricando = result.value?.pararFabricando || false;
+
+                Swal.fire({ title: 'Aplicando prioridades...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+
+                try {
+                    // Preparar datos para enviar al backend
+                    const prioridades = selecciones.map(sel => ({
+                        obra_id: sel.grupo.obra_id,
+                        planillas_ids: sel.grupo.planillas_ids,
+                        fecha_entrega: sel.grupo.fecha_entrega
+                    }));
+
+                    const response = await fetch('/api/produccion/priorizar-obras', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                        },
+                        body: JSON.stringify({
+                            prioridades: prioridades,
+                            parar_fabricando: pararFabricando
+                        })
+                    });
+
+                    const data = await response.json();
+                    if (!response.ok || !data.success) throw new Error(data.message || 'Error');
+
+                    Swal.fire({
+                        icon: 'success',
+                        title: '¡Prioridades aplicadas!',
+                        html: data.message,
+                        confirmButtonColor: '#f97316'
+                    });
+                    cerrarModalPriorizarObra();
+
+                    if (typeof calendar !== 'undefined') {
+                        calendar.refetchResources();
+                        calendar.refetchEvents();
+                    }
+                } catch (error) {
+                    Swal.fire({ icon: 'error', title: 'Error', text: error.message || 'No se pudieron aplicar las prioridades' });
+                }
+            }
+
+            // ============================================================
+            // RESUMEN DEL CALENDARIO
+            // ============================================================
+
+            async function abrirModalResumen() {
+                const modal = document.getElementById('modalResumen');
+                const loading = document.getElementById('resumenLoading');
+                const content = document.getElementById('resumenContent');
+
+                // Mostrar modal en estado de carga
+                modal.classList.remove('hidden');
+                modal.classList.add('flex');
+                loading.classList.remove('hidden');
+                content.classList.add('hidden');
+
+                try {
+                    const response = await fetch('/api/produccion/resumen', {
+                        method: 'GET',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                        }
+                    });
+
+                    if (!response.ok) {
+                        throw new Error('Error al obtener resumen');
+                    }
+
+                    const data = await response.json();
+
+                    if (data.success) {
+                        // Llenar estadísticas
+                        document.getElementById('estadRevisadas').textContent = data.resumen.planillas_revisadas;
+                        document.getElementById('estadNoRevisadas').textContent = data.resumen.planillas_no_revisadas;
+                        document.getElementById('estadTotalPlanillas').textContent = data.resumen.total_planillas;
+                        document.getElementById('estadFueraTiempo').textContent = data.resumen.planillas_con_retraso;
+
+                        // Llenar estructura de clientes con retraso
+                        const contenedorClientes = document.getElementById('contenedorClientesRetraso');
+                        const sinRetraso = document.getElementById('sinPlanillasRetraso');
+
+                        contenedorClientes.innerHTML = '';
+
+                        if (data.clientes_con_retraso && data.clientes_con_retraso.length > 0) {
+                            contenedorClientes.classList.remove('hidden');
+                            sinRetraso.classList.add('hidden');
+
+                            data.clientes_con_retraso.forEach((cliente, index) => {
+                                const clienteDiv = document.createElement('div');
+                                clienteDiv.className = 'border border-gray-200 rounded-lg overflow-hidden';
+                                const clienteId = `cliente-${index}`;
+
+                                let obrasHtml = '';
+                                let totalPlanillas = 0;
+                                cliente.obras.forEach(obra => {
+                                    // Contar planillas de todas las fechas
+                                    let planillasObra = 0;
+                                    obra.fechas.forEach(fecha => {
+                                        planillasObra += fecha.planillas.length;
+                                    });
+                                    totalPlanillas += planillasObra;
+
+                                    // Generar HTML para cada fecha de entrega
+                                    let fechasHtml = '';
+                                    obra.fechas.forEach(fecha => {
+                                        let planillasHtml = '';
+                                        fecha.planillas.forEach(planilla => {
+                                            planillasHtml += `
+                                                <tr class="hover:bg-gray-50">
+                                                    <td class="px-3 py-2">
+                                                        <div class="font-medium text-gray-900">${planilla.planilla_codigo}</div>
+                                                        <div class="text-xs text-gray-500">${planilla.seccion || ''} ${planilla.descripcion ? '- ' + planilla.descripcion : ''}</div>
+                                                        ${planilla.ensamblado ? '<div class="text-xs text-orange-600 font-medium">' + planilla.ensamblado + '</div>' : ''}
+                                                    </td>
+                                                    <td class="px-3 py-2">
+                                                        <span class="px-2 py-1 text-xs font-medium rounded-full bg-gray-100 text-gray-800">
+                                                            ${planilla.maquina_codigo}
+                                                        </span>
+                                                    </td>
+                                                    <td class="px-3 py-2 text-red-600 font-medium">${planilla.fin_programado}</td>
+                                                    <td class="px-3 py-2">
+                                                        <span class="px-2 py-1 text-xs font-bold rounded-full bg-red-100 text-red-800">
+                                                            +${planilla.dias_retraso} días
+                                                        </span>
+                                                    </td>
+                                                </tr>
+                                            `;
+                                        });
+
+                                        fechasHtml += `
+                                            <div class="border-t border-green-100">
+                                                <div class="bg-green-50 px-4 py-2 flex items-center gap-2">
+                                                    <svg class="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                                                    </svg>
+                                                    <span class="text-sm font-medium text-green-800">Entrega: ${fecha.fecha_entrega}</span>
+                                                    <span class="text-xs text-green-600">(${fecha.planillas.length} planilla${fecha.planillas.length > 1 ? 's' : ''})</span>
+                                                </div>
+                                                <table class="min-w-full text-sm">
+                                                    <thead class="bg-gray-50">
+                                                        <tr>
+                                                            <th class="px-3 py-1.5 text-left text-xs font-medium text-gray-500 uppercase">Planilla / Sección - Descripción</th>
+                                                            <th class="px-3 py-1.5 text-left text-xs font-medium text-gray-500 uppercase">Máquina</th>
+                                                            <th class="px-3 py-1.5 text-left text-xs font-medium text-gray-500 uppercase">Fin Prog.</th>
+                                                            <th class="px-3 py-1.5 text-left text-xs font-medium text-gray-500 uppercase">Retraso</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody class="divide-y divide-gray-100">
+                                                        ${planillasHtml}
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        `;
+                                    });
+
+                                    obrasHtml += `
+                                        <div class="border-t border-gray-100">
+                                            <div class="bg-blue-50 px-4 py-2 flex items-center gap-2">
+                                                <span class="px-2 py-0.5 text-xs font-bold rounded bg-blue-200 text-blue-800">${obra.obra_codigo || '-'}</span>
+                                                <span class="text-sm font-medium text-blue-800">${obra.obra_nombre}</span>
+                                                <span class="text-xs text-blue-600">(${obra.fechas.length} fecha${obra.fechas.length > 1 ? 's' : ''}, ${planillasObra} planilla${planillasObra > 1 ? 's' : ''})</span>
+                                            </div>
+                                            ${fechasHtml}
+                                        </div>
+                                    `;
+                                });
+
+                                clienteDiv.innerHTML = `
+                                    <div class="bg-indigo-600 text-white px-4 py-2 flex items-center gap-3 cursor-pointer hover:bg-indigo-700 transition-colors"
+                                         onclick="toggleClienteResumen('${clienteId}')">
+                                        <svg id="${clienteId}-icon" class="w-5 h-5 transform transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                                        </svg>
+                                        <span class="px-2 py-0.5 text-xs font-bold rounded bg-indigo-400">${cliente.cliente_codigo || '-'}</span>
+                                        <span class="font-semibold">${cliente.cliente_nombre}</span>
+                                        <span class="text-indigo-200 text-sm">(${cliente.obras.length} obra${cliente.obras.length > 1 ? 's' : ''}, ${totalPlanillas} planilla${totalPlanillas > 1 ? 's' : ''})</span>
+                                    </div>
+                                    <div id="${clienteId}-content" class="hidden">
+                                        ${obrasHtml}
+                                    </div>
+                                `;
+
+                                contenedorClientes.appendChild(clienteDiv);
+                            });
+                        } else {
+                            contenedorClientes.classList.add('hidden');
+                            sinRetraso.classList.remove('hidden');
+                        }
+
+                        // Llenar tabla de máquinas
+                        const tablaMaquinas = document.getElementById('tablaMaquinas');
+                        tablaMaquinas.innerHTML = '';
+
+                        data.maquinas.forEach(maquina => {
+                            const row = document.createElement('tr');
+                            row.innerHTML = `
+                                <td class="px-3 py-2 font-medium text-gray-900">${maquina.codigo}</td>
+                                <td class="px-3 py-2">
+                                    <span class="px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-800 capitalize">
+                                        ${maquina.tipo || '-'}
+                                    </span>
+                                </td>
+                                <td class="px-3 py-2 text-gray-600">${maquina.planillas_en_cola}</td>
+                                <td class="px-3 py-2 font-medium text-gray-900">${maquina.kilos_formateado}</td>
+                                <td class="px-3 py-2 text-gray-600">${maquina.tiempo_formateado}</td>
+                            `;
+                            tablaMaquinas.appendChild(row);
+                        });
+
+                        // Mostrar contenido
+                        loading.classList.add('hidden');
+                        content.classList.remove('hidden');
+                    } else {
+                        throw new Error(data.message || 'Error desconocido');
+                    }
+
+                } catch (error) {
+                    console.error('Error al obtener resumen:', error);
+                    loading.innerHTML = `
+                        <div class="text-red-500">
+                            <svg class="w-12 h-12 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg>
+                            <p>Error al cargar el resumen</p>
+                            <p class="text-sm text-gray-500 mt-2">${error.message}</p>
+                        </div>
+                    `;
+                }
+            }
+
+            function cerrarModalResumen() {
+                const modal = document.getElementById('modalResumen');
+                modal.classList.add('hidden');
+                modal.classList.remove('flex');
+            }
+
+            function toggleClienteResumen(clienteId) {
+                const content = document.getElementById(`${clienteId}-content`);
+                const icon = document.getElementById(`${clienteId}-icon`);
+
+                if (content.classList.contains('hidden')) {
+                    content.classList.remove('hidden');
+                    icon.classList.add('rotate-90');
+                } else {
+                    content.classList.add('hidden');
+                    icon.classList.remove('rotate-90');
                 }
             }
 

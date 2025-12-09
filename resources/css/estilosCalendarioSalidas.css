@@ -88,116 +88,53 @@
 /* 🔹 Eventos filtrados destacados */
 .fc .fc-event.evento-filtrado {
     position: relative;
-    isolation: isolate; /* nuevo stacking context */
     z-index: 900 !important;
-
-    /* Gradiente elegante de fondo */
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+    background: #1f2937 !important;
+    background-color: #1f2937 !important;
+    border-color: #111827 !important;
     color: white !important;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    transition: all 0.2s ease;
+}
 
-    /* Sombra elegante con múltiples capas */
-    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4),
-        0 2px 8px rgba(118, 75, 162, 0.3), 0 0 0 2px rgba(255, 255, 255, 0.8),
-        0 0 0 4px rgba(102, 126, 234, 0.5);
+/* Forzar fondo negro en todos los elementos internos */
+.fc .fc-event.evento-filtrado .fc-event-main,
+.fc .fc-event.evento-filtrado .fc-event-main-frame,
+.fc .fc-event.evento-filtrado .fc-daygrid-event-dot,
+.fc .fc-event.evento-filtrado .fc-event-title,
+.fc .fc-event.evento-filtrado .fc-event-time {
+    background: #1f2937 !important;
+    background-color: #1f2937 !important;
+    color: white !important;
+}
 
-    /* Sin transformación inicial - la animación se encarga */
-    transform: scale(1);
+/* Para eventos en timeline/timegrid */
+.fc .fc-timegrid-event.evento-filtrado,
+.fc .fc-timegrid-event.evento-filtrado .fc-event-main {
+    background: #1f2937 !important;
+    background-color: #1f2937 !important;
+}
 
-    /* Transición suave */
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-
-    /* Bordes redondeados */
-    border-radius: 6px !important;
-
-    /* Animación de pulso exagerado más rápida */
-    animation: pulso-elegante 1.5s ease-in-out infinite;
+/* Para eventos en daygrid (vista mensual) */
+.fc .fc-daygrid-event.evento-filtrado,
+.fc .fc-daygrid-event.evento-filtrado .fc-event-main {
+    background: #1f2937 !important;
+    background-color: #1f2937 !important;
 }
 
 /* 🔹 Efecto hover para eventos filtrados */
-.fc .fc-event.evento-filtrado:hover {
-    /* Gradiente más intenso en hover */
-    background: linear-gradient(135deg, #5a67d8 0%, #6b46c1 100%) !important;
-
-    /* Sombra más pronunciada */
-    box-shadow: 0 15px 40px rgba(102, 126, 234, 0.8),
-        0 8px 25px rgba(118, 75, 162, 0.6), 0 0 0 4px rgba(255, 255, 255, 1),
-        0 0 0 10px rgba(102, 126, 234, 0.8);
-
-    /* Escala mucho mayor en hover */
-    transform: scale(1.2);
-
-    /* Pausa la animación en hover */
-    animation-play-state: paused;
+.fc .fc-event.evento-filtrado:hover,
+.fc .fc-event.evento-filtrado:hover .fc-event-main {
+    background: #111827 !important;
+    background-color: #111827 !important;
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
+    transform: scale(1.02);
 }
 
-/* 🔹 Evita que se recorten bordes/sombras */
-.fc .fc-timegrid-event,
-.fc .fc-daygrid-event {
-    overflow: visible;
-}
-
-.fc .fc-event .fc-event-main {
-    position: relative;
-    z-index: 2;
-}
-
-/* 🔹 Animación de pulso exagerado */
-@keyframes pulso-elegante {
-    0% {
-        box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4),
-            0 2px 8px rgba(118, 75, 162, 0.3),
-            0 0 0 2px rgba(255, 255, 255, 0.8),
-            0 0 0 4px rgba(102, 126, 234, 0.5);
-        transform: scale(1);
-    }
-    50% {
-        box-shadow: 0 12px 30px rgba(102, 126, 234, 0.8),
-            0 8px 20px rgba(118, 75, 162, 0.6), 0 0 0 3px rgba(255, 255, 255, 1),
-            0 0 0 8px rgba(102, 126, 234, 0.9);
-        transform: scale(1.15);
-    }
-    100% {
-        box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4),
-            0 2px 8px rgba(118, 75, 162, 0.3),
-            0 0 0 2px rgba(255, 255, 255, 0.8),
-            0 0 0 4px rgba(102, 126, 234, 0.5);
-        transform: scale(1);
-    }
-}
-
-/* 🔹 Brillo sutil con pseudo-elemento */
-.fc .fc-event.evento-filtrado::before {
-    content: "";
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: linear-gradient(
-        135deg,
-        rgba(255, 255, 255, 0.2) 0%,
-        rgba(255, 255, 255, 0.1) 50%,
-        rgba(255, 255, 255, 0.05) 100%
-    );
-    border-radius: inherit;
-    pointer-events: none;
-    z-index: 1;
-}
-
-/* 🔹 Contenido del evento por encima del brillo */
-.fc .fc-event.evento-filtrado .fc-event-main,
-.fc .fc-event.evento-filtrado .fc-event-title,
-.fc .fc-event.evento-filtrado .fc-event-time {
-    position: relative;
-    z-index: 2;
-    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
-    font-weight: 600;
-}
-
-/* 🔹 Mejora la legibilidad de todo el contenido del evento filtrado */
+/* 🔹 Texto blanco en eventos filtrados */
+.fc .fc-event.evento-filtrado,
 .fc .fc-event.evento-filtrado * {
     color: white !important;
-    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
 }
 
 /* 🔹 Estilos para los checkboxes de filtro de tipo */
@@ -356,34 +293,14 @@
     padding: 2px !important;
 }
 
-/* 🔹 Reducir ancho de columnas de fin de semana en vista mensual (70% del ancho normal) */
-.fc-dayGridMonth-view .fc-day-sat,
-.fc-dayGridMonth-view .fc-day-sun {
-    width: 10% !important;
-    min-width: 100px !important;
-}
-
-/* 🔹 Ajustar también las celdas de encabezado */
-.fc-dayGridMonth-view .fc-col-header-cell.fc-day-sat,
-.fc-dayGridMonth-view .fc-col-header-cell.fc-day-sun {
-    width: 10% !important;
-    min-width: 100px !important;
-}
-
-/* 🔹 Días laborables toman más espacio */
-.fc-dayGridMonth-view .fc-day:not(.fc-day-sat):not(.fc-day-sun) {
-    width: 16% !important;
-}
-
-.fc-dayGridMonth-view .fc-col-header-cell:not(.fc-day-sat):not(.fc-day-sun) {
-    width: 16% !important;
-}
+/* 🔹 Ancho de columnas de fin de semana controlado dinámicamente por JS */
+/* Ver sección "COLAPSO DE FIN DE SEMANA EN VISTA MENSUAL" más abajo */
 
 /* 🔹 Hacer que todos los eventos ocupen todo el ancho de la celda en vista mensual */
 /* FORZAR ancho completo ignorando completamente el sistema de FullCalendar */
-/* Excluir eventos de resumen para no afectarlos */
-.fc-dayGridMonth-view .fc-daygrid-event-harness:not(:has(.evento-resumen-diario)) {
-    position: static !important;
+/* Excluir eventos de resumen y eventos que se están arrastrando */
+.fc-dayGridMonth-view .fc-daygrid-event-harness:not(:has(.evento-resumen-diario)):not(.fc-event-dragging):not(.fc-daygrid-event-harness-abs) {
+    position: relative !important;
     inset: unset !important;
     left: unset !important;
     right: unset !important;
@@ -394,13 +311,13 @@
     float: none !important;
 }
 
-.fc-dayGridMonth-view .fc-daygrid-event-harness:not(:has(.evento-resumen-diario)):before,
-.fc-dayGridMonth-view .fc-daygrid-event-harness:not(:has(.evento-resumen-diario)):after {
+.fc-dayGridMonth-view .fc-daygrid-event-harness:not(:has(.evento-resumen-diario)):not(.fc-event-dragging):before,
+.fc-dayGridMonth-view .fc-daygrid-event-harness:not(:has(.evento-resumen-diario)):not(.fc-event-dragging):after {
     content: none !important;
 }
 
-.fc-dayGridMonth-view .fc-daygrid-event:not(.evento-resumen-diario) {
-    position: static !important;
+.fc-dayGridMonth-view .fc-daygrid-event:not(.evento-resumen-diario):not(.fc-event-dragging):not(.fc-event-mirror) {
+    position: relative !important;
     width: 100% !important;
     max-width: 100% !important;
     margin: 0 !important;
@@ -437,4 +354,237 @@
 .fc-dayGridMonth-view .fc-daygrid-day-top {
     padding-left: 2px !important;
     padding-right: 2px !important;
+}
+
+/* 🔹 Limitar el ancho del evento mientras se arrastra (TODAS las vistas) */
+.fc-event-mirror,
+.fc .fc-event-mirror,
+.fc-event.fc-event-mirror,
+.fc-timegrid-event.fc-event-mirror,
+.fc-daygrid-event.fc-event-mirror,
+div.fc-event-mirror {
+    width: 150px !important;
+    max-width: 150px !important;
+    min-width: 150px !important;
+    height: 80px !important;
+    max-height: 80px !important;
+    overflow: hidden !important;
+    position: fixed !important;
+    z-index: 99999 !important;
+    opacity: 0.9 !important;
+    pointer-events: none !important;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3) !important;
+    border: 2px dashed white !important;
+    border-radius: 6px !important;
+}
+
+/* Ocultar el contenido interno que pueda expandirse */
+.fc-event-mirror > *,
+.fc-event-mirror .fc-event-main {
+    width: 150px !important;
+    max-width: 150px !important;
+    overflow: hidden !important;
+}
+
+.fc-event-dragging,
+.fc .fc-event-dragging {
+    opacity: 0.4 !important;
+}
+
+/* 🔹 También para el harness del evento mientras se arrastra */
+.fc-daygrid-event-harness-abs,
+.fc .fc-daygrid-event-harness-abs {
+    width: 150px !important;
+    max-width: 150px !important;
+    min-width: 150px !important;
+    position: fixed !important;
+    z-index: 99999 !important;
+}
+
+/* 🔹 Asegurar que los eventos normales sean arrastrables */
+.fc-event:not(.evento-resumen-diario):not(.fc-event-festivo) {
+    cursor: grab;
+}
+
+.fc-event:not(.evento-resumen-diario):not(.fc-event-festivo):active {
+    cursor: grabbing;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   🔹 COLAPSO DE FIN DE SEMANA EN VISTA SEMANAL (TIMELINE)
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* Columnas de fin de semana colapsadas */
+.fc-timeline .weekend-collapsed {
+    width: 40px !important;
+    min-width: 40px !important;
+    max-width: 40px !important;
+    overflow: hidden !important;
+    transition: all 0.3s ease;
+    background-color: #f8f9fa !important;
+}
+
+/* Ocultar contenido de celdas colapsadas */
+.fc-timeline .weekend-collapsed .fc-timeline-event,
+.fc-timeline .weekend-collapsed .fc-event {
+    display: none !important;
+}
+
+/* Estilo para encabezados de fin de semana clicables */
+.weekend-header {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 4px 6px;
+    border-radius: 4px;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+    cursor: pointer;
+    background-color: #e5e7eb;
+    font-size: 12px;
+}
+
+.weekend-header:hover {
+    background-color: #d1d5db;
+    transform: scale(1.02);
+}
+
+/* Icono de colapso */
+.weekend-header .collapse-icon {
+    font-size: 9px;
+    color: #4b5563;
+    transition: transform 0.2s ease;
+}
+
+/* Efecto visual cuando está colapsado */
+.weekend-header[data-collapsed="true"] {
+    background-color: #9ca3af;
+    color: white;
+    padding: 4px 8px;
+}
+
+.weekend-header[data-collapsed="true"] .collapse-icon {
+    color: white;
+}
+
+.weekend-header[data-collapsed="true"] .weekend-label {
+    font-size: 10px;
+    font-weight: 500;
+}
+
+/* Efecto visual cuando está expandido */
+.weekend-header[data-collapsed="false"] {
+    background-color: #dbeafe;
+    color: #1e40af;
+}
+
+.weekend-header[data-collapsed="false"] .collapse-icon {
+    color: #1e40af;
+}
+
+/* Transición suave para las columnas */
+.fc-timeline-slot[data-date] {
+    transition: all 0.3s ease;
+}
+
+/* Celdas de lanes también colapsadas */
+.fc-timeline-lane td.weekend-collapsed {
+    width: 40px !important;
+    min-width: 40px !important;
+    max-width: 40px !important;
+    overflow: hidden !important;
+    background-color: #f8f9fa !important;
+}
+
+/* Fondo sutil para identificar columnas de fin de semana */
+.fc-timeline .fc-timeline-slot.fc-day-sat,
+.fc-timeline .fc-timeline-slot.fc-day-sun {
+    background-color: #fafafa;
+}
+
+/* Header de slot colapsado centrado */
+.fc-timeline .weekend-collapsed .fc-timeline-slot-cushion {
+    justify-content: center;
+    padding: 0 !important;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   🔹 COLAPSO DE FIN DE SEMANA EN VISTA MENSUAL (DAYGRID)
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* Columnas de fin de semana colapsadas en vista mensual - celdas de días */
+.fc-dayGridMonth-view td.weekend-day-collapsed {
+    width: 40px !important;
+    min-width: 40px !important;
+    max-width: 40px !important;
+    transition: all 0.3s ease;
+    background-color: #f3f4f6 !important;
+    cursor: pointer;
+}
+
+/* Ocultar eventos en columnas colapsadas */
+.fc-dayGridMonth-view .weekend-day-collapsed .fc-daygrid-day-events {
+    display: none !important;
+}
+
+/* Número del día más pequeño en columnas colapsadas */
+.fc-dayGridMonth-view .weekend-day-collapsed .fc-daygrid-day-top {
+    font-size: 10px !important;
+    padding: 2px !important;
+    text-align: center !important;
+}
+
+.fc-dayGridMonth-view .weekend-day-collapsed .fc-daygrid-day-number {
+    padding: 2px !important;
+}
+
+/* Encabezado de columna colapsada (th) */
+.fc-dayGridMonth-view th.weekend-day-collapsed {
+    width: 40px !important;
+    min-width: 40px !important;
+    max-width: 40px !important;
+    background-color: #9ca3af !important;
+    transition: all 0.3s ease;
+}
+
+.fc-dayGridMonth-view th.weekend-day-collapsed .fc-col-header-cell-cushion {
+    font-size: 10px !important;
+    padding: 4px 2px !important;
+    color: white !important;
+}
+
+/* Cursor pointer para indicar que es clicable en fines de semana */
+.fc-dayGridMonth-view .fc-col-header-cell.fc-day-sat,
+.fc-dayGridMonth-view .fc-col-header-cell.fc-day-sun,
+.fc-dayGridMonth-view .fc-daygrid-day.fc-day-sat,
+.fc-dayGridMonth-view .fc-daygrid-day.fc-day-sun {
+    cursor: pointer;
+}
+
+.fc-dayGridMonth-view .fc-col-header-cell.fc-day-sat:hover,
+.fc-dayGridMonth-view .fc-col-header-cell.fc-day-sun:hover {
+    background-color: #d1d5db !important;
+}
+
+.fc-dayGridMonth-view th.weekend-day-collapsed:hover {
+    background-color: #6b7280 !important;
+}
+
+/* Transición suave para todas las columnas de fin de semana */
+.fc-dayGridMonth-view .fc-day-sat,
+.fc-dayGridMonth-view .fc-day-sun {
+    transition: all 0.3s ease;
+}
+
+/* Indicador visual de que se puede expandir */
+.fc-dayGridMonth-view th.weekend-day-collapsed::after {
+    content: " ▶";
+    font-size: 8px;
+}
+
+.fc-dayGridMonth-view th.fc-day-sat:not(.weekend-day-collapsed)::after,
+.fc-dayGridMonth-view th.fc-day-sun:not(.weekend-day-collapsed)::after {
+    content: " ▼";
+    font-size: 8px;
+    color: #6b7280;
 }

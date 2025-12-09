@@ -282,4 +282,19 @@ class User extends Authenticatable
     {
         return $this->hasMany(Pedido::class, 'updated_by');
     }
+
+    public function coladasCreadas()
+    {
+        return $this->hasMany(PedidoProductoColada::class, 'user_id');
+    }
+
+    public function fcmTokens()
+    {
+        return $this->hasMany(UserFcmToken::class);
+    }
+
+    public function activeFcmTokens()
+    {
+        return $this->fcmTokens()->active();
+    }
 }

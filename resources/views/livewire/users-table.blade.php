@@ -1,4 +1,4 @@
-<div class="max-md:hidden">
+<div class="max-md:hidden" x-data="{ editandoUserId: null }">
     <style>
         [x-cloak] {
             display: none !important;
@@ -338,6 +338,68 @@
     <x-tabla.paginacion-livewire :paginador="$registrosUsuarios" />
 
     <script>
+        function confirmarGenerarTurnos(userId, obras) {
+            let usuarioTurno = document.getElementById("usuario_turno_" + userId).value;
+
+            // Generar HTML del select con las obras
+            let opcionesObra = obras.map(
+                (obra) => `<option value="${obra.id}">${obra.obra}</option>`
+            ).join("");
+
+            let selectHtml = `
+                <label for="select-obra">Selecciona la obra asignada:</label>
+                <select id="select-obra" class="swal2-select" style="margin-top: 1em;">
+                    ${opcionesObra}
+                </select>
+            `;
+
+            Swal.fire({
+                title: "¿Estás seguro?",
+                html: `
+                    <p class="mb-2">Esta accion generara turnos hasta final de año y reemplazara los actuales (excepto vacaciones y festivos).</p>
+                    ${selectHtml}
+                `,
+                icon: "warning",
+                showCancelButton: true,
+                confirmButtonText: "Si, continuar",
+                cancelButtonText: "Cancelar",
+                confirmButtonColor: "#3085d6",
+                cancelButtonColor: "#d33",
+                preConfirm: () => {
+                    const obraId = document.getElementById("select-obra").value;
+                    if (!obraId) {
+                        Swal.showValidationMessage("Debes seleccionar una obra");
+                    }
+                    return obraId;
+                }
+            }).then((respuestaConfirmacion) => {
+                if (!respuestaConfirmacion.isConfirmed) return;
+
+                const obraId = respuestaConfirmacion.value;
+                document.getElementById("obra_id_input_" + userId).value = obraId;
+
+                if (usuarioTurno === "diurno") {
+                    Swal.fire({
+                        title: "Selecciona el turno inicial",
+                        text: "¿Con que turno quieres comenzar para el turno diurno?",
+                        icon: "question",
+                        showCancelButton: true,
+                        confirmButtonText: "Mañana",
+                        cancelButtonText: "Tarde",
+                        confirmButtonColor: "#3085d6",
+                        cancelButtonColor: "#d33"
+                    }).then((result) => {
+                        document.getElementById("turno_inicio_" + userId).value =
+                            result.isConfirmed ? "mañana" : "tarde";
+
+                        document.getElementById("form-generar-turnos-" + userId).submit();
+                    });
+                } else {
+                    document.getElementById("form-generar-turnos-" + userId).submit();
+                }
+            });
+        }
+
         function guardarCambios(usuario) {
             fetch(`/users/${usuario.id}`, {
                     method: 'PUT',
@@ -356,12 +418,10 @@
                         numero_corto: usuario.numero_corto,
                         dni: usuario.dni,
                         empresa_id: usuario.empresa_id,
-                        departamento_id: usuario.departamento_id,
-                        rol_id: usuario.rol_id,
-                        grupo_trabajo_id: usuario.grupo_trabajo_id,
-                        tipo_trabajador: usuario.tipo_trabajador,
-                        hora_entrada: usuario.hora_entrada,
-                        hora_salida: usuario.hora_salida
+                        rol: usuario.rol,
+                        categoria_id: usuario.categoria_id,
+                        maquina_id: usuario.maquina_id,
+                        turno: usuario.turno
                     })
                 })
                 .then(async (response) => {

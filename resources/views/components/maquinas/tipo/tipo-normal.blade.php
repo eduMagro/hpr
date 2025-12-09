@@ -5,7 +5,7 @@
 </style>
 
 <div x-data="{
-    showLeft: JSON.parse(localStorage.getItem('showLeft') ?? 'false'),
+    showLeft: JSON.parse(localStorage.getItem('showLeft') ?? 'true'),
     showRight: JSON.parse(localStorage.getItem('showRight') ?? 'true'),
 
     toggleLeft() {
@@ -30,7 +30,7 @@
 
     init() {
         window.addEventListener('toggleLeft', () => {
-            this.showLeft = JSON.parse(localStorage.getItem('showLeft') ?? 'false');
+            this.showLeft = JSON.parse(localStorage.getItem('showLeft') ?? 'true');
         });
         window.addEventListener('solo', () => {
             this.showLeft = false;
@@ -38,6 +38,14 @@
         });
         window.addEventListener('toggleRight', () => {
             this.showRight = JSON.parse(localStorage.getItem('showRight') ?? 'true');
+        });
+
+        // 🔥 Aplicar clases CSS inmediatamente después de que Alpine inicialice
+        this.$nextTick(() => {
+            if (window.updateGridClasses) {
+                window.updateGridClasses(this.showLeft, this.showRight);
+                console.log('✅ Clases aplicadas desde Alpine init:', this.showLeft, this.showRight);
+            }
         });
     }
 }" class="w-full">
@@ -361,6 +369,11 @@
                 $c = collect($els)->pluck('diametro')->filter()->map(fn($d) => (int) $d);
                 return (int) $c->countBy()->sortDesc()->keys()->first();
             }));
+        window.LONGITUD_POR_ETIQUETA = @json(
+            $elementosAgrupados->map(function ($els) {
+                // Obtener la longitud máxima de los elementos (en cm)
+                return (float) collect($els)->pluck('longitud')->filter()->max();
+            }));
 
         @if ($esBarra)
             window.LONGITUDES_POR_DIAMETRO = @json($longitudesPorDiametro);
@@ -500,3 +513,6 @@
         });
     });
 </script>
+
+{{-- Panel de información del elemento --}}
+<x-maquinas.paneles.info />

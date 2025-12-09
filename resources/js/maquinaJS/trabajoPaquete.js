@@ -13,6 +13,7 @@
 
     let items = [];
     let isInitialized = false;
+    let lastFocusedInput = null; // Trackear el último input de etiqueta que tuvo focus
 
     // ============================================================================
     // VALIDACIÓN DE ETIQUETAS VIA QR
@@ -164,10 +165,23 @@
             document.getElementById("ubicacion-id")?.value || window.ubicacionId
         );
 
-        if (!maquinaId || !ubicacionId) {
+        // Detectar si es máquina tipo grúa
+        const esGrua = (window.MAQUINA_TIPO_NOMBRE || "").toLowerCase() === "grua";
+
+        // Para grúa: no requerimos ubicacionId, se asignará después en el mapa
+        if (!maquinaId) {
             await Swal.fire(
                 "Faltan datos",
-                "Debe especificarse la máquina y la ubicación.",
+                "Debe especificarse la máquina.",
+                "error"
+            );
+            return;
+        }
+
+        if (!esGrua && !ubicacionId) {
+            await Swal.fire(
+                "Faltan datos",
+                "Debe especificarse la ubicación.",
                 "error"
             );
             return;
@@ -176,7 +190,8 @@
         const payload = {
             items: items.map((i) => ({ id: i.id, type: i.type })),
             maquina_id: maquinaId,
-            ubicacion_id: ubicacionId,
+            ubicacion_id: esGrua ? null : ubicacionId, // Para grúa: null, se asigna después
+            sin_ubicacion: esGrua, // Flag para indicar que se ubicará después
         };
 
         const confirmarCreacion = async (extra = {}) => {
@@ -246,14 +261,57 @@
         const peso = calcularPesoTotal();
         const etiquetas = [...items.map((i) => i.id)];
 
-        await Swal.fire({
-            icon: "success",
-            title: "Paquete creado",
-            html: `<p><strong>${codigo}</strong> creado correctamente</p><p>${etiquetas.length
-                } etiquetas · ${peso.toFixed(2)} kg</p>`,
-        });
+        // Detectar si es máquina tipo grúa
+        const esGrua = (window.MAQUINA_TIPO_NOMBRE || "").toLowerCase() === "grua";
 
-        limpiarCarro();
+        if (esGrua) {
+            // Para grúa: mostrar mensaje breve y abrir modal del mapa para ubicar
+            await Swal.fire({
+                icon: "success",
+                title: "Paquete creado",
+                html: `<p><strong>${codigo}</strong> creado correctamente</p>
+                       <p>${etiquetas.length} etiquetas · ${peso.toFixed(2)} kg</p>
+                       <p class="mt-2 text-blue-600 font-semibold">Ahora selecciona dónde ubicar el paquete...</p>`,
+                timer: 2000,
+                showConfirmButton: false,
+            });
+
+            limpiarCarro();
+
+            // Abrir modal del mapa para ubicar el paquete
+            if (typeof abrirModalMoverPaquete === 'function') {
+                abrirModalMoverPaquete();
+
+                // Pre-rellenar el código del paquete y saltar al mapa
+                setTimeout(async () => {
+                    const inputCodigo = document.getElementById('codigo_paquete_mover');
+                    if (inputCodigo) {
+                        inputCodigo.value = codigo;
+
+                        if (typeof buscarPaqueteParaMover === 'function') {
+                            await buscarPaqueteParaMover();
+
+                            // Saltar directamente al paso del mapa
+                            setTimeout(() => {
+                                if (typeof mostrarPasoMapa === 'function') {
+                                    mostrarPasoMapa();
+                                }
+                            }, 300);
+                        }
+                    }
+                }, 100);
+            }
+        } else {
+            // Flujo normal para otras máquinas
+            await Swal.fire({
+                icon: "success",
+                title: "Paquete creado",
+                html: `<p><strong>${codigo}</strong> creado correctamente</p><p>${etiquetas.length
+                    } etiquetas · ${peso.toFixed(2)} kg</p>`,
+            });
+
+            limpiarCarro();
+        }
 
         // ⭐ DISPARAR EVENTO
         console.log(`📦 Disparando evento paquete:creado para ${codigo}`);
@@ -428,6 +486,14 @@
             btnCrear.addEventListener("click", crearPaquete);
         }
 
+        // 🎯 Trackear focus en inputs de añadir etiqueta en gestión de paquetes
+        document.addEventListener("focus", function (e) {
+            if (e.target.id && e.target.id.startsWith('input-etiqueta-')) {
+                lastFocusedInput = e.target;
+                console.log("🎯 Focus en input:", e.target.id);
+            }
+        }, true); // Usar captura para asegurar que se ejecute
+
         // Event listener para botones de agregar al carro
         document.addEventListener("click", async function (e) {
             if (
@@ -452,12 +518,20 @@
                 const estaEnCrear = tabCrearActivo && window.getComputedStyle(tabCrearActivo).display !== 'none';
                 const estaEnGestion = tabGestionActivo && window.getComputedStyle(tabGestionActivo).display !== 'none';
 
-                // ✅ MODO GESTIÓN: Añadir al input de escanear etiqueta del primer paquete visible
+                // ✅ MODO GESTIÓN: Añadir al input de escanear etiqueta con focus activo
                 if (estaEnGestion) {
                     console.log("📦 Modo Gestión: Añadiendo al input de añadir etiqueta");
 
-                    // Buscar el primer input visible de añadir etiqueta en paquetes expandidos
-                    const inputEtiqueta = document.querySelector('input[id^="input-etiqueta-"]');
+                    // 🔍 Prioridad 1: Input que actualmente tiene focus
+                    let inputEtiqueta = document.activeElement;
+                    if (!inputEtiqueta || !inputEtiqueta.id?.startsWith('input-etiqueta-')) {
+                        // 🔍 Prioridad 2: Último input que tuvo focus
+                        inputEtiqueta = lastFocusedInput;
+                    }
+                    if (!inputEtiqueta || !document.body.contains(inputEtiqueta)) {
+                        // 🔍 Prioridad 3: Primer input visible (fallback)
+                        inputEtiqueta = document.querySelector('input[id^="input-etiqueta-"]');
+                    }
 
                     if (inputEtiqueta) {
                         inputEtiqueta.value = etiquetaId;
@@ -469,7 +543,7 @@
                             inputEtiqueta.classList.remove('ring-4', 'ring-green-400');
                         }, 1000);
 
-                        console.log(`✅ Etiqueta ${etiquetaId} añadida al input de gestión`);
+                        console.log(`✅ Etiqueta ${etiquetaId} añadida al input:`, inputEtiqueta.id);
                     } else {
                         await Swal.fire({
                             icon: "info",

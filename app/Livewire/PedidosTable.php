@@ -2,7 +2,7 @@
 
 namespace App\Livewire;
 
-use App\Models\Pedido;
+use App\Models\PedidoProducto;
 use App\Models\PedidoGlobal;
 use App\Models\Fabricante;
 use App\Models\Distribuidor;
@@ -106,19 +106,19 @@ class PedidosTable extends Component
             $filtros[] = "<strong>Pedido Producto ID:</strong> {$this->pedido_producto_id}";
         }
         if (!empty($this->codigo)) {
-            $filtros[] = "<strong>Código:</strong> {$this->codigo}";
+            $filtros[] = "<strong>Código Pedido:</strong> {$this->codigo}";
         }
         if (!empty($this->pedido_global_id)) {
             $filtros[] = "<strong>Pedido Global:</strong> {$this->pedido_global_id}";
         }
         if (!empty($this->fabricante_id)) {
-            $filtros[] = "<strong>Fabricante ID:</strong> {$this->fabricante_id}";
+            $filtros[] = "<strong>Fabricante:</strong> {$this->fabricante_id}";
         }
         if (!empty($this->distribuidor_id)) {
-            $filtros[] = "<strong>Distribuidor ID:</strong> {$this->distribuidor_id}";
+            $filtros[] = "<strong>Distribuidor:</strong> {$this->distribuidor_id}";
         }
         if (!empty($this->obra_id)) {
-            $filtros[] = "<strong>Obra ID:</strong> {$this->obra_id}";
+            $filtros[] = "<strong>Obra:</strong> {$this->obra_id}";
         }
         if (!empty($this->producto_tipo)) {
             $filtros[] = "<strong>Tipo Producto:</strong> {$this->producto_tipo}";
@@ -148,23 +148,19 @@ class PedidosTable extends Component
         if (!empty($this->codigo_linea)) {
             $busqueda = trim($this->codigo_linea);
 
-            // Búsqueda exacta si empieza con "="
             if (str_starts_with($busqueda, '=')) {
                 $busqueda = ltrim($busqueda, '=');
-                $query->whereHas('lineas', function ($q) use ($busqueda) {
-                    $q->where('codigo', $busqueda);
-                });
+                $query->where('pedido_productos.codigo', $busqueda);
             } else {
-                // Búsqueda flexible
-                $query->whereHas('lineas', function ($q) use ($busqueda) {
-                    $q->where('codigo', 'like', '%' . $busqueda . '%');
-                });
+                $query->where('pedido_productos.codigo', 'like', '%' . $busqueda . '%');
             }
         }
 
-        // Código
+        // Código del pedido
         if (!empty($this->codigo)) {
-            $query->where('codigo', 'like', '%' . trim($this->codigo) . '%');
+            $query->whereHas('pedido', function ($q) {
+                $q->where('codigo', 'like', '%' . trim($this->codigo) . '%');
+            });
         }
 
         // ID de línea (pedido_productos.id)
@@ -179,66 +175,70 @@ class PedidosTable extends Component
             });
         }
 
-        // Pedido Global
+        // Pedido Global de la línea
         if (!empty($this->pedido_global_id)) {
-            $query->where('pedido_global_id', $this->pedido_global_id);
+            $query->where('pedido_productos.pedido_global_id', $this->pedido_global_id);
         }
 
-        // Fabricante
+        // Fabricante (desde pedido)
         if (!empty($this->fabricante_id)) {
-            $query->where('fabricante_id', $this->fabricante_id);
+            $query->whereHas('pedido', function ($q) {
+                $q->where('fabricante_id', $this->fabricante_id);
+            });
         }
 
-        // Distribuidor
+        // Distribuidor (desde pedido)
         if (!empty($this->distribuidor_id)) {
-            $query->where('distribuidor_id', $this->distribuidor_id);
+            $query->whereHas('pedido', function ($q) {
+                $q->where('distribuidor_id', $this->distribuidor_id);
+            });
         }
 
-        // Obra (desde líneas)
+        // Obra
         if (!empty($this->obra_id)) {
-            $query->whereHas('lineas', function ($q) {
-                $q->where('obra_id', $this->obra_id);
-            });
+            $query->where('pedido_productos.obra_id', $this->obra_id);
         }
 
-        // Producto Base (tipo, diámetro, longitud) - desde líneas -> productoBase
+        // Producto tipo
         if (!empty($this->producto_tipo)) {
-            $query->whereHas('lineas', function ($q) {
-                $q->whereHas('productoBase', function ($pb) {
-                    $pb->where('tipo', 'like', '%' . trim($this->producto_tipo) . '%');
-                });
+            $tipo = trim($this->producto_tipo);
+            $query->whereHas('productoBase', function ($pb) use ($tipo) {
+                $pb->where('tipo', 'like', '%' . $tipo . '%');
             });
         }
 
+        // Producto diámetro
         if (!empty($this->producto_diametro)) {
-            $query->whereHas('lineas', function ($q) {
-                $q->whereHas('productoBase', function ($pb) {
-                    $pb->where('diametro', 'like', '%' . trim($this->producto_diametro) . '%');
-                });
+            $diametro = trim($this->producto_diametro);
+            $query->whereHas('productoBase', function ($pb) use ($diametro) {
+                $pb->where('diametro', (int) $diametro);
             });
         }
 
+        // Producto longitud
         if (!empty($this->producto_longitud)) {
-            $query->whereHas('lineas', function ($q) {
-                $q->whereHas('productoBase', function ($pb) {
-                    $pb->where('longitud', 'like', '%' . trim($this->producto_longitud) . '%');
-                });
+            $longitud = trim($this->producto_longitud);
+            $query->whereHas('productoBase', function ($pb) use ($longitud) {
+                $pb->where('longitud', (int) $longitud);
             });
         }
 
-        // Fecha Pedido
+        // Fecha Pedido (desde pedido)
         if (!empty($this->fecha_pedido)) {
-            $query->whereDate('fecha_pedido', Carbon::parse($this->fecha_pedido)->format('Y-m-d'));
+            $query->whereHas('pedido', function ($q) {
+                $q->whereDate('fecha_pedido', Carbon::parse($this->fecha_pedido)->format('Y-m-d'));
+            });
         }
 
-        // Fecha Entrega
+        // Fecha Entrega de la línea
         if (!empty($this->fecha_entrega)) {
-            $query->whereDate('fecha_entrega', Carbon::parse($this->fecha_entrega)->format('Y-m-d'));
+            $fechaEntrega = Carbon::parse($this->fecha_entrega)->format('Y-m-d');
+            $query->whereDate('fecha_estimada_entrega', $fechaEntrega);
         }
 
-        // Estado
+        // Estado de la línea
         if (!empty($this->estado)) {
-            $query->where('estado', $this->estado);
+            $query->where('pedido_productos.estado', $this->estado);
         }
 
         return $query;
@@ -246,28 +246,40 @@ class PedidosTable extends Component
 
     public function render()
     {
-        $query = Pedido::with([
+        // Consultar directamente las líneas de pedido
+        $query = PedidoProducto::with([
+            'pedido.pedidoGlobal',
+            'pedido.fabricante',
+            'pedido.distribuidor',
+            'pedido.createdBy',
+            'obra.cliente',
             'pedidoGlobal',
-            'fabricante',
-            'distribuidor',
-            'lineas.obra',
-            'lineas.pedidoGlobal',
-            'createdBy'
+            'productoBase',
         ]);
 
         $query = $this->aplicarFiltros($query);
 
         // Aplicar ordenamiento
         $columnasPermitidas = [
-            'codigo', 'fecha_pedido', 'fecha_entrega', 'estado', 'created_at'
+            'codigo', 'fecha_estimada_entrega', 'estado', 'created_at'
         ];
 
         $sortBy = in_array($this->sort, $columnasPermitidas) ? $this->sort : 'created_at';
         $orderDir = strtolower($this->order) === 'asc' ? 'asc' : 'desc';
 
-        $query->orderBy($sortBy, $orderDir);
+        // Para ordenar por campos del pedido padre
+        if ($this->sort === 'fecha_pedido') {
+            $query->join('pedidos', 'pedido_productos.pedido_id', '=', 'pedidos.id')
+                  ->orderBy('pedidos.fecha_pedido', $orderDir)
+                  ->select('pedido_productos.*');
+        } else {
+            $query->orderBy($sortBy, $orderDir);
+        }
 
-        $pedidos = $query->paginate($this->perPage);
+        $lineas = $query->paginate($this->perPage);
+
+        // Agrupar líneas por pedido_id para la vista
+        $lineasAgrupadas = $lineas->getCollection()->groupBy('pedido_id');
 
         // Cargar datos para selects
         $pedidosGlobales = PedidoGlobal::select('id', 'codigo')->get();
@@ -285,7 +297,8 @@ class PedidosTable extends Component
         $productosBase = \App\Models\ProductoBase::all();
 
         return view('livewire.pedidos-table', [
-            'pedidos' => $pedidos,
+            'lineas' => $lineas,
+            'lineasAgrupadas' => $lineasAgrupadas,
             'pedidosGlobales' => $pedidosGlobales,
             'fabricantes' => $fabricantes,
             'distribuidores' => $distribuidores,

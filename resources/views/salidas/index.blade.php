@@ -3,10 +3,9 @@
 
     <div class="w-full p-4 sm:p-4" data-salidas-index>
 
-        {{-- Si el usuario es de oficina, mostramos la tabla completa --}}
+        {{-- Si el usuario es de oficina, mostramos la tabla con filtros Livewire --}}
         {{-- Si el usuario es operario, mostramos un listado simplificado con opción de completar --}}
         {{-- y escanear paquetes --}}
-        {{-- Si el usuario no es ninguno de los dos, mostramos un mensaje de error --}}
         @if (auth()->user()->rol == 'oficina')
             {{-- Verificamos que existan salidas --}}
             @if ($salidas->count())

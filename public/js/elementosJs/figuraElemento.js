@@ -592,8 +592,22 @@ document.addEventListener("DOMContentLoaded", function () {
             console.log("🔄 Detectado canvas, reemplazando por div contenedor");
 
             // Obtener dimensiones del canvas ANTES de reemplazarlo
-            ancho = contenedor.width || parseInt(contenedor.style.width) || 240;
-            alto = contenedor.height || parseInt(contenedor.style.height) || 120;
+            const canvasHeight = contenedor.getAttribute('height');
+            alto = canvasHeight ? parseInt(canvasHeight) : (contenedor.height || 80);
+
+            // Obtener el ancho del contenedor padre para no excederlo
+            const padre = contenedor.parentNode;
+            const padreRect = padre ? padre.getBoundingClientRect() : null;
+
+            // Usar el ancho del padre si está disponible, sino un valor seguro
+            if (padreRect && padreRect.width > 0) {
+                ancho = Math.floor(padreRect.width) - 4; // -4 para padding/border
+            } else {
+                // Fallback: usar un ancho que quepa en el panel (320px - padding)
+                ancho = 260;
+            }
+
+            console.log("📐 Dimensiones calculadas:", { ancho, alto });
 
             // Obtener estilos computados del canvas
             const computedStyles = window.getComputedStyle(contenedor);
@@ -601,9 +615,10 @@ document.addEventListener("DOMContentLoaded", function () {
             const div = document.createElement("div");
             div.id = containerId;
 
-            // Aplicar estilos copiados del CSS .elemento-drag canvas
-            div.style.width = "100%"; // Igual que el canvas original
-            div.style.height = computedStyles.height || alto + "px";
+            // Aplicar estilos - usar 100% del ancho disponible
+            div.style.width = "100%";
+            div.style.maxWidth = ancho + "px";
+            div.style.height = alto + "px";
             div.style.display = "block";
             div.style.margin = "0";
             div.style.padding = "0";
@@ -618,11 +633,6 @@ document.addEventListener("DOMContentLoaded", function () {
 
             contenedor.parentNode.replaceChild(div, contenedor);
             contenedor = div;
-
-            // Obtener dimensiones reales después del reemplazo
-            const rect = div.getBoundingClientRect();
-            ancho = rect.width || ancho;
-            alto = rect.height || alto;
         } else {
             // Si no es canvas, obtener dimensiones del contenedor
             const rect = contenedor.getBoundingClientRect();
@@ -765,10 +775,10 @@ document.addEventListener("DOMContentLoaded", function () {
             console.log("✅ Path dibujado correctamente con grosor:", lineWidth);
 
             // Añadir acotaciones solo si el contenedor es suficientemente grande
-            console.log("🔍 Verificando acotaciones:", { ancho, alto, cumpleCondicion: (ancho > 150 && alto > 80) });
-            if (ancho > 150 && alto > 80) {
+            console.log("🔍 Verificando acotaciones:", { ancho, alto, cumpleCondicion: (ancho >= 120 && alto >= 80) });
+            if (ancho >= 120 && alto >= 80) {
                 console.log("✅ Dibujando acotaciones...");
-                const fontSize = ancho < 300 ? 8 : 10;
+                const fontSize = ancho < 200 ? 9 : (ancho < 300 ? 10 : 12);
 
                 // Calcular puntos transformados para las acotaciones usando la medida ajustada
                 function transformPoint(px, py) {
@@ -864,54 +874,75 @@ document.addEventListener("DOMContentLoaded", function () {
             );
         }
 
-        // Mostrar información en la esquina superior izquierda
+        // Mostrar información del elemento
         console.log('📝 Información a mostrar:', { peso, diametro, barras, ancho, alto });
 
-        // Siempre mostrar si hay información disponible
-        const infoSize = ancho < 300 ? 10 : 12;
-        const infoMarginX = 15;
-        let infoMarginY = 25;
-        const lineHeight = infoSize + 8;
+        // Determinar si mostrar formato compacto (panel lateral) o expandido (modal)
+        const esCompacto = ancho < 350;
+        const infoSize = esCompacto ? 9 : 12;
 
-        // Mostrar peso
-        if (peso) {
-            agregarTexto(
-                svg,
-                infoMarginX,
-                infoMarginY,
-                `Peso: ${peso} kg`,
-                "#333333",
-                infoSize,
-                "start"
-            );
-            infoMarginY += lineHeight;
-        }
+        if (esCompacto) {
+            // Formato compacto: una línea en la parte inferior
+            const infoParts = [];
+            if (diametro) infoParts.push(`Ø${diametro}`);
+            if (peso) infoParts.push(`${peso}kg`);
+            if (barras) infoParts.push(`${barras}b`);
 
-        // Mostrar diámetro
-        if (diametro) {
-            agregarTexto(
-                svg,
-                infoMarginX,
-                infoMarginY,
-                `Ø: ${diametro} mm`,
-                "#333333",
-                infoSize,
-                "start"
-            );
-            infoMarginY += lineHeight;
-        }
+            if (infoParts.length > 0) {
+                const infoText = infoParts.join(' · ');
+                agregarTexto(
+                    svg,
+                    ancho / 2,
+                    alto - 8,
+                    infoText,
+                    "#666666",
+                    infoSize,
+                    "middle"
+                );
+            }
+        } else {
+            // Formato expandido: múltiples líneas en la esquina superior izquierda
+            const infoMarginX = 15;
+            let infoMarginY = 25;
+            const lineHeight = infoSize + 8;
 
-        // Mostrar barras
-        if (barras) {
-            agregarTexto(
-                svg,
-                infoMarginX,
-                infoMarginY,
-                `Barras: ${barras}`,
-                "#333333",
-                infoSize,
-                "start"
-            );
+            if (peso) {
+                agregarTexto(
+                    svg,
+                    infoMarginX,
+                    infoMarginY,
+                    `Peso: ${peso} kg`,
+                    "#333333",
+                    infoSize,
+                    "start"
+                );
+                infoMarginY += lineHeight;
+            }
+
+            if (diametro) {
+                agregarTexto(
+                    svg,
+                    infoMarginX,
+                    infoMarginY,
+                    `Ø: ${diametro} mm`,
+                    "#333333",
+                    infoSize,
+                    "start"
+                );
+                infoMarginY += lineHeight;
+            }
+
+            if (barras) {
+                agregarTexto(
+                    svg,
+                    infoMarginX,
+                    infoMarginY,
+                    `Barras: ${barras}`,
+                    "#333333",
+                    infoSize,
+                    "start"
+                );
+            }
         }
 
         // Limpiar el contenedor y agregar el SVG

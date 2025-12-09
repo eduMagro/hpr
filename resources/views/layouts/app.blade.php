@@ -5,6 +5,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
+    <meta name="base-url" content="{{ url('') }}">
     <meta name="google" content="notranslate">
 
 
@@ -22,7 +23,8 @@
     <link rel="apple-touch-icon" sizes="180x180" href="{{ asset('imagenes/ico/apple-touch-icon.png') }}">
     <link rel="icon" type="image/png" sizes="192x192" href="{{ asset('imagenes/ico/android-chrome-192x192.png') }}">
     <link rel="icon" type="image/png" sizes="512x512" href="{{ asset('imagenes/ico/android-chrome-512x512.png') }}">
-    <meta name="theme-color" content="#ffffff">
+    <link rel="manifest" href="{{ asset('manifest.webmanifest') }}">
+    <meta name="theme-color" content="#111827">
 
     <!-- ✅ Vite Assets - Cache busting automático -->
     @vite(['resources/css/app.css', 'resources/js/app.js', 'resources/css/styles.css', 'resources/css/etiquetas-responsive.css'])
@@ -31,7 +33,7 @@
 
     <!-- ✅ Librerías que no bloquean renderizado - Versionadas para evitar problemas de caché -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" defer></script>
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.14.5/dist/sweetalert2.all.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.14.5/dist/sweetalert2.all.min.js" defer></script>
     <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js" defer></script>
 
     <!-- ✅ FullCalendar (solo si es necesario en esta vista) -->
@@ -112,10 +114,53 @@
                 transform: translateX(100%);
             }
         }
+
+        .navigation-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(2px);
+            z-index: 9999;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s ease;
+        }
+
+        .navigation-overlay.active {
+            opacity: 1;
+            pointer-events: all;
+        }
+
+        .navigation-spinner {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 40px;
+            height: 40px;
+            border: 3px solid #e5e7eb;
+            border-top-color: #3b82f6;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            to {
+                transform: translate(-50%, -50%) rotate(360deg);
+            }
+        }
     </style>
 </head>
 
-<body class="font-sans antialiased transition-colors duration-200">
+<body class="font-sans antialiased transition-colors duration-200" @auth data-user-id="{{ auth()->id() }}" @endauth>
+    <!-- Overlay de navegación -->
+    <div id="navigation-overlay" class="navigation-overlay">
+        <div class="navigation-spinner"></div>
+    </div>
+
     <div class="flex h-screen bg-gray-100 dark:bg-gray-900 overflow-hidden">
         <!-- Sidebar Menu Enhanced -->
         <x-sidebar-menu-enhanced />
@@ -127,6 +172,11 @@
 
             <!-- Alerts -->
             @include('layouts.alerts')
+
+            <!-- Prompt para notificaciones push -->
+            @auth
+                <x-notification-prompt />
+            @endauth
 
             <!-- Page Content -->
             <main class="flex-1 overflow-y-auto bg-neutral-100 dark:bg-gray-900 transition-colors">
@@ -161,6 +211,9 @@
 
     @stack('scripts')
 
+    <!-- Firebase Cloud Messaging -->
+    <script src="{{ asset('js/firebase-push.js') }}" defer></script>
+
     <script data-navigate-once>
         // Desactiva wire:navigate en enlaces para evitar navegaciones SPA con errores de fetch
         function disableWireNavigate() {
@@ -173,7 +226,6 @@
         document.addEventListener('livewire:navigated', disableWireNavigate);
     </script>
 
-    <!-- Dark Mode Support Script -->
     <script data-navigate-once>
         // Aplicar dark mode desde localStorage al cargar
         if (localStorage.getItem('dark_mode') === 'true') {
@@ -191,6 +243,7 @@
         class CustomSPA {
             constructor() {
                 this.progressBar = this.createProgressBar();
+                this.overlay = document.getElementById('navigation-overlay');
                 this.isNavigating = false;
                 this.executedScripts = new Set();
                 this.collectExistingScripts();
@@ -210,6 +263,7 @@
                 this.progressBar.style.display = 'block';
                 this.progressBar.style.width = '0%';
                 setTimeout(() => this.progressBar.style.width = '70%', 50);
+                this.overlay?.classList.add('active');
             }
 
             hideProgress() {
@@ -218,10 +272,10 @@
                     this.progressBar.style.display = 'none';
                     this.progressBar.style.width = '0%';
                 }, 300);
+                this.overlay?.classList.remove('active');
             }
 
             init() {
-                // Interceptar clicks en links con data-spa-link
                 document.addEventListener('click', (e) => {
                     const link = e.target.closest('a[data-spa-link]');
                     if (link && !this.isNavigating) {
@@ -230,22 +284,15 @@
                     }
                 });
 
-                // Manejar botones back/forward del navegador
                 window.addEventListener('popstate', (e) => {
-                    // Solo navegar si es nuestra navegación SPA
                     if (e.state && e.state.spa && !this.isNavigating) {
                         this.navigate(window.location.href, false);
                     }
                 });
 
-                // Prevenir que Livewire intente trackear URLs demasiado
                 document.addEventListener('livewire:init', () => {
                     if (typeof Livewire !== 'undefined' && Livewire.hook) {
-                        // Deshabilitar el tracking de URL de Livewire para evitar conflictos
-                        Livewire.hook('url.changed', () => {
-                            // No hacer nada - dejamos que nuestro SPA maneje la URL
-                            return false;
-                        });
+                        Livewire.hook('url.changed', () => false);
                     }
                 });
             }
@@ -255,7 +302,6 @@
                     console.log('⏸️ Navegación ya en curso, ignorando...');
                     return;
                 }
-
                 console.log('🚀 Iniciando SPA navigation a:', url);
                 this.isNavigating = true;
                 this.showProgress();
@@ -265,8 +311,8 @@
                     const response = await fetch(url, {
                         headers: {
                             'X-Requested-With': 'XMLHttpRequest',
-                            'Accept': 'text/html'
-                        }
+                            Accept: 'text/html',
+                        },
                     });
 
                     if (!response.ok) {
@@ -278,28 +324,17 @@
                     const html = await response.text();
                     const parser = new DOMParser();
                     const doc = parser.parseFromString(html, 'text/html');
-
-                    // Reemplazar solo el contenido principal
                     const newMain = doc.querySelector('main');
                     const currentMain = document.querySelector('main');
-                    // Capturar scripts de la nueva vista antes de hacer morph
                     const newScripts = newMain ? Array.from(newMain.querySelectorAll('script')) : [];
 
-                    if (!newMain) {
-                        console.error('❌ No se encontró <main> en la nueva página');
-                        window.location.href = url;
-                        return;
-                    }
-
-                    if (!currentMain) {
-                        console.error('❌ No se encontró <main> en la página actual');
+                    if (!newMain || !currentMain) {
+                        console.error('❌ No se encontró <main> en la página nueva o la actual');
                         window.location.href = url;
                         return;
                     }
 
                     console.log('🔄 Reemplazando contenido...');
-
-                    // Reemplazar contenido usando morphing de Alpine
                     if (typeof Alpine !== 'undefined' && Alpine.morph) {
                         console.log('✨ Usando Alpine.morph');
                         Alpine.morph(currentMain, newMain);
@@ -308,25 +343,14 @@
                         currentMain.innerHTML = newMain.innerHTML;
                     }
 
-                    // Ejecutar scripts de la vista para que Alpine tenga sus factories disponibles
                     this.executeScripts(newScripts);
-
-                    // Actualizar título
                     document.title = doc.title;
+                    window.scrollTo({ top: 0, behavior: 'instant' });
 
-                    // Scroll to top
-                    window.scrollTo({
-                        top: 0,
-                        behavior: 'instant'
-                    });
-
-                    // Actualizar URL después de un delay para evitar conflictos con Livewire
                     if (pushState) {
                         setTimeout(() => {
                             console.log('🔗 Actualizando URL a:', url);
-                            window.history.pushState({
-                                spa: true
-                            }, '', url);
+                            window.history.pushState({ spa: true }, '', url);
                         }, 100);
                     }
 
@@ -334,7 +358,6 @@
                 } catch (error) {
                     console.error('❌ SPA navigation error:', error);
                     console.log('🔄 Fallback a navegación normal');
-                    // Fallback a navegación normal
                     window.location.href = url;
                 } finally {
                     this.hideProgress();
@@ -345,27 +368,22 @@
             executeScripts(scripts) {
                 scripts.forEach((oldScript) => {
                     if (oldScript.hasAttribute('data-navigate-once')) return;
-
                     const forceReload = oldScript.hasAttribute('data-navigate-reload');
                     const signature = this.getScriptSignature(oldScript);
                     if (!forceReload && this.executedScripts.has(signature)) return;
 
                     const script = document.createElement('script');
-                    // Copiar atributos (src, type, etc)
-                    for (const {
-                            name,
-                            value
-                        }
-                        of Array.from(oldScript.attributes)) {
+                    Array.from(oldScript.attributes).forEach(({ name, value }) => {
                         script.setAttribute(name, value);
-                    }
-                    // Copiar contenido inline
+                    });
+
                     if (oldScript.textContent) {
                         script.textContent = oldScript.textContent;
                     }
+
                     document.body.appendChild(script);
-                    // Remover para evitar duplicados en el DOM
                     script.remove();
+
                     if (!forceReload) {
                         this.executedScripts.add(signature);
                     }
@@ -385,11 +403,88 @@
             }
         }
 
-        // Inicializar SPA solo después de que todo esté cargado
         if (document.readyState === 'loading') {
             document.addEventListener('DOMContentLoaded', () => new CustomSPA());
         } else {
             new CustomSPA();
+        }
+
+        const navigationOverlay = document.getElementById('navigation-overlay');
+        let navigationTimeout = null;
+
+        document.addEventListener('livewire:navigating', () => {
+            navigationTimeout = setTimeout(() => {
+                navigationOverlay?.classList.add('active');
+            }, 100);
+        });
+
+        document.addEventListener('livewire:navigated', () => {
+            if (navigationTimeout) {
+                clearTimeout(navigationTimeout);
+                navigationTimeout = null;
+            }
+            navigationOverlay?.classList.remove('active');
+        });
+
+        document.addEventListener('livewire:navigate-failed', () => {
+            console.error('Navegación fallida');
+            navigationOverlay?.classList.remove('active');
+            if (navigationTimeout) {
+                clearTimeout(navigationTimeout);
+                navigationTimeout = null;
+            }
+        });
+
+        const calendarioEl = document.getElementById('calendario');
+        if (calendarioEl && calendarioEl.dataset.calendarType === 'maquinas') {
+            setTimeout(() => {
+                if (window.calendar) {
+                    try {
+                        window.calendar.destroy();
+                        window.calendar = null;
+                    } catch (e) {
+                        console.warn('Error al destruir calendario anterior:', e);
+                    }
+                }
+
+                const scripts = [
+                    'https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js',
+                    'https://cdn.jsdelivr.net/npm/fullcalendar-scheduler@6.1.8/index.global.min.js',
+                    'https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/locales-all.global.min.js',
+                ];
+
+                function cargarScriptSecuencial(index, callback) {
+                    if (index >= scripts.length) {
+                        if (callback) callback();
+                        return;
+                    }
+                    const script = document.createElement('script');
+                    script.src = scripts[index];
+                    script.onload = () => cargarScriptSecuencial(index + 1, callback);
+                    document.head.appendChild(script);
+                }
+
+                function esperarYCargar(intentos = 0) {
+                    if (typeof window.inicializarCalendarioMaquinas === 'function') {
+                        if (typeof FullCalendar === 'undefined') {
+                            console.log('📅 Cargando FullCalendar dinámicamente...');
+                            cargarScriptSecuencial(0, () => {
+                                console.log('✅ FullCalendar cargado, inicializando calendario...');
+                                window.inicializarCalendarioMaquinas();
+                            });
+                        } else {
+                            console.log('📅 FullCalendar ya disponible, reinicializando calendario...');
+                            window.inicializarCalendarioMaquinas();
+                        }
+                    } else if (intentos < 20) {
+                        setTimeout(() => esperarYCargar(intentos + 1), 50);
+                    } else {
+                        console.error('❌ No se encontró la función inicializarCalendarioMaquinas');
+                    }
+                }
+
+                esperarYCargar();
+            }, 100);
         }
     </script>
 </body>

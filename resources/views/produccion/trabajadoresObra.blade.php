@@ -68,11 +68,48 @@
 
         <!-- Calendario -->
         <div class="w-full bg-white">
-            <div class="flex justify-end my-4">
-                <button id="btnRepetirSemana"
-                    class=" bg-yellow-500 hover:bg-yellow-600 text-white font-bold m-4 py-2 px-4 rounded">
-                    🔁 Repetir semana anterior
-                </button>
+            <div class="flex flex-wrap items-center justify-between gap-4 my-4 px-4">
+                {{-- Panel de eventos seleccionados --}}
+                <div id="panelEventosSeleccionados" class="flex items-center gap-2 bg-blue-50 border border-blue-200 rounded px-3 py-2" style="display: none;">
+                    <span class="text-sm text-blue-800">
+                        <strong id="contadorEventos">0</strong> eventos seleccionados
+                    </span>
+                    <select id="selectObraMover" class="border border-gray-300 rounded px-2 py-1 text-sm focus:ring focus:ring-blue-300">
+                        <option value="">-- Mover a obra --</option>
+                    </select>
+                    <button id="btnMoverEventos"
+                        class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-1 px-3 rounded text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                        disabled>
+                        📦 Mover
+                    </button>
+                    <button id="btnDeseleccionarTodos"
+                        class="bg-gray-500 hover:bg-gray-600 text-white font-bold py-1 px-3 rounded text-sm">
+                        ✖ Limpiar
+                    </button>
+                </div>
+
+                <div class="flex flex-wrap items-center gap-4">
+                    {{-- Repetir obra específica --}}
+                    <div class="flex items-center gap-2">
+                        <select id="selectObraRepetir" class="border border-gray-300 rounded px-3 py-2 text-sm focus:ring focus:ring-yellow-300">
+                            <option value="">-- Seleccionar obra --</option>
+                        </select>
+                        <button id="btnRepetirObraEspecifica"
+                            class="bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-2 px-4 rounded disabled:opacity-50 disabled:cursor-not-allowed"
+                            disabled>
+                            🔁 Repetir obra
+                        </button>
+                    </div>
+
+                    {{-- Separador --}}
+                    <div class="h-8 w-px bg-gray-300"></div>
+
+                    {{-- Repetir todas --}}
+                    <button id="btnRepetirSemana"
+                        class="bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-2 px-4 rounded">
+                        🔁 Repetir todas las obras
+                    </button>
+                </div>
             </div>
             <div id="calendario-obras" class="w-full"></div>
         </div>
@@ -209,6 +246,135 @@
 
         // Guardar resources globalmente para que esté disponible en reinicializaciones
         window.obrasResources = window.obrasResources || @json($resources);
+
+        // Map para almacenar eventos seleccionados
+        window.eventosSeleccionados = window.eventosSeleccionados || new Map();
+
+        /**
+         * Actualiza el panel de eventos seleccionados
+         */
+        function actualizarPanelEventosSeleccionados() {
+            const panel = document.getElementById('panelEventosSeleccionados');
+            const contador = document.getElementById('contadorEventos');
+            const btnMover = document.getElementById('btnMoverEventos');
+            const selectObra = document.getElementById('selectObraMover');
+
+            const cantidad = window.eventosSeleccionados.size;
+            contador.textContent = cantidad;
+
+            if (cantidad > 0) {
+                panel.style.display = 'flex';
+                btnMover.disabled = !selectObra.value;
+            } else {
+                panel.style.display = 'none';
+            }
+        }
+
+        /**
+         * Deselecciona todos los eventos
+         */
+        function deseleccionarTodosEventos() {
+            window.eventosSeleccionados.forEach((data, eventId) => {
+                const evento = window.calendarioObras.getEventById(eventId);
+                if (evento) {
+                    evento.setExtendedProp('seleccionado', false);
+                }
+            });
+            window.eventosSeleccionados.clear();
+
+            // Quitar clase visual de todos los eventos
+            document.querySelectorAll('.evento-seleccionado').forEach(el => {
+                el.classList.remove('evento-seleccionado');
+            });
+
+            actualizarPanelEventosSeleccionados();
+        }
+
+        /**
+         * Poblar el select de obras para mover
+         */
+        function poblarSelectObrasMover() {
+            const select = document.getElementById('selectObraMover');
+            if (!select || !window.obrasResources) return;
+
+            select.innerHTML = '<option value="">-- Mover a obra --</option>';
+
+            window.obrasResources.forEach(resource => {
+                if (resource.id !== 'sin-obra') {
+                    const option = document.createElement('option');
+                    option.value = resource.id;
+                    option.textContent = resource.codigo ? `${resource.codigo} - ${resource.title}` : resource.title;
+                    select.appendChild(option);
+                }
+            });
+        }
+
+        /**
+         * Mover eventos seleccionados a otra obra
+         */
+        function moverEventosAObra() {
+            const selectObra = document.getElementById('selectObraMover');
+            const obraId = selectObra.value;
+
+            if (!obraId) {
+                Swal.fire('⚠️', 'Selecciona una obra destino', 'warning');
+                return;
+            }
+
+            if (window.eventosSeleccionados.size === 0) {
+                Swal.fire('⚠️', 'No hay eventos seleccionados', 'warning');
+                return;
+            }
+
+            const ids = Array.from(window.eventosSeleccionados.keys());
+            const obraTexto = selectObra.options[selectObra.selectedIndex].text;
+
+            Swal.fire({
+                title: '¿Mover eventos?',
+                text: `Se moverán ${ids.length} evento(s) a "${obraTexto}"`,
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonText: 'Sí, mover',
+                cancelButtonText: 'Cancelar'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    fetch('{{ route('asignaciones-turnos.moverEventos') }}', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                        },
+                        body: JSON.stringify({
+                            asignacion_ids: ids,
+                            obra_id: obraId
+                        })
+                    })
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.success) {
+                            Swal.fire({
+                                icon: 'success',
+                                title: '✅ Eventos movidos',
+                                text: data.message,
+                                timer: 2000,
+                                showConfirmButton: false
+                            });
+
+                            // Limpiar selección y recargar eventos
+                            deseleccionarTodosEventos();
+                            window.calendarioObras.refetchEvents();
+                            setTimeout(() => actualizarEstadoFichasTrabajadores(), 200);
+                        } else {
+                            Swal.fire('❌ Error', data.message, 'error');
+                        }
+                    })
+                    .catch(error => {
+                        console.error(error);
+                        Swal.fire('❌ Error', 'No se pudieron mover los eventos.', 'error');
+                    });
+                }
+            });
+        }
 
         /**
          * Actualiza el estado de las fichas de trabajadores según sus asignaciones en la semana actual
@@ -433,7 +599,6 @@
                     const seleccionados = [...document.querySelectorAll('.fc-event.seleccionado')];
 
                     if (seleccionados.length === 0) {
-                        Swal.fire('❌ Debes seleccionar primero uno o más trabajadores.');
                         return;
                     }
 
@@ -485,11 +650,21 @@
                     method: 'GET',
                     failure: function() {
                         Swal.fire('Error al cargar eventos');
+                    },
+                    success: function(events) {
+                        console.log('[EVENTOS RECIBIDOS]', events);
+                        console.log('[TOTAL EVENTOS]', events.length);
+                        console.log('[RESOURCES DISPONIBLES]', window.obrasResources);
+                        return events;
                     }
                 },
                 eventSourceSuccess: function(content, xhr) {
                     // Se ejecuta después de cargar TODOS los eventos
                     setTimeout(() => actualizarEstadoFichasTrabajadores(), 300);
+
+                    // Limpiar eventos seleccionados al recargar
+                    window.eventosSeleccionados.clear();
+                    actualizarPanelEventosSeleccionados();
                 },
                 eventClick(info) {
                     // Si es click en botón eliminar, no hacer nada aquí
@@ -504,21 +679,28 @@
                         info.jsEvent.preventDefault();
                     }
 
-                    const userId = info.event.extendedProps?.user_id;
+                    // Toggle selección del evento
+                    const eventId = info.event.id;
+                    const eventEl = info.el;
 
-                    // Validación estricta del userId
-                    if (!userId || userId === 'undefined' || userId === 'null' || userId === null) {
-                        console.warn('[EVENT CLICK] No se puede navegar: user_id inválido o vacío', {
-                            userId: userId,
-                            extendedProps: info.event.extendedProps,
-                            eventId: info.event.id
+                    if (window.eventosSeleccionados.has(eventId)) {
+                        // Deseleccionar
+                        window.eventosSeleccionados.delete(eventId);
+                        eventEl.classList.remove('evento-seleccionado');
+                        info.event.setExtendedProp('seleccionado', false);
+                    } else {
+                        // Seleccionar
+                        window.eventosSeleccionados.set(eventId, {
+                            id: eventId,
+                            title: info.event.title,
+                            fecha: info.event.startStr,
+                            user_id: info.event.extendedProps?.user_id
                         });
-                        return;
+                        eventEl.classList.add('evento-seleccionado');
+                        info.event.setExtendedProp('seleccionado', true);
                     }
 
-                    const url = "{{ route('users.show', ':id') }}".replace(':id', userId);
-                    console.log('[EVENT CLICK] Navegando a:', url);
-                    window.location.href = url;
+                    actualizarPanelEventosSeleccionados();
                 },
                 eventReceive(info) {
                     // Evitar que FullCalendar agregue el evento automáticamente
@@ -706,11 +888,68 @@
                     }
                 },
                 eventDrop(info) {
-                    const asignacionId = info.event.id.replace('turno-', '');
-                    const nuevaObraId = info.event.getResources()[0]?.id ?? null; // por si viene undefined
-                    const nuevaFecha = info.event.startStr.split('T')[0];
+                    const eventoArrastrado = info.event;
+                    const nuevaObraId = eventoArrastrado.getResources()[0]?.id ?? null;
+                    const nuevaFecha = eventoArrastrado.startStr.split('T')[0];
+                    const eventoId = eventoArrastrado.id;
 
-                    console.log('📦 Drop asignación:', {
+                    // Verificar si el evento arrastrado está seleccionado
+                    const estaSeleccionado = window.eventosSeleccionados.has(eventoId);
+                    const hayMultiplesSeleccionados = window.eventosSeleccionados.size > 1;
+
+                    // Si hay múltiples eventos seleccionados y el arrastrado es uno de ellos
+                    if (estaSeleccionado && hayMultiplesSeleccionados) {
+                        const ids = Array.from(window.eventosSeleccionados.keys());
+
+                        console.log('📦 Drop múltiple - Moviendo', ids.length, 'eventos a obra:', nuevaObraId);
+
+                        // Mover todos los eventos seleccionados a la nueva obra (manteniendo sus fechas)
+                        fetch('{{ route('asignaciones-turnos.moverEventos') }}', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                            },
+                            body: JSON.stringify({
+                                asignacion_ids: ids,
+                                obra_id: nuevaObraId
+                            })
+                        })
+                        .then(res => res.json())
+                        .then(data => {
+                            if (data.success) {
+                                Swal.fire({
+                                    icon: 'success',
+                                    title: '✅ Eventos movidos',
+                                    text: `Se movieron ${data.actualizados} eventos`,
+                                    toast: true,
+                                    position: 'top-end',
+                                    timer: 2000,
+                                    showConfirmButton: false
+                                });
+
+                                // Limpiar selección y recargar eventos
+                                deseleccionarTodosEventos();
+                                window.calendarioObras.refetchEvents();
+                                setTimeout(() => actualizarEstadoFichasTrabajadores(), 200);
+                            } else {
+                                info.revert();
+                                Swal.fire('❌ Error', data.message, 'error');
+                            }
+                        })
+                        .catch(error => {
+                            console.error('❌ Error:', error);
+                            info.revert();
+                            Swal.fire('❌ Error', 'No se pudieron mover los eventos.', 'error');
+                        });
+
+                        return; // Salir, ya procesamos el drop múltiple
+                    }
+
+                    // Drop individual (comportamiento original)
+                    const asignacionId = eventoId.replace('turno-', '');
+
+                    console.log('📦 Drop individual:', {
                         id: asignacionId,
                         obra_id: nuevaObraId,
                         fecha: nuevaFecha
@@ -723,8 +962,7 @@
                                 'X-CSRF-TOKEN': '{{ csrf_token() }}'
                             },
                             body: JSON.stringify({
-                                obra_id: nuevaObraId === '' ? null :
-                                nuevaObraId, // ⚠️ aseguramos que no llegue string vacío
+                                obra_id: nuevaObraId === '' ? null : nuevaObraId,
                                 fecha: nuevaFecha
                             })
                         })
@@ -812,6 +1050,109 @@
             }
         });
 
+        // Poblar el select de obras con los resources (excluyendo 'sin-obra')
+        function poblarSelectObras() {
+            const select = document.getElementById('selectObraRepetir');
+            if (!select || !window.obrasResources) return;
+
+            // Limpiar opciones existentes
+            select.innerHTML = '<option value="">-- Seleccionar obra --</option>';
+
+            // Añadir obras desde los resources
+            window.obrasResources.forEach(resource => {
+                if (resource.id !== 'sin-obra') {
+                    const option = document.createElement('option');
+                    option.value = resource.id;
+                    option.textContent = resource.codigo ? `${resource.codigo} - ${resource.title}` : resource.title;
+                    select.appendChild(option);
+                }
+            });
+        }
+
+        // Llamar después de inicializar el calendario
+        setTimeout(poblarSelectObras, 100);
+        setTimeout(poblarSelectObrasMover, 100);
+
+        // Event listeners para el panel de eventos seleccionados
+        const selectObraMover = document.getElementById('selectObraMover');
+        const btnMoverEventos = document.getElementById('btnMoverEventos');
+        const btnDeseleccionarTodos = document.getElementById('btnDeseleccionarTodos');
+
+        if (selectObraMover) {
+            selectObraMover.addEventListener('change', function() {
+                const btnMover = document.getElementById('btnMoverEventos');
+                btnMover.disabled = !this.value || window.eventosSeleccionados.size === 0;
+            });
+        }
+
+        if (btnMoverEventos) {
+            btnMoverEventos.addEventListener('click', moverEventosAObra);
+        }
+
+        if (btnDeseleccionarTodos) {
+            btnDeseleccionarTodos.addEventListener('click', deseleccionarTodosEventos);
+        }
+
+        // Habilitar/deshabilitar botón según selección
+        const selectObraRepetir = document.getElementById('selectObraRepetir');
+        const btnRepetirObraEspecifica = document.getElementById('btnRepetirObraEspecifica');
+
+        if (selectObraRepetir && btnRepetirObraEspecifica) {
+            selectObraRepetir.addEventListener('change', function() {
+                btnRepetirObraEspecifica.disabled = !this.value;
+            });
+
+            // Botón repetir obra específica
+            btnRepetirObraEspecifica.addEventListener('click', function() {
+                const obraId = selectObraRepetir.value;
+                const obraTexto = selectObraRepetir.options[selectObraRepetir.selectedIndex].text;
+                const fechaInicio = document.getElementById('btnRepetirSemana').dataset.fecha;
+
+                if (!obraId) {
+                    Swal.fire('❌ Error', 'Debes seleccionar una obra', 'error');
+                    return;
+                }
+
+                Swal.fire({
+                    title: '¿Repetir semana anterior?',
+                    text: `Se copiarán las asignaciones de "${obraTexto}" de la semana pasada a la actual.`,
+                    icon: 'question',
+                    showCancelButton: true,
+                    confirmButtonText: 'Sí, repetir',
+                    cancelButtonText: 'Cancelar'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        fetch('{{ route('asignaciones-turnos.repetirSemanaObra') }}', {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                                },
+                                body: JSON.stringify({
+                                    fecha_actual: fechaInicio,
+                                    obra_id: obraId
+                                })
+                            })
+                            .then(res => res.json())
+                            .then(data => {
+                                if (data.success) {
+                                    Swal.fire('✅ Obra copiada correctamente', data.message || '', 'success');
+                                    window.calendarioObras.refetchEvents();
+                                    setTimeout(() => actualizarEstadoFichasTrabajadores(), 200);
+                                } else {
+                                    Swal.fire('❌ Error', data.message, 'error');
+                                }
+                            })
+                            .catch(error => {
+                                console.error(error);
+                                Swal.fire('❌ Error', 'No se pudo completar la solicitud.', 'error');
+                            });
+                    }
+                });
+            });
+        }
+
+        // Botón repetir todas las obras
         const btnRepetirSemana = document.getElementById('btnRepetirSemana');
         if (btnRepetirSemana) {
             btnRepetirSemana.addEventListener('click', function() {
@@ -819,10 +1160,10 @@
 
                 Swal.fire({
                     title: '¿Repetir semana anterior?',
-                    text: 'Se copiarán todas las asignaciones de la semana pasada a la actual.',
+                    text: 'Se copiarán TODAS las asignaciones de la semana pasada a la actual.',
                     icon: 'question',
                     showCancelButton: true,
-                    confirmButtonText: 'Sí, repetir',
+                    confirmButtonText: 'Sí, repetir todas',
                     cancelButtonText: 'Cancelar'
                 }).then((result) => {
                     if (result.isConfirmed) {
@@ -858,10 +1199,176 @@
         }
     </script>
     <style>
+        /* ============================================
+           ESTILOS DEL CALENDARIO (mismo estilo que trabajadores)
+           ============================================ */
+
+        .fc {
+            width: 100% !important;
+            max-width: 100% !important;
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+        }
+
+        /* Header del calendario - mismo color que sidebar */
+        .fc .fc-toolbar {
+            padding: 1rem;
+            background: #111827; /* gray-900 */
+            border-radius: 12px 12px 0 0;
+            margin-bottom: 0 !important;
+        }
+
+        .fc .fc-toolbar-title {
+            color: white !important;
+            font-weight: 700;
+            font-size: 1.25rem;
+            text-transform: capitalize;
+        }
+
+        .fc .fc-button {
+            background: rgba(255, 255, 255, 0.1) !important;
+            border: 1px solid rgba(255, 255, 255, 0.2) !important;
+            color: white !important;
+            font-weight: 500;
+            padding: 0.5rem 1rem;
+            border-radius: 8px !important;
+            transition: all 0.2s ease;
+            text-transform: capitalize;
+        }
+
+        .fc .fc-button:hover {
+            background: rgba(255, 255, 255, 0.2) !important;
+            transform: translateY(-1px);
+        }
+
+        .fc .fc-button-active {
+            background: #3b82f6 !important;
+            color: white !important;
+            border-color: #3b82f6 !important;
+            box-shadow: 0 2px 8px rgba(59, 130, 246, 0.4);
+        }
+
+        .fc .fc-button:disabled {
+            opacity: 0.5;
+        }
+
+        /* Bordes redondeados del contenedor */
+        .fc .fc-view-harness {
+            border-radius: 0 0 12px 12px;
+            overflow: hidden;
+            border: 1px solid #e2e8f0;
+            border-top: none;
+        }
+
+        /* Encabezados de recursos (obras) */
+        .fc .fc-resource-area {
+            background: #f8fafc;
+        }
+
+        .fc .fc-datagrid-cell-frame {
+            padding: 0.5rem;
+        }
+
+        /* Celdas del timeline - vista semana */
+        .fc .fc-timeline-slot {
+            border-color: #e2e8f0 !important;
+        }
+
+        /* Hover solo en la celda individual */
+        .fc .fc-timeline-lane:hover {
+            background-color: rgba(0, 0, 0, 0.02);
+        }
+
+        /* Slot del día actual */
+        .fc .fc-day-today {
+            background: linear-gradient(135deg, #dbeafe 0%, #e0e7ff 100%) !important;
+        }
+
+        /* Eventos */
+        .fc .fc-event {
+            border-radius: 6px;
+            border: none !important;
+            padding: 2px 6px;
+            font-size: 0.75rem;
+            font-weight: 500;
+            margin: 1px 2px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            transition: transform 0.15s ease, box-shadow 0.15s ease;
+        }
+
+        .fc .fc-event:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.15);
+            z-index: 10;
+        }
+
+        /* Labels de slots (días/horas) */
+        .fc .fc-timeline-slot-label {
+            font-weight: 600;
+            color: #475569;
+            text-transform: capitalize;
+            font-size: 0.8rem;
+        }
+
+        /* Scrollbar del calendario */
+        .fc .fc-scroller::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        .fc .fc-scroller::-webkit-scrollbar-track {
+            background: #f1f5f9;
+            border-radius: 4px;
+        }
+
+        .fc .fc-scroller::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+
+        .fc .fc-scroller::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .fc .fc-toolbar {
+                flex-direction: column;
+                gap: 0.75rem;
+                padding: 0.75rem;
+            }
+
+            .fc .fc-toolbar-title {
+                font-size: 1rem;
+            }
+
+            .fc .fc-button {
+                padding: 0.4rem 0.75rem;
+                font-size: 0.8rem;
+            }
+        }
+
+        /* ============================================
+           ESTILOS ESPECÍFICOS DE TRABAJADORES OBRA
+           ============================================ */
+
         .fc-event.seleccionado {
             outline: 3px solid #facc15;
             background-color: #fde68a !important;
             transform: scale(1.05);
+        }
+
+        /* Eventos del calendario seleccionados */
+        .fc-timeline-event.evento-seleccionado,
+        .fc-event.evento-seleccionado {
+            outline: 3px solid #3b82f6 !important;
+            box-shadow: 0 0 10px rgba(59, 130, 246, 0.5) !important;
+            transform: scale(1.02);
+            z-index: 100 !important;
+        }
+
+        .fc-timeline-event.evento-seleccionado .fc-event-main,
+        .fc-event.evento-seleccionado .fc-event-main {
+            background-color: rgba(59, 130, 246, 0.2) !important;
         }
 
         /* Asegurar posición relativa en las fichas */

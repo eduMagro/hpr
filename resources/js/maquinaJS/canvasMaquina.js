@@ -366,6 +366,13 @@ function dirKey(dx, dy, prec) {
 function agruparPorDireccionYEtiquetaRobusto(segsAdj, segsOrig, opt) {
     const dirPrecision = (opt && opt.dirPrecision) || 1e-2;
     const labelFormat = (opt && opt.labelFormat) || { decimals: 0, step: null };
+
+    // Detectar factor de escala comparando longitudes totales
+    const totalAdj = segsAdj.reduce((sum, s) => sum + Math.hypot(s.end.x - s.start.x, s.end.y - s.start.y), 0);
+    const totalOrig = segsOrig.reduce((sum, s) => sum + (s.length || Math.hypot(s.end.x - s.start.x, s.end.y - s.start.y)), 0);
+    const scaleFactor = totalOrig > 0 ? totalAdj / totalOrig : 1;
+
+    // Crear buckets de longitudes originales por dirección
     const buckets = new Map();
     for (let i = 0; i < segsOrig.length; i++) {
         const s = segsOrig[i];
@@ -373,11 +380,17 @@ function agruparPorDireccionYEtiquetaRobusto(segsAdj, segsOrig, opt) {
             dy = s.end.y - s.start.y;
         const key = dirKey(dx, dy, dirPrecision);
         const arr = buckets.get(key) || [];
-        arr.push(s.length || Math.hypot(dx, dy));
+        arr.push({ length: s.length || Math.hypot(dx, dy), index: i });
         buckets.set(key, arr);
     }
+
+    // También crear un mapa indexado para fallback directo
+    const origByIndex = segsOrig.map(s => s.length || Math.hypot(s.end.x - s.start.x, s.end.y - s.start.y));
+
     const seen = new Set();
+    const usedIndices = new Set();
     const res = [];
+
     for (let i = 0; i < segsAdj.length; i++) {
         const s = segsAdj[i];
         const dx = s.end.x - s.start.x,
@@ -386,18 +399,31 @@ function agruparPorDireccionYEtiquetaRobusto(segsAdj, segsOrig, opt) {
         const candidates = buckets.get(key) || [];
         const adjLen = Math.hypot(dx, dy);
         let chosen = adjLen;
+
         if (candidates.length) {
-            let best = candidates[0],
-                bestD = Math.abs(best - adjLen);
-            for (let j = 1; j < candidates.length; j++) {
-                const d = Math.abs(candidates[j] - adjLen);
-                if (d < bestD) {
-                    best = candidates[j];
-                    bestD = d;
+            // Calcular la longitud original esperada (desescalando)
+            const expectedOrig = adjLen / scaleFactor;
+
+            // Buscar la longitud original más cercana a la esperada (no a la escalada)
+            let best = null, bestD = Infinity;
+            for (const c of candidates) {
+                // Preferir índices no usados para mejor correspondencia
+                const d = Math.abs(c.length - expectedOrig);
+                const penalty = usedIndices.has(c.index) ? 0.1 : 0; // Pequeña penalización por reusar
+                if (d + penalty < bestD) {
+                    best = c;
+                    bestD = d + penalty;
                 }
             }
-            chosen = best;
+            if (best) {
+                chosen = best.length;
+                usedIndices.add(best.index);
+            }
+        } else if (i < origByIndex.length) {
+            // Fallback: usar longitud original por índice si no hay match por dirección
+            chosen = origByIndex[i];
         }
+
         const label = formatDimLabel(chosen, labelFormat);
         const k2 = key + "|" + label;
         if (seen.has(k2)) continue;
@@ -1342,7 +1368,7 @@ window.renderizarGrupoSVG = function renderizarGrupoSVG(grupo, gidx) {
                         window.mostrarPanelInfoElemento(elemento.id);
                     return;
                 }
-                abrirModalDividirElemento(elemento.id, etiquetaClick);
+                abrirModalDividirElemento(elemento.id, elemento.barras || 0);
             });
             pathEl.addEventListener("contextmenu", function (e) {
                 e.preventDefault();
@@ -1500,6 +1526,176 @@ window.renderizarGrupoSVG = function renderizarGrupoSVG(grupo, gidx) {
                 txt.addEventListener("focus", onEnter);
                 txt.addEventListener("blur", onLeave);
             });
+
+            // ========== COTAS DE RADIOS (ARCOS) ==========
+            (function drawArcDimensions() {
+                const arcs = [];
+                let x = 0, y = 0, a = 0;
+
+                for (let k = 0; k < dimsScaled.length; k++) {
+                    const d = dimsScaled[k];
+                    if (d.type === "line") {
+                        x += d.length * Math.cos(rad(a));
+                        y += d.length * Math.sin(rad(a));
+                    } else if (d.type === "turn") {
+                        a += d.angle;
+                    } else if (d.type === "arc") {
+                        const cx_arc = x + d.radius * Math.cos(rad(a + 90));
+                        const cy_arc = y + d.radius * Math.sin(rad(a + 90));
+                        const start = Math.atan2(y - cy_arc, x - cx_arc);
+                        const end = start + rad(d.arcAngle);
+
+                        let originalRadius = d.radius;
+                        for (let j = 0; j < dimsNoZero.length; j++) {
+                            const orig = dimsNoZero[j];
+                            if (orig.type === "arc" && Math.abs(orig.arcAngle - d.arcAngle) < 0.01) {
+                                originalRadius = orig.radius;
+                                break;
+                            }
+                        }
+
+                        arcs.push({
+                            center: { x: cx_arc, y: cy_arc },
+                            radius: d.radius,
+                            originalRadius: originalRadius,
+                            arcAngle: d.arcAngle,
+                            startAngle: start,
+                            endAngle: end
+                        });
+
+                        x = cx_arc + d.radius * Math.cos(end);
+                        y = cy_arc + d.radius * Math.sin(end);
+                        a += d.arcAngle;
+                    }
+                }
+
+                arcs.forEach(function(arc) {
+                    // Transform arc center to SVG coordinates
+                    const centerRot = rotatePoint(arc.center, m.cxModel, m.cyModel, m.rotDeg);
+                    const centerSvg = {
+                        x: cx + (centerRot.x - m.midX) * scale,
+                        y: cy + (centerRot.y - m.midY) * scale
+                    };
+
+                    const midAngle = (arc.startAngle + arc.endAngle) / 2;
+                    const radiusSvg = arc.radius * scale;
+                    const label = "R" + formatDimLabel(arc.originalRadius, { decimals: 0, step: null });
+                    const tb = approxTextBox(label, SIZE_DIM_TEXT);
+
+                    // Try multiple angles around the arc
+                    const angleOffsets = [0, 15, -15, 30, -30, 45, -45, 60, -60, 90, -90];
+                    let placed = false;
+                    let labelX, labelY, labelBox;
+
+                    for (let angleIdx = 0; angleIdx < angleOffsets.length && !placed; angleIdx++) {
+                        const angleOffset = angleOffsets[angleIdx];
+                        const adjustedAngle = midAngle + rad(angleOffset);
+
+                        // Calculate point on arc at adjusted angle
+                        const arcPtAdj = {
+                            x: arc.center.x + arc.radius * Math.cos(adjustedAngle),
+                            y: arc.center.y + arc.radius * Math.sin(adjustedAngle)
+                        };
+                        const arcPtRot = rotatePoint(arcPtAdj, m.cxModel, m.cyModel, m.rotDeg);
+                        const arcPtSvg = {
+                            x: cx + (arcPtRot.x - m.midX) * scale,
+                            y: cy + (arcPtRot.y - m.midY) * scale
+                        };
+
+                        // Calculate direction from center to arc point
+                        const dxAdj = arcPtSvg.x - centerSvg.x;
+                        const dyAdj = arcPtSvg.y - centerSvg.y;
+                        const distAdj = Math.hypot(dxAdj, dyAdj) || 1;
+                        const nxAdj = dxAdj / distAdj;
+                        const nyAdj = dyAdj / distAdj;
+
+                        // Try multiple distances from the arc
+                        for (let offset = 8; offset <= 60 && !placed; offset += 6) {
+                            const lineEnd = radiusSvg * 0.7;
+                            labelX = centerSvg.x + nxAdj * lineEnd + nxAdj * offset;
+                            labelY = centerSvg.y + nyAdj * lineEnd + nyAdj * offset;
+                            labelBox = {
+                                left: labelX - tb.w / 2,
+                                right: labelX + tb.w / 2,
+                                top: labelY - tb.h / 2,
+                                bottom: labelY + tb.h / 2
+                            };
+
+                            // Check bounds and collisions
+                            const outOfBounds = labelBox.top < 0 || labelBox.bottom > alto ||
+                                              labelBox.left < 0 || labelBox.right > ancho;
+                            if (outOfBounds) continue;
+
+                            const collideFig = window.__figBoxesGroup.some(b =>
+                                rectsOverlap(b, labelBox, 2)
+                            );
+                            if (collideFig) continue;
+
+                            const collideLegend = (window.__legendBoxesGroup || []).some(b =>
+                                rectsOverlap(b, labelBox, 2)
+                            );
+                            if (collideLegend) continue;
+
+                            placed = true;
+                            break;
+                        }
+                    }
+
+                    if (!placed) return;
+
+                    placedBoxes.push(labelBox);
+
+                    // Draw radial line
+                    const dirToLabel = {
+                        x: labelX - centerSvg.x,
+                        y: labelY - centerSvg.y
+                    };
+                    const distToLabel = Math.hypot(dirToLabel.x, dirToLabel.y) || 1;
+                    const nToLabel = {
+                        x: dirToLabel.x / distToLabel,
+                        y: dirToLabel.y / distToLabel
+                    };
+                    const finalLineEndX = centerSvg.x + nToLabel.x * radiusSvg * 0.6;
+                    const finalLineEndY = centerSvg.y + nToLabel.y * radiusSvg * 0.6;
+
+                    const rl = document.createElementNS("http://www.w3.org/2000/svg", "line");
+                    rl.setAttribute("x1", centerSvg.x);
+                    rl.setAttribute("y1", centerSvg.y);
+                    rl.setAttribute("x2", finalLineEndX);
+                    rl.setAttribute("y2", finalLineEndY);
+                    rl.setAttribute("stroke", "rgba(0,128,0,0.6)");
+                    rl.setAttribute("stroke-width", "4");
+                    rl.setAttribute("stroke-linecap", "round");
+                    rl.setAttribute("vector-effect", "non-scaling-stroke");
+                    rl.style.opacity = 0;
+                    rl.style.pointerEvents = "none";
+                    rl.style.transition = "opacity 120ms ease";
+                    svg.appendChild(rl);
+
+                    const txt = document.createElementNS("http://www.w3.org/2000/svg", "text");
+                    txt.setAttribute("x", labelX);
+                    txt.setAttribute("y", labelY);
+                    txt.setAttribute("fill", VALOR_COTA_COLOR);
+                    txt.setAttribute("font-size", SIZE_DIM_TEXT);
+                    txt.setAttribute("text-anchor", "middle");
+                    txt.setAttribute("alignment-baseline", "middle");
+                    txt.setAttribute("tabindex", "0");
+                    txt.style.cursor = "pointer";
+                    txt.textContent = label;
+                    svg.appendChild(txt);
+
+                    function onEnter() {
+                        rl.style.opacity = 1;
+                    }
+                    function onLeave() {
+                        rl.style.opacity = 0;
+                    }
+                    txt.addEventListener("mouseenter", onEnter);
+                    txt.addEventListener("mouseleave", onLeave);
+                    txt.addEventListener("focus", onEnter);
+                    txt.addEventListener("blur", onLeave);
+                });
+            })();
 
             // =========================
             // Letra (después de cotas)
@@ -1672,22 +1868,30 @@ function initCanvasMaquina() {
     const grupos = window.elementosAgrupadosScript;
     if (!grupos) return;
 
-    // Renderizar todos los SVG
+    // 🔥 PASO 1: Aplicar clases CSS ANTES de renderizar SVG
+    const gridMaquina = document.getElementById('grid-maquina');
+    if (gridMaquina && window.updateGridClasses) {
+        const showLeft = JSON.parse(localStorage.getItem('showLeft') ?? 'true');
+        const showRight = JSON.parse(localStorage.getItem('showRight') ?? 'true');
+        window.updateGridClasses(showLeft, showRight);
+        console.log('🎨 Clases aplicadas ANTES de renderizar SVG');
+    }
+
+    // 🔥 PASO 2: Renderizar todos los SVG
     grupos.forEach(function (grupo, gidx) {
         renderizarGrupoSVG(grupo, gidx);
     });
 
-    // Mostrar todas las etiquetas con una animación optimizada
+    // 🔥 PASO 3: Mostrar el grid con las clases ya aplicadas
     requestAnimationFrame(() => {
-        // 1. Mostrar el grid principal completo
-        const gridMaquina = document.getElementById('grid-maquina');
         if (gridMaquina) {
             gridMaquina.style.opacity = '1';
             gridMaquina.style.visibility = 'visible';
             gridMaquina.style.transition = 'opacity 0.2s ease-in, visibility 0s 0s';
+            console.log('✅ Grid visible con clases:', gridMaquina.className);
         }
 
-        // 2. Mostrar las etiquetas
+        // Mostrar las etiquetas
         document.querySelectorAll('.proceso').forEach(el => {
             el.style.opacity = '1';
         });
@@ -1750,14 +1954,43 @@ document.addEventListener("livewire:navigated", initCanvasMaquina);
 // =======================
 // Modal dividir elemento
 // =======================
-window.abrirModalDividirElemento = function abrirModalDividirElemento(elementoId) {
+window.abrirModalDividirElemento = function abrirModalDividirElemento(elementoId, barras) {
     const modal = document.getElementById("modalDividirElemento");
     const input = document.getElementById("dividir_elemento_id");
+    const inputBarrasTotales = document.getElementById("dividir_barras_totales");
+    const labelBarras = document.getElementById("labelBarrasActuales");
+    const inputBarrasAMover = document.getElementById("barras_a_mover");
+    const preview = document.getElementById("previewDivision");
     const form = document.getElementById("formDividirElemento");
+
     if (!modal || !input || !form) return;
+
     input.value = elementoId;
+
+    // Si no tenemos barras, buscar en elementosAgrupadosScript
+    let barrasTotales = parseInt(barras) || 0;
+    if (barrasTotales === 0 && window.elementosAgrupadosScript) {
+        for (const grupo of window.elementosAgrupadosScript) {
+            if (grupo.elementos) {
+                const elem = grupo.elementos.find(e => String(e.id) === String(elementoId));
+                if (elem && elem.barras) {
+                    barrasTotales = parseInt(elem.barras) || 0;
+                    break;
+                }
+            }
+        }
+    }
+
+    if (inputBarrasTotales) inputBarrasTotales.value = barrasTotales;
+    if (labelBarras) labelBarras.textContent = barrasTotales > 0 ? barrasTotales : '-';
+
+    // Limpiar campo de barras a mover y preview
+    if (inputBarrasAMover) inputBarrasAMover.value = '';
+    if (preview) preview.classList.add('hidden');
+
     if (window.rutaDividirElemento)
         form.setAttribute("action", window.rutaDividirElemento);
+
     modal.classList.remove("hidden");
 }
 window.enviarDivision = async function enviarDivision() {

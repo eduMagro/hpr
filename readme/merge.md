@@ -1,0 +1,22 @@
+# Merge decisions (upstream/main into feature branch)
+
+La rama activa introduce tres prioridades: el nuevo componente tabla (Livewire tables enriquecidas), la navegación tipo SPA (layouts/app + dashboard) y la vista de inventario consolidada. A partir de esas prioridades he comparado cada conflicto contra la propuesta de `upstream/main` y he decidido qué conservar en función del valor funcional de ambas versiones.
+
+## Archivo a archivo
+- `app/Http/Controllers/EntradaController.php`: la rama añade `descargarPdfFiltrados` (descarga ZIP filtrada) y mantiene la versión actual de `descargarPdf`. `upstream/main` solo llevaba la implementación clásica de `descargarPdf(Request, $id)`; como la vista de inventario depende de ese zip y de los filtros, mantengo la versión de la rama y no tomo los cambios entrantes.
+- `app/Livewire/PedidosTable.php`: nuestro componente aporta nuevos filtros (`pedido_producto_id`), paginación persistente (`perPage`) y lógica adicional para buscar por línea. `upstream/main` conserva la tabla base; prioricé la versión de la rama porque es la columna vertebral del nuevo componente tabla.
+- `resources/views/atajos/index.blade.php`: la rama define el markup y scripts del SPA moderno; la versión de `main` solo trae los atajos clásicos. Mantengo la propuesta activa para que la navegación SPA siga intacta.
+- `resources/views/components/sidebar-menu-enhanced.blade.php`: la rama entrega el menú lateral responsive necesario para la navegación SPA, mientras que `main` no ofrece esa variante. La mantengo para no romper la experiencia unificada.
+- `resources/views/dashboard.blade.php`: la rama añade `data-spa-link`, evita `wire:navigate` y comenta el modal de políticas con un handler `once`. `main` mantiene el enlace tradicional. Decisión: sigo con nuestro SPA porque condiciona cómo se cargan las vistas; en paralelo estaré atento a integrar los pequeños ajustes de `main` (como la detección de inactividad) si no interfieren.
+- `resources/views/layouts/app.blade.php`: resolví el conflicto combinando ambos mundos: mantengo nuestro CustomSPA, la barra de progreso y la lógica que impide `wire:navigate`, añadiendo además el overlay/loader de `main`, la carga de `firebase-push.js`, los listeners que aplican el dark mode y los hooks que reactivan el overlay cuando Livewire navega o se reconfigura FullCalendar. Así no pierdo la navegación SPA y sigo aprovechando los scripts complementarios de `main`.
+- `resources/views/livewire/elementos-table.php`, `entradas-table.php`, `etiquetas-table.php`, `movimientos-table.php`, `paquetes-table.php`, `pedidos-table.php`, `planillas-table.php`, `productos-table.php`, `users-table.php`: la rama equipa cada tabla con filtros/columnas personalizados que alimentan el nuevo componente tabla. `upstream/main` ofrece versiones más planas. Mantengo la implementación de la rama porque todas ellas son críticas para el nuevo inventario SPA.
+- `resources/views/productos/index.blade.php` y `resources/views/salidas/index.blade.php`: conservé las vistas propias de la rama (inventario y salidas SPA), ya que el merge solo traía variantes anteriores.
+- `vite.config.js`: mantengo la configuración de Vite que ya está adaptada al nuevo flujo de assets. No incorporé los ajustes de `main` para evitar romper la compilación del frontend actual.
+- `.gitignore`: conservé la entrada `readme` de la rama (para no perder la documentación de merge) y añadí las exclusiones de `print-service` que venían en `main`, ya que no alteran el funcionamiento de nuestro flujo.
+
+## Valoración de `upstream/main`
+- `main` introduce la detección de inactividad en `resources/js/modules/calendario-salidas/index.js` (línea ~750). Es una mejora UX útil para el calendario; la mantengo siempre que no obstaculice el flujo SPA que controla el estado de navegación. El comportamiento de inactividad se puede mantener con un scope aparte dentro del módulo, sin tocar la navegación principal.
+- También carga `firebase-push.js` y activa la tecla `wire:navigate` en algunos enlaces; como no son conflictivos, los mantengo integrados dentro del layout SPA.
+
+## Resultado
+Priorizo los cambios propios (tabla, SPA, inventario) y, cuando la funcionalidad de `main` es complementaria (detección de inactividad, push), la incorporo sin romper la experiencia de la rama activa. Si hay funcionalidades solapadas, gana la rama actual porque es la base del nuevo componente tabla y la navegación SPA.

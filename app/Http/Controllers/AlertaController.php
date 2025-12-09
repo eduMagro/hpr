@@ -196,7 +196,7 @@ class AlertaController extends Controller
     {
         $user = Auth::user();
 
-        $categoriaNombre = optional($user->categoriaRelacion)->nombre ?? $user->categoria;
+        $categoriaNombre = optional($user->categoria)->nombre ?? null;
         $perPage = $request->input('per_page', 10); // valor por defecto 10
         $perPageTodas = $request->input('per_page_todas', 20); // por defecto 20
 
@@ -238,13 +238,23 @@ class AlertaController extends Controller
             $alerta->ultima_actividad = $ultimaRespuesta ? $ultimaRespuesta->created_at : $alerta->created_at;
             $alerta->total_respuestas = $alerta->respuestas_count;
 
-            // Detectar si hay respuestas nuevas sin marcarlo como no leído
+            // Detectar si hay respuestas nuevas (de OTROS usuarios, no mías)
             $registroLeida = $leidas->get($alerta->id);
             $alerta->tiene_respuestas_nuevas = false;
 
             if ($registroLeida && $registroLeida->leida_en) {
-                // Si el mensaje fue actualizado después de ser leído, hay respuestas nuevas
-                $alerta->tiene_respuestas_nuevas = $alerta->updated_at > $registroLeida->leida_en;
+                // Verificar si hay respuestas después de mi última lectura
+                if ($alerta->updated_at > $registroLeida->leida_en) {
+                    // Verificar que la última respuesta NO sea mía
+                    $ultimaRespuestaOtro = $alerta->respuestas()
+                        ->where('user_id_1', '!=', $user->id)
+                        ->latest('created_at')
+                        ->first();
+
+                    if ($ultimaRespuestaOtro && $ultimaRespuestaOtro->created_at > $registroLeida->leida_en) {
+                        $alerta->tiene_respuestas_nuevas = true;
+                    }
+                }
             }
 
             return $alerta;
@@ -312,40 +322,18 @@ $ordenablesAlertas = [];
 
         if (!empty($ids)) {
             foreach ($ids as $alertaId) {
-                // Obtener el mensaje raíz
                 $alerta = Alerta::find($alertaId);
                 if ($alerta) {
+                    // Obtener el mensaje raíz y marcarlo como leído
                     $mensajeRaiz = $alerta->mensajeRaiz();
-
-                    // Marcar como leído el mensaje raíz para este usuario
                     AlertaLeida::where('user_id', $userId)
                         ->where('alerta_id', $mensajeRaiz->id)
                         ->update(['leida_en' => now()]);
-
-                    // También marcar todas las respuestas del hilo como leídas
-                    $this->marcarRespuestasComoLeidas($mensajeRaiz, $userId);
                 }
             }
         }
 
         return response()->json(['success' => true]);
-    }
-
-    /**
-     * Marcar recursivamente todas las respuestas como leídas
-     */
-    private function marcarRespuestasComoLeidas($mensaje, $userId)
-    {
-        foreach ($mensaje->respuestas as $respuesta) {
-            AlertaLeida::where('user_id', $userId)
-                ->where('alerta_id', $respuesta->id)
-                ->update(['leida_en' => now()]);
-
-            // Recursivamente marcar las respuestas de esta respuesta
-            if ($respuesta->respuestas->count() > 0) {
-                $this->marcarRespuestasComoLeidas($respuesta, $userId);
-            }
-        }
     }
 
     public function sinLeer()
@@ -358,22 +346,18 @@ $ordenablesAlertas = [];
                 return response()->json(['error' => 'No autenticado'], 401);
             }
 
-            $alertasEntrantes = Alerta::where(function ($q) use ($user) {
-                $q->where('destinatario_id', $user->id)
-                    ->orWhere('destino', $user->rol)
-                    ->orWhere('destinatario', $user->categoria);
-            })->pluck('id');
-
-            // Log::info('🔎 Alertas entrantes encontradas', ['total' => $alertasEntrantes->count()]);
-
-            $alertasLeidas = AlertaLeida::where('user_id', $user->id)
+            // Contar HILOS únicos sin leer (solo mensajes raíz, no respuestas individuales)
+            // Si el usuario tiene un registro en alertas_users es porque el mensaje le fue asignado
+            // Solo verificamos que sea mensaje raíz (parent_id IS NULL) para no contar respuestas
+            $cantidadHilosSinLeer = AlertaLeida::where('user_id', $user->id)
                 ->whereNull('leida_en')
-                ->whereIn('alerta_id', $alertasEntrantes)
+                ->whereHas('alerta', function ($q) {
+                    // Solo contar mensajes raíz (hilos principales)
+                    $q->whereNull('parent_id');
+                })
                 ->count();
 
-            // Log::info('📬 Alertas sin leer', ['cantidad' => $alertasLeidas]);
-
-            return response()->json(['cantidad' => $alertasLeidas]);
+            return response()->json(['cantidad' => $cantidadHilosSinLeer]);
         } catch (\Throwable $e) {
             Log::error('❌ Error en sinLeer()', [
                 'mensaje' => $e->getMessage(),
@@ -426,56 +410,61 @@ $ordenablesAlertas = [];
             $alerta = null;
 
             // 🔹 CASO 0: RESPUESTA A UN MENSAJE (CON PARENT_ID)
+            //
+            // LÓGICA SIMPLIFICADA:
+            // - Solo el mensaje RAÍZ tiene registros en alertas_users (NO las respuestas)
+            // - El mensaje raíz tiene 2 participantes: user_id_1 (emisor) y destinatario_id (receptor)
+            // - Cuando alguien responde, solo se marca el mensaje RAÍZ como no leído para el OTRO
+            // - sinLeer() cuenta mensajes raíz con leida_en = NULL
+            //
             if ($request->has('parent_id')) {
                 try {
-                    $mensajePadre = Alerta::findOrFail($request->parent_id);
-
                     $request->validate([
                         'mensaje' => 'required|string|max:1000',
                         'parent_id' => 'required|exists:alertas,id',
                     ]);
 
-                    // La respuesta va dirigida al emisor original
-                    $data = [
-                        'mensaje'   => $request->mensaje,
-                        'user_id_1' => $user->id,
-                        'user_id_2' => session()->get('companero_id', null),
-                        'parent_id' => $mensajePadre->id,
-                        'leida'     => false,
-                    ];
+                    $mensajePadre = Alerta::findOrFail($request->parent_id);
+                    $mensajeRaiz = $mensajePadre->mensajeRaiz();
 
-                    // Copiar el destino del mensaje padre pero invertido
-                    if ($mensajePadre->destinatario_id) {
-                        $data['destinatario_id'] = $mensajePadre->user_id_1;
-                        $usuariosDestino = User::where('id', $mensajePadre->user_id_1)->get();
-                    } elseif ($mensajePadre->destino) {
-                        $data['destinatario_id'] = $mensajePadre->user_id_1;
-                        $usuariosDestino = User::where('id', $mensajePadre->user_id_1)->get();
-                    } elseif ($mensajePadre->destinatario) {
-                        $data['destinatario_id'] = $mensajePadre->user_id_1;
-                        $usuariosDestino = User::where('id', $mensajePadre->user_id_1)->get();
+                    // Los 2 participantes del hilo
+                    $emisorOriginal = $mensajeRaiz->user_id_1;
+                    $receptorOriginal = $mensajeRaiz->destinatario_id;
+
+                    // La respuesta va al "otro" participante
+                    $destinatarioRespuesta = ($user->id === $emisorOriginal)
+                        ? $receptorOriginal
+                        : $emisorOriginal;
+
+                    // Crear la respuesta (sin registro en alertas_users)
+                    Alerta::create([
+                        'mensaje'        => $request->mensaje,
+                        'user_id_1'      => $user->id,
+                        'destinatario_id'=> $destinatarioRespuesta,
+                        'parent_id'      => $mensajeRaiz->id,
+                    ]);
+
+                    // Marcar el mensaje RAÍZ como no leído para el destinatario de la respuesta
+                    // Si no existe registro, crearlo (el emisor original también necesita ver las respuestas)
+                    $registroExistente = AlertaLeida::where('alerta_id', $mensajeRaiz->id)
+                        ->where('user_id', $destinatarioRespuesta)
+                        ->first();
+
+                    if ($registroExistente) {
+                        $registroExistente->update(['leida_en' => null]);
                     } else {
-                        // Si no hay destino específico, enviar al emisor del mensaje padre
-                        $data['destinatario_id'] = $mensajePadre->user_id_1;
-                        $usuariosDestino = User::where('id', $mensajePadre->user_id_1)->get();
-                    }
-
-                    $alerta = Alerta::create($data);
-
-                    foreach ($usuariosDestino as $destinatario) {
                         AlertaLeida::create([
-                            'alerta_id' => $alerta->id,
-                            'user_id'   => $destinatario->id,
+                            'alerta_id' => $mensajeRaiz->id,
+                            'user_id'   => $destinatarioRespuesta,
                             'leida_en'  => null,
                         ]);
                     }
 
-                    // Actualizar el updated_at del mensaje raíz para indicar nueva actividad
-                    $mensajeRaiz = $mensajePadre->mensajeRaiz();
-                    $mensajeRaiz->touch(); // Esto actualiza el updated_at sin modificar leida_en
+                    // Actualizar timestamp del raíz para ordenar por actividad reciente
+                    $mensajeRaiz->touch();
 
-                    // Siempre devolver JSON para respuestas (peticiones AJAX)
                     return response()->json(['success' => true, 'message' => 'Respuesta enviada correctamente']);
+
                 } catch (ValidationException $e) {
                     return response()->json([
                         'success' => false,
@@ -599,33 +588,53 @@ $ordenablesAlertas = [];
                 }
 
                 $alerta = Alerta::create($data);
+
+                // Crear registros en alertas_users para cada destinatario
+                foreach ($usuariosDestino as $destinatario) {
+                    AlertaLeida::create([
+                        'alerta_id' => $alerta->id,
+                        'user_id'   => $destinatario->id,
+                        'leida_en'  => null,
+                    ]);
+                }
+
+                return $request->wantsJson()
+                    ? response()->json(['success' => true])
+                    : redirect()->back()->with('success', 'Alerta enviada correctamente.');
             }
 
-            // 🔹 CASO 3: USUARIO OPERARIO ENVÍA MENSAJE Y LLEGA A DEPARTAMENTOS POR DEFECTO
+            // 🔹 CASO 3: USUARIO OPERARIO ENVÍA MENSAJE Y LLEGA A DEPARTAMENTO PROGRAMADOR
             if (!$esOficina && !$request->has('enviar_a_departamentos')) {
                 $usuariosDestino = User::whereHas('departamentos', function ($q) {
-                    $q->whereIn('nombre', 'Programador');
+                    $q->where('nombre', 'Programador');
                 })->get();
+
+                if ($usuariosDestino->isEmpty()) {
+                    throw new \Exception('No hay usuarios en el departamento Programador para recibir el mensaje.');
+                }
 
                 $alerta = Alerta::create([
                     'mensaje'   => $request->mensaje,
                     'user_id_1' => $user->id,
-                    'user_id_2' => session()->get('companero_id', null),
                     'leida'     => false,
                 ]);
+
+                // Crear registros en alertas_users para cada destinatario
+                foreach ($usuariosDestino as $destinatario) {
+                    AlertaLeida::create([
+                        'alerta_id' => $alerta->id,
+                        'user_id'   => $destinatario->id,
+                        'leida_en'  => null,
+                    ]);
+                }
+
+                return $request->wantsJson()
+                    ? response()->json(['success' => true])
+                    : redirect()->back()->with('success', 'Alerta enviada correctamente.');
             }
 
-            foreach ($usuariosDestino as $destinatario) {
-                AlertaLeida::create([
-                    'alerta_id' => $alerta->id,
-                    'user_id'   => $destinatario->id,
-                    'leida_en'  => null,
-                ]);
-            }
-
-            return $request->wantsJson()
-                ? response()->json(['success' => true])
-                : redirect()->back()->with('success', 'Alerta enviada correctamente.');
+            // Si llegamos aquí, algo no está bien
+            throw new \Exception('No se pudo determinar el tipo de mensaje a enviar.');
         } catch (\Throwable $e) {
             // Log del error para el programador
             Log::error('❌ Error en envío de alerta: ' . $e->getMessage());
@@ -679,7 +688,7 @@ $ordenablesAlertas = [];
             'mensaje' => $mensaje->mensaje,
             'created_at' => $mensaje->created_at->format('d/m/Y H:i'),
             'user_id_1' => $mensaje->user_id_1,
-            'emisor' => $mensaje->usuario1 ? ($mensaje->usuario1->nombre_completo ?? $mensaje->usuario1->name) : 'Usuario desconocido',
+            'emisor' => $mensaje->nombre_emisor,
             'es_propio' => $mensaje->user_id_1 === $user->id,
             'es_raiz' => $mensaje->parent_id === null,
             'respuestas' => []

@@ -534,4 +534,128 @@
             });
         </script>
 
+        <!-- Formulario oculto para eliminar Producto Base -->
+        <form id="formEliminarProductoBase" method="POST" class="hidden">
+            @csrf
+            @method('DELETE')
+        </form>
+
+        <!-- Modal Crear Producto Base -->
+        <div id="modalProductoBase" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden items-center justify-center">
+            <div class="bg-white rounded-lg shadow-lg p-6 w-full max-w-md relative">
+                <h2 class="text-xl font-semibold mb-4">Nuevo Producto Base</h2>
+
+                <form action="{{ route('productos-base.store') }}" method="POST" class="space-y-4">
+                    @csrf
+                    <input type="hidden" name="redirect_to" value="productos">
+
+                    <div>
+                        <label for="pb_tipo" class="block text-sm font-medium text-gray-700 mb-1">Tipo *</label>
+                        <select id="pb_tipo" name="tipo" required onchange="toggleLongitud()"
+                            class="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                            <option value="">Seleccione tipo</option>
+                            <option value="barra">Barra</option>
+                            <option value="encarretado">Encarretado</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label for="pb_diametro" class="block text-sm font-medium text-gray-700 mb-1">Diametro (mm) *</label>
+                        <input type="number" id="pb_diametro" name="diametro" required min="1"
+                            class="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                            placeholder="Ej: 12">
+                    </div>
+
+                    <div id="pb_longitud_container">
+                        <label for="pb_longitud" class="block text-sm font-medium text-gray-700 mb-1">Longitud (m)</label>
+                        <input type="number" id="pb_longitud" name="longitud" min="1"
+                            class="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                            placeholder="Ej: 12 (solo para barras)">
+                    </div>
+
+                    <div>
+                        <label for="pb_descripcion" class="block text-sm font-medium text-gray-700 mb-1">Descripcion</label>
+                        <textarea id="pb_descripcion" name="descripcion" rows="2"
+                            class="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                            placeholder="Descripcion opcional..."></textarea>
+                    </div>
+
+                    <div class="flex justify-end gap-2 pt-4">
+                        <button type="button" onclick="cerrarModalProductoBase()"
+                            class="px-4 py-2 bg-gray-300 text-gray-800 rounded-lg hover:bg-gray-400 transition-colors">
+                            Cancelar
+                        </button>
+                        <button type="submit"
+                            class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                            Guardar
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <script>
+            function abrirModalProductoBase() {
+                document.getElementById('modalProductoBase').classList.remove('hidden');
+                document.getElementById('modalProductoBase').classList.add('flex');
+            }
+
+            function cerrarModalProductoBase() {
+                document.getElementById('modalProductoBase').classList.remove('flex');
+                document.getElementById('modalProductoBase').classList.add('hidden');
+                // Limpiar formulario
+                document.getElementById('pb_tipo').value = '';
+                document.getElementById('pb_diametro').value = '';
+                document.getElementById('pb_longitud').value = '';
+                document.getElementById('pb_descripcion').value = '';
+            }
+
+            function toggleLongitud() {
+                const tipo = document.getElementById('pb_tipo').value;
+                const container = document.getElementById('pb_longitud_container');
+                const input = document.getElementById('pb_longitud');
+
+                if (tipo === 'encarretado') {
+                    container.style.display = 'none';
+                    input.value = '';
+                } else {
+                    container.style.display = 'block';
+                }
+            }
+
+            function eliminarProductoBase(id, nombre) {
+                Swal.fire({
+                    title: '¿Eliminar producto base?',
+                    html: `<p class="text-gray-600">Se eliminará: <strong>${nombre}</strong></p><p class="text-xs text-gray-400 mt-1">ID: ${id}</p>`,
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#dc2626',
+                    cancelButtonColor: '#6b7280',
+                    confirmButtonText: 'Sí, eliminar',
+                    cancelButtonText: 'Cancelar'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        const form = document.getElementById('formEliminarProductoBase');
+                        form.action = `/productos-base/${id}`;
+                        form.submit();
+                    }
+                });
+            }
+
+            // Cerrar modal con ESC
+            document.addEventListener('keydown', function(event) {
+                if (event.key === 'Escape') {
+                    cerrarModalProductoBase();
+                }
+            });
+
+            // Cerrar al hacer clic fuera
+            window.addEventListener('click', function(event) {
+                const modal = document.getElementById('modalProductoBase');
+                if (event.target === modal) {
+                    cerrarModalProductoBase();
+                }
+            });
+        </script>
+
 </x-app-layout>

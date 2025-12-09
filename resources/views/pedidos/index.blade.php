@@ -47,6 +47,105 @@
                 </div>
             </div>
 
+            {{-- MODAL COLADAS / BULTOS PARA ACTIVACIÓN --}}
+            <div id="modal-coladas-activacion"
+                class="fixed inset-0 bg-gray-900 bg-opacity-60 backdrop-blur-sm hidden items-center justify-center z-50 transition-all duration-300">
+                <div
+                    class="bg-white rounded-2xl w-full max-w-3xl shadow-2xl transform transition-all duration-300 overflow-hidden border border-gray-200">
+                    {{-- Header --}}
+                    <div class="bg-gradient-to-r from-slate-700 to-slate-800 px-6 py-5 border-b border-slate-600">
+                        <h3 class="text-xl font-bold text-white flex items-center gap-3">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg>
+                            Confirmar activación de línea
+                        </h3>
+                        <p class="text-sm text-slate-300 mt-2">
+                            Registrar coladas y bultos asociados (opcional)
+                        </p>
+                    </div>
+
+                    {{-- Body --}}
+                    <div class="p-6">
+                        <div class="bg-blue-50 border-l-4 border-blue-500 px-4 py-3 rounded-r mb-5">
+                            <p class="text-sm text-blue-800 leading-relaxed">
+                                <strong class="font-semibold">Información:</strong> Puedes añadir cero o más coladas y
+                                bultos.
+                                Si no necesitas registrar información, deja la tabla vacía y confirma la activación.
+                            </p>
+                        </div>
+
+                        <div class="border border-gray-300 rounded-xl mb-5 shadow-sm bg-white overflow-hidden">
+                            <table class="w-full text-sm table-fixed">
+                                <colgroup>
+                                    <col style="width:30%">
+                                    <col style="width:35%">
+                                    <col style="width:20%">
+                                    <col style="width:15%">
+                                </colgroup>
+                                <thead class="bg-gradient-to-r from-gray-700 to-gray-800 text-white">
+                                    <tr>
+                                        <th class="px-4 py-3 text-left font-semibold uppercase tracking-wider text-xs">
+                                            Colada</th>
+                                        <th class="px-4 py-3 text-left font-semibold uppercase tracking-wider text-xs">
+                                            Fabricante</th>
+                                        <th class="px-4 py-3 text-left font-semibold uppercase tracking-wider text-xs">
+                                            Bultos</th>
+                                        <th
+                                            class="px-4 py-3 text-center font-semibold uppercase tracking-wider text-xs whitespace-nowrap">
+                                            Acciones</th>
+                                    </tr>
+                                </thead>
+                            </table>
+                            <div class="max-h-72 overflow-y-auto">
+                                <table class="w-full text-sm table-fixed">
+                                    <colgroup>
+                                        <col style="width:30%">
+                                        <col style="width:35%">
+                                        <col style="width:20%">
+                                        <col style="width:15%">
+                                    </colgroup>
+                                    <tbody id="tabla-coladas-body" class="divide-y divide-gray-200">
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <div class="flex justify-between items-center mb-6 pt-2">
+                            <button type="button" id="btn-agregar-colada"
+                                class="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white text-sm font-medium px-4 py-2.5 rounded-lg shadow-md hover:shadow-lg transition-all duration-200 transform hover:-translate-y-0.5">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5"
+                                        d="M12 4v16m8-8H4"></path>
+                                </svg>
+                                Añadir colada / bulto
+                            </button>
+                        </div>
+
+                        {{-- Footer con botones --}}
+                        <div class="flex justify-end gap-3 pt-4 border-t border-gray-200">
+                            <button type="button" id="btn-cancelar-coladas"
+                                class="inline-flex items-center gap-2 bg-gray-100 hover:bg-gray-200 active:bg-gray-300 text-gray-700 text-sm font-medium px-5 py-2.5 rounded-lg border border-gray-300 transition-all duration-200 shadow-sm hover:shadow">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M6 18L18 6M6 6l12 12"></path>
+                                </svg>
+                                Cancelar
+                            </button>
+                            <button type="button" id="btn-confirmar-activacion-coladas"
+                                class="inline-flex items-center gap-2 bg-green-600 hover:bg-green-700 active:bg-green-800 text-white text-sm font-semibold px-5 py-2.5 rounded-lg shadow-md hover:shadow-lg transition-all duration-200 transform hover:-translate-y-0.5">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5"
+                                        d="M5 13l4 4L19 7"></path>
+                                </svg>
+                                Confirmar activación
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             {{-- MODAL CONFIRMACIÓN PEDIDO --}}
             <div id="modalConfirmacion"
                 class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
@@ -143,7 +242,8 @@
                                 class="mr-2 px-4 py-2 rounded border border-gray-300 hover:bg-gray-100">
                                 Cancelar
                             </button>
-                            <button type="submit" class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">
+                            <button type="submit"
+                                class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">
                                 Crear Pedido de Compra
                             </button>
                         </div>
@@ -743,148 +843,173 @@
         }
 
         // Event listeners
-        document.addEventListener('DOMContentLoaded', function() {
-            // Listener para cambios en peso
-            document.addEventListener('input', debounce((ev) => {
-                const inputPeso = ev.target.closest('.peso-total');
-                if (!inputPeso) return;
+        function initModalPedidoListeners() {
+            // Listener para cambios en peso (solo registrar una vez usando flag en document)
+            if (!document._pedidosInputListenerAdded) {
+                document._pedidosInputListenerAdded = true;
+                document.addEventListener('input', debounce((ev) => {
+                    const inputPeso = ev.target.closest('.peso-total');
+                    if (!inputPeso) return;
 
-                const tr = inputPeso.closest('tr');
-                const contenedorFechas = tr.querySelector('[id^="fechas-camion-"]');
-                if (!contenedorFechas) return;
+                    const tr = inputPeso.closest('tr');
+                    const contenedorFechas = tr.querySelector('[id^="fechas-camion-"]');
+                    if (!contenedorFechas) return;
 
-                const clave = contenedorFechas.id.replace('fechas-camion-', '');
-                generarFechasPorPeso(inputPeso, clave);
-                dispararSugerirMultiple();
-            }, 300));
+                    const clave = contenedorFechas.id.replace('fechas-camion-', '');
+                    generarFechasPorPeso(inputPeso, clave);
+                    dispararSugerirMultiple();
+                }, 300));
+            }
 
             // Listeners para fabricante/distribuidor
             const fabricanteSelect = document.getElementById('fabricante');
             const distribuidorSelect = document.getElementById('distribuidor');
 
-            if (fabricanteSelect) {
+            if (fabricanteSelect && !fabricanteSelect.dataset.initialized) {
+                fabricanteSelect.dataset.initialized = 'true';
                 fabricanteSelect.addEventListener('change', dispararSugerirMultiple);
             }
-            if (distribuidorSelect) {
+            if (distribuidorSelect && !distribuidorSelect.dataset.initialized) {
+                distribuidorSelect.dataset.initialized = 'true';
                 distribuidorSelect.addEventListener('change', dispararSugerirMultiple);
             }
-        });
+        }
+
+        // Inicializar en carga normal y después de navegación con wire:navigate
+        document.addEventListener('DOMContentLoaded', initModalPedidoListeners);
+        document.addEventListener('livewire:navigated', initModalPedidoListeners);
     </script>
 
     {{-- Script: Validación formulario pedido --}}
     <script>
-        document.getElementById('formularioPedido').addEventListener('submit', function(ev) {
-            ev.preventDefault();
-            const errores = [];
-
-            const fabricante = document.getElementById('fabricante').value;
-            const distribuidor = document.getElementById('distribuidor').value;
-            if (!fabricante && !distribuidor) {
-                errores.push('Debes seleccionar un fabricante o un distribuidor.');
+        function initFormularioPedidoValidacion() {
+            const formulario = document.getElementById('formularioPedido');
+            if (!formulario || formulario.dataset.initialized) {
+                return;
             }
-            if (fabricante && distribuidor) {
-                errores.push('Solo puedes seleccionar uno: fabricante o distribuidor.');
-            }
+            formulario.dataset.initialized = 'true';
 
-            const obraHpr = document.getElementById('obra_id_hpr_modal').value;
-            const obraExterna = document.getElementById('obra_id_externa_modal').value;
-            const obraManual = document.getElementById('obra_manual_modal').value.trim();
-            const totalObras = [obraHpr, obraExterna, obraManual].filter(v => v && v !== '').length;
-            if (totalObras === 0) {
-                errores.push('Debes seleccionar una nave, obra externa o escribir un lugar de entrega.');
-            }
-            if (totalObras > 1) {
-                errores.push('Solo puedes seleccionar una opción: nave, obra externa o introducirla manualmente.');
-            }
+            formulario.addEventListener('submit', function(ev) {
+                ev.preventDefault();
+                const errores = [];
 
-            const resumenLineas = [];
-            document.querySelectorAll('#tablaConfirmacionBody tr').forEach(tr => {
-                const tipo = tr.querySelector('td:nth-child(1)')?.textContent.trim();
-                const diametro = tr.querySelector('td:nth-child(2)')?.textContent.trim().replace(' mm', '')
-                    .split('/')[0].trim();
-                const peso = parseFloat(tr.querySelector('.peso-total')?.value || 0);
+                const fabricante = document.getElementById('fabricante').value;
+                const distribuidor = document.getElementById('distribuidor').value;
+                if (!fabricante && !distribuidor) {
+                    errores.push('Debes seleccionar un fabricante o un distribuidor.');
+                }
+                if (fabricante && distribuidor) {
+                    errores.push('Solo puedes seleccionar uno: fabricante o distribuidor.');
+                }
 
-                if (tipo && diametro) {
-                    if (peso <= 0) {
-                        errores.push(`El peso de la línea ${tipo} ${diametro} debe ser mayor a 0.`);
-                    }
+                const obraHpr = document.getElementById('obra_id_hpr_modal').value;
+                const obraExterna = document.getElementById('obra_id_externa_modal').value;
+                const obraManual = document.getElementById('obra_manual_modal').value.trim();
+                const totalObras = [obraHpr, obraExterna, obraManual].filter(v => v && v !== '').length;
+                if (totalObras === 0) {
+                    errores.push('Debes seleccionar una nave, obra externa o escribir un lugar de entrega.');
+                }
+                if (totalObras > 1) {
+                    errores.push(
+                        'Solo puedes seleccionar una opción: nave, obra externa o introducirla manualmente.');
+                }
 
-                    const contenedorFechas = tr.querySelector('[id^="fechas-camion-"]');
-                    const fechas = [];
+                const resumenLineas = [];
+                document.querySelectorAll('#tablaConfirmacionBody tr').forEach(tr => {
+                    const tipo = tr.querySelector('td:nth-child(1)')?.textContent.trim();
+                    const diametro = tr.querySelector('td:nth-child(2)')?.textContent.trim().replace(' mm',
+                            '')
+                        .split('/')[0].trim();
+                    const peso = parseFloat(tr.querySelector('.peso-total')?.value || 0);
 
-                    if (contenedorFechas) {
-                        const inputsFecha = contenedorFechas.querySelectorAll('input[type="date"]');
-                        inputsFecha.forEach((input, idx) => {
-                            if (!input.value) {
-                                errores.push(
-                                    `Completa la fecha del camión ${idx + 1} para ${tipo} Ø${diametro}.`
-                                );
-                            }
-                            fechas.push(input.value || '—');
+                    if (tipo && diametro) {
+                        if (peso <= 0) {
+                            errores.push(`El peso de la línea ${tipo} ${diametro} debe ser mayor a 0.`);
+                        }
+
+                        const contenedorFechas = tr.querySelector('[id^="fechas-camion-"]');
+                        const fechas = [];
+
+                        if (contenedorFechas) {
+                            const inputsFecha = contenedorFechas.querySelectorAll('input[type="date"]');
+                            inputsFecha.forEach((input, idx) => {
+                                if (!input.value) {
+                                    errores.push(
+                                        `Completa la fecha del camión ${idx + 1} para ${tipo} Ø${diametro}.`
+                                    );
+                                }
+                                fechas.push(input.value || '—');
+                            });
+                        }
+
+                        resumenLineas.push({
+                            tipo,
+                            diametro,
+                            peso,
+                            fechas
                         });
                     }
-
-                    resumenLineas.push({
-                        tipo,
-                        diametro,
-                        peso,
-                        fechas
-                    });
-                }
-            });
-
-            if (resumenLineas.length === 0) {
-                errores.push('Debes seleccionar al menos un producto para generar el pedido.');
-            }
-
-            if (errores.length > 0) {
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Revisa los datos',
-                    html: '<ul style="text-align:left;">' + errores.map(e => `<li>• ${e}</li>`).join('') +
-                        '</ul>'
                 });
-                return false;
-            }
 
-            let proveedorTexto = fabricante ?
-                `Fabricante: ${document.querySelector('#fabricante option:checked').textContent}` :
-                `Distribuidor: ${document.querySelector('#distribuidor option:checked').textContent}`;
-
-            let obraTexto = obraHpr ?
-                `Nave: ${document.querySelector('#obra_id_hpr_modal option:checked').textContent}` :
-                obraExterna ?
-                `Obra externa: ${document.querySelector('#obra_id_externa_modal option:checked').textContent}` :
-                `Lugar manual: ${obraManual}`;
-
-            let htmlResumen =
-                `<p><b>${proveedorTexto}</b></p><p><b>${obraTexto}</b></p><hr><ul style="text-align:left;">`;
-            resumenLineas.forEach(l => {
-                htmlResumen += `<li>• ${l.tipo} Ø${l.diametro} → ${l.peso.toLocaleString('es-ES')} kg<br>` +
-                    `📅 Fechas de entrega: ${l.fechas.join(', ')}</li>`;
-            });
-            htmlResumen += '</ul>';
-
-            Swal.fire({
-                title: '¿Crear pedido de compra?',
-                html: htmlResumen,
-                icon: 'question',
-                showCancelButton: true,
-                confirmButtonText: 'Sí, crear pedido',
-                cancelButtonText: 'Cancelar',
-                confirmButtonColor: '#16a34a',
-                focusCancel: true,
-                width: 600,
-                allowOutsideClick: false
-            }).then((result) => {
-                if (result.isConfirmed) {
-                    ev.target.submit();
+                if (resumenLineas.length === 0) {
+                    errores.push('Debes seleccionar al menos un producto para generar el pedido.');
                 }
+
+                if (errores.length > 0) {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Revisa los datos',
+                        html: '<ul style="text-align:left;">' + errores.map(e => `<li>• ${e}</li>`).join(
+                            '') +
+                            '</ul>'
+                    });
+                    return false;
+                }
+
+                let proveedorTexto = fabricante ?
+                    `Fabricante: ${document.querySelector('#fabricante option:checked').textContent}` :
+                    `Distribuidor: ${document.querySelector('#distribuidor option:checked').textContent}`;
+
+                let obraTexto = obraHpr ?
+                    `Nave: ${document.querySelector('#obra_id_hpr_modal option:checked').textContent}` :
+                    obraExterna ?
+                    `Obra externa: ${document.querySelector('#obra_id_externa_modal option:checked').textContent}` :
+                    `Lugar manual: ${obraManual}`;
+
+                let htmlResumen =
+                    `<p><b>${proveedorTexto}</b></p><p><b>${obraTexto}</b></p><hr><ul style="text-align:left;">`;
+                resumenLineas.forEach(l => {
+                    htmlResumen +=
+                        `<li>• ${l.tipo} Ø${l.diametro} → ${l.peso.toLocaleString('es-ES')} kg<br>` +
+                        `📅 Fechas de entrega: ${l.fechas.join(', ')}</li>`;
+                });
+                htmlResumen += '</ul>';
+
+                Swal.fire({
+                    title: '¿Crear pedido de compra?',
+                    html: htmlResumen,
+                    icon: 'question',
+                    showCancelButton: true,
+                    confirmButtonText: 'Sí, crear pedido',
+                    cancelButtonText: 'Cancelar',
+                    confirmButtonColor: '#16a34a',
+                    focusCancel: true,
+                    width: 600,
+                    allowOutsideClick: false
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        ev.target.submit();
+                    }
+                });
             });
-        });
+        }
+
+        // Inicializar en carga normal y después de navegación con wire:navigate
+        document.addEventListener('DOMContentLoaded', initFormularioPedidoValidacion);
+        document.addEventListener('livewire:navigated', initFormularioPedidoValidacion);
     </script>
     <script>
-        document.addEventListener('DOMContentLoaded', function() {
+        function initStockSelect() {
             const selectObra = document.getElementById('obra_id_hpr_stock');
             const contenedorStock = document.getElementById('contenedor-stock');
             const loadingIndicator = document.getElementById('loading-stock');
@@ -892,6 +1017,12 @@
             if (!selectObra || !contenedorStock) {
                 return;
             }
+
+            // Evitar registrar el listener múltiples veces
+            if (selectObra.dataset.initialized) {
+                return;
+            }
+            selectObra.dataset.initialized = 'true';
 
             selectObra.addEventListener('change', function() {
                 const obraId = this.value;
@@ -939,6 +1070,385 @@
                         contenedorStock.style.pointerEvents = 'auto';
                     });
             });
-        });
+        }
+
+        // Inicializar en carga normal y después de navegación con wire:navigate
+        document.addEventListener('DOMContentLoaded', initStockSelect);
+        document.addEventListener('livewire:navigated', initStockSelect);
+    </script>
+    <script>
+        function initColadasModal() {
+            const CLIENTE_ID_REQUIERE_COLADAS = 1;
+            const BASE_PEDIDOS_URL = `{{ url('/pedidos') }}`;
+            const CLASES_ESTADO_A_REMOVER = [
+                'bg-yellow-100',
+                'bg-green-500',
+                'bg-green-100',
+                'bg-gray-300',
+                'text-gray-500',
+                'opacity-70',
+                'cursor-not-allowed',
+                'even:bg-gray-50',
+                'odd:bg-white',
+                'bg-white',
+                'bg-gray-50'
+            ];
+            const CLASES_PENDIENTE = ['even:bg-gray-50', 'odd:bg-white'];
+
+            const modal = document.getElementById('modal-coladas-activacion');
+            const cuerpoTabla = document.getElementById('tabla-coladas-body');
+            const btnAgregar = document.getElementById('btn-agregar-colada');
+            const btnCancelar = document.getElementById('btn-cancelar-coladas');
+            const btnConfirmar = document.getElementById('btn-confirmar-activacion-coladas');
+
+            // Lista de fabricantes para el select
+            const fabricantesDisponibles = @json($fabricantes->map(fn($f) => ['id' => $f->id, 'nombre' => $f->nombre]));
+
+            let pedidoIdActual = null;
+            let lineaIdActual = null;
+            let formularioActivacionActual = null;
+
+            function obtenerFilaLinea(pedidoId, lineaId) {
+                return document.querySelector(
+                    `.fila-pedido-linea[data-pedido-id="${pedidoId}"][data-linea-id="${lineaId}"]`);
+            }
+
+            function actualizarEstadoVisualLinea(pedidoId, lineaId, nuevoEstado, clasesAgregar = [], filaElement =
+                null) {
+                const fila = filaElement || obtenerFilaLinea(pedidoId, lineaId);
+                if (!fila) {
+                    console.warn(`Fila no encontrada para pedido ${pedidoId} linea ${lineaId}`);
+                    return;
+                }
+
+                // Remover clases una por una
+                CLASES_ESTADO_A_REMOVER.forEach(clase => {
+                    fila.classList.remove(clase);
+                });
+
+                // Agregar nuevas clases
+                clasesAgregar.forEach(clase => {
+                    if (clase) {
+                        fila.classList.add(clase);
+                    }
+                });
+
+                const estadoCelda = fila.querySelector('[data-columna-estado]');
+                if (estadoCelda) {
+                    estadoCelda.textContent = nuevoEstado;
+                }
+            }
+
+            function toggleBotonesLinea(fila) {
+                const formActivar = fila.querySelector('.form-activar-linea');
+                const formDesactivar = fila.querySelector('.form-desactivar-linea');
+
+                if (formActivar) formActivar.classList.toggle('hidden');
+                if (formDesactivar) formDesactivar.classList.toggle('hidden');
+            }
+
+            function desactivarLinea(form) {
+                const pedidoId = form.getAttribute('data-pedido-id');
+                const lineaId = form.getAttribute('data-linea-id');
+                if (!pedidoId || !lineaId) {
+                    form.submit();
+                    return;
+                }
+
+                const formData = new FormData(form);
+                if (!formData.has('_token')) {
+                    formData.append('_token', obtenerTokenCsrf());
+                }
+                if (!formData.has('_method')) {
+                    formData.append('_method', 'DELETE');
+                }
+
+                fetch(form.getAttribute('action'), {
+                        method: 'POST',
+                        headers: {
+                            'X-Requested-With': 'XMLHttpRequest',
+                            'Accept': 'application/json',
+                        },
+                        body: formData,
+                    })
+                    .then(response => response.json().then(data => ({
+                        ok: response.ok,
+                        data
+                    })))
+                    .then(({
+                        ok,
+                        data
+                    }) => {
+                        if (!ok || !data.success) {
+                            const mensaje = data && data.message ? data.message :
+                                'Error al desactivar la línea.';
+                            throw new Error(mensaje);
+                        }
+
+                        const fila = form.closest('tr');
+                        actualizarEstadoVisualLinea(pedidoId, lineaId, 'pendiente', CLASES_PENDIENTE, fila);
+                        toggleBotonesLinea(fila);
+
+                        Swal.fire({
+                            icon: 'success',
+                            title: data.message || 'Línea desactivada correctamente.',
+                            showConfirmButton: false,
+                            timer: 1800,
+                        });
+                    })
+                    .catch(error => {
+                        console.error(error);
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Error',
+                            text: error.message || 'Error al desactivar la línea.',
+                        });
+                    });
+            }
+
+            function abrirModalColadas(pedidoId, lineaId, form = null) {
+                pedidoIdActual = pedidoId;
+                lineaIdActual = lineaId;
+                formularioActivacionActual = form;
+
+                cuerpoTabla.innerHTML = '';
+                agregarFilaColada();
+
+                modal.classList.remove('hidden');
+                modal.classList.add('flex');
+            }
+
+            function cerrarModalColadas(limpiarFormulario = false) {
+                modal.classList.add('hidden');
+                modal.classList.remove('flex');
+                pedidoIdActual = null;
+                lineaIdActual = null;
+                if (limpiarFormulario) {
+                    formularioActivacionActual = null;
+                }
+            }
+
+            function generarSelectFabricantes() {
+                let options = '<option value="">Seleccionar...</option>';
+                fabricantesDisponibles.forEach(fab => {
+                    options += `<option value="${fab.id}">${fab.nombre}</option>`;
+                });
+                return options;
+            }
+
+            function agregarFilaColada() {
+                const fila = document.createElement('tr');
+                fila.className = 'fila-colada hover:bg-gray-50 transition-colors duration-150';
+                fila.innerHTML = `
+                    <td class="px-4 py-3">
+                        <input type="text" class="w-full border border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 rounded-lg px-3 py-2 text-sm input-colada transition-all duration-200 outline-none" placeholder="Ej: 12/3456">
+                    </td>
+                    <td class="px-4 py-3">
+                        <select class="w-full border border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 rounded-lg px-3 py-2 text-sm input-fabricante transition-all duration-200 outline-none">
+                            ${generarSelectFabricantes()}
+                        </select>
+                    </td>
+                    <td class="px-4 py-3">
+                        <input type="number" step="1" min="0" class="w-full border border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 rounded-lg px-3 py-2 text-sm input-bulto transition-all duration-200 outline-none" placeholder="0">
+                    </td>
+                    <td class="px-4 py-3 text-center">
+                        <button type="button" class="btn-eliminar-colada inline-flex items-center justify-center bg-red-500 hover:bg-red-600 active:bg-red-700 text-white rounded-lg w-8 h-8 transition-all duration-200 shadow-sm hover:shadow transform hover:scale-105" title="Eliminar fila">
+                            <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                <line x1="18" y1="6" x2="6" y2="18"></line>
+                                <line x1="6" y1="6" x2="18" y2="18"></line>
+                            </svg>
+                        </button>
+                    </td>
+                `;
+                cuerpoTabla.appendChild(fila);
+            }
+
+            if (btnAgregar && !btnAgregar.dataset.initialized) {
+                btnAgregar.dataset.initialized = 'true';
+                btnAgregar.addEventListener('click', function() {
+                    agregarFilaColada();
+                });
+            }
+
+            if (cuerpoTabla && !cuerpoTabla.dataset.initialized) {
+                cuerpoTabla.dataset.initialized = 'true';
+                cuerpoTabla.addEventListener('click', function(ev) {
+                    const botonEliminar = ev.target.closest('.btn-eliminar-colada');
+                    if (botonEliminar) {
+                        const fila = botonEliminar.closest('tr');
+                        if (fila) {
+                            fila.remove();
+                        }
+                    }
+                });
+            }
+
+            if (btnCancelar && !btnCancelar.dataset.initialized) {
+                btnCancelar.dataset.initialized = 'true';
+                btnCancelar.addEventListener('click', function() {
+                    cerrarModalColadas(true);
+                });
+            }
+
+            function obtenerTokenCsrf() {
+                const meta = document.querySelector('meta[name="csrf-token"]');
+                if (meta) {
+                    return meta.getAttribute('content');
+                }
+                const input = document.querySelector('input[name="_token"]');
+                return input ? input.value : '';
+            }
+
+            function activarLineaConColadas() {
+                if (!pedidoIdActual || !lineaIdActual) {
+                    return;
+                }
+
+                const filas = cuerpoTabla.querySelectorAll('.fila-colada');
+                const coladas = [];
+
+                filas.forEach(fila => {
+                    const coladaInput = fila.querySelector('.input-colada');
+                    const fabricanteSelect = fila.querySelector('.input-fabricante');
+                    const bultoInput = fila.querySelector('.input-bulto');
+                    const colada = coladaInput ? coladaInput.value.trim() : '';
+                    const fabricanteId = fabricanteSelect ? fabricanteSelect.value : '';
+                    const bultoValor = bultoInput ? bultoInput.value.trim() : '';
+
+                    if (colada !== '' || bultoValor !== '') {
+                        const bulto = bultoValor !== '' ? parseFloat(bultoValor.replace(',', '.')) : null;
+                        coladas.push({
+                            colada: colada !== '' ? colada : null,
+                            fabricante_id: fabricanteId !== '' ? parseInt(fabricanteId) : null,
+                            bulto: bulto,
+                        });
+                    }
+                });
+
+                const url = `{{ url('/pedidos') }}/${pedidoIdActual}/lineas/${lineaIdActual}/activar-con-coladas`;
+
+                fetch(url, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-Requested-With': 'XMLHttpRequest',
+                            'X-CSRF-TOKEN': obtenerTokenCsrf(),
+                            'Accept': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            coladas
+                        }),
+                    })
+                    .then(response => response.json().then(data => ({
+                        ok: response.ok,
+                        status: response.status,
+                        data
+                    })))
+                    .then(({
+                        ok,
+                        data
+                    }) => {
+                        if (!ok || !data.success) {
+                            const mensaje = data && data.message ? data.message : 'Error al activar la línea.';
+                            throw new Error(mensaje);
+                        }
+
+                        cerrarModalColadas();
+
+                        let form = formularioActivacionActual;
+                        if (!form) {
+                            const formSelector =
+                                `.form-activar-linea[data-pedido-id="${pedidoIdActual}"][data-linea-id="${lineaIdActual}"]`;
+                            form = document.querySelector(formSelector);
+                        }
+
+                        if (form) {
+                            const fila = form.closest('tr');
+                            actualizarEstadoVisualLinea(pedidoIdActual, lineaIdActual, 'activo', [
+                                'bg-yellow-100'
+                            ], fila);
+                            toggleBotonesLinea(fila);
+                            formularioActivacionActual = null;
+                        } else {
+                            // Fallback si no encontramos el form, intentamos buscar la fila por ID
+                            actualizarEstadoVisualLinea(pedidoIdActual, lineaIdActual, 'activo', [
+                                'bg-yellow-100'
+                            ]);
+                        }
+
+                        Swal.fire({
+                            icon: 'success',
+                            title: data.message || 'Línea activada correctamente.',
+                            showConfirmButton: false,
+                            timer: 1800,
+                        });
+                    })
+                    .catch(error => {
+                        console.error(error);
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Error',
+                            text: error.message || 'Error al activar la línea.',
+                        });
+                    });
+            }
+
+            if (btnConfirmar && !btnConfirmar.dataset.initialized) {
+                btnConfirmar.dataset.initialized = 'true';
+                btnConfirmar.addEventListener('click', function() {
+                    activarLineaConColadas();
+                });
+            }
+
+            // Evitar registrar el listener de submit múltiples veces
+            if (document._coladasSubmitListenerAdded) {
+                return;
+            }
+            document._coladasSubmitListenerAdded = true;
+
+            document.addEventListener('submit', function(ev) {
+                const form = ev.target.closest('form');
+                if (!form) {
+                    return;
+                }
+
+                console.log('🔍 Submit capturado:', {
+                    formClasses: form.className,
+                    hasActivarClass: form.classList.contains('form-activar-linea')
+                });
+
+                if (form.classList.contains('form-desactivar-linea')) {
+                    ev.preventDefault();
+                    ev.stopImmediatePropagation();
+                    desactivarLinea(form);
+                    return;
+                }
+
+                if (form.classList.contains('form-activar-linea')) {
+                    const clienteId = parseInt(form.getAttribute('data-cliente-id') || '0', 10);
+
+                    console.log('✅ Formulario activar detectado:', {
+                        clienteId: clienteId,
+                        CLIENTE_ID_REQUIERE_COLADAS: CLIENTE_ID_REQUIERE_COLADAS,
+                        coincide: clienteId === CLIENTE_ID_REQUIERE_COLADAS
+                    });
+
+                    if (clienteId === CLIENTE_ID_REQUIERE_COLADAS) {
+                        console.log('🎯 Abriendo modal de coladas...');
+                        ev.preventDefault();
+                        ev.stopImmediatePropagation();
+                        const pedidoId = form.getAttribute('data-pedido-id');
+                        const lineaId = form.getAttribute('data-linea-id');
+                        abrirModalColadas(pedidoId, lineaId, form);
+                    } else {
+                        console.log('⚠️ Cliente ID no coincide, dejando submit normal');
+                    }
+                }
+            }, true);
+        }
+
+        // Inicializar en carga normal y después de navegación con wire:navigate
+        document.addEventListener('DOMContentLoaded', initColadasModal);
+        document.addEventListener('livewire:navigated', initColadasModal);
     </script>
 </x-app-layout>

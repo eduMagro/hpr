@@ -389,8 +389,8 @@ class PlanillasTable extends Component
 
         // Si se está marcando como revisada, guardar quién y cuándo
         if ($planilla->revisada) {
-            $planilla->revisor_id = auth()->id();
-            $planilla->fecha_revision = now();
+            $planilla->revisada_por_id = auth()->id();
+            $planilla->revisada_at = now();
         }
 
         $planilla->save();

@@ -1,6 +1,6 @@
 /.phpunit.cache
 /node_modules
-/public/build
+# /public/build  # Comentado para despliegue - subir assets compilados
 /public/hot
 /public/storage
 /storage/*.key
@@ -23,3 +23,6 @@ yarn-error.log
 /.zed
 vite.config.js
 readme
+print-service/print_service.log
+print-service/venv/
+print-service/__pycache__/

@@ -303,8 +303,9 @@ class AsignacionTurnoController extends Controller
                 $realEntrada = $asignacion->entrada;
 
                 if ($esperadaEntrada && $realEntrada) {
-                    $esperada = Carbon::parse($asignacion->fecha . ' ' . $esperadaEntrada);
-                    $real = Carbon::parse($asignacion->fecha . ' ' . $realEntrada);
+                    $fechaStr = Carbon::parse($asignacion->fecha)->format('Y-m-d');
+                    $esperada = Carbon::parse($fechaStr . ' ' . $esperadaEntrada);
+                    $real = Carbon::parse($fechaStr . ' ' . $realEntrada);
 
                     if ($real->lt($esperada)) {
                         $minutos = $real->diffInMinutes($esperada);
@@ -367,14 +368,20 @@ class AsignacionTurnoController extends Controller
             ]);
 
             $user = User::findOrFail($request->user_id);
-            if ($user->rol !== 'operario') {
+            // Permitir fichaje a todos los roles (operario y oficina)
+            if (!in_array($user->rol, ['operario', 'oficina'])) {
                 return response()->json(['error' => 'No tienes permisos para fichar.'], 403);
             }
 
             /* 2) Obra cercana --------------------------------------------------------- */
-            $obraEncontrada = $this->buscarObraCercana($request->latitud, $request->longitud);
-            if (!$obraEncontrada) {
-                return response()->json(['error' => 'No estás dentro de ninguna zona de trabajo.'], 403);
+            // Eduardo Magro puede fichar sin verificación de ubicación
+            if ($user->email === 'eduardo.magro@pacoreyes.com') {
+                $obraEncontrada = Obra::where('estado', 'activa')->first();
+            } else {
+                $obraEncontrada = $this->buscarObraCercana($request->latitud, $request->longitud);
+                if (!$obraEncontrada) {
+                    return response()->json(['error' => 'No estás dentro de ninguna zona de trabajo.'], 403);
+                }
             }
 
             /* 3) Hora actual + detección de turno/fecha ------------------------------ */
@@ -403,18 +410,25 @@ class AsignacionTurnoController extends Controller
                     ->first();
 
                 if (!$asignacion) {
-                    $asignacion = $user->asignacionesTurnos()->create([
-                        'fecha'      => $fechaTurnoDetectado,
-                        'turno_id'   => $turnoModelo->id,
-                        'estado'     => 'activo',
-                        'maquina_id' => $user->maquina_id ?? null,
-                        'obra_id'    => null,
-                    ]);
+                    // Usar firstOrCreate para evitar duplicados por condiciones de carrera
+                    $asignacion = AsignacionTurno::firstOrCreate(
+                        [
+                            'user_id' => $user->id,
+                            'fecha'   => $fechaTurnoDetectado,
+                        ],
+                        [
+                            'turno_id'   => $turnoModelo->id,
+                            'estado'     => 'activo',
+                            'maquina_id' => $user->maquina_id ?? null,
+                            'obra_id'    => null,
+                        ]
+                    );
 
                     // (Opcional) notificación a programadores
                     try {
                         $programadores = User::whereHas('departamentos', fn($q) => $q->where('nombre', 'Programador'))->get();
                         $alerta = Alerta::create([
+                            'user_id_1' => $user->id,
                             'mensaje'   => "🆕 Turno creado automáticamente ({$turnoDetectado}) para {$user->nombre_completo} en {$fechaTurnoDetectado}.",
                             'tipo'      => 'Info Turnos',
                             'leida'     => false,
@@ -434,6 +448,7 @@ class AsignacionTurnoController extends Controller
                         try {
                             $programadores = User::whereHas('departamentos', fn($q) => $q->where('nombre', 'Programador'))->get();
                             $alerta = Alerta::create([
+                                'user_id_1' => $user->id,
                                 'mensaje'   => "🔁 Corregido turno a '{$turnoDetectado}' para {$user->nombre_completo} en {$fechaTurnoDetectado}.",
                                 'tipo'      => 'Info Turnos',
                                 'leida'     => false,
@@ -466,35 +481,31 @@ class AsignacionTurnoController extends Controller
             }
 
             // ======= SALIDA ==========================================================
-            // Intentar cerrar la asignación abierta más razonable (últimas 36h)
+            // La salida siempre usa la fecha REAL del fichaje, sin detectar turno
+            $fechaReal = $ahora->toDateString();
+
+            // Primero: buscar asignación abierta (con entrada y sin salida) en las últimas 36h
             $asignacion = $this->buscarAsignacionAbiertaParaSalida($user, $ahora);
 
-            // Fallback: usar el día detectado si no hay abierta
+            // Fallback: buscar asignación del día REAL (no del turno detectado)
             if (!$asignacion) {
                 $asignacion = $user->asignacionesTurnos()
-                    ->whereDate('fecha', $fechaTurnoDetectado)
+                    ->whereDate('fecha', $fechaReal)
                     ->orderByDesc('id')
                     ->first();
             }
 
+            // Si no hay asignación, no permitir fichar salida
             if (!$asignacion) {
-                // Si aun así no hay, crearla para no perder el fichaje
-                $asignacion = $user->asignacionesTurnos()->create([
-                    'fecha'      => $fechaTurnoDetectado,
-                    'turno_id'   => $turnoModelo->id,
-                    'estado'     => 'activo',
-                    'maquina_id' => $user->maquina_id ?? null,
-                    'obra_id'    => null,
-                ]);
-                $warning = 'No había una asignación abierta; se ha creado una nueva para registrar la salida.';
+                return response()->json([
+                    'error' => 'No tienes una asignación de turno para hoy. Debes fichar entrada primero.'
+                ], 403);
             }
 
             if (!$asignacion->entrada) {
-                $warning = 'Estás registrando una salida sin haber fichado entrada.';
-            }
-
-            if (!$this->validarHoraSalida($turnoDetectado, $horaActual)) {
-                $warning = 'Has fichado salida fuera de tu horario.';
+                return response()->json([
+                    'error' => 'No puedes fichar salida sin haber fichado entrada.'
+                ], 403);
             }
 
             $asignacion->update([
@@ -504,7 +515,6 @@ class AsignacionTurnoController extends Controller
 
             return response()->json([
                 'success'     => 'Salida registrada.',
-                'warning'     => $warning,
                 'obra_nombre' => $obraEncontrada->obra,
             ]);
         } catch (\Throwable $e) {
@@ -516,29 +526,122 @@ class AsignacionTurnoController extends Controller
     /* ===================== HELPERS ===================== */
 
     /**
-     * Detecta el turno y la fecha a la que debe imputarse.
-     * - Noche: 19:00–23:59 → fecha +1 ; 00:00–03:59 → fecha actual (sigue la noche previa)
-     * - Mañana: 04:00–11:59 → fecha actual
-     * - Tarde: 12:00–18:59 → fecha actual
+     * Detecta el turno y la fecha a la que debe imputarse usando los datos de la tabla turnos.
+     *
+     * Incluye margen de anticipación: si fichas hasta 1 hora antes del inicio del turno,
+     * se asigna al turno que va a empezar (no al que está terminando).
+     *
+     * Ejemplo: Si fichas a las 13:00 y el turno tarde empieza a las 14:00, se asigna a tarde.
      */
     private function detectarTurnoYFecha(Carbon $ahora): array
     {
-        $hora   = Carbon::createFromFormat('H:i:s', $ahora->format('H:i:s'));
-        $fecha  = $ahora->toDateString();
-        $fechaS = $ahora->copy()->addDay()->toDateString();
+        // Margen de anticipación en minutos (fichar hasta 2 horas antes)
+        $margenAnticipacion = 120;
 
-        if ($hora->between(Carbon::createFromTime(19, 0), Carbon::createFromTime(23, 59))) {
-            return ['noche', $fechaS];
+        // Obtener turnos con horarios definidos (excluir montaje, festivo, dinámico que no tienen hora)
+        $turnos = Turno::whereNotNull('hora_inicio')
+            ->whereNotNull('hora_fin')
+            ->where('activo', true)
+            ->orderBy('orden')
+            ->get();
+
+        $horaActual = $ahora->format('H:i:s');
+        $fechaHoy = $ahora->toDateString();
+
+        Log::info("🔍 detectarTurnoYFecha - Entrada", [
+            'ahora' => $ahora->toDateTimeString(),
+            'horaActual' => $horaActual,
+            'fechaHoy' => $fechaHoy,
+            'diaSemana' => $ahora->dayName,
+            'margenAnticipacion' => $margenAnticipacion . ' minutos',
+        ]);
+
+        // Primero: buscar si estamos en el margen de anticipación de algún turno
+        // (esto tiene prioridad sobre estar "dentro" de un turno que está terminando)
+        foreach ($turnos as $turno) {
+            $horaInicio = Carbon::createFromFormat('H:i:s', $turno->hora_inicio);
+            $horaFin = Carbon::createFromFormat('H:i:s', $turno->hora_fin);
+            $offsetInicio = $turno->offset_dias_inicio ?? 0;
+
+            // Calcular el inicio del margen de anticipación
+            $inicioMargen = $horaInicio->copy()->subMinutes($margenAnticipacion);
+            $horaActualCarbon = Carbon::createFromFormat('H:i:s', $horaActual);
+
+            $cruzaMedianoche = $turno->hora_inicio > $turno->hora_fin;
+
+            Log::info("🔍 Evaluando anticipación turno: {$turno->nombre}", [
+                'horaInicio' => $turno->hora_inicio,
+                'inicioMargen' => $inicioMargen->format('H:i:s'),
+                'horaActual' => $horaActual,
+            ]);
+
+            // Turno que NO cruza medianoche (mañana, tarde)
+            if (!$cruzaMedianoche) {
+                // ¿Estamos en el margen de anticipación? (ej: 13:00-14:00 para turno tarde)
+                if ($horaActual >= $inicioMargen->format('H:i:s') && $horaActual < $turno->hora_inicio) {
+                    $fechaAsignacion = $ahora->copy()->addDays(-$offsetInicio)->toDateString();
+                    Log::info("✅ Turno detectado (anticipación): {$turno->nombre}", [
+                        'fechaAsignacion' => $fechaAsignacion,
+                        'razon' => "Hora {$horaActual} está en margen de anticipación ({$inicioMargen->format('H:i')}-{$turno->hora_inicio})",
+                    ]);
+                    return [$turno->nombre, $fechaAsignacion];
+                }
+            }
+            // Turno que SÍ cruza medianoche (noche)
+            else {
+                // Margen de anticipación para noche (ej: 21:00-22:00)
+                if ($horaActual >= $inicioMargen->format('H:i:s') && $horaActual < $turno->hora_inicio) {
+                    $fechaAsignacion = $ahora->copy()->addDays(-$offsetInicio)->toDateString();
+                    Log::info("✅ Turno detectado (anticipación noche): {$turno->nombre}", [
+                        'fechaAsignacion' => $fechaAsignacion,
+                    ]);
+                    return [$turno->nombre, $fechaAsignacion];
+                }
+            }
         }
-        if ($hora->between(Carbon::createFromTime(0, 0), Carbon::createFromTime(3, 59))) {
-            return ['noche', $fecha];
+
+        // Segundo: buscar si estamos DENTRO de algún turno
+        foreach ($turnos as $turno) {
+            $horaInicio = $turno->hora_inicio;
+            $horaFin = $turno->hora_fin;
+            $offsetInicio = $turno->offset_dias_inicio ?? 0;
+            $offsetFin = $turno->offset_dias_fin ?? 0;
+
+            $cruzaMedianoche = $horaInicio > $horaFin;
+
+            // Turno que NO cruza medianoche (ej: mañana 06:00-14:00, tarde 14:00-22:00)
+            if (!$cruzaMedianoche) {
+                if ($horaActual >= $horaInicio && $horaActual < $horaFin) {
+                    $fechaAsignacion = $ahora->copy()->addDays(-$offsetInicio)->toDateString();
+                    Log::info("✅ Turno detectado (dentro del turno): {$turno->nombre}", [
+                        'fechaAsignacion' => $fechaAsignacion,
+                    ]);
+                    return [$turno->nombre, $fechaAsignacion];
+                }
+            }
+            // Turno que SÍ cruza medianoche (ej: noche 22:00-06:00)
+            else {
+                // Estamos en la parte de la noche ANTES de medianoche (22:00-23:59)
+                if ($horaActual >= $horaInicio) {
+                    $fechaAsignacion = $ahora->copy()->addDays(-$offsetInicio)->toDateString();
+                    Log::info("✅ Turno detectado (noche antes medianoche): {$turno->nombre}", [
+                        'fechaAsignacion' => $fechaAsignacion,
+                    ]);
+                    return [$turno->nombre, $fechaAsignacion];
+                }
+                // Estamos en la parte de la noche DESPUÉS de medianoche (00:00-06:00)
+                elseif ($horaActual < $horaFin) {
+                    $fechaAsignacion = $ahora->copy()->addDays(-$offsetFin)->toDateString();
+                    Log::info("✅ Turno detectado (noche después medianoche): {$turno->nombre}", [
+                        'fechaAsignacion' => $fechaAsignacion,
+                    ]);
+                    return [$turno->nombre, $fechaAsignacion];
+                }
+            }
         }
-        if ($hora->between(Carbon::createFromTime(4, 0), Carbon::createFromTime(11, 59))) {
-            return ['mañana', $fecha];
-        }
-        if ($hora->between(Carbon::createFromTime(12, 0), Carbon::createFromTime(18, 59))) {
-            return ['tarde', $fecha];
-        }
+
+        // Si no coincide con ningún turno definido
+        Log::warning("No se detectó turno para hora: {$horaActual}");
         return [null, null];
     }
 
@@ -582,38 +685,75 @@ class AsignacionTurnoController extends Controller
             ->orderByDesc('id')
             ->first();
     }
-    private function validarHoraEntrada($turno, $horaActual)
+    /**
+     * Valida si la hora de entrada está dentro del margen permitido.
+     * Margen: 15 min antes de hora_inicio hasta 30 min después.
+     */
+    private function validarHoraEntrada($turnoNombre, $horaActual)
     {
-        try {
-            $hora = Carbon::createFromFormat('H:i:s', $horaActual)->format('H:i');
-        } catch (\Exception $e) {
-            Log::error("Formato inválido en horaActual (entrada): $horaActual");
-            return false;
+        $turno = Turno::where('nombre', $turnoNombre)->first();
+        if (!$turno || !$turno->hora_inicio) {
+            return true; // Si no tiene horario definido, permitir
         }
 
-        return match ($turno) {
-            'noche' => $hora >= '21:45' || $hora <= '06:30',
-            'mañana' => $hora >= '05:45' && $hora <= '06:30',
-            'tarde' => $hora >= '13:45' && $hora <= '14:30',
-            default => false,
-        };
+        try {
+            $hora = Carbon::createFromFormat('H:i:s', $horaActual);
+            $horaInicio = Carbon::createFromFormat('H:i:s', $turno->hora_inicio);
+
+            // Margen: 15 min antes hasta 30 min después de hora_inicio
+            $limiteAntes = $horaInicio->copy()->subMinutes(15);
+            $limiteDespues = $horaInicio->copy()->addMinutes(30);
+
+            // Para turnos nocturnos que cruzan medianoche
+            if ($turno->hora_inicio > $turno->hora_fin) {
+                // Si la hora actual es antes de medianoche
+                if ($hora->format('H:i:s') >= '12:00:00') {
+                    return $hora->format('H:i:s') >= $limiteAntes->format('H:i:s');
+                }
+                // Si la hora actual es después de medianoche (madrugada)
+                return $hora->format('H:i:s') <= $limiteDespues->format('H:i:s');
+            }
+
+            return $hora->between($limiteAntes, $limiteDespues);
+        } catch (\Exception $e) {
+            Log::error("Error validando hora entrada: {$e->getMessage()}");
+            return false;
+        }
     }
 
-    private function validarHoraSalida($turno, $horaActual)
+    /**
+     * Valida si la hora de salida está dentro del margen permitido.
+     * Margen: 15 min antes de hora_fin hasta 30 min después.
+     */
+    private function validarHoraSalida($turnoNombre, $horaActual)
     {
-        try {
-            $hora = Carbon::createFromFormat('H:i:s', $horaActual)->format('H:i');
-        } catch (\Exception $e) {
-            Log::error("Formato inválido en horaActual (salida): $horaActual");
-            return false;
+        $turno = Turno::where('nombre', $turnoNombre)->first();
+        if (!$turno || !$turno->hora_fin) {
+            return true; // Si no tiene horario definido, permitir
         }
 
-        return match ($turno) {
-            'noche' => $hora >= '05:45' && $hora <= '06:30',
-            'mañana' => $hora >= '13:45' && $hora <= '14:30',
-            'tarde' => $hora >= '21:45' && $hora <= '22:30',
-            default => false,
-        };
+        try {
+            $hora = Carbon::createFromFormat('H:i:s', $horaActual);
+            $horaFin = Carbon::createFromFormat('H:i:s', $turno->hora_fin);
+
+            // Margen: 15 min antes hasta 30 min después de hora_fin
+            $limiteAntes = $horaFin->copy()->subMinutes(15);
+            $limiteDespues = $horaFin->copy()->addMinutes(30);
+
+            // Para turnos nocturnos que cruzan medianoche
+            if ($turno->hora_inicio > $turno->hora_fin) {
+                // La salida del turno nocturno es por la mañana (antes de las 12)
+                if ($hora->format('H:i:s') < '12:00:00') {
+                    return $hora->between($limiteAntes, $limiteDespues);
+                }
+                return false;
+            }
+
+            return $hora->between($limiteAntes, $limiteDespues);
+        } catch (\Exception $e) {
+            Log::error("Error validando hora salida: {$e->getMessage()}");
+            return false;
+        }
     }
 
     /**
@@ -652,8 +792,41 @@ class AsignacionTurnoController extends Controller
             }
 
             $tipo        = $request->tipo;
-            $fechaInicio = Carbon::parse($request->fecha_inicio);
-            $fechaFin    = Carbon::parse($request->fecha_fin);
+            // Parsear solo la parte de fecha (YYYY-MM-DD) para evitar problemas de zona horaria
+            $fechaInicio = Carbon::parse($request->fecha_inicio)->startOfDay();
+            $fechaFin    = Carbon::parse($request->fecha_fin)->startOfDay();
+
+            // 🔹 SOLO ACTUALIZAR HORAS (sin cambiar turno/estado)
+            if ($tipo === 'soloHoras') {
+                $periodo = CarbonPeriod::create($fechaInicio, $fechaFin);
+                $actualizados = 0;
+
+                foreach ($periodo as $fecha) {
+                    $asignacion = AsignacionTurno::where('user_id', $request->user_id)
+                        ->whereDate('fecha', $fecha->toDateString())
+                        ->first();
+
+                    if ($asignacion) {
+                        $datos = [];
+                        if ($request->filled('entrada')) {
+                            $datos['entrada'] = $request->entrada;
+                        }
+                        if ($request->filled('salida')) {
+                            $datos['salida'] = $request->salida;
+                        }
+                        if (!empty($datos)) {
+                            $asignacion->update($datos);
+                            $actualizados++;
+                        }
+                    }
+                }
+
+                if ($actualizados === 0) {
+                    return response()->json(['error' => 'No se encontraron asignaciones para actualizar en las fechas seleccionadas.'], 400);
+                }
+
+                return response()->json(['success' => "Horas actualizadas en {$actualizados} día(s)."]);
+            }
 
             // 🔹 NUEVO COMPORTAMIENTO PARA FESTIVOS
             if ($tipo === 'festivo') {
@@ -697,7 +870,6 @@ class AsignacionTurnoController extends Controller
 
             foreach ($usuarios as $user) {
                 $maquinaAsignada = $request->maquina_id ?? $user->maquina?->id;
-                $currentDate = $fechaInicio->copy();
 
                 $diasSolicitados = 0;
                 if ($tipo === 'vacaciones') {
@@ -748,7 +920,10 @@ class AsignacionTurnoController extends Controller
                     ]);
                 }
 
-                while ($currentDate->lte($fechaFin)) {
+                // Usar CarbonPeriod para iterar de forma confiable sobre el rango de fechas
+                $periodo = CarbonPeriod::create($fechaInicio, $fechaFin);
+
+                foreach ($periodo as $currentDate) {
                     $dateStr = $currentDate->toDateString();
 
                     if (
@@ -756,7 +931,6 @@ class AsignacionTurnoController extends Controller
                         (in_array($currentDate->dayOfWeek, [Carbon::SATURDAY, Carbon::SUNDAY]) ||
                             in_array($dateStr, $festivos))
                     ) {
-                        $currentDate->addDay();
                         continue;
                     }
 
@@ -773,7 +947,7 @@ class AsignacionTurnoController extends Controller
                         if ($esTurno) {
                             $datos['turno_id'] = $turno->id;
                         }
-                        $datos['maquina_id'] = $request->maquina_id ?? $asignacion->maquina_id ?? $user->maquina_id;
+                        $datos['maquina_id'] = $request->maquina_id ?? ($asignacion ? $asignacion->maquina_id : null) ?? $user->maquina_id;
                     }
 
                     if ($request->has('entrada')) {
@@ -786,16 +960,43 @@ class AsignacionTurnoController extends Controller
                         $datos['obra_id'] = $request->obra_id;
                     }
 
-                    if ($asignacion) {
-                        $asignacion->update($datos);
-                    } else {
-                        AsignacionTurno::create(array_merge($datos, [
-                            'user_id' => $user->id,
-                            'fecha'   => $dateStr,
-                        ]));
-                    }
+                    // Buscar asignación existente (incluyendo soft-deleted) con whereDate
+                    $asignacionExistente = AsignacionTurno::withTrashed()
+                        ->where('user_id', $user->id)
+                        ->whereDate('fecha', $dateStr)
+                        ->first();
 
-                    $currentDate->addDay();
+                    if ($asignacionExistente) {
+                        // Restaurar si estaba eliminada
+                        if ($asignacionExistente->trashed()) {
+                            $asignacionExistente->restore();
+                        }
+                        $asignacionExistente->update($datos);
+                    } else {
+                        // Usar try-catch para manejar posibles condiciones de carrera
+                        try {
+                            AsignacionTurno::create(array_merge($datos, [
+                                'user_id' => $user->id,
+                                'fecha'   => $dateStr,
+                            ]));
+                        } catch (\Illuminate\Database\QueryException $e) {
+                            // Si es error de duplicado, intentar actualizar (incluye soft-deleted)
+                            if ($e->errorInfo[1] == 1062) {
+                                $asignacion = AsignacionTurno::withTrashed()
+                                    ->where('user_id', $user->id)
+                                    ->whereDate('fecha', $dateStr)
+                                    ->first();
+                                if ($asignacion) {
+                                    if ($asignacion->trashed()) {
+                                        $asignacion->restore();
+                                    }
+                                    $asignacion->update($datos);
+                                }
+                            } else {
+                                throw $e;
+                            }
+                        }
+                    }
                 }
             }
 
@@ -1154,6 +1355,51 @@ class AsignacionTurnoController extends Controller
         return response()->json(['success' => true]);
     }
 
+    public function repetirSemanaObra(Request $request)
+    {
+        $request->validate([
+            'fecha_actual' => 'required|date',
+            'obra_id' => 'required|exists:obras,id',
+        ]);
+
+        $obraId = $request->obra_id;
+        $inicioSemana = Carbon::parse($request->fecha_actual)->startOfWeek();
+        $inicioAnterior = $inicioSemana->copy()->subWeek();
+        $finAnterior = $inicioAnterior->copy()->endOfWeek();
+
+        $asignaciones = AsignacionTurno::whereBetween('fecha', [$inicioAnterior, $finAnterior])
+            ->where('obra_id', $obraId)
+            ->get();
+
+        $copiadas = 0;
+        foreach ($asignaciones as $asignacion) {
+            $nuevaFecha = Carbon::parse($asignacion->fecha)->addWeek();
+
+            // Verifica si ya existe para evitar duplicados
+            $existe = AsignacionTurno::where('user_id', $asignacion->user_id)
+                ->whereDate('fecha', $nuevaFecha)
+                ->where('obra_id', $obraId)
+                ->exists();
+
+            if (!$existe) {
+                AsignacionTurno::create([
+                    'user_id' => $asignacion->user_id,
+                    'obra_id' => $asignacion->obra_id,
+                    'fecha' => $nuevaFecha,
+                    'estado' => $asignacion->estado,
+                    'turno_id' => $asignacion->turno_id,
+                    'maquina_id' => $asignacion->maquina_id,
+                ]);
+                $copiadas++;
+            }
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => "Se copiaron {$copiadas} asignaciones."
+        ]);
+    }
+
     public function quitarObra($id)
     {
         $asignacion = AsignacionTurno::find($id);
@@ -1171,6 +1417,57 @@ class AsignacionTurnoController extends Controller
             'success' => true,
             'message' => '🗑️ Asignación eliminada correctamente.'
         ]);
+    }
+
+    /**
+     * Mueve múltiples asignaciones a otra obra manteniendo las fechas
+     */
+    public function moverEventosAObra(Request $request)
+    {
+        try {
+            // Procesar IDs primero (quitar prefijo 'turno-')
+            $ids = collect($request->asignacion_ids)->map(function ($id) {
+                return (int) str_replace('turno-', '', $id);
+            })->filter()->values()->toArray();
+
+            if (empty($ids)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No se proporcionaron IDs válidos.'
+                ], 400);
+            }
+
+            // Validar obra_id (puede venir como string)
+            $obraId = $request->obra_id;
+            if ($obraId === 'sin-obra' || $obraId === '' || $obraId === null) {
+                $obraId = null;
+            } else {
+                $obraId = (int) $obraId;
+                // Verificar que la obra existe
+                if (!Obra::where('id', $obraId)->exists()) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'La obra seleccionada no existe.'
+                    ], 400);
+                }
+            }
+
+            $actualizados = AsignacionTurno::whereIn('id', $ids)->update([
+                'obra_id' => $obraId
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => "Se movieron {$actualizados} asignaciones correctamente.",
+                'actualizados' => $actualizados
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('Error moviendo eventos: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al mover eventos: ' . $e->getMessage()
+            ], 500);
+        }
     }
 
     public function export(Request $request)

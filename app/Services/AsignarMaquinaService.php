@@ -6,6 +6,7 @@ use Illuminate\Support\Facades\Log;
 use App\Models\Maquina;
 use App\Models\Elemento;
 use App\Models\Planilla;
+use App\Models\ProductoBase;
 
 class AsignarMaquinaService
 {
@@ -26,6 +27,18 @@ class AsignarMaquinaService
             return;
         }
 
+        // Detectar si es "ensamblado taller" para usar Nave B
+        $esEnsambladoTaller = $this->esEnsambladoTaller($planilla);
+
+        if ($esEnsambladoTaller) {
+            Log::channel('planilla_import')->info("🏭 [AsignarMaquina] Planilla {$planillaId}: ENSAMBLADO TALLER detectado → Asignando a Nave B");
+            $this->repartirEnNaveB($planilla, $elementos);
+            return;
+        }
+
+        // Lógica normal para Nave A
+        Log::channel('planilla_import')->info("🏭 [AsignarMaquina] Planilla {$planillaId}: Asignando a Nave A (normal)");
+
         // Clasificar elementos
         $estribos = $elementos->filter(
             fn($e) => (int)$e->dobles_barra >= 4 && (int)$e->diametro <= 16
@@ -33,10 +46,9 @@ class AsignarMaquinaService
 
 
         $grupos = [
-            // Solo elementos con dobles >= 4 Y diÃ¡metro <= 16 son "estribos"
+            // Solo elementos con dobles >= 4 Y diámetro <= 16 son "estribos"
             'estribos' => $estribos,
-            // âœ… CORREGIDO: Resto = TODOS los que NO son estribos
-            // (incluye dobles >= 4 con diÃ¡metro > 16)
+            // Resto = TODOS los que NO son estribos (incluye dobles >= 4 con diámetro > 16)
             'resto' => $elementos->reject(fn($e) => $estribos->contains($e)),
         ];
 
@@ -56,21 +68,11 @@ class AsignarMaquinaService
         // Calcular cargas actuales
         $cargas = $this->cargasPendientesPorMaquina();
 
-        // 📦 PASO 1: Elementos sin elaboración → Syntax Line 28
+        // 📦 PASO 1: Elementos sin elaboración (única dimensión) → Grúa de Nave A
         $sinElaborar = $elementos->filter(fn($e) => (int)($e->elaborado ?? 1) === 0);
-        $syntaxLine = $maquinas->first(fn($m) => $m->codigo === 'SL28');
 
         if ($sinElaborar->isNotEmpty()) {
-            if (!$syntaxLine) {
-                Log::warning("⚠️ Syntax Line 28 no disponible para elementos sin elaborar en planilla {$planilla->id}");
-            } else {
-                foreach ($sinElaborar as $e) {
-                    $e->maquina_id = $syntaxLine->id;
-                    $e->save();
-                    $this->sumarCarga($cargas, $syntaxLine->id, (float)$e->peso);
-                }
-                // Log::info("📦 {$sinElaborar->count()} elementos sin elaborar → Syntax Line 28");
-            }
+            $this->asignarElementosAGrua($planilla, $sinElaborar, 'A', $cargas);
         }
 
         // 🔧 PASO 2: Elementos que SÍ requieren elaboración (elaborado = 1)
@@ -83,17 +85,20 @@ class AsignarMaquinaService
             'resto'    => $elementosAElaborar->reject(fn($e) => (int)$e->dobles_barra >= 4),
         ];
 
-        // ⚙️ Cortadoras automáticas (excluye CM si su tipo no es 'cortadora_dobladora')
-        $cortadoras = $maquinas->filter(fn($m) => $m->tipo === 'cortadora_dobladora');
-        Log::channel('planilla_import')->debug("⚙️ [AsignarMaquina] Cortadoras automáticas disponibles: {$cortadoras->count()} - IDs: " . json_encode($cortadoras->pluck('id')->toArray()));
-
-        // 🪚 Cortadora manual por código
+        // 🪚 Cortadora manual por código (buscar primero para excluirla de cortadoras automáticas)
         $cortadoraManual = $maquinas->first(fn($m) => $m->codigo === 'CM');
         if ($cortadoraManual) {
-            Log::channel('planilla_import')->debug("🪚 [AsignarMaquina] Cortadora manual CM encontrada: ID {$cortadoraManual->id}");
+            Log::channel('planilla_import')->info("🪚 [AsignarMaquina] Cortadora manual CM encontrada: ID {$cortadoraManual->id} - SOLO recibirá elementos con dobles_barra=0");
         } else {
-            Log::channel('planilla_import')->debug("⚠️ [AsignarMaquina] Cortadora manual CM no encontrada");
+            Log::channel('planilla_import')->warning("⚠️ [AsignarMaquina] Cortadora manual CM no encontrada");
         }
+
+        // ⚙️ Cortadoras automáticas (EXCLUIR EXPLÍCITAMENTE LA CM)
+        $cortadoras = $maquinas->filter(function($m) use ($cortadoraManual) {
+            // Solo tipo cortadora_dobladora Y que NO sea la cortadora manual CM
+            return $m->tipo === 'cortadora_dobladora' && (!$cortadoraManual || $m->id !== $cortadoraManual->id);
+        });
+        Log::channel('planilla_import')->info("⚙️ [AsignarMaquina] Cortadoras automáticas (sin CM): {$cortadoras->count()} máquinas - Códigos: " . json_encode($cortadoras->pluck('codigo')->toArray()));
 
         // Procesar estribos
         if ($grupos['estribos']->isNotEmpty()) {
@@ -117,6 +122,9 @@ class AsignarMaquinaService
             $this->repartirResto($planilla, $grupos['resto'], $cortadoras, $cargas, $cortadoraManual);
         }
 
+        // Mostrar resumen de balanceo final
+        $this->mostrarResumenBalanceo($cargas, $maquinas);
+
         Log::channel('planilla_import')->info("✅ [AsignarMaquina] Reparto completado para planilla {$planillaId}");
     }
 
@@ -128,6 +136,11 @@ class AsignarMaquinaService
             Log::channel('planilla_import')->debug("ℹ️ [AsignarMaquina] No hay estribos para repartir");
             return;
         }
+
+        // 🎯 Ordenar estribos por peso descendente para mejor balanceo
+        $estribos = $estribos->sortByDesc(fn($e) => (float)$e->peso);
+        $pesoTotal = $estribos->sum(fn($e) => (float)$e->peso);
+        Log::channel('planilla_import')->info("⚖️ [Balanceo] Estribos ordenados por peso (total: {$pesoTotal}kg) para distribución equitativa");
 
         $diametros = $estribos->pluck('diametro')->unique()->map(fn($d) => (int)$d);
         Log::channel('planilla_import')->debug("📊 [AsignarMaquina] Diámetros en estribos: " . json_encode($diametros->toArray()));
@@ -150,9 +163,15 @@ class AsignarMaquinaService
             foreach ($estribos as $e) {
                 $m = $this->mejorMaquinaPorCodigoYDiametro($candidatas, $candidataUnica, (int)$e->diametro, $cargas);
                 if ($m) {
+                    // VALIDACIÓN: No permitir asignar a CM si no cumple requisitos
+                    if (!$this->puedeIrACM($e, $m)) {
+                        Log::channel('planilla_import')->error("⚠️ [AsignarMaquina] Estribo {$e->id} BLOQUEADO para {$m->codigo} (validación CM fallida)");
+                        continue;
+                    }
+
                     $e->maquina_id = $m->id;
                     $e->save();
-                    $this->sumarCarga($cargas, $m->id, (float)$e->peso);
+                    $this->sumarCarga($cargas, $m->id, (float)$e->peso, (int)($e->tiempo_fabricacion ?? 0));
                     $asignados++;
                     Log::channel('planilla_import')->debug("✓ [AsignarMaquina] Elemento {$e->id} (Ø{$e->diametro}, {$e->peso}kg) → Máquina {$m->id} ({$m->codigo})");
                 } else {
@@ -171,9 +190,15 @@ class AsignarMaquinaService
         foreach ($estribos as $e) {
             $m = $this->mejorMaquinaPorCodigoYDiametro($candidatas, null, (int)$e->diametro, $cargas);
             if ($m) {
+                // VALIDACIÓN: No permitir asignar a CM si no cumple requisitos
+                if (!$this->puedeIrACM($e, $m)) {
+                    Log::channel('planilla_import')->error("⚠️ [AsignarMaquina] Estribo {$e->id} BLOQUEADO para {$m->codigo} (validación CM fallida)");
+                    continue;
+                }
+
                 $e->maquina_id = $m->id;
                 $e->save();
-                $this->sumarCarga($cargas, $m->id, (float)$e->peso);
+                $this->sumarCarga($cargas, $m->id, (float)$e->peso, (int)($e->tiempo_fabricacion ?? 0));
                 $asignados++;
                 Log::channel('planilla_import')->debug("✓ [AsignarMaquina] Elemento {$e->id} (Ø{$e->diametro}, {$e->peso}kg) → Máquina {$m->id} ({$m->codigo})");
             } else {
@@ -198,79 +223,64 @@ class AsignarMaquinaService
             return;
         }
 
-        // 🎯 Primero, enviar a CM: elementos con dobles_barra = 0 (barras rectas)
-        $vaParaCM = $resto->filter(fn($e) => (int)$e->dobles_barra === 0);
+        // 🎯 Los elementos con dobles_barra = 0 pueden ir tanto a CM como a cortadoras automáticas
+        // Se distribuirán según el balanceo de cargas para evitar sobrecarga de CM
+        // Log de diagnóstico: mostrar distribución de dobles_barra en el resto
+        $distribucionDobles = $resto->groupBy(fn($e) => (int)$e->dobles_barra)->map->count();
+        Log::channel('planilla_import')->debug("🔍 [AsignarMaquina] Distribución dobles_barra en resto: " . json_encode($distribucionDobles->toArray()));
 
-        if ($vaParaCM->isNotEmpty()) {
-            Log::channel('planilla_import')->info("🪚 [AsignarMaquina] Detectados {$vaParaCM->count()} elementos para CM (barras rectas con dobles_barra=0)");
+        // CM participa en el pool de máquinas candidatas para elementos con dobles_barra=0
+        // pero se balancea con las demás cortadoras automáticas
+        Log::channel('planilla_import')->info("⚖️ [AsignarMaquina] Elementos con dobles_barra=0 se distribuirán entre CM y cortadoras automáticas según carga");
 
-            if (!$cortadoraManual) {
-                Log::channel('planilla_import')->warning("⚠️ [AsignarMaquina] CM no disponible para {$vaParaCM->count()} elementos con dobles_barra=0 en planilla {$planilla->id}");
-                foreach ($vaParaCM as $e) {
-                    Log::channel('planilla_import')->warning("   ❌ Elemento {$e->id} (Ø{$e->diametro}, dobles=0) sin asignar (requiere CM)");
-                }
-            } else {
-                $asignadosCM = 0;
-                foreach ($vaParaCM as $e) {
-                    $e->maquina_id = $cortadoraManual->id;
-                    $e->save();
-                    $this->sumarCarga($cargas, $cortadoraManual->id, (float)$e->peso);
-                    $asignadosCM++;
-                    Log::channel('planilla_import')->debug("✓ [AsignarMaquina] Elemento {$e->id} (Ø{$e->diametro}, {$e->peso}kg, dobles=0) → CM (ID {$cortadoraManual->id})");
-                }
-                Log::channel('planilla_import')->info("✅ [AsignarMaquina] Asignados {$asignadosCM} elementos a CM");
-            }
+        // 🎯 Optimizar elementos por desperdicio antes de asignar
+        $restoOptimizado = $this->optimizarPorDesperdicio($resto);
+        $pesoTotalResto = $restoOptimizado->sum(fn($e) => (float)$e->peso);
+        Log::channel('planilla_import')->info("⚖️ [Balanceo] Elementos 'resto' optimizados (total: {$pesoTotalResto}kg) ordenados por desperdicio y peso para distribución equitativa");
 
-            // El resto continúa por el flujo normal
-            $resto = $resto->reject(fn($e) => (int)$e->dobles_barra === 0);
-            Log::channel('planilla_import')->debug("📊 [AsignarMaquina] Elementos restantes después de CM: {$resto->count()}");
-
-            if ($resto->isEmpty()) {
-                Log::channel('planilla_import')->info("✓ [AsignarMaquina] Todos los elementos 'resto' fueron asignados a CM");
-                return;
-            }
+        // 🧠 Incluir CM en el pool de máquinas disponibles para balanceo
+        $todasMaquinas = $cortadoras->toBase();
+        if ($cortadoraManual) {
+            $todasMaquinas = $todasMaquinas->push($cortadoraManual);
+            Log::channel('planilla_import')->info("🪚 [AsignarMaquina] CM incluida en pool de balanceo para elementos con dobles_barra=0");
         }
 
-        // 🧠 Lógica existente para repartir el resto entre cortadoras automáticas
-        $diametros = $resto->pluck('diametro')->unique()->map(fn($d) => (int)$d);
-        Log::channel('planilla_import')->debug("📊 [AsignarMaquina] Diámetros en resto (excl. CM): " . json_encode($diametros->toArray()));
-
-        $maquinaUnica = $cortadoras->first(fn($m) => $diametros->every(fn($d) => $this->soportaDiametro($m, $d)));
-
-        if ($maquinaUnica) {
-            Log::channel('planilla_import')->info("🎯 [AsignarMaquina] Máquina única encontrada: ID {$maquinaUnica->id} ({$maquinaUnica->codigo}) soporta todos los diámetros del resto");
-            $asignados = 0;
-
-            foreach ($resto as $e) {
-                $e->maquina_id = $maquinaUnica->id;
-                $e->save();
-                $this->sumarCarga($cargas, $maquinaUnica->id, (float)$e->peso);
-                $asignados++;
-                Log::channel('planilla_import')->debug("✓ [AsignarMaquina] Elemento {$e->id} (Ø{$e->diametro}, {$e->peso}kg) → Máquina {$maquinaUnica->id}");
-            }
-
-            Log::channel('planilla_import')->info("✅ [AsignarMaquina] Todos los elementos del resto asignados a máquina única: {$asignados} elementos");
-            return;
-        }
-
-        // No hay máquina única, asignar individualmente
-        Log::channel('planilla_import')->info("🔀 [AsignarMaquina] No hay máquina única para el resto, asignando individualmente");
+        // Asignar individualmente con balanceo entre TODAS las máquinas (incluida CM)
+        Log::channel('planilla_import')->info("🔀 [AsignarMaquina] Asignando elementos del resto con balanceo entre " . $todasMaquinas->count() . " máquinas");
         $asignados = 0;
 
-        foreach ($resto as $e) {
-            $m = $this->mejorMaquinaCompatible($cortadoras, (int)$e->diametro, $cargas);
+        foreach ($restoOptimizado as $e) {
+            // Determinar pool de máquinas candidatas según dobles_barra
+            $dobles = (int)$e->dobles_barra;
+
+            if ($dobles === 0) {
+                // Elementos rectos: pueden ir a CM o cortadoras automáticas
+                $poolCandidatas = $todasMaquinas->filter(fn($m) => $this->soportaDiametro($m, (int)$e->diametro));
+            } else {
+                // Elementos con dobleces: SOLO cortadoras automáticas (nunca CM)
+                $poolCandidatas = $cortadoras->filter(fn($m) => $this->soportaDiametro($m, (int)$e->diametro));
+            }
+
+            $m = $this->menosCargada($poolCandidatas, $cargas);
+
             if ($m) {
+                // VALIDACIÓN: No permitir asignar a CM si no cumple requisitos
+                if (!$this->puedeIrACM($e, $m)) {
+                    Log::channel('planilla_import')->error("⚠️ [AsignarMaquina] Elemento {$e->id} BLOQUEADO para {$m->codigo} (validación CM fallida)");
+                    continue;
+                }
+
                 $e->maquina_id = $m->id;
                 $e->save();
-                $this->sumarCarga($cargas, $m->id, (float)$e->peso);
+                $this->sumarCarga($cargas, $m->id, (float)$e->peso, (int)($e->tiempo_fabricacion ?? 0));
                 $asignados++;
-                Log::channel('planilla_import')->debug("✓ [AsignarMaquina] Elemento {$e->id} (Ø{$e->diametro}, {$e->peso}kg) → Máquina {$m->id} ({$m->codigo})");
+                Log::channel('planilla_import')->debug("✓ [AsignarMaquina] Elemento {$e->id} (Ø{$e->diametro}, {$e->peso}kg, dobles={$dobles}) → Máquina {$m->id} ({$m->codigo})");
             } else {
-                Log::channel('planilla_import')->warning("⚠️ [AsignarMaquina] Sin cortadora_dobladora compatible para elemento {$e->id} Ø{$e->diametro} planilla {$planilla->id}");
+                Log::channel('planilla_import')->warning("⚠️ [AsignarMaquina] Sin máquina compatible para elemento {$e->id} Ø{$e->diametro} dobles={$dobles} planilla {$planilla->id}");
             }
         }
 
-        Log::channel('planilla_import')->info("✅ [AsignarMaquina] Elementos del resto asignados individualmente: {$asignados} de {$resto->count()}");
+        Log::channel('planilla_import')->info("✅ [AsignarMaquina] Elementos del resto asignados con balanceo: {$asignados} de {$restoOptimizado->count()}");
     }
 
     protected function mejorMaquinaPorCodigoYDiametro($candidatas, ?string $codigoPreferido, int $diametro, array $cargas)
@@ -318,17 +328,35 @@ class AsignarMaquinaService
 
     protected function menosCargada($pool, array $cargas)
     {
+        if ($pool->isEmpty()) {
+            return null;
+        }
+
         $mejor = null;
-        $mejorIdx = INF;
+        $menorCarga = INF;
 
+        // Buscar la máquina con MENOS CARGA (tiempo 70% + peso 30%)
         foreach ($pool as $m) {
-            $c = $cargas[$m->id] ?? ['kilos' => 0.0, 'num' => 0];
-            $idx = ($c['kilos'] * 0.7) + ($c['num'] * 0.3);
+            $c = $cargas[$m->id] ?? ['kilos' => 0.0, 'segundos' => 0, 'num' => 0];
 
-            if ($idx < $mejorIdx) {
-                $mejorIdx = $idx;
+            // Normalizar tiempo a horas para que sea comparable
+            $horas = $c['segundos'] / 3600;
+
+            // Índice de carga: Priorizar TIEMPO (70%) + PESO (30%)
+            // El tiempo es el factor más importante porque determina cuándo estará libre la máquina
+            $indiceCarga = ($horas * 0.7) + ($c['kilos'] * 0.3);
+
+            // Si hay empate en carga, usar el número de elementos como desempate
+            if ($indiceCarga < $menorCarga || ($indiceCarga == $menorCarga && $c['num'] < ($cargas[$mejor->id]['num'] ?? 0))) {
+                $menorCarga = $indiceCarga;
                 $mejor = $m;
             }
+        }
+
+        if ($mejor) {
+            $c = $cargas[$mejor->id] ?? ['kilos' => 0.0, 'segundos' => 0, 'num' => 0];
+            $horas = round($c['segundos'] / 3600, 2);
+            Log::channel('planilla_import')->debug("⚖️ [Balanceo] Máquina {$mejor->id} ({$mejor->codigo}) seleccionada: {$c['kilos']}kg, {$horas}h, {$c['num']} elem (índice: " . number_format($menorCarga, 2) . ")");
         }
 
         return $mejor;
@@ -347,36 +375,388 @@ class AsignarMaquinaService
 
     protected function cargasPendientesPorMaquina(): array
     {
-        Log::channel('planilla_import')->debug("📊 [AsignarMaquina] Calculando cargas pendientes por máquina");
+        Log::channel('planilla_import')->debug("📊 [AsignarMaquina] Calculando cargas pendientes por máquina (peso + tiempo)");
 
-        $cargas = Elemento::selectRaw('maquina_id, COALESCE(SUM(peso),0) as kilos, COUNT(*) as num')
+        $cargas = Elemento::selectRaw('maquina_id, COALESCE(SUM(peso),0) as kilos, COALESCE(SUM(tiempo_fabricacion),0) as segundos, COUNT(*) as num')
             ->whereNotNull('maquina_id')
             ->where('estado', 'pendiente')
             ->groupBy('maquina_id')
             ->get()
             ->mapWithKeys(fn($r) => [
-                (int)$r->maquina_id => ['kilos' => (float)$r->kilos, 'num' => (int)$r->num]
+                (int)$r->maquina_id => [
+                    'kilos' => (float)$r->kilos,
+                    'segundos' => (int)$r->segundos,
+                    'num' => (int)$r->num
+                ]
             ])
             ->toArray();
 
         $totalMaquinas = count($cargas);
         $totalKilos = array_sum(array_column($cargas, 'kilos'));
+        $totalSegundos = array_sum(array_column($cargas, 'segundos'));
         $totalElementos = array_sum(array_column($cargas, 'num'));
 
-        Log::channel('planilla_import')->debug("📊 [AsignarMaquina] Cargas calculadas: {$totalMaquinas} máquinas con carga, {$totalKilos}kg total, {$totalElementos} elementos pendientes");
+        $horasTotales = round($totalSegundos / 3600, 2);
+        Log::channel('planilla_import')->debug("📊 [AsignarMaquina] Cargas calculadas: {$totalMaquinas} máquinas con carga, {$totalKilos}kg, {$horasTotales}h, {$totalElementos} elementos pendientes");
 
         return $cargas;
     }
 
-    protected function sumarCarga(array &$cargas, int $maquinaId, float $kilos): void
+    protected function sumarCarga(array &$cargas, int $maquinaId, float $kilos, int $segundos = 0): void
     {
         if (!isset($cargas[$maquinaId])) {
-            $cargas[$maquinaId] = ['kilos' => 0.0, 'num' => 0];
+            $cargas[$maquinaId] = ['kilos' => 0.0, 'segundos' => 0, 'num' => 0];
         }
 
         $cargas[$maquinaId]['kilos'] += $kilos;
+        $cargas[$maquinaId]['segundos'] += $segundos;
         $cargas[$maquinaId]['num'] += 1;
 
-        Log::channel('planilla_import')->debug("➕ [AsignarMaquina] Máquina {$maquinaId}: carga actualizada → {$cargas[$maquinaId]['kilos']}kg, {$cargas[$maquinaId]['num']} elementos");
+        $horas = round($cargas[$maquinaId]['segundos'] / 3600, 2);
+        Log::channel('planilla_import')->debug("➕ [AsignarMaquina] Máquina {$maquinaId}: carga actualizada → {$cargas[$maquinaId]['kilos']}kg, {$horas}h, {$cargas[$maquinaId]['num']} elementos");
+    }
+
+    /**
+     * Valida si un elemento puede ser asignado a la cortadora manual CM
+     * REGLA: Solo elementos con dobles_barra = 0 pueden ir a CM
+     *
+     * @param Elemento $elemento
+     * @param Maquina $maquina
+     * @return bool
+     */
+    protected function puedeIrACM(Elemento $elemento, Maquina $maquina): bool
+    {
+        // Si no es la cortadora manual, siempre puede asignar
+        if ($maquina->codigo !== 'CM') {
+            return true;
+        }
+
+        // Si ES la cortadora manual, SOLO si dobles_barra = 0
+        $dobles = (int)$elemento->dobles_barra;
+
+        if ($dobles !== 0) {
+            Log::channel('planilla_import')->error("🚨🚨🚨 [VALIDACIÓN CRÍTICA] BLOQUEADO: Elemento {$elemento->id} (dobles_barra={$dobles}) NO puede ir a CM (solo dobles=0)");
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
+     * Optimiza la asignación de elementos sin elaborar basándose en el desperdicio de material.
+     * Prioriza elementos cuya longitud sea divisor o se aproxime por debajo a las longitudes base.
+     *
+     * @param \Illuminate\Support\Collection $elementos
+     * @return \Illuminate\Support\Collection
+     */
+    protected function optimizarPorDesperdicio($elementos)
+    {
+        Log::channel('planilla_import')->info("🎯 [Optimización] Iniciando optimización por desperdicio para {$elementos->count()} elementos");
+
+        // Obtener longitudes base disponibles de productos
+        $longitudesBase = ProductoBase::whereNotNull('longitud')
+            ->where('longitud', '>', 0)
+            ->pluck('longitud')
+            ->unique()
+            ->sort()
+            ->values()
+            ->toArray();
+
+        if (empty($longitudesBase)) {
+            Log::channel('planilla_import')->warning("⚠️ [Optimización] No hay longitudes base disponibles, retornando elementos sin optimizar");
+            return $elementos;
+        }
+
+        Log::channel('planilla_import')->debug("📏 [Optimización] Longitudes base disponibles: " . json_encode($longitudesBase) . " metros");
+
+        // Calcular el índice de desperdicio para cada elemento
+        $elementosConDesperdicio = $elementos->map(function ($elemento) use ($longitudesBase) {
+            $longitudElemento = (float)$elemento->longitud; // Longitud en cm
+
+            if ($longitudElemento <= 0) {
+                Log::channel('planilla_import')->debug("⚠️ [Optimización] Elemento {$elemento->id} tiene longitud inválida: {$longitudElemento}cm");
+                return [
+                    'elemento' => $elemento,
+                    'desperdicio_porcentaje' => 100, // Máximo desperdicio para elementos sin longitud
+                    'longitud_base_optima' => null,
+                ];
+            }
+
+            // Convertir longitud del elemento de cm a metros para comparar con productos base
+            $longitudElementoMetros = $longitudElemento / 100;
+
+            $mejorDesperdicio = INF;
+            $mejorLongitudBase = null;
+
+            // Buscar la longitud base que minimiza el desperdicio
+            foreach ($longitudesBase as $longitudBase) {
+                if ($longitudBase >= $longitudElementoMetros) {
+                    // Calcular cuántas piezas del elemento caben en la barra base
+                    $piezasPorBarra = floor($longitudBase / $longitudElementoMetros);
+
+                    if ($piezasPorBarra > 0) {
+                        // Calcular el material aprovechado y el desperdicio
+                        $longitudAprovechada = $piezasPorBarra * $longitudElementoMetros;
+                        $desperdicio = $longitudBase - $longitudAprovechada;
+                        $desperdicioPorcentaje = ($desperdicio / $longitudBase) * 100;
+
+                        if ($desperdicioPorcentaje < $mejorDesperdicio) {
+                            $mejorDesperdicio = $desperdicioPorcentaje;
+                            $mejorLongitudBase = $longitudBase;
+                        }
+                    }
+                }
+            }
+
+            // Si no se encontró una longitud base adecuada, usar 100% de desperdicio
+            if ($mejorLongitudBase === null) {
+                $mejorDesperdicio = 100;
+                Log::channel('planilla_import')->debug("⚠️ [Optimización] Elemento {$elemento->id}: longitud {$longitudElemento}cm ({$longitudElementoMetros}m) no cabe en ninguna longitud base disponible");
+            } else {
+                $piezas = floor($mejorLongitudBase / $longitudElementoMetros);
+                Log::channel('planilla_import')->debug("✓ [Optimización] Elemento {$elemento->id}: L={$longitudElemento}cm ({$longitudElementoMetros}m) → Base óptima={$mejorLongitudBase}m, {$piezas} piezas/barra, desperdicio={$mejorDesperdicio}%");
+            }
+
+            return [
+                'elemento' => $elemento,
+                'desperdicio_porcentaje' => $mejorDesperdicio,
+                'longitud_base_optima' => $mejorLongitudBase,
+                'peso' => (float)$elemento->peso,
+            ];
+        });
+
+        // Ordenar por:
+        // 1. Desperdicio ascendente (menor desperdicio = mayor prioridad)
+        // 2. Peso descendente (elementos pesados primero para mejor balanceo)
+        $elementosOrdenados = $elementosConDesperdicio
+            ->sortBy([
+                ['desperdicio_porcentaje', 'asc'],
+                ['peso', 'desc']
+            ])
+            ->pluck('elemento');
+
+        // Logging de estadísticas
+        $desperdicioPromedio = $elementosConDesperdicio->avg('desperdicio_porcentaje');
+        $elementosOptimos = $elementosConDesperdicio->filter(fn($e) => $e['desperdicio_porcentaje'] < 5)->count();
+        $elementosAceptables = $elementosConDesperdicio->filter(fn($e) => $e['desperdicio_porcentaje'] >= 5 && $e['desperdicio_porcentaje'] < 15)->count();
+        $elementosAltos = $elementosConDesperdicio->filter(fn($e) => $e['desperdicio_porcentaje'] >= 15)->count();
+
+        Log::channel('planilla_import')->info("📊 [Optimización] Desperdicio promedio: " . number_format($desperdicioPromedio, 2) . "%");
+        Log::channel('planilla_import')->info("📊 [Optimización] Distribución: {$elementosOptimos} óptimos (<5%), {$elementosAceptables} aceptables (5-15%), {$elementosAltos} altos (>15%)");
+
+        return $elementosOrdenados;
+    }
+
+    /**
+     * Muestra un resumen del balanceo de cargas entre máquinas
+     *
+     * @param array $cargas
+     * @param \Illuminate\Support\Collection $maquinas
+     * @return void
+     */
+    protected function mostrarResumenBalanceo(array $cargas, $maquinas): void
+    {
+        if (empty($cargas)) {
+            Log::channel('planilla_import')->debug("ℹ️ [Balanceo] No hay cargas asignadas en esta planilla");
+            return;
+        }
+
+        Log::channel('planilla_import')->info("📊 ============ RESUMEN DE BALANCEO DE CARGAS ============");
+
+        $cargasConMaquina = [];
+        $totalKilos = 0;
+        $totalSegundos = 0;
+        $totalElementos = 0;
+
+        foreach ($cargas as $maquinaId => $carga) {
+            $maquina = $maquinas->get($maquinaId);
+            if ($maquina) {
+                $cargasConMaquina[] = [
+                    'id' => $maquinaId,
+                    'codigo' => $maquina->codigo,
+                    'tipo' => $maquina->tipo,
+                    'kilos' => $carga['kilos'],
+                    'segundos' => $carga['segundos'],
+                    'num' => $carga['num'],
+                ];
+                $totalKilos += $carga['kilos'];
+                $totalSegundos += $carga['segundos'];
+                $totalElementos += $carga['num'];
+            }
+        }
+
+        // Ordenar por tiempo descendente (factor más importante)
+        usort($cargasConMaquina, fn($a, $b) => $b['segundos'] <=> $a['segundos']);
+
+        $promedioHorasPorMaquina = count($cargasConMaquina) > 0 ? ($totalSegundos / 3600) / count($cargasConMaquina) : 0;
+
+        foreach ($cargasConMaquina as $carga) {
+            $horas = $carga['segundos'] / 3600;
+            $porcentajeTiempo = $totalSegundos > 0 ? ($carga['segundos'] / $totalSegundos) * 100 : 0;
+            $desviacionTiempo = $promedioHorasPorMaquina > 0 ? (($horas - $promedioHorasPorMaquina) / $promedioHorasPorMaquina) * 100 : 0;
+            $indicador = abs($desviacionTiempo) < 10 ? '✅' : (abs($desviacionTiempo) < 25 ? '⚠️' : '🔴');
+
+            Log::channel('planilla_import')->info(sprintf(
+                "%s [Balanceo] %s (ID:%d): %.2fkg | %.2fh (%d elem) - %.1f%% del tiempo | Desv: %+.1f%%",
+                $indicador,
+                $carga['codigo'],
+                $carga['id'],
+                $carga['kilos'],
+                $horas,
+                $carga['num'],
+                $porcentajeTiempo,
+                $desviacionTiempo
+            ));
+        }
+
+        $horasTotales = round($totalSegundos / 3600, 2);
+        Log::channel('planilla_import')->info("📊 [Balanceo] TOTAL: {$totalKilos}kg, {$horasTotales}h en {$totalElementos} elementos - " . count($cargasConMaquina) . " máquinas");
+        Log::channel('planilla_import')->info("📊 [Balanceo] PROMEDIO por máquina: " . number_format($promedioHorasPorMaquina, 2) . "h");
+
+        // Calcular desviación estándar del TIEMPO (factor más importante)
+        if (count($cargasConMaquina) > 1) {
+            $varianza = 0;
+            foreach ($cargasConMaquina as $carga) {
+                $horas = $carga['segundos'] / 3600;
+                $varianza += pow($horas - $promedioHorasPorMaquina, 2);
+            }
+            $varianza /= count($cargasConMaquina);
+            $desviacionEstandar = sqrt($varianza);
+            $coeficienteVariacion = $promedioHorasPorMaquina > 0 ? ($desviacionEstandar / $promedioHorasPorMaquina) * 100 : 0;
+
+            Log::channel('planilla_import')->info(sprintf(
+                "📊 [Balanceo] Desviación estándar tiempo: %.2fh | Coeficiente de variación: %.1f%% %s",
+                $desviacionEstandar,
+                $coeficienteVariacion,
+                $coeficienteVariacion < 15 ? '(Excelente ✅)' : ($coeficienteVariacion < 30 ? '(Aceptable ⚠️)' : '(Mejorable 🔴)')
+            ));
+        }
+
+        Log::channel('planilla_import')->info("📊 ========================================================");
+    }
+
+    /**
+     * Detecta si la planilla es de tipo "ensamblado taller"
+     * Las planillas con ensamblado taller van a máquinas de Nave B
+     */
+    protected function esEnsambladoTaller(Planilla $planilla): bool
+    {
+        $ensamblado = strtolower(trim($planilla->ensamblado ?? ''));
+        return str_contains($ensamblado, 'taller');
+    }
+
+    /**
+     * Reparte los elementos de una planilla "ensamblado taller" en máquinas de Nave B
+     * Solo usa cortadoras_dobladoras de Nave B, sin lógica de estriberas ni CM
+     */
+    protected function repartirEnNaveB(Planilla $planilla, $elementos): void
+    {
+        Log::channel('planilla_import')->info("🏭 [AsignarMaquina/NaveB] Iniciando reparto de {$elementos->count()} elementos para planilla {$planilla->id} en Nave B");
+
+        // Calcular cargas actuales
+        $cargas = $this->cargasPendientesPorMaquina();
+
+        // 📦 PASO 1: Elementos sin elaboración (única dimensión) → Grúa de Nave B
+        $sinElaborar = $elementos->filter(fn($e) => (int)($e->elaborado ?? 1) === 0);
+
+        if ($sinElaborar->isNotEmpty()) {
+            $this->asignarElementosAGrua($planilla, $sinElaborar, 'B', $cargas);
+        }
+
+        // 🔧 PASO 2: Elementos que SÍ requieren elaboración
+        $elementosAElaborar = $elementos->reject(fn($e) => (int)($e->elaborado ?? 1) === 0);
+
+        if ($elementosAElaborar->isEmpty()) {
+            Log::channel('planilla_import')->info("✅ [AsignarMaquina/NaveB] Solo había elementos sin elaborar, reparto completado");
+            return;
+        }
+
+        // Obtener máquinas de Nave B tipo cortadora_dobladora (activas)
+        $maquinasNaveB = Maquina::naveB()
+            ->where('tipo', 'cortadora_dobladora')
+            ->where(function($query) {
+                $query->where('estado', 'activa')
+                      ->orWhereNull('estado');
+            })
+            ->get()
+            ->keyBy('id');
+
+        Log::channel('planilla_import')->info("🏭 [AsignarMaquina/NaveB] Máquinas disponibles en Nave B: {$maquinasNaveB->count()} - Códigos: " . json_encode($maquinasNaveB->pluck('codigo')->toArray()));
+
+        if ($maquinasNaveB->isEmpty()) {
+            Log::channel('planilla_import')->error("❌ [AsignarMaquina/NaveB] No hay máquinas cortadora_dobladora activas en Nave B para planilla {$planilla->id}");
+            return;
+        }
+
+        // Optimizar elementos por desperdicio antes de asignar
+        $elementosOptimizados = $this->optimizarPorDesperdicio($elementosAElaborar);
+        $pesoTotal = $elementosOptimizados->sum(fn($e) => (float)$e->peso);
+        Log::channel('planilla_import')->info("⚖️ [AsignarMaquina/NaveB] Elementos optimizados (total: {$pesoTotal}kg) para distribución en Nave B");
+
+        $asignados = 0;
+
+        foreach ($elementosOptimizados as $elemento) {
+            // Buscar máquinas que soporten el diámetro
+            $candidatas = $maquinasNaveB->filter(fn($m) => $this->soportaDiametro($m, (int)$elemento->diametro));
+
+            if ($candidatas->isEmpty()) {
+                Log::channel('planilla_import')->warning("⚠️ [AsignarMaquina/NaveB] Sin máquina compatible para elemento {$elemento->id} Ø{$elemento->diametro} en Nave B");
+                continue;
+            }
+
+            // Seleccionar la menos cargada
+            $maquina = $this->menosCargada($candidatas, $cargas);
+
+            if ($maquina) {
+                $elemento->maquina_id = $maquina->id;
+                $elemento->save();
+                $this->sumarCarga($cargas, $maquina->id, (float)$elemento->peso, (int)($elemento->tiempo_fabricacion ?? 0));
+                $asignados++;
+                Log::channel('planilla_import')->debug("✓ [AsignarMaquina/NaveB] Elemento {$elemento->id} (Ø{$elemento->diametro}, {$elemento->peso}kg) → Máquina {$maquina->id} ({$maquina->codigo})");
+            }
+        }
+
+        Log::channel('planilla_import')->info("✅ [AsignarMaquina/NaveB] Asignados {$asignados} de {$elementosAElaborar->count()} elementos a Nave B");
+
+        // Mostrar resumen de balanceo
+        $this->mostrarResumenBalanceo($cargas, $maquinasNaveB);
+    }
+
+    /**
+     * Asigna elementos sin elaborar (única dimensión) a la primera grúa de la nave
+     * Los movimientos de preparación se crean cuando el gruista entra en la vista de grúa
+     * y hay salidas programadas para mañana con estos elementos
+     */
+    protected function asignarElementosAGrua(Planilla $planilla, $elementos, string $nave, array &$cargas): void
+    {
+        $naveLabel = "Nave {$nave}";
+        Log::channel('planilla_import')->info("🏗️ [AsignarMaquina/Grúa] Asignando {$elementos->count()} elementos sin elaborar a grúa de {$naveLabel}");
+
+        // Obtener la primera grúa de la nave correspondiente
+        $grua = $nave === 'A'
+            ? Maquina::naveA()->where('tipo', 'grua')->orderBy('id')->first()
+            : Maquina::naveB()->where('tipo', 'grua')->orderBy('id')->first();
+
+        if (!$grua) {
+            Log::channel('planilla_import')->error("❌ [AsignarMaquina/Grúa] No hay grúa disponible en {$naveLabel} para planilla {$planilla->id}");
+            return;
+        }
+
+        Log::channel('planilla_import')->info("🏗️ [AsignarMaquina/Grúa] Grúa seleccionada: {$grua->codigo} (ID: {$grua->id}) en {$naveLabel}");
+
+        $asignados = 0;
+
+        foreach ($elementos as $elemento) {
+            // Asignar elemento a la grúa
+            $elemento->maquina_id = $grua->id;
+            $elemento->save();
+
+            $this->sumarCarga($cargas, $grua->id, (float)$elemento->peso, (int)($elemento->tiempo_fabricacion ?? 0));
+            $asignados++;
+
+            Log::channel('planilla_import')->debug("✓ [AsignarMaquina/Grúa] Elemento {$elemento->id} (Ø{$elemento->diametro}, {$elemento->peso}kg) → Grúa {$grua->codigo}");
+        }
+
+        Log::channel('planilla_import')->info("✅ [AsignarMaquina/Grúa] {$asignados} elementos asignados a grúa {$grua->codigo}");
     }
 }

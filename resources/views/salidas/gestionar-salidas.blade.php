@@ -70,29 +70,45 @@
         </div>
 
         {{-- Resumen de Planillas --}}
-        <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
-            <h2 class="text-xl font-semibold text-blue-900 mb-3">Resumen de Planillas Seleccionadas</h2>
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                @foreach ($planillas as $planilla)
-                    <div class="bg-white p-3 rounded shadow-sm">
-                        <div class="flex items-center justify-between mb-2">
-                            <span class="font-semibold text-gray-800">{{ $planilla->codigo_limpio }}</span>
-                            <span class="text-xs px-2 py-1 rounded {{ $planilla->estado_class }}">
-                                {{ ucfirst($planilla->estado) }}
-                            </span>
+        <div class="bg-blue-50 border border-blue-200 rounded-lg mb-6">
+            <button type="button"
+                    onclick="toggleResumenPlanillas()"
+                    class="w-full p-4 flex items-center justify-between hover:bg-blue-100 transition-colors rounded-lg">
+                <div class="flex items-center gap-3">
+                    <svg id="icono-toggle-planillas" class="w-5 h-5 text-blue-900 transform transition-transform duration-200"
+                         fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                    </svg>
+                    <h2 class="text-xl font-semibold text-blue-900">Resumen de Planillas Seleccionadas</h2>
+                </div>
+                <div class="text-sm font-semibold text-blue-900">
+                    {{ $planillas->count() }} planillas | {{ $paquetesDisponibles->count() }} paquetes | {{ number_format($planillas->sum('peso_total'), 2) }} kg
+                </div>
+            </button>
+
+            <div id="contenido-resumen-planillas" class="hidden px-4 pb-4">
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
+                    @foreach ($planillas as $planilla)
+                        <div class="bg-white p-3 rounded shadow-sm">
+                            <div class="flex items-center justify-between mb-2">
+                                <span class="font-semibold text-gray-800">{{ $planilla->codigo_limpio }}</span>
+                                <span class="text-xs px-2 py-1 rounded {{ $planilla->estado_class }}">
+                                    {{ ucfirst($planilla->estado) }}
+                                </span>
+                            </div>
+                            <p class="text-sm text-gray-600">Obra: {{ $planilla->obra->obra }}</p>
+                            <p class="text-sm text-gray-600">Cliente: {{ $planilla->cliente->empresa }}</p>
+                            <p class="text-sm text-gray-600">Peso: {{ $planilla->peso_total_kg }} kg</p>
+                            <p class="text-sm text-gray-600">Paquetes disponibles: {{ $planilla->paquetes->count() }}</p>
+                            <p class="text-sm text-gray-600">Entrega: {{ $planilla->fecha_estimada_entrega }}</p>
                         </div>
-                        <p class="text-sm text-gray-600">Obra: {{ $planilla->obra->obra }}</p>
-                        <p class="text-sm text-gray-600">Cliente: {{ $planilla->cliente->empresa }}</p>
-                        <p class="text-sm text-gray-600">Peso: {{ $planilla->peso_total_kg }} kg</p>
-                        <p class="text-sm text-gray-600">Paquetes disponibles: {{ $planilla->paquetes->count() }}</p>
-                        <p class="text-sm text-gray-600">Entrega: {{ $planilla->fecha_estimada_entrega }}</p>
-                    </div>
-                @endforeach
-            </div>
-            <div class="mt-4 p-3 bg-blue-100 rounded">
-                <p class="text-sm font-semibold text-blue-900">Total: {{ $planillas->count() }} planillas |
-                    {{ $paquetesDisponibles->count() }} paquetes disponibles |
-                    {{ number_format($planillas->sum('peso_total'), 2) }} kg</p>
+                    @endforeach
+                </div>
+                <div class="p-3 bg-blue-100 rounded">
+                    <p class="text-sm font-semibold text-blue-900">Total: {{ $planillas->count() }} planillas |
+                        {{ $paquetesDisponibles->count() }} paquetes disponibles |
+                        {{ number_format($planillas->sum('peso_total'), 2) }} kg</p>
+                </div>
             </div>
         </div>
 
@@ -148,6 +164,13 @@
                                             </svg>
                                         </button>
                                     </div>
+                                    <div class="mb-2">
+                                        <label class="block text-xs text-gray-600 mb-1">📅 Fecha de salida</label>
+                                        <input type="date"
+                                               value="{{ \Carbon\Carbon::parse($salida->fecha_salida)->format('Y-m-d') }}"
+                                               onchange="actualizarFechaSalida({{ $salida->id }}, this.value)"
+                                               class="w-full text-xs border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                                    </div>
                                     <div class="text-xs text-gray-600 space-y-1">
                                         @php
                                             // Recopilar obras y clientes desde dos fuentes:
@@ -201,6 +224,9 @@
                                             <div class="text-xs text-gray-500 mt-1 border-t border-gray-200 pt-1">
                                                 <div class="truncate" title="{{ $paquete->planilla->obra->obra ?? 'N/A' }}">🏗️ {{ $paquete->planilla->obra->obra ?? 'N/A' }}</div>
                                                 <div class="truncate" title="{{ $paquete->planilla->cliente->empresa ?? 'N/A' }}">👤 {{ $paquete->planilla->cliente->empresa ?? 'N/A' }}</div>
+                                                @if($paquete->nave)
+                                                    <div class="truncate text-blue-600 font-medium" title="{{ $paquete->nave->obra }}">📍 {{ $paquete->nave->obra }}</div>
+                                                @endif
                                             </div>
                                         </div>
                                     @endforeach
@@ -297,7 +323,9 @@
                                         data-cliente="{{ $paquete->planilla->cliente->empresa ?? '' }}"
                                         data-cliente-id="{{ $paquete->planilla->cliente_id ?? '' }}"
                                         data-planilla="{{ $paquete->planilla->codigo ?? '' }}"
-                                        data-planilla-id="{{ $paquete->planilla_id ?? '' }}">
+                                        data-planilla-id="{{ $paquete->planilla_id ?? '' }}"
+                                        data-nave="{{ $paquete->nave->obra ?? '' }}"
+                                        data-nave-id="{{ $paquete->nave_id ?? '' }}">
                                         <div class="flex items-center justify-between text-xs">
                                             <span class="font-medium">📦 {{ $paquete->codigo }}</span>
                                             <button onclick="mostrarDibujo({{ $paquete->id }}); event.stopPropagation();"
@@ -312,6 +340,9 @@
                                         <div class="text-xs text-gray-500 mt-1 border-t border-gray-200 pt-1">
                                             <div class="truncate" title="{{ $paquete->planilla->obra->obra ?? 'N/A' }}">🏗️ {{ $paquete->planilla->obra->obra ?? 'N/A' }}</div>
                                             <div class="truncate" title="{{ $paquete->planilla->cliente->empresa ?? 'N/A' }}">👤 {{ $paquete->planilla->cliente->empresa ?? 'N/A' }}</div>
+                                            @if($paquete->nave)
+                                                <div class="truncate text-blue-600 font-medium" title="{{ $paquete->nave->obra }}">📍 {{ $paquete->nave->obra }}</div>
+                                            @endif
                                         </div>
                                     </div>
                                 @endforeach
@@ -369,6 +400,7 @@
                 'crearSalidasVacias' => route('salidas.crearSalidasVaciasMasivo'),
                 'guardarAsignacionesPaquetes' => route('planificacion.guardarAsignacionesPaquetes'),
                 'recargarVista' => route('salidas-ferralla.gestionar-salidas', ['planillas' => implode(',', $planillas->pluck('id')->toArray())]),
+                'actualizarFechaSalida' => route('salidas.actualizarFechaSalida'),
             ],
         ];
 
@@ -478,7 +510,7 @@
         window.paquetesTodos = @json($paquetesTodosJS);
     </script>
 
-    <script src="{{ asset('js/gestion-salidas.js') }}"></script>
+    <script src="{{ asset('js/gestion-salidas.js') }}?v={{ time() }}"></script>
     <script src="{{ asset('js/elementosJs/figuraElemento.js') }}"></script>
 
     {{-- Debug y inicialización de filtros --}}

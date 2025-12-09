@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Models\EntradaProducto;
 use App\Models\Producto;
 use App\Models\PedidoProducto;
+use App\Models\PedidoProductoColada;
 use App\Models\Pedido;
 use App\Models\Elemento;
 use App\Models\ProductoBase;
@@ -552,6 +553,12 @@ class EntradaController extends Controller
                 $entrada->pedidoProducto->update([
                     'estado' => $nuevoEstado,
                 ]);
+
+                // Recalcular estado del pedido por si todas las líneas están completadas/facturadas
+                $pedido = $entrada->pedidoProducto->pedido;
+                if ($pedido) {
+                    $this->recalcularEstadoPedido($pedido);
+                }
             }
 
             DB::commit();
@@ -676,7 +683,7 @@ class EntradaController extends Controller
             ->deleteFileAfterSend(true);
     }
 
-    public function descargarPdf($id)
+    public function descargarPdf(Request $request, $id)
     {
         $entrada = Entrada::findOrFail($id);
         $ruta = "albaranes_entrada/{$entrada->pdf_albaran}";
@@ -685,9 +692,11 @@ class EntradaController extends Controller
             abort(404, 'PDF no encontrado.');
         }
 
+        $forzarDescarga = $request->boolean('download');
+        $disposition = $forzarDescarga ? 'attachment' : 'inline';
         return response()->file(Storage::disk('private')->path($ruta), [
             'Content-Type' => 'application/pdf',
-            'Content-Disposition' => 'inline; filename="Albaran_' . $entrada->id . '.pdf"',
+            'Content-Disposition' => $disposition . '; filename="Albaran_' . $entrada->id . '.pdf"',
         ]);
     }
     public function cerrar(Request $request, $id)
@@ -789,16 +798,9 @@ class EntradaController extends Controller
                     'fecha_ejecucion' => now(),
                 ]);
 
-            // 7) ¿Pedido completo?
-            $lineas = PedidoProducto::where('pedido_id', $entrada->pedido_id)->get();
-            $todosCompletados = $lineas->every(fn($l) => $l->estado === 'completado');
-
-            if ($todosCompletados) {
-                $entrada->pedido->estado = 'completado';
-                $entrada->pedido->save();
-                Log::info('✅ Pedido completado automáticamente', ['pedido_id' => $entrada->pedido->id]);
-            } else {
-                Log::info('ℹ️ Pedido con líneas pendientes/parciales', ['pedido_id' => $entrada->pedido->id]);
+            // 7) Recalcular estado del pedido
+            if ($entrada->pedido) {
+                $this->recalcularEstadoPedido($entrada->pedido);
             }
 
             Log::info('✅ Línea de pedido actualizada (cierre desde movimiento)', [
@@ -809,6 +811,76 @@ class EntradaController extends Controller
         });
 
         return redirect()->route('maquinas.index')->with('success', 'Albarán cerrado correctamente.');
+    }
+
+    /**
+     * Verificar discrepancias de bultos vs coladas (AJAX antes de cerrar)
+     */
+    public function verificarDiscrepancias($entradaId)
+    {
+        $entrada = Entrada::with('pedidoProducto')->findOrFail($entradaId);
+        $pivot = $entrada->pedidoProducto;
+
+        if (!$pivot) {
+            return response()->json([
+                'discrepancias' => [],
+                'mensaje' => null,
+            ]);
+        }
+
+        // Obtener todas las coladas definidas para esta línea de pedido
+        $coladas = PedidoProductoColada::where('pedido_producto_id', $pivot->id)
+            ->whereNotNull('bulto')
+            ->get();
+
+        if ($coladas->isEmpty()) {
+            return response()->json([
+                'discrepancias' => [],
+                'mensaje' => null,
+            ]);
+        }
+
+        $discrepancias = [];
+
+        foreach ($coladas as $coladaDef) {
+            // Contar bultos recepcionados de esta colada en TODA la línea
+            $bultosRecepcionados = Producto::where('n_colada', $coladaDef->colada)
+                ->whereHas('entrada', fn($q) => $q->where('pedido_producto_id', $pivot->id))
+                ->count();
+
+            $bultosEsperados = (int) $coladaDef->bulto;
+
+            if ($bultosRecepcionados > $bultosEsperados) {
+                $discrepancias[] = [
+                    'colada' => $coladaDef->colada,
+                    'tipo' => 'exceso',
+                    'esperados' => $bultosEsperados,
+                    'recepcionados' => $bultosRecepcionados,
+                    'diferencia' => $bultosRecepcionados - $bultosEsperados,
+                    'mensaje' => "Colada {$coladaDef->colada}: se esperaban {$bultosEsperados} bulto(s) pero se recepcionaron {$bultosRecepcionados}",
+                ];
+            } elseif ($bultosRecepcionados < $bultosEsperados) {
+                $discrepancias[] = [
+                    'colada' => $coladaDef->colada,
+                    'tipo' => 'falta',
+                    'esperados' => $bultosEsperados,
+                    'recepcionados' => $bultosRecepcionados,
+                    'diferencia' => $bultosEsperados - $bultosRecepcionados,
+                    'mensaje' => "Colada {$coladaDef->colada}: faltan " . ($bultosEsperados - $bultosRecepcionados) . " bulto(s) (se recepcionaron {$bultosRecepcionados} de {$bultosEsperados})",
+                ];
+            }
+        }
+
+        $mensaje = null;
+        if (!empty($discrepancias)) {
+            $lineas = array_map(fn($d) => $d['mensaje'], $discrepancias);
+            $mensaje = implode("\n", $lineas);
+        }
+
+        return response()->json([
+            'discrepancias' => $discrepancias,
+            'mensaje' => $mensaje,
+        ]);
     }
 
     // Eliminar una entrada y sus productos asociados
@@ -830,5 +902,39 @@ class EntradaController extends Controller
             DB::rollBack();  // Si ocurre un error, revertimos la transacción
             return redirect()->back()->with('error', 'Ocurrió un error al eliminar la entrada: ' . $e->getMessage());
         }
+    }
+
+    /**
+     * Recalcula el estado del pedido basándose en el estado de todas sus líneas.
+     * Si TODAS las líneas relevantes están en {completado, facturado}, marca el pedido como completado.
+     * Las líneas canceladas son ignoradas.
+     *
+     * @param \App\Models\Pedido $pedido El pedido a recalcular
+     * @return void
+     */
+    private function recalcularEstadoPedido(\App\Models\Pedido $pedido): void
+    {
+        $estadosQueCierran = ['completado', 'facturado'];
+        $ignorar = ['cancelado'];
+
+        $todas = \App\Models\PedidoProducto::where('pedido_id', $pedido->id)->get();
+        $relevantes = $todas->reject(fn($l) => in_array(strtolower((string)$l->estado), $ignorar, true));
+        $todasCerradas = $relevantes->count() > 0
+            && $relevantes->every(fn($l) => in_array(strtolower((string)$l->estado), $estadosQueCierran, true));
+
+        $pedido->estado = $todasCerradas ? 'completado' : 'pendiente';
+        if ($todasCerradas && $pedido->isFillable('fecha_completado')) {
+            $pedido->fecha_completado = $pedido->fecha_completado ?? now();
+        }
+        if ($pedido->isFillable('updated_by')) {
+            $pedido->updated_by = auth()->id();
+        }
+        $pedido->save();
+
+        Log::info($todasCerradas ? '✅ Pedido marcado como completado' : 'ℹ️ Pedido con líneas pendientes', [
+            'pedido_id' => $pedido->id,
+            'total_lineas' => $todas->count(),
+            'lineas_relevantes' => $relevantes->count(),
+        ]);
     }
 }

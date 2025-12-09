@@ -1671,7 +1671,7 @@ Inesperados: ${inesperados.join(', ') || ''}
             <div x-show="modalConsumo" x-transition x-cloak
                 class="fixed inset-0 z-[9999] flex items-center justify-center bg-black bg-opacity-60 backdrop-blur overflow-y-auto">
                 <div @click.away="modalConsumo = false"
-                    class="bg-white dark:bg-gray-900 w-full max-w-4xl rounded-xl shadow-2xl mx-4 my-4 border border-gray-200 dark:border-gray-800">
+                    class="bg-white dark:bg-gray-900 w-screen md:max-w-4xl h-screen md:h-auto md:rounded-xl shadow-2xl md:mx-4 md:my-4 border border-gray-200 dark:border-gray-800">
                     <div class="flex items-center justify-between p-6">
                         <h2 class="text-base md:text-lg lg:text-xl font-bold text-gray-800 dark:text-white">
                             Materiales pendientes
@@ -1687,7 +1687,7 @@ Inesperados: ${inesperados.join(', ') || ''}
 
                     <div
                         class="bg-gray-50 dark:bg-gray-800 border-y md:border-x border-gray-200 dark:border-gray-700 md:rounded-lg overflow-hidden">
-                        <div class="max-h-[70vh] overflow-y-auto">
+                        <div class="max-h-[80vh] overflow-y-auto">
                             <table class="min-w-full text-sm">
                                 <thead class="bg-gray-100 dark:bg-gray-800/60 text-gray-700 dark:text-gray-200">
                                     <tr>
@@ -1732,7 +1732,7 @@ Inesperados: ${inesperados.join(', ') || ''}
                         </div>
                     </div>
 
-                    <div class="mt-6 flex justify-center p-6" x-data="sliderConsumo(() => consumirPendientes())"
+                    <div class="flex justify-center p-3 pt-4" x-data="sliderConsumo(() => consumirPendientes())"
                         @pointermove.window="onDrag($event)" @pointerup.window="stopDrag()"
                         @touchmove.window="onDrag($event)" @touchend.window="stopDrag()" @resize.window="recalcMax()"
                         x-init="init()">

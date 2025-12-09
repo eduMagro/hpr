@@ -41,20 +41,20 @@ class Paquete extends Model
     {
         $year = now()->format('y');
         $month = now()->format('m');
+        $prefix = "P{$year}{$month}";
 
-        $ultimoCodigo = self::withTrashed()   // 👈 INCLUYE soft-deletes
-            ->where('codigo', 'LIKE', "P{$year}{$month}%")
-            ->orderBy('codigo', 'desc')
-            ->value('codigo');
+        // Obtener todos los códigos con el prefijo y extraer el número más alto
+        $ultimoNumero = self::withTrashed()   // 👈 INCLUYE soft-deletes
+            ->where('codigo', 'LIKE', "{$prefix}%")
+            ->get()
+            ->map(function ($paquete) {
+                return intval(substr($paquete->codigo, 5));
+            })
+            ->max();
 
-        if ($ultimoCodigo) {
-            $ultimoNumero = intval(substr($ultimoCodigo, 5));
-            $nuevoNumero = str_pad($ultimoNumero + 1, 4, '0', STR_PAD_LEFT);
-        } else {
-            $nuevoNumero = '0001';
-        }
+        $nuevoNumero = $ultimoNumero ? str_pad($ultimoNumero + 1, 4, '0', STR_PAD_LEFT) : '0001';
 
-        return "P{$year}{$month}{$nuevoNumero}";
+        return "{$prefix}{$nuevoNumero}";
     }
 
     // ==================== RELACIONES ====================

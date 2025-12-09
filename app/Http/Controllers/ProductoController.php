@@ -258,10 +258,27 @@ class ProductoController extends Controller
             'consumidoPor'
         ]);
 
-        // Aplicar filtros y ordenamiento de forma segura
+        // Aplicar filtros
         $query = $this->aplicarFiltros($query, $request);
+
+        // Si no se está filtrando por estado ni código, excluir consumido/fabricando
+        if ($request->filled('estado')) {
+            $query->where('estado', $request->estado);
+        } elseif (
+            !$request->filled('codigo') &&
+            !$request->filled('id') &&
+            !$request->boolean('mostrar_todos')
+        ) {
+            $query->whereNotIn('estado', ['consumido', 'fabricando']);
+        }
+
+        // ✅ CALCULAR TOTAL ANTES DE ORDENAMIENTO Y DISTINCT
+        $totalPesoInicial = (clone $query)->sum('peso_inicial');
+
+        // Aplicar ordenamiento y distinct para la paginación
         $query = $this->aplicarOrdenamiento($query, $request);
         $query->distinct('productos.id');
+
         $filtrosActivos = $this->filtrosActivos($request);
         $ordenables = [
             'id'             => $this->getOrdenamiento('id', 'ID Materia Prima'),
@@ -280,20 +297,6 @@ class ProductoController extends Controller
             'ubicacion'      => $this->getOrdenamiento('ubicacion', 'Ubicación'),
             'created_at'     => $this->getOrdenamiento('created_at', 'Fecha de Creación'),
         ];
-
-        // Si no se está filtrando por estado ni código, excluir consumido/fabricando
-        if ($request->filled('estado')) {
-            $query->where('estado', $request->estado);
-        } elseif (
-            !$request->filled('codigo') &&
-            !$request->filled('id') &&
-            !$request->boolean('mostrar_todos')
-        ) {
-            $query->whereNotIn('estado', ['consumido', 'fabricando']);
-        }
-
-
-        $totalPesoInicial = (clone $query)->sum('peso_inicial');
         // Paginación segura
         $perPage = is_numeric($request->input('per_page')) ? max(5, min((int)$request->input('per_page'), 100)) : 10;
         $registrosProductos = $query->paginate($perPage)->appends($request->except('page'));
@@ -357,6 +360,53 @@ class ProductoController extends Controller
         } catch (\Throwable $e) {
             DB::rollBack();
             return back()->with('error', 'Error al generar los códigos: ' . $e->getMessage());
+        }
+    }
+
+    public function GenerarYObtenerDatos(Request $request)
+    {
+        $cantidad = intval($request->input('cantidad', 1));
+        $anio = now()->format('y'); // Año en dos dígitos
+        $mes = now()->format('m');  // Mes en dos dígitos
+        $tipo = 'MP'; // fijo
+
+        DB::beginTransaction();
+
+        try {
+            // Obtener o crear el contador del tipo, año y mes
+            $contador = ProductoCodigo::lockForUpdate()->firstOrCreate(
+                ['tipo' => $tipo, 'anio' => $anio, 'mes' => $mes],
+                ['ultimo_numero' => 0]
+            );
+
+            $desde = $contador->ultimo_numero + 1;
+            $hasta = $contador->ultimo_numero + $cantidad;
+
+            // Generar los códigos en memoria
+            $nuevosCodigos = [];
+            for ($i = $desde; $i <= $hasta; $i++) {
+                $numero = str_pad($i, 4, '0', STR_PAD_LEFT);
+                $codigo = "$tipo$anio$mes$numero"; // Ahora incluye mes
+                $nuevosCodigos[] = ['codigo' => $codigo];
+            }
+
+            // Actualizar el contador
+            $contador->ultimo_numero = $hasta;
+            $contador->save();
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'codigos' => $nuevosCodigos,
+                'cantidad' => count($nuevosCodigos)
+            ]);
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            return response()->json([
+                'success' => false,
+                'error' => 'Error al generar los códigos: ' . $e->getMessage()
+            ], 500);
         }
     }
 
@@ -435,6 +485,7 @@ class ProductoController extends Controller
         try {
             $validated = $request->validate([
                 'codigo' => ['required', 'string', 'regex:/^MP.*/i', 'max:255'],
+                'obra_id'            => 'nullable|integer|exists:obras,id',
                 'fabricante_id'      => 'nullable|exists:fabricantes,id',
                 'producto_base_id'   => 'nullable|exists:productos_base,id',
                 'nombre'             => 'nullable|string|max:255',
@@ -448,6 +499,7 @@ class ProductoController extends Controller
             ], [
                 'codigo.required' => 'El código es obligatorio.',
                 'codigo.regex'    => 'El código debe empezar por "MP".',
+                'obra_id.exists'           => 'La nave seleccionada no es válida.',
                 'fabricante_id.exists'     => 'El fabricante seleccionado no es válido.',
                 'producto_base_id.exists'  => 'El producto base seleccionado no es válido.',
                 'peso_inicial.*'           => 'El peso inicial debe ser un número válido mayor que 0.',
@@ -749,5 +801,104 @@ class ProductoController extends Controller
         $producto->delete();
 
         return redirect()->route('productos.index')->with('success', 'Producto eliminado exitosamente.');
+    }
+
+    //------------------------------------------------------------------------------------ SUGERENCIAS PARA GRÚA (API)
+    /**
+     * Obtiene productos sugeridos por diámetro y longitud para el modal de escaneo de grúa
+     */
+    public function sugerenciasPorDiametroLongitud(Request $request)
+    {
+        $diametro = (int) $request->input('diametro', 0);
+        $longitud = (float) $request->input('longitud', 0); // En metros
+
+        if ($diametro <= 0) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Debe proporcionar un diámetro válido.'
+            ], 400);
+        }
+
+        // Buscar productos tipo barra con ese diámetro y longitud, con stock disponible
+        $query = Producto::with(['productoBase', 'ubicacion'])
+            ->whereHas('productoBase', function ($q) use ($diametro, $longitud) {
+                $q->where('tipo', 'barra')
+                    ->where('diametro', $diametro);
+
+                // Si se especifica longitud, filtrar por ella (tolerancia de 0.1m)
+                if ($longitud > 0) {
+                    $q->whereBetween('longitud', [$longitud - 0.1, $longitud + 0.1]);
+                }
+            })
+            ->where('peso_stock', '>', 0)
+            ->whereNotIn('estado', ['consumido', 'fabricando'])
+            ->orderByDesc('peso_stock')
+            ->limit(5);
+
+        $productos = $query->get();
+
+        return response()->json([
+            'success' => true,
+            'productos' => $productos->map(function ($p) {
+                return [
+                    'id' => $p->id,
+                    'codigo' => $p->codigo,
+                    'diametro' => $p->productoBase->diametro ?? $p->diametro,
+                    'longitud' => $p->productoBase->longitud ?? $p->longitud,
+                    'peso_stock' => round((float) $p->peso_stock, 2),
+                    'n_colada' => $p->n_colada,
+                    'ubicacion' => $p->ubicacion?->nombre ?? 'Sin ubicación',
+                    'ubicacion_id' => $p->ubicacion_id,
+                ];
+            }),
+            'count' => $productos->count(),
+        ]);
+    }
+
+    //------------------------------------------------------------------------------------ BUSCAR POR CÓDIGO (API)
+    /**
+     * Busca un producto por su código (para escaneo de QR en grúa)
+     */
+    public function buscarPorCodigo(Request $request)
+    {
+        $codigo = trim($request->input('codigo', ''));
+
+        if (empty($codigo)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Debe proporcionar un código de producto.'
+            ], 400);
+        }
+
+        $producto = Producto::with('productoBase')
+            ->where('codigo', $codigo)
+            ->first();
+
+        if (!$producto) {
+            return response()->json([
+                'success' => false,
+                'message' => "No se encontró ningún producto con código: {$codigo}"
+            ], 404);
+        }
+
+        if ($producto->estado === 'consumido') {
+            return response()->json([
+                'success' => false,
+                'message' => "El producto {$codigo} ya está consumido."
+            ], 400);
+        }
+
+        return response()->json([
+            'id' => $producto->id,
+            'codigo' => $producto->codigo,
+            'tipo' => $producto->productoBase->tipo ?? null,
+            'diametro' => $producto->productoBase->diametro ?? $producto->diametro ?? null,
+            'longitud' => $producto->productoBase->longitud ?? $producto->longitud ?? null,
+            'peso_stock' => (float) $producto->peso_stock,
+            'peso_inicial' => (float) ($producto->peso_inicial ?? $producto->peso_stock),
+            'n_colada' => $producto->n_colada,
+            'estado' => $producto->estado,
+            'ubicacion_id' => $producto->ubicacion_id,
+        ]);
     }
 }

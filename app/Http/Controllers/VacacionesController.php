@@ -382,4 +382,214 @@ class VacacionesController extends Controller
 
         return response()->json(['success' => true]);
     }
+
+    /**
+     * Obtener eventos de vacaciones por grupo (para refetch dinámico)
+     */
+    public function eventos(Request $request)
+    {
+        $grupo = $request->input('grupo', 'todos');
+
+        // Obtener festivos (comunes a todos)
+        $festivos = Festivo::select('fecha', 'titulo')->get()->map(function ($festivo) {
+            return [
+                'id' => 'festivo-' . $festivo->fecha,
+                'title' => $festivo->titulo,
+                'start' => $festivo->fecha,
+                'backgroundColor' => '#ff2800',
+                'borderColor' => '#b22222',
+                'textColor' => 'white',
+                'allDay' => true,
+                'editable' => true
+            ];
+        })->toArray();
+
+        // Query base de vacaciones
+        $query = AsignacionTurno::with(['user.maquina', 'turno'])
+            ->where('estado', 'vacaciones');
+
+        // Filtrar por grupo
+        if ($grupo === 'maquinistas') {
+            $query->whereHas('user', function ($q) {
+                $q->where('rol', 'operario')
+                    ->whereHas('maquina', function ($mq) {
+                        $mq->whereIn('tipo', ['estribadora', 'cortadora_dobladora', 'grua']);
+                    });
+            });
+        } elseif ($grupo === 'ferrallas') {
+            $query->whereHas('user', function ($q) {
+                $q->where('rol', 'operario')
+                    ->where(function ($inner) {
+                        $inner->whereNull('maquina_id')
+                            ->orWhereHas('maquina', fn($mq) => $mq->where('tipo', 'ensambladora'));
+                    });
+            });
+        } elseif ($grupo === 'oficina') {
+            $query->whereHas('user', fn($q) => $q->where('rol', 'oficina'));
+        }
+
+        $vacaciones = $query->get();
+
+        $eventos = $vacaciones->map(function ($asignacion) {
+            return [
+                'title' => $asignacion->user->nombre_completo,
+                'start' => Carbon::parse($asignacion->fecha)->toIso8601String(),
+                'backgroundColor' => '#f87171',
+                'borderColor' => '#dc2626',
+                'textColor' => 'white',
+                'allDay' => true,
+                'extendedProps' => [
+                    'user_id' => $asignacion->user->id,
+                ],
+            ];
+        })->toArray();
+
+        return response()->json(array_merge($eventos, $festivos));
+    }
+
+    /**
+     * Obtener usuarios con su contador de vacaciones del año actual
+     */
+    public function usuariosConVacaciones(Request $request)
+    {
+        $grupo = $request->input('grupo', 'todos'); // maquinistas, ferrallas, oficina, todos
+        $inicioAño = Carbon::now()->startOfYear();
+
+        $query = User::where('estado', 'activo')
+            ->select('id', 'name', 'primer_apellido', 'segundo_apellido', 'rol', 'maquina_id', 'vacaciones_totales');
+
+        // Filtrar por grupo
+        if ($grupo === 'maquinistas') {
+            $query->where('rol', 'operario')
+                ->whereHas('maquina', function ($q) {
+                    $q->whereIn('tipo', ['estribadora', 'cortadora_dobladora', 'grua']);
+                });
+        } elseif ($grupo === 'ferrallas') {
+            $query->where('rol', 'operario')
+                ->where(function ($q) {
+                    $q->whereNull('maquina_id')
+                        ->orWhereHas('maquina', fn($mq) => $mq->where('tipo', 'ensambladora'));
+                });
+        } elseif ($grupo === 'oficina') {
+            $query->where('rol', 'oficina');
+        }
+
+        $usuarios = $query->orderBy('name')->get();
+
+        // Contar vacaciones asignadas para cada usuario
+        $usuarioIds = $usuarios->pluck('id');
+        $vacacionesPorUsuario = AsignacionTurno::whereIn('user_id', $usuarioIds)
+            ->where('estado', 'vacaciones')
+            ->where('fecha', '>=', $inicioAño)
+            ->selectRaw('user_id, COUNT(*) as total_vacaciones')
+            ->groupBy('user_id')
+            ->pluck('total_vacaciones', 'user_id');
+
+        $resultado = $usuarios->map(function ($user) use ($vacacionesPorUsuario) {
+            $tope = $user->vacaciones_totales ?? 22;
+            $usadas = $vacacionesPorUsuario[$user->id] ?? 0;
+            return [
+                'id' => $user->id,
+                'nombre_completo' => $user->nombre_completo,
+                'vacaciones_usadas' => $usadas,
+                'vacaciones_totales' => $tope,
+                'vacaciones_restantes' => $tope - $usadas,
+            ];
+        });
+
+        return response()->json($resultado);
+    }
+
+    /**
+     * Asignar vacaciones directamente a un usuario (sin solicitud previa)
+     */
+    public function asignarDirecto(Request $request)
+    {
+        try {
+            $validated = $request->validate([
+                'user_id' => 'required|exists:users,id',
+                'fecha_inicio' => 'required|date',
+                'fecha_fin' => 'required|date|after_or_equal:fecha_inicio',
+            ]);
+
+            $user = User::findOrFail($validated['user_id']);
+            $rango = CarbonPeriod::create($validated['fecha_inicio'], $validated['fecha_fin']);
+
+            $inicioAño = Carbon::now()->startOfYear();
+            $diasYaAsignados = $user->asignacionesTurnos()
+                ->where('estado', 'vacaciones')
+                ->where('fecha', '>=', $inicioAño)
+                ->count();
+
+            $diasNuevos = 0;
+            $fechasAsignables = [];
+
+            foreach ($rango as $fecha) {
+                $fechaStr = $fecha->format('Y-m-d');
+
+                // Saltar fines de semana
+                if (in_array($fecha->dayOfWeek, [Carbon::SATURDAY, Carbon::SUNDAY])) {
+                    continue;
+                }
+
+                // Verificar si ya tiene vacaciones ese día
+                $asignacionExistente = AsignacionTurno::where('user_id', $user->id)
+                    ->where('fecha', $fechaStr)
+                    ->where('estado', 'vacaciones')
+                    ->exists();
+
+                if (!$asignacionExistente) {
+                    $fechasAsignables[] = $fechaStr;
+                    $diasNuevos++;
+                }
+            }
+
+            if ($diasNuevos === 0) {
+                return response()->json([
+                    'error' => 'No hay días nuevos para asignar (ya tiene vacaciones en esas fechas o son fines de semana).'
+                ], 400);
+            }
+
+            $tope = $user->vacaciones_totales ?? 22;
+            if (($diasYaAsignados + $diasNuevos) > $tope) {
+                return response()->json([
+                    'error' => "El usuario ya tiene {$diasYaAsignados} días asignados. Añadir {$diasNuevos} días supera el tope de {$tope}."
+                ], 400);
+            }
+
+            // Asignar vacaciones
+            DB::transaction(function () use ($fechasAsignables, $user) {
+                foreach ($fechasAsignables as $fechaStr) {
+                    $asignacion = AsignacionTurno::firstOrNew([
+                        'user_id' => $user->id,
+                        'fecha' => $fechaStr,
+                    ]);
+
+                    $asignacion->estado = 'vacaciones';
+                    $asignacion->maquina_id = $user->maquina_id;
+                    $asignacion->save();
+                }
+            });
+
+            return response()->json([
+                'success' => true,
+                'message' => "Se asignaron {$diasNuevos} días de vacaciones a {$user->nombre_completo}.",
+                'dias_asignados' => $diasNuevos,
+                'total_vacaciones' => $diasYaAsignados + $diasNuevos,
+            ]);
+
+        } catch (ValidationException $e) {
+            throw $e;
+        } catch (Throwable $e) {
+            Log::error('Error al asignar vacaciones directamente.', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'payload' => $request->all(),
+            ]);
+
+            return response()->json([
+                'error' => 'No se pudieron asignar las vacaciones. Inténtalo de nuevo.'
+            ], 500);
+        }
+    }
 }

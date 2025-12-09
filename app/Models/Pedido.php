@@ -55,19 +55,16 @@ class Pedido extends Model
         $año = now()->format('y');
         $prefix = "PC{$año}/";
 
-        // Buscar el último código generado
-        $últimoCodigo = self::where('codigo', 'like', "{$prefix}%")
-            ->orderBy('codigo', 'desc')
-            ->value('codigo');
+        // Obtener todos los códigos con el prefijo y extraer el número más alto
+        $ultimoNumero = self::where('codigo', 'like', "{$prefix}%")
+            ->get()
+            ->map(function ($pedido) {
+                $partes = explode('/', $pedido->codigo);
+                return isset($partes[1]) ? intval($partes[1]) : 0;
+            })
+            ->max();
 
-        // Extraer el número y aumentarlo
-        $siguiente = 1;
-
-        if ($últimoCodigo) {
-            $partes = explode('/', $últimoCodigo);
-            $numeroActual = intval($partes[1]);
-            $siguiente = $numeroActual + 1;
-        }
+        $siguiente = $ultimoNumero ? $ultimoNumero + 1 : 1;
 
         $númeroFormateado = str_pad($siguiente, 4, '0', STR_PAD_LEFT);
 

@@ -81,18 +81,16 @@ class Salida extends Model
         $año = now()->format('y'); // ejemplo: '25' para 2025
         $prefijo = "SA{$año}/";
 
-        // Buscar el último código generado con ese prefijo
-        $ultimoCodigo = self::where('codigo', 'like', "{$prefijo}%")
-            ->orderBy('codigo', 'desc')
-            ->value('codigo');
+        // Obtener todos los códigos con el prefijo y extraer el número más alto
+        $ultimoNumero = self::where('codigo', 'like', "{$prefijo}%")
+            ->get()
+            ->map(function ($salida) {
+                $partes = explode('/', $salida->codigo);
+                return isset($partes[1]) ? intval($partes[1]) : 0;
+            })
+            ->max();
 
-        $siguiente = 1;
-
-        if ($ultimoCodigo) {
-            $partes = explode('/', $ultimoCodigo);
-            $numeroActual = intval($partes[1]);
-            $siguiente = $numeroActual + 1;
-        }
+        $siguiente = $ultimoNumero ? $ultimoNumero + 1 : 1;
 
         $numeroFormateado = str_pad($siguiente, 4, '0', STR_PAD_LEFT);
 

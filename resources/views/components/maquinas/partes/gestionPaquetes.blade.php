@@ -32,6 +32,15 @@
         </select>
     </div>
 
+    {{-- FILTRO DE MAQUINA --}}
+    <div class="mb-4">
+        <label class="inline-flex items-center gap-2 cursor-pointer">
+            <input type="checkbox" x-model="soloEstaMaquina" @change="cargarPaquetes()"
+                class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
+            <span class="text-sm text-gray-700">Solo paquetes de esta maquina</span>
+        </label>
+    </div>
+
     <style>
         /* Fix para evitar desplazamiento del select de planillas en gestión de paquetes */
         .select-planilla-gestion {
@@ -217,6 +226,7 @@
     function gestionPaquetes() {
         return {
             planillaSeleccionada: '',
+            soloEstaMaquina: false,
             paquetes: [],
             paqueteExpandido: null,
             cargando: false,
@@ -251,7 +261,19 @@
                 this.cargando = true;
 
                 try {
-                    const response = await fetch(`/api/planillas/${this.planillaSeleccionada}/paquetes`, {
+                    // Construir URL con parámetros
+                    let url = `/api/planillas/${this.planillaSeleccionada}/paquetes`;
+                    const params = new URLSearchParams();
+
+                    if (this.soloEstaMaquina && window.maquinaId) {
+                        params.append('maquina_id', window.maquinaId);
+                    }
+
+                    if (params.toString()) {
+                        url += '?' + params.toString();
+                    }
+
+                    const response = await fetch(url, {
                         headers: {
                             'Accept': 'application/json',
                             'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content
@@ -275,7 +297,7 @@
                 this.paqueteExpandido = this.paqueteExpandido === paqueteId ? null : paqueteId;
             },
 
-            async añadirEtiquetaAPaquete(paqueteId, codigoEtiqueta) {
+            async añadirEtiquetaAPaquete(paqueteId, codigoEtiqueta, forzar = false) {
                 if (!codigoEtiqueta || !codigoEtiqueta.trim()) {
                     await Swal.fire('Atención', 'Por favor ingrese un código de etiqueta', 'warning');
                     return;
@@ -290,11 +312,37 @@
                             'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content
                         },
                         body: JSON.stringify({
-                            etiqueta_codigo: codigoEtiqueta.trim()
+                            etiqueta_codigo: codigoEtiqueta.trim(),
+                            forzar: forzar
                         })
                     });
 
                     const data = await response.json();
+
+                    // 🔄 MANEJAR CASO: Requiere confirmación para mover entre paquetes
+                    if (response.status === 409 && data.requiere_confirmacion) {
+                        const confirmacion = await Swal.fire({
+                            title: '¿Mover etiqueta?',
+                            html: `
+                                <p class="mb-3">La etiqueta <strong>${codigoEtiqueta}</strong> pertenece al paquete:</p>
+                                <p class="text-lg font-bold text-blue-600 mb-3">${data.paquete_actual.codigo}</p>
+                                <p class="mb-2">¿Deseas moverla al paquete:</p>
+                                <p class="text-lg font-bold text-green-600">${data.paquete_destino.codigo}</p>
+                            `,
+                            icon: 'question',
+                            showCancelButton: true,
+                            confirmButtonColor: '#059669',
+                            cancelButtonColor: '#6b7280',
+                            confirmButtonText: 'Sí, mover',
+                            cancelButtonText: 'Cancelar'
+                        });
+
+                        if (confirmacion.isConfirmed) {
+                            // Reintentar con forzar=true
+                            return await this.añadirEtiquetaAPaquete(paqueteId, codigoEtiqueta, true);
+                        }
+                        return;
+                    }
 
                     if (!response.ok) {
                         throw new Error(data.message || 'Error al añadir etiqueta');

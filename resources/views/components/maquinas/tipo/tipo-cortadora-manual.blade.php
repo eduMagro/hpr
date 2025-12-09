@@ -465,3 +465,6 @@
 <!-- --------------------------------------------------------------- MODALES --------------------------------------------------------------- -->
 <x-maquinas.modales.cambio-maquina :maquina="$maquina" :maquinas="$maquinas" />
 <x-maquinas.modales.dividir-elemento />
+
+{{-- Panel de información del elemento --}}
+<x-maquinas.paneles.info />

@@ -339,20 +339,26 @@ class PaqueteController extends Controller
             });
 
             // 6) Ubicación: según el nombre/código de la máquina
+            //    - Si viene sin_ubicacion=true (grúa), no se asigna ubicación ahora
             //    - Si contiene 'idea 5' en el nombre → Sector Final
             //    - Si no → ubicación que contenga el código de la máquina
-            if (stripos($maquina->nombre, 'idea 5') !== false) {
-                $ubicacion = Ubicacion::where('descripcion', 'LIKE', '%Sector Final%')->first();
-            } else {
-                $ubicacion = Ubicacion::where('descripcion', 'LIKE', "%{$codigoMaquina}%")->first();
-            }
+            $sinUbicacion = $request->boolean('sin_ubicacion', false);
+            $ubicacion = null;
 
-            if (!$ubicacion) {
-                DB::rollBack();
-                return response()->json([
-                    'success' => false,
-                    'message' => "No se encontró una ubicación con el nombre de la máquina: {$codigoMaquina}.",
-                ], 400);
+            if (!$sinUbicacion) {
+                if (stripos($maquina->nombre, 'idea 5') !== false) {
+                    $ubicacion = Ubicacion::where('descripcion', 'LIKE', '%Sector Final%')->first();
+                } else {
+                    $ubicacion = Ubicacion::where('descripcion', 'LIKE', "%{$codigoMaquina}%")->first();
+                }
+
+                if (!$ubicacion) {
+                    DB::rollBack();
+                    return response()->json([
+                        'success' => false,
+                        'message' => "No se encontró una ubicación con el nombre de la máquina: {$codigoMaquina}.",
+                    ], 400);
+                }
             }
 
             // 7) Guardar los paquetes ANTERIORES de esas subetiquetas (para luego limpiar si quedan vacíos)
@@ -367,11 +373,11 @@ class PaqueteController extends Controller
             // 8) Crear paquete NUEVO (en la tabla paquetes)
             $codigo  = Paquete::generarCodigo();
             $paquete = $this->crearPaquete(
-                $planilla->id,   // planilla_id
-                $ubicacion->id,  // ubicacion_id
-                $pesoTotal,      // peso total del paquete
-                $codigo,         // código generado
-                $maquina->obra_id // nave/obra a la que pertenece
+                $planilla->id,           // planilla_id
+                $ubicacion?->id ?? null, // ubicacion_id (null para grúa, se asigna después)
+                $pesoTotal,              // peso total del paquete
+                $codigo,                 // código generado
+                $maquina->obra_id        // nave/obra a la que pertenece
             );
 
             // 9) Reasignar etiquetas al NUEVO paquete
@@ -408,22 +414,31 @@ class PaqueteController extends Controller
             //          - Inserta/actualiza en `localizaciones_paquetes` una posición
             //            centrada encima del div de la máquina.
 
-            Log::info('🔍 DEBUG: Antes de llamar al servicio de localización', [
-                'paquete_id' => $paquete->id,
-                'maquina_id' => $maquina->id,
-                'servicio_clase' => get_class($localizacionPaqueteService)
-            ]);
+            // Para grúa (sin_ubicacion=true): no asignar localización automática,
+            // se hará manualmente desde el mapa después de crear el paquete
+            if (!$sinUbicacion) {
+                Log::info('🔍 DEBUG: Antes de llamar al servicio de localización', [
+                    'paquete_id' => $paquete->id,
+                    'maquina_id' => $maquina->id,
+                    'servicio_clase' => get_class($localizacionPaqueteService)
+                ]);
 
-            $resultadoLocalizacion = $localizacionPaqueteService->asignarLocalizacionAutomatica(
-                $paquete,          // paquete recién creado
-                $maquina->id       // máquina desde la que se ha creado el paquete
-            );
+                $resultadoLocalizacion = $localizacionPaqueteService->asignarLocalizacionAutomatica(
+                    $paquete,          // paquete recién creado
+                    $maquina->id       // máquina desde la que se ha creado el paquete
+                );
 
-            Log::info('🔍 DEBUG: Resultado del servicio de localización', [
-                'paquete_id' => $paquete->id,
-                'resultado' => $resultadoLocalizacion ? 'SUCCESS' : 'NULL',
-                'localizacion_id' => $resultadoLocalizacion->id ?? null
-            ]);
+                Log::info('🔍 DEBUG: Resultado del servicio de localización', [
+                    'paquete_id' => $paquete->id,
+                    'resultado' => $resultadoLocalizacion ? 'SUCCESS' : 'NULL',
+                    'localizacion_id' => $resultadoLocalizacion->id ?? null
+                ]);
+            } else {
+                Log::info('🏗️ [Grúa] Paquete creado sin ubicación automática, se asignará desde el mapa', [
+                    'paquete_id' => $paquete->id,
+                    'codigo' => $codigo,
+                ]);
+            }
 
             // 11) Borrar paquetes ANTERIORES que hayan quedado vacíos tras la reasignación
             foreach ($paquetesPrevios as $paqueteAnteriorId) {
@@ -446,9 +461,11 @@ class PaqueteController extends Controller
                 }
             }
 
-            // 12) Retirar de la cola de ESTA máquina si ya no quedan etiquetas pendientes en ella
-            app(PlanillaColaService::class)
-                ->retirarSiPlanillaCompletamentePaquetizadaYCompletada($planilla, $maquina);
+            // 12) DESHABILITADO: La eliminación de la cola ahora solo se hace manualmente
+            // cuando el usuario hace clic en "Planilla Completada" desde la vista de máquina.
+            // Esto evita que se elimine prematuramente la posición antes de confirmar manualmente.
+            // app(PlanillaColaService::class)
+            //     ->retirarSiPlanillaCompletamentePaquetizadaYCompletada($planilla, $maquina);
 
             // 14) Guardar en sesión los IDs de elementos reempaquetados (para otras vistas/lógica)
             session(['elementos_reempaquetados' => $todosElementos->pluck('id')->toArray()]);
@@ -739,22 +756,28 @@ class PaqueteController extends Controller
      * 
      * GET /api/planillas/{planillaId}/paquetes
      */
-    public function obtenerPaquetesPorPlanilla($planillaId)
+    public function obtenerPaquetesPorPlanilla($planillaId, \Illuminate\Http\Request $request)
     {
         try {
             $planilla = \App\Models\Planilla::findOrFail($planillaId);
 
             // Obtener paquetes de esta planilla con sus etiquetas y elementos
-            $paquetes = Paquete::with(['etiquetas' => function ($query) {
+            $query = Paquete::with(['etiquetas' => function ($query) {
                 $query->select('id', 'etiqueta_sub_id', 'paquete_id', 'peso', 'estado')
                     ->withCount('elementos')
                     ->with(['elementos' => function ($q) {
                         $q->select('id', 'codigo', 'dimensiones', 'etiqueta_id');
                     }]);
             }, 'ubicacion:id,nombre'])
-                ->where('planilla_id', $planillaId)
-                ->orderBy('created_at', 'desc')
-                ->get();
+                ->where('planilla_id', $planillaId);
+
+            // Filtrar por máquina si se proporciona el parámetro
+            if ($request->has('maquina_id') && $request->maquina_id) {
+                $maquinaId = $request->maquina_id;
+                $query->where('ubicacion_id', $maquinaId);
+            }
+
+            $paquetes = $query->orderBy('created_at', 'desc')->get();
 
             $paquetesFormateados = $paquetes->map(function ($paquete) {
                 return [
@@ -847,10 +870,54 @@ class PaqueteController extends Controller
             // Validar que la etiqueta no esté ya en otro paquete
             if ($etiqueta->paquete_id && $etiqueta->paquete_id !== $paquete->id) {
                 $paqueteActual = Paquete::find($etiqueta->paquete_id);
-                return response()->json([
-                    'success' => false,
-                    'message' => "La etiqueta ya está en el paquete {$paqueteActual->codigo}"
-                ], 400);
+
+                // Si viene el parámetro forzar=true, permitir el movimiento
+                if (!$request->boolean('forzar')) {
+                    return response()->json([
+                        'success' => false,
+                        'requiere_confirmacion' => true,
+                        'paquete_actual' => [
+                            'id' => $paqueteActual->id,
+                            'codigo' => $paqueteActual->codigo,
+                        ],
+                        'paquete_destino' => [
+                            'id' => $paquete->id,
+                            'codigo' => $paquete->codigo,
+                        ],
+                        'message' => "La etiqueta pertenece al paquete {$paqueteActual->codigo}. ¿Deseas moverla al paquete {$paquete->codigo}?"
+                    ], 409); // 409 Conflict
+                }
+
+                // Si forzar=true, proceder a mover la etiqueta
+                // Primero quitar del paquete anterior
+                $pesoEtiqueta = $etiqueta->peso ?? 0;
+                $pesoAnteriorPaqueteOrigen = $paqueteActual->peso;
+                $paqueteActual->peso -= $pesoEtiqueta;
+                $paqueteActual->save();
+
+                // Registrar movimiento de salida
+                \App\Models\Movimiento::create([
+                    'tipo' => 'Movimiento paquete',
+                    'etiqueta_sub_id' => $etiqueta->etiqueta_sub_id,
+                    'paquete_id' => $paqueteActual->id,
+                    'descripcion' => "Etiqueta {$codigoEtiqueta} removida del paquete {$paqueteActual->codigo} (movimiento a {$paquete->codigo})",
+                    'estado' => 'completado',
+                    'fecha_solicitud' => now(),
+                    'ejecutado_por' => auth()->id(),
+                ]);
+
+                // 📊 LOG DE PRODUCCIÓN EN CSV - Remover etiqueta de paquete origen
+                // Recargar paquete para obtener etiquetas restantes
+                $paqueteActual->refresh();
+                $etiquetasRestantes = $paqueteActual->etiquetas()->count() - 1; // -1 porque aún no se ha removido
+
+                \App\Services\ProductionLogger::logEliminarEtiquetaPaquete(
+                    $paqueteActual,
+                    $etiqueta,
+                    $pesoAnteriorPaqueteOrigen,
+                    $etiquetasRestantes,
+                    auth()->user()
+                );
             }
 
             // Si ya está en este paquete, informar

@@ -6,6 +6,8 @@ use Illuminate\Foundation\Configuration\Middleware;
 use App\Http\Middleware\VerificarAccesoSeccion;
 use App\Http\Middleware\VerificarPermisoAsistente;
 use Illuminate\Console\Scheduling\Schedule;
+use Illuminate\Session\TokenMismatchException;
+use Illuminate\Http\Request;
 //use App\Console\Commands\SincronizarFestivosCommand;
 
 return Application::configure(basePath: dirname(__DIR__))
@@ -22,7 +24,10 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {
-        //
+        // Redirigir al login cuando expira la sesión (error 419 - Page Expired)
+        $exceptions->render(function (TokenMismatchException $e, Request $request) {
+            return redirect()->route('login')->with('message', 'Tu sesión ha expirado. Por favor, inicia sesión de nuevo.');
+        });
     })
     ->withCommands([
         // App\Console\Commands\SincronizarFestivosCommand::class,

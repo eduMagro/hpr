@@ -7,6 +7,7 @@ use App\Models\Cliente;
 use App\Models\Obra;
 use App\Models\Etiqueta;
 use App\Models\Elemento;
+use App\Models\ProductoBase;
 use App\Services\PlanillaImport\DTOs\ProcesamientoResult;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Log;
@@ -34,6 +35,7 @@ class PlanillaProcessor
     protected array $diametrosPermitidos;
     protected int $tiempoSetupElemento;
     protected array $estrategiasSubetiquetas;
+    protected array $productosBase;
 
     protected CodigoEtiqueta $codigoService;
 
@@ -42,6 +44,17 @@ class PlanillaProcessor
         $this->codigoService = $codigoService;
         $this->diametrosPermitidos = config('planillas.importacion.diametros_permitidos', [5, 8, 10, 12, 16, 20, 25, 32]);
         $this->tiempoSetupElemento = config('planillas.importacion.tiempo_setup_elemento', 1200);
+
+        // Cargar productos base (barras) con diámetro y longitud para determinar elementos no elaborados
+        $this->productosBase = ProductoBase::where('tipo', 'barra')
+            ->whereNotNull('longitud')
+            ->whereNotNull('diametro')
+            ->get(['diametro', 'longitud'])
+            ->map(fn($p) => [
+                'diametro' => (int)$p->diametro,
+                'longitud' => (float)$p->longitud,
+            ])
+            ->toArray();
 
         // Configuración de estrategias por máquina
         $this->estrategiasSubetiquetas = config('planillas.importacion.estrategias_subetiquetas', []);
@@ -454,6 +467,12 @@ class PlanillaProcessor
             // Calcular tiempo de fabricación
             $tiempoFabricacion = $this->calcularTiempoFabricacion($item['barras'], $doblesBarra);
 
+            // Determinar si el elemento necesita elaboración
+            // Un elemento NO necesita elaboración si:
+            // 1. No tiene dobleces (dobles_barra = 0)
+            // 2. Existe un producto base con mismo diámetro y longitud
+            $elaborado = $this->determinarElaborado($doblesBarra, (int)$diametro, (float)$longitud);
+
             // Crear elemento
             Elemento::create([
                 'codigo' => Elemento::generarCodigo(),
@@ -473,6 +492,7 @@ class PlanillaProcessor
                 'dimensiones' => $fila[47] ?? null,
                 'tiempo_fabricacion' => $tiempoFabricacion,
                 'estado' => 'pendiente',
+                'elaborado' => $elaborado,
             ]);
         }
     }
@@ -849,5 +869,50 @@ class PlanillaProcessor
         }
 
         return $eliminadas;
+    }
+
+    /**
+     * Determina si un elemento necesita elaboración.
+     *
+     * Un elemento NO necesita elaboración (elaborado = 0) si:
+     * 1. No tiene dobleces (dobles_barra = 0) - es una barra recta
+     * 2. Existe un producto base con el mismo diámetro Y longitud
+     *
+     * IMPORTANTE: La longitud del elemento viene en CENTÍMETROS desde el Excel,
+     * mientras que los productos base tienen la longitud en METROS.
+     *
+     * @param int $doblesBarra Número de dobleces del elemento
+     * @param int $diametro Diámetro del elemento en mm
+     * @param float $longitud Longitud del elemento en CENTÍMETROS
+     * @return int 1 si necesita elaboración, 0 si no
+     */
+    protected function determinarElaborado(int $doblesBarra, int $diametro, float $longitud): int
+    {
+        // Si tiene dobleces, necesita elaboración
+        if ($doblesBarra > 0) {
+            return 1;
+        }
+
+        // Convertir longitud de centímetros a metros para comparar con productos base
+        $longitudEnMetros = $longitud / 100;
+
+        // Tolerancia de 0.05m (5cm) para comparación de longitud
+        $tolerancia = 0.05;
+
+        foreach ($this->productosBase as $producto) {
+            // Verificar que coincidan TANTO el diámetro como la longitud
+            $coincideDiametro = $producto['diametro'] === $diametro;
+            $coincideLongitud = abs($longitudEnMetros - $producto['longitud']) <= $tolerancia;
+
+            if ($coincideDiametro && $coincideLongitud) {
+                Log::channel('planilla_import')->debug(
+                    "📦 Elemento sin elaborar: Ø{$diametro}mm x {$longitud}cm ({$longitudEnMetros}m) coincide con producto base Ø{$producto['diametro']}mm x {$producto['longitud']}m"
+                );
+                return 0; // No necesita elaboración
+            }
+        }
+
+        // No existe producto base con ese diámetro y longitud, necesita elaboración
+        return 1;
     }
 }

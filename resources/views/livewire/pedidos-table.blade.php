@@ -138,9 +138,53 @@
                             |
                             <span class="text-blue-600">Estado: </span>{{ $pedido->estado }}
 
-                            <span class="float-right">
-                                <x-tabla.boton-eliminar :action="route('pedidos.destroy', $pedido->id)" />
-                            </span>
+                    {{-- CABECERA DEL PEDIDO --}}
+                    <tr wire:key="pedido-header-{{ $pedidoId }}" class="bg-gray-200 border-t-2 border-gray-400">
+                        <td colspan="14" class="px-3 py-2">
+                            <div class="flex items-center justify-between flex-wrap gap-2">
+                                <div class="flex items-center gap-4 text-sm">
+                                    <span class="font-bold text-gray-800">
+                                        {{ $pedido->codigo ?? '—' }}
+                                    </span>
+                                    <span class="text-gray-600">
+                                        <strong>Fabricante:</strong> {{ $pedido->fabricante?->nombre ?? '—' }}
+                                    </span>
+                                    <span class="text-gray-600">
+                                        <strong>Distribuidor:</strong> {{ $pedido->distribuidor?->nombre ?? '—' }}
+                                    </span>
+                                    <span class="text-gray-600">
+                                        <strong>Fecha:</strong> {{ $pedido->fecha_pedido_formateada ?? '—' }}
+                                    </span>
+                                    <span class="px-2 py-0.5 rounded text-xs font-semibold
+                                        {{ $pedidoCancelado ? 'bg-gray-400 text-white' : '' }}
+                                        {{ $pedidoCompletado ? 'bg-green-500 text-white' : '' }}
+                                        {{ !$pedidoCancelado && !$pedidoCompletado ? 'bg-blue-500 text-white' : '' }}">
+                                        {{ ucfirst($pedido->estado ?? 'pendiente') }}
+                                    </span>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    @if(!$pedidoCancelado && !$pedidoCompletado)
+                                        {{-- Botón Cancelar Pedido --}}
+                                        <form method="POST" action="{{ route('pedidos.cancelar', $pedido->id) }}"
+                                            onsubmit="return confirm('¿Estás seguro de cancelar todo el pedido {{ $pedido->codigo }}? Esta acción cancelará todas sus líneas.')">
+                                            @csrf
+                                            @method('PUT')
+                                            <button type="submit" class="bg-gray-500 hover:bg-gray-600 text-white text-xs px-3 py-1 rounded shadow transition">
+                                                Cancelar Pedido
+                                            </button>
+                                        </form>
+                                    @endif
+                                    {{-- Botón Eliminar Pedido --}}
+                                    <form method="POST" action="{{ route('pedidos.destroy', $pedido->id) }}"
+                                        onsubmit="return confirm('¿Estás seguro de ELIMINAR el pedido {{ $pedido->codigo }}? Esta acción es irreversible.')">
+                                        @csrf
+                                        @method('DELETE')
+                                        <button type="submit" class="bg-red-600 hover:bg-red-700 text-white text-xs px-3 py-1 rounded shadow transition">
+                                            Eliminar
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
                         </td>
                     </tr>
 
@@ -241,8 +285,26 @@
                                             placeholder="Otra ubicación" value="{{ $linea->obra_manual ?? '' }}"
                                             data-linea-id="{{ $linea->id }}">
                                     </div>
-                                </div>
-                            </td>
+                                @else
+                                    <span class="text-gray-400">—</span>
+                                @endif
+                            </div>
+                        </td>
+                        <td class="border px-2 py-1 text-center align-middle">
+                            <div class="inline-flex flex-col items-center gap-1">
+                                <span class="font-semibold">{{ $pedido->codigo ?? '—' }}</span>
+                                @if(!empty($linea->id))
+                                    <a href="{{ route('entradas.index', [
+                                            'pedido_codigo' => $pedido->codigo,
+                                            'pedido_producto_id' => $linea->id,
+                                        ]) }}"
+                                        wire:navigate
+                                        class="text-blue-600 hover:underline text-[11px]">
+                                        Ver entradas
+                                    </a>
+                                @endif
+                            </div>
+                        </td>
 
                             {{-- CELDA DE PRODUCTO --}}
                             <td class="border px-2 py-2 text-center">
@@ -280,8 +342,21 @@
                                             </optgroup>
                                         @endforeach
                                     </select>
+
+                                    <select class="obra-externa-select text-xs border rounded px-1 py-1" data-linea-id="{{ $linea->id }}">
+                                        <option value="">Obra Externa</option>
+                                        <option value="sin_obra" {{ !$linea->obra_id && !$linea->obra_manual ? 'selected' : '' }}>Sin obra</option>
+                                        @foreach($obrasExternas as $obra)
+                                            <option value="{{ $obra->id }}" {{ $linea->obra_id == $obra->id ? 'selected' : '' }}>
+                                                {{ $obra->obra }}
+                                            </option>
+                                        @endforeach
+                                    </select>
+
+                                    <input type="text" class="obra-manual-input text-xs border rounded px-1 py-1" placeholder="Otra ubicación" value="{{ $linea->obra_manual ?? '' }}" data-linea-id="{{ $linea->id }}">
                                 </div>
-                            </td>
+                            </div>
+                        </td>
 
                             {{-- CELDA DE CANTIDAD PEDIDA --}}
                             <td class="border px-2 py-2 text-center">
@@ -333,6 +408,21 @@
                                         $esNaveValida = $esNaveA || $esNaveB;
                                         $pedidoCompletado = strtolower($pedido->estado) === 'completado';
                                     @endphp
+                                    @foreach($productosAgrupados as $tipo => $productos)
+                                        <optgroup label="{{ strtoupper($tipo) }}">
+                                            @foreach($productos->sortBy('diametro') as $producto)
+                                                <option value="{{ $producto->id }}" data-tipo="{{ $producto->tipo }}" data-diametro="{{ $producto->diametro }}" data-longitud="{{ $producto->longitud ?? '' }}" {{ $linea->producto_base_id == $producto->id ? 'selected' : '' }}>
+                                                    Ø{{ $producto->diametro }}
+                                                    @if($producto->longitud)
+                                                        x {{ $producto->longitud }}m
+                                                    @endif
+                                                </option>
+                                            @endforeach
+                                        </optgroup>
+                                    @endforeach
+                                </select>
+                            </div>
+                        </td>
 
                                     <div class="flex items-center justify-start gap-1 flex-nowrap"
                                         @if ($esCancelado) style="pointer-events:none;opacity:.5" @endif>
@@ -412,7 +502,11 @@
                                                     data-linea-id="{{ $linea['id'] }}">
                                                     @csrf
                                                     @method('PUT')
+                                                    <button type="submit" title="Activar línea" class="bg-yellow-500 hover:bg-yellow-600 text-white text-xs px-2 py-1 rounded shadow transition btn-activar-linea">
+                                                        Activar
+                                                    </button>
                                                 </form>
+                                            @endif
 
                                                 <button type="button"
                                                     onclick="confirmarCancelacionLinea({{ $pedido->id }}, {{ $linea['id'] }})"
@@ -471,12 +565,13 @@
                                         @endif
                                     </div>
                                 </div>
-                            </td>
-                        </tr>
+                            </div>
+                        </td>
+                    </tr>
                     @endforeach
                 @empty
                     <tr>
-                        <td colspan="14" class="text-center py-4 text-gray-500">No hay pedidos registrados</td>
+                        <td colspan="14" class="text-center py-4 text-gray-500">No hay líneas de pedido registradas</td>
                     </tr>
                 @endforelse
             </tbody>

@@ -259,6 +259,350 @@
             </table>
         </div>
 
+        <h3 class="text-lg font-semibold px-4 pt-4 text-gray-800">Categorías</h3>
+        <div class="bg-white shadow-md rounded-lg overflow-x-auto p-4"
+            x-data="{
+                categorias: @js($categorias),
+                nuevaCategoria: '',
+                filtroNombre: '',
+                enviando: false,
+                editandoId: null,
+                editandoNombre: '',
+                originalNombre: '',
+
+                get categoriasFiltradas() {
+                    if (!this.filtroNombre.trim()) return this.categorias;
+                    const filtro = this.filtroNombre.toLowerCase().trim();
+                    return this.categorias.filter(c => c.nombre.toLowerCase().includes(filtro));
+                },
+
+                iniciarEdicion(cat) {
+                    this.editandoId = cat.id;
+                    this.editandoNombre = cat.nombre;
+                    this.originalNombre = cat.nombre;
+                },
+
+                cancelarEdicion() {
+                    this.editandoId = null;
+                    this.editandoNombre = '';
+                    this.originalNombre = '';
+                },
+
+                guardar(cat) {
+                    if (!this.editandoNombre.trim()) {
+                        Swal.fire({ icon: 'warning', text: 'El nombre no puede estar vacío.' });
+                        return;
+                    }
+                    const nuevoNombre = this.editandoNombre.trim();
+                    guardarCategoria({ id: cat.id, nombre: nuevoNombre }, () => {
+                        cat.nombre = nuevoNombre;
+                        this.cancelarEdicion();
+                    });
+                },
+
+                crear() {
+                    if (!this.nuevaCategoria.trim() || this.enviando) return;
+                    this.enviando = true;
+                    crearCategoria(this.nuevaCategoria, (nuevaCat) => {
+                        this.categorias.push(nuevaCat);
+                        this.nuevaCategoria = '';
+                        this.enviando = false;
+                    });
+                    // Reset en caso de error
+                    setTimeout(() => { this.enviando = false; }, 3000);
+                },
+
+                eliminar(cat) {
+                    eliminarCategoria(cat.id, cat.nombre, () => {
+                        this.categorias = this.categorias.filter(c => c.id !== cat.id);
+                    });
+                },
+
+                limpiarFiltro() {
+                    this.filtroNombre = '';
+                }
+            }">
+            <!-- Formulario para añadir nueva categoría -->
+            <div class="mb-4 flex gap-2">
+                <input type="text" x-model="nuevaCategoria" placeholder="Nueva categoría..."
+                    class="border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50 px-3 py-2"
+                    @keydown.enter="crear()">
+                <button type="button" class="bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-4 rounded shadow transition"
+                    @click="crear()" :disabled="enviando">
+                    <span x-show="!enviando">Añadir</span>
+                    <span x-show="enviando">...</span>
+                </button>
+            </div>
+
+            <table class="min-w-full table-auto border border-gray-300">
+                <thead class="bg-gray-100 text-gray-700 text-sm uppercase">
+                    <tr>
+                        <th class="px-4 py-2 border text-center w-20">ID</th>
+                        <th class="px-4 py-2 border">Nombre</th>
+                        <th class="px-4 py-2 border text-center w-40">Acciones</th>
+                    </tr>
+                    <tr>
+                        <th class="p-1 border"></th>
+                        <th class="p-1 border">
+                            <input type="text" x-model="filtroNombre" placeholder="Buscar..."
+                                class="w-full text-xs border rounded px-2 py-1 text-gray-700 bg-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none font-normal normal-case">
+                        </th>
+                        <th class="p-1 border text-center">
+                            <button x-show="filtroNombre" type="button" @click="limpiarFiltro()"
+                                class="bg-yellow-500 hover:bg-yellow-600 text-white px-2 py-1 rounded text-xs flex items-center justify-center mx-auto"
+                                title="Limpiar filtro">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582M20 20v-5h-.581M4.582 9A7.5 7.5 0 0112 4.5a7.5 7.5 0 016.418 3.418M19.418 15A7.5 7.5 0 0112 19.5a7.5 7.5 0 01-6.418-3.418" />
+                                </svg>
+                            </button>
+                        </th>
+                    </tr>
+                </thead>
+                <tbody class="text-sm text-gray-800">
+                    <template x-for="cat in categoriasFiltradas" :key="cat.id">
+                        <tr tabindex="0"
+                            @dblclick="if(!$event.target.closest('input, button')) { editandoId === cat.id ? cancelarEdicion() : iniciarEdicion(cat); }"
+                            @keydown.enter.stop="if(editandoId === cat.id) { guardar(cat); }"
+                            @keydown.escape.stop="if(editandoId === cat.id) { cancelarEdicion(); }"
+                            :class="{ 'bg-yellow-100': editandoId === cat.id, 'hover:bg-gray-50': editandoId !== cat.id }"
+                            class="border-b cursor-pointer transition-colors">
+
+                            <!-- ID -->
+                            <td class="px-4 py-2 border text-center" x-text="cat.id"></td>
+
+                            <!-- NOMBRE -->
+                            <td class="px-4 py-2 border">
+                                <span x-show="editandoId !== cat.id" x-text="cat.nombre"></span>
+                                <input x-show="editandoId === cat.id" type="text" x-model="editandoNombre"
+                                    class="w-full text-sm border rounded px-2 py-1 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
+                                    x-ref="inputEdicion">
+                            </td>
+
+                            <!-- ACCIONES -->
+                            <td class="px-4 py-2 border text-center">
+                                <div class="flex items-center justify-center gap-2">
+                                    <!-- Botones en modo edición -->
+                                    <template x-if="editandoId === cat.id">
+                                        <div class="flex items-center gap-2">
+                                            <button @click="guardar(cat)"
+                                                class="w-6 h-6 bg-green-100 text-green-600 rounded hover:bg-green-200 flex items-center justify-center"
+                                                title="Guardar cambios">
+                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                                                </svg>
+                                            </button>
+                                            <button @click="cancelarEdicion()"
+                                                class="w-6 h-6 bg-red-100 text-red-600 rounded hover:bg-red-200 flex items-center justify-center"
+                                                title="Cancelar edición">
+                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                                                </svg>
+                                            </button>
+                                        </div>
+                                    </template>
+
+                                    <!-- Botones en modo normal -->
+                                    <template x-if="editandoId !== cat.id">
+                                        <div class="flex items-center gap-2">
+                                            <button @click="iniciarEdicion(cat)"
+                                                class="w-6 h-6 bg-blue-100 text-blue-600 rounded hover:bg-blue-200 flex items-center justify-center"
+                                                title="Editar">
+                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                        d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                                </svg>
+                                            </button>
+                                            <button @click="eliminar(cat)"
+                                                class="w-6 h-6 bg-red-100 text-red-600 rounded hover:bg-red-200 flex items-center justify-center"
+                                                title="Eliminar">
+                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                </svg>
+                                            </button>
+                                        </div>
+                                    </template>
+                                </div>
+                            </td>
+                        </tr>
+                    </template>
+                    <tr x-show="categorias.length === 0">
+                        <td colspan="3" class="text-center py-4 text-gray-500">No hay categorías registradas.</td>
+                    </tr>
+                    <tr x-show="categorias.length > 0 && categoriasFiltradas.length === 0">
+                        <td colspan="3" class="text-center py-4 text-gray-500">No se encontraron categorías con ese filtro.</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
     </div>
+
+    <script>
+        window.guardarCategoria = function(categoria, callback) {
+            if (!categoria.nombre || !categoria.nombre.trim()) {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Campo requerido',
+                    text: 'El nombre no puede estar vacío.',
+                    confirmButtonText: 'OK'
+                });
+                return;
+            }
+
+            fetch("{{ route('categorias.updateField') }}", {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                },
+                body: JSON.stringify({
+                    id: categoria.id,
+                    field: 'nombre',
+                    value: categoria.nombre.trim()
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Actualizar el original para que coincida con el editado
+                    if (callback) callback();
+                    // Toast de éxito
+                    Swal.fire({
+                        icon: 'success',
+                        text: 'Categoría actualizada',
+                        toast: true,
+                        position: 'top-end',
+                        timer: 2000,
+                        showConfirmButton: false
+                    });
+                } else {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error al actualizar',
+                        text: data.message || 'Ha ocurrido un error inesperado.',
+                        confirmButtonText: 'OK'
+                    });
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error de conexión',
+                    text: 'No se pudo actualizar la categoría. Inténtalo nuevamente.',
+                    confirmButtonText: 'OK'
+                });
+            });
+        }
+
+        window.crearCategoria = function(nombre, callback) {
+            if (!nombre || !nombre.trim()) {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Campo requerido',
+                    text: 'El nombre no puede estar vacío.',
+                    confirmButtonText: 'OK'
+                });
+                return;
+            }
+
+            fetch("{{ route('categorias.store') }}", {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                },
+                body: JSON.stringify({ nombre: nombre.trim() })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    if (callback) callback(data.categoria);
+                    Swal.fire({
+                        icon: 'success',
+                        text: 'Categoría creada',
+                        toast: true,
+                        position: 'top-end',
+                        timer: 2000,
+                        showConfirmButton: false
+                    });
+                } else {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error al crear',
+                        text: data.message || 'Ha ocurrido un error inesperado.',
+                        confirmButtonText: 'OK'
+                    });
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error de conexión',
+                    text: 'No se pudo crear la categoría. Inténtalo nuevamente.',
+                    confirmButtonText: 'OK'
+                });
+            });
+        }
+
+        window.eliminarCategoria = function(id, nombre, callback) {
+            Swal.fire({
+                title: '¿Eliminar categoría?',
+                text: `Se eliminará la categoría "${nombre}"`,
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#d33',
+                cancelButtonColor: '#3085d6',
+                confirmButtonText: 'Sí, eliminar',
+                cancelButtonText: 'Cancelar'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    fetch("{{ route('categorias.destroy') }}", {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Accept': 'application/json',
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                        },
+                        body: JSON.stringify({ id })
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            if (callback) callback();
+                            Swal.fire({
+                                icon: 'success',
+                                text: 'Categoría eliminada',
+                                toast: true,
+                                position: 'top-end',
+                                timer: 2000,
+                                showConfirmButton: false
+                            });
+                        } else {
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Error',
+                                text: data.message,
+                                confirmButtonText: 'OK'
+                            });
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Error de conexión',
+                            text: 'No se pudo eliminar la categoría.',
+                            confirmButtonText: 'OK'
+                        });
+                    });
+                }
+            });
+        }
+    </script>
 
 </x-app-layout>

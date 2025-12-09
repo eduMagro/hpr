@@ -1,9 +1,18 @@
+<IfModule mod_headers.c>
+    Header always unset X-Frame-Options
+    Header always set X-Frame-Options "SAMEORIGIN"
+</IfModule>
+
 <IfModule mod_rewrite.c>
     <IfModule mod_negotiation.c>
         Options -MultiViews -Indexes
     </IfModule>
 
     RewriteEngine On
+
+    # Permitir acceso a manifest.json y firebase-messaging-sw.js
+    RewriteRule ^manifest\.json$ - [L]
+    RewriteRule ^firebase-messaging-sw\.js$ - [L]
 
     # Handle Authorization Header
     RewriteCond %{HTTP:Authorization} .

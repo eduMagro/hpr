@@ -17,6 +17,9 @@ class EntradasTable extends Component
 
     // Filtros
     #[Url(keep: true)]
+    public $pedido_producto_id = '';
+
+    #[Url(keep: true)]
     public $pedido_codigo = '';
 
     #[Url(keep: true)]
@@ -72,6 +75,7 @@ class EntradasTable extends Component
     public function limpiarFiltros()
     {
         $this->reset([
+            'pedido_producto_id',
             'pedido_codigo',
             'nave_id',
             'fabricante_id',
@@ -89,6 +93,11 @@ class EntradasTable extends Component
 
     private function aplicarFiltros($query)
     {
+        // Filtro por línea de pedido (pedido_producto_id)
+        if ($this->pedido_producto_id) {
+            $query->where('pedido_producto_id', $this->pedido_producto_id);
+        }
+
         // Filtro por pedido
         if ($this->pedido_codigo) {
             $query->whereHas('pedido', function ($q) {
@@ -146,6 +155,12 @@ class EntradasTable extends Component
     private function getFiltrosActivos()
     {
         $filtros = [];
+
+        if ($this->pedido_producto_id) {
+            $linea = \App\Models\PedidoProducto::find($this->pedido_producto_id);
+            $codigoLinea = $linea?->codigo ?? $this->pedido_producto_id;
+            $filtros[] = 'Línea de pedido: <strong>' . e($codigoLinea) . '</strong>';
+        }
 
         if ($this->nave_id) {
             $filtros[] = 'Nave: <strong>' . e($this->nave_id) . '</strong>';

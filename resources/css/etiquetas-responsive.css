@@ -6,6 +6,78 @@
         transition: all 0.2s ease;
     }
 
+    /* === REGLAS PARA UNA SOLA PLANILLA === */
+    /* Una planilla + 1 columna lateral */
+    .columnas-laterales-visibles.una-planilla .etiqueta-card {
+        width: 500px !important;
+        height: 282px !important;
+        margin: 0 0.6rem 0.6rem 0.6rem !important;
+        padding: 3mm !important;
+    }
+
+    .columnas-laterales-visibles.una-planilla .etiqueta-card h2 {
+        font-size: 0.9rem !important;
+        line-height: 1.2 !important;
+    }
+
+    .columnas-laterales-visibles.una-planilla .etiqueta-card h3 {
+        font-size: 0.9rem !important;
+        line-height: 1.2 !important;
+    }
+
+    .columnas-laterales-visibles.una-planilla .etiqueta-card button {
+        padding: 0.35rem 0.55rem !important;
+        font-size: 0.8rem !important;
+    }
+
+    .columnas-laterales-visibles.una-planilla .etiqueta-card select {
+        padding: 0.35rem 0.5rem !important;
+        font-size: 0.8rem !important;
+    }
+
+    /* Una planilla + AMBAS columnas laterales = TAMAÑO GRANDE */
+    .ambas-columnas.una-planilla .etiqueta-card {
+        width: 580px !important;
+        height: 327px !important;
+        margin: 0 0.8rem 0.8rem 0.8rem !important;
+        padding: 3mm !important;
+    }
+
+    .ambas-columnas.una-planilla .etiqueta-card h2 {
+        font-size: 1rem !important;
+        line-height: 1.3 !important;
+    }
+
+    .ambas-columnas.una-planilla .etiqueta-card h3 {
+        font-size: 1rem !important;
+        line-height: 1.3 !important;
+    }
+
+    .ambas-columnas.una-planilla .etiqueta-card button {
+        padding: 0.4rem 0.6rem !important;
+        font-size: 0.85rem !important;
+    }
+
+    .ambas-columnas.una-planilla .etiqueta-card select {
+        padding: 0.4rem 0.55rem !important;
+        font-size: 0.85rem !important;
+    }
+
+    .ambas-columnas.una-planilla .etiqueta-card .absolute.top-2.right-2 {
+        gap: 0.4rem !important;
+        top: 0.5rem !important;
+        right: 0.5rem !important;
+    }
+
+    .ambas-columnas.una-planilla .qr-box {
+        width: 18mm !important;
+    }
+
+    .ambas-columnas.una-planilla .qr-box img {
+        width: 16mm !important;
+        height: 16mm !important;
+    }
+
     /* === TAMAÑO MEDIO: 2 planillas SIN columnas laterales === */
     .dos-planillas .etiqueta-card {
         width: 500px !important;

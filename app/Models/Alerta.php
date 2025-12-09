@@ -100,4 +100,23 @@ class Alerta extends Model
     /**
      * Scope para obtener solo las alertas no leídas.
      */
+
+    /**
+     * Accessor para obtener el nombre del emisor.
+     * Si el emisor tiene rol "oficina", muestra "Sistema".
+     */
+    public function getNombreEmisorAttribute(): string
+    {
+        $emisor = $this->usuario1;
+
+        if (!$emisor) {
+            return 'Sistema';
+        }
+
+        if ($emisor->rol === 'oficina') {
+            return 'Sistema';
+        }
+
+        return $emisor->nombre_completo ?? $emisor->name ?? 'Usuario';
+    }
 }

@@ -207,7 +207,7 @@
                                 </div>
                             </div>
 
-                            <div class="flex flex-wrap items-center gap-1 text-[10px] font-semibold pt-1">
+                            <div class="flex items-center gap-1 text-[10px] font-semibold pt-1 justify-end">
                                 <a href="{{ route('planillas.show', $planilla->id) }}"
                                     class="px-2 py-1 rounded-lg bg-gray-900 text-white hover:bg-gray-800">
                                     Ver
@@ -231,7 +231,7 @@
                                     </form>
                                 @endif
                                 <form action="{{ route('planillas.destroy', $planilla->id) }}" method="POST"
-                                    class="inline"
+                                    class="flex items-center gap-1"
                                     onsubmit="return confirm('¿Eliminar esta planilla? Esta acción no se puede deshacer.');">
                                     @csrf
                                     @method('DELETE')

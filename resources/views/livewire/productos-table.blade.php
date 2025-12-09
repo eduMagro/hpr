@@ -171,8 +171,44 @@
                                         <path
                                             d="M13.5 3.5c-2 2-1.5 4-3 5.5s-4 1-4 5a6 6 0 0012 0c0-2-1-3.5-2-4.5s-1-3-3-6z" />
                                     </svg>
-                                </a>
-                                <x-tabla.boton-eliminar :action="route('productos.destroy', $producto->id)" />
+                                </button>
+
+                                <!-- Botones en modo normal -->
+                                <template x-if="!editando">
+                                    <div class="flex items-center space-x-2">
+                                        <button @click="editando = true"
+                                            class="w-6 h-6 bg-blue-100 text-blue-600 rounded hover:bg-blue-200 flex items-center justify-center"
+                                            title="Editar inline">
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                    d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                            </svg>
+                                        </button>
+                                        <a href="{{ route('productos.edit', $producto->id) }}" class="w-6 h-6 bg-yellow-100 text-yellow-600 rounded hover:bg-yellow-200 flex items-center justify-center" title="Editar completo">
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                                <path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                                                <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                            </svg>
+                                        </a>
+                                        <a href="{{ route('productos.show', $producto->id) }}" class="w-6 h-6 bg-blue-100 text-blue-600 rounded hover:bg-blue-200 flex items-center justify-center" title="Ver">
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                                <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                                <path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                            </svg>
+                                        </a>
+                                        <button type="button" onclick="abrirModalMovimientoLibre('{{ $producto->codigo }}')" class="w-6 h-6 bg-green-100 text-green-600 rounded hover:bg-green-200 flex items-center justify-center" title="Mover producto">
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
+                                                <path d="M8.5 2A1.5 1.5 0 0 1 10 3.5V10h.5V4A1.5 1.5 0 0 1 13 4v6h.5V5.5a1.5 1.5 0 0 1 3 0V10h.5V7a1.5 1.5 0 0 1 3 0v9.5a3.5 3.5 0 0 1-7 0V18h-2a3 3 0 0 1-3-3v-4H8V3.5A1.5 1.5 0 0 1 8.5 2z" />
+                                            </svg>
+                                        </button>
+                                        <button type="button" data-consumir="{{ route('productos.editarConsumir', $producto->id) }}" class="btn-consumir w-6 h-6 bg-red-100 text-red-600 rounded hover:bg-red-200 flex items-center justify-center" title="Consumir">
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="currentColor" viewBox="0 0 24 24">
+                                                <path d="M13.5 3.5c-2 2-1.5 4-3 5.5s-4 1-4 5a6 6 0 0012 0c0-2-1-3.5-2-4.5s-1-3-3-6z" />
+                                            </svg>
+                                        </button>
+                                        <x-tabla.boton-eliminar :action="route('productos.destroy', $producto->id)" />
+                                    </div>
+                                </template>
                             </div>
                         </x-tabla.cell>
                     </x-tabla.row>
@@ -545,8 +581,67 @@
         });
     </script>
 
-    {{-- Script para botón consumir con SweetAlert --}}
+    {{-- Script para edición inline y botón consumir --}}
     <script>
+        // Función para guardar cambios de producto
+        function guardarCambiosProducto(producto) {
+            const datosActualizar = {
+                codigo: producto.codigo,
+                obra_id: producto.obra_id ? Number(producto.obra_id) : null,
+                fabricante_id: producto.fabricante_id ? Number(producto.fabricante_id) : null,
+                producto_base_id: producto.producto_base_id ? Number(producto.producto_base_id) : null,
+                n_colada: producto.n_colada,
+                n_paquete: producto.n_paquete,
+                peso_inicial: parseFloat(producto.peso_inicial) || 0,
+                estado: producto.estado,
+                ubicacion_id: producto.ubicacion_id ? Number(producto.ubicacion_id) : null,
+            };
+
+            fetch(`/productos/${producto.id}`, {
+                method: "PUT",
+                headers: {
+                    "Content-Type": "application/json",
+                    "X-CSRF-TOKEN": document.querySelector('meta[name="csrf-token"]').getAttribute("content"),
+                    "Accept": "application/json",
+                },
+                body: JSON.stringify(datosActualizar),
+            })
+            .then((response) => response.json())
+            .then((data) => {
+                if (data.success || data.ok) {
+                    Swal.fire({
+                        icon: "success",
+                        title: "Producto actualizado",
+                        text: "Los cambios se han guardado correctamente.",
+                        timer: 1500,
+                        showConfirmButton: false
+                    }).then(() => {
+                        window.location.reload();
+                    });
+                } else {
+                    let errorMsg = data.message || "Ha ocurrido un error inesperado.";
+                    if (data.errors) {
+                        errorMsg = Object.values(data.errors).flat().join(" ");
+                    }
+                    Swal.fire({
+                        icon: "error",
+                        title: "Error al actualizar",
+                        text: errorMsg,
+                        confirmButtonText: "OK",
+                    });
+                }
+            })
+            .catch((error) => {
+                console.error("Error:", error);
+                Swal.fire({
+                    icon: "error",
+                    title: "Error de conexión",
+                    text: "No se pudo actualizar el producto. Inténtalo nuevamente.",
+                    confirmButtonText: "OK",
+                });
+            });
+        }
+
         document.addEventListener('DOMContentLoaded', function() {
             // Delegación de eventos para botones "Consumir"
             document.body.addEventListener('click', async (e) => {
@@ -555,7 +650,8 @@
 
                 e.preventDefault();
 
-                const url = btn.dataset.consumir || btn.getAttribute('href');
+                const url = btn.dataset.consumir;
+                if (!url) return;
 
                 const {
                     value: opcion

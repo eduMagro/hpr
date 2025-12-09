@@ -9,6 +9,7 @@ use App\Http\Controllers\VacacionesController;
 use App\Http\Controllers\EntradaController;
 use App\Http\Controllers\ProductoController;
 use App\Http\Controllers\FabricanteController;
+use App\Http\Controllers\ColadaController;
 use App\Http\Controllers\ProductoBaseController;
 use App\Http\Controllers\PedidoGlobalController;
 use App\Http\Controllers\PedidoController;
@@ -49,6 +50,8 @@ use App\Http\Controllers\ClaveSeccionController;
 use App\Http\Controllers\PedidoAlmacenVentaController;
 use App\Http\Controllers\ClienteAlmacenController;
 use App\Http\Controllers\FabricacionLogController;
+use App\Http\Controllers\AtajosController;
+use App\Http\Controllers\FcmTokenController;
 use App\Services\PlanillaService;
 use Illuminate\Support\Facades\Log;
 
@@ -65,6 +68,9 @@ Route::get('/incorporaciones', function () {
 Route::get('/atajos', [PageController::class, 'atajos'])->middleware(['auth', 'verified'])->name('atajos.index');
 Route::get('/comercial', [PageController::class, 'comercial'])->middleware(['auth', 'verified'])->name('secciones.comercial');
 Route::get('/sistema', [PageController::class, 'sistema'])->middleware(['auth', 'verified'])->name('secciones.sistema');
+
+// Atajos de teclado
+Route::get('/atajos', [AtajosController::class, 'index'])->middleware(['auth', 'verified'])->name('atajos.index');
 
 // Rutas antiguas redirigidas (compatibilidad)
 Route::get('/inventario', function() {
@@ -104,6 +110,14 @@ Route::middleware(['auth', 'puede.asistente', 'throttle:60,1'])
             ->middleware('throttle:15,1'); // Solo 15 mensajes por minuto
     });
 
+// === FCM (Firebase Cloud Messaging) ===
+Route::middleware(['auth'])->prefix('api/fcm')->group(function () {
+    Route::post('/token', [FcmTokenController::class, 'store'])->name('fcm.token.store');
+    Route::delete('/token', [FcmTokenController::class, 'destroy'])->name('fcm.token.destroy');
+    Route::get('/config', [FcmTokenController::class, 'config'])->name('fcm.config');
+    Route::post('/test', [FcmTokenController::class, 'sendTest'])->name('fcm.test');
+});
+
 Route::middleware(['auth', 'acceso.seccion'])->group(function () {
     // === PERFIL DE USUARIO ===
     Route::get('/users/{id}/edit', [ProfileController::class, 'edit'])->name('profile.edit');
@@ -121,6 +135,7 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
     Route::get('/entradas/pdf/filtrados', [EntradaController::class, 'descargarPdfFiltrados'])
         ->name('entradas.descargarPdfFiltrados');
     Route::resource('entradas', EntradaController::class)->names('entradas');
+    Route::get('/entradas/{id}/verificar-discrepancias', [EntradaController::class, 'verificarDiscrepancias'])->name('entradas.verificarDiscrepancias');
     Route::patch('/entradas/{id}/cerrar', [EntradaController::class, 'cerrar'])->name('entradas.cerrar');
     Route::post('/entradas/importar-albaran', [EntradaController::class, 'subirPdf'])
         ->name('entradas.crearImportarAlbaranPdf');
@@ -143,6 +158,7 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
     // Route::put('/pedidos/{pedido}/activar', [PedidoController::class, 'activar']) ->name('pedidos.activar');
     // Activar una línea concreta del pedido
     Route::put('/pedidos/{pedido}/lineas/{linea}/activar', [PedidoController::class, 'activar'])->name('pedidos.lineas.editarActivar');
+    Route::post('/pedidos/{pedido}/lineas/{linea}/activar-con-coladas', [PedidoController::class, 'activarConColadas'])->name('pedidos.lineas.activarConColadas');
 
     // Desactivar una línea concreta del pedido
     Route::delete('/pedidos/{pedido}/lineas/{linea}/desactivar', [PedidoController::class, 'desactivar'])->name('pedidos.lineas.editarDesactivar');
@@ -150,6 +166,9 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
     // Completar manualmente un pedido que no es para una nave de paco reyes
 
     Route::post('pedidos/{pedido}/lineas/{linea}/completar', [PedidoController::class, 'completarLineaManual'])->name('pedidos.editarCompletarLineaManual');
+
+    // === CANCELAR PEDIDO COMPLETO ===
+    Route::put('/pedidos/{pedido}/cancelar', [PedidoController::class, 'cancelarPedido'])->name('pedidos.cancelar');
 
     // === LINEAS DEL PEDIDO ===
     Route::put('/pedidos/{pedido}/lineas/{linea}/cancelar', [PedidoController::class, 'cancelarLinea'])->name('pedidos.lineas.editarCancelar');
@@ -167,12 +186,20 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
     // Route::post('/productos/crear-desde-recepcion', [PedidoController::class, 'crearDesdeRecepcion'])->name('productos.crear.desde.recepcion');
     // Route::post('/solicitar-stock', [ProductoController::class, 'solicitarStock'])->name('solicitar.stock');
     Route::post('productos/generar-exportar', [ProductoController::class, 'GenerarYExportar'])->name('productos.generar.crearExportar');
+    Route::post('productos/generar-datos', [ProductoController::class, 'GenerarYObtenerDatos'])->name('productos.generar.datos');
     Route::post('/productos/{codigo}/reasignar', [ProductoController::class, 'editarUbicacionInventario'])
         ->name('productos.editarUbicacionInventario');
     Route::post('/productos/{codigo}/restablecer', [ProductoController::class, 'restablecerDesdeInventario'])
         ->name('productos.restablecerInventario');
     Route::post('/productos/{codigo}/liberar-maquina', [ProductoController::class, 'liberarFabricandoInventario'])
         ->name('productos.liberarMaquinaInventario');
+
+    // === COLADAS ===
+    Route::get('coladas', [ColadaController::class, 'index'])->name('coladas.index');
+    Route::post('coladas', [ColadaController::class, 'store'])->name('coladas.store');
+    Route::put('coladas/{colada}', [ColadaController::class, 'update'])->name('coladas.update');
+    Route::delete('coladas/{colada}', [ColadaController::class, 'destroy'])->name('coladas.destroy');
+    Route::get('coladas/{colada}/descargar', [ColadaController::class, 'descargarDocumento'])->name('coladas.descargar');
 
     Route::get('/ubicaciones/inventario', [UbicacionController::class, 'inventario'])->name('ubicaciones.verInventario');
     Route::resource('ubicaciones', UbicacionController::class);
@@ -208,12 +235,19 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
         return response()->file($path); // envía con Content-Type correcto
     })->name('usuarios.imagen');
     Route::get('/mi-perfil/{user}', [PerfilController::class, 'show'])->name('usuarios.show');
-    Route::resource('vacaciones', VacacionesController::class);
+
+    // Rutas específicas de vacaciones (DEBEN ir ANTES del resource)
+    Route::get('/vacaciones/usuarios-con-vacaciones', [VacacionesController::class, 'usuariosConVacaciones'])->name('vacaciones.usuariosConVacaciones');
+    Route::get('/vacaciones/eventos', [VacacionesController::class, 'eventos'])->name('vacaciones.eventos');
     Route::post('/vacaciones/solicitar', [VacacionesController::class, 'store'])->name('vacaciones.solicitar');
+    Route::post('/vacaciones/asignar-directo', [VacacionesController::class, 'asignarDirecto'])->name('vacaciones.asignarDirecto');
+    Route::post('/vacaciones/reprogramar', [VacacionesController::class, 'reprogramar'])->name('vacaciones.reprogramar');
+    Route::post('/vacaciones/eliminar-evento', [VacacionesController::class, 'eliminarEvento'])->name('vacaciones.eliminarEvento');
     Route::post('/vacaciones/{id}/aprobar', [VacacionesController::class, 'aprobar'])->name('vacaciones.editarAprobar');
     Route::post('/vacaciones/{id}/denegar', [VacacionesController::class, 'denegar'])->name('vacaciones.editarDenegar');
-    // Route::post('/vacaciones/reprogramar', [VacacionesController::class, 'reprogramar'])->name('vacaciones.reprogramar');
-    // Route::post('/vacaciones/eliminar-evento', [VacacionesController::class, 'eliminarEvento'])->name('vacaciones.eliminarEvento');
+
+    // Resource de vacaciones (al final para que no capture las rutas específicas)
+    Route::resource('vacaciones', VacacionesController::class);
 
     // === TURNOS ===
     Route::resource('turnos', TurnoController::class);
@@ -239,6 +273,8 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
     Route::put('/asignaciones-turno/{id}/quitar-obra', [AsignacionTurnoController::class, 'quitarObra'])->name('asignaciones-turnos.quitarObra');
     Route::put('/asignaciones-turnos/{id}/update-obra', [AsignacionTurnoController::class, 'updateObra'])->name('asignaciones-turnos.update-obra');
     Route::post('/asignaciones-turno/repetir-semana', [AsignacionTurnoController::class, 'repetirSemana'])->name('asignaciones-turnos.repetirSemana');
+    Route::post('/asignaciones-turno/repetir-semana-obra', [AsignacionTurnoController::class, 'repetirSemanaObra'])->name('asignaciones-turnos.repetirSemanaObra');
+    Route::post('/asignaciones-turno/mover-eventos', [AsignacionTurnoController::class, 'moverEventosAObra'])->name('asignaciones-turnos.moverEventos');
     Route::post('/asignaciones-turno/{id}/actualizar-horas', [AsignacionTurnoController::class, 'actualizarHoras'])->name('asignaciones-turnos.actualizar-horas');
     Route::get('/asignaciones-turno/exportar', [AsignacionTurnoController::class, 'export'])->name('asignaciones-turnos.verExportar');
 
@@ -272,6 +308,14 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
     Route::get('/api/produccion/balancear-carga-analisis', [ProduccionController::class, 'balancearCargaAnalisis'])->name('api.produccion.balancear.analisis');
     Route::post('/api/produccion/balancear-carga-aplicar', [ProduccionController::class, 'aplicarBalanceoCarga'])->name('api.produccion.balancear.aplicar');
 
+    // Endpoint de resumen del calendario
+    Route::get('/api/produccion/resumen', [ProduccionController::class, 'obtenerResumen'])->name('api.produccion.resumen');
+
+    // Endpoints de priorización de obras
+    Route::get('/api/produccion/obras-activas', [ProduccionController::class, 'obrasConPlanillasActivas'])->name('api.produccion.obras-activas');
+    Route::post('/api/produccion/priorizar-obra', [ProduccionController::class, 'priorizarObra'])->name('api.produccion.priorizar-obra');
+    Route::post('/api/produccion/priorizar-obras', [ProduccionController::class, 'priorizarObras'])->name('api.produccion.priorizar-obras');
+
     //MSR20 BVBS
     Route::get('/maquinas/{maquina}/exportar-bvbs', [MaquinaController::class, 'exportarBVBS'])
         ->name('maquinas.exportar-bvbs');
@@ -279,6 +323,10 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
     // === MOVIMIENTOS ===
     Route::resource('movimientos', MovimientoController::class);
     Route::post('/movimientos/crear', [MovimientoController::class, 'crearMovimiento'])->name('movimientos.crear');
+    Route::put('/movimientos/{id}/completar-preparacion', [MovimientoController::class, 'completarPreparacion'])->name('movimientos.completar-preparacion');
+    Route::put('/movimientos/{id}/completar', [MovimientoController::class, 'completar'])->name('movimientos.completar');
+    Route::get('/movimientos/{id}/etiquetas-paquete', [MovimientoController::class, 'getEtiquetasPaquete'])->name('movimientos.etiquetas-paquete');
+    Route::get('/movimientos/{id}/etiquetas-elementos-sin-elaborar', [MovimientoController::class, 'getEtiquetasElementosSinElaborar'])->name('movimientos.etiquetas-elementos-sin-elaborar');
 
     // === PAQUETES ETIQUETAS Y ELEMENTOS ===
 
@@ -288,7 +336,7 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
     Route::post('/subetiquetas/crear', [ElementoController::class, 'crearSubEtiqueta'])->name('subetiquetas.crear');
     Route::post('/subetiquetas/mover-todo', [ElementoController::class, 'moverTodoANuevaSubEtiqueta'])->name('subetiquetas.moverTodo');
     Route::get('/planillas/{planilla}/etiquetas', [ElementoController::class, 'showByEtiquetas'])->name('elementosEtiquetas');
-    Route::put('/actualizar-etiqueta/{id}/maquina/{maquina_id}', [EtiquetaController::class, 'actualizarEtiqueta'])->where('id', '.*');
+    Route::put('/actualizar-etiqueta/{id}/maquina/{maquina_id}', [EtiquetaController::class, 'actualizarEtiqueta'])->where('id', '.*')->name('etiquetas.actualizarMaquina');
     Route::post('/etiquetas/fabricacion-optimizada', [EtiquetaController::class, 'fabricacionSyntaxLine28'])->name('etiquetas.fabricacion-optimizada');
     Route::post('/elementos/{elemento}/actualizar-campo', [ElementoController::class, 'actualizarMaquina'])->name('elementos.editarMaquina');
     Route::post('/etiquetas/{etiqueta}/patron-corte-simple', [EtiquetaController::class, 'calcularPatronCorteSimple'])->name('etiquetas.calcularPatronCorteSimple');
@@ -341,10 +389,13 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
     Route::resource('planificacion', PlanificacionController::class)->only(['index', 'store', 'update', 'destroy']);
 
     Route::put('/planificacion/comentario/{id}', [PlanificacionController::class, 'guardarComentario']);
+    Route::put('/planificacion/empresa-transporte/{id}', [PlanificacionController::class, 'actualizarEmpresaTransporte'])->name('planificacion.actualizarEmpresaTransporte');
     Route::post('/planillas/{planilla}/reimportar', [PlanillaController::class, 'reimportar'])->name('planillas.crearReimportar');
     Route::post('/planillas/completar', [PlanillaController::class, 'completar'])->name('planillas.completar');
     Route::get('/planificacion/index', [PlanificacionController::class, 'index'])->name('planificacion.index');
     Route::get('/planificacion/totales', [PlanificacionController::class, 'getTotalesAjax']);
+    Route::post('/planificacion/simular-adelanto', [PlanificacionController::class, 'simularAdelanto'])->name('planificacion.simularAdelanto');
+    Route::post('/planificacion/ejecutar-adelanto', [PlanificacionController::class, 'ejecutarAdelanto'])->name('planificacion.ejecutarAdelanto');
     Route::post('/planillas/completar-todas', [PlanillaController::class, 'completarTodas'])
         ->name('planillas.completarTodas');
     // === EMPRESAS TRANSPORTE ===
@@ -361,7 +412,7 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
     Route::resource('salidas-ferralla', SalidaFerrallaController::class);
     Route::delete('/salidas/{salida}/quitar-paquete/{paquete}', [SalidaFerrallaController::class, 'quitarPaquete'])->name('salidas.editarQuitarPaquete');
     Route::put('/salidas/{salida}/actualizar-estado', [SalidaFerrallaController::class, 'editarActualizarEstado']);
-    Route::post('/actualizar-fecha-salida', [SalidaFerrallaController::class, 'actualizarFechaSalida']);
+    Route::post('/actualizar-fecha-salida', [SalidaFerrallaController::class, 'actualizarFechaSalida'])->name('salidas.actualizarFechaSalida');
     Route::post('/escaneo', [SalidaFerrallaController::class, 'marcarSubido'])->name('escaneo.marcarSubido');
     Route::post('/planificacion/crear-salida-desde-calendario', [SalidaFerrallaController::class, 'crearSalidaDesdeCalendario'])->name('planificacion.crearSalidaDesdeCalendario');
     Route::post('/planificacion/guardar-asignaciones-paquetes', [SalidaFerrallaController::class, 'guardarAsignacionesPaquetes'])->name('planificacion.guardarAsignacionesPaquetes');
@@ -443,6 +494,9 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
 
     // === NOMINAS Y FISCALIDAD ===
     Route::resource('empresas', EmpresaController::class)->names('empresas');
+    Route::post('/categorias/update-field', [EmpresaController::class, 'updateCategoriaField'])->name('categorias.updateField');
+    Route::post('/categorias/store', [EmpresaController::class, 'storeCategoria'])->name('categorias.store');
+    Route::post('/categorias/destroy', [EmpresaController::class, 'destroyCategoria'])->name('categorias.destroy');
     Route::resource('nominas', NominaController::class)->except(['destroy']);
     Route::post('/generar-nominas', [NominaController::class, 'generarNominasMensuales'])->name('generar.nominas');
     Route::delete('/nominas/borrar-todas', [NominaController::class, 'borrarTodas'])->name('nominas.borrarTodas');
@@ -617,7 +671,48 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
 
     Route::post('/paquetes/desde-maquina', [PaqueteController::class, 'store'])
         ->name('paquetes.store');
+
+    // === INCORPORACIONES DE TRABAJADORES ===
+    Route::resource('incorporaciones', \App\Http\Controllers\IncorporacionController::class)
+        ->parameters(['incorporaciones' => 'incorporacion']);
+    Route::post('/incorporaciones/{incorporacion}/subir-documento', [\App\Http\Controllers\IncorporacionController::class, 'subirDocumento'])
+        ->name('incorporaciones.subir-documento');
+    Route::delete('/incorporaciones/{incorporacion}/documento/{tipo}', [\App\Http\Controllers\IncorporacionController::class, 'eliminarDocumento'])
+        ->name('incorporaciones.eliminar-documento');
+    Route::post('/incorporaciones/{incorporacion}/cambiar-estado', [\App\Http\Controllers\IncorporacionController::class, 'cambiarEstado'])
+        ->name('incorporaciones.cambiar-estado');
+    Route::post('/incorporaciones/{incorporacion}/marcar-enviado', [\App\Http\Controllers\IncorporacionController::class, 'marcarEnlaceEnviado'])
+        ->name('incorporaciones.marcar-enviado');
+    Route::get('/incorporaciones/{incorporacion}/archivo/{archivo}', [\App\Http\Controllers\IncorporacionController::class, 'verArchivo'])
+        ->name('incorporaciones.ver-archivo');
+    Route::get('/incorporaciones/{incorporacion}/descargar/{archivo}', [\App\Http\Controllers\IncorporacionController::class, 'descargarArchivo'])
+        ->name('incorporaciones.descargar-archivo');
+    Route::get('/incorporaciones/{incorporacion}/descargar-zip', [\App\Http\Controllers\IncorporacionController::class, 'descargarZip'])
+        ->name('incorporaciones.descargar-zip');
+    Route::post('/incorporaciones/{incorporacion}/aprobar-rrhh', [\App\Http\Controllers\IncorporacionController::class, 'aprobarRrhh'])
+        ->name('incorporaciones.aprobar-rrhh');
+    Route::post('/incorporaciones/{incorporacion}/revocar-rrhh', [\App\Http\Controllers\IncorporacionController::class, 'revocarRrhh'])
+        ->name('incorporaciones.revocar-rrhh');
+    Route::post('/incorporaciones/{incorporacion}/aprobar-ceo', [\App\Http\Controllers\IncorporacionController::class, 'aprobarCeo'])
+        ->name('incorporaciones.aprobar-ceo');
+    Route::post('/incorporaciones/{incorporacion}/revocar-ceo', [\App\Http\Controllers\IncorporacionController::class, 'revocarCeo'])
+        ->name('incorporaciones.revocar-ceo');
+    Route::delete('/incorporaciones/{incorporacion}/eliminar-archivo', [\App\Http\Controllers\IncorporacionController::class, 'eliminarArchivo'])
+        ->name('incorporaciones.eliminar-archivo');
+    Route::post('/incorporaciones/{incorporacion}/resubir-archivo', [\App\Http\Controllers\IncorporacionController::class, 'resubirArchivo'])
+        ->name('incorporaciones.resubir-archivo');
+    Route::post('/incorporaciones/{incorporacion}/actualizar-campo', [\App\Http\Controllers\IncorporacionController::class, 'actualizarCampo'])
+        ->name('incorporaciones.actualizar-campo');
 });
+
+// === RUTAS PÚBLICAS - FORMULARIO INCORPORACIÓN (sin autenticación) ===
+Route::get('/incorporacion/{token}', [\App\Http\Controllers\IncorporacionPublicaController::class, 'show'])
+    ->name('incorporacion.publica');
+Route::post('/incorporacion/{token}', [\App\Http\Controllers\IncorporacionPublicaController::class, 'store'])
+    ->name('incorporacion.publica.store');
 
 
 require __DIR__ . '/auth.php';
+
+// DEBUG STOCK
+require __DIR__.'/debug-stock.php';

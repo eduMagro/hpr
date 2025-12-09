@@ -287,21 +287,149 @@ function construirPaquetesHTMLSalida(paquetes) {
             class="paquete-item-salida bg-white border border-gray-300 rounded p-2 mb-2 cursor-move hover:shadow-md transition-shadow"
             draggable="true"
             data-paquete-id="${paquete.id}"
+            data-paquete-json='${JSON.stringify(paquete).replace(/'/g, "&#39;")}'
         >
             <div class="flex items-center justify-between text-xs">
                 <span class="font-medium">📦 Paquete #${paquete.id}</span>
-                <span class="text-gray-600">${parseFloat(paquete.peso || 0).toFixed(2)} kg</span>
+                <div class="flex items-center gap-2">
+                    <button
+                        type="button"
+                        onclick="event.stopPropagation(); verElementosPaqueteSalida(${paquete.id})"
+                        class="text-blue-500 hover:text-blue-700 hover:bg-blue-100 rounded p-1 transition-colors"
+                        title="Ver elementos del paquete"
+                    >
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                        </svg>
+                    </button>
+                    <span class="text-gray-600">${parseFloat(paquete.peso || 0).toFixed(2)} kg</span>
+                </div>
             </div>
             <div class="text-xs text-gray-500 mt-1">
                 <div>Planilla: ${paquete.planilla?.codigo || paquete.planilla_id}</div>
-                <div>Obra: ${paquete.planilla?.obra?.obra || "N/A"}</div>
+                <div>🏗️ ${paquete.planilla?.obra?.obra || "N/A"}</div>
                 ${paquete.planilla?.obra?.cod_obra ? `<div>Código: ${paquete.planilla.obra.cod_obra}</div>` : ""}
+                ${paquete.nave?.obra ? `<div class="text-blue-600 font-medium">📍 ${paquete.nave.obra}</div>` : ""}
             </div>
         </div>
     `
         )
         .join("");
 }
+
+/* ===================== Ver elementos de un paquete ===================== */
+async function verElementosPaqueteSalida(paqueteId) {
+    try {
+        // Buscar el paquete en el DOM para obtener sus datos
+        const paqueteElement = document.querySelector(`[data-paquete-id="${paqueteId}"]`);
+        let paqueteData = null;
+
+        if (paqueteElement && paqueteElement.dataset.paqueteJson) {
+            try {
+                paqueteData = JSON.parse(paqueteElement.dataset.paqueteJson.replace(/&#39;/g, "'"));
+            } catch (e) {
+                console.warn("No se pudo parsear JSON del paquete", e);
+            }
+        }
+
+        // Si no tenemos datos del paquete, hacer fetch
+        if (!paqueteData) {
+            const response = await fetch(`/api/paquetes/${paqueteId}/elementos`);
+            if (response.ok) {
+                paqueteData = await response.json();
+            }
+        }
+
+        if (!paqueteData) {
+            return Swal.fire("⚠️", "No se pudo obtener información del paquete", "warning");
+        }
+
+        // Extraer elementos de las etiquetas del paquete
+        const elementos = [];
+        if (paqueteData.etiquetas && paqueteData.etiquetas.length > 0) {
+            paqueteData.etiquetas.forEach((etiqueta) => {
+                if (etiqueta.elementos && etiqueta.elementos.length > 0) {
+                    etiqueta.elementos.forEach((elemento) => {
+                        elementos.push({
+                            id: elemento.id,
+                            dimensiones: elemento.dimensiones,
+                            peso: elemento.peso,
+                            longitud: elemento.longitud,
+                            diametro: elemento.diametro,
+                        });
+                    });
+                }
+            });
+        }
+
+        if (elementos.length === 0) {
+            return Swal.fire("ℹ️", "Este paquete no tiene elementos para mostrar", "info");
+        }
+
+        // Construir HTML con los elementos
+        const elementosHtml = elementos.map((el, idx) => `
+            <div class="bg-gray-50 border border-gray-200 rounded-lg p-3 mb-2">
+                <div class="flex items-center justify-between">
+                    <span class="font-medium text-gray-700">Elemento #${el.id}</span>
+                    <span class="text-xs text-gray-500">${idx + 1} de ${elementos.length}</span>
+                </div>
+                <div class="mt-2 text-sm text-gray-600 grid grid-cols-2 gap-2">
+                    ${el.diametro ? `<div><strong>Ø:</strong> ${el.diametro} mm</div>` : ''}
+                    ${el.longitud ? `<div><strong>Long:</strong> ${el.longitud} mm</div>` : ''}
+                    ${el.peso ? `<div><strong>Peso:</strong> ${parseFloat(el.peso).toFixed(2)} kg</div>` : ''}
+                </div>
+                ${el.dimensiones ? `
+                    <div class="mt-2 p-2 bg-white border rounded">
+                        <div id="elemento-dibujo-${el.id}" class="w-full h-32"></div>
+                    </div>
+                ` : ''}
+            </div>
+        `).join('');
+
+        // Mostrar modal con SweetAlert
+        Swal.fire({
+            title: `👁️ Elementos del Paquete #${paqueteId}`,
+            html: `
+                <div class="text-left max-h-[60vh] overflow-y-auto">
+                    <div class="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
+                        <div class="text-sm">
+                            <strong>Planilla:</strong> ${paqueteData.planilla?.codigo || 'N/A'}<br>
+                            <strong>Peso total:</strong> ${parseFloat(paqueteData.peso || 0).toFixed(2)} kg<br>
+                            <strong>Total elementos:</strong> ${elementos.length}
+                        </div>
+                    </div>
+                    ${elementosHtml}
+                </div>
+            `,
+            width: Math.min(window.innerWidth * 0.9, 600),
+            showConfirmButton: true,
+            confirmButtonText: "Cerrar",
+            didOpen: () => {
+                // Dibujar figuras de elementos si la función está disponible
+                if (typeof window.dibujarFiguraElemento === "function") {
+                    elementos.forEach((el) => {
+                        if (el.dimensiones) {
+                            setTimeout(() => {
+                                window.dibujarFiguraElemento(
+                                    `elemento-dibujo-${el.id}`,
+                                    el.dimensiones,
+                                    null
+                                );
+                            }, 100);
+                        }
+                    });
+                }
+            }
+        });
+    } catch (error) {
+        console.error("Error al ver elementos del paquete:", error);
+        Swal.fire("❌", "Error al cargar los elementos del paquete", "error");
+    }
+}
+
+// Exponer función globalmente para que el onclick funcione
+window.verElementosPaqueteSalida = verElementosPaqueteSalida;
 
 /* ===================== Inicializar drag and drop salida ===================== */
 function inicializarDragAndDropSalida() {

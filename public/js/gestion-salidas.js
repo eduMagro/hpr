@@ -1116,9 +1116,108 @@ function limpiarFiltros() {
     );
 }
 
+/* ===================== Actualizar fecha de salida ===================== */
+/**
+ * Actualiza la fecha de salida de una salida específica
+ */
+async function actualizarFechaSalida(salidaId, nuevaFecha) {
+    try {
+        console.log(`📅 Actualizando fecha de salida ${salidaId} a ${nuevaFecha}`);
+
+        // Verificar que tenemos la ruta configurada
+        if (!window.AppGestionSalidas || !window.AppGestionSalidas.routes || !window.AppGestionSalidas.routes.actualizarFechaSalida) {
+            console.error('❌ Ruta actualizarFechaSalida no configurada');
+            Swal.fire({
+                icon: 'error',
+                title: 'Error de configuración',
+                text: 'No se pudo encontrar la ruta para actualizar la fecha',
+            });
+            return;
+        }
+
+        const response = await fetch(window.AppGestionSalidas.routes.actualizarFechaSalida, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'X-CSRF-TOKEN': window.AppGestionSalidas.csrf,
+            },
+            body: JSON.stringify({
+                id: salidaId,
+                fecha_salida: nuevaFecha,
+            }),
+        });
+
+        // Leer la respuesta como texto primero para debug
+        const responseText = await response.text();
+        console.log('📝 Respuesta del servidor:', responseText);
+
+        let data;
+        try {
+            data = JSON.parse(responseText);
+        } catch (parseError) {
+            console.error('❌ Error al parsear JSON:', parseError);
+            console.error('Respuesta del servidor:', responseText);
+            Swal.fire({
+                icon: 'error',
+                title: 'Error del servidor',
+                text: 'La respuesta del servidor no es válida',
+            });
+            return;
+        }
+
+        if (response.ok && data.success) {
+            Swal.fire({
+                icon: 'success',
+                title: 'Fecha actualizada',
+                text: 'La fecha de salida se ha actualizado correctamente',
+                timer: 1500,
+                showConfirmButton: false,
+            });
+        } else {
+            console.error('❌ Error en la respuesta:', data);
+            Swal.fire({
+                icon: 'error',
+                title: 'Error',
+                text: data.message || 'No se pudo actualizar la fecha de salida',
+            });
+        }
+    } catch (error) {
+        console.error('❌ Error completo al actualizar fecha de salida:', error);
+        Swal.fire({
+            icon: 'error',
+            title: 'Error',
+            text: 'Error al actualizar la fecha de salida: ' + error.message,
+        });
+    }
+}
+
+/* ===================== Toggle resumen de planillas ===================== */
+/**
+ * Muestra u oculta el resumen de planillas
+ */
+function toggleResumenPlanillas() {
+    const contenido = document.getElementById('contenido-resumen-planillas');
+    const icono = document.getElementById('icono-toggle-planillas');
+
+    if (!contenido || !icono) return;
+
+    if (contenido.classList.contains('hidden')) {
+        // Mostrar
+        contenido.classList.remove('hidden');
+        icono.style.transform = 'rotate(90deg)';
+    } else {
+        // Ocultar
+        contenido.classList.add('hidden');
+        icono.style.transform = 'rotate(0deg)';
+    }
+}
+
 // Exportar funciones globalmente
 window.eliminarSalida = eliminarSalida;
 window.toggleFiltroPaquetes = toggleFiltroPaquetes;
 window.aplicarFiltros = aplicarFiltros;
 window.limpiarFiltros = limpiarFiltros;
 window.inicializarFiltros = inicializarFiltros;
+window.actualizarFechaSalida = actualizarFechaSalida;
+window.toggleResumenPlanillas = toggleResumenPlanillas;

@@ -53,11 +53,37 @@ class PerfilController extends Controller
         // Horas trabajadas del mes
         $horasMensuales = $this->getHorasMensuales($user);
 
+        // Configuración del calendario (para fichajes y visualización)
+        $esOficina = Auth::user()->rol === 'oficina';
+        $config = [
+            'userId'   => $user->id,
+            'locale'   => 'es',
+            'csrfToken' => csrf_token(),
+            'routes'   => [
+                'eventosUrl'          => route('users.verEventos-turnos', $user->id),
+                'resumenUrl'          => route('users.verResumen-asistencia', ['user' => $user->id]),
+                'vacacionesStoreUrl'  => route('vacaciones.solicitar'),
+                'storeUrl'            => route('asignaciones-turnos.store'),
+                'destroyUrl'          => route('asignaciones-turnos.destroy'),
+            ],
+            'enableListMonth' => true,
+            'mobileBreakpoint' => 768,
+            'permissions' => [
+                // Todos pueden solicitar vacaciones desde su perfil
+                'canRequestVacations' => true,
+                'canEditHours'        => false,
+                'canAssignShifts'     => false,
+                'canAssignStates'     => false,
+            ],
+            'turnos' => $turnos->map(fn($t) => ['nombre' => $t->nombre])->values()->toArray(),
+        ];
+
         return view('perfil.show', compact(
             'user',
             'turnos',
             'resumen',
-            'horasMensuales'
+            'horasMensuales',
+            'config'
         ));
     }
     private function getResumenAsistencia(User $user): array

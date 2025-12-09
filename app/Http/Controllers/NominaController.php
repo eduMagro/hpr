@@ -155,10 +155,13 @@ class NominaController extends Controller
             }
         }
 
-        // 9) Borrar archivo temporal
+        // 9) Notificar a usuarios de oficina y operarios que las nóminas están disponibles
+        $this->notificarNominasImportadas($mesEnEspañol, $anio);
+
+        // 10) Borrar archivo temporal
         Storage::delete($rutaRelativa);
 
-        // 10) Devolver mensaje al usuario
+        // 11) Devolver mensaje al usuario
         $totalClaves = count($pdfPorDni);
         $paginasTotales = count($pages);
         $mensaje = "Nóminas divididas correctamente: {$totalClaves} PDFs generados a partir de {$paginasTotales} página(s).";
@@ -787,5 +790,50 @@ class NominaController extends Controller
             'mes_actual' => ucfirst(now()->locale('es')->monthName),
             'acumulado_bruto' => round($acumulado, 2),
         ]);
+    }
+
+    /**
+     * Notifica a todos los usuarios de oficina y operarios que las nóminas de un mes están disponibles
+     * Evita duplicados verificando si ya existe una alerta para ese mes/año
+     */
+    private function notificarNominasImportadas(string $mes, string $anio): void
+    {
+        try {
+            $alertaService = app(AlertaService::class);
+            $emisorId = auth()->id();
+
+            $mensaje = "Las nóminas de {$mes} {$anio} ya están disponibles. Puedes solicitarla desde tu perfil.";
+
+            // Buscar usuarios que ya tienen alerta de nómina para este mes/año
+            $usuariosYaNotificados = \App\Models\Alerta::where('tipo', 'nomina')
+                ->where('mensaje', $mensaje)
+                ->pluck('destinatario_id')
+                ->toArray();
+
+            // Buscar usuarios con rol oficina u operario que estén activos y NO hayan sido notificados
+            $usuarios = User::whereIn('rol', ['oficina', 'operario'])
+                ->where('estado', 'activo')
+                ->whereNotIn('id', $usuariosYaNotificados)
+                ->get();
+
+            if ($usuarios->isEmpty()) {
+                \Log::info("ℹ️ Todos los usuarios ya tienen alerta de nóminas para {$mes} {$anio}");
+                return;
+            }
+
+            foreach ($usuarios as $usuario) {
+                $alertaService->crearAlerta(
+                    emisorId: $emisorId,
+                    destinatarioId: $usuario->id,
+                    mensaje: $mensaje,
+                    tipo: 'nomina'
+                );
+            }
+
+            \Log::info("✅ Alertas de nóminas enviadas a " . $usuarios->count() . " usuarios (evitados " . count($usuariosYaNotificados) . " duplicados)");
+
+        } catch (\Throwable $e) {
+            \Log::error('❌ Error notificando nóminas importadas: ' . $e->getMessage());
+        }
     }
 }
