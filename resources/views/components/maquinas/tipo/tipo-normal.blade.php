@@ -64,6 +64,26 @@
                 class="col-span-12 lg:col-span-2 bg-white border border-gray-200 shadow-lg rounded-lg self-start lg:sticky lg:top-2 overflow-hidden">
 
                 <div id="materia-prima-container" class="p-2 overflow-y-auto" style="max-height: calc(100vh - 60px);">
+                    {{-- DEBUG: Productos base --}}
+                    <script>
+                        console.log('🔍 DEBUG Productos Base Compatibles:', {
+                            total: {{ $productosBaseCompatibles->count() }},
+                            maquina_id: {{ $maquina->id }},
+                            maquina_nombre: '{{ $maquina->nombre }}',
+                            maquina_tipo_material: '{{ $maquina->tipo_material ?? "VACIO" }}',
+                            maquina_diametro_min: {{ $maquina->diametro_min ?? 'null' }},
+                            maquina_diametro_max: {{ $maquina->diametro_max ?? 'null' }},
+                            productos_base: @json($productosBaseCompatibles->map(fn($p) => ['id' => $p->id, 'diametro' => $p->diametro, 'tipo' => $p->tipo])),
+                            productos_maquina: @json($maquina->productos->map(fn($p) => ['id' => $p->id, 'producto_base_id' => $p->producto_base_id, 'estado' => $p->estado]))
+                        });
+                    </script>
+                    @if($productosBaseCompatibles->isEmpty())
+                        <div class="text-center text-gray-500 py-4">
+                            <p>No hay productos base compatibles</p>
+                            <p class="text-xs">Diámetro: {{ $maquina->diametro_min ?? 0 }} - {{ $maquina->diametro_max ?? 100 }} mm</p>
+                            <p class="text-xs">Tipo material: {{ $maquina->tipo_material ?? 'No definido' }}</p>
+                        </div>
+                    @endif
                     @foreach ($productosBaseCompatibles as $productoBase)
                         @php
                             $productoExistente = $maquina->productos->firstWhere('producto_base_id', $productoBase->id);

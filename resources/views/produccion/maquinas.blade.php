@@ -1611,18 +1611,32 @@
                                 days: 1
                             },
                             slotMinTime: '00:00:00',
-                            slotMaxTime: '{{ $fechaMaximaCalendario["horas"] }}:00:00',
+                            slotMaxTime: '{{ ($fechaMaximaCalendario["horas"] ?? 168) }}:00:00',
                             slotDuration: '01:00:00',
                             dayHeaderContent: function(arg) {
                                 return '';
                             },
-                            buttonText: '{{ $fechaMaximaCalendario["dias"] }} días',
+                            buttonText: '{{ $fechaMaximaCalendario["dias"] ?? 7 }} días',
                             // Extender el rango visible hasta el último fin programado
                             visibleRange: function(currentDate) {
-                                const start = new Date(currentDate);
+                                // Si currentDate es null, usar initialDate del calendario
+                                const initialDateStr = "{{ $initialDate ?: now()->format('Y-m-d H:i:s') }}";
+                                let baseDate = currentDate;
+
+                                if (!baseDate || (baseDate instanceof Date && isNaN(baseDate.getTime()))) {
+                                    baseDate = new Date(initialDateStr);
+                                }
+
+                                if (isNaN(baseDate.getTime())) {
+                                    baseDate = new Date();
+                                }
+
+                                const start = new Date(baseDate);
                                 start.setHours(0, 0, 0, 0);
                                 const end = new Date(start);
-                                end.setDate(end.getDate() + {{ $fechaMaximaCalendario["dias"] }});
+                                const dias = {{ $fechaMaximaCalendario["dias"] ?? 7 }};
+                                end.setDate(end.getDate() + dias);
+
                                 return { start: start, end: end };
                             }
                         }

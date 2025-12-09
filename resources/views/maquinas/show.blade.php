@@ -561,6 +561,15 @@
             window.ubicacionId = @json(optional($ubicacion)->id);
             console.log('etiquetasData', window.etiquetasData);
 
+            // DEBUG: Productos base desde show.blade.php
+            console.log('🔍 DEBUG desde show.blade.php:', {
+                maquina_tipo: @json($maquina->tipo),
+                es_grua: @json($maquina->tipo === 'grua'),
+                modoFabricacionGrua: @json($modoFabricacionGrua ?? false),
+                productosBaseCompatibles_count: @json($productosBaseCompatibles->count()),
+                productosBaseCompatibles: @json($productosBaseCompatibles->map(fn($p) => ['id' => $p->id, 'diametro' => $p->diametro, 'tipo' => $p->tipo]))
+            });
+
             /**
              * Función para refrescar las etiquetas sin recargar la página completa
              * Se llama después de dividir elementos o mover a nuevas subetiquetas
