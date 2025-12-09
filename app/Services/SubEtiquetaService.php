@@ -20,7 +20,27 @@ class SubEtiquetaService
     public function reubicarParaProduccion(Elemento $elemento, int $nuevaMaquinaReal): array
     {
         $subIdOriginal = $elemento->getOriginal('etiqueta_sub_id') ?? $elemento->etiqueta_sub_id;
-        $padre         = Etiqueta::lockForUpdate()->findOrFail($elemento->etiqueta_id);
+
+        // Buscar etiqueta padre: primero por etiqueta_id, si no existe por etiqueta_sub_id
+        if ($elemento->etiqueta_id) {
+            $padre = Etiqueta::lockForUpdate()->findOrFail($elemento->etiqueta_id);
+        } else {
+            // Extraer código padre del etiqueta_sub_id (ej: "ETQ123.01" -> "ETQ123")
+            $codigoPadre = Str::before($subIdOriginal, '.');
+            $padre = Etiqueta::lockForUpdate()
+                ->where('planilla_id', $elemento->planilla_id)
+                ->where('codigo', $codigoPadre)
+                ->firstOrFail();
+
+            // Actualizar el etiqueta_id del elemento para futuras operaciones
+            $elemento->etiqueta_id = $padre->id;
+            $elemento->save();
+            Log::info('🔧 etiqueta_id restaurado desde etiqueta_sub_id', [
+                'elemento_id' => $elemento->id,
+                'etiqueta_id' => $padre->id,
+                'codigo_padre' => $codigoPadre,
+            ]);
+        }
 
         $codigoPadre   = (string) $padre->codigo;
         $prefijoPadre  = $codigoPadre . '.';
@@ -60,9 +80,28 @@ class SubEtiquetaService
      */
     public function reubicarSegunTipoMaterial(Elemento $elemento, int $nuevaMaquinaReal): array
     {
-
         $subIdOriginal = $elemento->getOriginal('etiqueta_sub_id');
-        $padre         = Etiqueta::lockForUpdate()->findOrFail($elemento->etiqueta_id);
+
+        // Buscar etiqueta padre: primero por etiqueta_id, si no existe por etiqueta_sub_id
+        if ($elemento->etiqueta_id) {
+            $padre = Etiqueta::lockForUpdate()->findOrFail($elemento->etiqueta_id);
+        } else {
+            // Extraer código padre del etiqueta_sub_id (ej: "ETQ123.01" -> "ETQ123")
+            $codigoPadreSub = Str::before($subIdOriginal, '.');
+            $padre = Etiqueta::lockForUpdate()
+                ->where('planilla_id', $elemento->planilla_id)
+                ->where('codigo', $codigoPadreSub)
+                ->firstOrFail();
+
+            // Actualizar el etiqueta_id del elemento para futuras operaciones
+            $elemento->etiqueta_id = $padre->id;
+            $elemento->save();
+            Log::info('🔧 etiqueta_id restaurado desde etiqueta_sub_id', [
+                'elemento_id' => $elemento->id,
+                'etiqueta_id' => $padre->id,
+                'codigo_padre' => $codigoPadreSub,
+            ]);
+        }
 
         $codigoPadre   = (string) $padre->codigo;
         $prefijoPadre  = $codigoPadre . '.';
