@@ -163,7 +163,7 @@
 
                 <tbody class="text-gray-700">
                     @forelse ($planillas as $planilla)
-                        <tr
+                        <tr wire:key="planilla-{{ $planilla->id }}"
                             class="border-b odd:bg-gray-100 even:bg-gray-50 hover:bg-blue-200 cursor-pointer text-xs leading-none uppercase transition-colors">
                             <td class="p-2 text-center border">{{ $planilla->id }}</td>
                             <td class="p-2 text-center border">

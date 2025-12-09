@@ -1592,16 +1592,24 @@ class MaquinaController extends Controller
     }
 
 
-    public function exportarBVBS(Maquina $maquina, ProgressBVBSService $bvbs)
+    public function exportarBVBS(Request $request, Maquina $maquina, ProgressBVBSService $bvbs)
     {
-        // 1️⃣ Obtener las planillas activas (posición = 1) para esta máquina
+        // 1️⃣ Obtener la posición del parámetro (por defecto 1)
+        $posicion = (int) $request->query('posicion', 1);
+
+        // 1️⃣ Obtener las planillas de la posición seleccionada para esta máquina
         $planillaIdsActivas = OrdenPlanilla::where('maquina_id', $maquina->id)
-            ->where('posicion', 1)
+            ->where('posicion', $posicion)
             ->pluck('planilla_id');
         $codigoProyecto = null;
 
-        if ($planillaIdsActivas) {
-            $planilla = Planilla::find($planillaIdsActivas[0]);
+        // Validar que hay planillas en esa posición
+        if ($planillaIdsActivas->isEmpty()) {
+            return redirect()->back()->with('error', "No hay planillas en la posición {$posicion} para esta máquina.");
+        }
+
+        if ($planillaIdsActivas->isNotEmpty()) {
+            $planilla = Planilla::find($planillaIdsActivas->first());
             if ($planilla && preg_match('/-(\d{6})$/', $planilla->codigo, $m)) {
                 $codigoProyecto = ltrim(substr($m[1], -4), '0'); // '006651' → '6651'
             }
@@ -1615,6 +1623,11 @@ class MaquinaController extends Controller
                     ->orWhere('maquina_id_2', $maquina->id);
             })
             ->get();
+
+        // Validar que hay elementos para exportar
+        if ($elementos->isEmpty()) {
+            return redirect()->back()->with('error', 'No hay elementos para exportar en las planillas activas de esta máquina.');
+        }
 
         // 3️⃣ Mapear cada elemento a los campos que necesita el servicio BVBS
         $datos = $elementos->map(fn($el) => [
@@ -1642,12 +1655,52 @@ class MaquinaController extends Controller
         $maquinaTag  = Str::of($maquinaTag)->replaceMatches('/[^A-Z0-9]+/', '_')->trim('_');
         $proyectoTag = $codigoProyecto ? 'PRJ' . $codigoProyecto : 'SINPRJ';
         $filename    = "BVBS_{$maquinaTag}_{$proyectoTag}_{$timestamp}.bvbs";
-        $path        = "exports/bvbs/{$filename}";
 
-        // 6) Guardar en disco y devolver descarga
+        // 6) Intentar guardar en carpeta compartida MSR20 (ruta principal)
+        // IMPORTANTE: La ruta UNC es más fiable que la unidad mapeada para servicios
+        $rutasAIntentar = [
+            '\\\\192.168.0.10\\Datos\\Compartido\\COMPARTIDO_MAQUINA_MSR\\',  // Ruta UNC directa (más fiable)
+            'M:\\COMPARTIDO_MAQUINA_MSR\\',                                     // Unidad mapeada (solo funciona si Apache corre como usuario)
+        ];
+        $guardadoEnRed = false;
+        $rutaFinal = null;
+        $errores = [];
+
+        foreach ($rutasAIntentar as $rutaBase) {
+            $rutaCompleta = $rutaBase . $filename;
+
+            Log::info("Export BVBS: Intentando guardar en '{$rutaBase}' - is_dir: " . (is_dir($rutaBase) ? 'true' : 'false'));
+
+            // Intentar escribir directamente (a veces is_dir falla pero la escritura funciona)
+            $resultado = @file_put_contents($rutaCompleta, $contenido);
+
+            if ($resultado !== false) {
+                $guardadoEnRed = true;
+                $rutaFinal = $rutaCompleta;
+                Log::info("Export BVBS guardado exitosamente en: {$rutaFinal} para máquina {$maquina->id} con " . count($datos) . " líneas.");
+                break;
+            } else {
+                $error = error_get_last();
+                $errorMsg = $error ? $error['message'] : 'Error desconocido';
+                $errores[] = "{$rutaBase}: {$errorMsg}";
+                Log::warning("Export BVBS: Falló escribir en '{$rutaCompleta}': {$errorMsg}");
+            }
+        }
+
+        // Si se guardó en red, devolver respuesta de éxito sin descarga
+        if ($guardadoEnRed) {
+            return redirect()->back()->with('success', "Archivo BVBS exportado correctamente a: {$rutaFinal}");
+        }
+
+        // Log de todos los errores para diagnóstico
+        Log::warning("Export BVBS: No se pudo guardar en ninguna ruta de red. Errores: " . implode(' | ', $errores));
+
+        // 7) Fallback: guardar en storage local y devolver descarga
+        Log::info("Export BVBS: No se pudo guardar en red, usando fallback de descarga");
+        $path = "exports/bvbs/{$filename}";
         Storage::disk('local')->put($path, $contenido);
 
-        Log::info("Export BVBS guardado en {$path} para máquina {$maquina->id} con " . count($datos) . " líneas.");
+        Log::info("Export BVBS guardado en storage local (fallback): {$path} para máquina {$maquina->id} con " . count($datos) . " líneas.");
 
         return response()->download(
             Storage::disk('local')->path($path),
