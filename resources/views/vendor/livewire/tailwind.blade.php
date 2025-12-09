@@ -1,4 +1,3 @@
-<div>
 @php
 if (! isset($scrollTo)) {
     $scrollTo = 'body';
@@ -10,6 +9,7 @@ $scrollIntoViewJsSnippet = ($scrollTo !== false)
     JS
     : '';
 @endphp
+<div>
     @if ($paginator->hasPages())
         {{-- Selector de cantidad por página --}}
         <div class="m-4 text-center">

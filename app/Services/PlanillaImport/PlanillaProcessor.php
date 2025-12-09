@@ -694,6 +694,8 @@ class PlanillaProcessor
             'nombre' => $padre->nombre,
             'estado' => $padre->estado ?? 'pendiente',
             'peso' => 0.0,
+            'created_at' => now(),
+            'updated_at' => now(),
         ];
 
         // Copiar campos adicionales si existen
@@ -724,46 +726,44 @@ class PlanillaProcessor
             }
         }
 
-        // Usar try-catch para manejar race conditions
-        try {
-            $subRow = Etiqueta::firstOrCreate(
-                ['etiqueta_sub_id' => $subId],
-                $data
-            );
-        } catch (\Illuminate\Database\QueryException $e) {
-            // Si hay error de duplicado, obtener el registro existente
-            if ($e->errorInfo[1] == 1062) {
-                $subRow = Etiqueta::where('etiqueta_sub_id', $subId)->first();
-            } else {
-                throw $e;
-            }
+        // Verificar si ya existe
+        $subRow = Etiqueta::where('etiqueta_sub_id', $subId)->first();
+        if ($subRow) {
+            return [$subId, (int)$subRow->id];
         }
+
+        // Usar INSERT IGNORE para evitar errores de duplicado
+        $data['etiqueta_sub_id'] = $subId;
+        \Illuminate\Support\Facades\DB::table('etiquetas')->insertOrIgnore($data);
+
+        // Obtener el registro (ya sea recién creado o existente por race condition)
+        $subRow = Etiqueta::where('etiqueta_sub_id', $subId)->first();
 
         return [$subId, (int)$subRow->id];
     }
 
     protected function asegurarSubetiquetaExiste(string $subId, Etiqueta $padre): int
     {
-        // Usar try-catch para manejar race conditions
-        try {
-            $row = Etiqueta::firstOrCreate(
-                ['etiqueta_sub_id' => $subId],
-                [
-                    'codigo' => $padre->codigo,
-                    'planilla_id' => $padre->planilla_id,
-                    'nombre' => $padre->nombre,
-                    'estado' => $padre->estado ?? 'pendiente',
-                    'peso' => 0.0,
-                ]
-            );
-        } catch (\Illuminate\Database\QueryException $e) {
-            // Si hay error de duplicado, obtener el registro existente
-            if ($e->errorInfo[1] == 1062) {
-                $row = Etiqueta::where('etiqueta_sub_id', $subId)->first();
-            } else {
-                throw $e;
-            }
+        // Verificar si ya existe
+        $row = Etiqueta::where('etiqueta_sub_id', $subId)->first();
+        if ($row) {
+            return (int)$row->id;
         }
+
+        // Usar INSERT IGNORE para evitar errores de duplicado
+        \Illuminate\Support\Facades\DB::table('etiquetas')->insertOrIgnore([
+            'codigo' => $padre->codigo,
+            'etiqueta_sub_id' => $subId,
+            'planilla_id' => $padre->planilla_id,
+            'nombre' => $padre->nombre,
+            'estado' => $padre->estado ?? 'pendiente',
+            'peso' => 0.0,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        // Obtener el registro
+        $row = Etiqueta::where('etiqueta_sub_id', $subId)->first();
 
         return (int)$row->id;
     }
