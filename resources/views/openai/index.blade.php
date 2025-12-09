@@ -117,6 +117,10 @@
                                         $sim = $resultado['simulacion'] ?? [];
                                         $parsed = $resultado['parsed'] ?? [];
                                     @endphp
+                                    <script>
+                                        console.log('resultado', {!! json_encode($resultado, JSON_UNESCAPED_UNICODE) !!});
+                                        console.log('sim', {!! json_encode($sim, JSON_UNESCAPED_UNICODE) !!});
+                                    </script>
                                     <div class="flex flex-wrap gap-2 mt-2">
                                         <span class="simulacion-badge badge-info">
                                             🏭 {{ $sim['fabricante'] ?? 'Fabricante desconocido' }}
@@ -375,10 +379,19 @@
                                                     <div class="grid grid-cols-2 md:grid-cols-4 gap-2 mb-3">
                                                         <label class="text-xs text-gray-600 flex flex-col gap-1">
                                                             Descripción
-                                                            <input type="text"
+                                                            <select
                                                                 class="producto-field rounded border border-gray-300 px-2 py-1 text-xs focus:ring-1 focus:ring-blue-500"
-                                                                data-field="descripcion"
-                                                                value="{{ $producto['descripcion'] ?? '' }}">
+                                                                data-field="descripcion">
+                                                                <option value="">Seleccionar tipo</option>
+                                                                <option value="CORRUGADO"
+                                                                    {{ ($producto['descripcion'] ?? '') === 'CORRUGADO' ? 'selected' : '' }}>
+                                                                    Corrugado
+                                                                </option>
+                                                                <option value="BARRA"
+                                                                    {{ ($producto['descripcion'] ?? '') === 'BARRA' ? 'selected' : '' }}>
+                                                                    Barra
+                                                                </option>
+                                                            </select>
                                                         </label>
                                                         <label class="text-xs text-gray-600 flex flex-col gap-1">
                                                             Diámetro
@@ -1111,7 +1124,11 @@
                         <div class="grid grid-cols-2 md:grid-cols-4 gap-2 mb-3">
                             <label class="text-xs text-gray-600 flex flex-col gap-1">
                                 Descripción
-                                <input type="text" class="producto-field rounded border border-gray-300 px-2 py-1 text-xs focus:ring-1 focus:ring-blue-500" data-field="descripcion" value="">
+                                <select class="producto-field rounded border border-gray-300 px-2 py-1 text-xs focus:ring-1 focus:ring-blue-500" data-field="descripcion">
+                                    <option value="">Seleccionar tipo</option>
+                                    <option value="CORRUGADO">Corrugado</option>
+                                    <option value="BARRA">Barra</option>
+                                </select>
                             </label>
                             <label class="text-xs text-gray-600 flex flex-col gap-1">
                                 Diámetro

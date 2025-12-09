@@ -43,6 +43,7 @@ class OpenAIController extends Controller
 
                     // Buscar líneas pendientes y generar simulación
                     $simulacion = $this->generarSimulacion($parsed);
+                    $parsed['bultos_total'] = $simulacion['bultos_albaran'];
 
                     $resultados[] = [
                         'nombre_archivo' => $imagen->getClientOriginalName(),
@@ -96,7 +97,6 @@ class OpenAIController extends Controller
 
         // Extraer diámetros de los productos escaneados
         $diametrosEscaneados = collect($productos)->pluck('diametro')->filter()->unique()->values()->toArray();
-        $bultosTotal = $parsed['bultos_total'] ?? collect($allLineItems)->sum('bultos') ?: 0;
         $pesoTotal = collect($allLineItems)->sum('peso_kg') ?: 0;
 
         // Buscar FABRICANTE según proveedor (todos los pedidos tienen fabricante)
@@ -375,7 +375,7 @@ class OpenAIController extends Controller
             return [
                 'numero' => $index + 1,
                 'colada' => $item['colada'] ?? '—',
-                'bultos' => $item['bultos'] ?? 1,
+                'bultos' => (int) ($item['bultos'] ?? 1),
                 'peso_kg' => $item['peso_kg'] ?? null,
                 'producto_descripcion' => $item['producto_descripcion'] ?? '—',
                 'producto_diametro' => $item['producto_diametro'] ?? '—',
@@ -383,6 +383,7 @@ class OpenAIController extends Controller
                 'estado_simulado' => 'Se crearía',
             ];
         })->values()->toArray();
+        $bultosTotal = collect($bultosSimulados)->sum('bultos');
 
         return [
             'albaran' => $parsed['albaran'] ?? null,

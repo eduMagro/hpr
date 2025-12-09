@@ -125,6 +125,8 @@ class AlbaranOcrService
             $calidadCapturada = trim(rtrim($calidadCapturada, " -"));
         }
 
+        $productoTipo = $this->determineProductoTipo($text);
+
         $data = [
             'albaran' => $this->firstMatch('/(?:N[º\\.o]?\\s*documento\\s*[:\\-]?\\s*)([\\w\\/-]+)/i', $clean),
             'fecha' => $this->parseDate($clean),
@@ -135,7 +137,7 @@ class AlbaranOcrService
             'peso_total' => $this->parseNumber($this->firstMatch('/Peso\\s+neto\\s+TOTAL\\s*([\\d\\.,]+)/i', $clean)
                 ?: $this->firstMatch('/Net\\s*KG\\s*[:\\-]?\\s*([\\d\\.,]+)/i', $clean)),
             'producto' => [
-                'descripcion' => $this->firstMatch('/(REDONDO[^\\n]+?CALIDAD[^\\n]+)/i', $text) ?? $this->firstMatch('/(CORRUGADO[^\\n]+)/i', $text),
+                'descripcion' => $productoTipo,
                 'diametro' => $this->parseNumber($this->firstMatch('/Di[aá]metro\\s*[:\\-]?\\s*([\\d\\.,]+)/i', $clean)),
                 'longitud' => $this->parseNumber($this->firstMatch('/L\\.\\s*Barra\\s*[:\\-]?\\s*([\\d\\.,]+)/i', $clean)),
                 'calidad' => $calidadCapturada,
@@ -302,6 +304,18 @@ class AlbaranOcrService
         return $lines;
     }
 
+    protected function determineProductoTipo(?string $texto): string
+    {
+        $valor = Str::lower($texto ?? '');
+        if (Str::contains($valor, ['corrug', 'nervad'])) {
+            return 'CORRUGADO';
+        }
+        if (Str::contains($valor, ['barra', 'liso', 'lisa'])) {
+            return 'BARRA';
+        }
+        return 'CORRUGADO';
+    }
+
     protected function promptSegunProveedor(?string $proveedor): string
     {
         $basePrompt = <<<PROMPT
@@ -338,7 +352,7 @@ CAMPOS IMPORTANTES:
 - peso_total: Peso total del albarán en kg
 - bultos_total: Número total de bultos/paquetes
 - productos: Array de productos, cada uno con:
-  * descripcion: Tipo (ej: "Corrugado B500SD", "Liso", etc.)
+  * descripcion: Debe ser EXACTAMENTE "CORRUGADO" o "BARRA" (usa mayúsculas) según el tipo de barra, sin inventar otras expresiones.
   * diametro: Diámetro en mm (solo número: 8, 10, 12, 16, 20, etc.)
   * longitud: Longitud en mm (si aparece)
   * calidad: Calidad del acero (ej: "B500SD", "EURASOL 500SD", etc.)
@@ -353,10 +367,11 @@ REGLAS CRÍTICAS:
 - Los bultos en line_items son el número de bultos de ESA colada, NO del total
 - Si no encuentras un dato, usa null
 - No devuelvas texto adicional fuera del JSON
+- La descripción de cada producto debe ser exactamente CORRUGADO o BARRA (mayúsculas).
 PROMPT;
 
         $mapa = [
-            'siderurgica' => $basePrompt . "\nNotas CRÍTICAS para Siderúrgica Sevillana (SISE):\n\n1. IDENTIFICACIÓN:\n   - El albarán es el 'N.º documento'\n   - Pedido cliente: código después de 'Pedido cliente' (NO la fecha)\n\n2. ESTRUCTURA DE PRODUCTOS:\n   - Cada sección numerada (001, 002, etc.) es un PRODUCTO DIFERENTE\n   - Cada producto tiene: descripción, diámetro, longitud (L. barra), calidad\n   - Crea una entrada en 'productos' por cada sección numerada\n\n3. BULTOS - MUY IMPORTANTE:\n   - En la tabla derecha, mira la columna 'Bultos' de cada fila\n   - Cada fila de la tabla representa UNA COLADA con SU número de bultos\n   - Ejemplo: si ves '25/41324' con 'Bultos: 3', esa colada tiene 3 bultos\n   - NO cuentes el número de coladas como bultos\n   - El 'bultos_total' es la SUMA de todos los bultos de todas las coladas\n\n4. LINE_ITEMS (coladas):\n   - Cada fila de la tabla es un line_item\n   - colada: número de colada (ej: '25/41324')\n   - bultos: número de bultos de ESA fila (mira columna 'Bultos')\n   - peso_kg: peso neto de esa fila en kg (columna 'Net KG')\n\n5. PESOS:\n   - Si dice '25.120' en peso neto TOTAL, son 25120 kg (multiplica por 1000)\n   - Cada line_item tiene su peso_kg individual de la columna 'Net KG'\n\n6. VALIDACIÓN:\n   - Suma todos los bultos de line_items, debe coincidir con el resumen superior\n   - Si no coincide, revisa la columna 'Bultos' nuevamente\n\nEjemplo correcto:\nSi ves:\n  Producto 001: Descripción A, Ø12, Calidad B500\n  Tabla:\n    Colada 25/41324 | Bultos: 3 | Net KG: 9340\n    Colada 25/41612 | Bultos: 1 | Net KG: 3113\n    Colada 25/41613 | Bultos: 1 | Net KG: 3113\n\nDebes devolver:\n{\n  \"bultos_total\": 5,\n  \"productos\": [\n    {\n      \"descripcion\": \"Descripción A\",\n      \"diametro\": 12,\n      \"calidad\": \"B500\",\n      \"line_items\": [\n        {\"colada\": \"25/41324\", \"bultos\": 3, \"peso_kg\": 9340},\n        {\"colada\": \"25/41612\", \"bultos\": 1, \"peso_kg\": 3113},\n        {\"colada\": \"25/41613\", \"bultos\": 1, \"peso_kg\": 3113}\n      ]\n    }\n  ]\n}",
+            'siderurgica' => $basePrompt . "\nNotas CRÍTICAS para Siderúrgica Sevillana (SISE):\n\n1. IDENTIFICACIÓN:\n   - El albarán es el 'N.º documento'\n   - Pedido cliente: código después de 'Pedido cliente' (NO la fecha)\n\n2. ESTRUCTURA DE PRODUCTOS:\n   - Cada sección numerada (001, 002, etc.) es un PRODUCTO DIFERENTE\n   - Cada producto tiene: descripción, diámetro, longitud (L. barra), calidad\n   - Crea una entrada en 'productos' por cada sección numerada\n   - Siempre devuelve CORRUGADO o BARRA (may?sculas) en 'descripcion' seg?n el tipo detectado\n\n3. BULTOS - MUY IMPORTANTE:\n   - En la tabla derecha, mira la columna 'Bultos' de cada fila\n   - Cada fila de la tabla representa UNA COLADA con SU número de bultos\n   - Ejemplo: si ves '25/41324' con 'Bultos: 3', esa colada tiene 3 bultos\n   - NO cuentes el número de coladas como bultos\n   - El 'bultos_total' es la SUMA de todos los bultos de todas las coladas\n\n4. LINE_ITEMS (coladas):\n   - Cada fila de la tabla es un line_item\n   - colada: número de colada (ej: '25/41324')\n   - bultos: número de bultos de ESA fila (mira columna 'Bultos')\n   - peso_kg: peso neto de esa fila en kg (columna 'Net KG')\n\n5. PESOS:\n   - Si dice '25.120' en peso neto TOTAL, son 25120 kg (multiplica por 1000)\n   - Cada line_item tiene su peso_kg individual de la columna 'Net KG'\n\n6. VALIDACIÓN:\n   - Suma todos los bultos de line_items, debe coincidir con el resumen superior\n   - Si no coincide, revisa la columna 'Bultos' nuevamente\n\nEjemplo correcto:\nSi ves:\n  Producto 001: Descripción A, Ø12, Calidad B500\n  Tabla:\n    Colada 25/41324 | Bultos: 3 | Net KG: 9340\n    Colada 25/41612 | Bultos: 1 | Net KG: 3113\n    Colada 25/41613 | Bultos: 1 | Net KG: 3113\n\nDebes devolver:\n{\n  \"bultos_total\": 5,\n  \"productos\": [\n    {\n      \"descripcion\": \"Descripción A\",\n      \"diametro\": 12,\n      \"calidad\": \"B500\",\n      \"line_items\": [\n        {\"colada\": \"25/41324\", \"bultos\": 3, \"peso_kg\": 9340},\n        {\"colada\": \"25/41612\", \"bultos\": 1, \"peso_kg\": 3113},\n        {\"colada\": \"25/41613\", \"bultos\": 1, \"peso_kg\": 3113}\n      ]\n    }\n  ]\n}",
             'megasa' => $basePrompt . "\nNotas proveedor Megasa:\n- La imagen puede estar rotada; interpreta el texto aunque esté en vertical.\n- Usa 'Código de albarán' como albaran. 'Código de pedido' como pedido_codigo. Fecha de descarga como fecha.\n- Tabla central con N.º Paquetes/Bultos/Bastones y peso bruto/neto. Total recibido/Total TM está abajo; convierte TM a kg multiplicando por 1000 y colócalo en peso_total.\n- Cada producto tiene su array de line_items con coladas.\n- Si ves la tabla con columna 'Coladas' a la izquierda y 'N.º de Paquete' a la derecha, cada grupo de paquetes pertenece a la colada de su fila.\n- Los bultos son el número de paquetes de cada colada.\n- Ignora QR/códigos de barras.",
             'balboa' => $basePrompt . "\nNotas proveedor Balboa:\n- Formato Carta de Porte/Waybill. Usa 'N.º Expedición' o 'N.º Pedido' como albaran.\n- Tabla de rollos: cada fila tiene colada y 'Cantidad neta' o similar.\n- Crea un line_item por fila con peso_kg y bultos correspondientes.\n- Si hay códigos QR o barras, ignóralos para el JSON.\n- Interpreta la imagen aunque esté rotada.",
         ];
