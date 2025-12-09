@@ -5,6 +5,7 @@ namespace App\Servicios\Etiquetas\Base;
 namespace App\Servicios\Etiquetas\Base;
 
 use App\Models\Etiqueta;
+use App\Models\EtiquetaHistorial;
 use App\Models\Maquina;
 use App\Models\Movimiento;
 use App\Models\Elemento;
@@ -16,6 +17,7 @@ use App\Services\ProductionLogger;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Auth;
 use App\Servicios\Exceptions\ServicioEtiquetaException;
 
 abstract class ServicioEtiquetaBase
@@ -209,7 +211,49 @@ abstract class ServicioEtiquetaBase
         ?int    $solicitanteId = null
     ): void {
 
-        // 0) Marcar todos los elementos en esta máquina como “fabricado”
+        // ─────────────────────────────────────────────────────────────────────
+        // 🔄 GUARDAR HISTORIAL ANTES DE CAMBIOS (para sistema UNDO)
+        // ─────────────────────────────────────────────────────────────────────
+        $estadoNuevo = 'completada'; // Por defecto, asumimos que completará
+        if ($etiqueta->estado === 'pendiente') {
+            $estadoNuevo = 'fabricando';
+        }
+
+        // Obtener productos que se consumirán para guardar su estado anterior
+        $diametrosRequeridos = $elementosEnMaquina->pluck('diametro')
+            ->map(fn($d) => (int) round((float) $d))
+            ->unique()
+            ->values()
+            ->all();
+
+        $productosParaHistorial = [];
+        if (!empty($diametrosRequeridos)) {
+            $productosEnMaquina = $maquina->productos()
+                ->whereHas('productoBase', fn($q) => $q->whereIn('diametro', $diametrosRequeridos))
+                ->with('productoBase')
+                ->get();
+
+            foreach ($productosEnMaquina as $producto) {
+                $productosParaHistorial[] = [
+                    'id' => $producto->id,
+                    'codigo' => $producto->codigo,
+                    'peso_stock_anterior' => $producto->peso_stock,
+                    'peso_consumido' => 0, // Se calculará después
+                    'estado_anterior' => $producto->estado,
+                ];
+            }
+        }
+
+        $this->guardarHistorialAntesDeCambio(
+            $etiqueta,
+            'fabricar',
+            $estadoNuevo,
+            $maquina,
+            $productosParaHistorial
+        );
+        // ─────────────────────────────────────────────────────────────────────
+
+        // 0) Marcar todos los elementos en esta máquina como "fabricado"
         foreach ($elementosEnMaquina as $elemento) {
             $elemento->estado = 'fabricado';
             $elemento->save();
@@ -639,5 +683,86 @@ abstract class ServicioEtiquetaBase
             $maquina,
             $consumos
         );
+    }
+
+    // ============================================================================
+    // SISTEMA DE HISTORIAL (UNDO)
+    // ============================================================================
+
+    /**
+     * Guarda el estado actual de la etiqueta en el historial ANTES de realizar cambios.
+     * Debe llamarse al inicio de cualquier operación que modifique la etiqueta.
+     *
+     * @param Etiqueta $etiqueta La etiqueta que va a cambiar
+     * @param string $accion Descripción de la acción (fabricar, completar, empaquetar, etc.)
+     * @param string $estadoNuevo El nuevo estado al que cambiará
+     * @param Maquina|null $maquina La máquina donde ocurre el cambio
+     * @param array $productosAConsumir Array de productos que se van a consumir
+     * @return EtiquetaHistorial|null
+     */
+    protected function guardarHistorialAntesDeCambio(
+        Etiqueta $etiqueta,
+        string $accion,
+        string $estadoNuevo,
+        ?Maquina $maquina = null,
+        array $productosAConsumir = []
+    ): ?EtiquetaHistorial {
+        try {
+            // Preparar array de productos con peso_stock_anterior
+            $productosParaHistorial = [];
+            foreach ($productosAConsumir as $prod) {
+                $productosParaHistorial[] = [
+                    'id' => $prod['id'] ?? $prod->id ?? null,
+                    'codigo' => $prod['codigo'] ?? $prod->codigo ?? null,
+                    'peso_consumido' => $prod['consumido'] ?? $prod['peso_consumido'] ?? 0,
+                    'peso_stock_anterior' => $prod['peso_stock_anterior'] ?? $prod['peso_stock'] ?? 0,
+                    'estado_anterior' => $prod['estado'] ?? 'consumiendo',
+                ];
+            }
+
+            return EtiquetaHistorial::registrarCambio(
+                $etiqueta,
+                $accion,
+                $estadoNuevo,
+                $maquina?->id,
+                Auth::id(),
+                $productosParaHistorial
+            );
+        } catch (\Exception $e) {
+            // No fallar la operación principal si el historial falla
+            Log::warning('Error al guardar historial de etiqueta', [
+                'etiqueta_sub_id' => $etiqueta->etiqueta_sub_id,
+                'accion' => $accion,
+                'error' => $e->getMessage(),
+            ]);
+            return null;
+        }
+    }
+
+    /**
+     * Prepara los datos de productos ANTES del consumo para el historial.
+     * Llamar antes de modificar peso_stock.
+     *
+     * @param \Illuminate\Support\Collection $productos Productos que se van a consumir
+     * @param array $consumosPorProducto Array asociativo [producto_id => peso_a_consumir]
+     * @return array
+     */
+    protected function prepararProductosParaHistorial($productos, array $consumosPorProducto = []): array
+    {
+        $resultado = [];
+
+        foreach ($productos as $producto) {
+            $pesoAConsumir = $consumosPorProducto[$producto->id] ?? 0;
+
+            $resultado[] = [
+                'id' => $producto->id,
+                'codigo' => $producto->codigo,
+                'peso_stock_anterior' => $producto->peso_stock,
+                'peso_consumido' => $pesoAConsumir,
+                'estado_anterior' => $producto->estado,
+            ];
+        }
+
+        return $resultado;
     }
 }

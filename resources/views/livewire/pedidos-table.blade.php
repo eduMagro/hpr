@@ -403,21 +403,38 @@
                                             </button>
                                             @endif
 
-                                            {{-- BOTONES DE EDICIÓN --}}
+                                            {{-- BOTÓN EDITAR (dentro de botones-estado) --}}
                                             @if($pedido)
                                             <button type="button" onclick="abrirEdicionLinea({{ $linea->id }})" class="btn-editar-linea-{{ $linea->id }} bg-blue-600 hover:bg-blue-700 text-white text-xs px-2 py-1 rounded shadow transition" title="Editar línea">
                                                 ✏️
                                             </button>
-
-                                            <button type="button" onclick="guardarLinea({{ $linea->id }}, {{ $pedido->id }})" class="btn-guardar-linea-{{ $linea->id }} hidden bg-green-600 hover:bg-green-700 text-white text-xs px-2 py-1 rounded shadow transition" title="Guardar cambios">
-                                                💾
-                                            </button>
-
-                                            <button type="button" onclick="cancelarEdicionLinea({{ $linea->id }})" class="btn-cancelar-edicion-{{ $linea->id }} hidden bg-red-600 hover:bg-red-700 text-white text-xs px-2 py-1 rounded shadow transition" title="Cancelar edición">
-                                                ✖️
-                                            </button>
                                             @endif
                                         </div>
+
+                                        {{-- BOTONES DE GUARDAR/CANCELAR EDICIÓN (fuera de botones-estado) --}}
+                                        @if($pedido)
+                                        <div class="flex items-center gap-1">
+                                            <button type="button" onclick="guardarLinea({{ $linea->id }}, {{ $pedido->id }})"
+                                                class="btn-guardar-linea-{{ $linea->id }} hidden w-6 h-6 bg-green-100 text-green-600 rounded hover:bg-green-200 flex items-center justify-center"
+                                                title="Guardar cambios">
+                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none"
+                                                    viewBox="0 0 24 24" stroke="currentColor">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                        d="M5 13l4 4L19 7" />
+                                                </svg>
+                                            </button>
+
+                                            <button type="button" onclick="cancelarEdicionLinea({{ $linea->id }})"
+                                                class="btn-cancelar-edicion-{{ $linea->id }} hidden w-6 h-6 bg-red-100 text-red-600 rounded hover:bg-red-200 flex items-center justify-center"
+                                                title="Cancelar edición">
+                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none"
+                                                    viewBox="0 0 24 24" stroke="currentColor">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                        d="M6 18L18 6M6 6l12 12" />
+                                                </svg>
+                                            </button>
+                                        </div>
+                                        @endif
                                     @endif
                                 </div>
                             </div>

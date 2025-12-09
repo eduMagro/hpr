@@ -323,6 +323,11 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
     Route::get('/planillas/{planilla}/etiquetas', [ElementoController::class, 'showByEtiquetas'])->name('elementosEtiquetas');
     Route::put('/actualizar-etiqueta/{id}/maquina/{maquina_id}', [EtiquetaController::class, 'actualizarEtiqueta'])->where('id', '.*')->name('etiquetas.actualizarMaquina');
     Route::post('/etiquetas/fabricacion-optimizada', [EtiquetaController::class, 'fabricacionSyntaxLine28'])->name('etiquetas.fabricacion-optimizada');
+
+    // === SISTEMA DE DESHACER (UNDO) ETIQUETAS ===
+    Route::post('/etiquetas/{etiquetaSubId}/deshacer', [EtiquetaController::class, 'deshacerEtiqueta'])->where('etiquetaSubId', '.*')->name('etiquetas.deshacer');
+    Route::get('/etiquetas/{etiquetaSubId}/historial', [EtiquetaController::class, 'historialEtiqueta'])->where('etiquetaSubId', '.*')->name('etiquetas.historial');
+    Route::get('/etiquetas/{etiquetaSubId}/puede-deshacer', [EtiquetaController::class, 'puedeDeshacer'])->where('etiquetaSubId', '.*')->name('etiquetas.puedeDeshacer');
     Route::post('/elementos/{elemento}/actualizar-campo', [ElementoController::class, 'actualizarMaquina'])->name('elementos.editarMaquina');
     Route::post('/etiquetas/{etiqueta}/patron-corte-simple', [EtiquetaController::class, 'calcularPatronCorteSimple'])->name('etiquetas.calcularPatronCorteSimple');
     Route::post('/etiquetas/{etiqueta}/patron-corte-optimizado', [EtiquetaController::class, 'calcularPatronCorteOptimizado'])->name('etiquetas.calcularPatronCorteOptimizado');
