@@ -291,12 +291,21 @@ class SubEtiquetaService
     /** Crea fila de etiquetas para la sub (copia datos del padre) si no existe. */
     protected function asegurarFilaSub(string $subId, Etiqueta $padre): void
     {
+        // Verificar primero si ya existe
+        if (Etiqueta::where('etiqueta_sub_id', $subId)->exists()) {
+            Log::info('ℹ️ Sub ya existía', ['sub' => $subId]);
+            return;
+        }
+
         $data = [
             'codigo'          => $padre->codigo,
+            'etiqueta_sub_id' => $subId,
             'planilla_id'     => $padre->planilla_id,
             'nombre'          => $padre->nombre,
             'estado'          => $padre->estado ?? 'pendiente',
             'peso'            => 0.0,
+            'created_at'      => now(),
+            'updated_at'      => now(),
         ];
 
         foreach (
@@ -324,22 +333,16 @@ class SubEtiquetaService
             if (Schema::hasColumn('etiquetas', $col)) $data[$col] = $padre->$col;
         }
 
-        // Usar try-catch para manejar race conditions
+        // Usar INSERT IGNORE para evitar errores de duplicado
         try {
-            $created = Etiqueta::firstOrCreate(
-                ['etiqueta_sub_id' => $subId],
-                $data
-            );
-
-            if ($created->wasRecentlyCreated) {
-                Log::info('🧱 Fila sub creada', ['sub' => $subId]);
-            }
-        } catch (\Illuminate\Database\QueryException $e) {
-            // Si hay error de duplicado, simplemente ignorar (ya existe)
-            if ($e->errorInfo[1] != 1062) {
+            \Illuminate\Support\Facades\DB::table('etiquetas')->insertOrIgnore($data);
+            Log::info('🧱 Fila sub creada', ['sub' => $subId]);
+        } catch (\Exception $e) {
+            // Si falla por cualquier razón, verificar si existe
+            if (!Etiqueta::where('etiqueta_sub_id', $subId)->exists()) {
                 throw $e;
             }
-            Log::info('ℹ️ Sub ya existía (race condition evitada)', ['sub' => $subId]);
+            Log::info('ℹ️ Sub ya existía (race condition)', ['sub' => $subId]);
         }
     }
 

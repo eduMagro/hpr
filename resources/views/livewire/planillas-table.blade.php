@@ -1,4 +1,4 @@
-<div wire:key="planillas-table-root">
+<div>
     <div class="w-full px-6 py-4">
 
         <!-- Badge de planillas sin revisar -->
