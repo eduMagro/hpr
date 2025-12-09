@@ -149,10 +149,11 @@ class SubEtiquetaService
 
         // crear nueva sub (mismo prefijo/código)
         $subNuevo = Etiqueta::generarCodigoSubEtiqueta($padre->codigo);
-        $this->asegurarFilaSub($subNuevo, $padre);
+        $etiquetaSubId = $this->asegurarFilaSub($subNuevo, $padre);
 
         // mover elemento a la nueva sub
         $elemento->etiqueta_sub_id = $subNuevo;
+        $elemento->etiqueta_id = $etiquetaSubId;
         $elemento->save();
 
         // si la sub original se quedó vacía → eliminarla
@@ -201,9 +202,10 @@ class SubEtiquetaService
         if ($hermanos->isEmpty()) {
             // 2) No hay hermanos → crear sub nueva (mismo código) y asignar
             $subNuevo = Etiqueta::generarCodigoSubEtiqueta($codigoPadre);
-            $this->asegurarFilaSub($subNuevo, $padre);
+            $etiquetaSubId = $this->asegurarFilaSub($subNuevo, $padre);
 
             $elemento->etiqueta_sub_id = $subNuevo;
+            $elemento->etiqueta_id = $etiquetaSubId;
             $elemento->save();
 
             // si la original se quedó vacía, limpiarla
@@ -211,7 +213,7 @@ class SubEtiquetaService
                 $this->eliminarSubSiVacia($subIdOriginal);
             }
 
-            Log::info('🆕 [Encarretado] Creo y asigno sub nueva (sin hermanos)', ['sub' => $subNuevo]);
+            Log::info('🆕 [Encarretado] Creo y asigno sub nueva (sin hermanos)', ['sub' => $subNuevo, 'etiqueta_id' => $etiquetaSubId]);
             return $subNuevo;
         }
 
@@ -228,9 +230,12 @@ class SubEtiquetaService
             ->keys()
             ->first();
 
+        $etiquetaIdDestino = null;
         if ($subConEspacio) {
             // Hay espacio en una sub existente
             $subDestino = (string) $subConEspacio;
+            // Obtener el etiqueta_id de la subetiqueta existente
+            $etiquetaIdDestino = Etiqueta::where('etiqueta_sub_id', $subDestino)->value('id');
 
             Log::info('✅ [Encarretado] Sub con espacio encontrada', [
                 'sub' => $subDestino,
@@ -240,7 +245,7 @@ class SubEtiquetaService
         } else {
             // Todas las subs están llenas, crear una nueva
             $subDestino = Etiqueta::generarCodigoSubEtiqueta($codigoPadre);
-            $this->asegurarFilaSub($subDestino, $padre);
+            $etiquetaIdDestino = $this->asegurarFilaSub($subDestino, $padre);
 
             Log::info('🆕 [Encarretado] Todas las subs llenas, creo nueva', [
                 'sub' => $subDestino,
@@ -251,10 +256,14 @@ class SubEtiquetaService
         // 5) Asignar el elemento a la sub destino
         if ($elemento->etiqueta_sub_id !== $subDestino) {
             $elemento->etiqueta_sub_id = $subDestino;
+            if ($etiquetaIdDestino) {
+                $elemento->etiqueta_id = $etiquetaIdDestino;
+            }
             $elemento->save();
             Log::info('📌 [Encarretado] Elemento asignado a sub', [
                 'elemento' => $elemento->id,
                 'sub'      => $subDestino,
+                'etiqueta_id' => $etiquetaIdDestino,
             ]);
         }
 
@@ -288,15 +297,10 @@ class SubEtiquetaService
         Log::info('🧹 Sub eliminada (vacía)', ['sub' => $subId, 'filas' => $borradas]);
     }
 
-    /** Crea fila de etiquetas para la sub (copia datos del padre) si no existe. */
-    protected function asegurarFilaSub(string $subId, Etiqueta $padre): void
+    /** Crea fila de etiquetas para la sub (copia datos del padre) si no existe. Devuelve el ID. */
+    protected function asegurarFilaSub(string $subId, Etiqueta $padre): int
     {
-        // Verificar primero si ya existe
-        if (Etiqueta::where('etiqueta_sub_id', $subId)->exists()) {
-            Log::info('ℹ️ Sub ya existía', ['sub' => $subId]);
-            return;
-        }
-
+        // Usar upsert para insertar o actualizar si ya existe (evita race conditions)
         $data = [
             'codigo'          => $padre->codigo,
             'etiqueta_sub_id' => $subId,
@@ -304,8 +308,6 @@ class SubEtiquetaService
             'nombre'          => $padre->nombre,
             'estado'          => $padre->estado ?? 'pendiente',
             'peso'            => 0.0,
-            'created_at'      => now(),
-            'updated_at'      => now(),
         ];
 
         foreach (
@@ -333,17 +335,14 @@ class SubEtiquetaService
             if (Schema::hasColumn('etiquetas', $col)) $data[$col] = $padre->$col;
         }
 
-        // Usar INSERT IGNORE para evitar errores de duplicado
-        try {
-            \Illuminate\Support\Facades\DB::table('etiquetas')->insertOrIgnore($data);
-            Log::info('🧱 Fila sub creada', ['sub' => $subId]);
-        } catch (\Exception $e) {
-            // Si falla por cualquier razón, verificar si existe
-            if (!Etiqueta::where('etiqueta_sub_id', $subId)->exists()) {
-                throw $e;
-            }
-            Log::info('ℹ️ Sub ya existía (race condition)', ['sub' => $subId]);
-        }
+        // Usar updateOrCreate que maneja duplicados correctamente
+        $etiquetaSub = Etiqueta::updateOrCreate(
+            ['etiqueta_sub_id' => $subId],
+            $data
+        );
+
+        Log::info('🧱 Fila sub asegurada', ['sub' => $subId, 'id' => $etiquetaSub->id]);
+        return (int) $etiquetaSub->id;
     }
 
     /** Recalcula pesos para una lista de sub-ids y para el padre. */
