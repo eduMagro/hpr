@@ -475,6 +475,28 @@
                         </script>
                     @endif
 
+                    {{-- Botones Comprimir/Descomprimir Etiquetas --}}
+                    <div class="flex items-center gap-1">
+                        <button type="button" onclick="comprimirEtiquetas()"
+                            class="px-3 py-2 bg-gradient-to-r from-indigo-500 to-indigo-600 hover:from-indigo-600 hover:to-indigo-700 text-white rounded-lg text-sm font-medium shadow-md hover:shadow-lg transition-all duration-200 flex items-center gap-1"
+                            title="Comprimir: Agrupa elementos hermanos en mismas etiquetas (máx 5 por etiqueta)">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
+                            </svg>
+                            Comprimir
+                        </button>
+                        <button type="button" onclick="descomprimirEtiquetas()"
+                            class="px-3 py-2 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white rounded-lg text-sm font-medium shadow-md hover:shadow-lg transition-all duration-200 flex items-center gap-1"
+                            title="Descomprimir: Separa elementos en etiquetas individuales (1 elemento = 1 etiqueta)">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
+                            </svg>
+                            Descomprimir
+                        </button>
+                    </div>
+
                     {{-- Botón Planilla Completada --}}
                     @if ($maquina->tipo !== 'grua')
                         <button type="button" onclick="completarPlanillaActual()"
@@ -882,6 +904,150 @@
                                         icon: 'error',
                                         title: 'Error',
                                         text: data.message || 'No se pudo completar la planilla',
+                                        confirmButtonColor: '#3085d6',
+                                    });
+                                }
+                            })
+                            .catch(error => {
+                                console.error('Error:', error);
+                                Swal.fire({
+                                    icon: 'error',
+                                    title: 'Error de conexión',
+                                    text: 'No se pudo conectar con el servidor',
+                                    confirmButtonColor: '#3085d6',
+                                });
+                            });
+                    }
+                });
+            }
+
+            // Función para comprimir etiquetas (agrupar hermanos, máx 5 por etiqueta)
+            function comprimirEtiquetas() {
+                Swal.fire({
+                    icon: 'question',
+                    title: 'Comprimir etiquetas',
+                    html: `
+                        <p class="mb-3">Esta acción agrupará los elementos hermanos en las mismas etiquetas.</p>
+                        <p class="text-sm text-gray-600">Máximo 5 elementos por etiqueta. Los elementos se agruparán por código padre.</p>
+                    `,
+                    showCancelButton: true,
+                    confirmButtonColor: '#6366f1',
+                    cancelButtonColor: '#6b7280',
+                    confirmButtonText: 'Sí, comprimir',
+                    cancelButtonText: 'Cancelar'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        Swal.fire({
+                            title: 'Comprimiendo etiquetas...',
+                            allowOutsideClick: false,
+                            didOpen: () => {
+                                Swal.showLoading();
+                            }
+                        });
+
+                        fetch('{{ route('maquinas.comprimir-etiquetas', $maquina->id) }}', {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                                }
+                            })
+                            .then(response => response.json())
+                            .then(data => {
+                                if (data.success) {
+                                    Swal.fire({
+                                        icon: 'success',
+                                        title: 'Compresión completada',
+                                        html: `
+                                            <p>${data.message}</p>
+                                            <div class="mt-3 text-sm text-gray-600">
+                                                <p>Elementos procesados: ${data.stats.elementos_procesados}</p>
+                                                <p>Movimientos realizados: ${data.stats.movimientos}</p>
+                                            </div>
+                                        `,
+                                        confirmButtonColor: '#6366f1',
+                                    });
+                                    // Refrescar solo las etiquetas sin recargar la página
+                                    if (typeof refrescarEtiquetasMaquina === 'function') {
+                                        refrescarEtiquetasMaquina();
+                                    }
+                                } else {
+                                    Swal.fire({
+                                        icon: 'error',
+                                        title: 'Error',
+                                        text: data.message || 'No se pudo comprimir',
+                                        confirmButtonColor: '#3085d6',
+                                    });
+                                }
+                            })
+                            .catch(error => {
+                                console.error('Error:', error);
+                                Swal.fire({
+                                    icon: 'error',
+                                    title: 'Error de conexión',
+                                    text: 'No se pudo conectar con el servidor',
+                                    confirmButtonColor: '#3085d6',
+                                });
+                            });
+                    }
+                });
+            }
+
+            // Función para descomprimir etiquetas (1 elemento = 1 etiqueta)
+            function descomprimirEtiquetas() {
+                Swal.fire({
+                    icon: 'question',
+                    title: 'Descomprimir etiquetas',
+                    html: `
+                        <p class="mb-3">Esta acción separará los elementos en etiquetas individuales.</p>
+                        <p class="text-sm text-gray-600">Cada elemento tendrá su propia subetiqueta (ETQ001.01, ETQ001.02, etc.)</p>
+                    `,
+                    showCancelButton: true,
+                    confirmButtonColor: '#f59e0b',
+                    cancelButtonColor: '#6b7280',
+                    confirmButtonText: 'Sí, descomprimir',
+                    cancelButtonText: 'Cancelar'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        Swal.fire({
+                            title: 'Descomprimiendo etiquetas...',
+                            allowOutsideClick: false,
+                            didOpen: () => {
+                                Swal.showLoading();
+                            }
+                        });
+
+                        fetch('{{ route('maquinas.descomprimir-etiquetas', $maquina->id) }}', {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                                }
+                            })
+                            .then(response => response.json())
+                            .then(data => {
+                                if (data.success) {
+                                    Swal.fire({
+                                        icon: 'success',
+                                        title: 'Descompresión completada',
+                                        html: `
+                                            <p>${data.message}</p>
+                                            <div class="mt-3 text-sm text-gray-600">
+                                                <p>Elementos procesados: ${data.stats.elementos_procesados}</p>
+                                                <p>Movimientos realizados: ${data.stats.movimientos}</p>
+                                            </div>
+                                        `,
+                                        confirmButtonColor: '#f59e0b',
+                                    });
+                                    // Refrescar solo las etiquetas sin recargar la página
+                                    if (typeof refrescarEtiquetasMaquina === 'function') {
+                                        refrescarEtiquetasMaquina();
+                                    }
+                                } else {
+                                    Swal.fire({
+                                        icon: 'error',
+                                        title: 'Error',
+                                        text: data.message || 'No se pudo descomprimir',
                                         confirmButtonColor: '#3085d6',
                                     });
                                 }
