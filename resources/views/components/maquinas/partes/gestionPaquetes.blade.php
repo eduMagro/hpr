@@ -85,8 +85,8 @@
                         <button @click="imprimirQRPaquete(paquete)"
                             class="w-6 h-6 bg-green-100 text-green-600 rounded hover:bg-green-200 flex items-center justify-center transition"
                             title="Imprimir QR del paquete">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none"
-                                viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24"
+                                stroke="currentColor" stroke-width="2">
                                 <path stroke-linecap="round" stroke-linejoin="round"
                                     d="M4 4h4v4H4V4zm6 0h4v4h-4V4zm6 0h4v4h-4V4zM4 10h4v4H4v-4zm6 10h4v-4h-4v4zm6 0h4v-4h-4v4z" />
                             </svg>
@@ -369,6 +369,11 @@
                     // Limpiar input
                     document.getElementById(`input-etiqueta-${paqueteId}`).value = '';
 
+                    // Actualizar visualmente la etiqueta añadida al paquete
+                    if (window.SistemaDOM) {
+                        window.SistemaDOM.actualizarEstadoEtiqueta(codigoEtiqueta.trim(), 'en-paquete');
+                    }
+
                     // Recargar paquetes
                     await this.cargarPaquetes();
 
@@ -376,7 +381,8 @@
                     window.dispatchEvent(new CustomEvent('paquete:actualizado', {
                         detail: {
                             paqueteId,
-                            etiquetaCodigo: codigoEtiqueta
+                            etiquetaCodigo: codigoEtiqueta,
+                            añadida: true
                         }
                     }));
 
@@ -500,7 +506,7 @@
 
                     await Swal.fire({
                         icon: 'success',
-                        title: '✅ Paquete eliminado',
+                        title: 'Paquete eliminado',
                         text: data.message,
                         timer: 3000,
                         showConfirmButton: false
