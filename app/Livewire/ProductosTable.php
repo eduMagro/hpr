@@ -18,6 +18,9 @@ class ProductosTable extends Component
     public $id = '';
 
     #[Url(keep: true)]
+    public $entrada_id = '';
+
+    #[Url(keep: true)]
     public $albaran = '';
 
     #[Url(keep: true)]
@@ -81,6 +84,7 @@ class ProductosTable extends Component
     {
         $this->reset([
             'id',
+            'entrada_id',
             'albaran',
             'codigo',
             'nave_id',
@@ -102,6 +106,9 @@ class ProductosTable extends Component
 
         if (!empty($this->id)) {
             $filtros[] = "<strong>ID:</strong> {$this->id}";
+        }
+        if (!empty($this->entrada_id)) {
+            $filtros[] = "<strong>Entrada ID:</strong> {$this->entrada_id}";
         }
         if (!empty($this->albaran)) {
             $filtros[] = "<strong>Albarán:</strong> {$this->albaran}";
@@ -170,6 +177,11 @@ class ProductosTable extends Component
         // ID
         if (!empty($this->id)) {
             $query->where('id', 'like', '%' . trim($this->id) . '%');
+        }
+
+        // Entrada ID
+        if (!empty($this->entrada_id)) {
+            $query->where('entrada_id', $this->entrada_id);
         }
 
         // Código
