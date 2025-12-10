@@ -98,7 +98,8 @@ class OpenAIController extends Controller
 
         // Extraer diámetros de los productos escaneados
         $diametrosEscaneados = collect($productos)->pluck('diametro')->filter()->unique()->values()->toArray();
-        $pesoTotal = collect($allLineItems)->sum('peso_kg') ?: 0;
+        $lineItemsWeight = collect($allLineItems)->sum('peso_kg');
+        $pesoTotal = $lineItemsWeight > 0 ? $lineItemsWeight : (float) ($parsed['peso_total'] ?? 0);
 
         // Buscar FABRICANTE según proveedor (todos los pedidos tienen fabricante)
         $fabricanteId = null;

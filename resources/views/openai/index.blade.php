@@ -334,8 +334,11 @@
                                                 <span class="font-semibold">[coladas]:</span>
                                                 @foreach ($coladasResumen as $colada)
                                                     ({{ $colada['colada'] ?? '—' }} ({{ $colada['bultos'] ?? 0 }})
-                                                    {{ isset($colada['peso_kg']) ? number_format($colada['peso_kg'], 3, ',', '.') : '—' }}
-                                                    kg)
+                                                    @if(($resultado['parsed']['proveedor'] ?? '') !== 'megasa')
+                                                        {{ isset($colada['peso_kg']) ? number_format($colada['peso_kg'], 3, ',', '.') : '—' }}
+                                                        kg
+                                                    @endif
+                                                    )
                                                 @endforeach
                                             </p>
                                         </div>

@@ -107,7 +107,7 @@ class AlbaranOcrService
         $rawText = $response->json('choices.0.message.content') ?? '';
         $decoded = json_decode($rawText, true);
 
-        $parsed = is_array($decoded) ? $decoded : $this->parseText($rawText);
+        $parsed = is_array($decoded) ? $decoded : $this->parseText($rawText, $proveedor);
 
         return [$rawText, $parsed];
     }
@@ -115,7 +115,7 @@ class AlbaranOcrService
     /**
      * Heurísticas básicas de respaldo por si el JSON no se parsea.
      */
-    protected function parseText(string $text): array
+    protected function parseText(string $text, ?string $proveedor = null): array
     {
         $clean = preg_replace('/\s+/', ' ', $text);
         $lower = Str::lower($clean);
@@ -134,8 +134,7 @@ class AlbaranOcrService
             'pedido_cliente' => $this->firstMatch('/Pedido\\s+cliente\\s*([A-Z0-9\\-\\/]+)/i', $clean),
             'piezas' => null,
             'bultos' => null,
-            'peso_total' => $this->parseNumber($this->firstMatch('/Peso\\s+neto\\s+TOTAL\\s*([\\d\\.,]+)/i', $clean)
-                ?: $this->firstMatch('/Net\\s*KG\\s*[:\\-]?\\s*([\\d\\.,]+)/i', $clean)),
+            'peso_total' => $this->parsePesoTotalFromText($clean),
             'producto' => [
                 'descripcion' => $productoTipo,
                 'diametro' => $this->parseNumber($this->firstMatch('/Di[aá]metro\\s*[:\\-]?\\s*([\\d\\.,]+)/i', $clean)),
@@ -143,7 +142,7 @@ class AlbaranOcrService
                 'calidad' => $calidadCapturada,
             ],
             'ubicacion_texto' => $this->firstMatch('/LUGAR DE ENTREGA\\s*([A-Z0-9 ,\\.\\-]+)/i', $clean),
-            'line_items' => $this->parseLineItems($text),
+            'line_items' => $this->parseLineItems($text, $proveedor),
         ];
 
         // Intentar cruzar con base de datos
@@ -202,6 +201,43 @@ class AlbaranOcrService
         }
 
         return (float) $val;
+    }
+
+    protected function parsePesoTotalFromText(string $clean): ?float
+    {
+        $patterns = [
+            ['pattern' => '/Peso\\s+neto\\s+TOTAL\\s*([\\d\\.,]+)/i', 'type' => 'standard'],
+            ['pattern' => '/Net\\s*KG\\s*[:\\-]?\\s*([\\d\\.,]+)/i', 'type' => 'standard'],
+            ['pattern' => '/Peso\\s+Tons?\\s*[:\\-]?\\s*([\\d\\.,]+)/i', 'type' => 'tons'],
+        ];
+
+        foreach ($patterns as $entry) {
+            $match = $this->firstMatch($entry['pattern'], $clean);
+            if ($match === null) {
+                continue;
+            }
+
+            if ($entry['type'] === 'tons') {
+                $value = $this->parseNumberRemovingSeparators($match);
+                if ($value !== null) {
+                    return $value;
+                }
+                continue;
+            }
+
+            $value = $this->parseNumber($match);
+            if ($value !== null) {
+                return $value;
+            }
+        }
+
+        return null;
+    }
+
+    protected function parseNumberRemovingSeparators(string $value): ?float
+    {
+        $digits = preg_replace('/[^\\d]/', '', $value);
+        return $digits === '' ? null : (float) $digits;
     }
 
     protected function firstMatch(string $pattern, string $text): ?string
@@ -285,8 +321,15 @@ class AlbaranOcrService
     /**
      * Intenta extraer line items (colada, piezas/bultos, peso).
      */
-    protected function parseLineItems(string $text): array
+    protected function parseLineItems(string $text, ?string $proveedor = null): array
     {
+        if ($proveedor === 'megasa') {
+            $megasaItems = $this->parseMegasaLineItems($text);
+            if (!empty($megasaItems)) {
+                return $megasaItems;
+            }
+        }
+
         $lines = [];
 
         $pattern = '/Colada[:\\s]+([\\w\\/]+).*?(\\d+)\\s+(\\d+)\\s+([\\d\\.,]+)/i';
@@ -302,6 +345,67 @@ class AlbaranOcrService
         }
 
         return $lines;
+    }
+
+    protected function parseMegasaLineItems(string $text): array
+    {
+        $needles = [
+            'coladas',
+            'colada',
+            'n.º de paquete',
+            'nº de paquete',
+            'n.º de paquetes',
+            'nº de paquetes',
+            'n.º de atado',
+            'nº de atado',
+        ];
+
+        $positions = [];
+        $lowerText = mb_strtolower($text);
+        foreach ($needles as $needle) {
+            $pos = mb_stripos($lowerText, $needle);
+            if ($pos !== false) {
+                $positions[] = $pos;
+            }
+        }
+
+        $start = !empty($positions) ? min($positions) : 0;
+        $segment = $start > 0 ? mb_substr($text, $start) : $text;
+        $tokens = preg_split('/\\s+/', $segment);
+
+        $lineItems = [];
+        $currentIndex = null;
+
+        foreach ($tokens as $token) {
+            $clean = preg_replace('/[^\\d]/', '', $token);
+            if ($this->looksLikeMegasaColadaToken($clean)) {
+                $lineItems[] = [
+                    'colada' => $clean,
+                    'bultos' => 0,
+                    'peso_kg' => null,
+                ];
+                $currentIndex = count($lineItems) - 1;
+                continue;
+            }
+
+            if ($currentIndex !== null && $this->looksLikeMegasaPackageToken($clean)) {
+                $lineItems[$currentIndex]['bultos']++;
+            }
+        }
+
+        return array_values(array_filter($lineItems, function ($item) {
+            return !empty($item['colada']) && ($item['bultos'] ?? 0) > 0;
+        }));
+    }
+
+    protected function looksLikeMegasaColadaToken(string $token): bool
+    {
+        return $token !== '' && preg_match('/^\\d{5,7}$/', $token) === 1;
+    }
+
+    protected function looksLikeMegasaPackageToken(string $token): bool
+    {
+        return $token !== '' && preg_match('/^\\d{3,4}$/', $token) === 1;
     }
 
     protected function determineProductoTipo(?string $texto): string
@@ -372,7 +476,7 @@ PROMPT;
 
         $mapa = [
             'siderurgica' => $basePrompt . "\nNotas CRÍTICAS para Siderúrgica Sevillana (SISE):\n\n1. IDENTIFICACIÓN:\n   - El albarán es el 'N.º documento'\n   - Pedido cliente: código después de 'Pedido cliente' (NO la fecha)\n\n2. ESTRUCTURA DE PRODUCTOS:\n   - Cada sección numerada (001, 002, etc.) es un PRODUCTO DIFERENTE\n   - Cada producto tiene: descripción, diámetro, longitud (L. barra), calidad\n   - Crea una entrada en 'productos' por cada sección numerada\n   - Siempre devuelve CORRUGADO o BARRA (may?sculas) en 'descripcion' seg?n el tipo detectado\n\n3. BULTOS - MUY IMPORTANTE:\n   - En la tabla derecha, mira la columna 'Bultos' de cada fila\n   - Cada fila de la tabla representa UNA COLADA con SU número de bultos\n   - Ejemplo: si ves '25/41324' con 'Bultos: 3', esa colada tiene 3 bultos\n   - NO cuentes el número de coladas como bultos\n   - El 'bultos_total' es la SUMA de todos los bultos de todas las coladas\n\n4. LINE_ITEMS (coladas):\n   - Cada fila de la tabla es un line_item\n   - colada: número de colada (ej: '25/41324')\n   - bultos: número de bultos de ESA fila (mira columna 'Bultos')\n   - peso_kg: peso neto de esa fila en kg (columna 'Net KG')\n\n5. PESOS:\n   - Si dice '25.120' en peso neto TOTAL, son 25120 kg (multiplica por 1000)\n   - Cada line_item tiene su peso_kg individual de la columna 'Net KG'\n\n6. VALIDACIÓN:\n   - Suma todos los bultos de line_items, debe coincidir con el resumen superior\n   - Si no coincide, revisa la columna 'Bultos' nuevamente\n\nEjemplo correcto:\nSi ves:\n  Producto 001: Descripción A, Ø12, Calidad B500\n  Tabla:\n    Colada 25/41324 | Bultos: 3 | Net KG: 9340\n    Colada 25/41612 | Bultos: 1 | Net KG: 3113\n    Colada 25/41613 | Bultos: 1 | Net KG: 3113\n\nDebes devolver:\n{\n  \"bultos_total\": 5,\n  \"productos\": [\n    {\n      \"descripcion\": \"Descripción A\",\n      \"diametro\": 12,\n      \"calidad\": \"B500\",\n      \"line_items\": [\n        {\"colada\": \"25/41324\", \"bultos\": 3, \"peso_kg\": 9340},\n        {\"colada\": \"25/41612\", \"bultos\": 1, \"peso_kg\": 3113},\n        {\"colada\": \"25/41613\", \"bultos\": 1, \"peso_kg\": 3113}\n      ]\n    }\n  ]\n}",
-            'megasa' => $basePrompt . "\nNotas proveedor Megasa:\n- Usa el codigo que se encuentra arriba a la dereha metido en un recuadro, justo a la derecha de 'CARTA PORTE/REF' o 'CARTA PORTE/ALBARÁN NUM.' como albaran. En la tabla, el número que hay debajo de 'Código' como pedido_codigo. \n- Tabla central con N.º Paquetes/Bultos/Bastones y peso bruto/neto. Total recibido/Total TM está justo debajo de la palabra 'Peso Tons.'; Aunque ponga TM son KG, por ejemplo 24,620 TM serían 24620 kg, da igual si pone '.' o ',' ignóralo y ponlo sin punto/coma.\n- IMPORTANTE: Megasa NO asigna pesos por coladas/bultos, solo un peso total. Por lo tanto, en line_items NO incluyas el campo peso_kg, déjalo como null.\n- Cada producto tiene su array de line_items con coladas, pero solo extrae colada y bultos (número de paquetes), NO peso_kg.\n- Si ves la tabla, hay una columna 'Coladas'/'Nº de Vazamento' a la izquierda y 'N.º de Paquete'/ 'Nº de Atado' a la derecha, cada grupo de paquetes pertenece a la colada de su fila.\n- La cantidad de bultos son la cantidad de 'Nº de paquete'/'Nº de Atado' de cada colada, y estan separados por un espacio ' ', sería nº codada, seguir la mismaz\n- Ignora QR/códigos de barras.",
+            'megasa' => $basePrompt . "\nNotas proveedor Megasa:\n- Usa el codigo que se encuentra arriba a la dereha metido en un recuadro, justo a la derecha de 'CARTA PORTE/REF' o 'CARTA PORTE/ALBARÁN NUM.' como albaran. En la tabla, el número que hay debajo de 'Código' como pedido_codigo. \n- Tabla central con N.º Paquetes/Bultos/Bastones y peso bruto/neto. Total recibido/Total TM está justo debajo de la palabra 'Peso Tons.'; Aunque ponga TM son KG, por ejemplo 24,620 TM serían 24620 kg, da igual si pone '.' o ',' ignóralo y ponlo sin punto/coma.\n- IMPORTANTE: Megasa NO asigna pesos por coladas/bultos, solo un peso total. Por lo tanto, en line_items NO incluyas el campo peso_kg, déjalo como null.\n- Cada producto tiene su array de line_items con coladas, pero solo extrae colada y bultos (número de paquetes), NO peso_kg.\n- Si ves la tabla, hay una columna 'Coladas'/'Nº de Vazamento' a la izquierda y 'N.º de Paquete'/ 'Nº de Atado' a la derecha, cada grupo de paquetes pertenece a la colada de su fila.\n- La cantidad de bultos son la cantidad de 'Nº de paquete'/'Nº de Atado' de cada colada, y estan separados por un espacio(' '), dentro de esa columna marcada por lineas deberías seguir estos pasos, primera lectura, número generalmente más largo y más oscuro, éste sería el numero de colada, seguir layendo la misma línea (de izquierda a derecha) y vas a encontrar los números de cada bulto en un tono más grisaceo, generalmente 4 dígitos por bulto, lo que habría que hacer es ir contando el número total de bultos para asignárselos a la colada léida anteriormente, una vez se lee la línea si la siguiente línea tiene un número de albarán, todos los bultos leídos desde el albarán anterior se asignan a ese albarán anterior, y los siguientes se empiezan a contar desde el nuevo albarán, así haasta que no queden más.\n- Ignora QR/códigos de barras.",
             'balboa' => $basePrompt . "\nNotas proveedor Balboa:\n- Formato Carta de Porte/Waybill. Usa 'N.º Expedición' o 'N.º Pedido' como albaran.\n- Tabla de rollos: cada fila tiene colada y 'Cantidad neta' o similar.\n- Crea un line_item por fila con peso_kg y bultos correspondientes.\n- Si hay códigos QR o barras, ignóralos para el JSON.\n- Interpreta la imagen aunque esté rotada.",
         ];
 
