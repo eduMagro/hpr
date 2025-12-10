@@ -44,6 +44,7 @@ class OpenAIController extends Controller
                     // Buscar líneas pendientes y generar simulación
                     $simulacion = $this->generarSimulacion($parsed);
                     $parsed['bultos_total'] = $simulacion['bultos_albaran'];
+                    $parsed['peso_total'] = $simulacion['peso_total'];
 
                     $resultados[] = [
                         'nombre_archivo' => $imagen->getClientOriginalName(),
@@ -255,9 +256,6 @@ class OpenAIController extends Controller
             ];
         })->sortByDesc('score')->values()->toArray();
 
-        // Línea propuesta (la con mayor score)
-        $lineaPropuesta = $lineasConScoring[0] ?? null;
-
         // Obtener TODAS las líneas pendientes/parciales (sin filtro de fabricante)
         // Para que el usuario pueda elegir manualmente si lo desea
         $todasLasLineasQuery = \App\Models\PedidoProducto::query()
@@ -347,6 +345,42 @@ class OpenAIController extends Controller
             ->values()
             ->toArray();
 
+        // Línea propuesta (siempre seleccionar una)
+        // Primero intentar con las que coinciden con código de pedido
+        $lineaPropuesta = $lineasConScoring[0] ?? null;
+        $tipoRecomendacion = null;
+
+        if ($lineaPropuesta) {
+            // Verificar si la recomendación es por coincidencia exacta de código
+            if ($pedidoCodigo && $lineaPropuesta['pedido_codigo'] === $pedidoCodigo) {
+                $tipoRecomendacion = 'exacta';
+            } elseif ($pedidoCodigo && stripos($lineaPropuesta['pedido_codigo'], $pedidoCodigo) !== false) {
+                $tipoRecomendacion = 'parcial';
+            } else {
+                $tipoRecomendacion = 'por_score';
+            }
+        } else {
+            // Si no hay coincidencias con código, buscar en TODAS las líneas por score
+            if (!empty($todasLasLineas)) {
+                $lineaPropuesta = $todasLasLineas[0]; // Ya está ordenado por score
+                $tipoRecomendacion = 'por_score';
+                // Agregar campos faltantes para compatibilidad
+                $lineaPropuesta['razones'] = [
+                    "⚠ No se encontró pedido con código '{$pedidoCodigo}'",
+                    "✓ Seleccionado por mayor score ({$lineaPropuesta['score']})"
+                ];
+                $lineaPropuesta['incompatibilidades'] = [
+                    "⚠ El código de pedido del albarán no coincide con ningún pedido en BD"
+                ];
+                $lineaPropuesta['es_viable'] = true;
+            }
+        }
+
+        // Agregar tipo de recomendación a la línea propuesta
+        if ($lineaPropuesta) {
+            $lineaPropuesta['tipo_recomendacion'] = $tipoRecomendacion;
+        }
+
         // Preparar productos escaneados para mostrar
         $productosEscaneados = collect($productos)->map(function($prod, $index) {
             return [
@@ -397,7 +431,7 @@ class OpenAIController extends Controller
             'todas_las_lineas' => $todasLasLineas,
             'linea_propuesta' => $lineaPropuesta,
             'estado_final_simulado' => $estadoFinalSimulado,
-            'hay_coincidencias' => count($lineasConScoring) > 0,
+            'hay_coincidencias' => $lineaPropuesta !== null, // True si hay línea propuesta (por código o por score)
             'bultos_albaran' => $bultosTotal,
             'bultos_simulados' => $bultosSimulados,
         ];

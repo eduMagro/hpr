@@ -636,18 +636,30 @@
                                     </div>
 
                                     @if ($sim['linea_propuesta'])
-                                        <div class="mt-3 p-4 bg-green-50 border border-green-200 rounded-lg">
+                                        @php
+                                            $tipoRec = $sim['linea_propuesta']['tipo_recomendacion'] ?? 'por_score';
+                                            $bgColor = $tipoRec === 'exacta' ? 'bg-green-50 border-green-200' : 'bg-blue-50 border-blue-200';
+                                            $textColor = $tipoRec === 'exacta' ? 'text-green-900' : 'text-blue-900';
+                                            $labelColor = $tipoRec === 'exacta' ? 'bg-green-600 text-white' : 'bg-blue-600 text-white';
+                                            $labelText = $tipoRec === 'exacta' ? 'COINCIDENCIA EXACTA' : ($tipoRec === 'parcial' ? 'COINCIDENCIA PARCIAL' : 'MEJOR COMPATIBILIDAD');
+                                        @endphp
+                                        <div class="mt-3 p-4 {{ $bgColor }} border rounded-lg">
                                             <div class="flex items-start justify-between mb-2">
-                                                <div>
-                                                    <p class="text-sm font-semibold text-green-900">
-                                                        ✓ Línea propuesta:
-                                                        {{ $sim['linea_propuesta']['pedido_codigo'] }}
-                                                    </p>
-                                                    <p class="text-xs text-green-700 mt-1">
+                                                <div class="flex-1">
+                                                    <div class="flex items-center gap-2 mb-1">
+                                                        <p class="text-sm font-semibold {{ $textColor }}">
+                                                            {{ $tipoRec === 'exacta' ? '✓' : '⚠' }} Línea propuesta:
+                                                            {{ $sim['linea_propuesta']['pedido_codigo'] }}
+                                                        </p>
+                                                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-semibold {{ $labelColor }}">
+                                                            {{ $labelText }}
+                                                        </span>
+                                                    </div>
+                                                    <p class="text-xs {{ $textColor }} mt-1">
                                                         <strong>Fabricante:</strong>
                                                         {{ $sim['linea_propuesta']['fabricante'] }}
                                                     </p>
-                                                    <p class="text-xs text-green-700">
+                                                    <p class="text-xs {{ $textColor }}">
                                                         <strong>Producto:</strong>
                                                         {{ $sim['linea_propuesta']['producto'] }} |
                                                         <strong>Obra:</strong> {{ $sim['linea_propuesta']['obra'] }}
@@ -736,23 +748,32 @@
                                                     </button>
                                                 </div>
                                                 <div class="mt-3">
-                                                    <label class="block text-xs font-medium text-blue-800 mb-1">Motivo
-                                                        del cambio de decisión (permitirá al sistema aprender de tus
-                                                        preferencias más adelante)</label>
+                                                    <!-- Enunciado dinámico -->
+                                                    <div id="changeStatement-{{ $idx }}"
+                                                        class="mb-2 p-2 bg-blue-50 border border-blue-200 rounded-lg text-xs text-blue-900">
+                                                        <strong>Selección manual:</strong>
+                                                        <span id="statementText-{{ $idx }}">Has cambiado la recomendación del sistema.</span>
+                                                    </div>
+
+                                                    <label class="block text-xs font-medium text-blue-800 mb-1">
+                                                        Indica el motivo (opcional - ayudará al sistema a aprender):
+                                                    </label>
                                                     <input type="text" id="changeReason-{{ $idx }}"
                                                         class="w-full text-sm rounded-md border-blue-300 focus:border-blue-500 focus:ring-blue-500"
-                                                        placeholder="Ej: El sistema recomendó X pero prefiero Y porque...">
+                                                        placeholder="Ej: Mejor calidad, entrega más urgente, etc.">
                                                 </div>
                                             </div>
 
                                             <!-- Modal Structure -->
                                             @php
                                                 $recommendedId = $sim['linea_propuesta']['id'] ?? null;
+                                                $recommendedCode = $sim['linea_propuesta']['pedido_codigo'] ?? null;
                                             @endphp
                                             <div id="pendingOrdersModal-{{ $idx }}"
                                                 class="fixed inset-0 z-50 hidden" aria-labelledby="modal-title"
                                                 role="dialog" aria-modal="true"
-                                                @if ($recommendedId) data-recommended-id="{{ $recommendedId }}" @endif>
+                                                @if ($recommendedId) data-recommended-id="{{ $recommendedId }}" @endif
+                                                @if ($recommendedCode) data-recommended-code="{{ $recommendedCode }}" @endif>
                                                 <!-- Backdrop -->
                                                 <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"
                                                     onclick="closePendingOrdersModal('{{ $idx }}')"></div>
@@ -1436,20 +1457,45 @@
                 };
             }
 
-            // Actualizar vista de selección manual
+            // Actualizar vista de selección manual (solo si existen los elementos)
             const container = document.getElementById(`selectedOrderContainer-${resultadoIdx}`);
             const codeSpan = document.getElementById(`selectedOrderCode-${resultadoIdx}`);
             const detailsP = document.getElementById(`selectedOrderDetails-${resultadoIdx}`);
 
-            container.classList.remove('hidden');
-            codeSpan.textContent = linea.pedido_codigo;
-            detailsP.innerHTML =
-                `<strong>Producto:</strong> ${linea.producto} | <strong>Obra:</strong> ${linea.obra} | <strong>Pendiente:</strong> ${new Intl.NumberFormat('es-ES').format(linea.cantidad_pendiente)} kg`;
+            if (container) {
+                container.classList.remove('hidden');
+            }
+            if (codeSpan) {
+                codeSpan.textContent = linea.pedido_codigo;
+            }
+            if (detailsP) {
+                detailsP.innerHTML =
+                    `<strong>Producto:</strong> ${linea.producto} | <strong>Obra:</strong> ${linea.obra} | <strong>Pendiente:</strong> ${new Intl.NumberFormat('es-ES').format(linea.cantidad_pendiente)} kg`;
+            }
 
-            // Actualizar Label
+            // Actualizar Label (solo si existe)
             const applyingLabel = document.getElementById(`applyingLabel-${resultadoIdx}`);
-            applyingLabel.textContent = "Selección Manual";
-            applyingLabel.className = "text-xs font-normal px-2 py-1 rounded-full bg-blue-100 text-blue-700";
+            if (applyingLabel) {
+                applyingLabel.textContent = "Selección Manual";
+                applyingLabel.className = "text-xs font-normal px-2 py-1 rounded-full bg-blue-100 text-blue-700";
+            }
+
+            // Actualizar enunciado del cambio (solo si existe)
+            const statementText = document.getElementById(`statementText-${resultadoIdx}`);
+            if (statementText && recommendedId) {
+                // Obtener código del pedido recomendado desde el modal
+                const recommendedCode = modal?.getAttribute('data-recommended-code') || 'el recomendado';
+                const selectedCode = linea.pedido_codigo || 'otro pedido';
+
+                // Actualizar enunciado
+                statementText.innerHTML = `El sistema recomendó <strong>${recommendedCode}</strong> pero preferiste <strong>${selectedCode}</strong>.`;
+            }
+
+            // Enfocar el input para que escriba el motivo
+            const changeReasonInput = document.getElementById(`changeReason-${resultadoIdx}`);
+            if (changeReasonInput) {
+                changeReasonInput.focus();
+            }
 
             // Actualizar datos de simulación final
             if (finalSection) {
@@ -1470,14 +1516,22 @@
             const recommendedId = modal.getAttribute('data-recommended-id');
             updateSelectionButtons(idx, recommendedId);
 
-            // Ocultar contenedor de selección manual
-            document.getElementById(`selectedOrderContainer-${idx}`).classList.add('hidden');
-            document.getElementById(`changeReason-${idx}`).value = ''; // Limpiar razón
+            // Ocultar contenedor de selección manual (solo si existe)
+            const selectedContainer = document.getElementById(`selectedOrderContainer-${idx}`);
+            if (selectedContainer) {
+                selectedContainer.classList.add('hidden');
+            }
+            const changeReasonInput = document.getElementById(`changeReason-${idx}`);
+            if (changeReasonInput) {
+                changeReasonInput.value = ''; // Limpiar razón
+            }
 
-            // Restaurar Label
+            // Restaurar Label (solo si existe)
             const applyingLabel = document.getElementById(`applyingLabel-${idx}`);
-            applyingLabel.textContent = "Recomendado";
-            applyingLabel.className = "text-xs font-normal px-2 py-1 rounded-full bg-green-100 text-green-700";
+            if (applyingLabel) {
+                applyingLabel.textContent = "Recomendado";
+                applyingLabel.className = "text-xs font-normal px-2 py-1 rounded-full bg-green-100 text-green-700";
+            }
 
             // Restaurar valores originales en Final Section
             if (originalRecommendations[idx]) {
