@@ -905,7 +905,7 @@ class MaquinaController extends Controller
         foreach ($salidasHoy as $salida) {
             // 👉 Agrupar paquetes por nave_id
             $paquetesPorNave = $salida->paquetes->groupBy('nave_id')->filter(function ($grupo, $naveId) {
-                return $naveId !== null; // Solo naves válidas
+                return !empty($naveId); // Solo naves válidas (excluye null y strings vacíos)
             });
 
             // Si no hay paquetes con nave, no crear movimiento
