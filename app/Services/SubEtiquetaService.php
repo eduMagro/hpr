@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Etiqueta;
 use App\Models\Elemento;
 use App\Models\Maquina;
+use App\Models\OrdenPlanilla;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
@@ -300,17 +301,8 @@ class SubEtiquetaService
     /** Crea fila de etiquetas para la sub (copia datos del padre) si no existe. Devuelve el ID. */
     protected function asegurarFilaSub(string $subId, Etiqueta $padre): int
     {
-        Log::info('🔍 [asegurarFilaSub] Buscando sub', ['sub' => $subId]);
-
         // Primero verificar si ya existe (con y sin soft deletes)
         $existente = Etiqueta::withTrashed()->where('etiqueta_sub_id', $subId)->first();
-
-        Log::info('🔍 [asegurarFilaSub] Resultado búsqueda', [
-            'sub' => $subId,
-            'encontrada' => $existente ? true : false,
-            'id' => $existente?->id,
-            'deleted_at' => $existente?->deleted_at,
-        ]);
 
         if ($existente) {
             // Si está eliminada (soft delete), restaurarla
@@ -412,15 +404,16 @@ class SubEtiquetaService
     /**
      * COMPRIMIR: Agrupa elementos hermanos de una máquina en etiquetas compartidas.
      * Máximo 5 elementos por etiqueta_sub_id.
-     * Solo afecta elementos asignados a la máquina especificada.
+     * Solo afecta elementos asignados a la máquina y posiciones especificadas.
      *
      * Los hermanos son elementos que comparten el mismo CÓDIGO PADRE (extraído del etiqueta_sub_id).
      * Ejemplo: ETQ2512001.01, ETQ2512001.02, ETQ2512001.03 son hermanos (código padre: ETQ2512001)
      *
      * @param int $maquinaId ID de la máquina
+     * @param array $posiciones Posiciones de planillas a filtrar (de orden_planillas)
      * @return array ['success' => bool, 'message' => string, 'stats' => array]
      */
-    public function comprimirEtiquetasPorMaquina(int $maquinaId): array
+    public function comprimirEtiquetasPorMaquina(int $maquinaId, array $posiciones = []): array
     {
         $maxElementosPorSub = 5;
         $stats = [
@@ -431,14 +424,35 @@ class SubEtiquetaService
         ];
 
         try {
-            // 1) Obtener todos los elementos de esta máquina (en cualquier campo maquina_id)
-            $elementos = Elemento::where(function ($q) use ($maquinaId) {
+            // 1) Obtener planilla_ids según las posiciones seleccionadas en orden_planillas
+            $planillaIds = [];
+            if (!empty($posiciones)) {
+                $planillaIds = OrdenPlanilla::where('maquina_id', $maquinaId)
+                    ->whereIn('posicion', $posiciones)
+                    ->pluck('planilla_id')
+                    ->toArray();
+
+                Log::info('🗜️ [Comprimir] Filtrando por posiciones', [
+                    'maquina_id' => $maquinaId,
+                    'posiciones' => $posiciones,
+                    'planilla_ids' => $planillaIds,
+                ]);
+            }
+
+            // 2) Obtener elementos de esta máquina, filtrados por planilla si hay posiciones
+            $query = Elemento::where(function ($q) use ($maquinaId) {
                 $q->where('maquina_id', $maquinaId)
                     ->orWhere('maquina_id_2', $maquinaId)
                     ->orWhere('maquina_id_3', $maquinaId);
             })
-                ->whereNotNull('etiqueta_sub_id')
-                ->get();
+                ->whereNotNull('etiqueta_sub_id');
+
+            // Filtrar por planilla_id si hay posiciones seleccionadas
+            if (!empty($planillaIds)) {
+                $query->whereIn('planilla_id', $planillaIds);
+            }
+
+            $elementos = $query->get();
 
             if ($elementos->isEmpty()) {
                 return [
@@ -515,12 +529,6 @@ class SubEtiquetaService
                     $siguienteNumero = ((int) end($partes)) + 1;
                 }
 
-                Log::info('🗜️ [Comprimir] Siguiente número calculado', [
-                    'codigo_padre' => $codigoPadre,
-                    'ultima_sub' => $ultimaSub,
-                    'siguiente_numero' => $siguienteNumero,
-                ]);
-
                 $subsOriginales = [];
 
                 // Procesar cada tipo por separado (estribos y normales no se mezclan)
@@ -529,16 +537,14 @@ class SubEtiquetaService
                     'estribos' => $estribos->sortBy('etiqueta_sub_id')->values(),
                 ];
 
+                // Rastrear estados originales por subetiqueta y qué subs destino se usan
+                $estadosPorSubOriginal = [];
+                $subsDestino = [];
+
                 foreach ($tiposElementos as $tipoNombre => $elementosDelTipo) {
                     if ($elementosDelTipo->isEmpty()) {
                         continue;
                     }
-
-                    Log::info("🗜️ [Comprimir] Procesando {$tipoNombre}", [
-                        'codigo_padre' => $codigoPadre,
-                        'elementos' => $elementosDelTipo->count(),
-                        'subs_actuales' => $elementosDelTipo->pluck('etiqueta_sub_id')->unique()->toArray(),
-                    ]);
 
                     // Redistribuir: todos los elementos del tipo van a la primera subetiqueta disponible
                     // hasta llenarla (máx 5), luego a la siguiente, etc.
@@ -547,7 +553,14 @@ class SubEtiquetaService
 
                     foreach ($elementosDelTipo as $elemento) {
                         $stats['elementos_procesados']++;
-                        $subsOriginales[] = $elemento->etiqueta_sub_id;
+                        $subOriginal = $elemento->etiqueta_sub_id;
+                        $subsOriginales[] = $subOriginal;
+
+                        // Guardar el estado de la sub original si no lo tenemos
+                        if (!isset($estadosPorSubOriginal[$subOriginal])) {
+                            $estadoOriginal = Etiqueta::where('etiqueta_sub_id', $subOriginal)->value('estado');
+                            $estadosPorSubOriginal[$subOriginal] = $estadoOriginal ?? 'pendiente';
+                        }
 
                         // Si no hay sub actual o está llena, obtener/crear una nueva
                         if ($subActual === null || $contadorEnSub >= $maxElementosPorSub) {
@@ -561,12 +574,18 @@ class SubEtiquetaService
                                 $this->asegurarFilaSub($subActual, $padre);
                             }
                             $contadorEnSub = 0;
+
+                            // Inicializar tracking de estados para esta sub destino
+                            if (!isset($subsDestino[$subActual])) {
+                                $subsDestino[$subActual] = [];
+                            }
                         }
+
+                        // Rastrear qué estados originales van a cada sub destino
+                        $subsDestino[$subActual][] = $estadosPorSubOriginal[$subOriginal];
 
                         // Mover elemento a la sub actual si es diferente
                         if ($elemento->etiqueta_sub_id !== $subActual) {
-                            $subOriginal = $elemento->etiqueta_sub_id;
-
                             // Obtener el etiqueta_id de la subetiqueta destino
                             $etiquetaSubId = Etiqueta::where('etiqueta_sub_id', $subActual)->value('id');
 
@@ -580,16 +599,27 @@ class SubEtiquetaService
                             $elemento->save();
 
                             $stats['movimientos']++;
-
-                            Log::info('🗜️ [Comprimir] Elemento movido', [
-                                'elemento' => $elemento->id,
-                                'tipo' => $tipoNombre,
-                                'de' => $subOriginal,
-                                'a' => $subActual,
-                            ]);
                         }
 
                         $contadorEnSub++;
+                    }
+                }
+
+                // Recalcular estado de las subs destino si mezclaron estados diferentes
+                foreach ($subsDestino as $subId => $estadosOriginales) {
+                    $estadosUnicos = array_unique($estadosOriginales);
+
+                    if (count($estadosUnicos) > 1) {
+                        // Mezclaron estados diferentes → fabricando + fecha_finalizacion = null
+                        Etiqueta::where('etiqueta_sub_id', $subId)->update([
+                            'estado' => 'fabricando',
+                            'fecha_finalizacion' => null,
+                        ]);
+
+                        Log::info('🔄 [Comprimir] Estados mezclados, sub pasa a fabricando', [
+                            'sub' => $subId,
+                            'estados_originales' => $estadosUnicos,
+                        ]);
                     }
                 }
 
@@ -614,15 +644,19 @@ class SubEtiquetaService
                 $this->recalcularPesos($codigoPadre, $subsAfectadas);
             }
 
-            // Contar subetiquetas únicas después
-            $elementosDespues = Elemento::where(function ($q) use ($maquinaId) {
+            // Contar subetiquetas únicas después (con el mismo filtro de planillas)
+            $queryDespues = Elemento::where(function ($q) use ($maquinaId) {
                 $q->where('maquina_id', $maquinaId)
                     ->orWhere('maquina_id_2', $maquinaId)
                     ->orWhere('maquina_id_3', $maquinaId);
             })
-                ->whereNotNull('etiqueta_sub_id')
-                ->get();
+                ->whereNotNull('etiqueta_sub_id');
 
+            if (!empty($planillaIds)) {
+                $queryDespues->whereIn('planilla_id', $planillaIds);
+            }
+
+            $elementosDespues = $queryDespues->get();
             $stats['subetiquetas_despues'] = $elementosDespues->pluck('etiqueta_sub_id')->unique()->count();
 
             Log::info('✅ [Comprimir] Completado', $stats);
@@ -645,12 +679,13 @@ class SubEtiquetaService
 
     /**
      * DESCOMPRIMIR: Separa elementos en subetiquetas individuales (1 elemento = 1 subetiqueta).
-     * Solo afecta elementos asignados a la máquina especificada.
+     * Solo afecta elementos asignados a la máquina y posiciones especificadas.
      *
      * @param int $maquinaId ID de la máquina
+     * @param array $posiciones Posiciones de planillas a filtrar (de orden_planillas)
      * @return array ['success' => bool, 'message' => string, 'stats' => array]
      */
-    public function descomprimirEtiquetasPorMaquina(int $maquinaId): array
+    public function descomprimirEtiquetasPorMaquina(int $maquinaId, array $posiciones = []): array
     {
         $stats = [
             'elementos_procesados' => 0,
@@ -660,14 +695,35 @@ class SubEtiquetaService
         ];
 
         try {
-            // 1) Obtener todos los elementos de esta máquina
-            $elementos = Elemento::where(function ($q) use ($maquinaId) {
+            // 1) Obtener planilla_ids según las posiciones seleccionadas en orden_planillas
+            $planillaIds = [];
+            if (!empty($posiciones)) {
+                $planillaIds = OrdenPlanilla::where('maquina_id', $maquinaId)
+                    ->whereIn('posicion', $posiciones)
+                    ->pluck('planilla_id')
+                    ->toArray();
+
+                Log::info('📤 [Descomprimir] Filtrando por posiciones', [
+                    'maquina_id' => $maquinaId,
+                    'posiciones' => $posiciones,
+                    'planilla_ids' => $planillaIds,
+                ]);
+            }
+
+            // 2) Obtener elementos de esta máquina, filtrados por planilla si hay posiciones
+            $query = Elemento::where(function ($q) use ($maquinaId) {
                 $q->where('maquina_id', $maquinaId)
                     ->orWhere('maquina_id_2', $maquinaId)
                     ->orWhere('maquina_id_3', $maquinaId);
             })
-                ->whereNotNull('etiqueta_sub_id')
-                ->get();
+                ->whereNotNull('etiqueta_sub_id');
+
+            // Filtrar por planilla_id si hay posiciones seleccionadas
+            if (!empty($planillaIds)) {
+                $query->whereIn('planilla_id', $planillaIds);
+            }
+
+            $elementos = $query->get();
 
             if ($elementos->isEmpty()) {
                 return [
@@ -711,12 +767,6 @@ class SubEtiquetaService
                 $elementosPorSub = $elementosGrupo->groupBy('etiqueta_sub_id');
                 $subsOriginales = $elementosPorSub->keys()->toArray();
 
-                Log::info('📤 [Descomprimir] Procesando grupo', [
-                    'codigo_padre' => $codigoPadre,
-                    'elementos' => $elementosGrupo->count(),
-                    'subs_actuales' => $elementosPorSub->map->count()->toArray(),
-                ]);
-
                 // Obtener el siguiente número disponible para este código padre (incluyendo soft deleted)
                 $ultimaSub = Etiqueta::withTrashed()
                     ->where('etiqueta_sub_id', 'like', $codigoPadre . '.%')
@@ -728,12 +778,6 @@ class SubEtiquetaService
                     $partes = explode('.', $ultimaSub);
                     $siguienteNumero = ((int) end($partes)) + 1;
                 }
-
-                Log::info('📤 [Descomprimir] Siguiente número calculado', [
-                    'codigo_padre' => $codigoPadre,
-                    'ultima_sub' => $ultimaSub,
-                    'siguiente_numero' => $siguienteNumero,
-                ]);
 
                 // 3) Para cada subetiqueta que tenga más de 1 elemento, separar
                 foreach ($elementosPorSub as $subId => $elementosEnSub) {
@@ -769,12 +813,6 @@ class SubEtiquetaService
                         $elemento->save();
 
                         $stats['movimientos']++;
-
-                        Log::info('📤 [Descomprimir] Elemento separado', [
-                            'elemento' => $elemento->id,
-                            'de' => $subOriginal,
-                            'a' => $subNueva,
-                        ]);
                     }
                 }
 
@@ -798,15 +836,19 @@ class SubEtiquetaService
                 $this->recalcularPesos($codigoPadre, $subsAfectadas);
             }
 
-            // Contar subetiquetas únicas después
-            $elementosDespues = Elemento::where(function ($q) use ($maquinaId) {
+            // Contar subetiquetas únicas después (con el mismo filtro de planillas)
+            $queryDespues = Elemento::where(function ($q) use ($maquinaId) {
                 $q->where('maquina_id', $maquinaId)
                     ->orWhere('maquina_id_2', $maquinaId)
                     ->orWhere('maquina_id_3', $maquinaId);
             })
-                ->whereNotNull('etiqueta_sub_id')
-                ->get();
+                ->whereNotNull('etiqueta_sub_id');
 
+            if (!empty($planillaIds)) {
+                $queryDespues->whereIn('planilla_id', $planillaIds);
+            }
+
+            $elementosDespues = $queryDespues->get();
             $stats['subetiquetas_despues'] = $elementosDespues->pluck('etiqueta_sub_id')->unique()->count();
 
             Log::info('✅ [Descomprimir] Completado', $stats);

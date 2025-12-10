@@ -2052,28 +2052,44 @@ class MaquinaController extends Controller
     /**
      * Comprimir etiquetas: agrupa elementos hermanos en mismas subetiquetas (máx 5 por sub).
      * Solo para MSR20 o máquinas tipo encarretado.
+     * Filtra por las posiciones de planilla seleccionadas.
      */
     public function comprimirEtiquetas(Request $request, $id)
     {
         $maquina = Maquina::findOrFail($id);
 
+        // Obtener posiciones del request (array de enteros)
+        $posiciones = collect($request->input('posiciones', []))
+            ->filter(fn($p) => is_numeric($p) && (int)$p > 0)
+            ->map(fn($p) => (int)$p)
+            ->values()
+            ->toArray();
+
         /** @var \App\Services\SubEtiquetaService $svc */
         $svc = app(\App\Services\SubEtiquetaService::class);
-        $resultado = $svc->comprimirEtiquetasPorMaquina((int) $id);
+        $resultado = $svc->comprimirEtiquetasPorMaquina((int) $id, $posiciones);
 
         return response()->json($resultado);
     }
 
     /**
      * Descomprimir etiquetas: separa elementos en subetiquetas individuales (1 elemento = 1 sub).
+     * Filtra por las posiciones de planilla seleccionadas.
      */
     public function descomprimirEtiquetas(Request $request, $id)
     {
         $maquina = Maquina::findOrFail($id);
 
+        // Obtener posiciones del request (array de enteros)
+        $posiciones = collect($request->input('posiciones', []))
+            ->filter(fn($p) => is_numeric($p) && (int)$p > 0)
+            ->map(fn($p) => (int)$p)
+            ->values()
+            ->toArray();
+
         /** @var \App\Services\SubEtiquetaService $svc */
         $svc = app(\App\Services\SubEtiquetaService::class);
-        $resultado = $svc->descomprimirEtiquetasPorMaquina((int) $id);
+        $resultado = $svc->descomprimirEtiquetasPorMaquina((int) $id, $posiciones);
 
         return response()->json($resultado);
     }
