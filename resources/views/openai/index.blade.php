@@ -40,6 +40,46 @@
             background-color: #dbeafe;
             color: #1e40af;
         }
+
+        .preview-zoom {
+            position: relative;
+            overflow: hidden;
+        }
+
+        .preview-zoom .preview-overlay {
+            transition: opacity 0.2s ease;
+            pointer-events: none;
+        }
+
+        #previewModal {
+            display: none;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.15s ease;
+        }
+
+        #previewModal.show {
+            display: flex;
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        #previewModal .preview-modal-content img {
+            max-height: 80vh;
+        }
+
+        @media (max-width: 767px) {
+            #previewModal .preview-modal-content {
+                width: 100vw;
+                height: 100vh;
+                border-radius: 0;
+            }
+
+            #previewModal .preview-modal-content img {
+                height: 100%;
+                object-fit: contain;
+            }
+        }
     </style>
     <x-slot name="title">Revisión asistida de albaranes</x-slot>
 
@@ -140,9 +180,23 @@
                                 @endif
                             </div>
                             @if ($resultado['preview'])
-                                <div class="flex-shrink-0 w-32 h-32">
-                                    <img src="{{ $resultado['preview'] }}" alt="{{ $resultado['nombre_archivo'] }}"
-                                        class="rounded shadow-sm w-full h-full object-cover border border-gray-200">
+                                <div class="flex-shrink-0">
+                                    <div class="preview-zoom group relative w-32 h-32 sm:w-36 sm:h-36 rounded-lg shadow-sm border border-gray-200 overflow-hidden cursor-pointer"
+                                        data-preview="{{ $resultado['preview'] }}">
+                                        <img src="{{ $resultado['preview'] }}" alt="{{ $resultado['nombre_archivo'] }}"
+                                            class="w-full h-full object-cover">
+                                        <div
+                                            class="preview-overlay absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex items-center justify-center transition">
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-white"
+                                                viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                                stroke-width="2">
+                                                <path stroke-linecap="round" stroke-linejoin="round"
+                                                    d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                                <path stroke-linecap="round" stroke-linejoin="round"
+                                                    d="M2.458 12C3.732 7.943 7.523 5 12 5s8.268 2.943 9.542 7c-1.274 4.057-5.065 7-9.542 7s-8.268-2.943-9.542-7z" />
+                                            </svg>
+                                        </div>
+                                    </div>
                                 </div>
                             @endif
                         </div>
@@ -153,7 +207,7 @@
                             <div class="bg-white border border-gray-200 rounded-lg p-4">
                                 <div class="flex items-center justify-between mb-3">
                                     <div>
-                                        <h3 class="text-sm font-semibold text-gray-900">Datos extraídos por IA</h3>
+                                        <h3 class="text-sm font-semibold text-gray-900">Datos extraídos</h3>
                                         <p class="text-xs text-gray-500">Revisa la información escaneada del albarán.
                                         </p>
                                     </div>
@@ -198,8 +252,7 @@
                                     <div class="flex justify-end mt-2">
                                         <button type="button"
                                             class="toggle-json-btn inline-flex items-center gap-1 px-3 py-1 text-[11px] font-semibold text-indigo-600 border border-indigo-200 rounded-lg hover:bg-indigo-50 transition"
-                                            data-result="{{ $idx }}"
-                                            data-show-label="Ver JSON"
+                                            data-result="{{ $idx }}" data-show-label="Ver JSON"
                                             data-hide-label="Ocultar JSON">
                                             Ver JSON
                                         </button>
@@ -265,16 +318,24 @@
                                     @php
                                         $coladasResumen = collect($productos)
                                             ->flatMap(fn($producto) => $producto['line_items'] ?? [])
-                                            ->filter(fn($item) => isset($item['colada']) || isset($item['bultos']) || isset($item['peso_kg']))
+                                            ->filter(
+                                                fn($item) => isset($item['colada']) ||
+                                                    isset($item['bultos']) ||
+                                                    isset($item['peso_kg']),
+                                            )
                                             ->values();
                                     @endphp
                                     @if ($coladasResumen->count())
-                                        <div class="bg-blue-50 border border-blue-100 rounded-xl p-3 text-xs text-blue-900 space-y-1">
-                                            <p class="font-semibold text-sm text-blue-700">Coladas detectadas antes de continuar:</p>
+                                        <div
+                                            class="bg-blue-50 border border-blue-100 rounded-xl p-3 text-xs text-blue-900 space-y-1">
+                                            <p class="font-semibold text-sm text-blue-700">Coladas detectadas antes de
+                                                continuar:</p>
                                             <p>
                                                 <span class="font-semibold">[coladas]:</span>
                                                 @foreach ($coladasResumen as $colada)
-                                                    ({{ $colada['colada'] ?? '—' }} ({{ $colada['bultos'] ?? 0 }}) {{ isset($colada['peso_kg']) ? number_format($colada['peso_kg'], 3, ',', '.') : '—' }} kg)
+                                                    ({{ $colada['colada'] ?? '—' }} ({{ $colada['bultos'] ?? 0 }})
+                                                    {{ isset($colada['peso_kg']) ? number_format($colada['peso_kg'], 3, ',', '.') : '—' }}
+                                                    kg)
                                                 @endforeach
                                             </p>
                                         </div>
@@ -676,7 +737,8 @@
                                                 </div>
                                                 <div class="mt-3">
                                                     <label class="block text-xs font-medium text-blue-800 mb-1">Motivo
-                                                        del cambio de decisión (permitirá al sistema aprender de tus preferencias más adelante)</label>
+                                                        del cambio de decisión (permitirá al sistema aprender de tus
+                                                        preferencias más adelante)</label>
                                                     <input type="text" id="changeReason-{{ $idx }}"
                                                         class="w-full text-sm rounded-md border-blue-300 focus:border-blue-500 focus:ring-blue-500"
                                                         placeholder="Ej: El sistema recomendó X pero prefiero Y porque...">
@@ -684,10 +746,13 @@
                                             </div>
 
                                             <!-- Modal Structure -->
+                                            @php
+                                                $recommendedId = $sim['linea_propuesta']['id'] ?? null;
+                                            @endphp
                                             <div id="pendingOrdersModal-{{ $idx }}"
                                                 class="fixed inset-0 z-50 hidden" aria-labelledby="modal-title"
                                                 role="dialog" aria-modal="true"
-                                                data-recommended-id="{{ $sim['linea_propuesta']['id'] }}">
+                                                @if ($recommendedId) data-recommended-id="{{ $recommendedId }}" @endif>
                                                 <!-- Backdrop -->
                                                 <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"
                                                     onclick="closePendingOrdersModal('{{ $idx }}')"></div>
@@ -741,10 +806,12 @@
                                                                                     @foreach ($sim['todas_las_lineas'] as $linea)
                                                                                         <tr
                                                                                             class="hover:bg-gray-50 {{ $linea['coincide_diametro'] ? 'bg-green-50' : '' }}">
-                                                                                            <td class="px-4 py-3 font-medium text-center text-gray-900">
+                                                                                            <td
+                                                                                                class="px-4 py-3 font-medium text-center text-gray-900">
                                                                                                 {{ $linea['pedido_codigo'] }}
                                                                                                 @if (isset($sim['linea_propuesta']) && $linea['id'] == $sim['linea_propuesta']['id'])
-                                                                                                    <span class="inline-flex items-center rounded-md bg-green-50 px-2 py-1 text-xs font-medium text-green-700 ring-1 ring-inset ring-green-600/20">Recomendado</span>
+                                                                                                    <span
+                                                                                                        class="inline-flex items-center rounded-md bg-green-50 px-2 py-1 text-xs font-medium text-green-700 ring-1 ring-inset ring-green-600/20">Recomendado</span>
                                                                                                 @endif
                                                                                             </td>
                                                                                             <td
@@ -754,7 +821,8 @@
                                                                                             <td
                                                                                                 class="px-4 py-3 text-gray-700">
                                                                                                 @if ($linea['coincide_diametro'])
-                                                                                                    <span class="ml-1 text-xs text-green-600">✓</span>
+                                                                                                    <span
+                                                                                                        class="ml-1 text-xs text-green-600">✓</span>
                                                                                                 @endif
                                                                                                 {{ $linea['producto'] }}
                                                                                             </td>
@@ -803,7 +871,16 @@
                                                                                             <td
                                                                                                 class="px-4 py-3 text-center">
                                                                                                 @php
-                                                                                                    $isProposed = isset($sim['linea_propuesta']) && $linea['id'] == $sim['linea_propuesta']['id'];
+                                                                                                    $isProposed =
+                                                                                                        isset(
+                                                                                                            $sim[
+                                                                                                                'linea_propuesta'
+                                                                                                            ],
+                                                                                                        ) &&
+                                                                                                        $linea['id'] ==
+                                                                                                            $sim[
+                                                                                                                'linea_propuesta'
+                                                                                                            ]['id'];
                                                                                                 @endphp
                                                                                                 <button type="button"
                                                                                                     id="btn-select-{{ $idx }}-{{ $linea['id'] }}"
@@ -1324,7 +1401,7 @@
         window.seleccionarLineaManual = function(linea, resultadoIdx) {
             // Verificar si la línea seleccionada es la recomendada
             const modal = document.getElementById(`pendingOrdersModal-${resultadoIdx}`);
-            const recommendedId = modal.getAttribute('data-recommended-id');
+            const recommendedId = modal?.getAttribute('data-recommended-id') ?? null;
 
             // Actualizar botones visualmente
             updateSelectionButtons(resultadoIdx, linea.id);
@@ -1351,7 +1428,7 @@
 
             // Guardar estado original si no existe
             const finalSection = document.getElementById(`estadoFinalSection-${resultadoIdx}`);
-            if (!originalRecommendations[resultadoIdx]) {
+            if (finalSection && !originalRecommendations[resultadoIdx]) {
                 originalRecommendations[resultadoIdx] = {
                     cantidadPendiente: parseFloat(finalSection.dataset.cantidadInicial) || 0,
                     cantidadTotal: parseFloat(finalSection.dataset.cantidadTotal) || 0,
@@ -1363,10 +1440,11 @@
             const container = document.getElementById(`selectedOrderContainer-${resultadoIdx}`);
             const codeSpan = document.getElementById(`selectedOrderCode-${resultadoIdx}`);
             const detailsP = document.getElementById(`selectedOrderDetails-${resultadoIdx}`);
-            
+
             container.classList.remove('hidden');
             codeSpan.textContent = linea.pedido_codigo;
-            detailsP.innerHTML = `<strong>Producto:</strong> ${linea.producto} | <strong>Obra:</strong> ${linea.obra} | <strong>Pendiente:</strong> ${new Intl.NumberFormat('es-ES').format(linea.cantidad_pendiente)} kg`;
+            detailsP.innerHTML =
+                `<strong>Producto:</strong> ${linea.producto} | <strong>Obra:</strong> ${linea.obra} | <strong>Pendiente:</strong> ${new Intl.NumberFormat('es-ES').format(linea.cantidad_pendiente)} kg`;
 
             // Actualizar Label
             const applyingLabel = document.getElementById(`applyingLabel-${resultadoIdx}`);
@@ -1375,11 +1453,10 @@
 
             // Actualizar datos de simulación final
             if (finalSection) {
-                // Actualizar los datasets para que updateColadaTotals calcule bien
-                finalSection.dataset.cantidadInicial = linea.cantidad_recepcionada || (linea.cantidad - linea.cantidad_pendiente);
+                finalSection.dataset.cantidadInicial = linea.cantidad_recepcionada || (linea.cantidad - linea
+                    .cantidad_pendiente);
                 finalSection.dataset.cantidadTotal = linea.cantidad;
 
-                // Forzar actualización de totales
                 updateColadaTotals(resultadoIdx);
             }
 
@@ -1426,7 +1503,7 @@
             // Quick fix: I'll read the 'original' values from attributes I will add to the HTML in a moment.
             // OR I can just reload the page... No, that's bad.
 
-            if (finalSection.dataset.originalCantidadInicial !== undefined) {
+            if (finalSection && finalSection.dataset.originalCantidadInicial !== undefined) {
                 finalSection.dataset.cantidadInicial = finalSection.dataset.originalCantidadInicial;
                 finalSection.dataset.cantidadTotal = finalSection.dataset.originalCantidadTotal;
                 updateColadaTotals(idx);
@@ -1500,6 +1577,53 @@
                 // Por ahora, solo ocultar y mostrar simulación
                 document.getElementById(`confirmationPrompt-${idx}`).classList.add('hidden');
                 document.getElementById(`simulationSection-${idx}`).classList.remove('hidden');
+            });
+        });
+    </script>
+    <div id="previewModal"
+        class="fixed inset-0 z-50 items-center justify-center bg-black/70 p-4 opacity-0 pointer-events-none transition-opacity duration-200">
+        <div class="preview-modal-content relative w-full max-w-3xl bg-white rounded-2xl shadow-2xl overflow-hidden">
+            <button id="previewModalClose"
+                class="absolute top-3 right-3 z-20 text-white bg-black/40 hover:bg-black/60 rounded-full p-1">
+                <span class="sr-only">Cerrar vista previa</span>
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24"
+                    stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+            </button>
+            <img id="previewModalImg" class="w-full h-auto object-contain" alt="Previsualización ampliada">
+        </div>
+    </div>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const modal = document.getElementById('previewModal');
+            const modalImg = document.getElementById('previewModalImg');
+            const closeBtn = document.getElementById('previewModalClose');
+            const openPreview = (src) => {
+                if (!src) return;
+                modalImg.src = src;
+                modal.classList.add('show');
+                modal.style.opacity = '1';
+                modal.style.pointerEvents = 'auto';
+                document.body.classList.add('overflow-hidden');
+            };
+            const closePreview = () => {
+                modal.style.opacity = '0';
+                modal.style.pointerEvents = 'none';
+                modalImg.src = '';
+                modal.classList.remove('show');
+                document.body.classList.remove('overflow-hidden');
+            };
+            closeBtn?.addEventListener('click', closePreview);
+            modal?.addEventListener('click', (event) => {
+                if (event.target === modal) {
+                    closePreview();
+                }
+            });
+            document.querySelectorAll('.preview-zoom').forEach((el) => {
+                el.addEventListener('click', () => {
+                    openPreview(el.dataset.preview);
+                });
             });
         });
     </script>
