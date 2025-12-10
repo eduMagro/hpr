@@ -6,13 +6,25 @@
 <div class="w-full bg-white self-start" x-data="gestionPaquetes()">
 
     {{-- HEADER --}}
-    <div>
+    <div class="flex items-center justify-between">
         <h3 class="font-bold text-xl text-gray-800">📦 Paquetes de Planilla</h3>
         <button @click="cargarPaquetes()" class="text-blue-600 hover:text-blue-800 transition" title="Recargar paquetes">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                     d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
             </svg>
+        </button>
+    </div>
+
+    {{-- INDICADOR DE FILTRO ACTIVO --}}
+    <div x-show="paqueteFiltrado" x-transition
+        class="mt-2 p-2 bg-blue-100 border border-blue-300 rounded-lg flex items-center justify-between">
+        <span class="text-sm text-blue-800">
+            🔍 Filtrando: <strong x-text="paqueteFiltrado?.codigo"></strong>
+        </span>
+        <button @click="limpiarFiltroPaquete()"
+            class="text-blue-600 hover:text-blue-800 font-bold text-lg" title="Quitar filtro">
+            ✕
         </button>
     </div>
 
@@ -73,7 +85,10 @@
                 {{-- Info del paquete --}}
                 <div class="flex items-center justify-between mb-3">
                     <div>
-                        <h4 class="font-bold text-lg text-gray-900" x-text="paquete.codigo"></h4>
+                        <h4 class="font-bold text-lg text-gray-900 cursor-pointer hover:text-blue-600 transition"
+                            x-text="paquete.codigo"
+                            @click="filtrarEtiquetasPorPaquete(paquete)"
+                            title="Click para filtrar etiquetas de este paquete"></h4>
                         <p class="text-sm text-gray-600">
                             <span class="font-semibold" x-text="paquete.peso"></span> kg ·
                             <span x-text="paquete.cantidad_etiquetas"></span> etiquetas
@@ -191,6 +206,7 @@
         <div class="bg-white p-3 sm:p-4 rounded-lg w-full sm:w-[500px] md:w-[600px] max-w-[90vw] max-h-[70vh] flex flex-col shadow-lg relative"
             style="z-index: 100000 !important;">
             <button id="cerrar-modal-elementos"
+                onclick="cerrarModalElementosPaquete()"
                 class="absolute top-2 right-2 text-red-600 hover:bg-red-100 w-7 h-7 flex items-center justify-center rounded text-lg"
                 style="z-index: 100001 !important;">
                 ✖
@@ -240,6 +256,7 @@
             paquetes: [],
             paqueteExpandido: null,
             cargando: false,
+            paqueteFiltrado: null,
 
             init() {
                 // Auto-seleccionar la primera planilla si existe
@@ -637,39 +654,99 @@
                         });
                     });
                 });
+            },
+
+            /**
+             * Filtra las etiquetas de la columna central para mostrar solo las del paquete seleccionado
+             */
+            filtrarEtiquetasPorPaquete(paquete) {
+                if (!paquete || !paquete.etiquetas || paquete.etiquetas.length === 0) {
+                    Swal.fire('Sin etiquetas', 'Este paquete no tiene etiquetas asociadas', 'info');
+                    return;
+                }
+
+                this.paqueteFiltrado = paquete;
+
+                // Obtener los códigos de las etiquetas del paquete
+                const etiquetasDelPaquete = paquete.etiquetas.map(e => e.codigo || e.etiqueta_sub_id);
+                console.log('🔍 Filtrando etiquetas del paquete:', paquete.codigo, etiquetasDelPaquete);
+
+                // Obtener todas las etiquetas de la columna central
+                const todasLasEtiquetas = document.querySelectorAll('.etiqueta-wrapper');
+
+                todasLasEtiquetas.forEach(wrapper => {
+                    const etiquetaSubId = wrapper.dataset.etiquetaSubId;
+                    const paqueteId = wrapper.dataset.paqueteId;
+
+                    // Mostrar solo si pertenece a este paquete
+                    const perteneceAlPaquete = etiquetasDelPaquete.some(codigo =>
+                        codigo === etiquetaSubId ||
+                        String(paqueteId) === String(paquete.id)
+                    );
+
+                    if (perteneceAlPaquete) {
+                        wrapper.style.display = '';
+                        wrapper.classList.add('ring-2', 'ring-blue-500', 'ring-offset-2');
+                    } else {
+                        wrapper.style.display = 'none';
+                    }
+                });
+
+                // Notificar al usuario
+                Swal.fire({
+                    icon: 'info',
+                    title: 'Filtro aplicado',
+                    text: `Mostrando ${etiquetasDelPaquete.length} etiqueta(s) del paquete ${paquete.codigo}`,
+                    timer: 2000,
+                    showConfirmButton: false
+                });
+            },
+
+            /**
+             * Limpia el filtro y muestra todas las etiquetas
+             */
+            limpiarFiltroPaquete() {
+                this.paqueteFiltrado = null;
+
+                // Mostrar todas las etiquetas
+                const todasLasEtiquetas = document.querySelectorAll('.etiqueta-wrapper');
+                todasLasEtiquetas.forEach(wrapper => {
+                    wrapper.style.display = '';
+                    wrapper.classList.remove('ring-2', 'ring-blue-500', 'ring-offset-2');
+                });
+
+                console.log('🔄 Filtro de paquete limpiado');
             }
         }
     }
 
-    // Cerrar modal de elementos
-    document.addEventListener('DOMContentLoaded', () => {
+    // Función global para cerrar el modal de elementos del paquete
+    window.cerrarModalElementosPaquete = function() {
         const modal = document.getElementById('modal-elementos-paquete');
-        const btnCerrar = document.getElementById('cerrar-modal-elementos');
-
-        if (btnCerrar && modal) {
-            btnCerrar.addEventListener('click', () => {
-                modal.classList.add('hidden');
-            });
-
-            // Cerrar al hacer clic fuera del contenido
-            modal.addEventListener('click', (e) => {
-                if (e.target === modal) {
-                    modal.classList.add('hidden');
-                }
-            });
-
-            // Cerrar con tecla ESC
-            document.addEventListener('keydown', (e) => {
-                if (e.key === 'Escape' && !modal.classList.contains('hidden')) {
-                    modal.classList.add('hidden');
-                }
-            });
+        if (modal) {
+            modal.classList.add('hidden');
         }
+    };
 
-        // Escuchar eventos de actualización y eliminación de paquetes para actualizar colores de etiquetas
-        window.addEventListener('paquete:actualizado', actualizarColoresEtiquetas);
-        window.addEventListener('paquete:eliminado', actualizarColoresEtiquetas);
+    // Cerrar al hacer clic fuera del contenido (usando delegación de eventos)
+    document.addEventListener('click', (e) => {
+        const modal = document.getElementById('modal-elementos-paquete');
+        if (modal && e.target === modal) {
+            modal.classList.add('hidden');
+        }
     });
+
+    // Cerrar con tecla ESC (usando delegación de eventos)
+    document.addEventListener('keydown', (e) => {
+        const modal = document.getElementById('modal-elementos-paquete');
+        if (e.key === 'Escape' && modal && !modal.classList.contains('hidden')) {
+            modal.classList.add('hidden');
+        }
+    });
+
+    // Escuchar eventos de actualización y eliminación de paquetes para actualizar colores de etiquetas
+    window.addEventListener('paquete:actualizado', actualizarColoresEtiquetas);
+    window.addEventListener('paquete:eliminado', actualizarColoresEtiquetas);
 
     /**
      * Actualiza los colores/estados visuales de las etiquetas en el DOM

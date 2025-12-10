@@ -93,16 +93,6 @@
                             $productoExistente = $productosDeEsteBase->firstWhere('estado', 'fabricando')
                                 ?? $productosDeEsteBase->first(fn($p) => $p->estado !== 'consumido');
 
-                            // DEBUG
-                            \Log::info('🔍 DEBUG foreach productoBase', [
-                                'producto_base_id' => $productoBase->id,
-                                'diametro' => $productoBase->diametro,
-                                'productos_encontrados' => $productosDeEsteBase->count(),
-                                'producto_existente_id' => $productoExistente?->id,
-                                'producto_existente_estado' => $productoExistente?->estado,
-                                'skip' => !$productoExistente && $productosDeEsteBase->isNotEmpty(),
-                            ]);
-
                             // Si solo hay productos consumidos, no mostrar este producto base
                             if (!$productoExistente && $productosDeEsteBase->isNotEmpty()) continue;
 

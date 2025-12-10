@@ -7,7 +7,6 @@ use App\Models\Elemento;
 use App\Models\Maquina;
 use App\Models\OrdenPlanilla;
 use Illuminate\Support\Facades\Schema;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
 class SubEtiquetaService
@@ -36,11 +35,6 @@ class SubEtiquetaService
             // Actualizar el etiqueta_id del elemento para futuras operaciones
             $elemento->etiqueta_id = $padre->id;
             $elemento->save();
-            Log::info('🔧 etiqueta_id restaurado desde etiqueta_sub_id', [
-                'elemento_id' => $elemento->id,
-                'etiqueta_id' => $padre->id,
-                'codigo_padre' => $codigoPadre,
-            ]);
         }
 
         $codigoPadre   = (string) $padre->codigo;
@@ -49,14 +43,6 @@ class SubEtiquetaService
         $maq = Maquina::findOrFail($nuevaMaquinaReal);
         $esMSR20 = strtoupper($maq->codigo ?? '') === 'MSR20';
 
-        Log::info('🔁 Reubicar (producción)', [
-            'elemento'      => $elemento->id,
-            'sub_original'  => $subIdOriginal,
-            'maquina_real'  => $nuevaMaquinaReal,
-            'maquina_codigo' => $maq->codigo,
-            'es_MSR20'      => $esMSR20,
-        ]);
-
         // MSR20: agrupa con hermanos, resto: un elemento por sub
         $subDestino = $esMSR20
             ? $this->modoEncarretado($elemento, $padre, $prefijoPadre, $nuevaMaquinaReal, $subIdOriginal)
@@ -64,14 +50,12 @@ class SubEtiquetaService
 
         // Nada cambió
         if ($subDestino === $subIdOriginal) {
-            Log::info('✅ Sin cambios de sub', ['sub' => $subDestino]);
             return [$subDestino, $subIdOriginal];
         }
 
         // Recalcular pesos (sub-origen, sub-destino y padre)
         $this->recalcularPesos($codigoPadre, array_filter([$subIdOriginal, $subDestino]));
 
-        Log::info('🏁 Reubicación OK', ['de' => $subIdOriginal, 'a' => $subDestino]);
         return [$subDestino, $subIdOriginal];
     }
 
@@ -97,11 +81,6 @@ class SubEtiquetaService
             // Actualizar el etiqueta_id del elemento para futuras operaciones
             $elemento->etiqueta_id = $padre->id;
             $elemento->save();
-            Log::info('🔧 etiqueta_id restaurado desde etiqueta_sub_id', [
-                'elemento_id' => $elemento->id,
-                'etiqueta_id' => $padre->id,
-                'codigo_padre' => $codigoPadreSub,
-            ]);
         }
 
         $codigoPadre   = (string) $padre->codigo;
@@ -111,27 +90,18 @@ class SubEtiquetaService
         $maq  = Maquina::findOrFail($nuevaMaquinaReal);
         $tipo = strtolower((string) ($maq->tipo_material ?? ''));
 
-        Log::info('🔁 Reubicar', [
-            'elemento'      => $elemento->id,
-            'sub_original'  => $subIdOriginal,
-            'maquina_real'  => $nuevaMaquinaReal,
-            'tipo'          => $tipo ?: '(vacío)',
-        ]);
-
         $subDestino = $tipo === 'barra'
             ? $this->modoBarra($elemento, $padre, $prefijoPadre, $subIdOriginal)
             : $this->modoEncarretado($elemento, $padre, $prefijoPadre, $nuevaMaquinaReal, $subIdOriginal);
 
         // Nada cambió
         if ($subDestino === $subIdOriginal) {
-            Log::info('✅ Sin cambios de sub', ['sub' => $subDestino]);
             return [$subDestino, $subIdOriginal];
         }
 
         // Recalcular pesos (sub-origen, sub-destino y padre)
         $this->recalcularPesos($codigoPadre, array_filter([$subIdOriginal, $subDestino]));
 
-        Log::info('🏁 Reubicación OK', ['de' => $subIdOriginal, 'a' => $subDestino]);
         return [$subDestino, $subIdOriginal];
     }
 
@@ -143,7 +113,6 @@ class SubEtiquetaService
         if ($subIdOriginal && str_starts_with($subIdOriginal, $prefijoPadre)) {
             $cuantos = Elemento::where('etiqueta_sub_id', $subIdOriginal)->count();
             if ($cuantos === 1) {
-                Log::info('🟢 Barra: conservo sub única', ['sub' => $subIdOriginal]);
                 return $subIdOriginal;
             }
         }
@@ -162,7 +131,6 @@ class SubEtiquetaService
             $this->eliminarSubSiVacia($subIdOriginal);
         }
 
-        Log::info('🆕 Barra: sub nueva asignada', ['sub' => $subNuevo]);
         return $subNuevo;
     }
 
@@ -193,13 +161,6 @@ class SubEtiquetaService
             ->get()
             ->filter(fn($e) => (int) $this->obtenerMaquinaReal($e) === $nuevaMaquinaReal);
 
-        Log::info('🧾 [Encarretado] Hermanos en máquina destino', [
-            'total'   => $hermanos->count(),
-            'prefijo' => $prefijoPadre,
-            'maq'     => $nuevaMaquinaReal,
-            'max_por_sub' => $maxElementosPorSub,
-        ]);
-
         if ($hermanos->isEmpty()) {
             // 2) No hay hermanos → crear sub nueva (mismo código) y asignar
             $subNuevo = Etiqueta::generarCodigoSubEtiqueta($codigoPadre);
@@ -214,7 +175,6 @@ class SubEtiquetaService
                 $this->eliminarSubSiVacia($subIdOriginal);
             }
 
-            Log::info('🆕 [Encarretado] Creo y asigno sub nueva (sin hermanos)', ['sub' => $subNuevo, 'etiqueta_id' => $etiquetaSubId]);
             return $subNuevo;
         }
 
@@ -237,21 +197,10 @@ class SubEtiquetaService
             $subDestino = (string) $subConEspacio;
             // Obtener el etiqueta_id de la subetiqueta existente
             $etiquetaIdDestino = Etiqueta::where('etiqueta_sub_id', $subDestino)->value('id');
-
-            Log::info('✅ [Encarretado] Sub con espacio encontrada', [
-                'sub' => $subDestino,
-                'elementos_actuales' => $subsCounts[$subDestino],
-                'max' => $maxElementosPorSub,
-            ]);
         } else {
             // Todas las subs están llenas, crear una nueva
             $subDestino = Etiqueta::generarCodigoSubEtiqueta($codigoPadre);
             $etiquetaIdDestino = $this->asegurarFilaSub($subDestino, $padre);
-
-            Log::info('🆕 [Encarretado] Todas las subs llenas, creo nueva', [
-                'sub' => $subDestino,
-                'subs_llenas' => $subsCounts->all(),
-            ]);
         }
 
         // 5) Asignar el elemento a la sub destino
@@ -261,11 +210,6 @@ class SubEtiquetaService
                 $elemento->etiqueta_id = $etiquetaIdDestino;
             }
             $elemento->save();
-            Log::info('📌 [Encarretado] Elemento asignado a sub', [
-                'elemento' => $elemento->id,
-                'sub'      => $subDestino,
-                'etiqueta_id' => $etiquetaIdDestino,
-            ]);
         }
 
         // 6) Si su sub original ya no tiene elementos, limpiarla
@@ -290,12 +234,10 @@ class SubEtiquetaService
                 $peso = (float) Elemento::where('etiqueta_sub_id', $subId)->sum('peso');
                 Etiqueta::where('etiqueta_sub_id', $subId)->update(['peso' => $peso]);
             }
-            Log::info('ℹ️ Sub NO eliminada: aún tiene elementos', ['sub' => $subId]);
             return;
         }
 
-        $borradas = Etiqueta::where('etiqueta_sub_id', $subId)->delete();
-        Log::info('🧹 Sub eliminada (vacía)', ['sub' => $subId, 'filas' => $borradas]);
+        Etiqueta::where('etiqueta_sub_id', $subId)->delete();
     }
 
     /** Crea fila de etiquetas para la sub (copia datos del padre) si no existe. Devuelve el ID. */
@@ -308,9 +250,6 @@ class SubEtiquetaService
             // Si está eliminada (soft delete), restaurarla
             if ($existente->trashed()) {
                 $existente->restore();
-                Log::info('🧱 Fila sub restaurada', ['sub' => $subId, 'id' => $existente->id]);
-            } else {
-                Log::info('🧱 Fila sub ya existe', ['sub' => $subId, 'id' => $existente->id]);
             }
             return (int) $existente->id;
         }
@@ -352,7 +291,6 @@ class SubEtiquetaService
 
         try {
             $etiquetaSub = Etiqueta::create($data);
-            Log::info('🧱 Fila sub creada', ['sub' => $subId, 'id' => $etiquetaSub->id]);
             return (int) $etiquetaSub->id;
         } catch (\Illuminate\Database\QueryException $e) {
             // Si falla por duplicado, buscar la existente (incluyendo soft deleted)
@@ -362,7 +300,6 @@ class SubEtiquetaService
                     if ($existente->trashed()) {
                         $existente->restore();
                     }
-                    Log::info('🧱 Fila sub recuperada tras conflicto', ['sub' => $subId, 'id' => $existente->id]);
                     return (int) $existente->id;
                 }
             }
@@ -379,12 +316,10 @@ class SubEtiquetaService
         foreach ($subIds as $sid) {
             $peso = (float) Elemento::where('etiqueta_sub_id', $sid)->sum('peso');
             Etiqueta::where('etiqueta_sub_id', $sid)->update(['peso' => $peso]);
-            Log::info('🧮 Peso sub recalculado', ['sub' => $sid, 'peso' => $peso]);
         }
 
         $pesoPadre = (float) Elemento::where('etiqueta_sub_id', 'like', $codigoPadre . '.%')->sum('peso');
         Etiqueta::where('codigo', $codigoPadre)->whereNull('etiqueta_sub_id')->update(['peso' => $pesoPadre]);
-        Log::info('🧮 Peso padre recalculado', ['codigo' => $codigoPadre, 'peso' => $pesoPadre]);
     }
 
     /** Normaliza cadenas. */
@@ -431,12 +366,6 @@ class SubEtiquetaService
                     ->whereIn('posicion', $posiciones)
                     ->pluck('planilla_id')
                     ->toArray();
-
-                Log::info('🗜️ [Comprimir] Filtrando por posiciones', [
-                    'maquina_id' => $maquinaId,
-                    'posiciones' => $posiciones,
-                    'planilla_ids' => $planillaIds,
-                ]);
             }
 
             // 2) Obtener elementos de esta máquina, filtrados por planilla si hay posiciones
@@ -471,12 +400,6 @@ class SubEtiquetaService
                 return Str::before($elemento->etiqueta_sub_id, '.');
             });
 
-            Log::info('🗜️ [Comprimir] Grupos por código padre', [
-                'maquina_id' => $maquinaId,
-                'total_elementos' => $elementos->count(),
-                'grupos' => $gruposPorCodigoPadre->map->count()->toArray(),
-            ]);
-
             foreach ($gruposPorCodigoPadre as $codigoPadre => $elementosGrupo) {
                 // Si solo hay 1 elemento en este grupo, no hay nada que comprimir
                 if ($elementosGrupo->count() <= 1) {
@@ -496,7 +419,6 @@ class SubEtiquetaService
                 }
 
                 if (!$padre) {
-                    Log::warning('🗜️ [Comprimir] No se encontró etiqueta padre', ['codigo' => $codigoPadre]);
                     continue;
                 }
 
@@ -510,12 +432,6 @@ class SubEtiquetaService
                 $normales = $elementosGrupo->reject(function ($e) {
                     return (int) $e->dobles_barra >= 4 && (int) $e->diametro <= 16;
                 });
-
-                Log::info('🗜️ [Comprimir] Separación estribos/normales', [
-                    'codigo_padre' => $codigoPadre,
-                    'estribos' => $estribos->count(),
-                    'normales' => $normales->count(),
-                ]);
 
                 // Obtener el siguiente número disponible para este código padre (incluyendo soft deleted)
                 $ultimaSub = Etiqueta::withTrashed()
@@ -615,11 +531,6 @@ class SubEtiquetaService
                             'estado' => 'fabricando',
                             'fecha_finalizacion' => null,
                         ]);
-
-                        Log::info('🔄 [Comprimir] Estados mezclados, sub pasa a fabricando', [
-                            'sub' => $subId,
-                            'estados_originales' => $estadosUnicos,
-                        ]);
                     }
                 }
 
@@ -659,8 +570,6 @@ class SubEtiquetaService
             $elementosDespues = $queryDespues->get();
             $stats['subetiquetas_despues'] = $elementosDespues->pluck('etiqueta_sub_id')->unique()->count();
 
-            Log::info('✅ [Comprimir] Completado', $stats);
-
             return [
                 'success' => true,
                 'message' => "Compresión completada. {$stats['movimientos']} elementos reagrupados. " .
@@ -668,7 +577,6 @@ class SubEtiquetaService
                 'stats' => $stats,
             ];
         } catch (\Exception $e) {
-            Log::error('❌ [Comprimir] Error', ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
             return [
                 'success' => false,
                 'message' => 'Error al comprimir: ' . $e->getMessage(),
@@ -702,12 +610,6 @@ class SubEtiquetaService
                     ->whereIn('posicion', $posiciones)
                     ->pluck('planilla_id')
                     ->toArray();
-
-                Log::info('📤 [Descomprimir] Filtrando por posiciones', [
-                    'maquina_id' => $maquinaId,
-                    'posiciones' => $posiciones,
-                    'planilla_ids' => $planillaIds,
-                ]);
             }
 
             // 2) Obtener elementos de esta máquina, filtrados por planilla si hay posiciones
@@ -741,12 +643,6 @@ class SubEtiquetaService
                 return Str::before($elemento->etiqueta_sub_id, '.');
             });
 
-            Log::info('📤 [Descomprimir] Grupos por código padre', [
-                'maquina_id' => $maquinaId,
-                'total_elementos' => $elementos->count(),
-                'grupos' => $gruposPorCodigoPadre->map->count()->toArray(),
-            ]);
-
             foreach ($gruposPorCodigoPadre as $codigoPadre => $elementosGrupo) {
                 // Obtener etiqueta padre
                 $padre = Etiqueta::where('codigo', $codigoPadre)
@@ -759,7 +655,6 @@ class SubEtiquetaService
                 }
 
                 if (!$padre) {
-                    Log::warning('📤 [Descomprimir] No se encontró etiqueta padre', ['codigo' => $codigoPadre]);
                     continue;
                 }
 
@@ -851,8 +746,6 @@ class SubEtiquetaService
             $elementosDespues = $queryDespues->get();
             $stats['subetiquetas_despues'] = $elementosDespues->pluck('etiqueta_sub_id')->unique()->count();
 
-            Log::info('✅ [Descomprimir] Completado', $stats);
-
             return [
                 'success' => true,
                 'message' => "Descompresión completada. {$stats['movimientos']} elementos separados. " .
@@ -860,7 +753,6 @@ class SubEtiquetaService
                 'stats' => $stats,
             ];
         } catch (\Exception $e) {
-            Log::error('❌ [Descomprimir] Error', ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
             return [
                 'success' => false,
                 'message' => 'Error al descomprimir: ' . $e->getMessage(),

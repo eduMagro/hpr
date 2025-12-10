@@ -128,7 +128,7 @@
 
                         <div class="flex justify-end pt-2 space-x-2">
                             <p class="text-xs text-gray-500 mt-2">
-                                ⚠️ Esta operación genera códigos e imprime automáticamente las etiquetas QR.
+                                Esta operacion genera codigos e imprime automaticamente las etiquetas QR.
                             </p>
 
                             <button type="button" onclick="cerrarModalImprimir()"
@@ -146,8 +146,107 @@
                 </div>
             </div>
 
+            <!-- Modal Instalar Servicio de Impresion -->
+            <div id="modalInstalarServicio"
+                class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden items-center justify-center">
+                <div class="bg-white rounded-lg shadow-lg p-6 w-full max-w-lg relative">
+                    <div class="flex items-center mb-4">
+                        <div class="bg-yellow-100 rounded-full p-2 mr-3">
+                            <svg class="w-6 h-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                            </svg>
+                        </div>
+                        <h2 class="text-xl font-semibold text-gray-800">Servicio de Impresion No Detectado</h2>
+                    </div>
+
+                    <div class="space-y-4">
+                        <p class="text-gray-600">
+                            El servicio de impresion P-Touch no esta corriendo en este equipo.
+                            Sigue estos pasos para configurarlo:
+                        </p>
+
+                        <div class="bg-gray-50 rounded-lg p-4 space-y-3">
+                            <div class="flex items-start">
+                                <span class="bg-blue-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm font-bold mr-3 flex-shrink-0">1</span>
+                                <div>
+                                    <p class="font-medium text-gray-800">Descarga el instalador</p>
+                                    <p class="text-sm text-gray-500">Haz clic en el boton de abajo para descargar</p>
+                                </div>
+                            </div>
+                            <div class="flex items-start">
+                                <span class="bg-blue-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm font-bold mr-3 flex-shrink-0">2</span>
+                                <div>
+                                    <p class="font-medium text-gray-800">Ejecuta el archivo descargado</p>
+                                    <p class="text-sm text-gray-500">Doble clic en <code class="bg-gray-200 px-1 rounded">setup_and_start.bat</code></p>
+                                </div>
+                            </div>
+                            <div class="flex items-start">
+                                <span class="bg-blue-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm font-bold mr-3 flex-shrink-0">3</span>
+                                <div>
+                                    <p class="font-medium text-gray-800">Manten la ventana abierta</p>
+                                    <p class="text-sm text-gray-500">El servicio debe estar corriendo para imprimir</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                            <p class="text-sm text-blue-800">
+                                <strong>Requisito:</strong> Necesitas tener Python instalado.
+                                Si no lo tienes, el instalador te guiara.
+                            </p>
+                        </div>
+
+                        <div class="flex justify-between pt-2">
+                            <button type="button" onclick="cerrarModalInstalar()"
+                                class="px-4 py-2 bg-gray-300 text-gray-800 rounded hover:bg-gray-400">
+                                Cancelar
+                            </button>
+                            <div class="space-x-2">
+                                <button type="button" onclick="verificarServicioYContinuar()"
+                                    class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">
+                                    Ya lo tengo corriendo
+                                </button>
+                                <a href="{{ route('print-service.download') }}"
+                                    class="inline-block px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700">
+                                    Descargar Instalador
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <script>
-                function abrirModalImprimir() {
+                const PRINT_SERVICE_URL = 'http://localhost:8765';
+
+                // Verificar si el servicio de impresion esta corriendo
+                async function verificarServicioImpresion() {
+                    try {
+                        const controller = new AbortController();
+                        const timeoutId = setTimeout(() => controller.abort(), 2000);
+
+                        const response = await fetch(PRINT_SERVICE_URL, {
+                            method: 'GET',
+                            signal: controller.signal
+                        });
+
+                        clearTimeout(timeoutId);
+                        return response.ok;
+                    } catch (error) {
+                        console.log('Servicio de impresion no disponible:', error.message);
+                        return false;
+                    }
+                }
+
+                // Abrir modal de impresion (verifica servicio primero)
+                async function abrirModalImprimir() {
+                    const servicioDisponible = await verificarServicioImpresion();
+
+                    if (!servicioDisponible) {
+                        abrirModalInstalar();
+                        return;
+                    }
+
                     const modal = document.getElementById('modalImprimirQR');
                     modal.classList.remove('hidden');
                     modal.classList.add('flex');
@@ -158,6 +257,34 @@
                     const modal = document.getElementById('modalImprimirQR');
                     modal.classList.remove('flex');
                     modal.classList.add('hidden');
+                }
+
+                // Funciones para modal de instalacion
+                function abrirModalInstalar() {
+                    const modal = document.getElementById('modalInstalarServicio');
+                    modal.classList.remove('hidden');
+                    modal.classList.add('flex');
+                }
+
+                function cerrarModalInstalar() {
+                    const modal = document.getElementById('modalInstalarServicio');
+                    modal.classList.remove('flex');
+                    modal.classList.add('hidden');
+                }
+
+                async function verificarServicioYContinuar() {
+                    const servicioDisponible = await verificarServicioImpresion();
+
+                    if (servicioDisponible) {
+                        cerrarModalInstalar();
+                        // Abrir el modal de impresion
+                        const modal = document.getElementById('modalImprimirQR');
+                        modal.classList.remove('hidden');
+                        modal.classList.add('flex');
+                        document.getElementById('estadoImpresion').classList.add('hidden');
+                    } else {
+                        alert('El servicio aun no esta disponible. Asegurate de que este corriendo y vuelve a intentarlo.');
+                    }
                 }
 
                 function mostrarEstado(mensaje, tipo = 'info') {
@@ -186,17 +313,16 @@
                     const btnImprimir = document.getElementById('btnImprimir');
 
                     if (!cantidad || cantidad < 1) {
-                        alert('Por favor ingresa una cantidad válida');
+                        alert('Por favor ingresa una cantidad valida');
                         return;
                     }
 
                     try {
-                        // Deshabilitar botón
                         btnImprimir.disabled = true;
                         btnImprimir.textContent = 'Procesando...';
-                        mostrarEstado('Generando códigos...', 'info');
+                        mostrarEstado('Generando codigos...', 'info');
 
-                        // 1. Generar códigos en el servidor
+                        // 1. Generar codigos en el servidor
                         const response = await fetch('{{ route('productos.generar.datos') }}', {
                             method: 'POST',
                             headers: {
@@ -207,72 +333,87 @@
                         });
 
                         if (!response.ok) {
-                            throw new Error('Error generando códigos en el servidor');
+                            throw new Error(`Error generando codigos en el servidor (status: ${response.status})`);
                         }
 
                         const data = await response.json();
 
                         if (!data.success) {
-                            throw new Error(data.error || 'Error desconocido generando códigos');
+                            throw new Error(data.error || 'Error desconocido generando codigos');
                         }
 
-                        mostrarEstado(`✓ ${data.cantidad} códigos generados. Enviando a impresora...`, 'info');
+                        mostrarEstado(`${data.cantidad} codigos generados. Enviando a impresora...`, 'info');
 
-                        // 2. Enviar a servicio local de impresión
-                        const printResponse = await fetch('http://localhost:8765/print', {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                            },
-                            body: JSON.stringify({ codigos: data.codigos })
-                        });
+                        // 2. Enviar a servicio local de impresion
+                        let printResponse;
+                        try {
+                            printResponse = await fetch(PRINT_SERVICE_URL + '/print', {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                },
+                                body: JSON.stringify({ codigos: data.codigos })
+                            });
+                        } catch (fetchError) {
+                            // Si falla la conexion, mostrar modal de instalacion
+                            cerrarModalImprimir();
+                            abrirModalInstalar();
+                            return;
+                        }
 
                         if (!printResponse.ok) {
-                            throw new Error('Error comunicándose con el servicio de impresión');
+                            const errorText = await printResponse.text();
+                            throw new Error(`Error en servicio de impresion (status: ${printResponse.status}): ${errorText}`);
                         }
 
                         const printData = await printResponse.json();
 
                         if (!printData.success) {
-                            throw new Error(printData.error || 'Error desconocido en la impresión');
+                            throw new Error(printData.error || 'Error desconocido en la impresion');
                         }
 
-                        // 3. Éxito
-                        mostrarEstado(`✓ ¡Completado! ${printData.cantidad} etiquetas enviadas a imprimir.`, 'success');
+                        // 3. Exito
+                        mostrarEstado(`Completado! ${printData.cantidad} etiquetas enviadas a imprimir.`, 'success');
 
                         setTimeout(() => {
                             cerrarModalImprimir();
-                            location.reload(); // Recargar para actualizar la tabla
+                            location.reload();
                         }, 2000);
 
                     } catch (error) {
-                        console.error('Error:', error);
+                        console.error('Error en impresion:', error);
                         let mensajeError = error.message;
 
-                        if (error.message.includes('servicio de impresión')) {
-                            mensajeError = '❌ No se pudo conectar con el servicio de impresión. Asegúrate de que esté ejecutándose (start_service.bat)';
+                        if (error.message.includes('Failed to fetch')) {
+                            cerrarModalImprimir();
+                            abrirModalInstalar();
+                            return;
                         }
 
                         mostrarEstado(mensajeError, 'error');
                     } finally {
-                        // Rehabilitar botón
                         btnImprimir.disabled = false;
                         btnImprimir.textContent = 'Generar e Imprimir';
                     }
                 }
 
-                // Cerrar modal con ESC
+                // Cerrar modales con ESC
                 document.addEventListener('keydown', function(event) {
                     if (event.key === 'Escape') {
                         cerrarModalImprimir();
+                        cerrarModalInstalar();
                     }
                 });
 
                 // Cerrar si se hace clic fuera
                 window.addEventListener('click', function(event) {
-                    const modal = document.getElementById('modalImprimirQR');
-                    if (event.target === modal) {
+                    const modalImprimir = document.getElementById('modalImprimirQR');
+                    const modalInstalar = document.getElementById('modalInstalarServicio');
+                    if (event.target === modalImprimir) {
                         cerrarModalImprimir();
+                    }
+                    if (event.target === modalInstalar) {
+                        cerrarModalInstalar();
                     }
                 });
             </script>
