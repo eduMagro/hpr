@@ -939,20 +939,37 @@
                     if (result.isConfirmed) {
                         Swal.fire({
                             title: 'Comprimiendo etiquetas...',
+                            text: 'Esto puede tardar unos segundos',
                             allowOutsideClick: false,
                             didOpen: () => {
                                 Swal.showLoading();
                             }
                         });
 
+                        const controller = new AbortController();
+                        const timeoutId = setTimeout(() => controller.abort(), 120000); // 2 minutos timeout
+
+                        // Obtener posiciones seleccionadas
+                        const pos1 = document.getElementById('posicion_1')?.value;
+                        const pos2 = document.getElementById('posicion_2')?.value;
+                        const posiciones = [pos1, pos2].filter(p => p && p !== '0').map(p => parseInt(p));
+
                         fetch('{{ route('maquinas.comprimir-etiquetas', $maquina->id) }}', {
                                 method: 'POST',
                                 headers: {
                                     'Content-Type': 'application/json',
                                     'X-CSRF-TOKEN': '{{ csrf_token() }}'
-                                }
+                                },
+                                body: JSON.stringify({ posiciones: posiciones }),
+                                signal: controller.signal
                             })
-                            .then(response => response.json())
+                            .then(response => {
+                                clearTimeout(timeoutId);
+                                if (!response.ok) {
+                                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                                }
+                                return response.json();
+                            })
                             .then(data => {
                                 if (data.success) {
                                     Swal.fire({
@@ -981,11 +998,18 @@
                                 }
                             })
                             .catch(error => {
+                                clearTimeout(timeoutId);
                                 console.error('Error:', error);
+                                let mensaje = 'No se pudo conectar con el servidor';
+                                if (error.name === 'AbortError') {
+                                    mensaje = 'La operación tardó demasiado. Intenta de nuevo o recarga la página.';
+                                } else if (error.message) {
+                                    mensaje = error.message;
+                                }
                                 Swal.fire({
                                     icon: 'error',
-                                    title: 'Error de conexión',
-                                    text: 'No se pudo conectar con el servidor',
+                                    title: 'Error',
+                                    text: mensaje,
                                     confirmButtonColor: '#3085d6',
                                 });
                             });
@@ -1011,20 +1035,37 @@
                     if (result.isConfirmed) {
                         Swal.fire({
                             title: 'Descomprimiendo etiquetas...',
+                            text: 'Esto puede tardar unos segundos',
                             allowOutsideClick: false,
                             didOpen: () => {
                                 Swal.showLoading();
                             }
                         });
 
+                        const controller = new AbortController();
+                        const timeoutId = setTimeout(() => controller.abort(), 120000); // 2 minutos timeout
+
+                        // Obtener posiciones seleccionadas
+                        const pos1 = document.getElementById('posicion_1')?.value;
+                        const pos2 = document.getElementById('posicion_2')?.value;
+                        const posiciones = [pos1, pos2].filter(p => p && p !== '0').map(p => parseInt(p));
+
                         fetch('{{ route('maquinas.descomprimir-etiquetas', $maquina->id) }}', {
                                 method: 'POST',
                                 headers: {
                                     'Content-Type': 'application/json',
                                     'X-CSRF-TOKEN': '{{ csrf_token() }}'
-                                }
+                                },
+                                body: JSON.stringify({ posiciones: posiciones }),
+                                signal: controller.signal
                             })
-                            .then(response => response.json())
+                            .then(response => {
+                                clearTimeout(timeoutId);
+                                if (!response.ok) {
+                                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                                }
+                                return response.json();
+                            })
                             .then(data => {
                                 if (data.success) {
                                     Swal.fire({
@@ -1053,11 +1094,18 @@
                                 }
                             })
                             .catch(error => {
+                                clearTimeout(timeoutId);
                                 console.error('Error:', error);
+                                let mensaje = 'No se pudo conectar con el servidor';
+                                if (error.name === 'AbortError') {
+                                    mensaje = 'La operación tardó demasiado. Intenta de nuevo o recarga la página.';
+                                } else if (error.message) {
+                                    mensaje = error.message;
+                                }
                                 Swal.fire({
                                     icon: 'error',
-                                    title: 'Error de conexión',
-                                    text: 'No se pudo conectar con el servidor',
+                                    title: 'Error',
+                                    text: mensaje,
                                     confirmButtonColor: '#3085d6',
                                 });
                             });
