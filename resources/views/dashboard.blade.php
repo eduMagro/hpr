@@ -6,12 +6,15 @@
                     <div
                         class="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6 px-6 justify-items-center">
 
-                        @foreach ($items as $item)
+                        @foreach ($items as $index => $item)
                             <a href="{{ $item['route'] ? route($item['route']) : '#' }}" wire:navigate
-                                class="w-32 h-32 bg-white rounded-2xl shadow-md flex flex-col items-center justify-center text-center hover:shadow-xl transition duration-300 ease-in-out relative">
+                                class="dashboard-icon w-32 h-32 bg-white rounded-2xl shadow-md flex flex-col items-center justify-center text-center hover:shadow-xl hover:scale-105 hover:-translate-y-1 transition-all duration-300 ease-out relative group"
+                                style="animation-delay: {{ 0.05 * $index }}s">
 
-                                <img src="{{ $item['icon'] }}" alt="{{ $item['label'] }}" class="w-20 h-20 mb-2">
-                                <span class="text-sm font-medium text-gray-700">{{ $item['label'] }}</span>
+                                <div class="relative">
+                                    <img src="{{ $item['icon'] }}" alt="{{ $item['label'] }}" class="w-20 h-20 mb-2 transition-transform duration-300 group-hover:scale-110">
+                                </div>
+                                <span class="text-sm font-medium text-gray-700 group-hover:text-gray-900 transition-colors">{{ $item['label'] }}</span>
 
                                 @if ($item['route'] === 'alertas.index')
                                     <img id="notificacion-alertas-icono"
@@ -388,10 +391,26 @@
 
     <!-- Estilos CSS directos -->
     <style>
+        /* Animación de entrada para iconos del dashboard */
+        .dashboard-icon {
+            opacity: 0;
+            animation: icon-pop-in 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+        }
+
+        @keyframes icon-pop-in {
+            0% {
+                opacity: 0;
+                transform: scale(0.8) translateY(20px);
+            }
+            100% {
+                opacity: 1;
+                transform: scale(1) translateY(0);
+            }
+        }
+
         .icon-container {
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-            /* Ajusta el tamaño mínimo de los iconos */
             gap: 20px;
             justify-items: center;
             padding: 20px;

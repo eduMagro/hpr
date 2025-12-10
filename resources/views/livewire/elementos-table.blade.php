@@ -1,4 +1,35 @@
 <div>
+    <!-- Panel de métricas de rendimiento -->
+    <div class="fixed bottom-4 left-4 z-50 bg-gray-900 text-white rounded-lg shadow-xl p-3 text-xs font-mono opacity-90 hover:opacity-100 transition-opacity"
+         title="Métricas de rendimiento del servidor">
+        <div class="flex items-center gap-4">
+            <div class="flex items-center gap-1.5">
+                <svg class="w-4 h-4 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+                <span class="{{ $loadTime > 500 ? 'text-red-400' : ($loadTime > 200 ? 'text-yellow-400' : 'text-green-400') }}">
+                    {{ $loadTime }} ms
+                </span>
+            </div>
+            <div class="flex items-center gap-1.5">
+                <svg class="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4"/>
+                </svg>
+                <span class="{{ $queryCount > 20 ? 'text-red-400' : ($queryCount > 10 ? 'text-yellow-400' : 'text-green-400') }}">
+                    {{ $queryCount }} queries
+                </span>
+            </div>
+            <div class="flex items-center gap-1.5">
+                <svg class="w-4 h-4 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z"/>
+                </svg>
+                <span>{{ $memoryUsage }} MB</span>
+            </div>
+            <div class="text-gray-400 border-l border-gray-700 pl-3">
+                {{ count($elementos) }}/{{ $totalRegistros }}
+            </div>
+        </div>
+    </div>
 
     <div class="w-full p-4 sm:p-2">
         <x-tabla.filtros-aplicados :filtros="$filtrosActivos" />
@@ -489,9 +520,51 @@
             </table>
         </div>
 
-        <!-- Paginación Livewire -->
+        <!-- Infinite Scroll: Indicador de carga y trigger -->
         <div class="mt-4">
-            {{ $elementos->links('vendor.livewire.tailwind') }}
+            <!-- Contador de registros cargados -->
+            <div class="flex items-center justify-center gap-4 text-sm text-gray-600 mb-3">
+                <span>Mostrando <span class="font-semibold">{{ count($elementos) }}</span> de <span class="font-semibold">{{ $totalRegistros }}</span> registros</span>
+                @if(count($elementos) > $this->registrosPorCarga)
+                    <button wire:click="resetearElementos" class="text-blue-600 hover:text-blue-800 underline text-xs">
+                        ↑ Volver al inicio
+                    </button>
+                @endif
+            </div>
+
+            @if($hayMas)
+                <!-- Trigger del infinite scroll (detectado por Intersection Observer) -->
+                <div
+                    x-data="{
+                        init() {
+                            const observer = new IntersectionObserver((entries) => {
+                                entries.forEach(entry => {
+                                    if (entry.isIntersecting) {
+                                        @this.cargarMas();
+                                    }
+                                });
+                            }, { rootMargin: '100px' });
+                            observer.observe(this.$el);
+                        }
+                    }"
+                    class="flex justify-center py-4"
+                >
+                    <div wire:loading.remove wire:target="cargarMas" class="text-gray-500 text-sm">
+                        ↓ Scroll para cargar más
+                    </div>
+                    <div wire:loading wire:target="cargarMas" class="flex items-center gap-2 text-blue-600">
+                        <svg class="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        <span>Cargando más registros...</span>
+                    </div>
+                </div>
+            @else
+                <div class="text-center text-gray-500 text-sm py-4">
+                    ✓ Todos los registros cargados
+                </div>
+            @endif
         </div>
 
         <!-- Modal de dibujo -->

@@ -96,6 +96,7 @@ export async function generarTurnosDialog(fechaISO, maquinaId, maquinaNombre) {
                     </label>
                     <select id="swal-alcance" class="swal2-input w-full">
                         <option value="un_dia">Solo este día (${fechaISO})</option>
+                        <option value="dos_semanas">Hasta el viernes de la semana siguiente</option>
                         <option value="resto_año">Desde ${fechaISO} hasta fin de año</option>
                     </select>
                 </div>

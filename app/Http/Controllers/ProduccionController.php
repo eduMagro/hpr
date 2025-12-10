@@ -163,22 +163,24 @@ class ProduccionController extends Controller
                     $horaEntrada = $turno?->hora_inicio ?? '08:00:00';
                     $horaSalida = $turno?->hora_fin ?? '16:00:00';
 
+                    $fechaStr = $asignacionTurno->fecha->format('Y-m-d');
+
                     if ($horaEntrada === '22:00:00' && $horaSalida === '06:00:00') {
-                        $start = $asignacionTurno->fecha . 'T00:00:00';
-                        $end   = $asignacionTurno->fecha . 'T06:00:00';
+                        $start = $fechaStr . 'T00:00:00';
+                        $end   = $fechaStr . 'T06:00:00';
                     } elseif ($horaEntrada === '06:00:00') {
-                        $start = $asignacionTurno->fecha . 'T06:00:00';
-                        $end = $asignacionTurno->fecha . 'T14:00:00';
+                        $start = $fechaStr . 'T06:00:00';
+                        $end = $fechaStr . 'T14:00:00';
                     } elseif ($horaEntrada === '14:00:00') {
-                        $start = $asignacionTurno->fecha . 'T14:00:00';
-                        $end = $asignacionTurno->fecha . 'T22:00:00';
+                        $start = $fechaStr . 'T14:00:00';
+                        $end = $fechaStr . 'T22:00:00';
                     } else {
-                        $start = $asignacionTurno->fecha . 'T' . $horaEntrada;
-                        $end = $asignacionTurno->fecha . 'T' . $horaSalida;
+                        $start = $fechaStr . 'T' . $horaEntrada;
+                        $end = $fechaStr . 'T' . $horaSalida;
                     }
 
                     $maquinaId = $asignacionTurno->maquina_id ?? $trabajador->maquina_id;
-                    $resourceId = $maquinaId ? str_pad($maquinaId, 3, '0', STR_PAD_LEFT) : 'SIN';
+                    $resourceId = $maquinaId ?: 'SIN';
 
                     // 🕓 Formatear entrada y salida reales
                     $entrada = $asignacionTurno->entrada
@@ -3196,8 +3198,6 @@ class ProduccionController extends Controller
     public function balancearCargaAnalisis()
     {
         try {
-            Log::info('⚖️ BALANCEO: Iniciando análisis de carga');
-
             // 1. Obtener todas las máquinas disponibles (excluir grúas)
             $maquinas = Maquina::whereNotNull('tipo')
                 ->where('tipo', '<>', 'grua')
@@ -3212,7 +3212,7 @@ class ProduccionController extends Controller
                 ]);
             }
 
-            // 2. Calcular carga actual de cada máquina (en segundos)
+            // 2. Calcular carga actual de cada máquina (peso, longitud, diámetro medio)
             $cargasMaquinas = [];
             $elementosPorMaquina = [];
 
@@ -3224,19 +3224,20 @@ class ProduccionController extends Controller
                     ->where('estado', 'pendiente') // SOLO pendientes se pueden mover
                     ->get();
 
-                $tiempoTotal = $elementos->sum('tiempo_fabricacion');
-
-                \Log::info("⚖️ BALANCEO: Carga de máquina", [
-                    'maquina' => $maquina->nombre,
-                    'elementos_movibles' => $elementos->count(),
-                    'tiempo_horas' => round($tiempoTotal / 3600, 2),
-                    'elementos_sample' => $elementos->take(3)->pluck('codigo')->toArray()
-                ]);
+                // Calcular métricas como en planificacion/index
+                $pesoTotal = $elementos->sum('peso');
+                $longitudTotal = $elementos->sum(fn($e) => ($e->longitud ?? 0) * ($e->barras ?? 1));
+                $diametros = $elementos->pluck('diametro')->filter();
+                $diametroMedio = $diametros->isNotEmpty() ? round($diametros->avg(), 2) : 0;
+                $tiempoTotal = $elementos->sum('tiempo_fabricacion'); // Mantener para balanceo interno
 
                 $cargasMaquinas[$maquina->id] = [
                     'maquina' => $maquina,
                     'tiempo_segundos' => $tiempoTotal,
                     'tiempo_horas' => round($tiempoTotal / 3600, 2),
+                    'peso_kg' => round($pesoTotal, 2),
+                    'longitud_m' => round($longitudTotal, 2),
+                    'diametro_medio' => $diametroMedio,
                     'cantidad_elementos' => $elementos->count(),
                 ];
 
@@ -3256,15 +3257,6 @@ class ProduccionController extends Controller
                 ],
             ];
 
-            Log::info('⚖️ BALANCEO: Cargas calculadas (por tipo)', [
-                'detalle_cargas' => collect($cargasMaquinas)->map(fn($c) => [
-                    'nombre' => $c['maquina']->nombre,
-                    'tipo' => $c['maquina']->tipo,
-                    'horas' => $c['tiempo_horas'],
-                    'elementos' => $c['cantidad_elementos']
-                ])->values()
-            ]);
-
             // 5. Sugerir movimientos para balancear
             $elementosAMover = [];
             $umbralDesbalance = 0.10; // 10% de tolerancia
@@ -3280,7 +3272,6 @@ class ProduccionController extends Controller
                 });
 
                 if ($maquinasGrupo->count() < 2) {
-                    Log::info("⚖️ BALANCEO: Grupo '{$nombreGrupo}' tiene menos de 2 máquinas, omitiendo");
                     continue;
                 }
 
@@ -3288,12 +3279,6 @@ class ProduccionController extends Controller
                 $tiempoTotalGrupo = $maquinasGrupo->sum('tiempo_segundos');
                 $tiempoPromedioGrupo = $tiempoTotalGrupo / $maquinasGrupo->count();
                 $umbralGrupo = $tiempoPromedioGrupo * $umbralDesbalance;
-
-                Log::info("⚖️ BALANCEO: Analizando grupo '{$nombreGrupo}'", [
-                    'maquinas' => $maquinasGrupo->count(),
-                    'tiempo_promedio' => round($tiempoPromedioGrupo / 3600, 2) . 'h',
-                    'umbral' => round($umbralGrupo / 3600, 2) . 'h'
-                ]);
 
                 // Identificar sobrecargadas y subcargadas EN ESTE GRUPO
                 $sobrecargadasGrupo = $maquinasGrupo
@@ -3303,17 +3288,6 @@ class ProduccionController extends Controller
                 $subcargadasGrupo = $maquinasGrupo
                     ->filter(fn($carga) => $carga['tiempo_segundos'] < ($tiempoPromedioGrupo + $umbralGrupo))
                     ->sortBy('tiempo_segundos');
-
-                Log::info("⚖️ BALANCEO: Desbalance en grupo '{$nombreGrupo}'", [
-                    'sobrecargadas' => $sobrecargadasGrupo->map(fn($c) => [
-                        'nombre' => $c['maquina']->nombre,
-                        'horas' => $c['tiempo_horas']
-                    ])->values(),
-                    'subcargadas' => $subcargadasGrupo->map(fn($c) => [
-                        'nombre' => $c['maquina']->nombre,
-                        'horas' => $c['tiempo_horas']
-                    ])->values()
-                ]);
 
                 // Procesar cada máquina sobrecargada DEL GRUPO
                 foreach ($sobrecargadasGrupo as $idSobrecargada => $cargaSobrecargada) {
@@ -3351,54 +3325,29 @@ class ProduccionController extends Controller
                             $tiempoPromedioGrupo
                         );
 
-                        \Log::info("⚖️ BALANCEO: Evaluando elemento", [
-                            'elemento_id' => $elemento->id,
-                            'codigo' => $elemento->codigo,
-                            'tiempo_horas' => round($elemento->tiempo_fabricacion / 3600, 2),
-                            'maquinas_compatibles_iniciales' => count($maquinasCompatibles),
-                            'grupo' => $nombreGrupo
-                        ]);
-
                         if (!empty($maquinasCompatibles)) {
                             // Filtrar máquinas que no se sobrecargarían con este elemento
-                            // RELAJAMOS los límites: permitir hasta 100% por encima del promedio del grupo
-                            $limiteMaximo = $tiempoPromedioGrupo * 2.0; // Hasta el doble del promedio del grupo
+                            $limiteMaximo = $tiempoPromedioGrupo * 2.0;
 
-                            $maquinasCompatibles = array_filter($maquinasCompatibles, function($maq) use ($elemento, $tiempoPromedioGrupo, $limiteMaximo) {
+                            $maquinasCompatibles = array_filter($maquinasCompatibles, function($maq) use ($elemento, $limiteMaximo) {
                                 $nuevaCarga = $maq['carga_actual'] + $elemento->tiempo_fabricacion;
+                                return $nuevaCarga <= $limiteMaximo;
+                            });
 
-                                // Solo verificar que no exceda el doble del promedio del grupo
-                                $pasa = $nuevaCarga <= $limiteMaximo;
-
-                            if (!$pasa) {
-                                \Log::info("⚖️ BALANCEO: Máquina rechazada por límite", [
-                                    'maquina' => $maq['nombre'],
-                                    'carga_actual_h' => round($maq['carga_actual'] / 3600, 2),
-                                    'nueva_carga_h' => round($nuevaCarga / 3600, 2),
-                                    'limite_h' => round($limiteMaximo / 3600, 2)
-                                ]);
+                            if (empty($maquinasCompatibles)) {
+                                continue;
                             }
 
-                            return $pasa;
-                        });
-
-                        if (empty($maquinasCompatibles)) {
-                            \Log::info("⚖️ BALANCEO: Ninguna máquina compatible después de filtrar");
-                            continue;
-                        }
-
-                            // Ordenar por menor carga actual (prioridad simple)
+                            // Ordenar por menor carga actual
                             usort($maquinasCompatibles, function($a, $b) use ($elemento, $tiempoPromedioGrupo) {
-                                // Prioridad: Menor desviación después de agregar
                                 $desviacionA = abs(($a['carga_actual'] + $elemento->tiempo_fabricacion) - $tiempoPromedioGrupo);
                                 $desviacionB = abs(($b['carga_actual'] + $elemento->tiempo_fabricacion) - $tiempoPromedioGrupo);
-
                                 return $desviacionA <=> $desviacionB;
                             });
 
                             $mejorMaquina = $maquinasCompatibles[0];
 
-                            // Verificar que el movimiento realmente mejora el balance DEL GRUPO
+                            // Verificar que el movimiento mejora el balance
                             $desviacionActual = abs($cargaSobrecargada['tiempo_segundos'] - $tiempoPromedioGrupo) +
                                               abs($cargasMaquinas[$mejorMaquina['id']]['tiempo_segundos'] - $tiempoPromedioGrupo);
 
@@ -3406,20 +3355,9 @@ class ProduccionController extends Controller
                             $nuevaDesviacionDestino = abs(($cargasMaquinas[$mejorMaquina['id']]['tiempo_segundos'] + $elemento->tiempo_fabricacion) - $tiempoPromedioGrupo);
                             $nuevaDesviacion = $nuevaDesviacionOrigen + $nuevaDesviacionDestino;
 
-                            \Log::info("⚖️ BALANCEO: Verificando mejora", [
-                                'elemento' => $elemento->codigo,
-                                'origen' => $cargaSobrecargada['maquina']->nombre,
-                                'destino' => $mejorMaquina['nombre'],
-                                'desviacion_actual' => round($desviacionActual / 3600, 2) . 'h',
-                                'nueva_desviacion' => round($nuevaDesviacion / 3600, 2) . 'h',
-                                'mejora' => $nuevaDesviacion < $desviacionActual ? 'SÍ' : 'NO'
-                            ]);
-
-                            // RELAJADO: Aceptar si mejora aunque sea mínimamente, o si reduce la carga de la sobrecargada significativamente
                             $reduceCargaSobrecargada = $cargaSobrecargada['tiempo_segundos'] > ($tiempoPromedioGrupo * 1.3);
 
                             if ($nuevaDesviacion >= $desviacionActual && !$reduceCargaSobrecargada) {
-                                \Log::info("⚖️ BALANCEO: Movimiento rechazado - no mejora el balance");
                                 continue;
                             }
 
@@ -3429,6 +3367,7 @@ class ProduccionController extends Controller
                             'marca' => $elemento->marca,
                             'diametro' => $elemento->diametro,
                             'peso' => $elemento->peso,
+                            'longitud' => ($elemento->longitud ?? 0) * ($elemento->barras ?? 1), // longitud total
                             'tiempo_fabricacion' => $elemento->tiempo_fabricacion,
                             'tiempo_horas' => round($elemento->tiempo_fabricacion / 3600, 2),
                             'planilla_id' => $elemento->planilla_id,
@@ -3437,7 +3376,7 @@ class ProduccionController extends Controller
                             'maquina_actual_nombre' => $cargaSobrecargada['maquina']->nombre,
                             'maquina_nueva_id' => $mejorMaquina['id'],
                             'maquina_nueva_nombre' => $mejorMaquina['nombre'],
-                            'razon' => "Balancear: {$cargaSobrecargada['maquina']->nombre} ({$cargaSobrecargada['tiempo_horas']}h) → {$mejorMaquina['nombre']} ({$mejorMaquina['carga_horas']}h)",
+                            'razon' => "Balancear: {$cargaSobrecargada['maquina']->nombre} → {$mejorMaquina['nombre']}",
                         ];
 
                         // Actualizar cargas simuladas
@@ -3450,42 +3389,41 @@ class ProduccionController extends Controller
                         // Actualizar la carga actual de la máquina sobrecargada para el próximo ciclo
                         $cargaActualMaquina -= $elemento->tiempo_fabricacion;
 
-                            \Log::info("⚖️ BALANCEO: Elemento agregado para mover", [
-                                'elemento' => $elemento->codigo,
-                                'origen' => $cargaSobrecargada['maquina']->nombre,
-                                'destino' => $mejorMaquina['nombre'],
-                                'nueva_carga_origen_h' => round($cargaActualMaquina / 3600, 2),
-                                'nueva_carga_destino_h' => round($cargasMaquinas[$mejorMaquina['id']]['tiempo_segundos'] / 3600, 2)
-                            ]);
                         }
                     }
                 }
             } // Fin del foreach de grupos
 
-            // 6. Preparar resumen
+            // 6. Preparar resumen con métricas como planificacion/index
             $resumenMaquinas = collect($cargasMaquinas)->map(function($carga) {
                 return [
                     'id' => $carga['maquina']->id,
                     'nombre' => $carga['maquina']->nombre,
                     'tipo' => $carga['maquina']->tipo,
                     'tiempo_horas' => $carga['tiempo_horas'],
+                    'peso_kg' => $carga['peso_kg'],
+                    'longitud_m' => $carga['longitud_m'],
+                    'diametro_medio' => $carga['diametro_medio'],
                     'cantidad_elementos' => $carga['cantidad_elementos'],
                 ];
             })->values();
 
-            Log::info('⚖️ BALANCEO: Análisis completado', [
-                'elementos_a_mover' => count($elementosAMover),
-                'maquinas_analizadas' => $maquinas->count(),
-            ]);
-
-            // Calcular promedio global solo para el resumen
+            // Calcular promedios globales para el resumen
             $tiempoTotalGlobal = collect($cargasMaquinas)->sum('tiempo_segundos');
             $tiempoPromedioGlobal = $maquinas->count() > 0 ? $tiempoTotalGlobal / $maquinas->count() : 0;
+            $pesoTotalGlobal = collect($cargasMaquinas)->sum('peso_kg');
+            $pesoPromedioGlobal = $maquinas->count() > 0 ? round($pesoTotalGlobal / $maquinas->count(), 2) : 0;
+            $longitudTotalGlobal = collect($cargasMaquinas)->sum('longitud_m');
+            $longitudPromedioGlobal = $maquinas->count() > 0 ? round($longitudTotalGlobal / $maquinas->count(), 2) : 0;
 
             return response()->json([
                 'elementos' => $elementosAMover,
                 'resumen_original' => $resumenMaquinas,
                 'tiempo_promedio_horas' => round($tiempoPromedioGlobal / 3600, 2),
+                'peso_promedio_kg' => $pesoPromedioGlobal,
+                'peso_total_kg' => round($pesoTotalGlobal, 2),
+                'longitud_promedio_m' => $longitudPromedioGlobal,
+                'longitud_total_m' => round($longitudTotalGlobal, 2),
                 'total_elementos' => count($elementosAMover),
                 'timestamp' => now()->toIso8601String(),
             ]);
@@ -3576,10 +3514,6 @@ class ProduccionController extends Controller
                 ], 400);
             }
 
-            Log::info('⚖️ BALANCEO: Aplicando redistribución', [
-                'total_movimientos' => count($movimientos)
-            ]);
-
             DB::beginTransaction();
 
             // Crear snapshot antes de la operación
@@ -3639,14 +3573,6 @@ class ProduccionController extends Controller
                     $subEtiquetaService = app(SubEtiquetaService::class);
                     $subEtiquetaService->reubicarParaProduccion($elemento, $nuevaMaquinaId);
 
-                    Log::info('⚖️ BALANCEO: Elemento movido', [
-                        'elemento' => $elemento->codigo,
-                        'planilla' => $planillaId,
-                        'maquina_origen' => $maquinaAnterior,
-                        'maquina_destino' => $nuevaMaquinaId,
-                        'orden_planilla_id' => $ordenPlanillaDestino->id
-                    ]);
-
                     // 3. Si la OrdenPlanilla origen quedó vacía, eliminarla
                     if ($maquinaAnterior) {
                         $ordenPlanillaOrigen = OrdenPlanilla::where('planilla_id', $planillaId)
@@ -3660,10 +3586,6 @@ class ProduccionController extends Controller
 
                             if ($elementosRestantes == 0) {
                                 $ordenPlanillaOrigen->delete();
-                                Log::info('⚖️ BALANCEO: OrdenPlanilla vacía eliminada', [
-                                    'orden_planilla_id' => $ordenPlanillaOrigen->id,
-                                    'maquina' => $maquinaAnterior
-                                ]);
                             }
                         }
                     }
@@ -3695,12 +3617,6 @@ class ProduccionController extends Controller
             }
 
             DB::commit();
-
-            Log::info('⚖️ BALANCEO: Redistribución completada', [
-                'procesados' => $procesados,
-                'omitidos' => $omitidos,
-                'errores' => count($errores)
-            ]);
 
             $mensaje = "Balanceo aplicado: $procesados elementos redistribuidos";
             if ($omitidos > 0) {

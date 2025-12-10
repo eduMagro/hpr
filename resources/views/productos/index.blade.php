@@ -223,10 +223,11 @@
                 async function verificarServicioImpresion() {
                     try {
                         const controller = new AbortController();
-                        const timeoutId = setTimeout(() => controller.abort(), 2000);
+                        const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 segundos
 
                         const response = await fetch(PRINT_SERVICE_URL, {
                             method: 'GET',
+                            mode: 'cors',
                             signal: controller.signal
                         });
 
@@ -343,19 +344,33 @@
                         }
 
                         mostrarEstado(`${data.cantidad} codigos generados. Enviando a impresora...`, 'info');
+                        console.log('Enviando a impresora:', data.codigos);
 
-                        // 2. Enviar a servicio local de impresion
+                        // 2. Enviar a servicio local de impresion con timeout de 30 segundos
                         let printResponse;
                         try {
+                            const printController = new AbortController();
+                            const printTimeout = setTimeout(() => printController.abort(), 30000);
+
                             printResponse = await fetch(PRINT_SERVICE_URL + '/print', {
                                 method: 'POST',
                                 headers: {
                                     'Content-Type': 'application/json',
                                 },
-                                body: JSON.stringify({ codigos: data.codigos })
+                                body: JSON.stringify({ codigos: data.codigos }),
+                                mode: 'cors',
+                                signal: printController.signal
                             });
+
+                            clearTimeout(printTimeout);
+                            console.log('Respuesta recibida:', printResponse.status);
                         } catch (fetchError) {
+                            console.error('Error en fetch a /print:', fetchError);
                             // Si falla la conexion, mostrar modal de instalacion
+                            if (fetchError.name === 'AbortError') {
+                                mostrarEstado('Timeout: El servicio tardó demasiado en responder', 'error');
+                                return;
+                            }
                             cerrarModalImprimir();
                             abrirModalInstalar();
                             return;

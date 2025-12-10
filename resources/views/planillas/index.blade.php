@@ -202,7 +202,7 @@
                                 <div>
                                     <p class="text-[9px] uppercase tracking-wide text-gray-500">Entrega</p>
                                     <p class="font-semibold text-gray-900">
-                                        {{ $planilla->fecha_estimada_entrega ? \Carbon\Carbon::parse($planilla->fecha_estimada_entrega)->format('d/m/Y') : '—' }}
+                                        {{ $planilla->fecha_estimada_entrega ? Str::before($planilla->fecha_estimada_entrega, ' ') : '—' }}
                                     </p>
                                 </div>
                             </div>

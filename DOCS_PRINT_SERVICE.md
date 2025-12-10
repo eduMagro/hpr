@@ -172,11 +172,13 @@ Prueba conexion con la impresora.
 - [x] Correccion de caracteres Unicode en .bat
 - [x] Correccion de paths en .bat
 - [x] Correccion de errorlevel en .bat
+- [x] Instalacion semi-automatica de b-PAC SDK (detecta .msi e instala silenciosamente)
+- [x] Probado: ZIP se extrae correctamente con todos los archivos
+- [x] Probado: Servicio Flask arranca correctamente en localhost:8765
 
 ### Pendiente de probar
-- [ ] Instalacion completa en equipo limpio
 - [ ] Impresion real con impresora P-Touch conectada
-- [ ] Verificar que b-PAC SDK funciona correctamente
+- [ ] Verificar que b-PAC SDK funciona correctamente con impresora real
 
 ---
 

@@ -67,6 +67,9 @@ class Planilla extends Model
 
     public function getFechaEstimadaEntregaAttribute($value)
     {
+        if (!$value) {
+            return null;
+        }
         return Carbon::parse($value)->format('d/m/Y H:i');
     }
     public function getFechaInicioAttribute($value)

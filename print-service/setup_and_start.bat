@@ -99,20 +99,84 @@ echo [OK] Dependencias instaladas
 echo.
 
 REM ============================================================
-REM PASO 4: Verificar b-PAC SDK
+REM PASO 4: Verificar e instalar b-PAC SDK
 REM ============================================================
 echo [PASO 4/4] Verificando Brother b-PAC SDK...
 
 venv\Scripts\python.exe -c "import win32com.client; win32com.client.Dispatch('bpac.Document')" >nul 2>&1
-if %errorlevel% neq 0 (
-    echo [AVISO] Brother b-PAC SDK no detectado o no configurado
-    echo         La impresion puede fallar si no esta instalado.
-    echo         Descarga: https://support.brother.com/g/s/es/dev/en/bpac/download/index.html
-    echo.
-) else (
+if %errorlevel% equ 0 (
     echo [OK] Brother b-PAC SDK detectado
     echo.
+    goto :START_SERVICE
 )
+
+echo [AVISO] Brother b-PAC SDK no detectado
+echo.
+
+REM Buscar si hay un .msi en la carpeta actual
+set "MSI_FILE="
+for %%f in (*.msi) do set "MSI_FILE=%%f"
+
+if not defined MSI_FILE goto :NO_MSI_FOUND
+
+echo [INFO] Encontrado archivo: %MSI_FILE%
+echo [INFO] Instalando b-PAC SDK silenciosamente...
+msiexec /i "%MSI_FILE%" /qb
+echo [OK] Instalacion de b-PAC completada
+echo.
+goto :START_SERVICE
+
+:NO_MSI_FOUND
+echo.
+echo ============================================================
+echo   INSTALACION DE BROTHER b-PAC SDK
+echo ============================================================
+echo.
+echo   El SDK de Brother es necesario para imprimir etiquetas.
+echo.
+echo   Opciones:
+echo   1. Descarga el "Client Component (64-bit)" desde:
+echo      https://support.brother.com/g/s/es/dev/en/bpac/download/index.html
+echo.
+echo   2. Coloca el archivo .msi en esta carpeta:
+echo      %SCRIPT_DIR%
+echo.
+echo   3. Vuelve a ejecutar este script
+echo.
+echo ============================================================
+echo.
+
+set /p "OPEN_BROWSER=Quieres abrir la pagina de descarga ahora? (S/N): "
+if /i not "%OPEN_BROWSER%"=="S" goto :SKIP_BPAC
+
+start https://support.brother.com/g/s/es/dev/en/bpac/download/index.html
+echo.
+echo [INFO] Pagina abierta. Descarga "Client Component 64-bit" (.msi)
+echo        Guarda el archivo en: %SCRIPT_DIR%
+echo.
+set /p "WAIT_DOWNLOAD=Presiona ENTER cuando hayas descargado el archivo..."
+
+REM Buscar de nuevo el .msi
+set "MSI_FILE="
+for %%f in (*.msi) do set "MSI_FILE=%%f"
+
+if not defined MSI_FILE (
+    echo [AVISO] No se encontro archivo .msi
+    echo         Puedes continuar sin b-PAC pero la impresion fallara.
+    goto :SKIP_BPAC
+)
+
+echo [INFO] Encontrado: %MSI_FILE%
+echo [INFO] Instalando...
+msiexec /i "%MSI_FILE%" /qb
+echo [OK] b-PAC SDK instalado correctamente
+goto :START_SERVICE
+
+:SKIP_BPAC
+echo [INFO] Puedes instalar b-PAC manualmente mas tarde.
+echo.
+
+:START_SERVICE
 
 REM ============================================================
 REM INICIAR SERVICIO

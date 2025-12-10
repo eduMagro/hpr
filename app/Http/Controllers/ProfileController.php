@@ -1275,7 +1275,7 @@ class ProfileController extends Controller
             'user_id' => 'required|exists:users,id',
             'maquina_id' => 'required|exists:maquinas,id',
             'fecha_inicio' => 'required|date',
-            'alcance' => 'required|in:un_dia,resto_año',
+            'alcance' => 'required|in:un_dia,dos_semanas,resto_año',
             'turno_inicio' => 'nullable|in:mañana,tarde',
         ]);
 
@@ -1302,6 +1302,10 @@ class ProfileController extends Controller
         $inicio = Carbon::parse($validated['fecha_inicio'])->startOfDay();
         if ($validated['alcance'] === 'un_dia') {
             $fin = $inicio->copy();
+        } elseif ($validated['alcance'] === 'dos_semanas') {
+            // Calcular el viernes de la semana siguiente
+            // Primero obtenemos el viernes de esta semana, luego sumamos una semana
+            $fin = $inicio->copy()->modify('friday this week')->addWeek();
         } else {
             $fin = Carbon::parse($validated['fecha_inicio'])->endOfYear();
         }

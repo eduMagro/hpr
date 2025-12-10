@@ -1,6 +1,6 @@
 {
   "resources/css/app.css": {
-    "file": "assets/app.C1NSH0Nd.css",
+    "file": "assets/app.DwizOEQR.css",
     "src": "resources/css/app.css",
     "isEntry": true
   },
@@ -52,7 +52,7 @@
     "isEntry": true
   },
   "resources/js/maquinaJS/maquina-bundle.js": {
-    "file": "assets/maquina-bundle.BNpqoX36.js",
+    "file": "assets/maquina-bundle.BdqZUYDK.js",
     "name": "maquina-bundle",
     "src": "resources/js/maquinaJS/maquina-bundle.js",
     "isEntry": true
@@ -64,7 +64,7 @@
     "isEntry": true
   },
   "resources/js/modules/calendario-trabajadores/index.js": {
-    "file": "assets/index.B2tYPlOg.js",
+    "file": "assets/index.vJPMaYij.js",
     "name": "index",
     "src": "resources/js/modules/calendario-trabajadores/index.js",
     "isEntry": true
