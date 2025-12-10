@@ -140,7 +140,7 @@
     }
 </style>
 
-<div class="etiqueta-wrapper">
+<div class="etiqueta-wrapper" data-etiqueta-sub-id="{{ $etiqueta->etiqueta_sub_id }}" data-paquete-id="{{ $etiqueta->paquete_id ?? '' }}">
     <div class="etiqueta-card proceso estado-{{ $estado }}" id="etiqueta-{{ $safeSubId }}"
         data-estado="{{ $estado }}"
         data-en-paquete="{{ $etiqueta->paquete_id ? 'true' : 'false' }}">

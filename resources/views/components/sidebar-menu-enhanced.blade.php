@@ -264,8 +264,11 @@
     },
 
     updateActiveSection() {
-        // Actualizar la ruta actual
-        this.currentPath = window.location.pathname;
+        // Forzar re-evaluación de Alpine cambiando currentPath
+        const newPath = window.location.pathname;
+        if (this.currentPath !== newPath) {
+            this.currentPath = newPath;
+        }
 
         // Resetear sección actual asociada a la ruta
         this.currentSectionId = null;
@@ -297,7 +300,8 @@
 
     isRouteActive(routeUrl) {
         const url = new URL(routeUrl, window.location.origin);
-        return window.location.pathname === url.pathname;
+        // Usar currentPath (reactivo) en lugar de window.location.pathname
+        return this.currentPath === url.pathname;
     },
 
     toggleSidebar() {
@@ -431,8 +435,7 @@
     </div>
 
     <!-- Sidebar -->
-    <div x-cloak x-show="true"
-        :class="open ? 'w-64 translate-x-0' : 'w-16 -translate-x-full md:translate-x-0'"
+    <div :class="open ? 'w-64 translate-x-0' : 'w-16 -translate-x-full md:translate-x-0'"
         class="bg-gray-900 dark:bg-gray-950 text-white flex-shrink-0 flex flex-col fixed md:static inset-y-0 left-0 z-[9999] md:z-auto"
         style="transition: width 0.3s ease-in-out, transform 0.3s ease-in-out;">
 
@@ -672,8 +675,8 @@
                                     <a href="{{ route($item['route']) }}" wire:navigate
                                         @click="if (window.innerWidth < 768) { open = false; localStorage.setItem('sidebar_open', 'false'); }"
                                         :class="{
-                                            'bg-{{ $section['color'] }}-500 text-white font-medium': isRouteActive('{{ route($item['route']) }}'),
-                                            'text-gray-400 hover:text-white hover:bg-gray-800': !isRouteActive('{{ route($item['route']) }}'),
+                                            'bg-{{ $section['color'] }}-500 text-white font-medium': currentPath && isRouteActive('{{ route($item['route']) }}'),
+                                            'text-gray-400 hover:text-white hover:bg-gray-800': currentPath && !isRouteActive('{{ route($item['route']) }}'),
                                             'ring-2 ring-blue-400 ring-offset-1 ring-offset-gray-900': focusedSectionId === '{{ $section['id'] }}' && focusedItemIndex === {{ $itemIndex }} && !isRouteActive('{{ route($item['route']) }}')
                                         }"
                                         class="flex-1 flex items-center justify-between px-3 py-2 rounded-lg text-sm transition">

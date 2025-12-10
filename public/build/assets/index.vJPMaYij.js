@@ -55,6 +55,7 @@ const k=()=>window.AppPlanif,R=()=>k().csrf,D=()=>k().routes,z=()=>({maquinas:k(
                     </label>
                     <select id="swal-alcance" class="swal2-input w-full">
                         <option value="un_dia">Solo este día (${s})</option>
+                        <option value="dos_semanas">Hasta el viernes de la semana siguiente</option>
                         <option value="resto_año">Desde ${s} hasta fin de año</option>
                     </select>
                 </div>

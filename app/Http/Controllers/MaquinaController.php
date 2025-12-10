@@ -479,9 +479,6 @@ class MaquinaController extends Controller
                     // ✅ VALIDACIÓN CRÍTICA: Solo mostrar planillas revisadas
                     if ($planilla && $planilla->revisada) {
                         $planillasActivas[] = $planilla;
-                        Log::info("✅ Planilla {$planilla->codigo} (posición {$pos}) añadida - REVISADA");
-                    } else {
-                        Log::warning("⚠️ Planilla en posición {$pos} OMITIDA - No está revisada");
                     }
                 }
             }
@@ -541,17 +538,6 @@ class MaquinaController extends Controller
         }
 
         $productosBaseCompatibles = $query->get();
-
-        // DEBUG: Log para diagnosticar productos base
-        \Log::info('🔍 DEBUG productosBaseCompatibles', [
-            'maquina_id' => $maquina->id,
-            'maquina_nombre' => $maquina->nombre,
-            'tipo_material' => $tipoMaterial ?: 'VACIO',
-            'diametro_min' => $maquina->diametro_min,
-            'diametro_max' => $maquina->diametro_max,
-            'productos_encontrados' => $productosBaseCompatibles->count(),
-            'query_sql' => $query->toSql(),
-        ]);
 
         $usuario1 = auth()->user();
         $usuario1->name = html_entity_decode($usuario1->name, ENT_QUOTES, 'UTF-8');

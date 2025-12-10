@@ -1,8 +1,5 @@
-document.addEventListener("DOMContentLoaded", function () {
-    const modal = document.getElementById("modal-dibujo");
-    const cerrarModal = document.getElementById("cerrar-modal");
-    const canvasModal = document.getElementById("canvas-dibujo");
-
+// IIFE para evitar contaminar el scope global pero exponer la función necesaria
+(function () {
     /* ******************************************************************
      * Constantes y configuración
      ****************************************************************** */
@@ -952,11 +949,18 @@ document.addEventListener("DOMContentLoaded", function () {
         console.log("✅ SVG agregado al contenedor");
     }
 
+    // Exponer la función globalmente para que esté disponible inmediatamente
     window.dibujarFiguraElemento = dibujarFigura;
 
-    /* ******************************************************************
-     * Eventos: abrir y cerrar modal
-     ****************************************************************** */
+})();
+
+/* ******************************************************************
+ * Eventos: abrir y cerrar modal (necesitan DOMContentLoaded)
+ ****************************************************************** */
+document.addEventListener("DOMContentLoaded", function () {
+    const modal = document.getElementById("modal-dibujo");
+    const cerrarModal = document.getElementById("cerrar-modal");
+
     document.querySelectorAll(".abrir-modal-dibujo").forEach((link) => {
         link.addEventListener("click", function (event) {
             event.preventDefault();
@@ -997,7 +1001,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 }
             }
 
-            dibujarFigura("svg-dibujo-container", dimensiones, peso);
+            window.dibujarFiguraElemento("svg-dibujo-container", dimensiones, peso);
         });
     });
 

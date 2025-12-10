@@ -179,6 +179,38 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
     Route::post('/productos/{codigo}/reasignar', [ProductoController::class, 'editarUbicacionInventario'])
         ->name('productos.editarUbicacionInventario');
 
+    // Descargar instalador del servicio de impresion P-Touch
+    Route::get('print-service/download', function () {
+        $zipPath = storage_path('app/print-service-installer.zip');
+        $serviceDir = base_path('print-service');
+
+        // Crear ZIP con todos los archivos necesarios
+        $zip = new ZipArchive();
+        if ($zip->open($zipPath, ZipArchive::CREATE | ZipArchive::OVERWRITE) === TRUE) {
+            $files = [
+                'setup_and_start.bat',
+                'print_service.py',
+                'b_pac_printer.py',
+                'requirements.txt',
+                'etiqueta_qr.lbx',
+                'README.md',
+            ];
+
+            foreach ($files as $file) {
+                $filePath = $serviceDir . DIRECTORY_SEPARATOR . $file;
+                if (file_exists($filePath)) {
+                    // Añadir sin subcarpeta para que queden en la raiz del ZIP
+                    $zip->addFile($filePath, $file);
+                } else {
+                    \Log::warning("Archivo no encontrado para ZIP: $filePath");
+                }
+            }
+            $zip->close();
+        }
+
+        return response()->download($zipPath, 'print-service-installer.zip')->deleteFileAfterSend(true);
+    })->name('print-service.download');
+
     // === COLADAS ===
     Route::get('coladas', [ColadaController::class, 'index'])->name('coladas.index');
     Route::post('coladas', [ColadaController::class, 'store'])->name('coladas.store');

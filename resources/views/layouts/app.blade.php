@@ -81,6 +81,20 @@
             text-rendering: optimizeLegibility;
         }
 
+        /* Animación suave para el contenido de la página */
+        .page-content {
+            animation: page-fade-in 0.25s ease-out forwards;
+        }
+
+        @keyframes page-fade-in {
+            from {
+                opacity: 0.5;
+            }
+            to {
+                opacity: 1;
+            }
+        }
+
         /* Personalizar barra de progreso de Livewire Navigate */
         .livewire-progress-bar {
             position: fixed;
@@ -157,13 +171,17 @@
     </div>
 
     <div class="flex h-screen bg-gray-100 dark:bg-gray-900 overflow-hidden">
-        <!-- Sidebar Menu Enhanced -->
+        <!-- Sidebar Menu Enhanced (persiste entre navegaciones) -->
+        @persist('sidebar')
             <x-sidebar-menu-enhanced />
+        @endpersist
 
         <!-- Main Content Area -->
         <div class="flex-1 flex flex-col overflow-hidden">
-            <!-- Top Header Enhanced -->
+            <!-- Top Header Enhanced (persiste entre navegaciones) -->
+            @persist('header')
                 <x-top-header-enhanced />
+            @endpersist
 
             <!-- Alerts -->
             @include('layouts.alerts')
@@ -190,7 +208,7 @@
                     @endisset
 
                     <!-- Main Content -->
-                    <div class="transition-colors">
+                    <div class="page-content">
                         {{ $slot }}
                     </div>
                 </div>
