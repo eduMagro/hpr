@@ -403,28 +403,61 @@ class AsignacionTurnoController extends Controller
 
             if ($request->tipo === 'entrada') {
                 // ======= ENTRADA ======================================================
-                // Buscar asignación del día detectado o crearla
+                // Buscar asignación del día (sin soft-deleted)
                 $asignacion = $user->asignacionesTurnos()
                     ->whereDate('fecha', $fechaTurnoDetectado)
-                    ->with('turno')
                     ->first();
 
-                if (!$asignacion) {
-                    // Usar firstOrCreate para evitar duplicados por condiciones de carrera
-                    $asignacion = AsignacionTurno::firstOrCreate(
-                        [
-                            'user_id' => $user->id,
-                            'fecha'   => $fechaTurnoDetectado,
-                        ],
-                        [
-                            'turno_id'   => $turnoModelo->id,
-                            'estado'     => 'activo',
-                            'maquina_id' => $user->maquina_id ?? null,
-                            'obra_id'    => null,
-                        ]
-                    );
+                if ($asignacion) {
+                    // Comprobar si el turno cambia para notificar
+                    $turnoAnterior = $asignacion->turno?->nombre;
+                    $turnoCambia = $asignacion->turno_id !== $turnoModelo->id;
 
-                    // (Opcional) notificación a programadores
+                    // Si existe, actualizar con la entrada
+                    $asignacion->update([
+                        'turno_id'   => $turnoModelo->id,
+                        'estado'     => 'activo',
+                        'entrada'    => $horaActual,
+                        'obra_id'    => $obraEncontrada->id,
+                        'maquina_id' => $asignacion->maquina_id ?? $user->maquina_id,
+                    ]);
+
+                    // Notificar si el turno cambió
+                    if ($turnoCambia) {
+                        try {
+                            $programadores = User::whereHas('departamentos', fn($q) => $q->where('nombre', 'Programador'))->get();
+                            $alerta = Alerta::create([
+                                'user_id_1' => $user->id,
+                                'mensaje'   => "🔁 Turno corregido de '{$turnoAnterior}' a '{$turnoDetectado}' para {$user->nombre_completo} en {$fechaTurnoDetectado}.",
+                                'tipo'      => 'Info Turnos',
+                                'leida'     => false,
+                            ]);
+                            foreach ($programadores as $p) {
+                                AlertaLeida::firstOrCreate(['alerta_id' => $alerta->id, 'user_id' => $p->id]);
+                            }
+                        } catch (\Throwable $e) {
+                            Log::error('No se pudo notificar corrección turno: ' . $e->getMessage());
+                        }
+                    }
+                } else {
+                    // Eliminar definitivamente cualquier registro soft-deleted para evitar conflicto
+                    $user->asignacionesTurnos()
+                        ->onlyTrashed()
+                        ->whereDate('fecha', $fechaTurnoDetectado)
+                        ->forceDelete();
+
+                    // Crear nuevo registro
+                    $asignacion = AsignacionTurno::create([
+                        'user_id'    => $user->id,
+                        'fecha'      => $fechaTurnoDetectado,
+                        'turno_id'   => $turnoModelo->id,
+                        'estado'     => 'activo',
+                        'entrada'    => $horaActual,
+                        'obra_id'    => $obraEncontrada->id,
+                        'maquina_id' => $user->maquina_id ?? null,
+                    ]);
+
+                    // Notificación a programadores (solo cuando se crea nuevo)
                     try {
                         $programadores = User::whereHas('departamentos', fn($q) => $q->where('nombre', 'Programador'))->get();
                         $alerta = Alerta::create([
@@ -439,39 +472,12 @@ class AsignacionTurnoController extends Controller
                     } catch (\Throwable $e) {
                         Log::error('No se pudo notificar creación asignación: ' . $e->getMessage());
                     }
-                } else {
-                    // Si existe pero con otro turno, lo corregimos automáticamente
-                    if (strtolower($asignacion->turno->nombre) !== strtolower($turnoDetectado)) {
-                        $asignacion->turno_id = $turnoModelo->id;
-                        $asignacion->save();
-
-                        try {
-                            $programadores = User::whereHas('departamentos', fn($q) => $q->where('nombre', 'Programador'))->get();
-                            $alerta = Alerta::create([
-                                'user_id_1' => $user->id,
-                                'mensaje'   => "🔁 Corregido turno a '{$turnoDetectado}' para {$user->nombre_completo} en {$fechaTurnoDetectado}.",
-                                'tipo'      => 'Info Turnos',
-                                'leida'     => false,
-                            ]);
-                            foreach ($programadores as $p) {
-                                AlertaLeida::firstOrCreate(['alerta_id' => $alerta->id, 'user_id' => $p->id]);
-                            }
-                        } catch (\Throwable $e) {
-                            Log::error('No se pudo notificar corrección turno: ' . $e->getMessage());
-                        }
-                    }
                 }
 
                 // Validación de horario (entrada)
                 if (!$this->validarHoraEntrada($turnoDetectado, $horaActual)) {
                     $warning = 'Has fichado entrada fuera de tu horario.';
                 }
-
-                // Guardar entrada y obra
-                $asignacion->update([
-                    'entrada' => $horaActual,
-                    'obra_id' => $obraEncontrada->id,
-                ]);
 
                 return response()->json([
                     'success'     => 'Entrada registrada.',
