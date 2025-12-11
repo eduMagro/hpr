@@ -100,6 +100,85 @@ class OpenAIController extends Controller
     }
 
     /**
+     * Procesar albarán vía AJAX para vista móvil
+     * Retorna JSON en lugar de vista
+     */
+    public function procesarAjax(Request $request, AlbaranOcrService $service)
+    {
+        $request->validate([
+            'imagenes.*' => 'required|image|mimes:jpeg,png,jpg,gif,webp|max:20480',
+            'proveedor' => 'nullable|string|in:siderurgica,megasa,balboa,otro',
+        ]);
+
+        $proveedor = $request->input('proveedor');
+
+        $distribuidores = Distribuidor::query()
+            ->pluck('nombre')
+            ->filter()
+            ->unique()
+            ->values()
+            ->toArray();
+
+        $resultados = [];
+
+        if ($request->hasFile('imagenes')) {
+            foreach ($request->file('imagenes') as $imagen) {
+                try {
+                    $log = $service->parseAndLog($imagen, auth()->id(), $proveedor);
+                    $parsed = $log->parsed_payload ?? [];
+
+                    // Generar preview base64 para mostrar al usuario
+                    $previewData = null;
+                    $mime = $imagen->getMimeType();
+                    try {
+                        $content = Storage::disk('private')->get($log->file_path);
+                        $previewData = 'data:' . $mime . ';base64,' . base64_encode($content);
+                    } catch (\Throwable $e) {
+                        $previewData = null;
+                    }
+
+                    // Buscar líneas pendientes y generar simulación
+                    $simulacion = $this->generarSimulacion($parsed);
+                    $parsed['bultos_total'] = $simulacion['bultos_albaran'];
+                    $parsed['peso_total'] = $simulacion['peso_total'];
+                    $parsed['tipo_compra'] = isset($parsed['tipo_compra']) ? mb_strtolower($parsed['tipo_compra']) : null;
+                    $parsed['distribuidor_recomendado'] = $this->determinarDistribuidorRecomendado(
+                        $parsed['tipo_compra'],
+                        $parsed['proveedor_texto'] ?? null,
+                        $distribuidores
+                    );
+
+                    $resultados[] = [
+                        'nombre_archivo' => $imagen->getClientOriginalName(),
+                        'preview' => $previewData,
+                        'parsed' => $parsed,
+                        'raw' => $log->raw_text,
+                        'simulacion' => $simulacion,
+                        'error' => null,
+                    ];
+
+                } catch (\Exception $e) {
+                    Log::error('Error procesando imagen con OpenAI: ' . $e->getMessage());
+                    $resultados[] = [
+                        'nombre_archivo' => $imagen->getClientOriginalName(),
+                        'preview' => null,
+                        'parsed' => null,
+                        'raw' => null,
+                        'error' => 'Error al procesar: ' . $e->getMessage(),
+                    ];
+                }
+            }
+        }
+
+        // RETORNAR JSON en lugar de vista
+        return response()->json([
+            'success' => true,
+            'resultados' => $resultados,
+            'distribuidores' => $distribuidores,
+        ]);
+    }
+
+    /**
      * Genera una simulación sugiriendo qué línea de pedido de COMPRA activar
      */
     protected function generarSimulacion(array $parsed): array

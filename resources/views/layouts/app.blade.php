@@ -104,8 +104,13 @@
         }
 
         @keyframes shimmer {
-            0% { transform: translateX(-100%); }
-            100% { transform: translateX(100%); }
+            0% {
+                transform: translateX(-100%);
+            }
+
+            100% {
+                transform: translateX(100%);
+            }
         }
 
         /* Overlay de transición para navegación */
@@ -143,7 +148,9 @@
         }
 
         @keyframes spin {
-            to { transform: translate(-50%, -50%) rotate(360deg); }
+            to {
+                transform: translate(-50%, -50%) rotate(360deg);
+            }
         }
     </style>
 </head>
@@ -156,19 +163,19 @@
 
     <div class="flex h-screen bg-gray-100 dark:bg-gray-900 overflow-hidden">
         <!-- Sidebar Menu Enhanced -->
-            <x-sidebar-menu-enhanced />
+        <x-sidebar-menu-enhanced />
 
         <!-- Main Content Area -->
         <div class="flex-1 flex flex-col overflow-hidden">
             <!-- Top Header Enhanced -->
-                <x-top-header-enhanced />
+            <x-top-header-enhanced />
 
             <!-- Alerts -->
             @include('layouts.alerts')
 
             <!-- Page Content -->
             <main class="flex-1 overflow-y-auto bg-neutral-100 dark:bg-gray-900 transition-colors">
-                <div class="py-6 px-0 sm:px-6 lg:px-8">
+                <div id="app_content" class="py-6 px-0 sm:px-6 lg:px-8">
                     <!-- Breadcrumbs -->
                     <x-breadcrumbs />
 
@@ -212,7 +219,8 @@
         // Configurar la barra de progreso de Livewire Navigate
         document.addEventListener('livewire:init', () => {
             // Verificar que Livewire y navigate existan
-            if (typeof Livewire !== 'undefined' && Livewire.navigate && typeof Livewire.navigate.config === 'function') {
+            if (typeof Livewire !== 'undefined' && Livewire.navigate && typeof Livewire.navigate.config ===
+                'function') {
                 // Configurar Navigate para esperar a que el DOM esté completamente cargado
                 Livewire.navigate.config({
                     showProgressBar: true,
@@ -222,10 +230,16 @@
             }
 
             if (typeof Livewire !== 'undefined' && typeof Livewire.hook === 'function') {
-                Livewire.hook('navigate', ({url, history}) => {
+                Livewire.hook('navigate', ({
+                    url,
+                    history
+                }) => {
                     // Scroll to top on navigation
                     setTimeout(() => {
-                        window.scrollTo({ top: 0, behavior: 'instant' });
+                        window.scrollTo({
+                            top: 0,
+                            behavior: 'instant'
+                        });
                     }, 0);
                 });
             }
@@ -297,7 +311,8 @@
                                 }
 
                                 cargarScriptSecuencial(0, () => {
-                                    console.log('✅ FullCalendar cargado, inicializando calendario...');
+                                    console.log(
+                                        '✅ FullCalendar cargado, inicializando calendario...');
                                     window.inicializarCalendarioMaquinas();
                                 });
                             } else {

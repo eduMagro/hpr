@@ -60,6 +60,7 @@ Route::get('/', [PageController::class, 'index'])->middleware(['auth', 'verified
 // Ruta de prueba para escaneo de albaranes con OpenAI
 Route::get('/pruebasScanAlbaran', [OpenAIController::class, 'index'])->name('openai.index');
 Route::post('/pruebasScanAlbaran/procesar', [OpenAIController::class, 'procesar'])->name('openai.procesar');
+Route::post('/pruebasScanAlbaran/procesar-ajax', [OpenAIController::class, 'procesarAjax'])->name('openai.procesar.ajax');
 
 // Rutas de secciones principales
 Route::get('/produccion', [PageController::class, 'produccion'])->middleware(['auth', 'verified'])->name('secciones.produccion');
