@@ -714,7 +714,7 @@ abstract class ServicioEtiquetaBase
                     'codigo' => $prod['codigo'] ?? $prod->codigo ?? null,
                     'peso_consumido' => $prod['consumido'] ?? $prod['peso_consumido'] ?? 0,
                     'peso_stock_anterior' => $prod['peso_stock_anterior'] ?? $prod['peso_stock'] ?? 0,
-                    'estado_anterior' => $prod['estado'] ?? 'consumiendo',
+                    'estado_anterior' => $prod['estado'] ?? 'fabricando',
                 ];
             }
 

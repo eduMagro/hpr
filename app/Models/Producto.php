@@ -72,9 +72,9 @@ class Producto extends Model
         return $query->where('estado', 'almacenado')->whereNull('maquina_id');
     }
 
-    public function buscaConsumiendo($query)
+    public function buscaFabricando($query)
     {
-        return $query->where('estado', 'consumiendo')->whereNotNull('maquina_id');
+        return $query->where('estado', 'fabricando')->whereNotNull('maquina_id');
     }
     public function consumidoPor()
     {

@@ -938,9 +938,8 @@ class PaqueteController extends Controller
             // Guardar peso anterior para logs
             $pesoAnterior = $paquete->peso;
 
-            // Asignar etiqueta al paquete
+            // Asignar etiqueta al paquete (mantener el estado actual)
             $etiqueta->paquete_id = $paquete->id;
-            $etiqueta->estado = 'en paquete';
             $etiqueta->save();
 
             // Actualizar peso del paquete

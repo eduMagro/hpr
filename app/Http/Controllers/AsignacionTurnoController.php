@@ -1138,9 +1138,26 @@ class AsignacionTurnoController extends Controller
 
     public function destroy(Request $request)
     {
-        Log::debug('Request completo', $request->all());
+        Log::debug('AsignacionTurno destroy - Request completo', $request->all());
 
         try {
+            // Normalizar fechas (FullCalendar puede enviar datetime con T)
+            $fechaInicio = $request->fecha_inicio;
+            $fechaFin = $request->fecha_fin ?? $request->fecha_inicio;
+
+            // Extraer solo la fecha si viene con tiempo
+            if ($fechaInicio && str_contains($fechaInicio, 'T')) {
+                $fechaInicio = substr($fechaInicio, 0, 10);
+            }
+            if ($fechaFin && str_contains($fechaFin, 'T')) {
+                $fechaFin = substr($fechaFin, 0, 10);
+            }
+
+            $request->merge([
+                'fecha_inicio' => $fechaInicio,
+                'fecha_fin' => $fechaFin,
+            ]);
+
             $request->validate([
                 'fecha_inicio' => 'required|date',
                 'fecha_fin'    => 'required|date|after_or_equal:fecha_inicio',
@@ -1154,7 +1171,7 @@ class AsignacionTurnoController extends Controller
                 }
 
                 AsignacionTurno::where('turno_id', $turno->id)
-                    ->whereBetween('fecha', [$request->fecha_inicio, $request->fecha_fin])
+                    ->whereBetween('fecha', [$fechaInicio, $fechaFin])
                     ->delete();
 
                 return response()->json(['success' => 'Turnos festivos eliminados para todos los usuarios.']);
@@ -1165,12 +1182,12 @@ class AsignacionTurnoController extends Controller
                 'tipo'    => 'required|in:eliminarTurnoEstado,eliminarEstado',
             ]);
 
-            $tipo = trim($request->tipo); // ✅ evitar errores por espacios
+            $tipo = trim($request->tipo);
 
             $user = User::findOrFail($request->user_id);
 
             $asignaciones = AsignacionTurno::where('user_id', $user->id)
-                ->whereBetween('fecha', [$request->fecha_inicio, $request->fecha_fin])
+                ->whereBetween('fecha', [$fechaInicio, $fechaFin])
                 ->get();
 
             foreach ($asignaciones as $asignacion) {
@@ -1190,7 +1207,17 @@ class AsignacionTurnoController extends Controller
                     ? 'Turnos eliminados correctamente.'
                     : 'Estado eliminado correctamente.'
             ]);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            Log::warning('AsignacionTurno destroy - Validación fallida', [
+                'errors' => $e->errors(),
+                'request' => $request->all()
+            ]);
+            return response()->json(['error' => 'Datos inválidos: ' . collect($e->errors())->flatten()->first()], 422);
         } catch (\Exception $e) {
+            Log::error('AsignacionTurno destroy - Error', [
+                'message' => $e->getMessage(),
+                'request' => $request->all()
+            ]);
             return response()->json(['error' => 'Error al eliminar los turnos: ' . $e->getMessage()], 500);
         }
     }

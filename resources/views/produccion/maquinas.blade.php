@@ -754,7 +754,7 @@
                                         </th>
                                         <th class="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Figura</th>
                                         <th class="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Elemento</th>
-                                        <th class="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Ø mm</th>
+                                        <th class="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Dimensiones</th>
                                         <th class="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Peso</th>
                                         <th class="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Origen</th>
                                         <th class="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Destino</th>
@@ -5148,7 +5148,7 @@
                             <div class="font-semibold text-slate-800">${elemento.codigo}</div>
                             <div class="text-xs text-slate-400">${elemento.planilla_codigo || '-'}</div>
                         </td>
-                        <td class="px-4 py-3 text-slate-600">${elemento.diametro}</td>
+                        <td class="px-4 py-3 text-slate-600">${elemento.dimensiones || '-'}</td>
                         <td class="px-4 py-3 font-medium text-slate-700">${Math.round(elemento.peso || 0).toLocaleString('es-ES')} kg</td>
                         <td class="px-4 py-3">
                             <span class="px-2.5 py-1 text-xs font-medium rounded-md bg-slate-100 text-slate-700 border border-slate-200">
