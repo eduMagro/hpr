@@ -144,7 +144,7 @@ class EtiquetaHistorial extends Model
                     'codigo' => $prod['codigo'] ?? ($prod->codigo ?? null),
                     'peso_consumido' => (float) ($prod['consumido'] ?? $prod['peso_consumido'] ?? 0),
                     'peso_stock_anterior' => (float) ($prod['peso_stock_anterior'] ?? ($prod['peso_stock'] ?? 0)),
-                    'estado_anterior' => $prod['estado_anterior'] ?? ($prod['estado'] ?? 'consumiendo'),
+                    'estado_anterior' => $prod['estado_anterior'] ?? ($prod['estado'] ?? 'fabricando'),
                 ];
             }
 
@@ -311,9 +311,9 @@ class EtiquetaHistorial extends Model
                         $pesoDevolver = $prodData['peso_consumido'] ?? 0;
                         $producto->peso_stock += $pesoDevolver;
 
-                        // Si estaba consumido y ahora tiene stock, volver a estado consumiendo
+                        // Si estaba consumido y ahora tiene stock, volver a estado fabricando
                         if ($producto->estado === 'consumido' && $producto->peso_stock > 0) {
-                            $producto->estado = $prodData['estado_anterior'] ?? 'consumiendo';
+                            $producto->estado = $prodData['estado_anterior'] ?? 'fabricando';
                         }
 
                         $producto->save();
