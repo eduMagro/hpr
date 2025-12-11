@@ -63,108 +63,84 @@
             <div x-show="showLeft" x-cloak
                 class="col-span-12 lg:col-span-2 bg-white border border-gray-200 shadow-lg rounded-lg self-start lg:sticky lg:top-2 overflow-hidden">
 
-                <div id="materia-prima-container" class="p-2 overflow-y-auto" style="max-height: calc(100vh - 60px);">
-                    {{-- DEBUG: Productos base --}}
-                    <script>
-                        console.log('🔍 DEBUG Productos Base Compatibles:', {
-                            total: {{ $productosBaseCompatibles->count() }},
-                            maquina_id: {{ $maquina->id }},
-                            maquina_nombre: '{{ $maquina->nombre }}',
-                            maquina_tipo_material: '{{ $maquina->tipo_material ?? "VACIO" }}',
-                            maquina_diametro_min: {{ $maquina->diametro_min ?? 'null' }},
-                            maquina_diametro_max: {{ $maquina->diametro_max ?? 'null' }},
-                            productos_base: @json($productosBaseCompatibles->map(fn($p) => ['id' => $p->id, 'diametro' => $p->diametro, 'tipo' => $p->tipo])),
-                            productos_maquina: @json($maquina->productos->map(fn($p) => ['id' => $p->id, 'producto_base_id' => $p->producto_base_id, 'estado' => $p->estado]))
-                        });
-                    </script>
+                <div id="materia-prima-container" class="p-1.5 overflow-y-auto" style="max-height: calc(100vh - 60px);">
                     @if($productosBaseCompatibles->isEmpty())
                         <div class="text-center text-gray-500 py-4">
-                            <p>No hay productos base compatibles</p>
-                            <p class="text-xs">Diámetro: {{ $maquina->diametro_min ?? 0 }} - {{ $maquina->diametro_max ?? 100 }} mm</p>
-                            <p class="text-xs">Tipo material: {{ $maquina->tipo_material ?? 'No definido' }}</p>
+                            <p class="text-xs">No hay productos base compatibles</p>
                         </div>
                     @endif
                     @foreach ($productosBaseCompatibles as $productoBase)
                         @php
-                            // Buscar primero el producto que está fabricando, si no hay, buscar cualquiera que no esté consumido
-                            $productosDeEsteBase = $maquina->productos->where('producto_base_id', $productoBase->id);
+                            // Obtener TODOS los productos de este base que no estén consumidos
+                            $productosDeEsteBase = $maquina->productos
+                                ->where('producto_base_id', $productoBase->id)
+                                ->reject(fn($p) => $p->estado === 'consumido')
+                                ->sortByDesc('estado'); // fabricando primero
 
-                            // Prioridad: fabricando > cualquier otro estado que no sea consumido
-                            $productoExistente = $productosDeEsteBase->firstWhere('estado', 'fabricando')
-                                ?? $productosDeEsteBase->first(fn($p) => $p->estado !== 'consumido');
-
-                            // Si solo hay productos consumidos, no mostrar este producto base
-                            if (!$productoExistente && $productosDeEsteBase->isNotEmpty()) continue;
-
-                            $pesoStock = $productoExistente->peso_stock ?? 0;
-                            $pesoInicial = $productoExistente->peso_inicial ?? 0;
-                            $porcentaje = $pesoInicial > 0 ? ($pesoStock / $pesoInicial) * 100 : 0;
-
-                            $codigoPB = $fabricantePB = $coladaPB = $paquetePB = null;
-                            if ($productoExistente) {
-                                $codigoPB = $productoExistente->codigo ?? ($productoExistente->codigo_producto ?? null);
-                                $fabricantePB = $productoExistente->fabricante->nombre ?? ($productoExistente->fabricante ?? null);
-                                $coladaPB = $productoExistente->n_colada ?? ($productoExistente->colada ?? null);
-                                $paquetePB = $productoExistente->n_paquete ?? ($productoExistente->paquete ?? null);
-                            }
+                            // Si no hay productos activos, saltar
+                            if ($productosDeEsteBase->isEmpty()) continue;
                         @endphp
 
-                        <div class="mb-3 p-3 bg-gray-50 rounded-lg border border-gray-200 hover:border-green-400 transition">
-                            <div class="flex items-center justify-between mb-2">
-                                <div class="text-sm font-semibold text-gray-800">
-                                    <span class="bg-green-100 text-green-800 px-2 py-1 rounded">Ø {{ $productoBase->diametro }} mm</span>
+                        <div class="mb-2 p-1.5 bg-gray-50 rounded border border-gray-200">
+                            {{-- Cabecera del producto base --}}
+                            <div class="flex items-center justify-between mb-1">
+                                <span class="bg-green-600 text-white px-1.5 py-0.5 rounded text-xs font-bold shadow-sm">
+                                    Ø{{ $productoBase->diametro }}
                                     @if (strtoupper($productoBase->tipo) === 'BARRA')
-                                        <span class="ml-2 text-gray-600">L: {{ $productoBase->longitud }} m</span>
+                                        <span class="text-green-100 font-normal">L:{{ $productoBase->longitud }}m</span>
                                     @endif
-                                </div>
-
-                                <form method="POST" action="{{ route('movimientos.crear') }}">
+                                </span>
+                                <form method="POST" action="{{ route('movimientos.crear') }}" class="inline">
                                     @csrf
                                     <input type="hidden" name="tipo" value="recarga_materia_prima">
                                     <input type="hidden" name="maquina_id" value="{{ $maquina->id }}">
                                     <input type="hidden" name="producto_base_id" value="{{ $productoBase->id }}">
-                                    @if ($productoExistente)
-                                        <input type="hidden" name="producto_id" value="{{ $productoExistente->id }}">
-                                    @endif
-                                    <input type="hidden" name="descripcion"
-                                        value="Recarga solicitada para máquina {{ $maquina->nombre }} (Ø{{ $productoBase->diametro }} {{ strtolower($productoBase->tipo) }}, {{ $pesoStock }} kg)">
-
+                                    <input type="hidden" name="descripcion" value="Recarga Ø{{ $productoBase->diametro }}">
                                     @if (optional($productoBaseSolicitados)->contains($productoBase->id))
-                                        <button disabled
-                                            class="bg-gray-300 text-gray-600 text-xs font-medium px-2 py-1 rounded cursor-not-allowed">
-                                            🕓 Solicitado
+                                        <button disabled class="bg-gray-300 text-gray-500 text-[10px] px-1.5 py-0.5 rounded cursor-not-allowed">
+                                            🕓
                                         </button>
                                     @else
-                                        <button
-                                            class="bg-yellow-500 hover:bg-yellow-600 text-white text-xs font-medium px-2 py-1 rounded transition shadow-sm">
-                                            Solicitar
+                                        <button class="bg-yellow-500 hover:bg-yellow-600 text-white text-[10px] px-1.5 py-0.5 rounded">
+                                            +
                                         </button>
                                     @endif
                                 </form>
                             </div>
 
-                            @if ($productoExistente)
-                                {{-- Barra de progreso --}}
-                                <div id="progreso-container-{{ $productoExistente->id }}"
-                                    class="relative mt-2 {{ strtoupper($productoBase->tipo) === 'ENCARRETADO' ? 'w-20 h-20 mx-auto' : 'w-full h-5' }} bg-gray-200 overflow-hidden rounded-full">
-                                    <div id="progreso-barra-{{ $productoExistente->id }}"
-                                        class="absolute {{ strtoupper($productoBase->tipo) === 'ENCARRETADO' ? 'bottom-0 w-full' : 'left-0 h-full' }} transition-all duration-300"
-                                        style="{{ strtoupper($productoBase->tipo) === 'ENCARRETADO' ? 'height' : 'width' }}: {{ $porcentaje }}%; background: linear-gradient(90deg, #10b981, #059669);">
+                            {{-- Lista de productos activos --}}
+                            <div class="space-y-1">
+                                @foreach ($productosDeEsteBase as $producto)
+                                    @php
+                                        $pesoStock = $producto->peso_stock ?? 0;
+                                        $pesoInicial = $producto->peso_inicial ?? 0;
+                                        $porcentaje = $pesoInicial > 0 ? ($pesoStock / $pesoInicial) * 100 : 0;
+                                        $esFabricando = $producto->estado === 'fabricando';
+                                    @endphp
+                                    <div class="p-1 rounded {{ $esFabricando ? 'bg-green-50 border border-green-200' : 'bg-white border border-gray-100' }}">
+                                        {{-- Barra de progreso compacta --}}
+                                        <div class="relative h-4 bg-gray-200 rounded-full overflow-hidden">
+                                            <div class="absolute left-0 h-full transition-all duration-300"
+                                                style="width: {{ $porcentaje }}%; background: {{ $esFabricando ? 'linear-gradient(90deg, #10b981, #059669)' : 'linear-gradient(90deg, #9ca3af, #6b7280)' }};">
+                                            </div>
+                                            <span class="absolute inset-0 flex items-center justify-center text-[10px] font-bold {{ $porcentaje > 50 ? 'text-white' : 'text-gray-700' }}">
+                                                {{ number_format($pesoStock, 0, ',', '.') }}/{{ number_format($pesoInicial, 0, ',', '.') }} kg
+                                            </span>
+                                        </div>
+                                        {{-- Info compacta --}}
+                                        <div class="flex items-center justify-between text-[9px] text-gray-500 mt-0.5 px-0.5">
+                                            <span title="Código" class="truncate">{{ $producto->codigo ?? '—' }}</span>
+                                            <span title="Colada">C: {{ $producto->n_colada ?? '—' }}</span>
+                                            <button type="button"
+                                                onclick="consumirProducto({{ $producto->id }})"
+                                                class="bg-red-500 hover:bg-red-600 text-white text-[8px] px-1 py-0.5 rounded font-medium"
+                                                title="Marcar como consumido">
+                                                ✓
+                                            </button>
+                                        </div>
                                     </div>
-                                    <span id="progreso-texto-{{ $productoExistente->id }}"
-                                        class="absolute inset-0 flex items-center justify-center text-white text-xs font-bold drop-shadow">
-                                        {{ number_format($pesoStock, 0, ',', '.') }} / {{ number_format($pesoInicial, 0, ',', '.') }} kg
-                                    </span>
-                                </div>
-
-                                {{-- Información técnica --}}
-                                <div class="mt-2 grid grid-cols-2 gap-x-2 gap-y-1 text-xs text-gray-600">
-                                    <div><span class="font-medium">Código:</span> {{ $codigoPB ?? '—' }}</div>
-                                    <div><span class="font-medium">Fabricante:</span> {{ $fabricantePB ?? '—' }}</div>
-                                    <div><span class="font-medium">Colada:</span> {{ $coladaPB ?? '—' }}</div>
-                                    <div><span class="font-medium">Paquete:</span> {{ $paquetePB ?? '—' }}</div>
-                                </div>
-                            @endif
+                                @endforeach
+                            </div>
                         </div>
                     @endforeach
                 </div>

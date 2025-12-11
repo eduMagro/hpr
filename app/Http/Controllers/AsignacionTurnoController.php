@@ -1446,6 +1446,115 @@ class AsignacionTurnoController extends Controller
         ]);
     }
 
+    /**
+     * Repite los turnos de la semana anterior para una máquina específica
+     * Usado desde el calendario de trabajadores (clic derecho en máquina)
+     */
+    public function repetirSemanaMaquina(Request $request)
+    {
+        $request->validate([
+            'maquina_id' => 'required|exists:maquinas,id',
+            'semana_inicio' => 'required|date',
+            'duracion_semanas' => 'required|integer|min:1|max:2',
+        ]);
+
+        $maquinaId = $request->maquina_id;
+        $duracionSemanas = $request->duracion_semanas;
+        $inicioSemanaActual = Carbon::parse($request->semana_inicio)->startOfWeek();
+        $inicioSemanaAnterior = $inicioSemanaActual->copy()->subWeek();
+        $finSemanaAnterior = $inicioSemanaAnterior->copy()->endOfWeek();
+
+        // Obtener la máquina para saber su obra_id
+        $maquina = \App\Models\Maquina::find($maquinaId);
+        $obraId = $maquina->obra_id;
+
+        // Colores por obra
+        $coloresEventos = [
+            1 => ['bg' => '#93C5FD', 'border' => '#60A5FA'],
+            2 => ['bg' => '#6EE7B7', 'border' => '#34D399'],
+            3 => ['bg' => '#FDBA74', 'border' => '#F59E0B'],
+        ];
+        $colorEvento = $coloresEventos[$obraId] ?? ['bg' => '#d1d5db', 'border' => '#9ca3af'];
+
+        // Obtener asignaciones de la semana anterior para esta máquina
+        $asignaciones = AsignacionTurno::with(['user', 'turno'])
+            ->whereBetween('fecha', [$inicioSemanaAnterior, $finSemanaAnterior])
+            ->where('maquina_id', $maquinaId)
+            ->get();
+
+        $turnosCreados = 0;
+        $eventosCreados = [];
+
+        // Copiar a las semanas solicitadas
+        for ($semana = 0; $semana < $duracionSemanas; $semana++) {
+            $offsetSemanas = $semana; // 0 = semana actual, 1 = semana siguiente
+
+            foreach ($asignaciones as $asignacion) {
+                $nuevaFecha = Carbon::parse($asignacion->fecha)->addWeeks($offsetSemanas + 1);
+
+                // Verificar si ya existe para evitar duplicados
+                $existe = AsignacionTurno::where('user_id', $asignacion->user_id)
+                    ->whereDate('fecha', $nuevaFecha)
+                    ->exists();
+
+                if (!$existe) {
+                    $nuevaAsignacion = AsignacionTurno::create([
+                        'user_id' => $asignacion->user_id,
+                        'obra_id' => $asignacion->obra_id,
+                        'fecha' => $nuevaFecha,
+                        'estado' => 'activo',
+                        'turno_id' => $asignacion->turno_id,
+                        'maquina_id' => $asignacion->maquina_id,
+                    ]);
+
+                    $turnosCreados++;
+
+                    // Calcular slot visual
+                    $fechaStr = $nuevaFecha->format('Y-m-d');
+                    $turnoId = $asignacion->turno_id;
+
+                    // Mapeo visual basado en turno_id
+                    if ($turnoId == 3) { // Noche
+                        $start = $fechaStr . 'T00:00:00';
+                        $end = $fechaStr . 'T08:00:00';
+                    } elseif ($turnoId == 1) { // Mañana
+                        $start = $fechaStr . 'T08:00:00';
+                        $end = $fechaStr . 'T16:00:00';
+                    } elseif ($turnoId == 2) { // Tarde
+                        $start = $fechaStr . 'T16:00:00';
+                        $end = $fechaStr . 'T24:00:00';
+                    } else {
+                        $start = $fechaStr . 'T08:00:00';
+                        $end = $fechaStr . 'T16:00:00';
+                    }
+
+                    $eventosCreados[] = [
+                        'id' => 'turno-' . $nuevaAsignacion->id,
+                        'title' => $asignacion->user->nombre_completo ?? $asignacion->user->name,
+                        'start' => $start,
+                        'end' => $end,
+                        'resourceId' => $maquinaId,
+                        'backgroundColor' => $colorEvento['bg'],
+                        'borderColor' => $colorEvento['border'],
+                        'textColor' => '#000000',
+                        'extendedProps' => [
+                            'user_id' => $asignacion->user_id,
+                            'turno' => $asignacion->turno->nombre ?? null,
+                            'categoria_nombre' => $asignacion->user->categoria->nombre ?? null,
+                        ],
+                    ];
+                }
+            }
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => "Se copiaron {$turnosCreados} turnos correctamente.",
+            'turnos_creados' => $turnosCreados,
+            'eventos' => $eventosCreados,
+        ]);
+    }
+
     public function quitarObra($id)
     {
         $asignacion = AsignacionTurno::find($id);

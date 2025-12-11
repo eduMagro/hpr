@@ -369,12 +369,16 @@ class SubEtiquetaService
             }
 
             // 2) Obtener elementos de esta máquina, filtrados por planilla si hay posiciones
+            // Solo elementos cuya etiqueta tenga estado 'pendiente'
             $query = Elemento::where(function ($q) use ($maquinaId) {
                 $q->where('maquina_id', $maquinaId)
                     ->orWhere('maquina_id_2', $maquinaId)
                     ->orWhere('maquina_id_3', $maquinaId);
             })
-                ->whereNotNull('etiqueta_sub_id');
+                ->whereNotNull('etiqueta_sub_id')
+                ->whereHas('etiquetaRelacion', function ($q) {
+                    $q->where('estado', 'pendiente');
+                });
 
             // Filtrar por planilla_id si hay posiciones seleccionadas
             if (!empty($planillaIds)) {
@@ -386,7 +390,7 @@ class SubEtiquetaService
             if ($elementos->isEmpty()) {
                 return [
                     'success' => true,
-                    'message' => 'No hay elementos asignados a esta máquina para comprimir.',
+                    'message' => 'No hay elementos con etiquetas pendientes para comprimir.',
                     'stats' => $stats,
                 ];
             }
@@ -613,12 +617,16 @@ class SubEtiquetaService
             }
 
             // 2) Obtener elementos de esta máquina, filtrados por planilla si hay posiciones
+            // Solo elementos cuya etiqueta tenga estado 'pendiente'
             $query = Elemento::where(function ($q) use ($maquinaId) {
                 $q->where('maquina_id', $maquinaId)
                     ->orWhere('maquina_id_2', $maquinaId)
                     ->orWhere('maquina_id_3', $maquinaId);
             })
-                ->whereNotNull('etiqueta_sub_id');
+                ->whereNotNull('etiqueta_sub_id')
+                ->whereHas('etiquetaRelacion', function ($q) {
+                    $q->where('estado', 'pendiente');
+                });
 
             // Filtrar por planilla_id si hay posiciones seleccionadas
             if (!empty($planillaIds)) {
@@ -630,7 +638,7 @@ class SubEtiquetaService
             if ($elementos->isEmpty()) {
                 return [
                     'success' => true,
-                    'message' => 'No hay elementos asignados a esta máquina para descomprimir.',
+                    'message' => 'No hay elementos con etiquetas pendientes para descomprimir.',
                     'stats' => $stats,
                 ];
             }
@@ -638,7 +646,7 @@ class SubEtiquetaService
             // Contar subetiquetas únicas antes
             $stats['subetiquetas_antes'] = $elementos->pluck('etiqueta_sub_id')->unique()->count();
 
-            // 2) Agrupar elementos por CÓDIGO PADRE (extraído del etiqueta_sub_id)
+            // 3) Agrupar elementos por CÓDIGO PADRE (extraído del etiqueta_sub_id)
             $gruposPorCodigoPadre = $elementos->groupBy(function ($elemento) {
                 return Str::before($elemento->etiqueta_sub_id, '.');
             });

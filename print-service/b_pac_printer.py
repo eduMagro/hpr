@@ -159,6 +159,11 @@ class BrotherPrinter:
 
             cantidad_impresa = 0
 
+            # Iniciar impresión en cadena (una sola vez)
+            logger.info("Iniciando impresión en cadena...")
+            if not self.bpac.StartPrint("", 0):
+                raise Exception("No se pudo iniciar la impresión")
+
             for item in codigos:
                 codigo = item.get("codigo", "")
                 if not codigo:
@@ -172,12 +177,14 @@ class BrotherPrinter:
                 if barcode_obj:
                     barcode_obj.Text = codigo
 
-                if self.bpac.StartPrint("", 0):
-                    if self.bpac.PrintOut(1, 0):
-                        self.bpac.EndPrint()
-                        cantidad_impresa += 1
-                    else:
-                        self.bpac.EndPrint()
+                # PrintOut en cadena (sin EndPrint entre etiquetas)
+                if self.bpac.PrintOut(1, 0):
+                    cantidad_impresa += 1
+                    logger.info(f"Etiqueta {cantidad_impresa}: {codigo}")
+
+            # Finalizar impresión en cadena (una sola vez al final)
+            self.bpac.EndPrint()
+            logger.info("Impresión en cadena finalizada")
 
             self.bpac.Close()
             self.bpac = None
