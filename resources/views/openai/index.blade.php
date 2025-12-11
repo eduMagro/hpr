@@ -156,6 +156,9 @@
                                     @php
                                         $sim = $resultado['simulacion'] ?? [];
                                         $parsed = $resultado['parsed'] ?? [];
+                                        $tipoCompraRaw = $parsed['tipo_compra'] ?? null;
+                                        $tipoCompra = $tipoCompraRaw ? mb_strtolower($tipoCompraRaw) : null;
+                                        $tipoCompraValid = in_array($tipoCompra, ['directo', 'proveedor']);
                                     @endphp
                                     <script>
                                         console.log('resultado', {!! json_encode($resultado, JSON_UNESCAPED_UNICODE) !!});
@@ -247,6 +250,13 @@
                                             <span class="font-semibold extracted-value"
                                                 data-field="bultos_total">{{ $resultado['parsed']['bultos_total'] ?? '—' }}</span>
                                         </div>
+                                        <div class="flex flex-col">
+                                            <span class="text-xs text-gray-500">Tipo de compra</span>
+                                            <div class="flex items-center gap-2">
+                                                <span class="font-semibold extracted-value"
+                                                    data-field="tipo_compra">{{ $tipoCompra ? ucfirst($tipoCompra) : '—' }}</span>
+                                            </div>
+                                        </div>
                                     </div>
 
                                     <div class="flex justify-end mt-2">
@@ -334,11 +344,10 @@
                                                 <span class="font-semibold">[coladas]:</span>
                                                 @foreach ($coladasResumen as $colada)
                                                     ({{ $colada['colada'] ?? '—' }} ({{ $colada['bultos'] ?? 0 }})
-                                                    @if(($resultado['parsed']['proveedor'] ?? '') !== 'megasa')
+                                                    @if (($resultado['parsed']['proveedor'] ?? '') !== 'megasa')
                                                         {{ isset($colada['peso_kg']) ? number_format($colada['peso_kg'], 3, ',', '.') : '—' }}
                                                         kg
-                                                    @endif
-                                                    )
+                                                    @endif)
                                                 @endforeach
                                             </p>
                                         </div>
@@ -415,6 +424,21 @@
                                                     data-field="bultos_total"
                                                     value="{{ $resultado['parsed']['bultos_total'] ?? '' }}">
                                             </label>
+                                            <label class="text-xs text-gray-700 font-medium flex flex-col gap-1">
+                                                Tipo de compra
+                                                <select
+                                                    class="general-edit-field rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                                    data-field="tipo_compra">
+                                                    <option value="" {{ $tipoCompra ? '' : 'selected' }}>Sin
+                                                        clasificar</option>
+                                                    <option value="directo"
+                                                        {{ $tipoCompra === 'directo' ? 'selected' : '' }}>Directo
+                                                    </option>
+                                                    <option value="proveedor"
+                                                        {{ $tipoCompra === 'proveedor' ? 'selected' : '' }}>Proveedor
+                                                    </option>
+                                                </select>
+                                            </label>
                                         </div>
                                     </div>
 
@@ -447,9 +471,9 @@
                                                                 class="producto-field rounded border border-gray-300 px-2 py-1 text-xs focus:ring-1 focus:ring-blue-500"
                                                                 data-field="descripcion">
                                                                 <option value="">Seleccionar tipo</option>
-                                                                <option value="CORRUGADO"
-                                                                    {{ ($producto['descripcion'] ?? '') === 'CORRUGADO' ? 'selected' : '' }}>
-                                                                    Corrugado
+                                                                <option value="ENCARRETADO"
+                                                                    {{ ($producto['descripcion'] ?? '') === 'ENCARRETADO' ? 'selected' : '' }}>
+                                                                    Encarretado
                                                                 </option>
                                                                 <option value="BARRA"
                                                                     {{ ($producto['descripcion'] ?? '') === 'BARRA' ? 'selected' : '' }}>
@@ -641,10 +665,21 @@
                                     @if ($sim['linea_propuesta'])
                                         @php
                                             $tipoRec = $sim['linea_propuesta']['tipo_recomendacion'] ?? 'por_score';
-                                            $bgColor = $tipoRec === 'exacta' ? 'bg-green-50 border-green-200' : 'bg-blue-50 border-blue-200';
+                                            $bgColor =
+                                                $tipoRec === 'exacta'
+                                                    ? 'bg-green-50 border-green-200'
+                                                    : 'bg-blue-50 border-blue-200';
                                             $textColor = $tipoRec === 'exacta' ? 'text-green-900' : 'text-blue-900';
-                                            $labelColor = $tipoRec === 'exacta' ? 'bg-green-600 text-white' : 'bg-blue-600 text-white';
-                                            $labelText = $tipoRec === 'exacta' ? 'COINCIDENCIA EXACTA' : ($tipoRec === 'parcial' ? 'COINCIDENCIA PARCIAL' : 'MEJOR COMPATIBILIDAD');
+                                            $labelColor =
+                                                $tipoRec === 'exacta'
+                                                    ? 'bg-green-600 text-white'
+                                                    : 'bg-blue-600 text-white';
+                                            $labelText =
+                                                $tipoRec === 'exacta'
+                                                    ? 'COINCIDENCIA EXACTA'
+                                                    : ($tipoRec === 'parcial'
+                                                        ? 'COINCIDENCIA PARCIAL'
+                                                        : 'MEJOR COMPATIBILIDAD');
                                         @endphp
                                         <div class="mt-3 p-4 {{ $bgColor }} border rounded-lg">
                                             <div class="flex items-start justify-between mb-2">
@@ -654,7 +689,8 @@
                                                             {{ $tipoRec === 'exacta' ? '✓' : '⚠' }} Línea propuesta:
                                                             {{ $sim['linea_propuesta']['pedido_codigo'] }}
                                                         </p>
-                                                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-semibold {{ $labelColor }}">
+                                                        <span
+                                                            class="inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-semibold {{ $labelColor }}">
                                                             {{ $labelText }}
                                                         </span>
                                                     </div>
@@ -755,7 +791,8 @@
                                                     <div id="changeStatement-{{ $idx }}"
                                                         class="mb-2 p-2 bg-blue-50 border border-blue-200 rounded-lg text-xs text-blue-900">
                                                         <strong>Selección manual:</strong>
-                                                        <span id="statementText-{{ $idx }}">Has cambiado la recomendación del sistema.</span>
+                                                        <span id="statementText-{{ $idx }}">Has cambiado la
+                                                            recomendación del sistema.</span>
                                                     </div>
 
                                                     <label class="block text-xs font-medium text-blue-800 mb-1">
@@ -1227,7 +1264,7 @@
                                 Descripción
                                 <select class="producto-field rounded border border-gray-300 px-2 py-1 text-xs focus:ring-1 focus:ring-blue-500" data-field="descripcion">
                                     <option value="">Seleccionar tipo</option>
-                                    <option value="CORRUGADO">Corrugado</option>
+                                    <option value="ENCARRETADO">Encarretado</option>
                                     <option value="BARRA">Barra</option>
                                 </select>
                             </label>
@@ -1491,7 +1528,8 @@
                 const selectedCode = linea.pedido_codigo || 'otro pedido';
 
                 // Actualizar enunciado
-                statementText.innerHTML = `El sistema recomendó <strong>${recommendedCode}</strong> pero preferiste <strong>${selectedCode}</strong>.`;
+                statementText.innerHTML =
+                    `El sistema recomendó <strong>${recommendedCode}</strong> pero preferiste <strong>${selectedCode}</strong>.`;
             }
 
             // Enfocar el input para que escriba el motivo
@@ -1590,6 +1628,7 @@
                     fecha: '',
                     pedido_cliente: '',
                     pedido_codigo: '',
+                    tipo_compra: null,
                     peso_total: null,
                     bultos_total: null,
                     productos: []

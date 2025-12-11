@@ -124,7 +124,7 @@ class OpenAIController extends Controller
         // Buscar líneas de pedidos de COMPRA pendientes (filtrar solo por FABRICANTE)
         $lineasPendientes = \App\Models\PedidoProducto::query()
             ->with(['pedido.fabricante', 'productoBase', 'obra'])
-            ->whereHas('pedido', function($q) use ($fabricanteId, $pedidoCodigo) {
+            ->whereHas('pedido', function ($q) use ($fabricanteId, $pedidoCodigo) {
                 // Si hay código de pedido, intentar coincidir
                 if ($pedidoCodigo) {
                     $q->where('codigo', 'LIKE', "%{$pedidoCodigo}%");
@@ -137,13 +137,13 @@ class OpenAIController extends Controller
         $hoy = now();
 
         // Encontrar el pedido más antiguo para calcular puntuación por regla de 3
-        $pedidoMasAntiguo = $lineasPendientes->min(function($linea) {
+        $pedidoMasAntiguo = $lineasPendientes->min(function ($linea) {
             return $linea->pedido->created_at;
         });
         $diasMaximos = $pedidoMasAntiguo ? $pedidoMasAntiguo->diffInDays($hoy) : 0;
         $puntajeAntiguedadMaximo = 10; // Puntos máximos por antigüedad
 
-        $lineasConScoring = $lineasPendientes->map(function($linea) use ($diametrosEscaneados, $pesoTotal, $pedidoCodigo, $fabricanteId, $hoy, $diasMaximos, $puntajeAntiguedadMaximo) {
+        $lineasConScoring = $lineasPendientes->map(function ($linea) use ($diametrosEscaneados, $pesoTotal, $pedidoCodigo, $fabricanteId, $hoy, $diasMaximos, $puntajeAntiguedadMaximo) {
             $score = 0;
             $razones = [];
             $incompatibilidades = [];
@@ -262,86 +262,86 @@ class OpenAIController extends Controller
         $todasLasLineasQuery = \App\Models\PedidoProducto::query()
             ->with(['pedido.fabricante', 'productoBase', 'obra'])
             ->whereIn('estado', ['pendiente', 'parcial'])
-            ->whereHas('pedido', function($q) {
+            ->whereHas('pedido', function ($q) {
                 // Solo pedidos que NO estén completados/cancelados/facturados
                 $q->whereNotIn('estado', ['completado', 'cancelado', 'facturado']);
             })
             ->get();
 
         // Encontrar el pedido más antiguo de TODAS las líneas para calcular puntuación
-        $pedidoMasAntiguoTodas = $todasLasLineasQuery->min(function($linea) {
+        $pedidoMasAntiguoTodas = $todasLasLineasQuery->min(function ($linea) {
             return $linea->pedido->created_at;
         });
         $diasMaximosTodas = $pedidoMasAntiguoTodas ? $pedidoMasAntiguoTodas->diffInDays(now()) : 0;
 
-        $todasLasLineas = $todasLasLineasQuery->map(function($linea) use ($diametrosEscaneados, $pesoTotal, $pedidoCodigo, $fabricanteId, $diasMaximosTodas, $puntajeAntiguedadMaximo) {
-                // Calcular scoring para cada línea (mismo algoritmo que arriba)
-                $score = 0;
-                $cantidadPendiente = ($linea->cantidad ?? 0) - ($linea->cantidad_recepcionada ?? 0);
-                $diametroLinea = $linea->productoBase->diametro ?? null;
-                $fabricante = $linea->pedido->fabricante->nombre ?? '(sin fabricante)';
+        $todasLasLineas = $todasLasLineasQuery->map(function ($linea) use ($diametrosEscaneados, $pesoTotal, $pedidoCodigo, $fabricanteId, $diasMaximosTodas, $puntajeAntiguedadMaximo) {
+            // Calcular scoring para cada línea (mismo algoritmo que arriba)
+            $score = 0;
+            $cantidadPendiente = ($linea->cantidad ?? 0) - ($linea->cantidad_recepcionada ?? 0);
+            $diametroLinea = $linea->productoBase->diametro ?? null;
+            $fabricante = $linea->pedido->fabricante->nombre ?? '(sin fabricante)';
 
-                // SCORING 0: Fabricante
-                if ($fabricanteId) {
-                    if ($linea->pedido->fabricante_id == $fabricanteId) {
-                        $score += 200;
-                    } elseif (is_null($linea->pedido->fabricante_id)) {
-                        $score += 50;
-                    } else {
-                        $score -= 50;
-                    }
-                }
-
-                // SCORING 1: Diámetro
-                if ($diametroLinea && in_array($diametroLinea, $diametrosEscaneados)) {
+            // SCORING 0: Fabricante
+            if ($fabricanteId) {
+                if ($linea->pedido->fabricante_id == $fabricanteId) {
+                    $score += 200;
+                } elseif (is_null($linea->pedido->fabricante_id)) {
                     $score += 50;
+                } else {
+                    $score -= 50;
                 }
+            }
 
-                // SCORING 2: Código de pedido
-                if ($pedidoCodigo && $linea->pedido->codigo === $pedidoCodigo) {
-                    $score += 30;
-                } elseif ($pedidoCodigo && stripos($linea->pedido->codigo, $pedidoCodigo) !== false) {
-                    $score += 15;
-                }
+            // SCORING 1: Diámetro
+            if ($diametroLinea && in_array($diametroLinea, $diametrosEscaneados)) {
+                $score += 50;
+            }
 
-                // SCORING 3: Cantidad pendiente
-                if ($cantidadPendiente >= $pesoTotal) {
-                    $score += 10;
-                }
+            // SCORING 2: Código de pedido
+            if ($pedidoCodigo && $linea->pedido->codigo === $pedidoCodigo) {
+                $score += 30;
+            } elseif ($pedidoCodigo && stripos($linea->pedido->codigo, $pedidoCodigo) !== false) {
+                $score += 15;
+            }
 
-                // SCORING 4: Antigüedad (regla de 3 basada en el más antiguo)
-                $diasDesdeCreacion = $linea->pedido->created_at->diffInDays(now());
-                if ($diasMaximosTodas > 0) {
-                    $puntajeAntiguedad = ($diasDesdeCreacion / $diasMaximosTodas) * $puntajeAntiguedadMaximo;
-                    $score += $puntajeAntiguedad;
-                }
+            // SCORING 3: Cantidad pendiente
+            if ($cantidadPendiente >= $pesoTotal) {
+                $score += 10;
+            }
 
-                $productoDescripcion = $linea->productoBase->nombre ?? null;
-                if (!$productoDescripcion && $diametroLinea) {
-                    $productoDescripcion = "Ø{$diametroLinea}mm";
-                } elseif (!$productoDescripcion) {
-                    $productoDescripcion = "ProductoBase #{$linea->producto_base_id} (no encontrado)";
-                }
+            // SCORING 4: Antigüedad (regla de 3 basada en el más antiguo)
+            $diasDesdeCreacion = $linea->pedido->created_at->diffInDays(now());
+            if ($diasMaximosTodas > 0) {
+                $puntajeAntiguedad = ($diasDesdeCreacion / $diasMaximosTodas) * $puntajeAntiguedadMaximo;
+                $score += $puntajeAntiguedad;
+            }
 
-                // Indicar si coincide con diámetros escaneados
-                $coincideDiametro = $diametroLinea && in_array($diametroLinea, $diametrosEscaneados);
+            $productoDescripcion = $linea->productoBase->nombre ?? null;
+            if (!$productoDescripcion && $diametroLinea) {
+                $productoDescripcion = "Ø{$diametroLinea}mm";
+            } elseif (!$productoDescripcion) {
+                $productoDescripcion = "ProductoBase #{$linea->producto_base_id} (no encontrado)";
+            }
 
-                return [
-                    'id' => $linea->id,
-                    'pedido_codigo' => $linea->pedido->codigo ?? '(sin código)',
-                    'fabricante' => $fabricante,
-                    'obra' => $linea->obra->obra ?? $linea->obra_manual ?? '(sin obra)',
-                    'producto' => $productoDescripcion,
-                    'diametro' => $diametroLinea,
-                    'cantidad' => $linea->cantidad ?? 0,
-                    'cantidad_recepcionada' => $linea->cantidad_recepcionada ?? 0,
-                    'cantidad_pendiente' => $cantidadPendiente,
-                    'estado' => $linea->estado,
-                    'fecha_creacion' => $linea->pedido->created_at->format('d/m/Y'),
-                    'score' => $score,
-                    'coincide_diametro' => $coincideDiametro,
-                ];
-            })
+            // Indicar si coincide con diámetros escaneados
+            $coincideDiametro = $diametroLinea && in_array($diametroLinea, $diametrosEscaneados);
+
+            return [
+                'id' => $linea->id,
+                'pedido_codigo' => $linea->pedido->codigo ?? '(sin código)',
+                'fabricante' => $fabricante,
+                'obra' => $linea->obra->obra ?? $linea->obra_manual ?? '(sin obra)',
+                'producto' => $productoDescripcion,
+                'diametro' => $diametroLinea,
+                'cantidad' => $linea->cantidad ?? 0,
+                'cantidad_recepcionada' => $linea->cantidad_recepcionada ?? 0,
+                'cantidad_pendiente' => $cantidadPendiente,
+                'estado' => $linea->estado,
+                'fecha_creacion' => $linea->pedido->created_at->format('d/m/Y'),
+                'score' => $score,
+                'coincide_diametro' => $coincideDiametro,
+            ];
+        })
             ->sortByDesc('score')  // Ordenar por score de mayor a menor
             ->values()
             ->toArray();
@@ -368,7 +368,6 @@ class OpenAIController extends Controller
                 // Agregar campos faltantes para compatibilidad
                 $lineaPropuesta['razones'] = [
                     "⚠ No se encontró pedido con código '{$pedidoCodigo}'",
-                    "✓ Seleccionado por mayor score ({$lineaPropuesta['score']})"
                 ];
                 $lineaPropuesta['incompatibilidades'] = [
                     "⚠ El código de pedido del albarán no coincide con ningún pedido en BD"
@@ -383,7 +382,7 @@ class OpenAIController extends Controller
         }
 
         // Preparar productos escaneados para mostrar
-        $productosEscaneados = collect($productos)->map(function($prod, $index) {
+        $productosEscaneados = collect($productos)->map(function ($prod, $index) {
             return [
                 'numero' => $index + 1,
                 'diametro' => $prod['diametro'] ?? '—',
@@ -440,7 +439,7 @@ class OpenAIController extends Controller
 
     protected function obtenerNombreProveedor(?string $codigo): string
     {
-        return match($codigo) {
+        return match ($codigo) {
             'siderurgica' => 'Siderúrgica Sevillana (SISE)',
             'megasa' => 'Megasa',
             'balboa' => 'Balboa',
