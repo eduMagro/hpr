@@ -135,7 +135,23 @@ class BrotherPrinter:
             template_path = self._get_template_path()
             logger.info(f"Usando plantilla: {template_path}")
 
-            if not self.bpac.Open(template_path):
+            # Usar _FlagAsMethod para evitar el error 'str' object is not callable
+            try:
+                self.bpac._FlagAsMethod("Open")
+                self.bpac._FlagAsMethod("Close")
+                self.bpac._FlagAsMethod("GetObject")
+                self.bpac._FlagAsMethod("GetPrinterName")
+                self.bpac._FlagAsMethod("StartPrint")
+                self.bpac._FlagAsMethod("PrintOut")
+                self.bpac._FlagAsMethod("EndPrint")
+            except AttributeError:
+                pass  # Algunos objetos COM no tienen _FlagAsMethod
+
+            logger.info("Abriendo plantilla...")
+            open_result = self.bpac.Open(template_path)
+            logger.info(f"Resultado Open: {open_result}")
+
+            if not open_result:
                 raise Exception(f"No se pudo abrir la plantilla: {template_path}")
 
             printer_name = self.bpac.GetPrinterName()

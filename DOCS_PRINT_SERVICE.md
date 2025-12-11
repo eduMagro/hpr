@@ -177,8 +177,14 @@ Prueba conexion con la impresora.
 - [x] Probado: Servicio Flask arranca correctamente en localhost:8765
 
 ### Pendiente de probar
-- [ ] Impresion real con impresora P-Touch conectada
-- [ ] Verificar que b-PAC SDK funciona correctamente con impresora real
+- [x] Impresion real con impresora P-Touch conectada - FUNCIONA!
+- [x] Verificar que b-PAC SDK funciona correctamente con impresora real - FUNCIONA!
+
+### Fixes aplicados
+- Fix para error `'str' object is not callable` usando `_FlagAsMethod` en win32com
+- Verificacion de b-PAC en registro de Windows antes de inicializar COM
+- Timeout de 5 segundos para verificacion de servicio
+- Timeout de 30 segundos para solicitudes de impresion
 
 ---
 

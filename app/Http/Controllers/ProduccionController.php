@@ -102,7 +102,7 @@ class ProduccionController extends Controller
             ->map(function ($maquina, $index) use ($coloresMaquinas) {
                 $color = $coloresMaquinas[$maquina->obra_id] ?? '#6c757d';
                 return [
-                    'id' => str_pad($maquina->id, 3, '0', STR_PAD_LEFT),
+                    'id' => $maquina->id,
                     'title' => $maquina->codigo,
                     'orden' => $index,
                     'extendedProps' => [
@@ -159,24 +159,35 @@ class ProduccionController extends Controller
 
                 if ($fechaTurno->between($fechaHoy, $fechaLimite)) {
                     $turno = $asignacionTurno->turno;
-
-                    $horaEntrada = $turno?->hora_inicio ?? '08:00:00';
-                    $horaSalida = $turno?->hora_fin ?? '16:00:00';
-
                     $fechaStr = $asignacionTurno->fecha->format('Y-m-d');
 
-                    if ($horaEntrada === '22:00:00' && $horaSalida === '06:00:00') {
-                        $start = $fechaStr . 'T00:00:00';
-                        $end   = $fechaStr . 'T06:00:00';
-                    } elseif ($horaEntrada === '06:00:00') {
-                        $start = $fechaStr . 'T06:00:00';
-                        $end = $fechaStr . 'T14:00:00';
-                    } elseif ($horaEntrada === '14:00:00') {
-                        $start = $fechaStr . 'T14:00:00';
-                        $end = $fechaStr . 'T22:00:00';
+                    // Mapeo visual dinámico basado en hora_inicio/hora_fin de la tabla turnos
+                    // Los slots del calendario son de 8h: Noche 00:00-08:00, Mañana 08:00-16:00, Tarde 16:00-24:00
+                    $horaInicio = $turno?->hora_inicio;
+                    $horaFin = $turno?->hora_fin;
+
+                    if ($horaInicio && $horaFin) {
+                        $hIni = (int) substr($horaInicio, 0, 2);
+                        $hFin = (int) substr($horaFin, 0, 2);
+                        $esNocturno = $hFin < $hIni; // Ej: 22:00-06:00
+
+                        if ($esNocturno) {
+                            // Turno nocturno → slot 00:00-08:00
+                            $start = $fechaStr . 'T00:00:00';
+                            $end   = $fechaStr . 'T08:00:00';
+                        } elseif ($hIni < 12) {
+                            // Turno de mañana → slot 08:00-16:00
+                            $start = $fechaStr . 'T08:00:00';
+                            $end   = $fechaStr . 'T16:00:00';
+                        } else {
+                            // Turno de tarde → slot 16:00-24:00
+                            $start = $fechaStr . 'T16:00:00';
+                            $end   = $fechaStr . 'T24:00:00';
+                        }
                     } else {
-                        $start = $fechaStr . 'T' . $horaEntrada;
-                        $end = $fechaStr . 'T' . $horaSalida;
+                        // Turnos sin horario definido (montaje, festivo, etc.) → slot de mañana por defecto
+                        $start = $fechaStr . 'T08:00:00';
+                        $end   = $fechaStr . 'T16:00:00';
                     }
 
                     $maquinaId = $asignacionTurno->maquina_id ?? $trabajador->maquina_id;
