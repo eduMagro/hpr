@@ -20,19 +20,49 @@ REM PASO 1: Verificar Python
 REM ============================================================
 echo [PASO 1/4] Verificando Python...
 
+REM Intentar encontrar Python de varias formas
+set "PYTHON_EXE="
+
+REM Opcion 1: python en PATH
 where python >nul 2>&1
-if %errorlevel% neq 0 (
+if %errorlevel% equ 0 (
+    for /f "tokens=*" %%i in ('where python') do (
+        if not defined PYTHON_EXE set "PYTHON_EXE=%%i"
+    )
+)
+
+REM Opcion 2: py launcher (viene con instalador oficial de Python)
+if not defined PYTHON_EXE (
+    where py >nul 2>&1
+    if %errorlevel% equ 0 (
+        set "PYTHON_EXE=py"
+    )
+)
+
+REM Opcion 3: Rutas comunes de instalacion
+if not defined PYTHON_EXE (
+    if exist "C:\Python312\python.exe" set "PYTHON_EXE=C:\Python312\python.exe"
+    if exist "C:\Python311\python.exe" set "PYTHON_EXE=C:\Python311\python.exe"
+    if exist "C:\Python310\python.exe" set "PYTHON_EXE=C:\Python310\python.exe"
+    if exist "%LOCALAPPDATA%\Programs\Python\Python312\python.exe" set "PYTHON_EXE=%LOCALAPPDATA%\Programs\Python\Python312\python.exe"
+    if exist "%LOCALAPPDATA%\Programs\Python\Python311\python.exe" set "PYTHON_EXE=%LOCALAPPDATA%\Programs\Python\Python311\python.exe"
+    if exist "%LOCALAPPDATA%\Programs\Python\Python310\python.exe" set "PYTHON_EXE=%LOCALAPPDATA%\Programs\Python\Python310\python.exe"
+)
+
+if not defined PYTHON_EXE (
     echo.
     echo ============================================================
-    echo   [ERROR] Python no esta instalado
+    echo   [ERROR] Python no esta instalado o no se encuentra
     echo ============================================================
     echo.
-    echo   Por favor instala Python 3.8 o superior:
+    echo   Por favor instala Python 3.10 o superior:
     echo.
     echo   1. Ve a: https://www.python.org/downloads/
     echo   2. Descarga Python 3.11 o superior
     echo   3. IMPORTANTE: Marca "Add Python to PATH" en el instalador
     echo   4. Reinicia este script despues de instalar
+    echo.
+    echo   NOTA: NO instales Python desde Microsoft Store
     echo.
     echo ============================================================
     echo.
@@ -42,8 +72,10 @@ if %errorlevel% neq 0 (
     exit /b 1
 )
 
-for /f "tokens=*" %%i in ('python --version 2^>^&1') do set PYTHON_VERSION=%%i
+REM Mostrar version de Python
+for /f "tokens=*" %%i in ('"%PYTHON_EXE%" --version 2^>^&1') do set PYTHON_VERSION=%%i
 echo [OK] %PYTHON_VERSION% detectado
+echo [INFO] Ejecutable: %PYTHON_EXE%
 echo.
 
 REM ============================================================
@@ -51,11 +83,28 @@ REM PASO 2: Crear/Verificar entorno virtual
 REM ============================================================
 echo [PASO 2/4] Verificando entorno virtual...
 
-if not exist "venv\Scripts\activate.bat" (
+set "VENV_PYTHON=%SCRIPT_DIR%venv\Scripts\python.exe"
+set "VENV_PIP=%SCRIPT_DIR%venv\Scripts\pip.exe"
+set "VENV_ACTIVATE=%SCRIPT_DIR%venv\Scripts\activate.bat"
+
+if not exist "%VENV_PYTHON%" (
     echo [INFO] Creando entorno virtual...
-    python -m venv venv
-    if %errorlevel% neq 0 (
+    "%PYTHON_EXE%" -m venv "%SCRIPT_DIR%venv"
+    if errorlevel 1 (
         echo [ERROR] No se pudo crear el entorno virtual
+        echo.
+        echo Posibles soluciones:
+        echo   1. Asegurate de NO usar Python de Microsoft Store
+        echo   2. Instala Python desde python.org
+        echo   3. Ejecuta como administrador
+        pause
+        exit /b 1
+    )
+
+    REM Verificar que se creo correctamente
+    if not exist "%VENV_PYTHON%" (
+        echo [ERROR] El entorno virtual no se creo correctamente
+        echo         No se encuentra: %VENV_PYTHON%
         pause
         exit /b 1
     )
@@ -70,26 +119,37 @@ REM PASO 3: Instalar dependencias
 REM ============================================================
 echo [PASO 3/4] Verificando dependencias...
 
-call venv\Scripts\activate.bat
-
 REM Verificar si flask esta instalado
-venv\Scripts\python.exe -c "import flask" >nul 2>&1
+"%VENV_PYTHON%" -c "import flask" >nul 2>&1
 if errorlevel 1 (
     echo [INFO] Instalando dependencias...
     echo.
     echo --- Actualizando pip ---
-    venv\Scripts\python.exe -m pip install --upgrade pip
+    "%VENV_PYTHON%" -m pip install --upgrade pip
+    if errorlevel 1 (
+        echo [AVISO] No se pudo actualizar pip, continuando...
+    )
     echo.
     echo --- Instalando Flask y Flask-CORS ---
-    venv\Scripts\python.exe -m pip install flask flask-cors
+    "%VENV_PYTHON%" -m pip install flask flask-cors
+    if errorlevel 1 (
+        echo [ERROR] No se pudo instalar Flask
+        pause
+        exit /b 1
+    )
     echo.
     echo --- Instalando pywin32 ---
-    venv\Scripts\python.exe -m pip install pywin32
+    "%VENV_PYTHON%" -m pip install pywin32
+    if errorlevel 1 (
+        echo [ERROR] No se pudo instalar pywin32
+        pause
+        exit /b 1
+    )
     echo.
 )
 
 REM Verificar que flask se instalo correctamente
-venv\Scripts\python.exe -c "import flask" >nul 2>&1
+"%VENV_PYTHON%" -c "import flask" >nul 2>&1
 if errorlevel 1 (
     echo [ERROR] Flask no se pudo instalar correctamente
     pause
@@ -103,7 +163,7 @@ REM PASO 4: Verificar e instalar b-PAC SDK
 REM ============================================================
 echo [PASO 4/4] Verificando Brother b-PAC SDK...
 
-venv\Scripts\python.exe -c "import win32com.client; win32com.client.Dispatch('bpac.Document')" >nul 2>&1
+"%VENV_PYTHON%" -c "import win32com.client; win32com.client.Dispatch('bpac.Document')" >nul 2>&1
 if %errorlevel% equ 0 (
     echo [OK] Brother b-PAC SDK detectado
     echo.
@@ -115,7 +175,7 @@ echo.
 
 REM Buscar si hay un .msi en la carpeta actual
 set "MSI_FILE="
-for %%f in (*.msi) do set "MSI_FILE=%%f"
+for %%f in ("*.msi") do set "MSI_FILE=%%f"
 
 if not defined MSI_FILE goto :NO_MSI_FOUND
 
@@ -158,7 +218,7 @@ set /p "WAIT_DOWNLOAD=Presiona ENTER cuando hayas descargado el archivo..."
 
 REM Buscar de nuevo el .msi
 set "MSI_FILE="
-for %%f in (*.msi) do set "MSI_FILE=%%f"
+for %%f in ("*.msi") do set "MSI_FILE=%%f"
 
 if not defined MSI_FILE (
     echo [AVISO] No se encontro archivo .msi
@@ -194,6 +254,6 @@ echo.
 echo ============================================================
 echo.
 
-venv\Scripts\python.exe print_service.py
+"%VENV_PYTHON%" "%SCRIPT_DIR%print_service.py"
 
 pause

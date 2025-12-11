@@ -3378,7 +3378,9 @@ class ProduccionController extends Controller
                             'marca' => $elemento->marca,
                             'diametro' => $elemento->diametro,
                             'peso' => $elemento->peso,
-                            'longitud' => ($elemento->longitud ?? 0) * ($elemento->barras ?? 1), // longitud total
+                            'dimensiones' => $elemento->dimensiones,
+                            'barras' => $elemento->barras,
+                            'longitud' => ($elemento->longitud ?? 0) * ($elemento->barras ?? 1),
                             'tiempo_fabricacion' => $elemento->tiempo_fabricacion,
                             'tiempo_horas' => round($elemento->tiempo_fabricacion / 3600, 2),
                             'planilla_id' => $elemento->planilla_id,
@@ -3544,6 +3546,9 @@ class ProduccionController extends Controller
             $errores = [];
             $planillasAfectadas = [];
 
+            // Instanciar el servicio de asignación para validaciones
+            $asignarMaquinaService = app(\App\Services\AsignarMaquinaService::class);
+
             foreach ($movimientos as $mov) {
                 try {
                     $elemento = Elemento::find($mov['elemento_id']);
@@ -3555,6 +3560,21 @@ class ProduccionController extends Controller
 
                     // Saltar elementos de planillas en posición 1 y fabricando
                     if (in_array($elemento->planilla_id, $planillasExcluidas)) {
+                        $omitidos++;
+                        continue;
+                    }
+
+                    // Obtener máquina destino
+                    $maquinaDestino = Maquina::find($mov['maquina_nueva_id']);
+                    if (!$maquinaDestino) {
+                        $errores[] = "Máquina destino {$mov['maquina_nueva_id']} no encontrada";
+                        continue;
+                    }
+
+                    // 🔒 Validar compatibilidad elemento-máquina usando AsignarMaquinaService
+                    $validacion = $asignarMaquinaService->reasignarElemento($elemento, $maquinaDestino);
+                    if (!$validacion['success']) {
+                        $errores[] = $validacion['message'];
                         $omitidos++;
                         continue;
                     }
