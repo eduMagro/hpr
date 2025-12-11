@@ -2,6 +2,7 @@ import { DATA, R } from "./config.js";
 import { openCellMenu } from "./menu/cellMenu.js";
 import { openFestivoMenu } from "./menu/festivoMenu.js";
 import { openWorkerMenu } from "./menu/workerMenu.js";
+import { openResourceMenu } from "./menu/resourceMenu.js";
 
 /**
  * Genera eventos de carga de trabajo por turno para mostrar en vista de día
@@ -644,6 +645,46 @@ export function initCalendar(domEl) {
         });
 
     console.log("[cal] Event listener de contextmenu agregado correctamente");
+
+    // Event listener para clic derecho en recursos (máquinas) - solo en vista semanal
+    root.addEventListener("contextmenu", (ev) => {
+        // Solo procesar si es en el área de recursos (columna izquierda)
+        const resourceCell = ev.target.closest(".fc-datagrid-cell.fc-resource");
+        if (!resourceCell) return;
+
+        // Verificar que estamos en vista semanal
+        const currentView = calendar.view.type;
+        if (currentView !== "resourceTimelineWeek") return;
+
+        ev.preventDefault();
+        ev.stopPropagation();
+
+        // Obtener el resourceId del elemento
+        const row = resourceCell.closest("tr[data-resource-id]");
+        const resourceId = row?.dataset?.resourceId;
+
+        if (!resourceId) {
+            console.log("[cal] No se pudo obtener el resourceId del recurso");
+            return;
+        }
+
+        // Obtener el título del recurso
+        const resourceTitle = resourceCell.textContent?.trim() || `Máquina ${resourceId}`;
+
+        // Obtener la fecha de inicio de la semana actual del calendario
+        const weekStart = calendar.view.activeStart.toISOString().slice(0, 10);
+
+        console.log("[cal] Clic derecho en recurso:", resourceId, resourceTitle, "Semana:", weekStart);
+
+        openResourceMenu(
+            ev.clientX,
+            ev.clientY,
+            { resourceId, resourceTitle, weekStart },
+            calendar
+        );
+    }, true); // Usar capturing para interceptar antes
+
+    console.log("[cal] Event listener de recursos agregado correctamente");
 
     return calendar;
 }

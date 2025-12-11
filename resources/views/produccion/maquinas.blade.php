@@ -5205,10 +5205,10 @@
                                 <div class="text-sm font-semibold text-slate-700 truncate" title="${maquina.nombre}">${maquina.nombre}</div>
                                 <div class="text-xs text-slate-400">${elementos} elementos</div>
                             </div>
-                            <div class="h-6 rounded-full bg-slate-200 overflow-hidden shadow-inner">
-                                <div class="h-full rounded-full transition-all duration-500 ease-out flex items-center justify-end pr-2"
-                                     style="${colores.bar} width: ${Math.max(porcentaje, peso > 0 ? 8 : 2)}%; min-width: ${peso > 0 ? '40px' : '8px'};">
-                                    <span class="text-xs font-bold text-white drop-shadow-sm">${peso > 0 ? (peso >= 1000 ? Math.round(peso/1000) + 'T' : peso + 'kg') : ''}</span>
+                            <div class="h-6 rounded bg-slate-200 overflow-hidden shadow-inner">
+                                <div class="h-full rounded transition-all duration-500 ease-out flex items-center justify-end pr-3"
+                                     style="${colores.bar} width: ${Math.max(porcentaje, peso > 0 ? 10 : 2)}%; min-width: ${peso > 0 ? '50px' : '8px'};">
+                                    <span class="text-xs font-bold text-white drop-shadow-sm whitespace-nowrap">${peso > 0 ? (peso >= 1000 ? Math.round(peso/1000) + 'T' : peso + 'kg') : ''}</span>
                                 </div>
                             </div>
                             <div class="text-right min-w-0">

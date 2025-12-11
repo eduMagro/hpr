@@ -291,6 +291,7 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
     Route::put('/asignaciones-turnos/{id}/update-obra', [AsignacionTurnoController::class, 'updateObra'])->name('asignaciones-turnos.update-obra');
     Route::post('/asignaciones-turno/repetir-semana', [AsignacionTurnoController::class, 'repetirSemana'])->name('asignaciones-turnos.repetirSemana');
     Route::post('/asignaciones-turno/repetir-semana-obra', [AsignacionTurnoController::class, 'repetirSemanaObra'])->name('asignaciones-turnos.repetirSemanaObra');
+    Route::post('/asignaciones-turno/repetir-semana-maquina', [AsignacionTurnoController::class, 'repetirSemanaMaquina'])->name('asignaciones-turnos.repetirSemanaMaquina');
     Route::post('/asignaciones-turno/mover-eventos', [AsignacionTurnoController::class, 'moverEventosAObra'])->name('asignaciones-turnos.moverEventos');
     Route::post('/asignaciones-turno/{id}/actualizar-horas', [AsignacionTurnoController::class, 'actualizarHoras'])->name('asignaciones-turnos.actualizar-horas');
     Route::get('/asignaciones-turno/exportar', [AsignacionTurnoController::class, 'export'])->name('asignaciones-turnos.verExportar');

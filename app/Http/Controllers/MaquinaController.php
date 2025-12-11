@@ -1405,9 +1405,7 @@ class MaquinaController extends Controller
         }
 
         // Redirigir a la nueva máquina seleccionada
-        return redirect()
-            ->route('maquinas.show', $request->nueva_maquina_id)
-            ->with('success', 'Máquina cambiada correctamente.');
+        return redirect()->route('maquinas.show', $request->nueva_maquina_id);
     }
 
     public function cambiarEstado(Request $request, $id, ActionLoggerService $logger)
