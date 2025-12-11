@@ -3,97 +3,74 @@ import { crearFestivo } from "../dialogs/festivo.js";
 import { generarTurnosDialog } from "../dialogs/generarTurnos.js";
 import { DATA, CSRF } from "../config.js";
 
-/** Copia eventos (no festivos) de un día a otro, manteniendo horas y recurso */
-async function copiarRegistrosDia({ fromISO, toISO, calendar }) {
+/** Copia eventos (no festivos) de un día a otro, persistiendo en BD */
+async function copiarRegistrosDia({ fromISO, toISO, calendar, maquinaId = null }) {
     // confirma
     const ok = await Swal.fire({
         icon: "question",
         title: "Copiar registros",
-        html: `¿Copiar registros de <b>${fromISO}</b> a <b>${toISO}</b>?`,
+        html: `¿Copiar registros de <b>${fromISO}</b> a <b>${toISO}</b>?<br><small class="text-gray-500">Se guardarán en la base de datos</small>`,
         showCancelButton: true,
         confirmButtonText: "Copiar",
         cancelButtonText: "Cancelar",
     }).then((r) => r.isConfirmed);
     if (!ok) return;
 
-    const evs = calendar
-        .getEvents()
-        .filter((ev) => !ev.extendedProps?.es_festivo); // solo trabajadores
-
-    // Para evitar duplicados básicos: índice por (title, resourceId, fecha)
-    const yaExiste = (title, resourceId, fechaISO) => {
-        return evs.some((ev) => {
-            const rId =
-                ev.getResources?.()[0]?.id ??
-                ev.extendedProps?.resourceId ??
-                null;
-            return (
-                ev.title === title &&
-                String(rId) === String(resourceId) &&
-                (ev.startStr || ev.start?.toISOString()).slice(0, 10) ===
-                    fechaISO
-            );
-        });
-    };
-
-    // Filtra los del día origen
-    const delOrigen = evs.filter(
-        (ev) =>
-            (ev.startStr || ev.start?.toISOString()).slice(0, 10) === fromISO
-    );
-
-    let creados = 0;
-    for (const ev of delOrigen) {
-        const res = ev.getResources ? ev.getResources() : [];
-        const resourceId = res?.[0]?.id ?? ev.extendedProps?.resourceId ?? null;
-
-        // Construye nuevas fechas conservando HH:mm
-        const start = ev.start ? new Date(ev.start) : null;
-        const end = ev.end ? new Date(ev.end) : null;
-
-        const hhmm = start
-            ? `${String(start.getHours()).padStart(2, "0")}:${String(
-                  start.getMinutes()
-              ).padStart(2, "0")}`
-            : "08:00";
-        const hhmmEnd = end
-            ? `${String(end.getHours()).padStart(2, "0")}:${String(
-                  end.getMinutes()
-              ).padStart(2, "0")}`
-            : null;
-
-        const startNew = new Date(`${toISO}T${hhmm}:00`);
-        const endNew = hhmmEnd ? new Date(`${toISO}T${hhmmEnd}:00`) : null;
-
-        // evita duplicado
-        if (yaExiste(ev.title, resourceId, toISO)) continue;
-
-        calendar.addEvent({
-            id: `tmp-copy-${Date.now()}-${Math.random().toString(36).slice(2)}`, // id temporal
-            title: ev.title,
-            start: startNew.toISOString(),
-            end: endNew ? endNew.toISOString() : null,
-            resourceId: resourceId ?? undefined, // si hay uno
-            allDay: ev.allDay,
-            backgroundColor: ev.backgroundColor,
-            borderColor: ev.borderColor,
-            textColor: ev.textColor,
-            extendedProps: { ...ev.extendedProps },
+    try {
+        // Llamar al backend para persistir la copia
+        const response = await fetch('/asignaciones-turno/copiar-dia', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': CSRF(),
+                'Accept': 'application/json',
+            },
+            body: JSON.stringify({
+                fecha_origen: fromISO,
+                fecha_destino: toISO,
+                maquina_id: maquinaId,
+            }),
         });
 
-        creados++;
+        const data = await response.json();
+
+        if (!response.ok) {
+            throw new Error(data.message || `Error HTTP ${response.status}`);
+        }
+
+        // Agregar los eventos al calendario
+        if (data.eventos && data.eventos.length > 0) {
+            data.eventos.forEach(evento => {
+                calendar.addEvent({
+                    id: evento.id,
+                    title: evento.title,
+                    start: evento.start,
+                    end: evento.end,
+                    resourceId: evento.resourceId,
+                    backgroundColor: evento.backgroundColor,
+                    borderColor: evento.borderColor,
+                    textColor: evento.textColor || '#000000',
+                    extendedProps: evento.extendedProps || {},
+                });
+            });
+        }
+
+        Swal.fire({
+            icon: "success",
+            title: "Copiado completado",
+            html: `Se han copiado <b>${data.copiadas || 0}</b> registros a ${toISO}.`,
+            timer: 1800,
+            showConfirmButton: false,
+        });
+
+    } catch (error) {
+        console.error("Error al copiar día:", error);
+        Swal.fire({
+            icon: "error",
+            title: "Error al copiar",
+            text: error.message || "No se pudieron copiar los registros.",
+        });
     }
-
-    Swal.fire({
-        icon: "success",
-        title: "Copiado completado",
-        html: `Se han creado <b>${creados}</b> registros en ${toISO}.`,
-        timer: 1400,
-        showConfirmButton: false,
-    });
-
-    // TODO (persistencia): aquí puedes llamar a tu backend para guardar cada asignación creada
-    // o bien exponer un endpoint tipo POST /asignaciones-turno/copiar-dia { from, to }
 }
 
 /**
@@ -186,7 +163,7 @@ async function copiarSemanaAnterior({ maquinaId, maquinaNombre, fechaISO, duraci
     }
 }
 
-export function openCellMenu(x, y, { fechaISO, resourceId }, calendar, maquinas) {
+export function openCellMenu(x, y, { fechaISO, resourceId, horaISO }, calendar, maquinas) {
     // helpers para fechas vecinas
     const prevISO = new Date(fechaISO);
     prevISO.setDate(prevISO.getDate() - 1);
@@ -317,7 +294,8 @@ export function openCellMenu(x, y, { fechaISO, resourceId }, calendar, maquinas)
                     const resultado = await generarTurnosDialog(
                         fechaISO,
                         resourceId,
-                        maquinaNombre
+                        maquinaNombre,
+                        horaISO
                     );
 
                     console.log("[menu] Resultado del diálogo:", resultado);
@@ -326,10 +304,11 @@ export function openCellMenu(x, y, { fechaISO, resourceId }, calendar, maquinas)
                         console.log("[menu] Procesando eventos:", resultado.eventos.length);
 
                         // Primero, eliminar eventos antiguos del trabajador en las fechas afectadas
-                        const userId = resultado.eventos[0]?.user_id;
+                        // Nota: user_id viene dentro de extendedProps (estructura normalizada)
+                        const userId = resultado.eventos[0]?.extendedProps?.user_id;
                         if (userId) {
                             const eventosExistentes = calendar.getEvents();
-                            const fechasNuevas = resultado.eventos.map(e => e.start);
+                            const fechasNuevas = resultado.eventos.map(e => e.start?.slice(0, 10));
 
                             eventosExistentes.forEach(evento => {
                                 const eventoUserId = evento.extendedProps?.user_id;
@@ -343,26 +322,24 @@ export function openCellMenu(x, y, { fechaISO, resourceId }, calendar, maquinas)
                             });
                         }
 
-                        // Agregar los nuevos eventos
+                        // Agregar los nuevos eventos (estructura normalizada desde el backend)
                         resultado.eventos.forEach(evento => {
+                            console.log("[menu] Añadiendo evento:", {
+                                id: evento.id,
+                                start: evento.start,
+                                end: evento.end,
+                                resourceId: evento.resourceId
+                            });
                             calendar.addEvent({
                                 id: evento.id,
                                 title: evento.title,
                                 start: evento.start,
+                                end: evento.end,
                                 resourceId: evento.resourceId,
-                                allDay: true,
                                 backgroundColor: evento.backgroundColor,
                                 borderColor: evento.borderColor,
                                 textColor: evento.textColor || '#000000',
-                                extendedProps: {
-                                    user_id: evento.user_id,
-                                    categoria_nombre: evento.categoria_nombre,
-                                    turno: evento.turno,
-                                    entrada: evento.entrada,
-                                    salida: evento.salida,
-                                    foto: evento.foto,
-                                    es_festivo: false,
-                                }
+                                extendedProps: evento.extendedProps || {},
                             });
                         });
 

@@ -34,6 +34,7 @@ use Illuminate\Support\Facades\Session as FacadeSession;
 use Illuminate\Support\Facades\Storage;
 use Intervention\Image\ImageManager;
 use Intervention\Image\Drivers\Gd\Driver as GdDriver;
+use App\Servicios\Turnos\TurnoMapper;
 
 class ProfileController extends Controller
 {
@@ -1277,6 +1278,7 @@ class ProfileController extends Controller
             'fecha_inicio' => 'required|date',
             'alcance' => 'required|in:un_dia,dos_semanas,resto_año',
             'turno_inicio' => 'nullable|in:mañana,tarde',
+            'turno_detectado' => 'nullable|in:mañana,tarde,noche',
         ]);
 
         $user = User::with(['categoria'])->findOrFail($validated['user_id']);
@@ -1325,7 +1327,16 @@ class ProfileController extends Controller
             ->all();
 
         // Determinar turno inicial
-        if ($user->turno == 'diurno') {
+        // Si viene turno_detectado (desde el clic en el calendario), usarlo directamente
+        if (!empty($validated['turno_detectado'])) {
+            $turnoDetectado = $validated['turno_detectado'];
+            $turnoAsignado = match($turnoDetectado) {
+                'mañana' => $turnoMañanaId,
+                'tarde' => $turnoTardeId,
+                'noche' => $turnoNocheId,
+                default => $turnoMañanaId,
+            };
+        } elseif ($user->turno == 'diurno') {
             $turnoInicial = $validated['turno_inicio'] ?? 'mañana';
             if (!in_array($turnoInicial, ['mañana', 'tarde'])) {
                 return response()->json([
@@ -1397,21 +1408,29 @@ class ProfileController extends Controller
                 $asignacionActualizada->load(['turno', 'obra']);
             }
 
-            // Agregar evento creado a la lista
+            // Mapeo visual usando TurnoMapper
+            $turnoModel = $asignacionActualizada->turno;
+            $slot = TurnoMapper::getSlotParaTurnoModel($turnoModel, $fechaStr);
+
+            // Agregar evento creado a la lista (estructura normalizada)
             $eventosCreados[] = [
                 'id' => 'turno-' . $asignacionActualizada->id,
                 'title' => $user->name . ' ' . ($user->primer_apellido ?? ''),
-                'start' => $fechaStr,
+                'start' => $slot['start'],
+                'end' => $slot['end'],
                 'resourceId' => $validated['maquina_id'],
                 'backgroundColor' => $colorEvento['bg'],
                 'borderColor' => $colorEvento['border'],
                 'textColor' => '#000000',
-                'user_id' => $user->id,
-                'categoria_nombre' => $user->categoria->nombre ?? null,
-                'turno' => $asignacionActualizada->turno->nombre ?? null,
-                'entrada' => $asignacionActualizada->entrada,
-                'salida' => $asignacionActualizada->salida,
-                'foto' => $user->ruta_imagen,
+                'extendedProps' => [
+                    'user_id' => $user->id,
+                    'categoria_nombre' => $user->categoria->nombre ?? null,
+                    'turno' => $turnoModel->nombre ?? null,
+                    'entrada' => $asignacionActualizada->entrada,
+                    'salida' => $asignacionActualizada->salida,
+                    'foto' => $user->ruta_imagen,
+                    'es_festivo' => false,
+                ],
             ];
 
             $turnosCreados++;

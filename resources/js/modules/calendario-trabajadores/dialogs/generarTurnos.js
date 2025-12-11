@@ -1,13 +1,58 @@
-import { R } from "../config.js";
+import { R, DATA } from "../config.js";
+
+/**
+ * Detecta el turno según la hora usando la configuración del backend
+ * @param {string} hora - Hora en formato HH:MM
+ * @returns {string} - 'mañana', 'tarde' o 'noche'
+ */
+function detectarTurnoPorHora(hora) {
+    if (!hora) return null;
+    const [h] = hora.split(':').map(Number);
+
+    // Obtener configuración de turnos del backend
+    // turnosConfig tiene la estructura completa, turnos es el array simple
+    const turnosConfig = window.AppPlanif?.turnosConfig?.turnos || window.AppPlanif?.turnos || [];
+
+    for (const turno of turnosConfig) {
+        if (!turno.hora_inicio || !turno.hora_fin) continue;
+
+        const [hIni] = turno.hora_inicio.split(':').map(Number);
+        const [hFin] = turno.hora_fin.split(':').map(Number);
+        const esNocturno = hFin < hIni;
+
+        let enTurno = false;
+        if (esNocturno) {
+            // Turno nocturno: 22:00 - 06:00
+            enTurno = h >= hIni || h < hFin;
+        } else {
+            // Turnos normales
+            enTurno = h >= hIni && h < hFin;
+        }
+
+        if (enTurno) {
+            return turno.nombre;
+        }
+    }
+
+    // Fallback: usar slots visuales del calendario
+    // Noche: 00:00-08:00, Mañana: 08:00-16:00, Tarde: 16:00-24:00
+    if (h >= 0 && h < 8) return 'noche';
+    if (h >= 8 && h < 16) return 'mañana';
+    return 'tarde';
+}
 
 /**
  * Abre el diálogo para generar turnos desde el calendario
  * @param {string} fechaISO - Fecha ISO seleccionada
  * @param {number} maquinaId - ID de la máquina/recurso desde el calendario
  * @param {string} maquinaNombre - Nombre de la máquina
+ * @param {string} horaISO - Hora del clic (opcional) en formato HH:MM
  * @returns {Promise<object|null>} - Retorna el resultado o null si se canceló
  */
-export async function generarTurnosDialog(fechaISO, maquinaId, maquinaNombre) {
+export async function generarTurnosDialog(fechaISO, maquinaId, maquinaNombre, horaISO = null) {
+    // Detectar turno automáticamente según la hora del clic
+    const turnoDetectado = detectarTurnoPorHora(horaISO);
+    console.log("[generarTurnos] horaISO:", horaISO, "turnoDetectado:", turnoDetectado);
     // Obtener todos los trabajadores con rol operario y sus asignaciones
     let todosOperarios = [];
     let operariosSinTurno = [];
@@ -47,6 +92,11 @@ export async function generarTurnosDialog(fechaISO, maquinaId, maquinaNombre) {
     const opcionesTodosOperarios = generarOpciones(todosOperarios, 'No hay operarios disponibles');
     const opcionesMaquina = generarOpciones(operariosMaquina, 'No hay operarios asignados a esta máquina');
 
+    // Texto del turno detectado para mostrar
+    const turnoTexto = turnoDetectado
+        ? `<span class="text-green-600 font-semibold">${turnoDetectado.charAt(0).toUpperCase() + turnoDetectado.slice(1)}</span>`
+        : '<span class="text-gray-400">No detectado</span>';
+
     const { value: formValues } = await Swal.fire({
         title: "🔧 Generar Turnos",
         html: `
@@ -54,7 +104,8 @@ export async function generarTurnosDialog(fechaISO, maquinaId, maquinaNombre) {
                 <div class="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
                     <p class="text-sm text-blue-800">
                         <strong>Fecha inicio:</strong> ${fechaISO}<br>
-                        <strong>Máquina:</strong> ${maquinaNombre}
+                        <strong>Máquina:</strong> ${maquinaNombre}<br>
+                        <strong>Turno detectado:</strong> ${turnoTexto}
                     </p>
                 </div>
 
@@ -89,6 +140,7 @@ export async function generarTurnosDialog(fechaISO, maquinaId, maquinaNombre) {
                 </div>
 
                 <input type="hidden" id="swal-trabajador" value="" />
+                <input type="hidden" id="swal-turno-detectado" value="${turnoDetectado || ''}" />
 
                 <div class="mb-4">
                     <label class="block text-sm font-semibold text-gray-700 mb-2">
@@ -101,13 +153,13 @@ export async function generarTurnosDialog(fechaISO, maquinaId, maquinaNombre) {
                     </select>
                 </div>
 
-                <div class="mb-4" id="turno-inicio-container" style="display: none;">
+                <div class="mb-4" id="turno-inicio-container" style="display: ${turnoDetectado ? 'none' : 'block'};">
                     <label class="block text-sm font-semibold text-gray-700 mb-2">
                         Turno inicial (para diurnos) <span class="text-red-500">*</span>
                     </label>
                     <select id="swal-turno-inicio" class="swal2-input w-full">
-                        <option value="mañana">Mañana</option>
-                        <option value="tarde">Tarde</option>
+                        <option value="mañana" ${turnoDetectado === 'mañana' ? 'selected' : ''}>Mañana</option>
+                        <option value="tarde" ${turnoDetectado === 'tarde' ? 'selected' : ''}>Tarde</option>
                     </select>
                     <p class="text-xs text-gray-500 mt-1">Los turnos alternarán cada viernes</p>
                 </div>
@@ -171,6 +223,7 @@ export async function generarTurnosDialog(fechaISO, maquinaId, maquinaNombre) {
             const trabajadorId = document.getElementById("swal-trabajador").value;
             const alcance = document.getElementById("swal-alcance").value;
             const turnoInicio = document.getElementById("swal-turno-inicio").value;
+            const turnoDetectadoValue = document.getElementById("swal-turno-detectado").value;
 
             if (!trabajadorId) {
                 Swal.showValidationMessage("Debes seleccionar un trabajador");
@@ -181,6 +234,7 @@ export async function generarTurnosDialog(fechaISO, maquinaId, maquinaNombre) {
                 trabajador_id: trabajadorId,
                 alcance: alcance,
                 turno_inicio: turnoInicio,
+                turno_detectado: turnoDetectadoValue || null,
             };
         },
     });
@@ -209,10 +263,15 @@ export async function generarTurnosDialog(fechaISO, maquinaId, maquinaNombre) {
                 fecha_inicio: fechaISO,
                 alcance: formValues.alcance,
                 turno_inicio: formValues.turno_inicio,
+                turno_detectado: formValues.turno_detectado,
             }),
         });
 
         const data = await response.json();
+        console.log("[generarTurnos] Respuesta backend:", data);
+        if (data.eventos && data.eventos.length > 0) {
+            console.log("[generarTurnos] Primer evento:", data.eventos[0]);
+        }
 
         if (!response.ok) {
             throw new Error(data.message || `Error HTTP ${response.status}`);

@@ -328,13 +328,14 @@ export function initCalendar(domEl) {
             // Marcar que estamos arrastrando
             isDragging = true;
 
-            // Destruir tooltip del elemento que se está arrastrando
+            // Solo deshabilitar (no destruir) el tooltip del elemento que se está arrastrando
             const el = info.el;
             if (el._tippy) {
-                el._tippy.destroy();
+                el._tippy.hide();
+                el._tippy.disable();
             }
 
-            // Deshabilitar todos los tooltips existentes
+            // Deshabilitar todos los demás tooltips existentes
             document.querySelectorAll('.fc-event').forEach(eventEl => {
                 if (eventEl._tippy) {
                     eventEl._tippy.disable();
@@ -353,6 +354,26 @@ export function initCalendar(domEl) {
                         eventEl._tippy.enable();
                     }
                 });
+
+                // Recrear tooltip si fue destruido durante el drag
+                const el = info.el;
+                const props = info.event.extendedProps || {};
+                if (!el._tippy && props.foto && !props.es_festivo) {
+                    const content = `<img src="${props.foto}" class="w-18 h-18 rounded-full object-cover ring-2 ring-blue-400 shadow-lg">`;
+                    tippy(el, {
+                        content,
+                        allowHTML: true,
+                        placement: "top",
+                        theme: "transparent-avatar",
+                        interactive: false,
+                        arrow: false,
+                        delay: [100, 0],
+                        offset: [0, 10],
+                        onShow() {
+                            if (isDragging) return false;
+                        },
+                    });
+                }
             }, 100);
         },
 
@@ -592,10 +613,40 @@ export function initCalendar(domEl) {
             let fechaISO = null;
 
             // Primero intentar obtener la fecha del elemento clickeado
+            let horaISO = null;
             const dateEl = ev.target.closest("[data-date]");
             if (dateEl) {
-                fechaISO = dateEl.getAttribute("data-date") || "";
-                if (fechaISO.length >= 10) fechaISO = fechaISO.slice(0, 10);
+                const dataDate = dateEl.getAttribute("data-date") || "";
+                // Extraer fecha y hora si viene completa (ej: "2025-12-11T08:00:00")
+                if (dataDate.includes('T')) {
+                    fechaISO = dataDate.slice(0, 10);
+                    horaISO = dataDate.slice(11, 16); // HH:MM
+                } else {
+                    fechaISO = dataDate.slice(0, 10);
+                }
+            }
+
+            // Si no hay hora, intentar obtenerla de la vista actual del calendario
+            if (!horaISO && calendar.view.type === 'resourceTimelineDay') {
+                // Usar el API del calendario para obtener la fecha/hora del punto clickeado
+                const calendarApi = calendar;
+                const dateAtClick = calendarApi.getDate();
+                // Intentar usar el método dateFromPoint si existe
+                if (typeof calendarApi.el.getBoundingClientRect === 'function') {
+                    // Obtener la posición X relativa al calendario
+                    const calRect = calendarApi.el.getBoundingClientRect();
+                    const timelineBody = calendarApi.el.querySelector('.fc-timeline-body');
+                    if (timelineBody) {
+                        const bodyRect = timelineBody.getBoundingClientRect();
+                        const relX = ev.clientX - bodyRect.left;
+                        const totalWidth = bodyRect.width;
+                        // El día tiene 24 horas, calcular la hora según la posición
+                        const horaDecimal = (relX / totalWidth) * 24;
+                        const hora = Math.floor(horaDecimal);
+                        horaISO = String(hora).padStart(2, '0') + ':00';
+                        console.log("[cal] Hora calculada por posición X:", horaISO);
+                    }
+                }
             }
 
             if (!fechaISO) {
@@ -603,7 +654,7 @@ export function initCalendar(domEl) {
                 return;
             }
 
-            console.log("[cal] Fecha encontrada:", fechaISO);
+            console.log("[cal] Fecha encontrada:", fechaISO, "Hora:", horaISO);
             console.log("[cal] Elemento clickeado:", ev.target);
             console.log("[cal] Elemento con data-date:", dateEl);
 
@@ -628,12 +679,12 @@ export function initCalendar(domEl) {
                 }
             }
 
-            console.log("[cal] ResourceId final detectado:", resourceId, "Fecha:", fechaISO);
+            console.log("[cal] ResourceId final detectado:", resourceId, "Fecha:", fechaISO, "Hora:", horaISO);
 
             openCellMenu(
                 ev.clientX,
                 ev.clientY,
-                { fechaISO, resourceId },
+                { fechaISO, resourceId, horaISO },
                 calendar,
                 maquinas
             );

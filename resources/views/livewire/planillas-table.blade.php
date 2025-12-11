@@ -276,6 +276,16 @@
                                         📋
                                     </button>
 
+                                    <!-- Botón Resumir etiquetas -->
+                                    <button onclick="resumirEtiquetas({{ $planilla->id }}, null)"
+                                        class="w-6 h-6 bg-teal-100 text-teal-600 rounded hover:bg-teal-200 flex items-center justify-center"
+                                        title="Resumir etiquetas con mismo diámetro y dimensiones">
+                                        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/>
+                                        </svg>
+                                    </button>
+
                                     <!-- Botón Ver -->
                                     <x-tabla.boton-ver :href="route('planillas.show', $planilla->id)" />
 
@@ -392,4 +402,7 @@
             });
         });
     </script>
+
+    {{-- Script del sistema de resumen de etiquetas --}}
+    <script src="{{ asset('js/resumir-etiquetas.js') }}"></script>
 </div>

@@ -38,6 +38,7 @@
             'eventos' => $trabajadoresEventos,
             'cargaTrabajo' => $cargaTrabajo ?? [],
             'turnos' => $turnos ?? [],
+            'turnosConfig' => $turnosConfig ?? null,
         ];
     @endphp
 

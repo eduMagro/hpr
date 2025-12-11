@@ -263,6 +263,14 @@
                     </svg>
                     Marcar como revisada
                 </button>
+                <button id="btn_resumir_etiquetas" onclick="resumirEtiquetasPanel()"
+                    class="w-full mt-2 bg-teal-500 hover:bg-teal-600 text-white font-semibold py-2 px-4 rounded-lg transition-all duration-200 flex items-center justify-center gap-2 shadow-md">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/>
+                    </svg>
+                    Resumir Etiquetas
+                </button>
             </div>
 
             <!-- Filtro por máquina -->
@@ -313,6 +321,37 @@
         <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/locales-all.global.min.js"></script>
         <script src="{{ asset('js/elementosJs/figuraElemento.js') }}"></script>
         <script src="{{ asset('js/multiselect-elementos.js') }}"></script>
+        <script src="{{ asset('js/resumir-etiquetas.js') }}"></script>
+
+        <script>
+            // Variables globales para el panel de planificación
+            let panelPlanillaActual = null;
+            let panelMaquinaActual = null;
+
+            // Función para resumir etiquetas desde el panel lateral
+            function resumirEtiquetasPanel() {
+                if (!panelPlanillaActual) {
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'Sin planilla seleccionada',
+                        text: 'Abre una planilla del calendario primero',
+                    });
+                    return;
+                }
+                // Llamar a la función global del sistema de resumen
+                resumirEtiquetas(panelPlanillaActual, panelMaquinaActual);
+            }
+
+            // Actualizar variables cuando se abre el panel (hook para el código existente)
+            const originalAbrirPanel = window.abrirPanelElementos;
+            if (typeof originalAbrirPanel === 'function') {
+                window.abrirPanelElementos = function(planillaId, maquinaId, ...args) {
+                    panelPlanillaActual = planillaId;
+                    panelMaquinaActual = maquinaId;
+                    return originalAbrirPanel(planillaId, maquinaId, ...args);
+                };
+            }
+        </script>
 
         <!-- Modal Cambiar Estado -->
         <div id="modalEstado" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
