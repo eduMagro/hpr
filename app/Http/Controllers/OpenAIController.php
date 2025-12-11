@@ -2,16 +2,27 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Distribuidor;
 use App\Services\AlbaranOcrService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 class OpenAIController extends Controller
 {
     public function index()
     {
-        return view('openai.index');
+        $distribuidores = Distribuidor::query()
+            ->pluck('nombre')
+            ->filter()
+            ->unique()
+            ->values()
+            ->toArray();
+
+        return view('openai.index', [
+            'distribuidores' => $distribuidores,
+        ]);
     }
 
     public function procesar(Request $request, AlbaranOcrService $service)
@@ -22,6 +33,13 @@ class OpenAIController extends Controller
         ]);
 
         $proveedor = $request->input('proveedor');
+
+        $distribuidores = Distribuidor::query()
+            ->pluck('nombre')
+            ->filter()
+            ->unique()
+            ->values()
+            ->toArray();
 
         $resultados = [];
 
@@ -45,6 +63,12 @@ class OpenAIController extends Controller
                     $simulacion = $this->generarSimulacion($parsed);
                     $parsed['bultos_total'] = $simulacion['bultos_albaran'];
                     $parsed['peso_total'] = $simulacion['peso_total'];
+                    $parsed['tipo_compra'] = isset($parsed['tipo_compra']) ? mb_strtolower($parsed['tipo_compra']) : null;
+                    $parsed['distribuidor_recomendado'] = $this->determinarDistribuidorRecomendado(
+                        $parsed['tipo_compra'],
+                        $parsed['proveedor_texto'] ?? null,
+                        $distribuidores
+                    );
 
                     $resultados[] = [
                         'nombre_archivo' => $imagen->getClientOriginalName(),
@@ -70,7 +94,8 @@ class OpenAIController extends Controller
 
         return view('openai.index', [
             'resultados' => $resultados,
-            'proveedor' => $proveedor
+            'proveedor' => $proveedor,
+            'distribuidores' => $distribuidores,
         ]);
     }
 
@@ -131,7 +156,8 @@ class OpenAIController extends Controller
                 }
             })
             ->whereNotIn('estado', ['completado', 'cancelado', 'facturado'])
-            ->get();
+            ->get()
+            ->filter(fn ($linea) => $this->esLineaPermitida($linea, $fabricanteId, $diametrosEscaneados));
 
         // Preparar información y scoring de líneas pendientes
         $hoy = now();
@@ -263,10 +289,10 @@ class OpenAIController extends Controller
             ->with(['pedido.fabricante', 'productoBase', 'obra'])
             ->whereIn('estado', ['pendiente', 'parcial'])
             ->whereHas('pedido', function ($q) {
-                // Solo pedidos que NO estén completados/cancelados/facturados
                 $q->whereNotIn('estado', ['completado', 'cancelado', 'facturado']);
             })
-            ->get();
+            ->get()
+            ->filter(fn ($linea) => $this->esLineaPermitida($linea, $fabricanteId, $diametrosEscaneados));
 
         // Encontrar el pedido más antiguo de TODAS las líneas para calcular puntuación
         $pedidoMasAntiguoTodas = $todasLasLineasQuery->min(function ($linea) {
@@ -435,6 +461,69 @@ class OpenAIController extends Controller
             'bultos_albaran' => $bultosTotal,
             'bultos_simulados' => $bultosSimulados,
         ];
+    }
+
+    protected function esLineaPermitida($linea, ?int $fabricanteId, array $diametrosEscaneados): bool
+    {
+        $lineaFabricanteId = $linea->pedido->fabricante_id ?? null;
+        if ($fabricanteId && $lineaFabricanteId && $lineaFabricanteId !== $fabricanteId) {
+            return false;
+        }
+
+        $diametroLinea = $linea->productoBase->diametro ?? null;
+
+        if (!empty($diametrosEscaneados)) {
+            if (!$diametroLinea) {
+                return false;
+            }
+            if (!in_array($diametroLinea, $diametrosEscaneados)) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    protected function determinarDistribuidorRecomendado(?string $tipoCompra, ?string $texto, array $distribuidores): ?string
+    {
+        if ($tipoCompra === 'directo') {
+            return 'Hierros Paco Reyes';
+        }
+
+        $textoNormalizado = trim(Str::lower($texto ?? ''));
+        if ($textoNormalizado === '') {
+            return $distribuidores[0] ?? null;
+        }
+
+        foreach ($distribuidores as $nombre) {
+            if (!$nombre) {
+                continue;
+            }
+            $nombreNormalizado = Str::lower($nombre);
+            if ($this->coincideDistribuidorConTexto($textoNormalizado, $nombreNormalizado)) {
+                return $nombre;
+            }
+        }
+
+        foreach ($distribuidores as $nombre) {
+            if (!$nombre) {
+                continue;
+            }
+            $nombreNormalizado = Str::lower($nombre);
+            $palabras = preg_split('/\\s+/', $textoNormalizado);
+            foreach ($palabras as $palabra) {
+                if ($palabra && Str::contains($nombreNormalizado, $palabra)) {
+                    return $nombre;
+                }
+            }
+        }
+
+        return $distribuidores[0] ?? null;
+    }
+
+    protected function coincideDistribuidorConTexto(string $textoNormalizado, string $nombreNormalizado): bool
+    {
+        return Str::contains($textoNormalizado, $nombreNormalizado) || Str::contains($nombreNormalizado, $textoNormalizado);
     }
 
     protected function obtenerNombreProveedor(?string $codigo): string

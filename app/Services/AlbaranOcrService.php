@@ -135,6 +135,7 @@ class AlbaranOcrService
             'piezas' => null,
             'bultos' => null,
             'peso_total' => $this->parsePesoTotalFromText($clean),
+            'proveedor_texto' => null,
             'producto' => [
                 'descripcion' => $productoTipo,
                 'diametro' => $this->parseNumber($this->firstMatch('/Di[aá]metro\\s*[:\\-]?\\s*([\\d\\.,]+)/i', $clean)),
@@ -433,6 +434,7 @@ Devuelve SOLO un JSON (sin Markdown ni texto extra) con esta estructura:
 {
   "albaran": "",
   "tipo_compra": "",
+  "proveedor_texto": null,
   "fecha": "YYYY-MM-DD",
   "pedido_codigo": "",
   "pedido_cliente": null,
@@ -471,6 +473,7 @@ CAMPOS IMPORTANTES:
     - bultos: Número de bultos de ESA colada específica
     - peso_kg: Peso en kg de esa colada
 - tipo_compra: Tipo de compra debe ser "directo" o "proveedor"
+- proveedor_texto: Texto o fragmento del documento que identificaste como el distribuidor (solo se completa cuando tipo_compra es "proveedor", deja null en caso contrario)
 
 REGLAS CRÍTICAS:
 - Usa números (no strings) para bultos/peso/diámetro

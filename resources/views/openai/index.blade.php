@@ -159,6 +159,9 @@
                                         $tipoCompraRaw = $parsed['tipo_compra'] ?? null;
                                         $tipoCompra = $tipoCompraRaw ? mb_strtolower($tipoCompraRaw) : null;
                                         $tipoCompraValid = in_array($tipoCompra, ['directo', 'proveedor']);
+                                        $proveedorTexto = $parsed['proveedor_texto'] ?? null;
+                                        $distribuidorRecomendado = $parsed['distribuidor_recomendado'] ?? null;
+                                        $distribuidoresList = $distribuidores ?? [];
                                     @endphp
                                     <script>
                                         console.log('resultado', {!! json_encode($resultado, JSON_UNESCAPED_UNICODE) !!});
@@ -202,6 +205,31 @@
                                     </div>
                                 </div>
                             @endif
+                        </div>
+                        @php
+                            $lineaInfoText = $sim['linea_propuesta']
+                                ? trim(
+                                    ($sim['linea_propuesta']['pedido_codigo']
+                                        ? "Pedido {$sim['linea_propuesta']['pedido_codigo']}"
+                                        : 'Línea propuesta') .
+                                        ' • ' .
+                                        ($sim['linea_propuesta']['producto'] ?? '') .
+                                        ' ' .
+                                        ($sim['linea_propuesta']['diametro']
+                                            ? "Ø{$sim['linea_propuesta']['diametro']}"
+                                            : '') .
+                                        ($sim['linea_propuesta']['cantidad']
+                                            ? ' • ' .
+                                                number_format($sim['linea_propuesta']['cantidad'], 0, ',', '.') .
+                                                ' kg'
+                                            : ''),
+                                )
+                                : 'Línea propuesta sin identificadores';
+                            $lineaInfoAttr = e($lineaInfoText);
+                        @endphp
+                        <div class="mt-3 text-xs text-gray-600" id="linea-info-{{ $idx }}"
+                            data-linea-info="{{ $lineaInfoAttr }}">
+                            {{ $lineaInfoText }}
                         </div>
                     </div>
 
@@ -255,8 +283,23 @@
                                             <div class="flex items-center gap-2">
                                                 <span class="font-semibold extracted-value"
                                                     data-field="tipo_compra">{{ $tipoCompra ? ucfirst($tipoCompra) : '—' }}</span>
+                                                @if ($tipoCompra === 'directo')
+                                                    <span class="text-xs text-gray-500">(Hierros Paco Reyes)</span>
+                                                @endif
                                             </div>
                                         </div>
+                                        @if ($tipoCompra !== 'directo')
+                                            <div class="flex flex-col md:col-span-2">
+                                                <span class="text-xs text-gray-500">Proveedor detectado</span>
+                                                <span class="font-semibold extracted-value flex items-center gap-1"
+                                                    data-field="proveedor_texto">
+                                                    {{ $proveedorTexto ?? '—' }}
+                                                    <span class="text-xs text-gray-500">
+                                                        ({{ $distribuidorRecomendado ?? 'Sin sugerencia' }})
+                                                    </span>
+                                                </span>
+                                            </div>
+                                        @endif
                                     </div>
 
                                     <div class="flex justify-end mt-2">
@@ -325,34 +368,6 @@
                                             </div>
                                         </div>
                                     @endif
-                                    @php
-                                        $coladasResumen = collect($productos)
-                                            ->flatMap(fn($producto) => $producto['line_items'] ?? [])
-                                            ->filter(
-                                                fn($item) => isset($item['colada']) ||
-                                                    isset($item['bultos']) ||
-                                                    isset($item['peso_kg']),
-                                            )
-                                            ->values();
-                                    @endphp
-                                    @if ($coladasResumen->count())
-                                        <div
-                                            class="bg-blue-50 border border-blue-100 rounded-xl p-3 text-xs text-blue-900 space-y-1">
-                                            <p class="font-semibold text-sm text-blue-700">Coladas detectadas antes de
-                                                continuar:</p>
-                                            <p>
-                                                <span class="font-semibold">[coladas]:</span>
-                                                @foreach ($coladasResumen as $colada)
-                                                    ({{ $colada['colada'] ?? '—' }} ({{ $colada['bultos'] ?? 0 }})
-                                                    @if (($resultado['parsed']['proveedor'] ?? '') !== 'megasa')
-                                                        {{ isset($colada['peso_kg']) ? number_format($colada['peso_kg'], 3, ',', '.') : '—' }}
-                                                        kg
-                                                    @endif)
-                                                @endforeach
-                                            </p>
-                                        </div>
-                                    @endif
-
                                     <!-- Botones de acción -->
                                     <div class="flex gap-3 mt-4 pt-4 border-t border-gray-200">
                                         <button type="button"
@@ -439,6 +454,30 @@
                                                     </option>
                                                 </select>
                                             </label>
+                                            @if ($tipoCompra !== 'directo')
+                                                <label
+                                                    class="text-xs text-gray-700 font-medium flex flex-col gap-1 md:col-span-2">
+                                                    Texto proveedor detectado
+                                                    <input type="text"
+                                                        class="general-edit-field rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                                        data-field="proveedor_texto"
+                                                        value="{{ $proveedorTexto ?? '' }}">
+                                                </label>
+                                                <label class="text-xs text-gray-700 font-medium flex flex-col gap-1">
+                                                    Proveedor sugerido
+                                                    <select
+                                                        class="general-edit-field rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                                        data-field="distribuidor_recomendado">
+                                                        <option value="">Sin seleccionar</option>
+                                                        @foreach ($distribuidoresList as $distribuidor)
+                                                            <option value="{{ $distribuidor }}"
+                                                                {{ $distribuidorRecomendado === $distribuidor ? 'selected' : '' }}>
+                                                                {{ $distribuidor }}
+                                                            </option>
+                                                        @endforeach
+                                                    </select>
+                                                </label>
+                                            @endif
                                         </div>
                                     </div>
 
@@ -555,113 +594,13 @@
                             </div>
                         </div>
 
-                        <div id="simulationSection-{{ $idx }}" class="p-6 space-y-6 hidden">
+                        <div id="simulationSection-{{ $idx }}" class="p-6 space-y-4 hidden">
                             <!-- Simulación: Líneas Pendientes -->
                             <div>
                                 <h3 class="text-base font-semibold text-gray-900 mb-3">
                                     📋 Líneas de pedido pendientes para este proveedor
                                 </h3>
                                 @if ($sim['hay_coincidencias'])
-                                    <div class="bg-gray-50 rounded-lg border border-gray-200 overflow-hidden">
-                                        <div class="overflow-x-auto">
-                                            <table class="min-w-full text-sm">
-                                                <thead class="bg-gray-100 text-gray-700">
-                                                    <tr>
-                                                        <th class="px-4 py-2 text-left font-medium">Pedido</th>
-                                                        <th class="px-4 py-2 text-left font-medium">Producto</th>
-                                                        <th class="px-4 py-2 text-left font-medium">Obra</th>
-                                                        <th class="px-4 py-2 text-center font-medium">Pendiente</th>
-                                                        <th class="px-4 py-2 text-center font-medium">Estado</th>
-                                                        <th class="px-4 py-2 text-center font-medium">Recomendación
-                                                        </th>
-                                                        <th class="px-4 py-2 text-center font-medium">Fecha pedido</th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody class="divide-y divide-gray-200">
-                                                    @foreach ($sim['lineas_pendientes'] as $linea)
-                                                        <tr
-                                                            class="hover:bg-gray-50 {{ $loop->first ? 'bg-green-50' : '' }}">
-                                                            <td class="px-4 py-3 font-medium text-gray-900">
-                                                                {{ $linea['pedido_codigo'] }}
-                                                                @if ($loop->first)
-                                                                    <span
-                                                                        class="ml-2 text-xs bg-green-600 text-white px-2 py-0.5 rounded-full">PROPUESTA</span>
-                                                                @endif
-                                                            </td>
-                                                            <td class="px-4 py-3 text-gray-700">
-                                                                {{ $linea['producto'] }}</td>
-                                                            <td class="px-4 py-3 text-gray-700">
-                                                                {{ $linea['obra'] ?? ($sim['lugar_entrega'] ?? '—') }}
-                                                            </td>
-                                                            <td
-                                                                class="px-4 py-3 text-center font-semibold text-gray-900">
-                                                                {{ number_format($linea['cantidad_pendiente'], 0, ',', '.') }}
-                                                                /
-                                                                {{ number_format($linea['cantidad'], 0, ',', '.') }} kg
-                                                            </td>
-                                                            <td class="px-4 py-3">
-                                                                <span
-                                                                    class="text-xs px-2 py-1 rounded-full {{ $linea['estado'] === 'activo' ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-700' }}">
-                                                                    {{ ucfirst($linea['estado']) }}
-                                                                </span>
-                                                            </td>
-                                                            <td class="px-4 py-3 text-center">
-                                                                @php
-                                                                    $scoreColor =
-                                                                        $linea['score'] >= 150
-                                                                            ? 'bg-emerald-600'
-                                                                            : ($linea['score'] >= 50
-                                                                                ? 'bg-green-500'
-                                                                                : ($linea['score'] >= 0
-                                                                                    ? 'bg-yellow-400'
-                                                                                    : 'bg-red-500'));
-                                                                @endphp
-                                                                <div
-                                                                    class="flex items-center justify-center group relative">
-                                                                    <div
-                                                                        class="w-4 h-4 rounded-full {{ $scoreColor }} shadow-sm cursor-help">
-                                                                    </div>
-                                                                </div>
-
-                                                                @if (count($linea['razones']) > 0 || count($linea['incompatibilidades']) > 0)
-                                                                    <div
-                                                                        class="hidden absolute z-10 bg-white border border-gray-300 rounded-lg shadow-lg p-3 text-xs max-w-xs text-left right-0 mt-1">
-                                                                        @if (count($linea['razones']) > 0)
-                                                                            <div class="mb-2">
-                                                                                <strong
-                                                                                    class="text-green-700">Razones:</strong>
-                                                                                <ul
-                                                                                    class="list-disc list-inside text-green-600">
-                                                                                    @foreach ($linea['razones'] as $razon)
-                                                                                        <li>{{ $razon }}</li>
-                                                                                    @endforeach
-                                                                                </ul>
-                                                                            </div>
-                                                                        @endif
-                                                                        @if (count($linea['incompatibilidades']) > 0)
-                                                                            <div>
-                                                                                <strong
-                                                                                    class="text-red-700">Incompatibilidades:</strong>
-                                                                                <ul
-                                                                                    class="list-disc list-inside text-red-600">
-                                                                                    @foreach ($linea['incompatibilidades'] as $incomp)
-                                                                                        <li>{{ $incomp }}</li>
-                                                                                    @endforeach
-                                                                                </ul>
-                                                                            </div>
-                                                                        @endif
-                                                                    </div>
-                                                                @endif
-                                                            </td>
-                                                            <td class="px-4 py-3 text-gray-600 text-center">
-                                                                {{ $linea['fecha_creacion'] }}</td>
-                                                        </tr>
-                                                    @endforeach
-                                                </tbody>
-                                            </table>
-                                        </div>
-                                    </div>
-
                                     @if ($sim['linea_propuesta'])
                                         @php
                                             $tipoRec = $sim['linea_propuesta']['tipo_recomendacion'] ?? 'por_score';
@@ -690,7 +629,7 @@
                                                             {{ $sim['linea_propuesta']['pedido_codigo'] }}
                                                         </p>
                                                         <span
-                                                            class="inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-semibold {{ $labelColor }}">
+                                                            class="inline-flex items-center justify-center px-2 py-0.5 rounded-full text-[9px] font-semibold {{ $labelColor }}">
                                                             {{ $labelText }}
                                                         </span>
                                                     </div>
@@ -753,10 +692,10 @@
 
                             <!-- Listado completo de TODOS los pedidos pendientes -->
                             @if (isset($sim['todas_las_lineas']) && count($sim['todas_las_lineas']) > 0)
-                                <div class="border-t border-gray-200 pt-4">
+                                <div class="pb-4 border-b border-gray-200">
                                     <!-- Listado completo de TODOS los pedidos pendientes (MODAL) -->
                                     @if (isset($sim['todas_las_lineas']) && count($sim['todas_las_lineas']) > 0)
-                                        <div class="border-t border-gray-200 pt-4">
+                                        <div class="">
                                             <button type="button"
                                                 onclick="openPendingOrdersModal('{{ $idx }}')"
                                                 class="flex items-center justify-between w-full p-3 bg-gray-100 rounded-lg hover:bg-gray-200 transition text-left">
@@ -1062,7 +1001,7 @@
                                     <h3
                                         class="text-base font-semibold text-gray-900 mb-3 flex items-center justify-between">
                                         <span class="flex items-center gap-2">
-                                            📊 Estado final simulado de la línea
+                                            📊 Estado final de la línea
                                             <span id="applyingLabel-{{ $idx }}"
                                                 class="text-xs font-normal px-2 py-1 rounded-full bg-green-100 text-green-700">Recomendado</span>
                                         </span>
@@ -1106,6 +1045,18 @@
                                             </div>
                                         </div>
                                     </div>
+                                    <div class="mt-4 flex justify-end">
+                                        <button type="button"
+                                            class="inline-flex items-center gap-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold px-4 py-2 shadow transition"
+                                            onclick="activarLineaSeleccionada({{ $idx }})">
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none"
+                                                viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                                <path stroke-linecap="round" stroke-linejoin="round"
+                                                    d="M12 4v16m8-8H4" />
+                                            </svg>
+                                            Activar línea seleccionada
+                                        </button>
+                                    </div>
                                 </div>
                             @endif
 
@@ -1128,14 +1079,6 @@
                                 </div>
                             @endif
 
-                            <!-- Aviso -->
-                            <div class="bg-amber-50 border border-amber-200 rounded-lg p-4">
-                                <p class="text-sm text-amber-800">
-                                    <strong>⚠️ Esto es una simulación:</strong> No se ha modificado nada en la base de
-                                    datos.
-                                    Para aplicar estos cambios, deberás confirmar la acción en el sistema real.
-                                </p>
-                            </div>
                         </div>
                     @endif
                 </div>
@@ -1458,6 +1401,26 @@
             });
         };
 
+        const formatLineaInfoText = (linea) => {
+            if (!linea) {
+                return '';
+            }
+            const parts = [];
+            if (linea.pedido_codigo) {
+                parts.push(`Pedido ${linea.pedido_codigo}`);
+            }
+            if (linea.producto) {
+                parts.push(linea.producto);
+            }
+            if (linea.diametro) {
+                parts.push(`Ø${linea.diametro}`);
+            }
+            if (linea.cantidad_pendiente) {
+                parts.push(`${Number(linea.cantidad_pendiente).toLocaleString('es-ES')} kg`);
+            }
+            return parts.filter(Boolean).join(' • ');
+        };
+
         // Función para seleccionar manualmente una línea de pedido
         window.seleccionarLineaManual = function(linea, resultadoIdx) {
             // Verificar si la línea seleccionada es la recomendada
@@ -1511,6 +1474,15 @@
             if (detailsP) {
                 detailsP.innerHTML =
                     `<strong>Producto:</strong> ${linea.producto} | <strong>Obra:</strong> ${linea.obra} | <strong>Pendiente:</strong> ${new Intl.NumberFormat('es-ES').format(linea.cantidad_pendiente)} kg`;
+            }
+
+            const infoElement = document.getElementById(`linea-info-${resultadoIdx}`);
+            if (infoElement) {
+                const text = formatLineaInfoText(linea);
+                if (text) {
+                    infoElement.textContent = text;
+                    infoElement.dataset.lineaInfo = text;
+                }
             }
 
             // Actualizar Label (solo si existe)
@@ -1629,6 +1601,8 @@
                     pedido_cliente: '',
                     pedido_codigo: '',
                     tipo_compra: null,
+                    proveedor_texto: null,
+                    distribuidor_recomendado: null,
                     peso_total: null,
                     bultos_total: null,
                     productos: []
@@ -1675,6 +1649,161 @@
                 document.getElementById(`simulationSection-${idx}`).classList.remove('hidden');
             });
         });
+    </script>
+    <div id="modal-coladas-activacion"
+        class="fixed inset-0 bg-gray-900 bg-opacity-60 backdrop-blur-sm hidden items-center justify-center z-50 transition-all duration-300">
+        <div
+            class="bg-white rounded-2xl w-full max-w-3xl shadow-2xl transform transition-all duration-300 overflow-hidden border border-gray-200">
+            <div class="bg-gradient-to-r from-slate-700 to-slate-800 px-6 py-5 border-b border-slate-600">
+                <h3 class="text-xl font-bold text-white flex items-center gap-3">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                    Confirmar activación de línea
+                </h3>
+                <p class="text-sm text-slate-300 mt-2">
+                    Registrar coladas y bultos asociados (opcional)
+                </p>
+                <p id="modal-linea-info" class="text-sm text-slate-200 mt-1">Selecciona las coladas deseadas antes de
+                    continuar.</p>
+            </div>
+            <div class="p-6">
+                <div class="border border-gray-300 rounded-xl mb-5 shadow-sm bg-white overflow-hidden">
+                    <table class="w-full text-sm table-fixed">
+                        <colgroup>
+                            <col style="width:45%">
+                            <col style="width:25%">
+                            <col style="width:30%">
+                        </colgroup>
+                        <thead class="bg-gradient-to-r from-gray-700 to-gray-800 text-white">
+                            <tr>
+                                <th class="px-4 py-3 text-left font-semibold uppercase tracking-wider text-xs">
+                                    Colada</th>
+                                <th class="px-4 py-3 text-left font-semibold uppercase tracking-wider text-xs">
+                                    Bultos</th>
+                                <th
+                                    class="px-4 py-3 text-start font-semibold uppercase tracking-wider text-xs whitespace-nowrap">
+                                    Peso (kg)</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tabla-coladas-body-modal" class="divide-y divide-gray-200">
+                        </tbody>
+                    </table>
+                </div>
+                <div class="flex justify-between items-center mb-6 pt-2">
+                    <button type="button" id="btn-agregar-colada-modal"
+                        class="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white text-sm font-medium px-4 py-2.5 rounded-lg shadow-md hover:shadow-lg transition-all duration-200 transform hover:-translate-y-0.5">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5"
+                                d="M12 4v16m8-8H4"></path>
+                        </svg>
+                        Añadir colada / bulto
+                    </button>
+                </div>
+                <div class="flex justify-end gap-3 pt-4 border-t border-gray-200">
+                    <button type="button" id="btn-cancelar-coladas-modal"
+                        class="inline-flex items-center gap-2 bg-gray-100 hover:bg-gray-200 active:bg-gray-300 text-gray-700 text-sm font-medium px-5 py-2.5 rounded-lg border border-gray-300 transition-all duration-200 shadow-sm hover:shadow">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                        Cancelar
+                    </button>
+                    <button type="button" id="btn-confirmar-activacion-coladas-modal"
+                        class="inline-flex items-center gap-2 bg-green-600 hover:bg-green-700 active:bg-green-800 text-white text-sm font-semibold px-5 py-2.5 rounded-lg shadow-md hover:shadow-lg transition-all duration-200 transform hover:-translate-y-0.5">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5"
+                                d="M5 13l4 4L19 7"></path>
+                        </svg>
+                        Confirmar activación
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script>
+        (function() {
+            const modal = document.getElementById('modal-coladas-activacion');
+            const cuerpoTabla = document.getElementById('tabla-coladas-body-modal');
+            const btnAgregar = document.getElementById('btn-agregar-colada-modal');
+            const btnCancelar = document.getElementById('btn-cancelar-coladas-modal');
+            const btnConfirmar = document.getElementById('btn-confirmar-activacion-coladas-modal');
+            const infoLinea = document.getElementById('modal-linea-info');
+
+            const abrirModal = (coladas, lineaInfoText = '') => {
+                cuerpoTabla.innerHTML = '';
+                coladas.forEach(colada => {
+                    cuerpoTabla.appendChild(crearFilaColada(colada));
+                });
+                if (infoLinea) {
+                    infoLinea.textContent = lineaInfoText ?
+                        lineaInfoText :
+                        coladas.length ?
+                        `Preparando ${coladas.length} colada(s) para activación.` :
+                        'No hay coladas seleccionadas.';
+                }
+                modal.classList.remove('hidden');
+                modal.classList.add('flex');
+            };
+
+            const cerrarModal = () => {
+                modal.classList.add('hidden');
+                modal.classList.remove('flex');
+            };
+
+            const crearFilaColada = (colada = {}) => {
+                const row = document.createElement('tr');
+                row.className = 'fila-colada hover:bg-gray-50 transition-colors duration-150';
+                const valueColada = colada.colada || '';
+                const valueBultos = colada.bultos || '';
+                const valuePeso = colada.peso || '';
+                row.innerHTML = `
+                    <td class="px-4 py-3">
+                        <input type="text" class="w-full border border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 rounded-lg px-3 py-2 text-sm transition outline-none"
+                            placeholder="Ej: 12/3456" value="${valueColada}">
+                    </td>
+                    <td class="px-4 py-3">
+                        <input type="number" step="1" min="0" class="w-full text-start border border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 rounded-lg px-3 py-2 text-sm transition outline-none"
+                            placeholder="0" value="${valueBultos}">
+                    </td>
+                    <td class="px-4 py-3">
+                        <input type="number" step="0.01" class="w-full text-start border border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 rounded-lg px-3 py-2 text-sm transition outline-none"
+                            placeholder="Peso (kg)" value="${valuePeso}">
+                    </td>
+                `;
+                return row;
+            };
+
+            window.activarLineaSeleccionada = function(idx) {
+                const checkboxes = document.querySelectorAll(`.colada-checkbox-${idx}:checked`);
+                if (!checkboxes.length) {
+                    return alert('Selecciona al menos una colada antes de activar la línea.');
+                }
+                const coladas = Array.from(checkboxes).map(cb => ({
+                    colada: cb.dataset.colada || '',
+                    bultos: cb.dataset.bultos || '',
+                    peso: cb.dataset.peso || ''
+                }));
+                const infoElement = document.getElementById(`linea-info-${idx}`);
+                const lineaInfoText = infoElement?.dataset?.lineaInfo || infoElement?.textContent || '';
+                abrirModal(coladas, lineaInfoText);
+            };
+
+            if (btnAgregar) {
+                btnAgregar.addEventListener('click', () => {
+                    cuerpoTabla.appendChild(crearFilaColada());
+                });
+            }
+
+            btnCancelar?.addEventListener('click', () => {
+                cerrarModal();
+            });
+
+            btnConfirmar?.addEventListener('click', () => {
+                cerrarModal();
+            });
+        })();
     </script>
     <div id="previewModal"
         class="fixed inset-0 z-50 items-center justify-center bg-black/70 p-4 opacity-0 pointer-events-none transition-opacity duration-200">

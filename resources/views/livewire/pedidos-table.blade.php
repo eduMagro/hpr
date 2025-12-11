@@ -123,7 +123,15 @@
                         };
                     @endphp
 
-                    <tr class="text-xs {{ $claseFondo }}">
+                    <tr class="text-xs {{ $claseFondo }} fila-pedido-linea"
+                        data-pedido-id="{{ $pedido->id ?? '' }}"
+                        data-linea-id="{{ $linea->id }}"
+                        data-linea-codigo="{{ $linea->codigo ?? '' }}"
+                        data-linea-producto="{{ ucfirst($linea->tipo ?? '') }}"
+                        data-linea-diametro="{{ $linea->diametro ?? '' }}"
+                        data-linea-longitud="{{ $linea->longitud ?? '' }}"
+                        data-linea-cantidad="{{ $linea->cantidad ?? '' }}"
+                        data-linea-pedido-codigo="{{ $pedidoCodigo ?? '' }}">
                         <td class="border px-2 py-1 text-center">
                             <div class="flex flex-col">
                                 @if($linea->codigo)
