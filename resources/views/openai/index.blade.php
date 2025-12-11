@@ -80,1010 +80,1462 @@
                 object-fit: contain;
             }
         }
+
+        /* ========================================== */
+        /* CSS PARA VISTA MÓVIL PASO A PASO */
+        /* ========================================== */
+
+        /* Container de pasos móvil */
+        #stepWrapper {
+            display: flex;
+            width: 500%;
+            /* 5 vistas x 100% */
+            transition: transform 300ms cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        /* Cada vista ocupa 20% del wrapper (100% del viewport) */
+        #stepWrapper>div {
+            width: 20%;
+            /* Relativo al wrapper de 500% */
+            flex-shrink: 0;
+        }
+
+        /* Animaciones para botones móviles */
+        .mobile-btn-slide-in {
+            animation: slideInFromBottom 300ms ease-out;
+        }
+
+        @keyframes slideInFromBottom {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Overlay para modal en móvil */
+        .mobile-modal-overlay {
+            background: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(4px);
+        }
+
+        /* Modal simple para edición (Vista 2) */
+        .mobile-edit-modal {
+            position: fixed;
+            inset: 0;
+            z-index: 50;
+            display: none;
+            align-items: flex-end;
+        }
+
+        .mobile-edit-modal.show {
+            display: flex;
+        }
+
+        .mobile-edit-modal-content {
+            background: white;
+            border-radius: 1.5rem 1.5rem 0 0;
+            max-height: 90vh;
+            width: 100%;
+            overflow-y: auto;
+            transform: translateY(100%);
+            transition: transform 300ms cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .mobile-edit-modal.show .mobile-edit-modal-content {
+            transform: translateY(0);
+        }
+
+        /* Prevenir zoom en iOS */
+        input,
+        select,
+        textarea,
+        button {
+            font-size: 16px;
+        }
     </style>
     <x-slot name="title">Revisión asistida de albaranes</x-slot>
 
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
-        <div class="bg-white shadow rounded-xl p-6 border border-gray-100">
-            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                <div>
-                    <h1 class="text-2xl font-semibold text-gray-900">Revisión asistida de albaranes</h1>
-                    <p class="text-sm text-gray-600 mt-1">Sube una imagen del albarán para ver qué línea de pedido se
-                        activaría y qué bultos se crearían</p>
+    <!-- Vista Desktop (≥768px) -->
+    <div id="desktopView" class="hidden md:block">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+            <div class="bg-white shadow rounded-xl p-6 border border-gray-100">
+                <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                    <div>
+                        <h1 class="text-2xl font-semibold text-gray-900">Revisión asistida de albaranes</h1>
+                        <p class="text-sm text-gray-600 mt-1">Sube una imagen del albarán para ver qué línea de pedido se
+                            activaría y qué bultos se crearían</p>
+                    </div>
                 </div>
+
+                <form action="{{ route('openai.procesar') }}" method="POST" enctype="multipart/form-data" id="ocrForm"
+                    class="mt-6 space-y-4">
+                    @csrf
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <label class="text-sm text-gray-700">Proveedor
+                            <select name="proveedor" id="proveedor" required
+                                class="mt-1 w-full rounded-md border-gray-300 shadow-sm text-sm">
+                                <option value="">Selecciona proveedor</option>
+                                <option value="siderurgica">Siderúrgica Sevillana (SISE)</option>
+                                <option value="megasa">Megasa</option>
+                                <option value="balboa">Balboa</option>
+                                <option value="otro">Otro / No listado</option>
+                            </select>
+                        </label>
+                    </div>
+                    <div id="dropZone"
+                        class="border-2 border-dashed border-indigo-200 bg-indigo-50/40 rounded-xl p-6 text-center transition hover:border-indigo-400 hover:bg-indigo-50">
+                        <div class="flex flex-col items-center gap-3">
+                            <div class="relative">
+                                <input type="file" name="imagenes[]" id="imagenes" accept="image/*,application/pdf"
+                                    multiple class="hidden" onchange="handleFileSelect(event)">
+                                <label for="imagenes"
+                                    class="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-semibold shadow hover:bg-indigo-700 cursor-pointer transition">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none"
+                                        viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1M12 12V4m0 8l-3-3m3 3l3-3" />
+                                    </svg>
+                                    Seleccionar archivos
+                                </label>
+                            </div>
+                            <p class="text-sm text-gray-600">o arrastra aquí tus archivos</p>
+                            <div id="fileList" class="w-full text-left text-sm text-gray-700 space-y-1"></div>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center gap-3">
+                        <button type="submit" id="processBtn" disabled
+                            class="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-emerald-600 text-white text-sm font-semibold shadow hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed transition">
+                            Procesar albarán
+                        </button>
+                        <div id="loading" class="hidden flex items-center gap-2 text-sm text-indigo-600">
+                            <div class="ia-spinner"></div>
+                            Procesando...
+                        </div>
+                    </div>
+                </form>
             </div>
 
-            <form action="{{ route('openai.procesar') }}" method="POST" enctype="multipart/form-data" id="ocrForm"
-                class="mt-6 space-y-4">
-                @csrf
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <label class="text-sm text-gray-700">Proveedor
-                        <select name="proveedor" id="proveedor" required
-                            class="mt-1 w-full rounded-md border-gray-300 shadow-sm text-sm">
-                            <option value="">Selecciona proveedor</option>
-                            <option value="siderurgica">Siderúrgica Sevillana (SISE)</option>
-                            <option value="megasa">Megasa</option>
-                            <option value="balboa">Balboa</option>
-                            <option value="otro">Otro / No listado</option>
-                        </select>
-                    </label>
-                </div>
-                <div id="dropZone"
-                    class="border-2 border-dashed border-indigo-200 bg-indigo-50/40 rounded-xl p-6 text-center transition hover:border-indigo-400 hover:bg-indigo-50">
-                    <div class="flex flex-col items-center gap-3">
-                        <div class="relative">
-                            <input type="file" name="imagenes[]" id="imagenes" accept="image/*,application/pdf"
-                                multiple class="hidden" onchange="handleFileSelect(event)">
-                            <label for="imagenes"
-                                class="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-semibold shadow hover:bg-indigo-700 cursor-pointer transition">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none"
-                                    viewBox="0 0 24 24" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                        d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1M12 12V4m0 8l-3-3m3 3l3-3" />
-                                </svg>
-                                Seleccionar archivos
-                            </label>
-                        </div>
-                        <p class="text-sm text-gray-600">o arrastra aquí tus archivos</p>
-                        <div id="fileList" class="w-full text-left text-sm text-gray-700 space-y-1"></div>
-                    </div>
-                </div>
-
-                <div class="flex items-center gap-3">
-                    <button type="submit" id="processBtn" disabled
-                        class="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-emerald-600 text-white text-sm font-semibold shadow hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed transition">
-                        Procesar albarán
-                    </button>
-                    <div id="loading" class="hidden flex items-center gap-2 text-sm text-indigo-600">
-                        <div class="ia-spinner"></div>
-                        Procesando...
-                    </div>
-                </div>
-            </form>
-        </div>
-
-        @if (isset($resultados) && count($resultados) > 0)
-            @foreach ($resultados as $idx => $resultado)
-                <div class="bg-white shadow rounded-xl border border-gray-100 overflow-hidden">
-                    <!-- Header -->
-                    <div class="bg-gradient-to-r from-indigo-50 to-purple-50 px-6 py-4 border-b border-gray-200">
-                        <div class="flex items-start justify-between gap-4">
-                            <div class="flex-1">
-                                <h2 class="text-lg font-semibold text-gray-900">{{ $resultado['nombre_archivo'] }}</h2>
-                                @if ($resultado['error'])
-                                    <p class="text-sm text-red-600 mt-1">{{ $resultado['error'] }}</p>
-                                @else
-                                    @php
-                                        $sim = $resultado['simulacion'] ?? [];
-                                        $parsed = $resultado['parsed'] ?? [];
-                                        $tipoCompraRaw = $parsed['tipo_compra'] ?? null;
-                                        $tipoCompra = $tipoCompraRaw ? mb_strtolower($tipoCompraRaw) : null;
-                                        $tipoCompraValid = in_array($tipoCompra, ['directo', 'proveedor']);
-                                        $proveedorTexto = $parsed['proveedor_texto'] ?? null;
-                                        $distribuidorRecomendado = $parsed['distribuidor_recomendado'] ?? null;
-                                        $distribuidoresList = $distribuidores ?? [];
-                                    @endphp
-                                    <script>
-                                        console.log('resultado', {!! json_encode($resultado, JSON_UNESCAPED_UNICODE) !!});
-                                        console.log('sim', {!! json_encode($sim, JSON_UNESCAPED_UNICODE) !!});
-                                    </script>
-                                    <div class="flex flex-wrap gap-2 mt-2">
-                                        <span class="simulacion-badge badge-info">
-                                            🏭 {{ $sim['fabricante'] ?? 'Fabricante desconocido' }}
-                                        </span>
-                                        <span class="simulacion-badge badge-warning">
-                                            📦 {{ $sim['bultos_albaran'] ?? 0 }} bultos
-                                        </span>
-                                        <span class="simulacion-badge badge-info">
-                                            🏷️ {{ count($sim['bultos_simulados'] ?? []) }} coladas
-                                        </span>
-                                        @if ($sim['peso_total'])
+            @if (isset($resultados) && count($resultados) > 0)
+                @foreach ($resultados as $idx => $resultado)
+                    <div class="bg-white shadow rounded-xl border border-gray-100 overflow-hidden">
+                        <!-- Header -->
+                        <div class="bg-gradient-to-r from-indigo-50 to-purple-50 px-6 py-4 border-b border-gray-200">
+                            <div class="flex items-start justify-between gap-4">
+                                <div class="flex-1">
+                                    <h2 class="text-lg font-semibold text-gray-900">{{ $resultado['nombre_archivo'] }}
+                                    </h2>
+                                    @if ($resultado['error'])
+                                        <p class="text-sm text-red-600 mt-1">{{ $resultado['error'] }}</p>
+                                    @else
+                                        @php
+                                            $sim = $resultado['simulacion'] ?? [];
+                                            $parsed = $resultado['parsed'] ?? [];
+                                            $tipoCompraRaw = $parsed['tipo_compra'] ?? null;
+                                            $tipoCompra = $tipoCompraRaw ? mb_strtolower($tipoCompraRaw) : null;
+                                            $tipoCompraValid = in_array($tipoCompra, ['directo', 'proveedor']);
+                                            $proveedorTexto = $parsed['proveedor_texto'] ?? null;
+                                            $distribuidorRecomendado = $parsed['distribuidor_recomendado'] ?? null;
+                                            $distribuidoresList = $distribuidores ?? [];
+                                        @endphp
+                                        <script>
+                                            console.log('resultado', {!! json_encode($resultado, JSON_UNESCAPED_UNICODE) !!});
+                                            console.log('sim', {!! json_encode($sim, JSON_UNESCAPED_UNICODE) !!});
+                                        </script>
+                                        <div class="flex flex-wrap gap-2 mt-2">
                                             <span class="simulacion-badge badge-info">
-                                                ⚖️ {{ number_format($sim['peso_total'], 0, ',', '.') }} kg
+                                                🏭 {{ $sim['fabricante'] ?? 'Fabricante desconocido' }}
                                             </span>
-                                        @endif
+                                            <span class="simulacion-badge badge-warning">
+                                                📦 {{ $sim['bultos_albaran'] ?? 0 }} bultos
+                                            </span>
+                                            <span class="simulacion-badge badge-info">
+                                                🏷️ {{ count($sim['bultos_simulados'] ?? []) }} coladas
+                                            </span>
+                                            @if ($sim['peso_total'])
+                                                <span class="simulacion-badge badge-info">
+                                                    ⚖️ {{ number_format($sim['peso_total'], 0, ',', '.') }} kg
+                                                </span>
+                                            @endif
+                                        </div>
+                                    @endif
+                                </div>
+                                @if ($resultado['preview'])
+                                    <div class="flex-shrink-0">
+                                        <div class="preview-zoom group relative w-32 h-32 sm:w-36 sm:h-36 rounded-lg shadow-sm border border-gray-200 overflow-hidden cursor-pointer"
+                                            data-preview="{{ $resultado['preview'] }}">
+                                            <img src="{{ $resultado['preview'] }}"
+                                                alt="{{ $resultado['nombre_archivo'] }}"
+                                                class="w-full h-full object-cover">
+                                            <div
+                                                class="preview-overlay absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex items-center justify-center transition">
+                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-white"
+                                                    viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                                    stroke-width="2">
+                                                    <path stroke-linecap="round" stroke-linejoin="round"
+                                                        d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                                    <path stroke-linecap="round" stroke-linejoin="round"
+                                                        d="M2.458 12C3.732 7.943 7.523 5 12 5s8.268 2.943 9.542 7c-1.274 4.057-5.065 7-9.542 7s-8.268-2.943-9.542-7z" />
+                                                </svg>
+                                            </div>
+                                        </div>
                                     </div>
                                 @endif
                             </div>
-                            @if ($resultado['preview'])
-                                <div class="flex-shrink-0">
-                                    <div class="preview-zoom group relative w-32 h-32 sm:w-36 sm:h-36 rounded-lg shadow-sm border border-gray-200 overflow-hidden cursor-pointer"
-                                        data-preview="{{ $resultado['preview'] }}">
-                                        <img src="{{ $resultado['preview'] }}" alt="{{ $resultado['nombre_archivo'] }}"
-                                            class="w-full h-full object-cover">
-                                        <div
-                                            class="preview-overlay absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex items-center justify-center transition">
-                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-white"
-                                                viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                                stroke-width="2">
-                                                <path stroke-linecap="round" stroke-linejoin="round"
-                                                    d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                                <path stroke-linecap="round" stroke-linejoin="round"
-                                                    d="M2.458 12C3.732 7.943 7.523 5 12 5s8.268 2.943 9.542 7c-1.274 4.057-5.065 7-9.542 7s-8.268-2.943-9.542-7z" />
-                                            </svg>
+                            @php
+                                $lineaInfoText = $sim['linea_propuesta']
+                                    ? trim(
+                                        ($sim['linea_propuesta']['pedido_codigo']
+                                            ? "Pedido {$sim['linea_propuesta']['pedido_codigo']}"
+                                            : 'Línea propuesta') .
+                                            ' • ' .
+                                            ($sim['linea_propuesta']['producto'] ?? '') .
+                                            ' ' .
+                                            ($sim['linea_propuesta']['diametro']
+                                                ? "Ø{$sim['linea_propuesta']['diametro']}"
+                                                : '') .
+                                            ($sim['linea_propuesta']['cantidad']
+                                                ? ' • ' .
+                                                    number_format($sim['linea_propuesta']['cantidad'], 0, ',', '.') .
+                                                    ' kg'
+                                                : ''),
+                                    )
+                                    : 'Línea propuesta sin identificadores';
+                                $lineaInfoAttr = e($lineaInfoText);
+                            @endphp
+                            <div class="mt-3 text-xs text-gray-600" id="linea-info-{{ $idx }}"
+                                data-linea-info="{{ $lineaInfoAttr }}">
+                                {{ $lineaInfoText }}
+                            </div>
+                        </div>
+
+                        @if (!$resultado['error'] && isset($sim))
+                            <div id="confirmationPrompt-{{ $idx }}" class="px-6 pt-6 pb-4 space-y-4">
+                                <div class="bg-white border border-gray-200 rounded-lg p-4">
+                                    <div class="flex items-center justify-between mb-3">
+                                        <div>
+                                            <h3 class="text-sm font-semibold text-gray-900">Datos extraídos</h3>
+                                            <p class="text-xs text-gray-500">Revisa la información escaneada del
+                                                albarán.
+                                            </p>
                                         </div>
                                     </div>
-                                </div>
-                            @endif
-                        </div>
-                        @php
-                            $lineaInfoText = $sim['linea_propuesta']
-                                ? trim(
-                                    ($sim['linea_propuesta']['pedido_codigo']
-                                        ? "Pedido {$sim['linea_propuesta']['pedido_codigo']}"
-                                        : 'Línea propuesta') .
-                                        ' • ' .
-                                        ($sim['linea_propuesta']['producto'] ?? '') .
-                                        ' ' .
-                                        ($sim['linea_propuesta']['diametro']
-                                            ? "Ø{$sim['linea_propuesta']['diametro']}"
-                                            : '') .
-                                        ($sim['linea_propuesta']['cantidad']
-                                            ? ' • ' .
-                                                number_format($sim['linea_propuesta']['cantidad'], 0, ',', '.') .
-                                                ' kg'
-                                            : ''),
-                                )
-                                : 'Línea propuesta sin identificadores';
-                            $lineaInfoAttr = e($lineaInfoText);
-                        @endphp
-                        <div class="mt-3 text-xs text-gray-600" id="linea-info-{{ $idx }}"
-                            data-linea-info="{{ $lineaInfoAttr }}">
-                            {{ $lineaInfoText }}
-                        </div>
-                    </div>
 
-                    @if (!$resultado['error'] && isset($sim))
-                        <div id="confirmationPrompt-{{ $idx }}" class="px-6 pt-6 pb-4 space-y-4">
-                            <div class="bg-white border border-gray-200 rounded-lg p-4">
-                                <div class="flex items-center justify-between mb-3">
-                                    <div>
-                                        <h3 class="text-sm font-semibold text-gray-900">Datos extraídos</h3>
-                                        <p class="text-xs text-gray-500">Revisa la información escaneada del albarán.
-                                        </p>
-                                    </div>
-                                </div>
-
-                                <!-- Vista de datos (modo lectura) -->
-                                <div id="viewMode-{{ $idx }}" class="space-y-3">
-                                    <!-- Datos generales del albarán -->
-                                    <div class="mt-3 grid grid-cols-2 md:grid-cols-3 gap-3 text-sm text-gray-700">
-                                        <div class="flex flex-col">
-                                            <span class="text-xs text-gray-500">Albarán</span>
-                                            <span class="font-semibold extracted-value"
-                                                data-field="albaran">{{ $resultado['parsed']['albaran'] ?? '—' }}</span>
-                                        </div>
-                                        <div class="flex flex-col">
-                                            <span class="text-xs text-gray-500">Fecha</span>
-                                            <span class="font-semibold extracted-value"
-                                                data-field="fecha">{{ $resultado['parsed']['fecha'] ?? '—' }}</span>
-                                        </div>
-                                        <div class="flex flex-col">
-                                            <span class="text-xs text-gray-500">Pedido cliente</span>
-                                            <span class="font-semibold extracted-value"
-                                                data-field="pedido_cliente">{{ $resultado['parsed']['pedido_cliente'] ?? '—' }}</span>
-                                        </div>
-                                        <div class="flex flex-col">
-                                            <span class="text-xs text-gray-500">Pedido código</span>
-                                            <span class="font-semibold extracted-value"
-                                                data-field="pedido_codigo">{{ $resultado['parsed']['pedido_codigo'] ?? '—' }}</span>
-                                        </div>
-                                        <div class="flex flex-col">
-                                            <span class="text-xs text-gray-500">Peso total (kg)</span>
-                                            <span class="font-semibold extracted-value"
-                                                data-field="peso_total">{{ isset($resultado['parsed']['peso_total']) ? number_format($resultado['parsed']['peso_total'], 2, ',', '.') : '—' }}</span>
-                                        </div>
-                                        <div class="flex flex-col">
-                                            <span class="text-xs text-gray-500">Bultos total</span>
-                                            <span class="font-semibold extracted-value"
-                                                data-field="bultos_total">{{ $resultado['parsed']['bultos_total'] ?? '—' }}</span>
-                                        </div>
-                                        <div class="flex flex-col">
-                                            <span class="text-xs text-gray-500">Tipo de compra</span>
-                                            <div class="flex items-center gap-2">
+                                    <!-- Vista de datos (modo lectura) -->
+                                    <div id="viewMode-{{ $idx }}" class="space-y-3">
+                                        <!-- Datos generales del albarán -->
+                                        <div class="mt-3 grid grid-cols-2 md:grid-cols-3 gap-3 text-sm text-gray-700">
+                                            <div class="flex flex-col">
+                                                <span class="text-xs text-gray-500">Albarán</span>
                                                 <span class="font-semibold extracted-value"
-                                                    data-field="tipo_compra">{{ $tipoCompra ? ucfirst($tipoCompra) : '—' }}</span>
-                                                @if ($tipoCompra === 'directo')
-                                                    <span class="text-xs text-gray-500">(Hierros Paco Reyes)</span>
+                                                    data-field="albaran">{{ $resultado['parsed']['albaran'] ?? '—' }}</span>
+                                            </div>
+                                            <div class="flex flex-col">
+                                                <span class="text-xs text-gray-500">Fecha</span>
+                                                <span class="font-semibold extracted-value"
+                                                    data-field="fecha">{{ $resultado['parsed']['fecha'] ?? '—' }}</span>
+                                            </div>
+                                            <div class="flex flex-col">
+                                                <span class="text-xs text-gray-500">Pedido cliente</span>
+                                                <span class="font-semibold extracted-value"
+                                                    data-field="pedido_cliente">{{ $resultado['parsed']['pedido_cliente'] ?? '—' }}</span>
+                                            </div>
+                                            <div class="flex flex-col">
+                                                <span class="text-xs text-gray-500">Pedido código</span>
+                                                <span class="font-semibold extracted-value"
+                                                    data-field="pedido_codigo">{{ $resultado['parsed']['pedido_codigo'] ?? '—' }}</span>
+                                            </div>
+                                            <div class="flex flex-col">
+                                                <span class="text-xs text-gray-500">Peso total (kg)</span>
+                                                <span class="font-semibold extracted-value"
+                                                    data-field="peso_total">{{ isset($resultado['parsed']['peso_total']) ? number_format($resultado['parsed']['peso_total'], 2, ',', '.') : '—' }}</span>
+                                            </div>
+                                            <div class="flex flex-col">
+                                                <span class="text-xs text-gray-500">Bultos total</span>
+                                                <span class="font-semibold extracted-value"
+                                                    data-field="bultos_total">{{ $resultado['parsed']['bultos_total'] ?? '—' }}</span>
+                                            </div>
+                                            <div class="flex flex-col">
+                                                <span class="text-xs text-gray-500">Tipo de compra</span>
+                                                <div class="flex items-center gap-2">
+                                                    <span class="font-semibold extracted-value"
+                                                        data-field="tipo_compra">{{ $tipoCompra ? ucfirst($tipoCompra) : '—' }}</span>
+                                                    @if ($tipoCompra === 'directo')
+                                                        <span class="text-xs text-gray-500">(Hierros Paco Reyes)</span>
+                                                    @endif
+                                                </div>
+                                            </div>
+                                            @if ($tipoCompra !== 'directo')
+                                                <div class="flex flex-col md:col-span-2">
+                                                    <span class="text-xs text-gray-500">Proveedor detectado</span>
+                                                    <span class="font-semibold extracted-value flex items-center gap-1"
+                                                        data-field="proveedor_texto">
+                                                        {{ $proveedorTexto ?? '—' }}
+                                                        <span class="text-xs text-gray-500">
+                                                            ({{ $distribuidorRecomendado ?? 'Sin sugerencia' }})
+                                                        </span>
+                                                    </span>
+                                                </div>
+                                            @endif
+                                        </div>
+
+                                        <div class="flex justify-end mt-2">
+                                            <button type="button"
+                                                class="toggle-json-btn inline-flex items-center gap-1 px-3 py-1 text-[11px] font-semibold text-indigo-600 border border-indigo-200 rounded-lg hover:bg-indigo-50 transition"
+                                                data-result="{{ $idx }}" data-show-label="Ver JSON"
+                                                data-hide-label="Ocultar JSON">
+                                                Ver JSON
+                                            </button>
+                                        </div>
+                                        <div id="jsonPayload-{{ $idx }}"
+                                            class="hidden bg-slate-950 text-slate-100 rounded-lg p-3 text-[11px] leading-tight overflow-auto max-h-64 mt-2 whitespace-pre-wrap">
+                                            <pre class="whitespace-pre-wrap break-words text-[11px]">{{ json_encode($resultado['parsed'] ?? [], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE) }}</pre>
+                                        </div>
+
+                                        <!-- Productos -->
+                                        @php
+                                            $productos = $resultado['parsed']['productos'] ?? [];
+                                        @endphp
+                                        @if (count($productos) > 0)
+                                            <div class="mt-4">
+                                                <h4 class="text-xs font-semibold text-gray-700 mb-2">Productos
+                                                    escaneados:
+                                                </h4>
+                                                <div class="space-y-2">
+                                                    @foreach ($productos as $prodIdx => $producto)
+                                                        <div class="bg-gray-50 border border-gray-200 rounded-lg p-3">
+                                                            <div class="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs">
+                                                                <div>
+                                                                    <span class="text-gray-500">Descripción:</span>
+                                                                    <span
+                                                                        class="font-semibold ml-1">{{ $producto['descripcion'] ?? '—' }}</span>
+                                                                </div>
+                                                                <div>
+                                                                    <span class="text-gray-500">Diámetro:</span>
+                                                                    <span
+                                                                        class="font-semibold ml-1">{{ $producto['diametro'] ?? '—' }}</span>
+                                                                </div>
+                                                                <div>
+                                                                    <span class="text-gray-500">Longitud:</span>
+                                                                    <span
+                                                                        class="font-semibold ml-1">{{ $producto['longitud'] ?? '—' }}</span>
+                                                                </div>
+                                                                <div>
+                                                                    <span class="text-gray-500">Calidad:</span>
+                                                                    <span
+                                                                        class="font-semibold ml-1">{{ $producto['calidad'] ?? '—' }}</span>
+                                                                </div>
+                                                            </div>
+                                                            @if (isset($producto['line_items']) && count($producto['line_items']) > 0)
+                                                                <div class="mt-2 text-xs">
+                                                                    <span class="text-gray-500">Coladas:</span>
+                                                                    <div class="mt-1 flex flex-wrap gap-1">
+                                                                        @foreach ($producto['line_items'] as $item)
+                                                                            <span
+                                                                                class="inline-flex items-center px-2 py-0.5 rounded bg-blue-100 text-blue-700">
+                                                                                {{ $item['colada'] ?? '?' }}
+                                                                                <span
+                                                                                    class="ml-1 text-blue-600">({{ $item['bultos'] ?? 1 }})</span>
+                                                                            </span>
+                                                                        @endforeach
+                                                                    </div>
+                                                                </div>
+                                                            @endif
+                                                        </div>
+                                                    @endforeach
+                                                </div>
+                                            </div>
+                                        @endif
+                                        <!-- Botones de acción -->
+                                        <div class="flex gap-3 mt-4 pt-4 border-t border-gray-200">
+                                            <button type="button"
+                                                class="flex-1 px-4 py-2 bg-emerald-600 text-white rounded-lg font-semibold text-sm hover:bg-emerald-700 transition confirm-scanned"
+                                                data-result="{{ $idx }}">
+                                                ✓ Continuar con lo escaneado
+                                            </button>
+                                            <button type="button"
+                                                class="flex-1 px-4 py-2 bg-amber-600 text-white rounded-lg font-semibold text-sm hover:bg-amber-700 transition modify-scanned"
+                                                data-result="{{ $idx }}">
+                                                ✎ Modificar lo escaneado
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <!-- Vista de edición (modo edición) -->
+                                    <div id="editMode-{{ $idx }}" class="hidden space-y-4">
+                                        <div class="bg-amber-50 border border-amber-200 rounded-lg p-3">
+                                            <p class="text-xs text-amber-800">
+                                                <strong>Modo edición:</strong> Modifica, agrega o elimina datos según
+                                                sea
+                                                necesario.
+                                            </p>
+                                        </div>
+
+                                        <!-- Datos generales editables -->
+                                        <div>
+                                            <h5 class="text-xs font-semibold text-gray-700 mb-2">Datos generales del
+                                                albarán</h5>
+                                            <div class="grid grid-cols-2 md:grid-cols-3 gap-3">
+                                                <label class="text-xs text-gray-700 font-medium flex flex-col gap-1">
+                                                    Albarán
+                                                    <input type="text"
+                                                        class="general-edit-field rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                                        data-field="albaran"
+                                                        value="{{ $resultado['parsed']['albaran'] ?? '' }}">
+                                                </label>
+                                                <label class="text-xs text-gray-700 font-medium flex flex-col gap-1">
+                                                    Fecha
+                                                    <input type="date"
+                                                        class="general-edit-field rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                                        data-field="fecha"
+                                                        value="{{ $resultado['parsed']['fecha'] ?? '' }}">
+                                                </label>
+                                                <label class="text-xs text-gray-700 font-medium flex flex-col gap-1">
+                                                    Pedido cliente
+                                                    <input type="text"
+                                                        class="general-edit-field rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                                        data-field="pedido_cliente"
+                                                        value="{{ $resultado['parsed']['pedido_cliente'] ?? '' }}">
+                                                </label>
+                                                <label class="text-xs text-gray-700 font-medium flex flex-col gap-1">
+                                                    Pedido código
+                                                    <input type="text"
+                                                        class="general-edit-field rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                                        data-field="pedido_codigo"
+                                                        value="{{ $resultado['parsed']['pedido_codigo'] ?? '' }}">
+                                                </label>
+                                                <label class="text-xs text-gray-700 font-medium flex flex-col gap-1">
+                                                    Peso total (kg)
+                                                    <input type="number" step="0.01"
+                                                        class="general-edit-field rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                                        data-field="peso_total"
+                                                        value="{{ $resultado['parsed']['peso_total'] ?? '' }}">
+                                                </label>
+                                                <label class="text-xs text-gray-700 font-medium flex flex-col gap-1">
+                                                    Bultos total
+                                                    <input type="number"
+                                                        class="general-edit-field rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                                        data-field="bultos_total"
+                                                        value="{{ $resultado['parsed']['bultos_total'] ?? '' }}">
+                                                </label>
+                                                <label class="text-xs text-gray-700 font-medium flex flex-col gap-1">
+                                                    Tipo de compra
+                                                    <select
+                                                        class="general-edit-field rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                                        data-field="tipo_compra">
+                                                        <option value="" {{ $tipoCompra ? '' : 'selected' }}>Sin
+                                                            clasificar</option>
+                                                        <option value="directo"
+                                                            {{ $tipoCompra === 'directo' ? 'selected' : '' }}>Directo
+                                                        </option>
+                                                        <option value="proveedor"
+                                                            {{ $tipoCompra === 'proveedor' ? 'selected' : '' }}>
+                                                            Proveedor
+                                                        </option>
+                                                    </select>
+                                                </label>
+                                                @if ($tipoCompra !== 'directo')
+                                                    <label
+                                                        class="text-xs text-gray-700 font-medium flex flex-col gap-1 md:col-span-2">
+                                                        Texto proveedor detectado
+                                                        <input type="text"
+                                                            class="general-edit-field rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                                            data-field="proveedor_texto"
+                                                            value="{{ $proveedorTexto ?? '' }}">
+                                                    </label>
+                                                    <label
+                                                        class="text-xs text-gray-700 font-medium flex flex-col gap-1">
+                                                        Proveedor sugerido
+                                                        <select
+                                                            class="general-edit-field rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                                            data-field="distribuidor_recomendado">
+                                                            <option value="">Sin seleccionar</option>
+                                                            @foreach ($distribuidoresList as $distribuidor)
+                                                                <option value="{{ $distribuidor }}"
+                                                                    {{ $distribuidorRecomendado === $distribuidor ? 'selected' : '' }}>
+                                                                    {{ $distribuidor }}
+                                                                </option>
+                                                            @endforeach
+                                                        </select>
+                                                    </label>
                                                 @endif
                                             </div>
                                         </div>
-                                        @if ($tipoCompra !== 'directo')
-                                            <div class="flex flex-col md:col-span-2">
-                                                <span class="text-xs text-gray-500">Proveedor detectado</span>
-                                                <span class="font-semibold extracted-value flex items-center gap-1"
-                                                    data-field="proveedor_texto">
-                                                    {{ $proveedorTexto ?? '—' }}
-                                                    <span class="text-xs text-gray-500">
-                                                        ({{ $distribuidorRecomendado ?? 'Sin sugerencia' }})
-                                                    </span>
-                                                </span>
+
+                                        <!-- Productos editables -->
+                                        <div>
+                                            <div class="flex items-center justify-between mb-2">
+                                                <h5 class="text-xs font-semibold text-gray-700">Productos</h5>
+                                                <button type="button"
+                                                    class="add-producto-btn text-xs px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700 transition"
+                                                    data-result="{{ $idx }}">
+                                                    + Agregar producto
+                                                </button>
                                             </div>
-                                        @endif
-                                    </div>
+                                            <div id="productosContainer-{{ $idx }}" class="space-y-3">
+                                                @foreach ($resultado['parsed']['productos'] ?? [] as $prodIdx => $producto)
+                                                    <div class="producto-edit-block bg-gray-50 border border-gray-300 rounded-lg p-3"
+                                                        data-producto-index="{{ $prodIdx }}">
+                                                        <div class="flex items-center justify-between mb-2">
+                                                            <span class="text-xs font-semibold text-gray-700">Producto
+                                                                {{ $prodIdx + 1 }}</span>
+                                                            <button type="button"
+                                                                class="remove-producto-btn text-xs px-2 py-1 bg-red-600 text-white rounded hover:bg-red-700 transition">
+                                                                Eliminar
+                                                            </button>
+                                                        </div>
+                                                        <div class="grid grid-cols-2 md:grid-cols-4 gap-2 mb-3">
+                                                            <label class="text-xs text-gray-600 flex flex-col gap-1">
+                                                                Descripción
+                                                                <select
+                                                                    class="producto-field rounded border border-gray-300 px-2 py-1 text-xs focus:ring-1 focus:ring-blue-500"
+                                                                    data-field="descripcion">
+                                                                    <option value="">Seleccionar tipo</option>
+                                                                    <option value="ENCARRETADO"
+                                                                        {{ ($producto['descripcion'] ?? '') === 'ENCARRETADO' ? 'selected' : '' }}>
+                                                                        Encarretado
+                                                                    </option>
+                                                                    <option value="BARRA"
+                                                                        {{ ($producto['descripcion'] ?? '') === 'BARRA' ? 'selected' : '' }}>
+                                                                        Barra
+                                                                    </option>
+                                                                </select>
+                                                            </label>
+                                                            <label class="text-xs text-gray-600 flex flex-col gap-1">
+                                                                Diámetro
+                                                                <input type="text"
+                                                                    class="producto-field rounded border border-gray-300 px-2 py-1 text-xs focus:ring-1 focus:ring-blue-500"
+                                                                    data-field="diametro"
+                                                                    value="{{ $producto['diametro'] ?? '' }}">
+                                                            </label>
+                                                            <label class="text-xs text-gray-600 flex flex-col gap-1">
+                                                                Longitud
+                                                                <input type="text"
+                                                                    class="producto-field rounded border border-gray-300 px-2 py-1 text-xs focus:ring-1 focus:ring-blue-500"
+                                                                    data-field="longitud"
+                                                                    value="{{ $producto['longitud'] ?? '' }}">
+                                                            </label>
+                                                            <label class="text-xs text-gray-600 flex flex-col gap-1">
+                                                                Calidad
+                                                                <input type="text"
+                                                                    class="producto-field rounded border border-gray-300 px-2 py-1 text-xs focus:ring-1 focus:ring-blue-500"
+                                                                    data-field="calidad"
+                                                                    value="{{ $producto['calidad'] ?? '' }}">
+                                                            </label>
+                                                        </div>
 
-                                    <div class="flex justify-end mt-2">
-                                        <button type="button"
-                                            class="toggle-json-btn inline-flex items-center gap-1 px-3 py-1 text-[11px] font-semibold text-indigo-600 border border-indigo-200 rounded-lg hover:bg-indigo-50 transition"
-                                            data-result="{{ $idx }}" data-show-label="Ver JSON"
-                                            data-hide-label="Ocultar JSON">
-                                            Ver JSON
-                                        </button>
-                                    </div>
-                                    <div id="jsonPayload-{{ $idx }}"
-                                        class="hidden bg-slate-950 text-slate-100 rounded-lg p-3 text-[11px] leading-tight overflow-auto max-h-64 mt-2 whitespace-pre-wrap">
-                                        <pre class="whitespace-pre-wrap break-words text-[11px]">{{ json_encode($resultado['parsed'] ?? [], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE) }}</pre>
-                                    </div>
-
-                                    <!-- Productos -->
-                                    @php
-                                        $productos = $resultado['parsed']['productos'] ?? [];
-                                    @endphp
-                                    @if (count($productos) > 0)
-                                        <div class="mt-4">
-                                            <h4 class="text-xs font-semibold text-gray-700 mb-2">Productos escaneados:
-                                            </h4>
-                                            <div class="space-y-2">
-                                                @foreach ($productos as $prodIdx => $producto)
-                                                    <div class="bg-gray-50 border border-gray-200 rounded-lg p-3">
-                                                        <div class="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs">
-                                                            <div>
-                                                                <span class="text-gray-500">Descripción:</span>
+                                                        <!-- Coladas del producto -->
+                                                        <div>
+                                                            <div class="flex items-center justify-between mb-1">
                                                                 <span
-                                                                    class="font-semibold ml-1">{{ $producto['descripcion'] ?? '—' }}</span>
+                                                                    class="text-xs font-medium text-gray-600">Coladas</span>
+                                                                <button type="button"
+                                                                    class="add-colada-btn text-xs px-2 py-0.5 bg-blue-600 text-white rounded hover:bg-blue-700 transition">
+                                                                    + Agregar colada
+                                                                </button>
                                                             </div>
-                                                            <div>
-                                                                <span class="text-gray-500">Diámetro:</span>
-                                                                <span
-                                                                    class="font-semibold ml-1">{{ $producto['diametro'] ?? '—' }}</span>
-                                                            </div>
-                                                            <div>
-                                                                <span class="text-gray-500">Longitud:</span>
-                                                                <span
-                                                                    class="font-semibold ml-1">{{ $producto['longitud'] ?? '—' }}</span>
-                                                            </div>
-                                                            <div>
-                                                                <span class="text-gray-500">Calidad:</span>
-                                                                <span
-                                                                    class="font-semibold ml-1">{{ $producto['calidad'] ?? '—' }}</span>
+                                                            <div class="coladas-container space-y-1">
+                                                                @foreach ($producto['line_items'] ?? [] as $coladaIdx => $colada)
+                                                                    <div class="colada-edit-row flex gap-2 items-center"
+                                                                        data-colada-index="{{ $coladaIdx }}">
+                                                                        <input type="text" placeholder="Colada"
+                                                                            class="colada-field flex-1 rounded border border-gray-300 px-2 py-1 text-xs focus:ring-1 focus:ring-blue-500"
+                                                                            data-field="colada"
+                                                                            value="{{ $colada['colada'] ?? '' }}">
+                                                                        <input type="number" placeholder="Bultos"
+                                                                            class="colada-field w-20 rounded border border-gray-300 px-2 py-1 text-xs focus:ring-1 focus:ring-blue-500"
+                                                                            data-field="bultos"
+                                                                            value="{{ $colada['bultos'] ?? '' }}">
+                                                                        <input type="number" step="0.01"
+                                                                            placeholder="Peso (kg)"
+                                                                            class="colada-field w-24 rounded border border-gray-300 px-2 py-1 text-xs focus:ring-1 focus:ring-blue-500"
+                                                                            data-field="peso_kg"
+                                                                            value="{{ $colada['peso_kg'] ?? '' }}">
+                                                                        <button type="button"
+                                                                            class="remove-colada-btn text-xs px-2 py-1 bg-red-500 text-white rounded hover:bg-red-600 transition">
+                                                                            ✕
+                                                                        </button>
+                                                                    </div>
+                                                                @endforeach
                                                             </div>
                                                         </div>
-                                                        @if (isset($producto['line_items']) && count($producto['line_items']) > 0)
-                                                            <div class="mt-2 text-xs">
-                                                                <span class="text-gray-500">Coladas:</span>
-                                                                <div class="mt-1 flex flex-wrap gap-1">
-                                                                    @foreach ($producto['line_items'] as $item)
-                                                                        <span
-                                                                            class="inline-flex items-center px-2 py-0.5 rounded bg-blue-100 text-blue-700">
-                                                                            {{ $item['colada'] ?? '?' }}
-                                                                            <span
-                                                                                class="ml-1 text-blue-600">({{ $item['bultos'] ?? 1 }})</span>
-                                                                        </span>
-                                                                    @endforeach
-                                                                </div>
-                                                            </div>
-                                                        @endif
                                                     </div>
                                                 @endforeach
                                             </div>
                                         </div>
-                                    @endif
-                                    <!-- Botones de acción -->
-                                    <div class="flex gap-3 mt-4 pt-4 border-t border-gray-200">
-                                        <button type="button"
-                                            class="flex-1 px-4 py-2 bg-emerald-600 text-white rounded-lg font-semibold text-sm hover:bg-emerald-700 transition confirm-scanned"
-                                            data-result="{{ $idx }}">
-                                            ✓ Continuar con lo escaneado
-                                        </button>
-                                        <button type="button"
-                                            class="flex-1 px-4 py-2 bg-amber-600 text-white rounded-lg font-semibold text-sm hover:bg-amber-700 transition modify-scanned"
-                                            data-result="{{ $idx }}">
-                                            ✎ Modificar lo escaneado
-                                        </button>
-                                    </div>
-                                </div>
 
-                                <!-- Vista de edición (modo edición) -->
-                                <div id="editMode-{{ $idx }}" class="hidden space-y-4">
-                                    <div class="bg-amber-50 border border-amber-200 rounded-lg p-3">
-                                        <p class="text-xs text-amber-800">
-                                            <strong>Modo edición:</strong> Modifica, agrega o elimina datos según sea
-                                            necesario.
-                                        </p>
-                                    </div>
-
-                                    <!-- Datos generales editables -->
-                                    <div>
-                                        <h5 class="text-xs font-semibold text-gray-700 mb-2">Datos generales del
-                                            albarán</h5>
-                                        <div class="grid grid-cols-2 md:grid-cols-3 gap-3">
-                                            <label class="text-xs text-gray-700 font-medium flex flex-col gap-1">
-                                                Albarán
-                                                <input type="text"
-                                                    class="general-edit-field rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                                                    data-field="albaran"
-                                                    value="{{ $resultado['parsed']['albaran'] ?? '' }}">
-                                            </label>
-                                            <label class="text-xs text-gray-700 font-medium flex flex-col gap-1">
-                                                Fecha
-                                                <input type="date"
-                                                    class="general-edit-field rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                                                    data-field="fecha"
-                                                    value="{{ $resultado['parsed']['fecha'] ?? '' }}">
-                                            </label>
-                                            <label class="text-xs text-gray-700 font-medium flex flex-col gap-1">
-                                                Pedido cliente
-                                                <input type="text"
-                                                    class="general-edit-field rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                                                    data-field="pedido_cliente"
-                                                    value="{{ $resultado['parsed']['pedido_cliente'] ?? '' }}">
-                                            </label>
-                                            <label class="text-xs text-gray-700 font-medium flex flex-col gap-1">
-                                                Pedido código
-                                                <input type="text"
-                                                    class="general-edit-field rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                                                    data-field="pedido_codigo"
-                                                    value="{{ $resultado['parsed']['pedido_codigo'] ?? '' }}">
-                                            </label>
-                                            <label class="text-xs text-gray-700 font-medium flex flex-col gap-1">
-                                                Peso total (kg)
-                                                <input type="number" step="0.01"
-                                                    class="general-edit-field rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                                                    data-field="peso_total"
-                                                    value="{{ $resultado['parsed']['peso_total'] ?? '' }}">
-                                            </label>
-                                            <label class="text-xs text-gray-700 font-medium flex flex-col gap-1">
-                                                Bultos total
-                                                <input type="number"
-                                                    class="general-edit-field rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                                                    data-field="bultos_total"
-                                                    value="{{ $resultado['parsed']['bultos_total'] ?? '' }}">
-                                            </label>
-                                            <label class="text-xs text-gray-700 font-medium flex flex-col gap-1">
-                                                Tipo de compra
-                                                <select
-                                                    class="general-edit-field rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                                                    data-field="tipo_compra">
-                                                    <option value="" {{ $tipoCompra ? '' : 'selected' }}>Sin
-                                                        clasificar</option>
-                                                    <option value="directo"
-                                                        {{ $tipoCompra === 'directo' ? 'selected' : '' }}>Directo
-                                                    </option>
-                                                    <option value="proveedor"
-                                                        {{ $tipoCompra === 'proveedor' ? 'selected' : '' }}>Proveedor
-                                                    </option>
-                                                </select>
-                                            </label>
-                                            @if ($tipoCompra !== 'directo')
-                                                <label
-                                                    class="text-xs text-gray-700 font-medium flex flex-col gap-1 md:col-span-2">
-                                                    Texto proveedor detectado
-                                                    <input type="text"
-                                                        class="general-edit-field rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                                                        data-field="proveedor_texto"
-                                                        value="{{ $proveedorTexto ?? '' }}">
-                                                </label>
-                                                <label class="text-xs text-gray-700 font-medium flex flex-col gap-1">
-                                                    Proveedor sugerido
-                                                    <select
-                                                        class="general-edit-field rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                                                        data-field="distribuidor_recomendado">
-                                                        <option value="">Sin seleccionar</option>
-                                                        @foreach ($distribuidoresList as $distribuidor)
-                                                            <option value="{{ $distribuidor }}"
-                                                                {{ $distribuidorRecomendado === $distribuidor ? 'selected' : '' }}>
-                                                                {{ $distribuidor }}
-                                                            </option>
-                                                        @endforeach
-                                                    </select>
-                                                </label>
-                                            @endif
-                                        </div>
-                                    </div>
-
-                                    <!-- Productos editables -->
-                                    <div>
-                                        <div class="flex items-center justify-between mb-2">
-                                            <h5 class="text-xs font-semibold text-gray-700">Productos</h5>
+                                        <div class="flex justify-end pt-3 border-t border-gray-300">
                                             <button type="button"
-                                                class="add-producto-btn text-xs px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700 transition"
+                                                class="px-6 py-2 bg-blue-600 text-white rounded-lg font-semibold text-sm hover:bg-blue-700 transition confirm-edit"
                                                 data-result="{{ $idx }}">
-                                                + Agregar producto
+                                                Confirmar y seguir
                                             </button>
                                         </div>
-                                        <div id="productosContainer-{{ $idx }}" class="space-y-3">
-                                            @foreach ($resultado['parsed']['productos'] ?? [] as $prodIdx => $producto)
-                                                <div class="producto-edit-block bg-gray-50 border border-gray-300 rounded-lg p-3"
-                                                    data-producto-index="{{ $prodIdx }}">
-                                                    <div class="flex items-center justify-between mb-2">
-                                                        <span class="text-xs font-semibold text-gray-700">Producto
-                                                            {{ $prodIdx + 1 }}</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div id="simulationSection-{{ $idx }}" class="p-6 space-y-4 hidden">
+                                <!-- Simulación: Líneas Pendientes -->
+                                <div>
+                                    <h3 class="text-base font-semibold text-gray-900 mb-3">
+                                        📋 Líneas de pedido pendientes para este proveedor
+                                    </h3>
+                                    @if ($sim['hay_coincidencias'])
+                                        @if ($sim['linea_propuesta'])
+                                            @php
+                                                $tipoRec = $sim['linea_propuesta']['tipo_recomendacion'] ?? 'por_score';
+                                                $bgColor =
+                                                    $tipoRec === 'exacta'
+                                                        ? 'bg-green-50 border-green-200'
+                                                        : 'bg-blue-50 border-blue-200';
+                                                $textColor = $tipoRec === 'exacta' ? 'text-green-900' : 'text-blue-900';
+                                                $labelColor =
+                                                    $tipoRec === 'exacta'
+                                                        ? 'bg-green-600 text-white'
+                                                        : 'bg-blue-600 text-white';
+                                                $labelText =
+                                                    $tipoRec === 'exacta'
+                                                        ? 'COINCIDENCIA EXACTA'
+                                                        : ($tipoRec === 'parcial'
+                                                            ? 'COINCIDENCIA PARCIAL'
+                                                            : 'MEJOR COMPATIBILIDAD');
+                                            @endphp
+                                            <div class="mt-3 p-4 {{ $bgColor }} border rounded-lg">
+                                                <div class="flex items-start justify-between mb-2">
+                                                    <div class="flex-1">
+                                                        <div class="flex items-center gap-2 mb-1">
+                                                            <p class="text-sm font-semibold {{ $textColor }}">
+                                                                {{ $tipoRec === 'exacta' ? '✓' : '⚠' }} Línea
+                                                                propuesta:
+                                                                {{ $sim['linea_propuesta']['pedido_codigo'] }}
+                                                            </p>
+                                                            <span
+                                                                class="inline-flex items-center justify-center px-2 py-0.5 rounded-full text-[9px] font-semibold {{ $labelColor }}">
+                                                                {{ $labelText }}
+                                                            </span>
+                                                        </div>
+                                                        <p class="text-xs {{ $textColor }} mt-1">
+                                                            <strong>Fabricante:</strong>
+                                                            {{ $sim['linea_propuesta']['fabricante'] }}
+                                                        </p>
+                                                        <p class="text-xs {{ $textColor }}">
+                                                            <strong>Producto:</strong>
+                                                            {{ $sim['linea_propuesta']['producto'] }} |
+                                                            <strong>Obra:</strong>
+                                                            {{ $sim['linea_propuesta']['obra'] }}
+                                                        </p>
+                                                    </div>
+                                                    <div class="text-right">
+                                                        @php
+                                                            $propScore = $sim['linea_propuesta']['score'];
+                                                            $propColor =
+                                                                $propScore >= 150
+                                                                    ? 'bg-emerald-600'
+                                                                    : ($propScore >= 50
+                                                                        ? 'bg-green-500'
+                                                                        : ($propScore >= 0
+                                                                            ? 'bg-yellow-400'
+                                                                            : 'bg-red-500'));
+                                                        @endphp
+                                                    </div>
+                                                </div>
+                                                @if (count($sim['linea_propuesta']['razones']) > 0)
+                                                    <div class="mt-2 pt-2 border-t border-green-200">
+                                                        <p class="text-xs font-semibold text-green-800 mb-1">Razones:
+                                                        </p>
+                                                        <ul class="text-xs text-green-700 space-y-1 pl-4">
+                                                            @foreach ($sim['linea_propuesta']['razones'] as $razon)
+                                                                <li>{{ $razon }}</li>
+                                                            @endforeach
+                                                        </ul>
+                                                    </div>
+                                                @endif
+                                                @if (count($sim['linea_propuesta']['incompatibilidades']) > 0)
+                                                    <div class="mt-2 pt-2 border-t border-green-200">
+                                                        <p class="text-xs font-semibold text-red-700 mb-1">
+                                                            Advertencias:
+                                                        </p>
+                                                        <ul class="text-xs text-red-700 space-y-1 pl-4">
+                                                            @foreach ($sim['linea_propuesta']['incompatibilidades'] as $incomp)
+                                                                <li>{{ $incomp }}</li>
+                                                            @endforeach
+                                                        </ul>
+                                                    </div>
+                                                @endif
+                                            </div>
+                                        @endif
+                                    @else
+                                        <div class="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                                            <p class="text-sm text-yellow-800">
+                                                ⚠️ No se encontraron líneas de pedido pendientes para este
+                                                proveedor/producto
+                                            </p>
+                                        </div>
+                                    @endif
+                                </div>
+
+                                <!-- Listado completo de TODOS los pedidos pendientes -->
+                                @if (isset($sim['todas_las_lineas']) && count($sim['todas_las_lineas']) > 0)
+                                    <div class="pb-4 border-b border-gray-200">
+                                        <!-- Listado completo de TODOS los pedidos pendientes (MODAL) -->
+                                        @if (isset($sim['todas_las_lineas']) && count($sim['todas_las_lineas']) > 0)
+                                            <div class="">
+                                                <button type="button"
+                                                    onclick="openPendingOrdersModal('{{ $idx }}')"
+                                                    class="flex items-center justify-between w-full p-3 bg-gray-100 rounded-lg hover:bg-gray-200 transition text-left">
+                                                    <span class="text-sm font-semibold text-gray-900">
+                                                        > Ver todos los pedidos pendientes
+                                                        ({{ count($sim['todas_las_lineas']) }})
+                                                    </span>
+                                                </button>
+
+                                                <!-- Selected Order Display -->
+                                                <div id="selectedOrderContainer-{{ $idx }}"
+                                                    class="hidden mt-3 p-4 bg-blue-50 border border-blue-200 rounded-lg relative">
+                                                    <div class="flex items-start justify-between mb-2">
+                                                        <div>
+                                                            <p class="text-sm font-semibold text-blue-900">
+                                                                ✓ Pedido seleccionado manualmente: <span
+                                                                    id="selectedOrderCode-{{ $idx }}"></span>
+                                                            </p>
+                                                            <p class="text-xs text-blue-700 mt-1"
+                                                                id="selectedOrderDetails-{{ $idx }}">
+                                                                <!-- Details populated by JS -->
+                                                            </p>
+                                                        </div>
                                                         <button type="button"
-                                                            class="remove-producto-btn text-xs px-2 py-1 bg-red-600 text-white rounded hover:bg-red-700 transition">
-                                                            Eliminar
+                                                            onclick="resetToRecommended('{{ $idx }}')"
+                                                            class="text-xs text-blue-600 underline hover:text-blue-800">
+                                                            Restaurar recomendado
                                                         </button>
                                                     </div>
-                                                    <div class="grid grid-cols-2 md:grid-cols-4 gap-2 mb-3">
-                                                        <label class="text-xs text-gray-600 flex flex-col gap-1">
-                                                            Descripción
-                                                            <select
-                                                                class="producto-field rounded border border-gray-300 px-2 py-1 text-xs focus:ring-1 focus:ring-blue-500"
-                                                                data-field="descripcion">
-                                                                <option value="">Seleccionar tipo</option>
-                                                                <option value="ENCARRETADO"
-                                                                    {{ ($producto['descripcion'] ?? '') === 'ENCARRETADO' ? 'selected' : '' }}>
-                                                                    Encarretado
-                                                                </option>
-                                                                <option value="BARRA"
-                                                                    {{ ($producto['descripcion'] ?? '') === 'BARRA' ? 'selected' : '' }}>
-                                                                    Barra
-                                                                </option>
-                                                            </select>
-                                                        </label>
-                                                        <label class="text-xs text-gray-600 flex flex-col gap-1">
-                                                            Diámetro
-                                                            <input type="text"
-                                                                class="producto-field rounded border border-gray-300 px-2 py-1 text-xs focus:ring-1 focus:ring-blue-500"
-                                                                data-field="diametro"
-                                                                value="{{ $producto['diametro'] ?? '' }}">
-                                                        </label>
-                                                        <label class="text-xs text-gray-600 flex flex-col gap-1">
-                                                            Longitud
-                                                            <input type="text"
-                                                                class="producto-field rounded border border-gray-300 px-2 py-1 text-xs focus:ring-1 focus:ring-blue-500"
-                                                                data-field="longitud"
-                                                                value="{{ $producto['longitud'] ?? '' }}">
-                                                        </label>
-                                                        <label class="text-xs text-gray-600 flex flex-col gap-1">
-                                                            Calidad
-                                                            <input type="text"
-                                                                class="producto-field rounded border border-gray-300 px-2 py-1 text-xs focus:ring-1 focus:ring-blue-500"
-                                                                data-field="calidad"
-                                                                value="{{ $producto['calidad'] ?? '' }}">
-                                                        </label>
-                                                    </div>
-
-                                                    <!-- Coladas del producto -->
-                                                    <div>
-                                                        <div class="flex items-center justify-between mb-1">
-                                                            <span
-                                                                class="text-xs font-medium text-gray-600">Coladas</span>
-                                                            <button type="button"
-                                                                class="add-colada-btn text-xs px-2 py-0.5 bg-blue-600 text-white rounded hover:bg-blue-700 transition">
-                                                                + Agregar colada
-                                                            </button>
+                                                    <div class="mt-3">
+                                                        <!-- Enunciado dinámico -->
+                                                        <div id="changeStatement-{{ $idx }}"
+                                                            class="mb-2 p-2 bg-blue-50 border border-blue-200 rounded-lg text-xs text-blue-900">
+                                                            <strong>Selección manual:</strong>
+                                                            <span id="statementText-{{ $idx }}">Has cambiado
+                                                                la
+                                                                recomendación del sistema.</span>
                                                         </div>
-                                                        <div class="coladas-container space-y-1">
-                                                            @foreach ($producto['line_items'] ?? [] as $coladaIdx => $colada)
-                                                                <div class="colada-edit-row flex gap-2 items-center"
-                                                                    data-colada-index="{{ $coladaIdx }}">
-                                                                    <input type="text" placeholder="Colada"
-                                                                        class="colada-field flex-1 rounded border border-gray-300 px-2 py-1 text-xs focus:ring-1 focus:ring-blue-500"
-                                                                        data-field="colada"
-                                                                        value="{{ $colada['colada'] ?? '' }}">
-                                                                    <input type="number" placeholder="Bultos"
-                                                                        class="colada-field w-20 rounded border border-gray-300 px-2 py-1 text-xs focus:ring-1 focus:ring-blue-500"
-                                                                        data-field="bultos"
-                                                                        value="{{ $colada['bultos'] ?? '' }}">
-                                                                    <input type="number" step="0.01"
-                                                                        placeholder="Peso (kg)"
-                                                                        class="colada-field w-24 rounded border border-gray-300 px-2 py-1 text-xs focus:ring-1 focus:ring-blue-500"
-                                                                        data-field="peso_kg"
-                                                                        value="{{ $colada['peso_kg'] ?? '' }}">
-                                                                    <button type="button"
-                                                                        class="remove-colada-btn text-xs px-2 py-1 bg-red-500 text-white rounded hover:bg-red-600 transition">
-                                                                        ✕
-                                                                    </button>
-                                                                </div>
-                                                            @endforeach
-                                                        </div>
+
+                                                        <label class="block text-xs font-medium text-blue-800 mb-1">
+                                                            Indica el motivo (opcional - ayudará al sistema a aprender):
+                                                        </label>
+                                                        <input type="text" id="changeReason-{{ $idx }}"
+                                                            class="w-full text-sm rounded-md border-blue-300 focus:border-blue-500 focus:ring-blue-500"
+                                                            placeholder="Ej: Mejor calidad, entrega más urgente, etc.">
                                                     </div>
                                                 </div>
-                                            @endforeach
-                                        </div>
-                                    </div>
 
-                                    <div class="flex justify-end pt-3 border-t border-gray-300">
-                                        <button type="button"
-                                            class="px-6 py-2 bg-blue-600 text-white rounded-lg font-semibold text-sm hover:bg-blue-700 transition confirm-edit"
-                                            data-result="{{ $idx }}">
-                                            Confirmar y seguir
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div id="simulationSection-{{ $idx }}" class="p-6 space-y-4 hidden">
-                            <!-- Simulación: Líneas Pendientes -->
-                            <div>
-                                <h3 class="text-base font-semibold text-gray-900 mb-3">
-                                    📋 Líneas de pedido pendientes para este proveedor
-                                </h3>
-                                @if ($sim['hay_coincidencias'])
-                                    @if ($sim['linea_propuesta'])
-                                        @php
-                                            $tipoRec = $sim['linea_propuesta']['tipo_recomendacion'] ?? 'por_score';
-                                            $bgColor =
-                                                $tipoRec === 'exacta'
-                                                    ? 'bg-green-50 border-green-200'
-                                                    : 'bg-blue-50 border-blue-200';
-                                            $textColor = $tipoRec === 'exacta' ? 'text-green-900' : 'text-blue-900';
-                                            $labelColor =
-                                                $tipoRec === 'exacta'
-                                                    ? 'bg-green-600 text-white'
-                                                    : 'bg-blue-600 text-white';
-                                            $labelText =
-                                                $tipoRec === 'exacta'
-                                                    ? 'COINCIDENCIA EXACTA'
-                                                    : ($tipoRec === 'parcial'
-                                                        ? 'COINCIDENCIA PARCIAL'
-                                                        : 'MEJOR COMPATIBILIDAD');
-                                        @endphp
-                                        <div class="mt-3 p-4 {{ $bgColor }} border rounded-lg">
-                                            <div class="flex items-start justify-between mb-2">
-                                                <div class="flex-1">
-                                                    <div class="flex items-center gap-2 mb-1">
-                                                        <p class="text-sm font-semibold {{ $textColor }}">
-                                                            {{ $tipoRec === 'exacta' ? '✓' : '⚠' }} Línea propuesta:
-                                                            {{ $sim['linea_propuesta']['pedido_codigo'] }}
-                                                        </p>
-                                                        <span
-                                                            class="inline-flex items-center justify-center px-2 py-0.5 rounded-full text-[9px] font-semibold {{ $labelColor }}">
-                                                            {{ $labelText }}
-                                                        </span>
-                                                    </div>
-                                                    <p class="text-xs {{ $textColor }} mt-1">
-                                                        <strong>Fabricante:</strong>
-                                                        {{ $sim['linea_propuesta']['fabricante'] }}
-                                                    </p>
-                                                    <p class="text-xs {{ $textColor }}">
-                                                        <strong>Producto:</strong>
-                                                        {{ $sim['linea_propuesta']['producto'] }} |
-                                                        <strong>Obra:</strong> {{ $sim['linea_propuesta']['obra'] }}
-                                                    </p>
-                                                </div>
-                                                <div class="text-right">
-                                                    @php
-                                                        $propScore = $sim['linea_propuesta']['score'];
-                                                        $propColor =
-                                                            $propScore >= 150
-                                                                ? 'bg-emerald-600'
-                                                                : ($propScore >= 50
-                                                                    ? 'bg-green-500'
-                                                                    : ($propScore >= 0
-                                                                        ? 'bg-yellow-400'
-                                                                        : 'bg-red-500'));
-                                                    @endphp
-                                                </div>
-                                            </div>
-                                            @if (count($sim['linea_propuesta']['razones']) > 0)
-                                                <div class="mt-2 pt-2 border-t border-green-200">
-                                                    <p class="text-xs font-semibold text-green-800 mb-1">Razones:</p>
-                                                    <ul class="text-xs text-green-700 space-y-1 pl-4">
-                                                        @foreach ($sim['linea_propuesta']['razones'] as $razon)
-                                                            <li>{{ $razon }}</li>
-                                                        @endforeach
-                                                    </ul>
-                                                </div>
-                                            @endif
-                                            @if (count($sim['linea_propuesta']['incompatibilidades']) > 0)
-                                                <div class="mt-2 pt-2 border-t border-green-200">
-                                                    <p class="text-xs font-semibold text-red-700 mb-1">Advertencias:
-                                                    </p>
-                                                    <ul class="text-xs text-red-700 space-y-1 pl-4">
-                                                        @foreach ($sim['linea_propuesta']['incompatibilidades'] as $incomp)
-                                                            <li>{{ $incomp }}</li>
-                                                        @endforeach
-                                                    </ul>
-                                                </div>
-                                            @endif
-                                        </div>
-                                    @endif
-                                @else
-                                    <div class="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-                                        <p class="text-sm text-yellow-800">
-                                            ⚠️ No se encontraron líneas de pedido pendientes para este
-                                            proveedor/producto
-                                        </p>
-                                    </div>
-                                @endif
-                            </div>
-
-                            <!-- Listado completo de TODOS los pedidos pendientes -->
-                            @if (isset($sim['todas_las_lineas']) && count($sim['todas_las_lineas']) > 0)
-                                <div class="pb-4 border-b border-gray-200">
-                                    <!-- Listado completo de TODOS los pedidos pendientes (MODAL) -->
-                                    @if (isset($sim['todas_las_lineas']) && count($sim['todas_las_lineas']) > 0)
-                                        <div class="">
-                                            <button type="button"
-                                                onclick="openPendingOrdersModal('{{ $idx }}')"
-                                                class="flex items-center justify-between w-full p-3 bg-gray-100 rounded-lg hover:bg-gray-200 transition text-left">
-                                                <span class="text-sm font-semibold text-gray-900">
-                                                    > Ver todos los pedidos pendientes
-                                                    ({{ count($sim['todas_las_lineas']) }})
-                                                </span>
-                                            </button>
-
-                                            <!-- Selected Order Display -->
-                                            <div id="selectedOrderContainer-{{ $idx }}"
-                                                class="hidden mt-3 p-4 bg-blue-50 border border-blue-200 rounded-lg relative">
-                                                <div class="flex items-start justify-between mb-2">
-                                                    <div>
-                                                        <p class="text-sm font-semibold text-blue-900">
-                                                            ✓ Pedido seleccionado manualmente: <span
-                                                                id="selectedOrderCode-{{ $idx }}"></span>
-                                                        </p>
-                                                        <p class="text-xs text-blue-700 mt-1"
-                                                            id="selectedOrderDetails-{{ $idx }}">
-                                                            <!-- Details populated by JS -->
-                                                        </p>
-                                                    </div>
-                                                    <button type="button"
-                                                        onclick="resetToRecommended('{{ $idx }}')"
-                                                        class="text-xs text-blue-600 underline hover:text-blue-800">
-                                                        Restaurar recomendado
-                                                    </button>
-                                                </div>
-                                                <div class="mt-3">
-                                                    <!-- Enunciado dinámico -->
-                                                    <div id="changeStatement-{{ $idx }}"
-                                                        class="mb-2 p-2 bg-blue-50 border border-blue-200 rounded-lg text-xs text-blue-900">
-                                                        <strong>Selección manual:</strong>
-                                                        <span id="statementText-{{ $idx }}">Has cambiado la
-                                                            recomendación del sistema.</span>
+                                                <!-- Modal Structure -->
+                                                @php
+                                                    $recommendedId = $sim['linea_propuesta']['id'] ?? null;
+                                                    $recommendedCode = $sim['linea_propuesta']['pedido_codigo'] ?? null;
+                                                @endphp
+                                                <div id="pendingOrdersModal-{{ $idx }}"
+                                                    class="fixed inset-0 z-50 hidden" aria-labelledby="modal-title"
+                                                    role="dialog" aria-modal="true"
+                                                    @if ($recommendedId) data-recommended-id="{{ $recommendedId }}" @endif
+                                                    @if ($recommendedCode) data-recommended-code="{{ $recommendedCode }}" @endif>
+                                                    <!-- Backdrop -->
+                                                    <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"
+                                                        onclick="closePendingOrdersModal('{{ $idx }}')">
                                                     </div>
 
-                                                    <label class="block text-xs font-medium text-blue-800 mb-1">
-                                                        Indica el motivo (opcional - ayudará al sistema a aprender):
-                                                    </label>
-                                                    <input type="text" id="changeReason-{{ $idx }}"
-                                                        class="w-full text-sm rounded-md border-blue-300 focus:border-blue-500 focus:ring-blue-500"
-                                                        placeholder="Ej: Mejor calidad, entrega más urgente, etc.">
-                                                </div>
-                                            </div>
-
-                                            <!-- Modal Structure -->
-                                            @php
-                                                $recommendedId = $sim['linea_propuesta']['id'] ?? null;
-                                                $recommendedCode = $sim['linea_propuesta']['pedido_codigo'] ?? null;
-                                            @endphp
-                                            <div id="pendingOrdersModal-{{ $idx }}"
-                                                class="fixed inset-0 z-50 hidden" aria-labelledby="modal-title"
-                                                role="dialog" aria-modal="true"
-                                                @if ($recommendedId) data-recommended-id="{{ $recommendedId }}" @endif
-                                                @if ($recommendedCode) data-recommended-code="{{ $recommendedCode }}" @endif>
-                                                <!-- Backdrop -->
-                                                <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"
-                                                    onclick="closePendingOrdersModal('{{ $idx }}')"></div>
-
-                                                <div class="fixed inset-0 z-10 overflow-y-auto">
-                                                    <div
-                                                        class="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0">
+                                                    <div class="fixed inset-0 z-10 overflow-y-auto">
                                                         <div
-                                                            class="relative transform overflow-hidden rounded-lg bg-white text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-7xl">
-                                                            <div class="bg-white px-4 pb-4 pt-5 sm:p-6 sm:pb-4">
-                                                                <div class="sm:flex sm:items-start">
-                                                                    <div
-                                                                        class="mt-3 text-center sm:ml-4 sm:mt-0 sm:text-left w-full">
-                                                                        <h3 class="text-lg font-semibold leading-6 text-gray-900"
-                                                                            id="modal-title">
-                                                                            Pedidos Pendientes
-                                                                        </h3>
-                                                                        <div class="mt-4 max-h-[60vh] overflow-y-auto">
-                                                                            <table class="min-w-full text-sm">
-                                                                                <thead
-                                                                                    class="bg-gray-100 text-gray-700 sticky top-0 z-10">
-                                                                                    <tr>
-                                                                                        <th
-                                                                                            class="px-4 py-2 text-center font-medium">
-                                                                                            Pedido</th>
-                                                                                        <th
-                                                                                            class="px-4 py-2 text-left font-medium">
-                                                                                            Fabricante</th>
-                                                                                        <th
-                                                                                            class="px-4 py-2 text-left font-medium">
-                                                                                            Producto</th>
-                                                                                        <th
-                                                                                            class="px-4 py-2 text-left font-medium">
-                                                                                            Obra</th>
-                                                                                        <th
-                                                                                            class="px-4 py-2 text-center font-medium">
-                                                                                            Pendiente</th>
-                                                                                        <th
-                                                                                            class="px-4 py-2 text-center font-medium">
-                                                                                            Recomendación</th>
-                                                                                        <th
-                                                                                            class="px-4 py-2 text-center font-medium">
-                                                                                            Estado</th>
-                                                                                        <th
-                                                                                            class="px-4 py-2 text-center font-medium">
-                                                                                            Acción</th>
-                                                                                    </tr>
-                                                                                </thead>
-                                                                                <tbody
-                                                                                    class="divide-y divide-gray-200">
-                                                                                    @foreach ($sim['todas_las_lineas'] as $linea)
-                                                                                        <tr
-                                                                                            class="hover:bg-gray-50 {{ $linea['coincide_diametro'] ? 'bg-green-50' : '' }}">
-                                                                                            <td
-                                                                                                class="px-4 py-3 font-medium text-center text-gray-900">
-                                                                                                {{ $linea['pedido_codigo'] }}
-                                                                                                @if (isset($sim['linea_propuesta']) && $linea['id'] == $sim['linea_propuesta']['id'])
-                                                                                                    <span
-                                                                                                        class="inline-flex items-center rounded-md bg-green-50 px-2 py-1 text-xs font-medium text-green-700 ring-1 ring-inset ring-green-600/20">Recomendado</span>
-                                                                                                @endif
-                                                                                            </td>
-                                                                                            <td
-                                                                                                class="px-4 py-3 text-gray-600 text-xs">
-                                                                                                {{ $linea['fabricante'] }}
-                                                                                            </td>
-                                                                                            <td
-                                                                                                class="px-4 py-3 text-gray-700">
-                                                                                                @if ($linea['coincide_diametro'])
-                                                                                                    <span
-                                                                                                        class="ml-1 text-xs text-green-600">✓</span>
-                                                                                                @endif
-                                                                                                {{ $linea['producto'] }}
-                                                                                            </td>
-                                                                                            <td
-                                                                                                class="px-4 py-3 text-gray-700">
-                                                                                                {{ $linea['obra'] }}
-                                                                                            </td>
-                                                                                            <td
-                                                                                                class="px-4 py-3 text-center font-semibold text-gray-900">
-                                                                                                {{ number_format($linea['cantidad_pendiente'], 0, ',', '.') }}
-                                                                                                /
-                                                                                                {{ number_format($linea['cantidad'], 0, ',', '.') }}
-                                                                                                kg
-                                                                                            </td>
-                                                                                            <td
-                                                                                                class="px-4 py-3 text-center">
-                                                                                                @php
-                                                                                                    $scoreColor =
-                                                                                                        $linea[
-                                                                                                            'score'
-                                                                                                        ] >= 150
-                                                                                                            ? 'bg-emerald-600'
-                                                                                                            : ($linea[
+                                                            class="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0">
+                                                            <div
+                                                                class="relative transform overflow-hidden rounded-lg bg-white text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-7xl">
+                                                                <div class="bg-white px-4 pb-4 pt-5 sm:p-6 sm:pb-4">
+                                                                    <div class="sm:flex sm:items-start">
+                                                                        <div
+                                                                            class="mt-3 text-center sm:ml-4 sm:mt-0 sm:text-left w-full">
+                                                                            <h3 class="text-lg font-semibold leading-6 text-gray-900"
+                                                                                id="modal-title">
+                                                                                Pedidos Pendientes
+                                                                            </h3>
+                                                                            <div
+                                                                                class="mt-4 max-h-[60vh] overflow-y-auto">
+                                                                                <table class="min-w-full text-sm">
+                                                                                    <thead
+                                                                                        class="bg-gray-100 text-gray-700 sticky top-0 z-10">
+                                                                                        <tr>
+                                                                                            <th
+                                                                                                class="px-4 py-2 text-center font-medium">
+                                                                                                Pedido</th>
+                                                                                            <th
+                                                                                                class="px-4 py-2 text-left font-medium">
+                                                                                                Fabricante</th>
+                                                                                            <th
+                                                                                                class="px-4 py-2 text-left font-medium">
+                                                                                                Producto</th>
+                                                                                            <th
+                                                                                                class="px-4 py-2 text-left font-medium">
+                                                                                                Obra</th>
+                                                                                            <th
+                                                                                                class="px-4 py-2 text-center font-medium">
+                                                                                                Pendiente</th>
+                                                                                            <th
+                                                                                                class="px-4 py-2 text-center font-medium">
+                                                                                                Recomendación</th>
+                                                                                            <th
+                                                                                                class="px-4 py-2 text-center font-medium">
+                                                                                                Estado</th>
+                                                                                            <th
+                                                                                                class="px-4 py-2 text-center font-medium">
+                                                                                                Acción</th>
+                                                                                        </tr>
+                                                                                    </thead>
+                                                                                    <tbody
+                                                                                        class="divide-y divide-gray-200">
+                                                                                        @foreach ($sim['todas_las_lineas'] as $linea)
+                                                                                            <tr
+                                                                                                class="hover:bg-gray-50 {{ $linea['coincide_diametro'] ? 'bg-green-50' : '' }}">
+                                                                                                <td
+                                                                                                    class="px-4 py-3 font-medium text-center text-gray-900">
+                                                                                                    {{ $linea['pedido_codigo'] }}
+                                                                                                    @if (isset($sim['linea_propuesta']) && $linea['id'] == $sim['linea_propuesta']['id'])
+                                                                                                        <span
+                                                                                                            class="inline-flex items-center rounded-md bg-green-50 px-2 py-1 text-xs font-medium text-green-700 ring-1 ring-inset ring-green-600/20">Recomendado</span>
+                                                                                                    @endif
+                                                                                                </td>
+                                                                                                <td
+                                                                                                    class="px-4 py-3 text-gray-600 text-xs">
+                                                                                                    {{ $linea['fabricante'] }}
+                                                                                                </td>
+                                                                                                <td
+                                                                                                    class="px-4 py-3 text-gray-700">
+                                                                                                    @if ($linea['coincide_diametro'])
+                                                                                                        <span
+                                                                                                            class="ml-1 text-xs text-green-600">✓</span>
+                                                                                                    @endif
+                                                                                                    {{ $linea['producto'] }}
+                                                                                                </td>
+                                                                                                <td
+                                                                                                    class="px-4 py-3 text-gray-700">
+                                                                                                    {{ $linea['obra'] }}
+                                                                                                </td>
+                                                                                                <td
+                                                                                                    class="px-4 py-3 text-center font-semibold text-gray-900">
+                                                                                                    {{ number_format($linea['cantidad_pendiente'], 0, ',', '.') }}
+                                                                                                    /
+                                                                                                    {{ number_format($linea['cantidad'], 0, ',', '.') }}
+                                                                                                    kg
+                                                                                                </td>
+                                                                                                <td
+                                                                                                    class="px-4 py-3 text-center">
+                                                                                                    @php
+                                                                                                        $scoreColor =
+                                                                                                            $linea[
                                                                                                                 'score'
-                                                                                                            ] >= 50
-                                                                                                                ? 'bg-green-500'
+                                                                                                            ] >= 150
+                                                                                                                ? 'bg-emerald-600'
                                                                                                                 : ($linea[
                                                                                                                     'score'
-                                                                                                                ] >= 0
-                                                                                                                    ? 'bg-yellow-400'
-                                                                                                                    : 'bg-red-500'));
-                                                                                                @endphp
-                                                                                                <div
-                                                                                                    class="flex items-center justify-center group relative">
-                                                                                                    <div class="w-4 h-4 rounded-full {{ $scoreColor }} shadow-sm cursor-help"
-                                                                                                        title="Score: {{ $linea['score'] }}">
+                                                                                                                ] >= 50
+                                                                                                                    ? 'bg-green-500'
+                                                                                                                    : ($linea[
+                                                                                                                        'score'
+                                                                                                                    ] >=
+                                                                                                                    0
+                                                                                                                        ? 'bg-yellow-400'
+                                                                                                                        : 'bg-red-500'));
+                                                                                                    @endphp
+                                                                                                    <div
+                                                                                                        class="flex items-center justify-center group relative">
+                                                                                                        <div class="w-4 h-4 rounded-full {{ $scoreColor }} shadow-sm cursor-help"
+                                                                                                            title="Score: {{ $linea['score'] }}">
+                                                                                                        </div>
                                                                                                     </div>
-                                                                                                </div>
-                                                                                            </td>
-                                                                                            <td class="px-4 py-3">
-                                                                                                <span
-                                                                                                    class="text-xs px-2 py-1 rounded-full {{ $linea['estado'] === 'pendiente' ? 'bg-yellow-100 text-yellow-700' : 'bg-blue-100 text-blue-700' }}">
-                                                                                                    {{ ucfirst($linea['estado']) }}
-                                                                                                </span>
-                                                                                            </td>
-                                                                                            <td
-                                                                                                class="px-4 py-3 text-center">
-                                                                                                @php
-                                                                                                    $isProposed =
-                                                                                                        isset(
-                                                                                                            $sim[
-                                                                                                                'linea_propuesta'
-                                                                                                            ],
-                                                                                                        ) &&
-                                                                                                        $linea['id'] ==
-                                                                                                            $sim[
-                                                                                                                'linea_propuesta'
-                                                                                                            ]['id'];
-                                                                                                @endphp
-                                                                                                <button type="button"
-                                                                                                    id="btn-select-{{ $idx }}-{{ $linea['id'] }}"
-                                                                                                    class="selection-btn-{{ $idx }} text-xs px-3 py-1 rounded transition {{ $isProposed ? 'bg-green-600 text-white cursor-default' : 'bg-blue-600 text-white hover:bg-blue-700' }}"
-                                                                                                    {{ $isProposed ? 'disabled' : '' }}
-                                                                                                    onclick="seleccionarLineaManual({{ json_encode($linea) }}, '{{ $idx }}')">
-                                                                                                    {{ $isProposed ? 'Seleccionado' : 'Seleccionar' }}
-                                                                                                </button>
-                                                                                            </td>
-                                                                                        </tr>
-                                                                                    @endforeach
-                                                                                </tbody>
-                                                                            </table>
+                                                                                                </td>
+                                                                                                <td class="px-4 py-3">
+                                                                                                    <span
+                                                                                                        class="text-xs px-2 py-1 rounded-full {{ $linea['estado'] === 'pendiente' ? 'bg-yellow-100 text-yellow-700' : 'bg-blue-100 text-blue-700' }}">
+                                                                                                        {{ ucfirst($linea['estado']) }}
+                                                                                                    </span>
+                                                                                                </td>
+                                                                                                <td
+                                                                                                    class="px-4 py-3 text-center">
+                                                                                                    @php
+                                                                                                        $isProposed =
+                                                                                                            isset(
+                                                                                                                $sim[
+                                                                                                                    'linea_propuesta'
+                                                                                                                ],
+                                                                                                            ) &&
+                                                                                                            $linea[
+                                                                                                                'id'
+                                                                                                            ] ==
+                                                                                                                $sim[
+                                                                                                                    'linea_propuesta'
+                                                                                                                ]['id'];
+                                                                                                    @endphp
+                                                                                                    <button
+                                                                                                        type="button"
+                                                                                                        id="btn-select-{{ $idx }}-{{ $linea['id'] }}"
+                                                                                                        class="selection-btn-{{ $idx }} text-xs px-3 py-1 rounded transition {{ $isProposed ? 'bg-green-600 text-white cursor-default' : 'bg-blue-600 text-white hover:bg-blue-700' }}"
+                                                                                                        {{ $isProposed ? 'disabled' : '' }}
+                                                                                                        onclick="seleccionarLineaManual({{ json_encode($linea) }}, '{{ $idx }}')">
+                                                                                                        {{ $isProposed ? 'Seleccionado' : 'Seleccionar' }}
+                                                                                                    </button>
+                                                                                                </td>
+                                                                                            </tr>
+                                                                                        @endforeach
+                                                                                    </tbody>
+                                                                                </table>
+                                                                            </div>
                                                                         </div>
                                                                     </div>
                                                                 </div>
-                                                            </div>
-                                                            <div
-                                                                class="bg-gray-50 px-4 py-3 sm:flex sm:flex-row-reverse sm:px-6">
-                                                                <button type="button"
-                                                                    class="mt-3 inline-flex w-full justify-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50 sm:mt-0 sm:w-auto"
-                                                                    onclick="closePendingOrdersModal('{{ $idx }}')">
-                                                                    Cerrar
-                                                                </button>
+                                                                <div
+                                                                    class="bg-gray-50 px-4 py-3 sm:flex sm:flex-row-reverse sm:px-6">
+                                                                    <button type="button"
+                                                                        class="mt-3 inline-flex w-full justify-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50 sm:mt-0 sm:w-auto"
+                                                                        onclick="closePendingOrdersModal('{{ $idx }}')">
+                                                                        Cerrar
+                                                                    </button>
+                                                                </div>
                                                             </div>
                                                         </div>
                                                     </div>
                                                 </div>
                                             </div>
-                                        </div>
-                                    @endif
-                                </div>
-                            @endif
+                                        @endif
+                                    </div>
+                                @endif
 
-                            <!-- Simulación: Productos a Crear -->
-                            <div>
-                                <h3 class="text-base font-semibold text-gray-900 mb-3">
-                                    📦 Coladas a recepcionar
-                                </h3>
-                                <p class="text-xs text-gray-600 mb-2">
-                                    Selecciona las coladas que deseas recepcionar ahora. Puedes desmarcar las que NO
-                                    quieras procesar en este momento.
-                                </p>
-                                @if (count($sim['bultos_simulados']) > 0)
-                                    <div class="bg-gray-50 rounded-lg border border-gray-200 overflow-hidden">
-                                        <div class="overflow-x-auto">
-                                            <table class="min-w-full text-sm">
-                                                <thead class="bg-gray-100 text-gray-700">
-                                                    <tr>
-                                                        <th class="px-4 py-2 text-center font-medium">
-                                                            <input type="checkbox" id="checkAll-{{ $idx }}"
-                                                                class="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                                                                checked>
-                                                        </th>
-                                                        <th class="px-4 py-2 text-left font-medium">Colada</th>
-                                                        <th class="px-4 py-2 text-center font-medium">Bultos</th>
-                                                        <th class="px-4 py-2 text-right font-medium">Peso (kg)</th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody class="divide-y divide-gray-200">
-                                                    @foreach ($sim['bultos_simulados'] as $bultoIdx => $bulto)
-                                                        <tr class="hover:bg-gray-50">
-                                                            <td class="px-4 py-3 text-center">
+                                <!-- Simulación: Productos a Crear -->
+                                <div>
+                                    <h3 class="text-base font-semibold text-gray-900 mb-3">
+                                        📦 Coladas a recepcionar
+                                    </h3>
+                                    <p class="text-xs text-gray-600 mb-2">
+                                        Selecciona las coladas que deseas recepcionar ahora. Puedes desmarcar las que NO
+                                        quieras procesar en este momento.
+                                    </p>
+                                    @if (count($sim['bultos_simulados']) > 0)
+                                        <div class="bg-gray-50 rounded-lg border border-gray-200 overflow-hidden">
+                                            <div class="overflow-x-auto">
+                                                <table class="min-w-full text-sm">
+                                                    <thead class="bg-gray-100 text-gray-700">
+                                                        <tr>
+                                                            <th class="px-4 py-2 text-center font-medium">
                                                                 <input type="checkbox"
-                                                                    name="coladas_seleccionadas[{{ $idx }}][]"
-                                                                    value="{{ $bultoIdx }}"
-                                                                    class="colada-checkbox-{{ $idx }} rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                                                                    data-colada="{{ $bulto['colada'] }}"
-                                                                    data-bultos="{{ $bulto['bultos'] ?? 1 }}"
-                                                                    data-peso="{{ $bulto['peso_kg'] ?? 0 }}" checked>
+                                                                    id="checkAll-{{ $idx }}"
+                                                                    class="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                                                                    checked>
+                                                            </th>
+                                                            <th class="px-4 py-2 text-left font-medium">Colada</th>
+                                                            <th class="px-4 py-2 text-center font-medium">Bultos</th>
+                                                            <th class="px-4 py-2 text-right font-medium">Peso (kg)</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody class="divide-y divide-gray-200">
+                                                        @foreach ($sim['bultos_simulados'] as $bultoIdx => $bulto)
+                                                            <tr class="hover:bg-gray-50">
+                                                                <td class="px-4 py-3 text-center">
+                                                                    <input type="checkbox"
+                                                                        name="coladas_seleccionadas[{{ $idx }}][]"
+                                                                        value="{{ $bultoIdx }}"
+                                                                        class="colada-checkbox-{{ $idx }} rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                                                                        data-colada="{{ $bulto['colada'] }}"
+                                                                        data-bultos="{{ $bulto['bultos'] ?? 1 }}"
+                                                                        data-peso="{{ $bulto['peso_kg'] ?? 0 }}"
+                                                                        checked>
+                                                                </td>
+                                                                <td
+                                                                    class="px-4 py-3 text-gray-700 font-mono font-semibold">
+                                                                    {{ $bulto['colada'] }}
+                                                                </td>
+                                                                <td
+                                                                    class="px-4 py-3 text-center font-semibold text-gray-900">
+                                                                    {{ $bulto['bultos'] ?? 1 }}
+                                                                </td>
+                                                                <td
+                                                                    class="px-4 py-3 text-right font-semibold text-gray-900">
+                                                                    {{ $bulto['peso_kg'] ? number_format($bulto['peso_kg'], 0, ',', '.') : '—' }}
+                                                                    kg
+                                                                </td>
+                                                            </tr>
+                                                        @endforeach
+                                                    </tbody>
+                                                    <tfoot class="bg-gray-50 border-t-2 border-gray-300">
+                                                        <tr>
+                                                            <td colspan="2"
+                                                                class="px-4 py-3 text-sm font-semibold text-gray-700 text-right">
+                                                                TOTALES SELECCIONADOS:
                                                             </td>
-                                                            <td
-                                                                class="px-4 py-3 text-gray-700 font-mono font-semibold">
-                                                                {{ $bulto['colada'] }}
+                                                            <td class="px-4 py-3 text-center text-sm font-bold text-blue-700"
+                                                                id="totalBultos-{{ $idx }}">
+                                                                {{ collect($sim['bultos_simulados'])->sum('bultos') }}
                                                             </td>
-                                                            <td
-                                                                class="px-4 py-3 text-center font-semibold text-gray-900">
-                                                                {{ $bulto['bultos'] ?? 1 }}
-                                                            </td>
-                                                            <td
-                                                                class="px-4 py-3 text-right font-semibold text-gray-900">
-                                                                {{ $bulto['peso_kg'] ? number_format($bulto['peso_kg'], 0, ',', '.') : '—' }}
+                                                            <td class="px-4 py-3 text-right text-sm font-bold text-blue-700"
+                                                                id="totalPeso-{{ $idx }}">
+                                                                {{ number_format(collect($sim['bultos_simulados'])->sum('peso_kg'), 0, ',', '.') }}
                                                                 kg
                                                             </td>
                                                         </tr>
-                                                    @endforeach
-                                                </tbody>
-                                                <tfoot class="bg-gray-50 border-t-2 border-gray-300">
-                                                    <tr>
-                                                        <td colspan="2"
-                                                            class="px-4 py-3 text-sm font-semibold text-gray-700 text-right">
-                                                            TOTALES SELECCIONADOS:
-                                                        </td>
-                                                        <td class="px-4 py-3 text-center text-sm font-bold text-blue-700"
-                                                            id="totalBultos-{{ $idx }}">
-                                                            {{ collect($sim['bultos_simulados'])->sum('bultos') }}
-                                                        </td>
-                                                        <td class="px-4 py-3 text-right text-sm font-bold text-blue-700"
-                                                            id="totalPeso-{{ $idx }}">
-                                                            {{ number_format(collect($sim['bultos_simulados'])->sum('peso_kg'), 0, ',', '.') }}
-                                                            kg
-                                                        </td>
-                                                    </tr>
-                                                </tfoot>
-                                            </table>
+                                                    </tfoot>
+                                                </table>
+                                            </div>
+                                        </div>
+                                    @else
+                                        <p class="text-sm text-gray-600">No se detectaron productos en el albarán</p>
+                                    @endif
+                                </div>
+
+                                <!-- Simulación: Estado Final -->
+                                @if ($sim['linea_propuesta'])
+                                    <div id="estadoFinalSection-{{ $idx }}"
+                                        data-cantidad-inicial="{{ $sim['linea_propuesta']['cantidad_recepcionada'] }}"
+                                        data-cantidad-total="{{ $sim['linea_propuesta']['cantidad'] }}">
+                                        <h3
+                                            class="text-base font-semibold text-gray-900 mb-3 flex items-center justify-between">
+                                            <span class="flex items-center gap-2">
+                                                📊 Estado final de la línea
+                                                <span id="applyingLabel-{{ $idx }}"
+                                                    class="text-xs font-normal px-2 py-1 rounded-full bg-green-100 text-green-700">Recomendado</span>
+                                            </span>
+                                        </h3>
+                                        <div class="bg-indigo-50 border border-indigo-200 rounded-lg p-4">
+                                            <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                                                <div>
+                                                    <p class="text-xs text-indigo-600 font-medium">Cantidad pendiente
+                                                        actual
+                                                    </p>
+                                                    <p class="text-2xl font-bold text-indigo-900"
+                                                        id="cantidadPendienteActual-{{ $idx }}">
+                                                        {{ number_format($sim['linea_propuesta']['cantidad_pendiente'], 0, ',', '.') }}
+                                                        kg
+                                                    </p>
+                                                </div>
+                                                <div>
+                                                    <p class="text-xs text-indigo-600 font-medium">Kg a recepcionar
+                                                    </p>
+                                                    <p class="text-2xl font-bold text-indigo-900"
+                                                        id="kgRecepcionar-{{ $idx }}">
+                                                        {{ number_format(collect($sim['bultos_simulados'])->sum('peso_kg'), 0, ',', '.') }}
+                                                        kg
+                                                    </p>
+                                                </div>
+                                                <div>
+                                                    <p class="text-xs text-indigo-600 font-medium">Kg pendientes
+                                                        después
+                                                    </p>
+                                                    <p class="text-2xl font-bold text-indigo-900"
+                                                        id="kgPendientesDespues-{{ $idx }}">
+                                                        {{ number_format($sim['linea_propuesta']['cantidad_pendiente'] - collect($sim['bultos_simulados'])->sum('peso_kg'), 0, ',', '.') }}
+                                                        kg
+                                                    </p>
+                                                </div>
+                                                <div>
+                                                    <p class="text-xs text-indigo-600 font-medium">Nuevo estado</p>
+                                                    <p id="nuevoEstado-{{ $idx }}"
+                                                        class="text-lg font-bold {{ $sim['linea_propuesta']['cantidad_recepcionada'] + collect($sim['bultos_simulados'])->sum('peso_kg') >= $sim['linea_propuesta']['cantidad'] ? 'text-green-600' : 'text-blue-600' }}">
+                                                        {{ $sim['linea_propuesta']['cantidad_recepcionada'] + collect($sim['bultos_simulados'])->sum('peso_kg') >= $sim['linea_propuesta']['cantidad'] ? 'Completado' : 'Parcial' }}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="mt-4 flex justify-end">
+                                            <button type="button"
+                                                class="inline-flex items-center gap-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold px-4 py-2 shadow transition"
+                                                onclick="activarLineaSeleccionada({{ $idx }})">
+                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4"
+                                                    fill="none" viewBox="0 0 24 24" stroke="currentColor"
+                                                    stroke-width="2">
+                                                    <path stroke-linecap="round" stroke-linejoin="round"
+                                                        d="M12 4v16m8-8H4" />
+                                                </svg>
+                                                Activar línea seleccionada
+                                            </button>
                                         </div>
                                     </div>
-                                @else
-                                    <p class="text-sm text-gray-600">No se detectaron productos en el albarán</p>
                                 @endif
+
+                                <!-- Selector de línea alternativa -->
+                                @if ($sim['hay_coincidencias'] && count($sim['lineas_pendientes']) > 1)
+                                    <div class="border-t border-gray-200 pt-4">
+                                        <label class="text-sm font-medium text-gray-700">
+                                            ¿Prefieres activar otra línea?
+                                            <select class="mt-2 w-full rounded-md border-gray-300 shadow-sm text-sm">
+                                                @foreach ($sim['lineas_pendientes'] as $linea)
+                                                    <option value="{{ $linea['id'] }}"
+                                                        {{ $loop->first ? 'selected' : '' }}>
+                                                        Línea #{{ $linea['id'] }} - {{ $linea['producto'] }}
+                                                        ({{ $linea['cantidad_pendiente'] }} kg pendientes - Score:
+                                                        {{ $linea['score'] }})
+                                                    </option>
+                                                @endforeach
+                                            </select>
+                                        </label>
+                                    </div>
+                                @endif
+
                             </div>
+                        @endif
+                    </div>
+                @endforeach
+            @endif
+        </div>
+    </div> <!-- Fin desktopView -->
 
-                            <!-- Simulación: Estado Final -->
-                            @if ($sim['linea_propuesta'])
-                                <div id="estadoFinalSection-{{ $idx }}"
-                                    data-cantidad-inicial="{{ $sim['linea_propuesta']['cantidad_recepcionada'] }}"
-                                    data-cantidad-total="{{ $sim['linea_propuesta']['cantidad'] }}">
-                                    <h3
-                                        class="text-base font-semibold text-gray-900 mb-3 flex items-center justify-between">
-                                        <span class="flex items-center gap-2">
-                                            📊 Estado final de la línea
-                                            <span id="applyingLabel-{{ $idx }}"
-                                                class="text-xs font-normal px-2 py-1 rounded-full bg-green-100 text-green-700">Recomendado</span>
-                                        </span>
-                                    </h3>
-                                    <div class="bg-indigo-50 border border-indigo-200 rounded-lg p-4">
-                                        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-                                            <div>
-                                                <p class="text-xs text-indigo-600 font-medium">Cantidad pendiente
-                                                    actual
-                                                </p>
-                                                <p class="text-2xl font-bold text-indigo-900"
-                                                    id="cantidadPendienteActual-{{ $idx }}">
-                                                    {{ number_format($sim['linea_propuesta']['cantidad_pendiente'], 0, ',', '.') }}
-                                                    kg
-                                                </p>
-                                            </div>
-                                            <div>
-                                                <p class="text-xs text-indigo-600 font-medium">Kg a recepcionar
-                                                </p>
-                                                <p class="text-2xl font-bold text-indigo-900"
-                                                    id="kgRecepcionar-{{ $idx }}">
-                                                    {{ number_format(collect($sim['bultos_simulados'])->sum('peso_kg'), 0, ',', '.') }}
-                                                    kg
-                                                </p>
-                                            </div>
-                                            <div>
-                                                <p class="text-xs text-indigo-600 font-medium">Kg pendientes después
-                                                </p>
-                                                <p class="text-2xl font-bold text-indigo-900"
-                                                    id="kgPendientesDespues-{{ $idx }}">
-                                                    {{ number_format($sim['linea_propuesta']['cantidad_pendiente'] - collect($sim['bultos_simulados'])->sum('peso_kg'), 0, ',', '.') }}
-                                                    kg
-                                                </p>
-                                            </div>
-                                            <div>
-                                                <p class="text-xs text-indigo-600 font-medium">Nuevo estado</p>
-                                                <p id="nuevoEstado-{{ $idx }}"
-                                                    class="text-lg font-bold {{ $sim['linea_propuesta']['cantidad_recepcionada'] + collect($sim['bultos_simulados'])->sum('peso_kg') >= $sim['linea_propuesta']['cantidad'] ? 'text-green-600' : 'text-blue-600' }}">
-                                                    {{ $sim['linea_propuesta']['cantidad_recepcionada'] + collect($sim['bultos_simulados'])->sum('peso_kg') >= $sim['linea_propuesta']['cantidad'] ? 'Completado' : 'Parcial' }}
-                                                </p>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div class="mt-4 flex justify-end">
-                                        <button type="button"
-                                            class="inline-flex items-center gap-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold px-4 py-2 shadow transition"
-                                            onclick="activarLineaSeleccionada({{ $idx }})">
-                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none"
-                                                viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                                <path stroke-linecap="round" stroke-linejoin="round"
-                                                    d="M12 4v16m8-8H4" />
-                                            </svg>
-                                            Activar línea seleccionada
-                                        </button>
-                                    </div>
-                                </div>
-                            @endif
+    <!-- ========================================== -->
+    <!-- VISTA MÓVIL PASO A PASO (<768px) -->
+    <!-- ========================================== -->
+    <div id="mobileStepContainer" class="block md:hidden relative overflow-hidden h-calc(100vh - 56px) bg-gray-50">
+        <!-- Header fijo superior -->
+        <div class="sticky top-0 z-30 bg-white border-b border-gray-200 shadow-sm">
+            <div class="flex items-center justify-between px-4 py-3">
+                <!-- Botón retroceder -->
+                <button id="mobile-back-btn" type="button"
+                    class="hidden p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+                    </svg>
+                </button>
 
-                            <!-- Selector de línea alternativa -->
-                            @if ($sim['hay_coincidencias'] && count($sim['lineas_pendientes']) > 1)
-                                <div class="border-t border-gray-200 pt-4">
-                                    <label class="text-sm font-medium text-gray-700">
-                                        ¿Prefieres activar otra línea?
-                                        <select class="mt-2 w-full rounded-md border-gray-300 shadow-sm text-sm">
-                                            @foreach ($sim['lineas_pendientes'] as $linea)
-                                                <option value="{{ $linea['id'] }}"
-                                                    {{ $loop->first ? 'selected' : '' }}>
-                                                    Línea #{{ $linea['id'] }} - {{ $linea['producto'] }}
-                                                    ({{ $linea['cantidad_pendiente'] }} kg pendientes - Score:
-                                                    {{ $linea['score'] }})
-                                                </option>
-                                            @endforeach
-                                        </select>
-                                    </label>
-                                </div>
-                            @endif
+                <!-- Título del paso actual -->
+                <h2 id="mobile-step-title" class="text-lg font-semibold text-gray-900">
+                    Subir Albarán
+                </h2>
 
-                        </div>
-                    @endif
+                <!-- Indicador de paso (1/5, 2/5, etc) -->
+                <span class="text-sm text-gray-500">
+                    <span id="mobile-current-step">1</span>/5
+                </span>
+            </div>
+
+            <!-- Barra de progreso -->
+            <div class="h-1 bg-gray-200">
+                <div id="mobile-progress-bar" class="h-full bg-indigo-600 transition-all duration-300"
+                    style="width: 20%"></div>
+            </div>
+        </div>
+
+        <!-- Step wrapper con 5 vistas -->
+        <div id="stepWrapper" class="flex transition-transform duration-300 ease-in-out"
+            style="width: 500%; transform: translateX(0%)">
+
+            <!-- ===== VISTA 1: SUBIR FOTO ===== -->
+            <div id="step-1" class="w-full flex-shrink-0 px-4 py-6">
+                <div class="max-w-md mx-auto space-y-6">
+                    <h3 class="text-xl font-semibold text-gray-900">Subir Albarán</h3>
+                    <p class="text-sm text-gray-600">Selecciona el proveedor y sube una foto del albarán</p>
+
+                    <!-- Formulario móvil -->
+                    <form id="ocrForm-mobile" class="space-y-4">
+                        @csrf
+                        <!-- Selector de proveedor -->
+                        <label class="block">
+                            <span class="text-sm font-medium text-gray-700">Proveedor</span>
+                            <select name="proveedor" id="proveedor-mobile" required
+                                class="mt-1 w-full rounded-lg border-gray-300 shadow-sm">
+                                <option value="">Selecciona proveedor</option>
+                                <option value="siderurgica">Siderúrgica Sevillana (SISE)</option>
+                                <option value="megasa">Megasa</option>
+                                <option value="balboa">Balboa</option>
+                                <option value="otro">Otro / No listado</option>
+                            </select>
+                        </label>
+
+                        <!-- Input de archivo -->
+                        <label class="block">
+                            <span class="text-sm font-medium text-gray-700">Foto del albarán</span>
+                            <input type="file" name="imagenes[]" id="imagenes-mobile"
+                                accept="image/*,application/pdf" required
+                                class="mt-1 w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100">
+                        </label>
+
+                        <!-- Botón procesar -->
+                        <button type="button" id="processBtn-mobile" onclick="procesarAlbaranMobile()"
+                            class="w-full px-4 py-3 bg-emerald-600 text-white rounded-lg font-semibold text-lg shadow-lg hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed transition flex items-center justify-center gap-3">
+                            <span id="processBtnLabel-mobile">Procesar albarán</span>
+                            <span id="processing-mobile"
+                                class="hidden items-center gap-2 text-sm font-semibold text-white">
+                                <span class="ia-spinner"></span>
+                                Procesando albarán
+                            </span>
+                        </button>
+                    </form>
                 </div>
-            @endforeach
-        @endif
+            </div>
+
+            <!-- ===== VISTA 2: CONFIRMAR DATOS ===== -->
+            <div id="step-2" class="w-full flex-shrink-0 px-4 py-6">
+                <div class="max-w-md mx-auto space-y-6">
+                    <h3 class="text-xl font-semibold text-gray-900">Confirmar Datos</h3>
+                    <p class="text-sm text-gray-600">Revisa los datos extraídos del albarán</p>
+
+                    <!-- Preview de imagen -->
+                    <div id="mobile-preview-container" class="hidden">
+                        <img id="mobile-preview-img" src="" alt="Preview"
+                            class="w-full h-48 object-contain rounded-lg border border-gray-200 bg-white">
+                    </div>
+
+                    <!-- Datos extraídos -->
+                    <div id="mobile-datos-container" class="bg-white rounded-lg p-4 space-y-3">
+                        <div class="grid grid-cols-2 gap-3 text-sm">
+                            <div>
+                                <span class="text-gray-500">Albarán:</span>
+                                <span id="mobile-albaran" class="block font-medium text-gray-900">—</span>
+                            </div>
+                            <div>
+                                <span class="text-gray-500">Fecha:</span>
+                                <span id="mobile-fecha" class="block font-medium text-gray-900">—</span>
+                            </div>
+                            <div>
+                                <span class="text-gray-500">Pedido Cliente:</span>
+                                <span id="mobile-pedido-cliente" class="block font-medium text-gray-900">—</span>
+                            </div>
+                            <div>
+                                <span class="text-gray-500">Pedido Código:</span>
+                                <span id="mobile-pedido-codigo" class="block font-medium text-gray-900">—</span>
+                            </div>
+                            <div>
+                                <span class="text-gray-500">Peso Total:</span>
+                                <span id="mobile-peso-total" class="block font-medium text-gray-900">—</span>
+                            </div>
+                            <div>
+                                <span class="text-gray-500">Bultos:</span>
+                                <span id="mobile-bultos-total" class="block font-medium text-gray-900">—</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Botones de acción -->
+                    <div class="flex gap-3">
+                        <button type="button" onclick="abrirModalEdicionMobile()"
+                            class="flex-1 px-4 py-3 bg-gray-200 text-gray-800 rounded-lg font-medium">
+                            Editar
+                        </button>
+                        <button type="button" data-mobile-next
+                            class="flex-1 px-4 py-3 bg-indigo-600 text-white rounded-lg font-medium">
+                            Marcar como revisado
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ===== VISTA 3: PEDIDO SELECCIONADO ===== -->
+            <div id="step-3" class="w-full flex-shrink-0 px-4 py-6">
+                <div class="max-w-md mx-auto space-y-6">
+                    <h3 class="text-xl font-semibold text-gray-900">Pedido Seleccionado</h3>
+                    <p class="text-sm text-gray-600">Verifica el pedido propuesto o selecciona otro</p>
+
+                    <!-- Card del pedido será añadido dinámicamente -->
+                    <div id="mobile-pedido-card" class="bg-white rounded-lg p-4">
+                        <p class="text-gray-500">Cargando...</p>
+                    </div>
+
+                    <!-- Botón para ver otros pedidos -->
+                    <button type="button" id="mobile-ver-otros-pedidos"
+                        class="w-full px-4 py-3 bg-gray-200 text-gray-800 rounded-lg font-medium">
+                        Ver otros pedidos
+                    </button>
+
+                    <!-- Navegación -->
+                    <button type="button" data-mobile-next
+                        class="w-full px-4 py-3 bg-indigo-600 text-white rounded-lg font-medium">
+                        Continuar
+                    </button>
+                </div>
+            </div>
+
+            <!-- ===== VISTA 4: COLADAS A RECEPCIONAR ===== -->
+            <div id="step-4" class="w-full flex-shrink-0 px-4 py-6">
+                <div class="max-w-md mx-auto space-y-6">
+                    <h3 class="text-xl font-semibold text-gray-900">Coladas a Recepcionar</h3>
+                    <p class="text-sm text-gray-600">Selecciona las coladas que deseas recepcionar</p>
+
+                    <!-- Resumen de coladas totales -->
+                    <div class="bg-indigo-50 rounded-lg p-4">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <div class="text-2xl font-bold text-indigo-900">
+                                    <span id="mobile-total-coladas">0</span> coladas
+                                </div>
+                                <div class="text-sm text-indigo-700 mt-1">
+                                    <span id="mobile-total-bultos-disponibles">0</span> bultos en total
+                                </div>
+                            </div>
+                            <div class="text-right">
+                                <div class="text-xs text-indigo-600 uppercase font-semibold">Disponibles</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Lista de coladas -->
+                    <div id="mobile-coladas-container" class="bg-white rounded-lg divide-y">
+                        <p class="p-4 text-gray-500">Cargando...</p>
+                    </div>
+
+                    <!-- Estado final simulado -->
+                    <div id="mobile-estado-final" class="bg-blue-50 rounded-lg p-4 space-y-2">
+                        <h4 class="font-semibold text-gray-900">Estado Final</h4>
+                        <div class="grid grid-cols-2 gap-2 text-sm">
+                            <div>
+                                <span class="text-gray-600">Bultos seleccionados:</span>
+                                <span id="mobile-bultos-seleccionados" class="block font-bold text-gray-900">0</span>
+                            </div>
+                            <div>
+                                <span class="text-gray-600">Peso seleccionado:</span>
+                                <span id="mobile-peso-seleccionado" class="block font-bold text-gray-900">0 kg</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Navegación -->
+                    <button type="button" data-mobile-next
+                        class="w-full px-4 py-3 bg-indigo-600 text-white rounded-lg font-medium">
+                        Continuar
+                    </button>
+                </div>
+            </div>
+
+            <!-- ===== VISTA 5: ACTIVACIÓN ===== -->
+            <div id="step-5" class="w-full flex-shrink-0 px-4 py-6">
+                <div class="max-w-md mx-auto space-y-6">
+                    <h3 class="text-xl font-semibold text-gray-900">Confirmar Activación</h3>
+                    <p class="text-sm text-gray-600">Revisa el resumen y confirma la activación</p>
+
+                    <!-- Resumen -->
+                    <div id="mobile-resumen-container" class="bg-white rounded-lg p-4 space-y-4">
+                        <div>
+                            <h4 class="font-semibold text-gray-900 mb-2">Datos del Albarán</h4>
+                            <div class="text-sm space-y-1">
+                                <p><span class="text-gray-600">Albarán:</span> <span
+                                        id="mobile-resumen-albaran">—</span></p>
+                                <p><span class="text-gray-600">Pedido:</span> <span
+                                        id="mobile-resumen-pedido">—</span></p>
+                            </div>
+                        </div>
+                        <div>
+                            <h4 class="font-semibold text-gray-900 mb-2">Coladas Seleccionadas</h4>
+                            <p id="mobile-resumen-coladas" class="text-sm text-gray-600">—</p>
+                        </div>
+                    </div>
+
+                    <!-- Botón de activación -->
+                    <button type="button" id="mobile-btn-activar"
+                        class="w-full px-4 py-3 bg-emerald-600 text-white rounded-lg font-bold text-lg">
+                        Confirmar y Activar
+                    </button>
+                </div>
+            </div>
+
+        </div> <!-- Fin stepWrapper -->
+    </div> <!-- Fin mobileStepContainer -->
+
+    <!-- ========================================== -->
+    <!-- MODAL DE EDICIÓN BOTTOM SHEET (MÓVIL) -->
+    <!-- ========================================== -->
+    <div id="mobileEditModal" class="mobile-edit-modal">
+        <!-- Overlay -->
+        <div class="mobile-modal-overlay absolute inset-0" onclick="cerrarModalEdicionMobile()"></div>
+
+        <!-- Content -->
+        <div class="mobile-edit-modal-content">
+            <!-- Header -->
+            <div
+                class="sticky top-0 bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between z-10">
+                <h3 class="text-lg font-semibold text-gray-900">Editar Datos</h3>
+                <button type="button" onclick="cerrarModalEdicionMobile()"
+                    class="p-2 text-gray-400 hover:text-gray-600 rounded-lg">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+
+            <!-- Form -->
+            <div class="p-4 space-y-4 overflow-y-auto" style="max-height: calc(90vh - 120px);">
+                <label class="block">
+                    <span class="text-sm font-medium text-gray-700">Albarán</span>
+                    <input type="text" id="edit-albaran" class="mt-1 w-full rounded-lg border-gray-300">
+                </label>
+
+                <label class="block">
+                    <span class="text-sm font-medium text-gray-700">Fecha</span>
+                    <input type="date" id="edit-fecha" class="mt-1 w-full rounded-lg border-gray-300">
+                </label>
+
+                <label class="block">
+                    <span class="text-sm font-medium text-gray-700">Pedido Cliente</span>
+                    <input type="text" id="edit-pedido-cliente" class="mt-1 w-full rounded-lg border-gray-300">
+                </label>
+
+                <label class="block">
+                    <span class="text-sm font-medium text-gray-700">Pedido Código</span>
+                    <input type="text" id="edit-pedido-codigo" class="mt-1 w-full rounded-lg border-gray-300">
+                </label>
+
+                <label class="block">
+                    <span class="text-sm font-medium text-gray-700">Peso Total (kg)</span>
+                    <input type="number" id="edit-peso-total" step="0.01"
+                        class="mt-1 w-full rounded-lg border-gray-300">
+                </label>
+
+                <label class="block">
+                    <span class="text-sm font-medium text-gray-700">Bultos Total</span>
+                    <input type="number" id="edit-bultos-total" class="mt-1 w-full rounded-lg border-gray-300">
+                </label>
+            </div>
+
+            <!-- Footer con botones -->
+            <div class="sticky bottom-0 bg-white border-t border-gray-200 px-4 py-3 flex gap-3">
+                <button type="button" onclick="cerrarModalEdicionMobile()"
+                    class="flex-1 px-4 py-2 bg-gray-200 text-gray-800 rounded-lg font-medium">
+                    Cancelar
+                </button>
+                <button type="button" onclick="guardarEdicionMobile()"
+                    class="flex-1 px-4 py-2 bg-indigo-600 text-white rounded-lg font-medium">
+                    Guardar
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- MODAL DE PEDIDOS (MÓVIL) -->
+    <!-- ========================================== -->
+    <div id="mobilePedidosModal" class="mobile-edit-modal">
+        <div class="mobile-modal-overlay" onclick="cerrarModalPedidosMobile()"></div>
+        <div class="mobile-edit-modal-content">
+            <!-- Header -->
+            <div class="sticky top-0 bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between">
+                <h3 class="text-lg font-semibold text-gray-900">Seleccionar Pedido</h3>
+                <button type="button" onclick="cerrarModalPedidosMobile()"
+                    class="text-gray-400 hover:text-gray-600">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+
+            <!-- Lista de pedidos -->
+            <div id="mobile-lista-pedidos" class="p-4 space-y-3 overflow-y-auto" style="max-height: 60vh;">
+                <p class="text-gray-500 text-center">Cargando pedidos...</p>
+            </div>
+
+            <!-- Footer -->
+            <div class="sticky bottom-0 bg-white border-t border-gray-200 px-4 py-3">
+                <button type="button" onclick="cerrarModalPedidosMobile()"
+                    class="w-full px-4 py-2 bg-gray-200 text-gray-800 rounded-lg font-medium">
+                    Cerrar
+                </button>
+            </div>
+        </div>
     </div>
 
     <script>
@@ -1851,5 +2303,784 @@
                 });
             });
         });
+
+        // ========================================
+        // SISTEMA DE NAVEGACIÓN MÓVIL
+        // ========================================
+        window.mobileStepManager = {
+            currentStep: 1,
+            maxStep: 1,
+            totalSteps: 5,
+            dataCache: {},
+
+            init: function() {
+                this.attachEventListeners();
+                this.updateNavigation();
+                this.updateProgressBar();
+            },
+
+            goToStep: function(stepNumber, forceAdvance = false) {
+                if (stepNumber < 1 || stepNumber > this.totalSteps) return;
+
+                // Permitir: retroceder, avanzar 1 paso, o avance forzado desde AJAX
+                const isGoingBack = stepNumber < this.currentStep;
+                const isNextStep = stepNumber === this.currentStep + 1;
+                const canNavigate = isGoingBack || isNextStep || forceAdvance || stepNumber <= this.maxStep;
+
+                if (!canNavigate) {
+                    console.log('Navegación bloqueada:', {
+                        stepNumber,
+                        currentStep: this.currentStep,
+                        maxStep: this.maxStep
+                    });
+                    return;
+                }
+
+                const wrapper = document.getElementById('stepWrapper');
+                if (!wrapper) return;
+
+                const translatePercentage = -(stepNumber - 1) * 20; // -0%, -20%, -40%, -60%, -80%
+
+                wrapper.style.transform = `translateX(${translatePercentage}%)`;
+                this.currentStep = stepNumber;
+
+                // Actualizar maxStep si avanzamos
+                if (stepNumber > this.maxStep) {
+                    this.maxStep = stepNumber;
+                }
+
+                console.log('Navegado a paso:', stepNumber, 'maxStep:', this.maxStep);
+
+                this.updateNavigation();
+                this.updateProgressBar();
+            },
+
+            next: function(forceAdvance = false) {
+                if (this.currentStep < this.totalSteps) {
+                    this.goToStep(this.currentStep + 1, forceAdvance);
+                }
+            },
+
+            back: function() {
+                if (this.currentStep > 1) {
+                    this.goToStep(this.currentStep - 1);
+                }
+            },
+
+            updateNavigation: function() {
+                // Mostrar/ocultar botón retroceder
+                const backBtn = document.getElementById('mobile-back-btn');
+                if (backBtn) {
+                    if (this.currentStep > 1) {
+                        backBtn.classList.remove('hidden');
+                    } else {
+                        backBtn.classList.add('hidden');
+                    }
+                }
+
+                // Actualizar título del header
+                const titles = ['Subir Albarán', 'Confirmar Datos', 'Pedido', 'Coladas', 'Activación'];
+                const titleElement = document.getElementById('mobile-step-title');
+                if (titleElement && titles[this.currentStep - 1]) {
+                    titleElement.textContent = titles[this.currentStep - 1];
+                }
+
+                // Actualizar indicador de paso
+                const currentStepElement = document.getElementById('mobile-current-step');
+                if (currentStepElement) {
+                    currentStepElement.textContent = this.currentStep;
+                }
+            },
+
+            updateProgressBar: function() {
+                const progressBar = document.getElementById('mobile-progress-bar');
+                if (progressBar) {
+                    const percentage = (this.currentStep / this.totalSteps) * 100;
+                    progressBar.style.width = `${percentage}%`;
+                }
+            },
+
+            attachEventListeners: function() {
+                // Botón retroceder
+                const backBtn = document.getElementById('mobile-back-btn');
+                if (backBtn) {
+                    backBtn.addEventListener('click', () => this.back());
+                }
+
+                // Botones de continuar en cada vista
+                document.querySelectorAll('[data-mobile-next]').forEach(btn => {
+                    btn.addEventListener('click', () => this.next());
+                });
+            }
+        };
+
+        // Inicializar el sistema móvil al cargar la página
+        document.addEventListener('DOMContentLoaded', function() {
+            // Verificar si estamos en vista móvil
+            const isMobile = window.innerWidth < 768;
+            console.log('Window width:', window.innerWidth, 'isMobile:', isMobile);
+
+            if (window.mobileStepManager && isMobile) {
+                console.log('Inicializando mobileStepManager...');
+                window.mobileStepManager.init();
+
+                // Event listener para botón de activación
+                const btnActivar = document.getElementById('mobile-btn-activar');
+                if (btnActivar) {
+                    btnActivar.addEventListener('click', confirmarActivacionMobile);
+                    console.log('Event listener de activación añadido');
+                }
+            } else if (!isMobile) {
+                console.log('Vista desktop detectada - sistema móvil no inicializado');
+            }
+        });
+
+        // Re-inicializar si cambia el tamaño de ventana
+        window.addEventListener('resize', function() {
+            const isMobile = window.innerWidth < 768;
+            if (window.mobileStepManager && isMobile && !window.mobileStepManager.initialized) {
+                console.log('Cambiado a móvil - inicializando...');
+                window.mobileStepManager.init();
+                window.mobileStepManager.initialized = true;
+            }
+        });
+
+        /**
+         * Confirmar y ejecutar activación
+         */
+        function confirmarActivacionMobile() {
+            const cache = window.mobileStepManager.dataCache;
+            const coladas = cache.coladasSeleccionadas || [];
+
+            if (coladas.length === 0) {
+                alert('Por favor selecciona al menos una colada para recepcionar');
+                return;
+            }
+
+            // Aquí iría la lógica de activación real
+            // Por ahora solo mostramos confirmación
+            if (confirm('¿Confirmar la activación de este albarán?')) {
+                alert('✅ Activación completada con éxito!\n\n' +
+                    'En producción, aquí se ejecutaría la lógica de activación del pedido.\n\n' +
+                    `- ${coladas.length} coladas procesadas\n` +
+                    `- ${cache.totalesColadas?.bultos || 0} bultos\n` +
+                    `- ${(cache.totalesColadas?.peso || 0).toLocaleString('es-ES')} kg`);
+
+                // Resetear y volver a Vista 1
+                window.mobileStepManager.dataCache = {};
+                window.mobileStepManager.currentStep = 1;
+                window.mobileStepManager.maxStep = 1;
+                window.mobileStepManager.goToStep(1);
+
+                // Limpiar formulario
+                const form = document.getElementById('ocrForm-mobile');
+                if (form) form.reset();
+            }
+        }
+
+        // ========================================
+        // FUNCIONES AJAX PARA MÓVIL
+        // ========================================
+
+        /**
+         * Procesar albarán via AJAX (móvil)
+         */
+        async function procesarAlbaranMobile() {
+            const form = document.getElementById('ocrForm-mobile');
+            const formData = new FormData(form);
+            const processBtn = document.getElementById('processBtn-mobile');
+            const processingIndicator = document.getElementById('processing-mobile');
+            const processLabel = document.getElementById('processBtnLabel-mobile');
+
+            // Validar que se haya seleccionado proveedor y archivo
+            const proveedor = document.getElementById('proveedor-mobile').value;
+            const archivo = document.getElementById('imagenes-mobile').files[0];
+
+            if (!proveedor) {
+                alert('Por favor selecciona un proveedor');
+                return;
+            }
+
+            if (!archivo) {
+                alert('Por favor selecciona una imagen del albarán');
+                return;
+            }
+
+            // Mostrar loading
+            if (processingIndicator) processingIndicator.classList.remove('hidden');
+            if (processLabel) processLabel.classList.add('hidden');
+            if (processBtn) processBtn.disabled = true;
+
+            try {
+                const response = await fetch('/pruebasScanAlbaran/procesar-ajax', {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute(
+                            'content'),
+                        'Accept': 'application/json',
+                    },
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                console.log('Respuesta AJAX:', data);
+
+                if (data.success && data.resultados && data.resultados.length > 0) {
+                    console.log('Datos recibidos correctamente');
+
+                    // Guardar datos en cache
+                    window.mobileStepManager.dataCache = {
+                        resultado: data.resultados[0], // Primer resultado
+                        distribuidores: data.distribuidores
+                    };
+
+                    console.log('Cache guardado:', window.mobileStepManager.dataCache);
+
+                    // Poblar Vista 2 con los datos recibidos
+                    console.log('Poblando Vista 2...');
+                    poblarVista2ConDatos(data.resultados[0]);
+
+                    // Avanzar a Vista 2 (forzar avance para permitir pasar de maxStep)
+                    console.log('Avanzando a Vista 2...');
+                    window.mobileStepManager.next(true);
+
+                    console.log('Current step:', window.mobileStepManager.currentStep);
+                } else {
+                    console.error('Error en respuesta:', data);
+                    alert('Error al procesar el albarán. Por favor, intenta de nuevo.');
+                }
+
+            } catch (error) {
+                console.error('Error en petición AJAX:', error);
+                alert('Error de conexión. Por favor, verifica tu conexión a internet.');
+            } finally {
+                // Ocultar loading
+                if (processingIndicator) processingIndicator.classList.add('hidden');
+                if (processLabel) processLabel.classList.remove('hidden');
+                if (processBtn) processBtn.disabled = false;
+            }
+        }
+
+        /**
+         * Poblar Vista 2 con datos recibidos
+         */
+        function poblarVista2ConDatos(resultado) {
+            const parsed = resultado.parsed || {};
+            const sim = resultado.simulacion || {};
+
+            // Preview de imagen
+            const previewContainer = document.getElementById('mobile-preview-container');
+            const previewImg = document.getElementById('mobile-preview-img');
+            if (previewImg && resultado.preview) {
+                previewImg.src = resultado.preview;
+                if (previewContainer) previewContainer.classList.remove('hidden');
+            }
+
+            // Datos generales
+            const setTextContent = (id, value) => {
+                const el = document.getElementById(id);
+                if (el) el.textContent = value || '—';
+            };
+
+            setTextContent('mobile-albaran', parsed.albaran);
+            setTextContent('mobile-fecha', parsed.fecha);
+            setTextContent('mobile-pedido-cliente', parsed.pedido_cliente);
+            setTextContent('mobile-pedido-codigo', parsed.pedido_codigo);
+            setTextContent('mobile-peso-total',
+                parsed.peso_total ? parseFloat(parsed.peso_total).toLocaleString('es-ES') + ' kg' : '—');
+            setTextContent('mobile-bultos-total', parsed.bultos_total);
+
+            // Guardar en cache para siguientes vistas
+            window.mobileStepManager.dataCache.parsed = parsed;
+            window.mobileStepManager.dataCache.simulacion = sim;
+
+            // Poblar Vista 3 (pedido)
+            poblarVista3ConPedido(sim);
+
+            // Poblar Vista 4 (coladas)
+            poblarVista4ConColadas(sim);
+        }
+
+        /**
+         * Poblar Vista 3 con información del pedido
+         */
+        function poblarVista3ConPedido(simulacion) {
+            const container = document.getElementById('mobile-pedido-card');
+            if (!container) return;
+
+            const lineaPropuesta = simulacion.linea_propuesta;
+
+            if (!lineaPropuesta) {
+                container.innerHTML = `
+                    <div class="text-center py-4">
+                        <p class="text-gray-500">No se encontró pedido sugerido</p>
+                        <p class="text-sm text-gray-400 mt-1">Puedes seleccionar uno manualmente</p>
+                    </div>
+                `;
+                return;
+            }
+
+            // Tipo de recomendación
+            let badgeClass = 'bg-blue-100 text-blue-700';
+            let badgeText = 'RECOMENDADO';
+
+            if (lineaPropuesta.tipo_recomendacion === 'exacta') {
+                badgeClass = 'bg-green-100 text-green-700';
+                badgeText = 'COINCIDENCIA EXACTA';
+            } else if (lineaPropuesta.tipo_recomendacion === 'parcial') {
+                badgeClass = 'bg-yellow-100 text-yellow-700';
+                badgeText = 'COINCIDENCIA PARCIAL';
+            }
+
+            container.innerHTML = `
+                <div class="space-y-3">
+                    <span class="inline-block px-3 py-1 rounded-full text-xs font-bold ${badgeClass}">
+                        ${badgeText}
+                    </span>
+
+                    <div class="space-y-2 text-sm">
+                        <div>
+                            <span class="text-gray-500">Pedido:</span>
+                            <span class="font-semibold text-gray-900">${lineaPropuesta.pedido_codigo || '—'}</span>
+                        </div>
+                        <div>
+                            <span class="text-gray-500">Fabricante:</span>
+                            <span class="font-medium text-gray-900">${lineaPropuesta.fabricante || '—'}</span>
+                        </div>
+                        <div>
+                            <span class="text-gray-500">Producto:</span>
+                            <span class="font-medium text-gray-900">${lineaPropuesta.producto || '—'}</span>
+                        </div>
+                        <div>
+                            <span class="text-gray-500">Obra:</span>
+                            <span class="font-medium text-gray-900">${lineaPropuesta.obra || '—'}</span>
+                        </div>
+                        <div>
+                            <span class="text-gray-500">Cantidad pendiente:</span>
+                            <span class="font-medium text-gray-900">${lineaPropuesta.cantidad_pendiente || 0} kg</span>
+                        </div>
+                        ${lineaPropuesta.score ? `
+                                                                            <div class="mt-2 pt-2 border-t border-gray-200">
+                                                                                <span class="text-gray-500">Score:</span>
+                                                                                <span class="font-bold text-indigo-600">${Math.round(lineaPropuesta.score)}</span>
+                                                                            </div>
+                                                                            ` : ''}
+                    </div>
+                </div>
+            `;
+
+            // Guardar línea seleccionada en cache
+            window.mobileStepManager.dataCache.lineaSeleccionada = lineaPropuesta;
+        }
+
+        /**
+         * Poblar Vista 4 con coladas a recepcionar
+         */
+        function poblarVista4ConColadas(simulacion) {
+            const container = document.getElementById('mobile-coladas-container');
+            if (!container) return;
+
+            const bultos = simulacion.bultos_simulados || [];
+
+            if (bultos.length === 0) {
+                container.innerHTML = '<p class="p-4 text-gray-500 text-center">No hay coladas disponibles</p>';
+                // Actualizar resumen con ceros
+                const totalColadasEl = document.getElementById('mobile-total-coladas');
+                const totalBultosEl = document.getElementById('mobile-total-bultos-disponibles');
+                if (totalColadasEl) totalColadasEl.textContent = '0';
+                if (totalBultosEl) totalBultosEl.textContent = '0';
+                return;
+            }
+
+            // Actualizar resumen de totales disponibles
+            const totalBultosDisponibles = bultos.reduce((sum, bulto) => sum + (parseInt(bulto.bultos) || 0), 0);
+            const totalColadasEl = document.getElementById('mobile-total-coladas');
+            const totalBultosEl = document.getElementById('mobile-total-bultos-disponibles');
+            if (totalColadasEl) totalColadasEl.textContent = bultos.length;
+            if (totalBultosEl) totalBultosEl.textContent = totalBultosDisponibles;
+
+            // Crear lista de coladas con checkboxes
+            container.innerHTML = bultos.map((bulto, index) => `
+                <label class="flex items-center p-3 hover:bg-gray-50 cursor-pointer">
+                    <input type="checkbox" class="mobile-colada-checkbox w-5 h-5 text-indigo-600 rounded"
+                           data-colada="${bulto.colada || '—'}"
+                           data-bultos="${bulto.bultos || 0}"
+                           data-peso="${bulto.peso_kg || 0}"
+                           onchange="actualizarTotalesColadas()"
+                           checked>
+                    <div class="ml-3 flex-1">
+                        <div class="flex items-center justify-between">
+                            <span class="font-medium text-gray-900">Colada: ${bulto.colada || '—'}</span>
+                            <span class="text-sm text-gray-500">${bulto.bultos || 0} bultos</span>
+                        </div>
+                        <div class="text-sm text-gray-600 mt-1">
+                            ${bulto.peso_kg ? (bulto.peso_kg).toLocaleString('es-ES') + ' kg' : '—'}
+                        </div>
+                    </div>
+                </label>
+            `).join('');
+
+            // Actualizar totales iniciales (todas marcadas)
+            actualizarTotalesColadas();
+        }
+
+        /**
+         * Actualizar totales de coladas seleccionadas
+         */
+        function actualizarTotalesColadas() {
+            const checkboxes = document.querySelectorAll('.mobile-colada-checkbox:checked');
+
+            let totalBultos = 0;
+            let totalPeso = 0;
+
+            checkboxes.forEach(cb => {
+                totalBultos += parseInt(cb.dataset.bultos) || 0;
+                totalPeso += parseFloat(cb.dataset.peso) || 0;
+            });
+
+            // Actualizar UI
+            const bultosEl = document.getElementById('mobile-bultos-seleccionados');
+            const pesoEl = document.getElementById('mobile-peso-seleccionado');
+
+            if (bultosEl) bultosEl.textContent = totalBultos;
+            if (pesoEl) pesoEl.textContent = totalPeso.toLocaleString('es-ES') + ' kg';
+
+            // Guardar en cache
+            const coladasSeleccionadas = [];
+            checkboxes.forEach(cb => {
+                coladasSeleccionadas.push({
+                    colada: cb.dataset.colada,
+                    bultos: parseInt(cb.dataset.bultos) || 0,
+                    peso_kg: parseFloat(cb.dataset.peso) || 0
+                });
+            });
+
+            window.mobileStepManager.dataCache.coladasSeleccionadas = coladasSeleccionadas;
+            window.mobileStepManager.dataCache.totalesColadas = {
+                bultos: totalBultos,
+                peso: totalPeso
+            };
+
+            // Poblar Vista 5 con resumen
+            poblarVista5ConResumen();
+        }
+
+        /**
+         * Poblar Vista 5 con resumen final
+         */
+        function poblarVista5ConResumen() {
+            const cache = window.mobileStepManager.dataCache;
+            const parsed = cache.parsed || {};
+            const linea = cache.lineaSeleccionada || {};
+            const coladas = cache.coladasSeleccionadas || [];
+            const totales = cache.totalesColadas || {};
+
+            // Actualizar datos del albarán
+            const albaranEl = document.getElementById('mobile-resumen-albaran');
+            const pedidoEl = document.getElementById('mobile-resumen-pedido');
+            const coladasEl = document.getElementById('mobile-resumen-coladas');
+
+            if (albaranEl) {
+                albaranEl.textContent = `${parsed.albaran || '—'} (${parsed.fecha || '—'})`;
+            }
+
+            if (pedidoEl) {
+                pedidoEl.textContent = `${linea.pedido_codigo || '—'} - ${linea.producto || '—'}`;
+            }
+
+            if (coladasEl) {
+                if (coladas.length > 0) {
+                    const resumen =
+                        `${coladas.length} colada(s) - ${totales.bultos || 0} bultos - ${(totales.peso || 0).toLocaleString('es-ES')} kg`;
+                    coladasEl.textContent = resumen;
+                } else {
+                    coladasEl.textContent = 'No hay coladas seleccionadas';
+                }
+            }
+        }
+
+        /**
+         * Abrir modal de edición
+         */
+        function abrirModalEdicionMobile() {
+            const modal = document.getElementById('mobileEditModal');
+            const cache = window.mobileStepManager.dataCache;
+            const parsed = cache.parsed || {};
+
+            // Poblar campos con datos actuales
+            document.getElementById('edit-albaran').value = parsed.albaran || '';
+            document.getElementById('edit-fecha').value = parsed.fecha || '';
+            document.getElementById('edit-pedido-cliente').value = parsed.pedido_cliente || '';
+            document.getElementById('edit-pedido-codigo').value = parsed.pedido_codigo || '';
+            document.getElementById('edit-peso-total').value = parsed.peso_total || '';
+            document.getElementById('edit-bultos-total').value = parsed.bultos_total || '';
+
+            // Mostrar modal con animación
+            if (modal) {
+                modal.classList.add('show');
+                document.body.style.overflow = 'hidden';
+            }
+        }
+
+        /**
+         * Cerrar modal de edición
+         */
+        function cerrarModalEdicionMobile() {
+            const modal = document.getElementById('mobileEditModal');
+            if (modal) {
+                modal.classList.remove('show');
+                document.body.style.overflow = '';
+            }
+        }
+
+        /**
+         * Guardar cambios del modal
+         */
+        function guardarEdicionMobile() {
+            const cache = window.mobileStepManager.dataCache;
+
+            // Actualizar cache con valores editados
+            if (!cache.parsed) cache.parsed = {};
+
+            cache.parsed.albaran = document.getElementById('edit-albaran').value;
+            cache.parsed.fecha = document.getElementById('edit-fecha').value;
+            cache.parsed.pedido_cliente = document.getElementById('edit-pedido-cliente').value;
+            cache.parsed.pedido_codigo = document.getElementById('edit-pedido-codigo').value;
+            cache.parsed.peso_total = document.getElementById('edit-peso-total').value;
+            cache.parsed.bultos_total = document.getElementById('edit-bultos-total').value;
+
+            // Actualizar resultado con los cambios
+            if (cache.resultado) {
+                cache.resultado.parsed = cache.parsed;
+            }
+
+            // Refrescar Vista 2 con nuevos datos
+            poblarVista2ConDatos(cache.resultado);
+
+            // Cerrar modal
+            cerrarModalEdicionMobile();
+        }
+
+        // ========================================
+        // FUNCIONES MODAL DE PEDIDOS (MÓVIL)
+        // ========================================
+
+        /**
+         * Abrir modal de pedidos
+         */
+        function abrirModalPedidosMobile() {
+            const modal = document.getElementById('mobilePedidosModal');
+            if (modal) {
+                modal.style.display = 'flex';
+                setTimeout(() => modal.classList.add('show'), 10);
+                document.body.style.overflow = 'hidden';
+            }
+
+            // Poblar lista de pedidos
+            poblarListaPedidosMobile();
+        }
+
+        /**
+         * Cerrar modal de pedidos
+         */
+        function cerrarModalPedidosMobile() {
+            const modal = document.getElementById('mobilePedidosModal');
+            if (modal) {
+                modal.classList.remove('show');
+                setTimeout(() => modal.style.display = 'none', 300);
+                document.body.style.overflow = '';
+            }
+        }
+
+        /**
+         * Poblar lista de pedidos con líneas pendientes
+         */
+        function poblarListaPedidosMobile() {
+            const container = document.getElementById('mobile-lista-pedidos');
+            if (!container) return;
+
+            const cache = window.mobileStepManager.dataCache;
+            const simulacion = cache.simulacion || {};
+            const lineasPendientes = simulacion.lineas_pendientes || [];
+
+            if (lineasPendientes.length === 0) {
+                container.innerHTML = `
+                    <div class="text-center py-8">
+                        <svg class="w-16 h-16 mx-auto text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                  d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                        </svg>
+                        <p class="mt-4 text-gray-500 font-medium">No hay pedidos disponibles</p>
+                        <p class="text-sm text-gray-400 mt-1">No se encontraron líneas de pedido pendientes</p>
+                    </div>
+                `;
+                return;
+            }
+
+            // Crear cards de pedidos
+            container.innerHTML = lineasPendientes.map((linea, index) => {
+                const isSelected = cache.lineaSeleccionada && cache.lineaSeleccionada.id === linea.id;
+
+                return `
+                    <div class="bg-white border-2 ${isSelected ? 'border-indigo-600' : 'border-gray-200'} rounded-lg p-4 cursor-pointer hover:border-indigo-400 transition"
+                         onclick="seleccionarPedidoMobile(${index})">
+                        ${isSelected ? `
+                                                                                <div class="flex items-center gap-2 mb-2">
+                                                                                    <svg class="w-5 h-5 text-indigo-600" fill="currentColor" viewBox="0 0 20 20">
+                                                                                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+                                                                                    </svg>
+                                                                                    <span class="text-xs font-bold text-indigo-600 uppercase">Seleccionado</span>
+                                                                                </div>
+                                                                            ` : ''}
+
+                        <div class="space-y-2 text-sm">
+                            <div>
+                                <span class="text-gray-500">Pedido:</span>
+                                <span class="ml-2 font-semibold text-gray-900">${linea.pedido_codigo || '—'}</span>
+                            </div>
+                            <div>
+                                <span class="text-gray-500">Fabricante:</span>
+                                <span class="ml-2 text-gray-900">${linea.fabricante || '—'}</span>
+                            </div>
+                            <div>
+                                <span class="text-gray-500">Producto:</span>
+                                <span class="ml-2 text-gray-900">${linea.producto || '—'}</span>
+                            </div>
+                            ${linea.obra ? `
+                                                                                    <div>
+                                                                                        <span class="text-gray-500">Obra:</span>
+                                                                                        <span class="ml-2 text-gray-900">${linea.obra}</span>
+                                                                                    </div>
+                                                                                ` : ''}
+                            <div class="flex items-center justify-between pt-2 border-t border-gray-100">
+                                <div>
+                                    <span class="text-gray-500">Pendiente:</span>
+                                    <span class="ml-2 font-bold text-gray-900">${linea.cantidad_pendiente || 0} kg</span>
+                                </div>
+                                ${linea.score ? `
+                                                                                        <div class="text-xs px-2 py-1 rounded-full ${
+                                                                                            linea.score >= 0.9 ? 'bg-green-100 text-green-700' :
+                                                                                            linea.score >= 0.7 ? 'bg-yellow-100 text-yellow-700' :
+                                                                                            'bg-blue-100 text-blue-700'
+                                                                                        }">
+                                                                                            Score: ${(linea.score * 100).toFixed(0)}%
+                                                                                        </div>
+                                                                                    ` : ''}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        /**
+         * Seleccionar pedido alternativo
+         */
+        function seleccionarPedidoMobile(index) {
+            const cache = window.mobileStepManager.dataCache;
+            const simulacion = cache.simulacion || {};
+            const lineasPendientes = simulacion.lineas_pendientes || [];
+
+            if (index < 0 || index >= lineasPendientes.length) return;
+
+            const lineaSeleccionada = lineasPendientes[index];
+
+            // Actualizar cache
+            cache.lineaSeleccionada = lineaSeleccionada;
+
+            // Actualizar Vista 3 con la nueva línea
+            actualizarVista3ConLineaSeleccionada(lineaSeleccionada);
+
+            // Cerrar modal
+            cerrarModalPedidosMobile();
+        }
+
+        /**
+         * Actualizar Vista 3 con línea seleccionada
+         */
+        function actualizarVista3ConLineaSeleccionada(linea) {
+            const container = document.getElementById('mobile-pedido-card');
+            if (!container) return;
+
+            // Tipo de recomendación
+            let badgeClass = 'bg-blue-100 text-blue-700';
+            let badgeText = 'RECOMENDADO';
+
+            if (linea.tipo_recomendacion === 'exacta') {
+                badgeClass = 'bg-green-100 text-green-700';
+                badgeText = 'COINCIDENCIA EXACTA';
+            } else if (linea.tipo_recomendacion === 'parcial') {
+                badgeClass = 'bg-yellow-100 text-yellow-700';
+                badgeText = 'COINCIDENCIA PARCIAL';
+            }
+
+            container.innerHTML = `
+                <div class="space-y-3">
+                    <span class="inline-block px-3 py-1 rounded-full text-xs font-bold ${badgeClass}">
+                        ${badgeText}
+                    </span>
+
+                    <div class="space-y-2 text-sm">
+                        <div>
+                            <span class="text-gray-500">Pedido:</span>
+                            <span class="ml-2 font-semibold text-gray-900">${linea.pedido_codigo || '—'}</span>
+                        </div>
+                        <div>
+                            <span class="text-gray-500">Fabricante:</span>
+                            <span class="ml-2 text-gray-900">${linea.fabricante || '—'}</span>
+                        </div>
+                        <div>
+                            <span class="text-gray-500">Producto:</span>
+                            <span class="ml-2 text-gray-900">${linea.producto || '—'}</span>
+                        </div>
+                        ${linea.obra ? `
+                                                                                <div>
+                                                                                    <span class="text-gray-500">Obra:</span>
+                                                                                    <span class="ml-2 text-gray-900">${linea.obra}</span>
+                                                                                </div>
+                                                                            ` : ''}
+                        <div class="pt-2 border-t border-gray-100">
+                            <span class="text-gray-500">Cantidad Pendiente:</span>
+                            <span class="ml-2 font-bold text-gray-900">${linea.cantidad_pendiente || 0} kg</span>
+                        </div>
+                        ${linea.score ? `
+                                                                                <div class="text-xs text-gray-500">
+                                                                                    Score de coincidencia: ${(linea.score * 100).toFixed(1)}%
+                                                                                </div>
+                                                                            ` : ''}
+                    </div>
+                </div>
+            `;
+        }
+
+        // Añadir event listener al botón "Ver otros pedidos"
+        document.addEventListener('DOMContentLoaded', function() {
+            const btnVerOtrosPedidos = document.getElementById('mobile-ver-otros-pedidos');
+            if (btnVerOtrosPedidos) {
+                btnVerOtrosPedidos.addEventListener('click', abrirModalPedidosMobile);
+            }
+        });
+    </script>
+
+    <script>
+        (function() {
+            const breakpointClasses = ['py-6', 'px-0', 'sm:px-6', 'lg:px-8'];
+
+            const syncAppContentPadding = () => {
+                const appContent = document.getElementById('app_content');
+                if (!appContent) return;
+                const isMobileView = window.innerWidth < 1024;
+                if (isMobileView) {
+                    appContent.classList.remove(...breakpointClasses);
+                    appContent.classList.add('h-[calc(100vh-57px)]');
+                } else {
+                    breakpointClasses.forEach((klass) => appContent.classList.add(klass));
+                }
+            };
+
+            window.addEventListener('resize', syncAppContentPadding);
+            document.addEventListener('DOMContentLoaded', syncAppContentPadding);
+        })();
     </script>
 </x-app-layout>
