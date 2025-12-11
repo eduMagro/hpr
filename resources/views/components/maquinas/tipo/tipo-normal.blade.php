@@ -97,11 +97,11 @@
                                     <input type="hidden" name="producto_base_id" value="{{ $productoBase->id }}">
                                     <input type="hidden" name="descripcion" value="Recarga Ø{{ $productoBase->diametro }}">
                                     @if (optional($productoBaseSolicitados)->contains($productoBase->id))
-                                        <button disabled class="bg-gray-300 text-gray-500 text-[10px] px-1.5 py-0.5 rounded cursor-not-allowed">
+                                        <button disabled class="bg-gray-300 text-gray-500 text-xs px-2 py-1 rounded cursor-not-allowed">
                                             🕓
                                         </button>
                                     @else
-                                        <button class="bg-yellow-500 hover:bg-yellow-600 text-white text-[10px] px-1.5 py-0.5 rounded">
+                                        <button class="bg-yellow-500 hover:bg-yellow-600 text-white text-xs px-2 py-1 rounded font-medium">
                                             +
                                         </button>
                                     @endif
@@ -118,25 +118,29 @@
                                         $esFabricando = $producto->estado === 'fabricando';
                                     @endphp
                                     <div class="p-1 rounded {{ $esFabricando ? 'bg-green-50 border border-green-200' : 'bg-white border border-gray-100' }}">
-                                        {{-- Barra de progreso compacta --}}
-                                        <div class="relative h-4 bg-gray-200 rounded-full overflow-hidden">
-                                            <div class="absolute left-0 h-full transition-all duration-300"
-                                                style="width: {{ $porcentaje }}%; background: {{ $esFabricando ? 'linear-gradient(90deg, #10b981, #059669)' : 'linear-gradient(90deg, #9ca3af, #6b7280)' }};">
+                                        {{-- Barra de progreso + botón consumir --}}
+                                        <div class="flex items-center gap-1">
+                                            <div class="relative flex-1 h-4 bg-gray-200 rounded-full overflow-hidden">
+                                                <div class="absolute left-0 h-full transition-all duration-300"
+                                                    style="width: {{ $porcentaje }}%; background: {{ $esFabricando ? 'linear-gradient(90deg, #10b981, #059669)' : 'linear-gradient(90deg, #9ca3af, #6b7280)' }};">
+                                                </div>
+                                                <span class="absolute inset-0 flex items-center justify-center text-[10px] font-bold {{ $porcentaje > 50 ? 'text-white' : 'text-gray-700' }}">
+                                                    {{ number_format($pesoStock, 0, ',', '.') }}/{{ number_format($pesoInicial, 0, ',', '.') }} kg
+                                                </span>
                                             </div>
-                                            <span class="absolute inset-0 flex items-center justify-center text-[10px] font-bold {{ $porcentaje > 50 ? 'text-white' : 'text-gray-700' }}">
-                                                {{ number_format($pesoStock, 0, ',', '.') }}/{{ number_format($pesoInicial, 0, ',', '.') }} kg
-                                            </span>
+                                            <button type="button"
+                                                onclick="consumirProducto({{ $producto->id }})"
+                                                class="bg-red-500 hover:bg-red-600 text-white text-xs px-2 py-1 rounded font-medium flex-shrink-0"
+                                                title="Consumir">
+                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="currentColor" viewBox="0 0 24 24">
+                                                    <path d="M13.5 3.5c-2 2-1.5 4-3 5.5s-4 1-4 5a6 6 0 0012 0c0-2-1-3.5-2-4.5s-1-3-3-6z" />
+                                                </svg>
+                                            </button>
                                         </div>
                                         {{-- Info compacta --}}
                                         <div class="flex items-center justify-between text-[9px] text-gray-500 mt-0.5 px-0.5">
                                             <span title="Código" class="truncate">{{ $producto->codigo ?? '—' }}</span>
                                             <span title="Colada">C: {{ $producto->n_colada ?? '—' }}</span>
-                                            <button type="button"
-                                                onclick="consumirProducto({{ $producto->id }})"
-                                                class="bg-red-500 hover:bg-red-600 text-white text-[8px] px-1 py-0.5 rounded font-medium"
-                                                title="Marcar como consumido">
-                                                ✓
-                                            </button>
                                         </div>
                                     </div>
                                 @endforeach
@@ -421,6 +425,24 @@
         select2.addEventListener('change', validar);
         form.addEventListener('submit', (e) => !validar() && e.preventDefault());
     });
+
+    // Función para consumir un producto (marcar como consumido)
+    function consumirProducto(productoId) {
+        Swal.fire({
+            title: '¿Consumir producto?',
+            text: 'El producto se marcará como consumido y se eliminará de la máquina',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#dc2626',
+            cancelButtonColor: '#6b7280',
+            confirmButtonText: 'Sí, consumir',
+            cancelButtonText: 'Cancelar'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                window.location.href = `/productos/${productoId}/consumir?modo=total`;
+            }
+        });
+    }
 
     // Auto-refresh para el contenedor de materia prima cada 10 segundos
     let materiaPrimaRefreshInterval = null;

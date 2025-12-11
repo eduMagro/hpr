@@ -650,7 +650,7 @@
         <!-- Modal Balancear Carga -->
         <div id="modalBalanceo"
             class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden items-center justify-center z-50 overflow-y-auto">
-            <div class="bg-white rounded-2xl shadow-2xl w-full max-w-6xl mx-4 my-8 max-h-[90vh] flex flex-col overflow-hidden">
+            <div class="bg-white rounded-2xl shadow-2xl w-full max-w-[95vw] mx-4 my-8 max-h-[90vh] flex flex-col overflow-hidden">
                 <div class="bg-gradient-to-r from-slate-800 to-slate-700 text-white px-6 py-5">
                     <h3 class="text-xl font-bold flex items-center gap-3">
                         <div class="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center">
@@ -752,13 +752,12 @@
                                             <input type="checkbox" id="checkAllBalanceo" onchange="toggleAllBalanceo(this)"
                                                 class="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500">
                                         </th>
+                                        <th class="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Figura</th>
                                         <th class="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Elemento</th>
-                                        <th class="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Planilla</th>
                                         <th class="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Ø mm</th>
                                         <th class="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Peso</th>
                                         <th class="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Origen</th>
                                         <th class="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Destino</th>
-                                        <th class="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Razón</th>
                                     </tr>
                                 </thead>
                                 <tbody id="tablaBalanceo" class="bg-white divide-y divide-slate-100">
@@ -5128,6 +5127,7 @@
                     const row = document.createElement('tr');
                     row.className = 'hover:bg-slate-50 transition-colors';
                     const longitudElemento = elemento.longitud || 0;
+                    const figuraId = `figura-balanceo-${index}`;
                     row.innerHTML = `
                         <td class="px-4 py-3">
                             <input type="checkbox"
@@ -5141,10 +5141,15 @@
                                    onchange="actualizarGraficoBalanceado()"
                                    checked>
                         </td>
-                        <td class="px-4 py-3 font-semibold text-slate-800">${elemento.codigo}</td>
-                        <td class="px-4 py-3 text-slate-600">${elemento.planilla_codigo || '-'}</td>
+                        <td class="px-2 py-2">
+                            <div id="${figuraId}" class="w-24 h-14 bg-white border border-slate-200 rounded" data-dimensiones="${elemento.dimensiones || ''}" data-diametro="${elemento.diametro}" data-barras="${elemento.barras || 1}"></div>
+                        </td>
+                        <td class="px-4 py-3">
+                            <div class="font-semibold text-slate-800">${elemento.codigo}</div>
+                            <div class="text-xs text-slate-400">${elemento.planilla_codigo || '-'}</div>
+                        </td>
                         <td class="px-4 py-3 text-slate-600">${elemento.diametro}</td>
-                        <td class="px-4 py-3 font-medium text-slate-700">${Number(elemento.peso || 0).toLocaleString('es-ES')} kg</td>
+                        <td class="px-4 py-3 font-medium text-slate-700">${Math.round(elemento.peso || 0).toLocaleString('es-ES')} kg</td>
                         <td class="px-4 py-3">
                             <span class="px-2.5 py-1 text-xs font-medium rounded-md bg-slate-100 text-slate-700 border border-slate-200">
                                 ${elemento.maquina_actual_nombre}
@@ -5155,9 +5160,24 @@
                                 ${elemento.maquina_nueva_nombre}
                             </span>
                         </td>
-                        <td class="px-4 py-3 text-sm text-slate-500">${elemento.razon || '-'}</td>
                     `;
                     tabla.appendChild(row);
+                });
+
+                // Dibujar las figuras de los elementos
+                data.elementos.forEach((elemento, index) => {
+                    const figuraId = `figura-balanceo-${index}`;
+                    const contenedor = document.getElementById(figuraId);
+                    if (contenedor) {
+                        if (elemento.dimensiones && elemento.dimensiones.trim() !== '' && window.dibujarFiguraElemento) {
+                            setTimeout(() => {
+                                window.dibujarFiguraElemento(figuraId, elemento.dimensiones, null, elemento.diametro, elemento.barras);
+                            }, 50);
+                        } else {
+                            // Si no hay dimensiones, mostrar el código del elemento
+                            contenedor.innerHTML = `<div class="w-full h-full flex items-center justify-center text-xs text-slate-400 font-medium">${elemento.codigo || '-'}</div>`;
+                        }
+                    }
                 });
 
                 // Mostrar gráfico balanceado inicial (con todos seleccionados)
@@ -5200,7 +5220,7 @@
                     const superaMax = peso > maxPeso;
 
                     grafico.innerHTML += `
-                        <div class="grid py-2.5 px-3 hover:bg-slate-50 transition-colors border-b border-slate-100 last:border-b-0" style="grid-template-columns: 110px 1fr 140px; gap: 16px; align-items: center;">
+                        <div class="grid py-2.5 px-3 hover:bg-slate-50 transition-colors border-b border-slate-100 last:border-b-0" style="grid-template-columns: 100px 1fr 130px; gap: 16px; align-items: center;">
                             <div class="min-w-0">
                                 <div class="text-sm font-semibold text-slate-700 truncate" title="${maquina.nombre}">${maquina.nombre}</div>
                                 <div class="text-xs text-slate-400">${elementos} elementos</div>
@@ -5208,11 +5228,11 @@
                             <div class="h-6 rounded bg-slate-200 overflow-hidden shadow-inner">
                                 <div class="h-full rounded transition-all duration-500 ease-out flex items-center justify-end pr-3"
                                      style="${colores.bar} width: ${Math.max(porcentaje, peso > 0 ? 10 : 2)}%; min-width: ${peso > 0 ? '50px' : '8px'};">
-                                    <span class="text-xs font-bold text-white drop-shadow-sm whitespace-nowrap">${peso > 0 ? (peso >= 1000 ? Math.round(peso/1000) + 'T' : peso + 'kg') : ''}</span>
+                                    <span class="text-xs font-bold text-white drop-shadow-sm whitespace-nowrap">${peso > 0 ? (peso >= 1000 ? Math.round(peso/1000) + 'T' : Math.round(peso) + 'kg') : ''}</span>
                                 </div>
                             </div>
                             <div class="text-right min-w-0">
-                                <div class="text-sm font-semibold ${colores.text}">${Number(peso).toLocaleString('es-ES')} kg${superaMax ? ' <span class="text-red-500">⚠</span>' : ''}</div>
+                                <div class="text-sm font-semibold ${colores.text}">${Math.round(peso).toLocaleString('es-ES')} kg${superaMax ? ' <span class="text-red-500">⚠</span>' : ''}</div>
                                 <div class="text-xs text-slate-400">${Number(longitud).toLocaleString('es-ES')}m · ⌀${diametro}mm</div>
                             </div>
                         </div>
@@ -5224,7 +5244,7 @@
                     grafico.innerHTML += `
                         <div class="mt-4 pt-3 border-t-2 border-dashed border-slate-200 flex items-center justify-between">
                             <span class="text-sm text-slate-500 font-medium">Promedio</span>
-                            <span class="text-sm font-bold ${colores.text}">${Number(pesoPromedio).toLocaleString('es-ES')} kg</span>
+                            <span class="text-sm font-bold ${colores.text}">${Math.round(pesoPromedio).toLocaleString('es-ES')} kg</span>
                         </div>
                     `;
                 }

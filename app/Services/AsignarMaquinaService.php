@@ -723,6 +723,76 @@ class AsignarMaquinaService
     }
 
     /**
+     * Reasigna un elemento a una máquina específica, validando compatibilidad
+     * Usado por el sistema de balanceo de cargas
+     *
+     * @param Elemento $elemento
+     * @param Maquina $maquinaDestino
+     * @return array ['success' => bool, 'message' => string]
+     */
+    public function reasignarElemento(Elemento $elemento, Maquina $maquinaDestino): array
+    {
+        $dobles = (int)$elemento->dobles_barra;
+        $diametro = (int)$elemento->diametro;
+        $elaborado = (int)($elemento->elaborado ?? 1);
+
+        // 1. Elementos sin elaborar solo pueden ir a grúas
+        if ($elaborado === 0) {
+            if ($maquinaDestino->tipo !== 'grua') {
+                return [
+                    'success' => false,
+                    'message' => "Elemento {$elemento->codigo} sin elaborar solo puede ir a grúas, no a {$maquinaDestino->codigo}"
+                ];
+            }
+        }
+
+        // 2. Validar diámetro
+        if (!$this->soportaDiametro($maquinaDestino, $diametro)) {
+            return [
+                'success' => false,
+                'message' => "Máquina {$maquinaDestino->codigo} no soporta Ø{$diametro} (rango: {$maquinaDestino->diametro_min}-{$maquinaDestino->diametro_max})"
+            ];
+        }
+
+        // 3. Validar CM: solo elementos con dobles_barra = 0
+        if ($maquinaDestino->codigo === 'CM' && $dobles !== 0) {
+            return [
+                'success' => false,
+                'message' => "Elemento {$elemento->codigo} tiene dobles_barra={$dobles}, no puede ir a cortadora manual CM"
+            ];
+        }
+
+        // 4. Estribos (dobles >= 4 Y diámetro <= 16) solo van a estriberas
+        $esEstribo = $dobles >= 4 && $diametro <= 16;
+        $codigosEstriberas = ['F12', 'PS12', 'MS16'];
+
+        if ($esEstribo && !in_array($maquinaDestino->codigo, $codigosEstriberas)) {
+            return [
+                'success' => false,
+                'message' => "Elemento {$elemento->codigo} es estribo (dobles={$dobles}, Ø{$diametro}), solo puede ir a estriberas (F12, PS12, MS16)"
+            ];
+        }
+
+        // 5. Elementos con dobleces (dobles > 0) no pueden ir a CM
+        if ($dobles > 0 && $maquinaDestino->codigo === 'CM') {
+            return [
+                'success' => false,
+                'message' => "Elemento {$elemento->codigo} tiene dobleces (dobles={$dobles}), no puede ir a cortadora manual CM"
+            ];
+        }
+
+        // 6. Elementos con dobleces solo van a cortadoras_dobladoras o estriberas
+        if ($dobles > 0 && !in_array($maquinaDestino->tipo, ['cortadora_dobladora', 'estribera'])) {
+            return [
+                'success' => false,
+                'message' => "Elemento {$elemento->codigo} con dobleces solo puede ir a cortadora_dobladora o estribera, no a {$maquinaDestino->tipo}"
+            ];
+        }
+
+        return ['success' => true, 'message' => 'OK'];
+    }
+
+    /**
      * Asigna elementos sin elaborar (única dimensión) a la primera grúa de la nave
      * Los movimientos de preparación se crean cuando el gruista entra en la vista de grúa
      * y hay salidas programadas para mañana con estos elementos

@@ -1,7 +1,7 @@
 import { openActionsMenu } from "../menu/baseMenu.js";
 import { crearFestivo } from "../dialogs/festivo.js";
 import { generarTurnosDialog } from "../dialogs/generarTurnos.js";
-import { DATA } from "../config.js";
+import { DATA, CSRF } from "../config.js";
 
 /** Copia eventos (no festivos) de un día a otro, manteniendo horas y recurso */
 async function copiarRegistrosDia({ fromISO, toISO, calendar }) {
@@ -96,6 +96,96 @@ async function copiarRegistrosDia({ fromISO, toISO, calendar }) {
     // o bien exponer un endpoint tipo POST /asignaciones-turno/copiar-dia { from, to }
 }
 
+/**
+ * Copia los turnos de la semana anterior para una máquina específica
+ * @param {string} maquinaId - ID de la máquina
+ * @param {string} maquinaNombre - Nombre de la máquina
+ * @param {string} fechaISO - Fecha de referencia (se usará para calcular la semana)
+ * @param {number} duracionSemanas - 1 o 2 semanas
+ * @param {object} calendar - Instancia del calendario
+ */
+async function copiarSemanaAnterior({ maquinaId, maquinaNombre, fechaISO, duracionSemanas, calendar }) {
+    const duracionTexto = duracionSemanas === 1 ? "la semana actual" : "las próximas 2 semanas";
+
+    const ok = await Swal.fire({
+        icon: "question",
+        title: "Copiar semana anterior",
+        html: `¿Copiar los turnos de la semana anterior de <b>${maquinaNombre}</b> para ${duracionTexto}?`,
+        showCancelButton: true,
+        confirmButtonText: "Copiar",
+        cancelButtonText: "Cancelar",
+        confirmButtonColor: "#3b82f6",
+    }).then((r) => r.isConfirmed);
+
+    if (!ok) return;
+
+    try {
+        // Calcular el inicio de la semana actual basándose en la fecha
+        const fecha = new Date(fechaISO);
+        const diaSemana = fecha.getDay();
+        const diffLunes = diaSemana === 0 ? -6 : 1 - diaSemana;
+        const inicioSemana = new Date(fecha);
+        inicioSemana.setDate(fecha.getDate() + diffLunes);
+        const semanaInicio = inicioSemana.toISOString().slice(0, 10);
+
+        const response = await fetch("/asignaciones-turno/repetir-semana-maquina", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "X-CSRF-TOKEN": CSRF(),
+                Accept: "application/json",
+            },
+            body: JSON.stringify({
+                maquina_id: maquinaId,
+                semana_inicio: semanaInicio,
+                duracion_semanas: duracionSemanas,
+            }),
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            throw new Error(data.message || `Error HTTP ${response.status}`);
+        }
+
+        // Agregar los nuevos eventos al calendario
+        if (data.eventos && data.eventos.length > 0) {
+            data.eventos.forEach((evento) => {
+                const existente = calendar.getEventById(evento.id);
+                if (!existente) {
+                    calendar.addEvent({
+                        id: evento.id,
+                        title: evento.title,
+                        start: evento.start,
+                        end: evento.end,
+                        resourceId: evento.resourceId,
+                        backgroundColor: evento.backgroundColor,
+                        borderColor: evento.borderColor,
+                        textColor: evento.textColor || "#000000",
+                        extendedProps: evento.extendedProps || {},
+                    });
+                }
+            });
+        }
+
+        await Swal.fire({
+            icon: "success",
+            title: "Turnos copiados",
+            html: `Se han copiado <b>${data.turnos_creados || 0}</b> turnos correctamente.`,
+            timer: 2000,
+            showConfirmButton: false,
+        });
+    } catch (error) {
+        console.error("Error al copiar turnos:", error);
+        await Swal.fire({
+            icon: "error",
+            title: "Error",
+            text: error.message || "No se pudieron copiar los turnos",
+            confirmButtonText: "Aceptar",
+        });
+    }
+}
+
 export function openCellMenu(x, y, { fechaISO, resourceId }, calendar, maquinas) {
     // helpers para fechas vecinas
     const prevISO = new Date(fechaISO);
@@ -170,6 +260,36 @@ export function openCellMenu(x, y, { fechaISO, resourceId }, calendar, maquinas)
                     copiarRegistrosDia({
                         fromISO: nextStr,
                         toISO: fechaISO,
+                        calendar,
+                    }),
+            },
+            {
+                icon: "📅",
+                label: resourceId
+                    ? `Copiar semana anterior → semana actual (${maquinaNombre})`
+                    : "Copiar semana anterior (seleccione una máquina)",
+                disabled: !resourceId,
+                onClick: () =>
+                    copiarSemanaAnterior({
+                        maquinaId: resourceId,
+                        maquinaNombre,
+                        fechaISO,
+                        duracionSemanas: 1,
+                        calendar,
+                    }),
+            },
+            {
+                icon: "📅📅",
+                label: resourceId
+                    ? `Copiar semana anterior → 2 semanas (${maquinaNombre})`
+                    : "Copiar semana anterior (seleccione una máquina)",
+                disabled: !resourceId,
+                onClick: () =>
+                    copiarSemanaAnterior({
+                        maquinaId: resourceId,
+                        maquinaNombre,
+                        fechaISO,
+                        duracionSemanas: 2,
                         calendar,
                     }),
             },
