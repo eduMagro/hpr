@@ -15,14 +15,12 @@
                 @if ($maquina->tipo !== 'grua')
                     {{-- Selectores de posiciones de planillas --}}
                     <div class="contenedor-selectores-planilla">
-                        <label>📋 Planillas:</label>
-
                         <select id="posicion_1" name="posicion_1" onchange="cambiarPosicionesPlanillas()">
                             <option value="0" {{ empty($posicion1) ? 'selected' : '' }}>0</option>
                             @foreach ($posicionesDisponibles as $pos)
                                 <option value="{{ $pos }}"
                                     {{ $posicion1 == $pos ? 'selected' : '' }}>
-                                    Pos. {{ $pos }}
+                                    {{ $pos }} - {{ $codigosPorPosicion[$pos] ?? '' }}
                                 </option>
                             @endforeach
                         </select>
@@ -34,7 +32,7 @@
                             @foreach ($posicionesDisponibles as $pos)
                                 <option value="{{ $pos }}"
                                     {{ $posicion2 == $pos ? 'selected' : '' }}>
-                                    Pos. {{ $pos }}
+                                    {{ $pos }} - {{ $codigosPorPosicion[$pos] ?? '' }}
                                 </option>
                             @endforeach
                         </select>
@@ -64,7 +62,7 @@
                             border: 1px solid #d1d5db;
                             box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
                             /* CRÍTICO: Dimensiones fijas para evitar recalculos */
-                            min-width: 320px;
+                            min-width: 280px;
                             height: 40px;
                             box-sizing: border-box;
                             /* Alineación vertical con otros controles */
@@ -74,22 +72,13 @@
                             contain: layout style;
                         }
 
-                        .contenedor-selectores-planilla label {
-                            font-size: 0.875rem;
-                            font-weight: 500;
-                            color: #374151;
-                            white-space: nowrap;
-                            flex-shrink: 0;
-                            margin: 0;
-                        }
-
                         .contenedor-selectores-planilla select {
-                            width: 90px;
+                            width: 120px;
                             height: 30px;
                             padding: 4px 8px;
                             border: 1px solid #d1d5db;
                             border-radius: 4px;
-                            font-size: 0.875rem;
+                            font-size: 0.8rem;
                             background: white;
                             flex-shrink: 0;
                             /* CRÍTICO: Sin transiciones ni transformaciones */
@@ -113,7 +102,7 @@
                             border-color: #3b82f6 !important;
                             box-shadow: none !important;
                             /* Mantener dimensiones exactas */
-                            width: 90px !important;
+                            width: 120px !important;
                             height: 30px !important;
                         }
 
@@ -406,44 +395,60 @@
                         {{-- Separador visual --}}
                         <div class="h-6 w-px bg-gray-300 mx-1"></div>
 
-                        {{-- Filtros de estado de etiquetas --}}
-                        <div class="flex items-center gap-1 bg-gray-100 rounded-lg p-1">
-                            <button @click="setFiltroEstado('todos')"
-                                class="px-2 py-1 rounded text-xs font-medium transition-all duration-200"
-                                :class="filtroEstado === 'todos' ? 'bg-white text-gray-800 shadow-sm' : 'text-gray-600 hover:text-gray-800'"
-                                title="Ver todas las etiquetas">
-                                Todas
+                        {{-- Filtros de estado de etiquetas - Select personalizado --}}
+                        <div class="relative" x-data="{ open: false }">
+                            <button @click="open = !open" @click.away="open = false" type="button"
+                                class="px-3 py-1.5 rounded-lg text-sm font-medium border shadow-sm transition-all duration-200 flex items-center gap-2 min-w-[130px] justify-between"
+                                :class="{
+                                    'bg-white border-gray-300 text-gray-800': filtroEstado === 'todos',
+                                    'bg-purple-500 border-purple-600 text-white': filtroEstado === 'sin-paquete',
+                                    'bg-blue-500 border-blue-600 text-white': filtroEstado === 'en-paquete',
+                                    'bg-gray-500 border-gray-600 text-white': filtroEstado === 'pendiente',
+                                    'bg-yellow-500 border-yellow-600 text-white': filtroEstado === 'fabricando',
+                                    'bg-green-500 border-green-600 text-white': filtroEstado === 'completada'
+                                }">
+                                <span x-text="{
+                                    'todos': 'Todas',
+                                    'sin-paquete': 'Sin paquete',
+                                    'en-paquete': 'En paquete',
+                                    'pendiente': 'Pendientes',
+                                    'fabricando': 'Fabricando',
+                                    'completada': 'Completadas'
+                                }[filtroEstado]"></span>
+                                <svg class="w-4 h-4 transition-transform" :class="{ 'rotate-180': open }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                                </svg>
                             </button>
-                            <button @click="setFiltroEstado('sin-paquete')"
-                                class="px-2 py-1 rounded text-xs font-medium transition-all duration-200"
-                                :class="filtroEstado === 'sin-paquete' ? 'bg-purple-500 text-white shadow-sm' : 'text-gray-600 hover:text-gray-800'"
-                                title="Ver todas menos las empaquetadas">
-                                Sin paquete
-                            </button>
-                            <button @click="setFiltroEstado('en-paquete')"
-                                class="px-2 py-1 rounded text-xs font-medium transition-all duration-200"
-                                :class="filtroEstado === 'en-paquete' ? 'bg-blue-500 text-white shadow-sm' : 'text-gray-600 hover:text-gray-800'"
-                                title="Ver solo las empaquetadas">
-                                En paquete
-                            </button>
-                            <button @click="setFiltroEstado('pendiente')"
-                                class="px-2 py-1 rounded text-xs font-medium transition-all duration-200"
-                                :class="filtroEstado === 'pendiente' ? 'bg-gray-500 text-white shadow-sm' : 'text-gray-600 hover:text-gray-800'"
-                                title="Ver solo pendientes">
-                                Pendientes
-                            </button>
-                            <button @click="setFiltroEstado('fabricando')"
-                                class="px-2 py-1 rounded text-xs font-medium transition-all duration-200"
-                                :class="filtroEstado === 'fabricando' ? 'bg-yellow-500 text-white shadow-sm' : 'text-gray-600 hover:text-gray-800'"
-                                title="Ver solo fabricando">
-                                Fabricando
-                            </button>
-                            <button @click="setFiltroEstado('completada')"
-                                class="px-2 py-1 rounded text-xs font-medium transition-all duration-200"
-                                :class="filtroEstado === 'completada' ? 'bg-green-500 text-white shadow-sm' : 'text-gray-600 hover:text-gray-800'"
-                                title="Ver solo completadas">
-                                Completadas
-                            </button>
+                            <div x-show="open" x-transition:enter="transition ease-out duration-100"
+                                x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100"
+                                x-transition:leave="transition ease-in duration-75"
+                                x-transition:leave-start="opacity-100 scale-100" x-transition:leave-end="opacity-0 scale-95"
+                                class="absolute z-50 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg overflow-hidden">
+                                <button @click="setFiltroEstado('todos'); open = false" type="button"
+                                    class="w-full px-3 py-2 text-left text-sm font-medium bg-white hover:bg-gray-100 text-gray-800 border-b border-gray-100">
+                                    Todas
+                                </button>
+                                <button @click="setFiltroEstado('sin-paquete'); open = false" type="button"
+                                    class="w-full px-3 py-2 text-left text-sm font-medium bg-purple-500 hover:bg-purple-600 text-white border-b border-purple-400">
+                                    Sin paquete
+                                </button>
+                                <button @click="setFiltroEstado('en-paquete'); open = false" type="button"
+                                    class="w-full px-3 py-2 text-left text-sm font-medium bg-blue-500 hover:bg-blue-600 text-white border-b border-blue-400">
+                                    En paquete
+                                </button>
+                                <button @click="setFiltroEstado('pendiente'); open = false" type="button"
+                                    class="w-full px-3 py-2 text-left text-sm font-medium bg-gray-500 hover:bg-gray-600 text-white border-b border-gray-400">
+                                    Pendientes
+                                </button>
+                                <button @click="setFiltroEstado('fabricando'); open = false" type="button"
+                                    class="w-full px-3 py-2 text-left text-sm font-medium bg-yellow-500 hover:bg-yellow-600 text-white border-b border-yellow-400">
+                                    Fabricando
+                                </button>
+                                <button @click="setFiltroEstado('completada'); open = false" type="button"
+                                    class="w-full px-3 py-2 text-left text-sm font-medium bg-green-500 hover:bg-green-600 text-white">
+                                    Completadas
+                                </button>
+                            </div>
                         </div>
                     </div>
 
@@ -511,12 +516,12 @@
                     @endif
                 @endif
 
-                <form method="POST" action="{{ route('turno.cambiarMaquina') }}" class="flex items-center gap-3">
+                <form method="POST" action="{{ route('turno.cambiarMaquina') }}">
                     @csrf
                     <input type="hidden" name="asignacion_id" value="{{ $turnoHoy->id ?? '' }}">
 
                     <div class="relative">
-                        <select name="nueva_maquina_id"
+                        <select name="nueva_maquina_id" onchange="this.form.submit()"
                             class="appearance-none bg-white border-2 border-gray-300 hover:border-blue-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 rounded-lg px-4 py-2 pr-10 text-sm font-medium text-gray-700 shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer">
                             @foreach ($maquinas as $m)
                                 <option value="{{ $m->id }}"
@@ -533,15 +538,6 @@
                             </svg>
                         </div>
                     </div>
-
-                    <button type="submit"
-                        class="px-4 py-2 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white rounded-lg text-sm font-medium shadow-md hover:shadow-lg transition-all duration-200 flex items-center gap-2">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
-                        </svg>
-                        Cambiar máquina
-                    </button>
                 </form>
             </div>
         </div>

@@ -649,107 +649,81 @@
 
         <!-- Modal Balancear Carga -->
         <div id="modalBalanceo"
-            class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50 overflow-y-auto">
-            <div class="bg-white rounded-lg shadow-xl w-full max-w-6xl mx-4 my-8 max-h-[90vh] flex flex-col">
-                <div class="bg-green-600 text-white px-6 py-4 rounded-t-lg">
-                    <h3 class="text-lg font-semibold flex items-center gap-2">
-                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3"></path>
-                        </svg>
-                        Balancear Carga entre Máquinas
+            class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden items-center justify-center z-50 overflow-y-auto">
+            <div class="bg-white rounded-2xl shadow-2xl w-full max-w-6xl mx-4 my-8 max-h-[90vh] flex flex-col overflow-hidden">
+                <div class="bg-gradient-to-r from-slate-800 to-slate-700 text-white px-6 py-5">
+                    <h3 class="text-xl font-bold flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3"></path>
+                            </svg>
+                        </div>
+                        Balancear Carga
                     </h3>
-                    <p class="text-sm opacity-90 mt-1">Distribuir equitativamente el trabajo entre todas las máquinas</p>
+                    <p class="text-slate-300 text-sm mt-1 ml-13">Distribuir equitativamente el trabajo entre máquinas</p>
                 </div>
 
                 <!-- Loading state -->
-                <div id="balanceoLoading" class="p-12 text-center">
-                    <div class="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-green-600"></div>
-                    <p class="mt-4 text-gray-600">Analizando carga de máquinas y calculando distribución...</p>
+                <div id="balanceoLoading" class="p-16 text-center">
+                    <div class="inline-block animate-spin rounded-full h-12 w-12 border-4 border-slate-200 border-t-indigo-600"></div>
+                    <p class="mt-4 text-slate-500">Analizando distribución de carga...</p>
                 </div>
 
                 <!-- Content state -->
                 <div id="balanceoContent" class="hidden flex-1 overflow-y-auto">
                     <!-- Estadísticas superiores -->
-                    <div class="p-6 bg-gradient-to-r from-gray-50 to-slate-100 border-b border-gray-200">
-                        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-                            <div class="bg-white rounded-xl p-4 shadow-sm border border-blue-100 hover:shadow-md transition-shadow">
-                                <div class="flex items-center gap-2 mb-2">
-                                    <div class="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center">
-                                        <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"></path>
-                                        </svg>
-                                    </div>
-                                    <div class="text-xs text-gray-500 font-medium">A Redistribuir</div>
-                                </div>
-                                <div id="estadElementosBalanceo" class="text-2xl font-bold text-blue-700">0</div>
+                    <div class="px-6 py-5 bg-slate-50 border-b border-slate-200">
+                        <div class="grid grid-cols-4 gap-4">
+                            <div class="bg-white rounded-xl p-4 border border-slate-200 shadow-sm">
+                                <div class="text-xs text-slate-500 font-medium mb-1">A Redistribuir</div>
+                                <div id="estadElementosBalanceo" class="text-2xl font-bold text-slate-800">0</div>
                             </div>
-                            <div class="bg-white rounded-xl p-4 shadow-sm border border-amber-100 hover:shadow-md transition-shadow">
-                                <div class="flex items-center gap-2 mb-2">
-                                    <div class="w-8 h-8 rounded-lg bg-amber-100 flex items-center justify-center">
-                                        <span class="text-lg">📦</span>
-                                    </div>
-                                    <div class="text-xs text-gray-500 font-medium">Peso Total</div>
-                                </div>
-                                <div id="estadPesoTotal" class="text-2xl font-bold text-amber-700">0 kg</div>
+                            <div class="bg-white rounded-xl p-4 border border-slate-200 shadow-sm">
+                                <div class="text-xs text-slate-500 font-medium mb-1">Peso Total</div>
+                                <div id="estadPesoTotal" class="text-2xl font-bold text-slate-800">0 kg</div>
                             </div>
-                            <div class="bg-white rounded-xl p-4 shadow-sm border border-green-100 hover:shadow-md transition-shadow">
-                                <div class="flex items-center gap-2 mb-2">
-                                    <div class="w-8 h-8 rounded-lg bg-green-100 flex items-center justify-center">
-                                        <span class="text-lg">📏</span>
-                                    </div>
-                                    <div class="text-xs text-gray-500 font-medium">Longitud Total</div>
-                                </div>
-                                <div id="estadLongitudTotal" class="text-2xl font-bold text-green-700">0 m</div>
+                            <div class="bg-white rounded-xl p-4 border border-slate-200 shadow-sm">
+                                <div class="text-xs text-slate-500 font-medium mb-1">Longitud Total</div>
+                                <div id="estadLongitudTotal" class="text-2xl font-bold text-slate-800">0 m</div>
                             </div>
-                            <div class="bg-white rounded-xl p-4 shadow-sm border border-purple-100 hover:shadow-md transition-shadow">
-                                <div class="flex items-center gap-2 mb-2">
-                                    <div class="w-8 h-8 rounded-lg bg-purple-100 flex items-center justify-center">
-                                        <svg class="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
-                                        </svg>
-                                    </div>
-                                    <div class="text-xs text-gray-500 font-medium">Máquinas</div>
-                                </div>
-                                <div id="estadMaquinasBalanceadas" class="text-2xl font-bold text-purple-700">0</div>
+                            <div class="bg-white rounded-xl p-4 border border-slate-200 shadow-sm">
+                                <div class="text-xs text-slate-500 font-medium mb-1">Máquinas</div>
+                                <div id="estadMaquinasBalanceadas" class="text-2xl font-bold text-slate-800">0</div>
                             </div>
                         </div>
                     </div>
 
                     <!-- Gráficos de distribución lado a lado -->
-                    <div class="p-6 border-b border-gray-200">
+                    <div class="p-6 border-b border-slate-200">
                         <div class="grid grid-cols-1 xl:grid-cols-2 gap-6">
                             <!-- Gráfico Original -->
-                            <div class="bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl p-5 border border-gray-200 shadow-sm">
-                                <div class="flex items-center justify-between mb-4">
-                                    <h4 class="font-bold text-gray-700 flex items-center gap-2">
-                                        <div class="w-8 h-8 rounded-lg bg-gray-200 flex items-center justify-center">
-                                            <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
-                                            </svg>
-                                        </div>
-                                        Distribución Actual
-                                    </h4>
-                                    <span class="text-xs text-gray-500 bg-gray-200 px-2 py-1 rounded-full">Estado actual</span>
+                            <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+                                <div class="px-5 py-4 border-b border-slate-100 bg-slate-50">
+                                    <div class="flex items-center justify-between">
+                                        <h4 class="font-semibold text-slate-700 flex items-center gap-2">
+                                            <div class="w-3 h-3 rounded-full bg-indigo-500"></div>
+                                            Distribución Actual
+                                        </h4>
+                                        <span class="text-xs text-slate-500 bg-slate-200 px-2.5 py-1 rounded-full font-medium">Antes</span>
+                                    </div>
                                 </div>
-                                <div id="graficoCargaOriginal" class="space-y-2">
+                                <div id="graficoCargaOriginal" class="p-4">
                                     <!-- Se llenará dinámicamente -->
                                 </div>
                             </div>
 
                             <!-- Gráfico Después del Balanceo -->
-                            <div class="bg-gradient-to-br from-green-50 to-emerald-100 rounded-xl p-5 border border-green-200 shadow-sm">
-                                <div class="flex items-center justify-between mb-4">
-                                    <h4 class="font-bold text-green-700 flex items-center gap-2">
-                                        <div class="w-8 h-8 rounded-lg bg-green-200 flex items-center justify-center">
-                                            <svg class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                                            </svg>
-                                        </div>
-                                        Después del Balanceo
-                                    </h4>
-                                    <span class="text-xs text-green-600 bg-green-200 px-2 py-1 rounded-full">Previsión</span>
+                            <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+                                <div class="px-5 py-4 border-b border-slate-100 bg-emerald-50">
+                                    <div class="flex items-center justify-between">
+                                        <h4 class="font-semibold text-emerald-700 flex items-center gap-2">
+                                            <div class="w-3 h-3 rounded-full bg-emerald-500"></div>
+                                            Después del Balanceo
+                                        </h4>
+                                        <span class="text-xs text-emerald-600 bg-emerald-100 px-2.5 py-1 rounded-full font-medium">Previsión</span>
+                                    </div>
                                 </div>
-                                <div id="graficoCargaBalanceada" class="space-y-2">
+                                <div id="graficoCargaBalanceada" class="p-4">
                                     <!-- Se llenará dinámicamente -->
                                 </div>
                             </div>
@@ -758,39 +732,36 @@
 
                     <!-- Tabla de elementos -->
                     <div class="p-6">
-                        <h4 class="font-semibold text-gray-800 mb-4 flex items-center gap-2">
-                            <svg class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"></path>
-                            </svg>
-                            Movimientos Propuestos
-                        </h4>
-                        <div class="mb-4 flex gap-2">
-                            <button onclick="seleccionarTodosBalanceo()" class="text-sm text-green-600 hover:text-green-700 font-medium">
-                                Seleccionar todos
-                            </button>
-                            <span class="text-gray-300">|</span>
-                            <button onclick="deseleccionarTodosBalanceo()" class="text-sm text-gray-600 hover:text-gray-700 font-medium">
-                                Deseleccionar todos
-                            </button>
+                        <div class="flex items-center justify-between mb-4">
+                            <h4 class="font-semibold text-slate-800">Movimientos Propuestos</h4>
+                            <div class="flex gap-3">
+                                <button onclick="seleccionarTodosBalanceo()" class="text-sm text-indigo-600 hover:text-indigo-700 font-medium">
+                                    Seleccionar todos
+                                </button>
+                                <span class="text-slate-300">|</span>
+                                <button onclick="deseleccionarTodosBalanceo()" class="text-sm text-slate-500 hover:text-slate-700 font-medium">
+                                    Deseleccionar todos
+                                </button>
+                            </div>
                         </div>
-                        <div class="overflow-x-auto">
-                            <table class="min-w-full divide-y divide-gray-200 text-sm">
-                                <thead class="bg-gray-50">
-                                    <tr>
-                                        <th class="px-3 py-2 text-left">
+                        <div class="overflow-x-auto rounded-xl border border-slate-200">
+                            <table class="min-w-full text-sm">
+                                <thead>
+                                    <tr class="bg-slate-50 border-b border-slate-200">
+                                        <th class="px-4 py-3 text-left">
                                             <input type="checkbox" id="checkAllBalanceo" onchange="toggleAllBalanceo(this)"
-                                                class="rounded border-gray-300 text-green-600 focus:ring-green-500">
+                                                class="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500">
                                         </th>
-                                        <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Elemento</th>
-                                        <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Planilla</th>
-                                        <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Ø mm</th>
-                                        <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Peso</th>
-                                        <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Máquina Actual</th>
-                                        <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Nueva Máquina</th>
-                                        <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Razón</th>
+                                        <th class="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Elemento</th>
+                                        <th class="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Planilla</th>
+                                        <th class="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Ø mm</th>
+                                        <th class="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Peso</th>
+                                        <th class="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Origen</th>
+                                        <th class="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Destino</th>
+                                        <th class="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Razón</th>
                                     </tr>
                                 </thead>
-                                <tbody id="tablaBalanceo" class="bg-white divide-y divide-gray-200">
+                                <tbody id="tablaBalanceo" class="bg-white divide-y divide-slate-100">
                                     <!-- Se llenará dinámicamente -->
                                 </tbody>
                             </table>
@@ -799,27 +770,29 @@
                 </div>
 
                 <!-- Empty state -->
-                <div id="balanceoEmpty" class="hidden p-12 text-center">
-                    <svg class="w-16 h-16 mx-auto text-green-500 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                    </svg>
-                    <h3 class="text-lg font-semibold text-gray-800 mb-2">¡Carga ya balanceada!</h3>
-                    <p class="text-gray-600">La distribución de trabajo entre máquinas ya es óptima.</p>
+                <div id="balanceoEmpty" class="hidden p-16 text-center">
+                    <div class="w-16 h-16 mx-auto mb-4 rounded-full bg-emerald-100 flex items-center justify-center">
+                        <svg class="w-8 h-8 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                        </svg>
+                    </div>
+                    <h3 class="text-lg font-semibold text-slate-800 mb-2">Carga ya balanceada</h3>
+                    <p class="text-slate-500">La distribución de trabajo entre máquinas ya es óptima.</p>
                 </div>
 
                 <!-- Botones de acción -->
-                <div class="bg-gray-50 px-6 py-4 rounded-b-lg flex justify-between items-center border-t border-gray-200">
-                    <label class="flex items-center gap-2 text-sm text-gray-600 cursor-pointer">
-                        <input type="checkbox" id="chkBalancearFabricando" class="w-4 h-4 text-green-600 rounded border-gray-300 focus:ring-green-500">
+                <div class="bg-slate-50 px-6 py-4 flex justify-between items-center border-t border-slate-200">
+                    <label class="flex items-center gap-2 text-sm text-slate-600 cursor-pointer hover:text-slate-800 transition-colors">
+                        <input type="checkbox" id="chkBalancearFabricando" class="w-4 h-4 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500">
                         <span>Incluir planillas en posición 1 y fabricando</span>
                     </label>
                     <div class="flex gap-3">
                         <button onclick="cerrarModalBalanceo()"
-                            class="bg-gray-300 hover:bg-gray-400 text-gray-700 px-4 py-2 rounded-lg transition-colors">
+                            class="px-5 py-2.5 rounded-lg border border-slate-300 text-slate-700 font-medium hover:bg-slate-100 transition-colors">
                             Cancelar
                         </button>
                         <button id="btnAplicarBalanceo" onclick="aplicarBalanceo()"
-                            class="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-lg transition-colors flex items-center gap-2 hidden">
+                            class="px-5 py-2.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-medium transition-colors flex items-center gap-2 hidden">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
                             </svg>
@@ -5153,13 +5126,12 @@
 
                 data.elementos.forEach((elemento, index) => {
                     const row = document.createElement('tr');
-                    row.className = 'hover:bg-gray-50';
-                    // Calcular longitud del elemento (longitud * barras aproximado desde tiempo)
+                    row.className = 'hover:bg-slate-50 transition-colors';
                     const longitudElemento = elemento.longitud || 0;
                     row.innerHTML = `
-                        <td class="px-3 py-2">
+                        <td class="px-4 py-3">
                             <input type="checkbox"
-                                   class="balanceo-checkbox rounded border-gray-300 text-green-600 focus:ring-green-500"
+                                   class="balanceo-checkbox rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
                                    data-elemento-id="${elemento.elemento_id}"
                                    data-maquina-actual="${elemento.maquina_actual_id}"
                                    data-maquina-nueva="${elemento.maquina_nueva_id}"
@@ -5169,21 +5141,21 @@
                                    onchange="actualizarGraficoBalanceado()"
                                    checked>
                         </td>
-                        <td class="px-3 py-2 font-medium text-gray-900">${elemento.codigo}</td>
-                        <td class="px-3 py-2 text-gray-600">${elemento.planilla_codigo || '-'}</td>
-                        <td class="px-3 py-2 text-gray-600">${elemento.diametro}</td>
-                        <td class="px-3 py-2 text-gray-600">${Number(elemento.peso || 0).toLocaleString('es-ES')} kg</td>
-                        <td class="px-3 py-2">
-                            <span class="px-2 py-1 text-xs font-medium rounded-full bg-red-100 text-red-800">
+                        <td class="px-4 py-3 font-semibold text-slate-800">${elemento.codigo}</td>
+                        <td class="px-4 py-3 text-slate-600">${elemento.planilla_codigo || '-'}</td>
+                        <td class="px-4 py-3 text-slate-600">${elemento.diametro}</td>
+                        <td class="px-4 py-3 font-medium text-slate-700">${Number(elemento.peso || 0).toLocaleString('es-ES')} kg</td>
+                        <td class="px-4 py-3">
+                            <span class="px-2.5 py-1 text-xs font-medium rounded-md bg-slate-100 text-slate-700 border border-slate-200">
                                 ${elemento.maquina_actual_nombre}
                             </span>
                         </td>
-                        <td class="px-3 py-2">
-                            <span class="px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-800">
+                        <td class="px-4 py-3">
+                            <span class="px-2.5 py-1 text-xs font-medium rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200">
                                 ${elemento.maquina_nueva_nombre}
                             </span>
                         </td>
-                        <td class="px-3 py-2 text-sm text-gray-600">${elemento.razon || '-'}</td>
+                        <td class="px-4 py-3 text-sm text-slate-500">${elemento.razon || '-'}</td>
                     `;
                     tabla.appendChild(row);
                 });
@@ -5198,7 +5170,7 @@
                 grafico.innerHTML = '';
 
                 if (!datos || datos.length === 0) {
-                    grafico.innerHTML = '<div class="text-center text-gray-400 py-4">Sin datos</div>';
+                    grafico.innerHTML = '<div class="text-center text-gray-400 py-8">Sin datos disponibles</div>';
                     return;
                 }
 
@@ -5206,70 +5178,53 @@
                 const maxPeso = 5000000;
                 const esBalanceado = tipo === 'balanceado';
 
-                datos.forEach(maquina => {
+                // Colores según tipo de gráfico
+                const colores = esBalanceado ? {
+                    bar: 'background: linear-gradient(90deg, #059669 0%, #10b981 100%);',
+                    bg: 'bg-emerald-100',
+                    text: 'text-emerald-700',
+                    accent: '#059669'
+                } : {
+                    bar: 'background: linear-gradient(90deg, #4f46e5 0%, #6366f1 100%);',
+                    bg: 'bg-indigo-100',
+                    text: 'text-indigo-700',
+                    accent: '#4f46e5'
+                };
+
+                datos.forEach((maquina, index) => {
                     const peso = maquina.peso_kg || 0;
                     const longitud = maquina.longitud_m || 0;
                     const diametro = maquina.diametro_medio || 0;
                     const elementos = maquina.cantidad_elementos || 0;
-                    // Porcentaje limitado al 100% (si supera 1 tonelada, barra completa)
                     const porcentaje = Math.min((peso / maxPeso) * 100, 100);
-                    const superaTonelada = peso > maxPeso;
-                    const esSobrecargada = pesoPromedio > 0 && peso > (pesoPromedio * 1.15);
-                    const esSubcargada = pesoPromedio > 0 && peso < (pesoPromedio * 0.85);
-
-                    // Colores según estado
-                    let barColor, barBg, textColor, icon;
-                    if (peso === 0) {
-                        barColor = 'bg-gray-300';
-                        barBg = 'bg-gray-100';
-                        textColor = 'text-gray-400';
-                        icon = '';
-                    } else if (esSobrecargada) {
-                        barColor = 'bg-gradient-to-r from-red-500 to-red-600';
-                        barBg = 'bg-red-100';
-                        textColor = 'text-red-700';
-                        icon = '🔴';
-                    } else if (esSubcargada) {
-                        barColor = 'bg-gradient-to-r from-amber-400 to-yellow-500';
-                        barBg = 'bg-amber-100';
-                        textColor = 'text-amber-700';
-                        icon = '🟡';
-                    } else {
-                        barColor = 'bg-gradient-to-r from-green-500 to-emerald-500';
-                        barBg = 'bg-green-100';
-                        textColor = 'text-green-700';
-                        icon = '🟢';
-                    }
-
-                    // Indicador si supera el máximo (5000 toneladas)
-                    const indicadorTonelada = superaTonelada ? '<span class="text-xs text-red-500 font-bold">+5000T</span>' : '';
+                    const superaMax = peso > maxPeso;
 
                     grafico.innerHTML += `
-                        <div class="grid py-1.5 px-2 rounded-lg hover:bg-white/50 transition-colors" style="grid-template-columns: 100px 1fr 130px; gap: 12px; align-items: center;">
+                        <div class="grid py-2.5 px-3 hover:bg-slate-50 transition-colors border-b border-slate-100 last:border-b-0" style="grid-template-columns: 110px 1fr 140px; gap: 16px; align-items: center;">
                             <div class="min-w-0">
-                                <div class="text-sm font-semibold text-gray-800 truncate" title="${maquina.nombre}">${maquina.nombre}</div>
-                                <div class="text-xs text-gray-500">${elementos} elem.</div>
+                                <div class="text-sm font-semibold text-slate-700 truncate" title="${maquina.nombre}">${maquina.nombre}</div>
+                                <div class="text-xs text-slate-400">${elementos} elementos</div>
                             </div>
-                            <div class="${barBg} rounded-lg h-7 relative overflow-hidden shadow-inner w-full">
-                                <div class="${barColor} h-7 rounded-lg flex items-center justify-end pr-3 text-white text-sm font-bold shadow-sm transition-all duration-300"
-                                     style="width: ${Math.max(porcentaje, peso > 0 ? 15 : 5)}%;">
-                                    ${peso > 0 ? Number(peso).toLocaleString('es-ES') : '-'}
+                            <div class="h-6 rounded-full bg-slate-200 overflow-hidden shadow-inner">
+                                <div class="h-full rounded-full transition-all duration-500 ease-out flex items-center justify-end pr-2"
+                                     style="${colores.bar} width: ${Math.max(porcentaje, peso > 0 ? 8 : 2)}%; min-width: ${peso > 0 ? '40px' : '8px'};">
+                                    <span class="text-xs font-bold text-white drop-shadow-sm">${peso > 0 ? (peso >= 1000 ? Math.round(peso/1000) + 'T' : peso + 'kg') : ''}</span>
                                 </div>
                             </div>
                             <div class="text-right min-w-0">
-                                <div class="text-sm font-medium ${textColor} truncate">${icon} ${Number(peso).toLocaleString('es-ES')} kg ${indicadorTonelada}</div>
-                                <div class="text-xs text-gray-500 truncate">${Number(longitud).toLocaleString('es-ES')}m · ⌀${diametro}</div>
+                                <div class="text-sm font-semibold ${colores.text}">${Number(peso).toLocaleString('es-ES')} kg${superaMax ? ' <span class="text-red-500">⚠</span>' : ''}</div>
+                                <div class="text-xs text-slate-400">${Number(longitud).toLocaleString('es-ES')}m · ⌀${diametro}mm</div>
                             </div>
                         </div>
                     `;
                 });
 
-                // Añadir línea de promedio al final
+                // Línea de promedio
                 if (pesoPromedio > 0) {
                     grafico.innerHTML += `
-                        <div class="mt-3 pt-3 border-t border-gray-200 flex items-center justify-between text-sm">
-                            <span class="text-gray-500">Promedio por máquina:</span>
-                            <span class="font-bold text-gray-700">${Number(pesoPromedio).toLocaleString('es-ES')} kg</span>
+                        <div class="mt-4 pt-3 border-t-2 border-dashed border-slate-200 flex items-center justify-between">
+                            <span class="text-sm text-slate-500 font-medium">Promedio</span>
+                            <span class="text-sm font-bold ${colores.text}">${Number(pesoPromedio).toLocaleString('es-ES')} kg</span>
                         </div>
                     `;
                 }

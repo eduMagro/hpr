@@ -15,12 +15,6 @@ class ElementosTable extends Component
 
     protected $paginationTheme = 'tailwind';
 
-    // Infinite scroll
-    public $registrosPorCarga = 20;
-    public $hayMas = true;
-    public $paginaActual = 1;
-    public $cargando = false;
-
     // Filtros - usando #[Url] para mantenerlos en la URL
     #[Url(keep: true)]
     public $elemento_id = '';
@@ -88,32 +82,12 @@ class ElementosTable extends Component
     #[Url(keep: true)]
     public $perPage = 10;
 
-    // Cuando cambia cualquier filtro, resetear elementos
+    // Cuando cambia cualquier filtro, resetear a la página 1
     public function updated($property)
     {
         if ($property !== 'perPage') {
-            $this->resetearElementos();
+            $this->resetPage();
         }
-    }
-
-    // Resetear para nueva búsqueda
-    public function resetearElementos()
-    {
-        $this->elementos = [];
-        $this->paginaActual = 1;
-        $this->hayMas = true;
-    }
-
-    // Cargar más elementos (llamado desde el frontend)
-    public function cargarMas()
-    {
-        if (!$this->hayMas || $this->cargando) {
-            return;
-        }
-
-        $this->cargando = true;
-        $this->paginaActual++;
-        $this->cargando = false;
     }
 
     public function aplicarFiltros($query)
@@ -313,7 +287,7 @@ class ElementosTable extends Component
             'maquina3', 'producto1', 'producto2', 'producto3', 'figura',
             'peso', 'longitud', 'estado', 'planilla_id', 'sort', 'order'
         ]);
-        $this->resetearElementos();
+        $this->resetPage();
     }
 
     public function getFiltrosActivos()
@@ -430,21 +404,12 @@ class ElementosTable extends Component
         $query = $this->aplicarFiltros($query);
         $query = $this->aplicarOrdenamiento($query);
 
-        // Contar total para saber si hay más
-        $totalRegistros = (clone $query)->count();
         $totalPesoFiltrado = (clone $query)->sum('peso');
 
-        // Infinite scroll: cargar registros hasta la página actual
-        $offset = 0;
-        $limit = $this->paginaActual * $this->registrosPorCarga;
-
-        $elementos = $query->skip($offset)->take($limit)->get();
-
-        // Verificar si hay más registros
-        $this->hayMas = count($elementos) < $totalRegistros;
+        $elementos = $query->paginate($this->perPage);
 
         // Asegurar relación etiqueta
-        $elementos->transform(function ($elemento) {
+        $elementos->getCollection()->transform(function ($elemento) {
             $elemento->etiquetaRelacion = $elemento->etiquetaRelacion ?? (object) ['id' => '', 'nombre' => ''];
             return $elemento;
         });
@@ -472,7 +437,6 @@ class ElementosTable extends Component
             'elementos' => $elementos,
             'maquinas' => $maquinas,
             'totalPesoFiltrado' => $totalPesoFiltrado,
-            'totalRegistros' => $totalRegistros,
             'planilla' => $planilla,
             'filtrosActivos' => $this->getFiltrosActivos(),
             'loadTime' => $loadTime,

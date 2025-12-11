@@ -26,7 +26,7 @@
                 <span>{{ $memoryUsage }} MB</span>
             </div>
             <div class="text-gray-400 border-l border-gray-700 pl-3">
-                {{ count($elementos) }}/{{ $totalRegistros }}
+                {{ $elementos->total() }} registros
             </div>
         </div>
     </div>
@@ -520,51 +520,9 @@
             </table>
         </div>
 
-        <!-- Infinite Scroll: Indicador de carga y trigger -->
+        <!-- Paginación Livewire -->
         <div class="mt-4">
-            <!-- Contador de registros cargados -->
-            <div class="flex items-center justify-center gap-4 text-sm text-gray-600 mb-3">
-                <span>Mostrando <span class="font-semibold">{{ count($elementos) }}</span> de <span class="font-semibold">{{ $totalRegistros }}</span> registros</span>
-                @if(count($elementos) > $this->registrosPorCarga)
-                    <button wire:click="resetearElementos" class="text-blue-600 hover:text-blue-800 underline text-xs">
-                        ↑ Volver al inicio
-                    </button>
-                @endif
-            </div>
-
-            @if($hayMas)
-                <!-- Trigger del infinite scroll (detectado por Intersection Observer) -->
-                <div
-                    x-data="{
-                        init() {
-                            const observer = new IntersectionObserver((entries) => {
-                                entries.forEach(entry => {
-                                    if (entry.isIntersecting) {
-                                        @this.cargarMas();
-                                    }
-                                });
-                            }, { rootMargin: '100px' });
-                            observer.observe(this.$el);
-                        }
-                    }"
-                    class="flex justify-center py-4"
-                >
-                    <div wire:loading.remove wire:target="cargarMas" class="text-gray-500 text-sm">
-                        ↓ Scroll para cargar más
-                    </div>
-                    <div wire:loading wire:target="cargarMas" class="flex items-center gap-2 text-blue-600">
-                        <svg class="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                        </svg>
-                        <span>Cargando más registros...</span>
-                    </div>
-                </div>
-            @else
-                <div class="text-center text-gray-500 text-sm py-4">
-                    ✓ Todos los registros cargados
-                </div>
-            @endif
+            {{ $elementos->links('vendor.livewire.tailwind') }}
         </div>
 
         <!-- Modal de dibujo -->

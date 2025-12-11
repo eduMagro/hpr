@@ -250,7 +250,7 @@ class MaquinaController extends Controller
             ->values();
 
         // Cola de planillas con posiciones específicas
-        [$planillasActivas, $elementosFiltrados, $ordenManual, $posicionesDisponibles] =
+        [$planillasActivas, $elementosFiltrados, $ordenManual, $posicionesDisponibles, $codigosPorPosicion] =
             $this->aplicarColaPlanillasPorPosicion($maquina, $elementosMaquina, $posiciones);
 
         // 5) Datasets filtrados por planilla
@@ -394,6 +394,7 @@ class MaquinaController extends Controller
             'elementosFiltrados'    => $elementosFiltrados,
             'elementosPorPlanilla'  => $elementosPorPlanilla,
             'posicionesDisponibles' => $posicionesDisponibles,
+            'codigosPorPosicion'    => $codigosPorPosicion,
             'posicion1'             => $posicion1,
             'posicion2'             => $posicion2,
             // datasets UI
@@ -430,7 +431,7 @@ class MaquinaController extends Controller
      * @param Maquina $maquina
      * @param Collection $elementos
      * @param Collection $posiciones - Collection de posiciones a mostrar [1, 3, 5...]
-     * @return array [$planillasActivas, $elementosFiltrados, $ordenManual, $posicionesDisponibles]
+     * @return array [$planillasActivas, $elementosFiltrados, $ordenManual, $posicionesDisponibles, $codigosPorPosicion]
      */
     private function aplicarColaPlanillasPorPosicion(Maquina $maquina, Collection $elementos, Collection $posiciones)
     {
@@ -449,7 +450,7 @@ class MaquinaController extends Controller
         // 4) Obtener todas las posiciones disponibles (solo planillas REVISADAS)
         // Consultamos directamente OrdenPlanilla con la relación planilla cargada
         // para incluir TODAS las planillas revisadas en la cola, no solo las que tienen elementos
-        $posicionesDisponibles = OrdenPlanilla::where('maquina_id', $maquina->id)
+        $ordenesConPlanilla = OrdenPlanilla::where('maquina_id', $maquina->id)
             ->with('planilla')
             ->orderBy('posicion', 'asc')
             ->get()
@@ -460,9 +461,16 @@ class MaquinaController extends Controller
                 return $orden->planilla
                     && $orden->planilla->revisada
                     && $porPlanilla->has($orden->planilla_id);
-            })
+            });
+
+        $posicionesDisponibles = $ordenesConPlanilla
             ->pluck('posicion')
             ->values()
+            ->toArray();
+
+        // 4b) Crear mapeo de posicion => codigo_limpio
+        $codigosPorPosicion = $ordenesConPlanilla
+            ->mapWithKeys(fn($orden) => [$orden->posicion => $orden->planilla->codigo_limpio])
             ->toArray();
 
         // 5) Seleccionar planillas según las posiciones solicitadas
@@ -490,7 +498,7 @@ class MaquinaController extends Controller
             ? $elementos->whereIn('planilla_id', $idsActivos)->values()
             : collect();
 
-        return [$planillasActivas, $elementosFiltrados, $ordenManual, $posicionesDisponibles];
+        return [$planillasActivas, $elementosFiltrados, $ordenManual, $posicionesDisponibles, $codigosPorPosicion];
     }
 
     public static function productosSolicitadosParaMaquina($maquinaId)
