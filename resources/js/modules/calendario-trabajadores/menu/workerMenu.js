@@ -62,6 +62,9 @@ export function openWorkerMenu(x, y, event) {
                 user_id: event.extendedProps?.user_id,
             };
 
+            console.log("[workerMenu] Eliminando turno, payload:", payload);
+            console.log("[workerMenu] Event extendedProps:", event.extendedProps);
+
             try {
                 await httpJSON(url, {
                     method: "POST",

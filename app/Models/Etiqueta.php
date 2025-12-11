@@ -29,6 +29,7 @@ class Etiqueta extends Model
         'etiqueta_sub_id',
         'planilla_id',
         'paquete_id',
+        'grupo_resumen_id',
         'producto_id',
         'producto_id_2',
         'ubicacion_id',
@@ -68,6 +69,22 @@ class Etiqueta extends Model
     public function paquete()
     {
         return $this->belongsTo(Paquete::class, 'paquete_id');
+    }
+
+    /**
+     * Relación: Una etiqueta puede pertenecer a un grupo de resumen
+     */
+    public function grupoResumen()
+    {
+        return $this->belongsTo(GrupoResumen::class, 'grupo_resumen_id');
+    }
+
+    /**
+     * Verifica si la etiqueta está agrupada en un resumen
+     */
+    public function estaAgrupada(): bool
+    {
+        return !is_null($this->grupo_resumen_id);
     }
 
     /**

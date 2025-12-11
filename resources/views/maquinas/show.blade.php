@@ -480,7 +480,7 @@
                         </script>
                     @endif
 
-                    {{-- Botones Comprimir/Descomprimir Etiquetas --}}
+                    {{-- Botones Comprimir/Descomprimir/Resumir Etiquetas --}}
                     <div class="flex items-center gap-1">
                         <button type="button" onclick="comprimirEtiquetas()"
                             class="px-3 py-2 bg-gradient-to-r from-indigo-500 to-indigo-600 hover:from-indigo-600 hover:to-indigo-700 text-white rounded-lg text-sm font-medium shadow-md hover:shadow-lg transition-all duration-200 flex items-center gap-1"
@@ -499,6 +499,15 @@
                                     d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
                             </svg>
                             Descomprimir
+                        </button>
+                        <button type="button" onclick="resumirEtiquetasMaquina()"
+                            class="px-3 py-2 bg-gradient-to-r from-teal-500 to-teal-600 hover:from-teal-600 hover:to-teal-700 text-white rounded-lg text-sm font-medium shadow-md hover:shadow-lg transition-all duration-200 flex items-center gap-1"
+                            title="Resumir: Agrupa etiquetas con mismo diámetro y dimensiones (mantiene originales para imprimir)">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/>
+                            </svg>
+                            Resumir
                         </button>
                     </div>
 
@@ -1108,6 +1117,70 @@
                     }
                 });
             }
+
+            // Función para resumir etiquetas de la máquina actual
+            function resumirEtiquetasMaquina() {
+                // Obtener las planillas activas (por posición seleccionada)
+                const pos1 = document.getElementById('posicion_1')?.value;
+                const pos2 = document.getElementById('posicion_2')?.value;
+
+                // Si hay planillas activas definidas en el scope
+                const planillasActivas = @json($planillasActivas ?? []);
+
+                if (planillasActivas.length === 0) {
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'Sin planillas',
+                        text: 'No hay planillas activas en esta máquina para resumir',
+                    });
+                    return;
+                }
+
+                // Si hay una sola planilla, usar esa directamente
+                if (planillasActivas.length === 1) {
+                    resumirEtiquetas(planillasActivas[0].id, {{ $maquina->id }});
+                    return;
+                }
+
+                // Si hay múltiples planillas, preguntar cuál resumir
+                const opcionesHtml = planillasActivas.map(p =>
+                    `<option value="${p.id}">${p.codigo} (${p.peso_total || 0} kg)</option>`
+                ).join('');
+
+                Swal.fire({
+                    icon: 'question',
+                    title: 'Seleccionar planilla',
+                    html: `
+                        <p class="mb-3">Selecciona la planilla a resumir:</p>
+                        <select id="swal-planilla-select" class="w-full border rounded px-3 py-2">
+                            <option value="todas">Todas las planillas</option>
+                            ${opcionesHtml}
+                        </select>
+                    `,
+                    showCancelButton: true,
+                    confirmButtonColor: '#14b8a6',
+                    cancelButtonColor: '#6b7280',
+                    confirmButtonText: 'Continuar',
+                    cancelButtonText: 'Cancelar',
+                    preConfirm: () => {
+                        return document.getElementById('swal-planilla-select').value;
+                    }
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        if (result.value === 'todas') {
+                            // Resumir todas las planillas una por una
+                            planillasActivas.forEach(p => {
+                                resumirEtiquetas(p.id, {{ $maquina->id }});
+                            });
+                        } else {
+                            resumirEtiquetas(parseInt(result.value), {{ $maquina->id }});
+                        }
+                    }
+                });
+            }
         </script>
+
+        {{-- Script del sistema de resumen de etiquetas --}}
+        <script src="{{ asset('js/resumir-etiquetas.js') }}"></script>
 
 </x-app-layout>

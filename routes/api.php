@@ -5,6 +5,7 @@ use App\Http\Controllers\MovimientoController;
 use App\Http\Controllers\PaqueteController;
 use App\Http\Controllers\AsistenteVirtualController;
 use App\Http\Controllers\ProductoController;
+use App\Http\Controllers\ResumenEtiquetaController;
 
 Route::get('/codigos/info', [MovimientoController::class, 'infoCodigo'])
     ->name('api.codigos.info');   // ← este será el nombre exacto
@@ -40,4 +41,31 @@ Route::prefix('asistente')->group(function () {
 
     // Ver estadísticas de uso
     Route::get('/estadisticas', [AsistenteVirtualController::class, 'estadisticas'])->name('asistente.estadisticas');
+});
+
+// Rutas para el sistema de resumen de etiquetas
+Route::prefix('etiquetas/resumir')->group(function () {
+    // Vista previa de grupos que se crearían
+    Route::get('/preview', [ResumenEtiquetaController::class, 'preview'])
+        ->name('api.etiquetas.resumir.preview');
+
+    // Ejecutar resumen
+    Route::post('/', [ResumenEtiquetaController::class, 'resumir'])
+        ->name('api.etiquetas.resumir');
+
+    // Obtener grupos activos
+    Route::get('/grupos', [ResumenEtiquetaController::class, 'grupos'])
+        ->name('api.etiquetas.resumir.grupos');
+
+    // Desagrupar todos los grupos de una planilla
+    Route::post('/desagrupar-todos', [ResumenEtiquetaController::class, 'desagruparTodos'])
+        ->name('api.etiquetas.resumir.desagrupar-todos');
+
+    // Desagrupar un grupo específico
+    Route::post('/{grupo}/desagrupar', [ResumenEtiquetaController::class, 'desagrupar'])
+        ->name('api.etiquetas.resumir.desagrupar');
+
+    // Obtener etiquetas de un grupo para imprimir
+    Route::get('/{grupo}/imprimir', [ResumenEtiquetaController::class, 'etiquetasParaImprimir'])
+        ->name('api.etiquetas.resumir.imprimir');
 });

@@ -29,6 +29,7 @@ use Throwable;
 use Illuminate\Validation\Rule;
 use Illuminate\Support\Facades\File;
 use App\Services\SubEtiquetaService;
+use App\Servicios\Turnos\TurnoMapper;
 
 function toCarbon($valor, $format = 'd/m/Y H:i')
 {
@@ -318,8 +319,12 @@ class ProduccionController extends Controller
 
         $trabajadoresEventos = array_merge($eventos, $festivosEventos);
 
+        // Configuración de turnos para el frontend (slots visuales y detección)
+        $turnosConfig = TurnoMapper::getConfigParaFrontend();
+        // Compatibilidad: turnos como array simple + turnosConfig con estructura completa
+        $turnos = $turnosConfig['turnos'];
 
-        return view('produccion.trabajadores', compact('maquinas', 'trabajadoresEventos', 'operariosTrabajando', 'estadoProduccionMaquinas', 'registroFichajes'));
+        return view('produccion.trabajadores', compact('maquinas', 'trabajadoresEventos', 'operariosTrabajando', 'estadoProduccionMaquinas', 'registroFichajes', 'turnos', 'turnosConfig'));
     }
 
     public function actualizarPuesto(Request $request, $id)

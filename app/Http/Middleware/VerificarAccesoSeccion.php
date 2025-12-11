@@ -124,14 +124,15 @@ class VerificarAccesoSeccion
                     // Permiso de CREAR
                     || (in_array($accionRuta, ['create', 'store']) || Str::startsWith($accionRuta, 'crear') || Str::startsWith($accionRuta, 'store')) && $permiso->puede_crear
 
-                    // Permiso de EDITAR (aquí está el fix)
+                    // Permiso de EDITAR
                     || (in_array($accionRuta, ['edit', 'update', 'destroy'])
                         || Str::startsWith($accionRuta, 'editar')
                         || Str::startsWith($accionRuta, 'actualizar')
-                        || Str::startsWith($accionRuta, 'update')  // ← AGREGAR ESTA LÍNEA
+                        || Str::startsWith($accionRuta, 'update')
                         || Str::startsWith($accionRuta, 'destroy')
                         || Str::startsWith($accionRuta, 'delete')
                         || Str::startsWith($accionRuta, 'eliminar')
+                        || Str::startsWith($accionRuta, 'activar')
                     ) && $permiso->puede_editar
                 ) {
                     $autorizado = true;
