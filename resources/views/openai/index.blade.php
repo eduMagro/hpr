@@ -1336,7 +1336,7 @@
                             <p id="mobile-proveedor" class="font-semibold text-gray-900 uppercase">—</p>
                         </div>
                         <div>
-                            <span class="text-gray-500">Descripción</span>
+                            <span class="text-gray-500">Material</span>
                             <p id="mobile-descripcion" class="font-semibold text-gray-900 uppercase">—</p>
                         </div>
                         <div>
@@ -1368,13 +1368,12 @@
                         </div>
                     </div>
 
-                    <div id="mobile-coladas-preview"
-                        class="hidden bg-white rounded-lg p-4 space-y-2 border border-gray-300/50 shadow-md">
-                        <div class="flex items-center justify-between">
-                            <h4 class="text-sm font-semibold text-gray-900">Coladas detectadas</h4>
-                            <span class="text-xs text-gray-500 tracking-widest uppercase">bultos</span>
+                    <div id="mobile-product-groups-section" class="space-y-3">
+                        <div id="mobile-product-groups"
+                            class="space-y-3 text-sm text-gray-900 bg-white border border-gray-200/70 rounded-lg p-3 shadow-sm">
+                            <h4 class="text-sm font-semibold text-gray-900">Coladas y bultos escaneados</h4>
+                            <p class="text-xs text-gray-500">Aún no se han procesado productos</p>
                         </div>
-                        <div id="mobile-coladas-preview-list" class="space-y-2 text-sm text-gray-700"></div>
                     </div>
 
                     <!-- Botones de acción -->
@@ -2692,30 +2691,37 @@
             setTextContent('mobile-tipo-compra', parsed.tipo_compra ? parsed.tipo_compra : '—');
             setTextContent('mobile-proveedor', parsed.proveedor_texto ? parsed.proveedor_texto : parsed.proveedor || '—');
             const linea = sim.linea_propuesta || {};
+            const productosProcesados = Array.isArray(parsed.productos) ? parsed.productos : [];
 
-            let barras = false;
-            let encarretado = false;
-            let descripcion;
+            let descripcion = parsed.descripcion ? parsed.descripcion.trim() : '';
+            if (!descripcion && productosProcesados.length) {
+                const detecciones = [];
+                productosProcesados.forEach(prod => {
+                    const textoTratado = (prod.descripcion || prod.producto || '').toUpperCase();
+                    if (textoTratado.includes('BARRA')) {
+                        detecciones.push('BARRA');
+                    } else if (textoTratado.includes('ENCARRETADO')) {
+                        detecciones.push('ENCARRETADO');
+                    }
+                });
 
-            // detectar si hay barras, encarretado o ambos
-            parsed.productos.forEach(prod => {
-                let textoTratado = prod.descripcion.trim().toUpperCase();
-                if (textoTratado.includes('BARRA')) {
-                    barras = true;
-                    descripcion = 'Barras';
-                } else if (textoTratado.includes('ENCARRETADO')) {
-                    encarretado = true;
-                    descripcion = 'Encarretado';
+                const unicos = [...new Set(detecciones)];
+                if (unicos.length === 1) {
+                    descripcion = unicos[0];
+                } else if (unicos.length > 1) {
+                    descripcion = unicos.join(' y ');
+                } else {
+                    const primerProducto = productosProcesados[0];
+                    descripcion = (primerProducto?.descripcion || primerProducto?.producto || '').trim();
                 }
-                if (encarretado == true && barras == true) {
-                    descripcion = 'Barras y encarretado';
-                }
-            });
+            }
 
             setTextContent('mobile-descripcion', descripcion);
             setTextContent('mobile-diametro', linea.diametro ? `Ø${linea.diametro}` : '—');
             setTextContent('mobile-longitud', linea.longitud ? `${linea.longitud} m` : '—');
             setTextContent('mobile-pedido-cliente-combo', parsed.pedido_cliente || '—');
+
+            renderMobileProductColadas(productosProcesados);
 
             // Guardar en cache para siguientes vistas
             window.mobileStepManager.dataCache.parsed = parsed;
@@ -2787,11 +2793,11 @@
                             <span class="font-medium text-gray-900">${lineaPropuesta.cantidad_pendiente || 0} kg</span>
                         </div>
                         ${lineaPropuesta.score ? `
-                                                                                                                                                                                                                                                                            <div class="mt-2 pt-2 border-t border-gray-200">
-                                                                                                                                                                                                                                                                                <span class="text-gray-500">Score:</span>
-                                                                                                                                                                                                                                                                                <span class="font-bold text-indigo-600">${Math.round(lineaPropuesta.score)}</span>
-                                                                                                                                                                                                                                                                            </div>
-                                                                                                                                                                                                                                                                            ` : ''}
+                                                                                                                                                                                                                                                                                    <div class="mt-2 pt-2 border-t border-gray-200">
+                                                                                                                                                                                                                                                                                        <span class="text-gray-500">Score:</span>
+                                                                                                                                                                                                                                                                                        <span class="font-bold text-indigo-600">${Math.round(lineaPropuesta.score)}</span>
+                                                                                                                                                                                                                                                                                    </div>
+                                                                                                                                                                                                                                                                                    ` : ''}
                     </div>
                 </div>
             `;
@@ -2812,7 +2818,6 @@
 
             if (bultos.length === 0) {
                 container.innerHTML = '<p class="p-4 text-gray-500 text-center">No hay coladas disponibles</p>';
-                renderMobileColadasPreview([]);
                 return;
             }
 
@@ -2841,7 +2846,6 @@
             // Actualizar totales iniciales (todas marcadas)
             actualizarTotalesColadas();
 
-            renderMobileColadasPreview(bultos);
         }
 
         /**
@@ -2885,27 +2889,6 @@
             poblarVista5ConResumen();
         }
 
-        function renderMobileColadasPreview(bultos) {
-            const preview = document.getElementById('mobile-coladas-preview');
-            const previewList = document.getElementById('mobile-coladas-preview-list');
-            if (!preview || !previewList) return;
-            if (!bultos.length) {
-                previewList.innerHTML = '<p class="text-gray-500 text-xs">No se detectaron coladas.</p>';
-                preview.classList.add('hidden');
-                return;
-            }
-            preview.classList.remove('hidden');
-            previewList.innerHTML = bultos.slice(0, 3).map((bulto) => `
-                <div class="flex items-center justify-between">
-                    <span class="text-gray-900 font-medium text-sm">Colada ${bulto.colada || '—'}</span>
-                    <span class="text-indigo-600 font-semibold">${bulto.bultos || 0}</span>
-                </div>
-            `).join('');
-            if (bultos.length > 3) {
-                previewList.innerHTML += `<p class="text-xs text-gray-400">+ ${bultos.length - 3} coladas más</p>`;
-            }
-        }
-
         const renderMobileProductColadas = (productos = []) => {
             const container = document.getElementById('mobile-product-groups');
             if (!container) return;
@@ -2914,13 +2897,24 @@
                 return;
             }
 
+            const formatPeso = (valor) => {
+                if (valor === undefined || valor === null || valor === '') {
+                    return 'kg ?';
+                }
+                const numerico = Number(valor);
+                if (Number.isNaN(numerico)) {
+                    return 'kg ?';
+                }
+                return `${numerico.toLocaleString('es-ES')} kg`;
+            };
+
             container.innerHTML = productos.map((producto) => {
                 const lineItems = producto.line_items || [];
                 const listItems = lineItems.map((colada) => `
                     <li class="flex justify-between text-[0.75rem] text-gray-700">
                         <span>${colada.colada || '—'}</span>
                         <span>${colada.bultos || 0} bultos</span>
-                        <span class="text-gray-500">${colada.peso_kg ? Number(colada.peso_kg).toLocaleString('es-ES') + ' kg' : 'kg ?'}</span>
+                        <span class="text-gray-500">${formatPeso(colada.peso_kg ?? colada.peso)}</span>
                     </li>
                 `).join('');
 
@@ -3102,13 +3096,13 @@
                     <div class="bg-white border-2 ${isSelected ? 'border-indigo-600' : 'border-gray-200'} rounded-lg p-4 cursor-pointer hover:border-indigo-400 transition"
                          onclick="seleccionarPedidoMobile(${index})">
                         ${isSelected ? `
-                                                                                                                                                                                                                                                                                <div class="flex items-center gap-2 mb-2">
-                                                                                                                                                                                                                                                                                    <svg class="w-5 h-5 text-indigo-600" fill="currentColor" viewBox="0 0 20 20">
-                                                                                                                                                                                                                                                                                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
-                                                                                                                                                                                                                                                                                    </svg>
-                                                                                                                                                                                                                                                                                    <span class="text-xs font-bold text-indigo-600 uppercase">Seleccionado</span>
-                                                                                                                                                                                                                                                                                </div>
-                                                                                                                                                                                                                                                                            ` : ''}
+                                                                                                                                                                                                                                                                                        <div class="flex items-center gap-2 mb-2">
+                                                                                                                                                                                                                                                                                            <svg class="w-5 h-5 text-indigo-600" fill="currentColor" viewBox="0 0 20 20">
+                                                                                                                                                                                                                                                                                                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+                                                                                                                                                                                                                                                                                            </svg>
+                                                                                                                                                                                                                                                                                            <span class="text-xs font-bold text-indigo-600 uppercase">Seleccionado</span>
+                                                                                                                                                                                                                                                                                        </div>
+                                                                                                                                                                                                                                                                                    ` : ''}
 
                         <div class="space-y-2 text-sm">
                             <div>
@@ -3124,25 +3118,25 @@
                                 <span class="ml-2 text-gray-900">${linea.producto || '—'}</span>
                             </div>
                             ${linea.obra ? `
-                                                                                                                                                                                                                                                                                    <div>
-                                                                                                                                                                                                                                                                                        <span class="text-gray-500">Obra:</span>
-                                                                                                                                                                                                                                                                                        <span class="ml-2 text-gray-900">${linea.obra}</span>
-                                                                                                                                                                                                                                                                                    </div>
-                                                                                                                                                                                                                                                                                ` : ''}
+                                                                                                                                                                                                                                                                                            <div>
+                                                                                                                                                                                                                                                                                                <span class="text-gray-500">Obra:</span>
+                                                                                                                                                                                                                                                                                                <span class="ml-2 text-gray-900">${linea.obra}</span>
+                                                                                                                                                                                                                                                                                            </div>
+                                                                                                                                                                                                                                                                                        ` : ''}
                             <div class="flex items-center justify-between pt-2 border-t border-gray-100">
                                 <div>
                                     <span class="text-gray-500">Pendiente:</span>
                                     <span class="ml-2 font-bold text-gray-900">${linea.cantidad_pendiente || 0} kg</span>
                                 </div>
                                 ${linea.score ? `
-                                                                                                                                                                                                                                                                                        <div class="text-xs px-2 py-1 rounded-full ${
-                                                                                                                                                                                                                                                                                            linea.score >= 0.9 ? 'bg-green-100 text-green-700' :
-                                                                                                                                                                                                                                                                                            linea.score >= 0.7 ? 'bg-yellow-100 text-yellow-700' :
-                                                                                                                                                                                                                                                                                            'bg-blue-100 text-blue-700'
-                                                                                                                                                                                                                                                                                        }">
-                                                                                                                                                                                                                                                                                            Score: ${(linea.score * 100).toFixed(0)}%
-                                                                                                                                                                                                                                                                                        </div>
-                                                                                                                                                                                                                                                                                    ` : ''}
+                                                                                                                                                                                                                                                                                                <div class="text-xs px-2 py-1 rounded-full ${
+                                                                                                                                                                                                                                                                                                    linea.score >= 0.9 ? 'bg-green-100 text-green-700' :
+                                                                                                                                                                                                                                                                                                    linea.score >= 0.7 ? 'bg-yellow-100 text-yellow-700' :
+                                                                                                                                                                                                                                                                                                    'bg-blue-100 text-blue-700'
+                                                                                                                                                                                                                                                                                                }">
+                                                                                                                                                                                                                                                                                                    Score: ${(linea.score * 100).toFixed(0)}%
+                                                                                                                                                                                                                                                                                                </div>
+                                                                                                                                                                                                                                                                                            ` : ''}
                             </div>
                         </div>
                     </div>
@@ -3211,20 +3205,20 @@
                             <span class="ml-2 text-gray-900">${linea.producto || '—'}</span>
                         </div>
                         ${linea.obra ? `
-                                                                                                                                                                                                                                                                                <div>
-                                                                                                                                                                                                                                                                                    <span class="text-gray-500">Obra:</span>
-                                                                                                                                                                                                                                                                                    <span class="ml-2 text-gray-900">${linea.obra}</span>
-                                                                                                                                                                                                                                                                                </div>
-                                                                                                                                                                                                                                                                            ` : ''}
+                                                                                                                                                                                                                                                                                        <div>
+                                                                                                                                                                                                                                                                                            <span class="text-gray-500">Obra:</span>
+                                                                                                                                                                                                                                                                                            <span class="ml-2 text-gray-900">${linea.obra}</span>
+                                                                                                                                                                                                                                                                                        </div>
+                                                                                                                                                                                                                                                                                    ` : ''}
                         <div class="pt-2 border-t border-gray-100">
                             <span class="text-gray-500">Cantidad Pendiente:</span>
                             <span class="ml-2 font-bold text-gray-900">${linea.cantidad_pendiente || 0} kg</span>
                         </div>
                         ${linea.score ? `
-                                                                                                                                                                                                                                                                                <div class="text-xs text-gray-500">
-                                                                                                                                                                                                                                                                                    Score de coincidencia: ${(linea.score * 100).toFixed(1)}%
-                                                                                                                                                                                                                                                                                </div>
-                                                                                                                                                                                                                                                                            ` : ''}
+                                                                                                                                                                                                                                                                                        <div class="text-xs text-gray-500">
+                                                                                                                                                                                                                                                                                            Score de coincidencia: ${(linea.score * 100).toFixed(1)}%
+                                                                                                                                                                                                                                                                                        </div>
+                                                                                                                                                                                                                                                                                    ` : ''}
                     </div>
                 </div>
             `;
