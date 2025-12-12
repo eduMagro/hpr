@@ -233,7 +233,7 @@
                                 <input type="file" name="imagenes[]" id="imagenes" accept="image/*,application/pdf"
                                     multiple class="hidden" onchange="handleFileSelect(event)">
                                 <label for="imagenes"
-                                    class="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-semibold shadow hover:bg-indigo-700 cursor-pointer transition">
+                                    class="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-gradient-to-tr from-indigo-600 to-indigo-700 text-white text-sm font-semibold shadow hover:bg-indigo-700 cursor-pointer transition">
                                     <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none"
                                         viewBox="0 0 24 24" stroke="currentColor">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -283,8 +283,8 @@
                                             $distribuidoresList = $distribuidores ?? [];
                                         @endphp
                                         <script>
-                                            console.log('resultado', {!! json_encode($resultado, JSON_UNESCAPED_UNICODE) !!});
-                                            console.log('sim', {!! json_encode($sim, JSON_UNESCAPED_UNICODE) !!});
+                                            // console.log('resultado', {!! json_encode($resultado, JSON_UNESCAPED_UNICODE) !!});
+                                            // console.log('sim', {!! json_encode($sim, JSON_UNESCAPED_UNICODE) !!});
                                         </script>
                                         <div class="flex flex-wrap gap-2 mt-2">
                                             <span class="simulacion-badge badge-info">
@@ -1186,7 +1186,7 @@
                                         </div>
                                         <div class="mt-4 flex justify-end">
                                             <button type="button"
-                                                class="inline-flex items-center gap-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold px-4 py-2 shadow transition"
+                                                class="inline-flex items-center gap-2 rounded-lg bg-gradient-to-tr from-indigo-600 to-indigo-700 hover:bg-indigo-700 text-white text-xs font-semibold px-4 py-2 shadow transition"
                                                 onclick="activarLineaSeleccionada({{ $idx }})">
                                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4"
                                                     fill="none" viewBox="0 0 24 24" stroke="currentColor"
@@ -1255,18 +1255,20 @@
 
             <!-- Barra de progreso -->
             <div class="h-1 bg-gray-200">
-                <div id="mobile-progress-bar" class="h-full bg-indigo-600 transition-all duration-300"
+                <div id="mobile-progress-bar"
+                    class="h-full bg-gradient-to-tr from-indigo-600 to-indigo-700 transition-all duration-300"
                     style="width: 20%"></div>
             </div>
         </div>
 
         <!-- Step wrapper con 5 vistas -->
-        <div id="stepWrapper" class="flex transition-transform duration-300 ease-in-out"
+        <div id="stepWrapper"
+            class="flex transition-transform duration-300 ease-in-out h-[calc(100vh-162px)] overflow-y-auto"
             style="width: 500%; transform: translateX(0%)">
 
             <!-- ===== VISTA 1: SUBIR FOTO ===== -->
             <div id="step-1" class="w-full flex-shrink-0 px-4 py-6">
-                <div class="max-w-md mx-auto space-y-6">
+                <div class="max-w-md mx-auto space-y-3">
                     <h3 class="text-xl font-semibold text-gray-900">Subir Albarán</h3>
                     <p class="text-sm text-gray-600">Selecciona el proveedor y sube una foto del albarán</p>
 
@@ -1310,22 +1312,42 @@
 
             <!-- ===== VISTA 2: CONFIRMAR DATOS ===== -->
             <div id="step-2" class="w-full flex-shrink-0 px-4 py-6">
-                <div class="max-w-md mx-auto space-y-6">
+                <div class="max-w-md mx-auto space-y-3">
                     <h3 class="text-xl font-semibold text-gray-900">Confirmar Datos</h3>
-                    <p class="text-sm text-gray-600">Revisa los datos extraídos del albarán</p>
 
                     <!-- Preview de imagen -->
                     <div id="mobile-preview-container"
-                        class="flex hidden items-center justify-start gap-4 max-h-20 bg-gray-200 border-2 border-gray-200 rounded-lg p-4 cursor-pointer">
-                        <div class="overflow-hidden w-24 h-16 rounded-lg border border-gray-200 bg-white">
+                        class="flex hidden items-center justify-start gap-4 max-h-16 bg-gradient-to-tr from-indigo-600 to-indigo-700 rounded-lg p-4 cursor-pointer shadow-md">
+                        <div class="overflow-hidden w-16 h-12 rounded-lg border-2 border-white">
                             <img id="mobile-preview-img" src="" alt="Preview"
                                 class="w-full h-full object-cover">
                         </div>
-                        <p class="text-xs text-gray-600">Toca para ver la imagen.</p>
+                        <p class="text-md text-white">Toca para ver la imagen</p>
+                    </div>
+
+                    <div id="mobile-extra-info"
+                        class="grid grid-cols-2 gap-3 bg-white p-4 rounded-lg border border-gray-300/50 text-sm shadow-md">
+                        <div>
+                            <span class="text-gray-500">Tipo compra</span>
+                            <p id="mobile-tipo-compra" class="font-semibold text-gray-900 uppercase">—</p>
+                        </div>
+                        <div>
+                            <span class="text-gray-500">Proveedor</span>
+                            <p id="mobile-proveedor" class="font-semibold text-gray-900 uppercase">—</p>
+                        </div>
+                        <div>
+                            <span class="text-gray-500">Descripción</span>
+                            <p id="mobile-descripcion" class="font-semibold text-gray-900 uppercase">—</p>
+                        </div>
+                        <div>
+                            <span class="text-gray-500">Pedido</span>
+                            <p id="mobile-pedido-cliente-combo" class="font-semibold text-gray-900">—</p>
+                        </div>
                     </div>
 
                     <!-- Datos extraídos -->
-                    <div id="mobile-datos-container" class="bg-white rounded-lg p-4 space-y-3">
+                    <div id="mobile-datos-container"
+                        class="bg-white rounded-lg p-4 space-y-3 shadow-md border border-gray-300/50">
                         <div class="grid grid-cols-2 gap-3 text-sm">
                             <div>
                                 <span class="text-gray-500">Albarán:</span>
@@ -1334,14 +1356,6 @@
                             <div>
                                 <span class="text-gray-500">Fecha:</span>
                                 <span id="mobile-fecha" class="block font-medium text-gray-900">—</span>
-                            </div>
-                            <div>
-                                <span class="text-gray-500">Pedido Cliente:</span>
-                                <span id="mobile-pedido-cliente" class="block font-medium text-gray-900">—</span>
-                            </div>
-                            <div>
-                                <span class="text-gray-500">Pedido Código:</span>
-                                <span id="mobile-pedido-codigo" class="block font-medium text-gray-900">—</span>
                             </div>
                             <div>
                                 <span class="text-gray-500">Peso Total:</span>
@@ -1355,7 +1369,7 @@
                     </div>
 
                     <div id="mobile-coladas-preview"
-                        class="hidden bg-white rounded-lg p-4 space-y-2 border border-dashed border-gray-200">
+                        class="hidden bg-white rounded-lg p-4 space-y-2 border border-gray-300/50 shadow-md">
                         <div class="flex items-center justify-between">
                             <h4 class="text-sm font-semibold text-gray-900">Coladas detectadas</h4>
                             <span class="text-xs text-gray-500 tracking-widest uppercase">bultos</span>
@@ -1366,11 +1380,11 @@
                     <!-- Botones de acción -->
                     <div class="flex gap-3">
                         <button type="button" onclick="abrirModalEdicionMobile()"
-                            class="flex-1 px-4 py-3 bg-gray-200 text-gray-800 rounded-lg text-sm">
+                            class="flex-1 px-4 py-3 bg-gray-200 text-gray-800 rounded-lg text-sm shadow-md hover:shadow-lg">
                             Editar
                         </button>
                         <button type="button" data-mobile-next
-                            class="flex-1 px-4 py-3 bg-indigo-600 text-white rounded-lg text-sm">
+                            class="flex-1 px-4 py-3 bg-gradient-to-tr from-indigo-600 to-indigo-700 text-white rounded-lg text-sm shadow-md hover:shadow-lg">
                             Marcar como revisado
                         </button>
                     </div>
@@ -1379,7 +1393,7 @@
 
             <!-- ===== VISTA 3: PEDIDO SELECCIONADO ===== -->
             <div id="step-3" class="w-full flex-shrink-0 px-4 py-6">
-                <div class="max-w-md mx-auto space-y-6">
+                <div class="max-w-md mx-auto space-y-3">
                     <h3 class="text-xl font-semibold text-gray-900">Pedido Seleccionado</h3>
                     <p class="text-sm text-gray-600">Verifica el pedido propuesto o selecciona otro</p>
 
@@ -1396,7 +1410,7 @@
 
                     <!-- Navegación -->
                     <button type="button" data-mobile-next
-                        class="w-full px-4 py-3 bg-indigo-600 text-white rounded-lg font-medium">
+                        class="w-full px-4 py-3 bg-gradient-to-tr from-indigo-600 to-indigo-700 text-white rounded-lg font-medium">
                         Continuar
                     </button>
                 </div>
@@ -1404,7 +1418,7 @@
 
             <!-- ===== VISTA 4: COLADAS A RECEPCIONAR ===== -->
             <div id="step-4" class="w-full flex-shrink-0 px-4 py-6">
-                <div class="max-w-md mx-auto space-y-6">
+                <div class="max-w-md mx-auto space-y-3">
                     <h3 class="text-xl font-semibold text-gray-900">Coladas a Recepcionar</h3>
                     <p class="text-sm text-gray-600">Selecciona las coladas que deseas recepcionar</p>
 
@@ -1430,7 +1444,7 @@
 
                     <!-- Navegación -->
                     <button type="button" data-mobile-next
-                        class="w-full px-4 py-3 bg-indigo-600 text-white rounded-lg font-medium">
+                        class="w-full px-4 py-3 bg-gradient-to-tr from-indigo-600 to-indigo-700 text-white rounded-lg font-medium">
                         Continuar
                     </button>
                 </div>
@@ -1438,7 +1452,7 @@
 
             <!-- ===== VISTA 5: ACTIVACIÓN ===== -->
             <div id="step-5" class="w-full flex-shrink-0 px-4 py-6">
-                <div class="max-w-md mx-auto space-y-6">
+                <div class="max-w-md mx-auto space-y-3">
                     <h3 class="text-xl font-semibold text-gray-900">Confirmar Activación</h3>
                     <p class="text-sm text-gray-600">Revisa el resumen y confirma la activación</p>
 
@@ -1533,7 +1547,7 @@
                     Cancelar
                 </button>
                 <button type="button" onclick="guardarEdicionMobile()"
-                    class="flex-1 px-4 py-2 bg-indigo-600 text-white rounded-lg font-medium">
+                    class="flex-1 px-4 py-2 bg-gradient-to-tr from-indigo-600 to-indigo-700 text-white rounded-lg font-medium">
                     Guardar
                 </button>
             </div>
@@ -2129,7 +2143,7 @@
                 });
 
                 // Guardar datos editados (podrías enviarlos al servidor aquí)
-                console.log('Datos editados:', editedData);
+                // console.log('Datos editados:', editedData);
 
                 // Por ahora, solo ocultar y mostrar simulación
                 document.getElementById(`confirmationPrompt-${idx}`).classList.add('hidden');
@@ -2373,11 +2387,11 @@
                 const canNavigate = isGoingBack || isNextStep || forceAdvance || stepNumber <= this.maxStep;
 
                 if (!canNavigate) {
-                    console.log('Navegación bloqueada:', {
-                        stepNumber,
-                        currentStep: this.currentStep,
-                        maxStep: this.maxStep
-                    });
+                    // console.log('Navegación bloqueada:', {
+                    //     stepNumber,
+                    //     currentStep: this.currentStep,
+                    //     maxStep: this.maxStep
+                    // });
                     return;
                 }
 
@@ -2394,7 +2408,7 @@
                     this.maxStep = stepNumber;
                 }
 
-                console.log('Navegado a paso:', stepNumber, 'maxStep:', this.maxStep);
+                // console.log('Navegado a paso:', stepNumber, 'maxStep:', this.maxStep);
 
                 this.updateNavigation();
                 this.updateProgressBar();
@@ -2463,20 +2477,20 @@
         document.addEventListener('DOMContentLoaded', function() {
             // Verificar si estamos en vista móvil
             const isMobile = window.innerWidth < 768;
-            console.log('Window width:', window.innerWidth, 'isMobile:', isMobile);
+            // console.log('Window width:', window.innerWidth, 'isMobile:', isMobile);
 
             if (window.mobileStepManager && isMobile) {
-                console.log('Inicializando mobileStepManager...');
+                // console.log('Inicializando mobileStepManager...');
                 window.mobileStepManager.init();
 
                 // Event listener para botón de activación
                 const btnActivar = document.getElementById('mobile-btn-activar');
                 if (btnActivar) {
                     btnActivar.addEventListener('click', confirmarActivacionMobile);
-                    console.log('Event listener de activación añadido');
+                    // console.log('Event listener de activación añadido');
                 }
             } else if (!isMobile) {
-                console.log('Vista desktop detectada - sistema móvil no inicializado');
+                // console.log('Vista desktop detectada - sistema móvil no inicializado');
             }
         });
 
@@ -2484,7 +2498,7 @@
         window.addEventListener('resize', function() {
             const isMobile = window.innerWidth < 768;
             if (window.mobileStepManager && isMobile && !window.mobileStepManager.initialized) {
-                console.log('Cambiado a móvil - inicializando...');
+                // console.log('Cambiado a móvil - inicializando...');
                 window.mobileStepManager.init();
                 window.mobileStepManager.initialized = true;
             }
@@ -2610,10 +2624,10 @@
 
                 const data = await response.json();
 
-                console.log('Respuesta AJAX:', data);
+                // console.log('Respuesta AJAX:', data);
 
                 if (data.success && data.resultados && data.resultados.length > 0) {
-                    console.log('Datos recibidos correctamente');
+                    // console.log('Datos recibidos correctamente');
 
                     // Guardar datos en cache
                     window.mobileStepManager.dataCache = {
@@ -2621,17 +2635,17 @@
                         distribuidores: data.distribuidores
                     };
 
-                    console.log('Cache guardado:', window.mobileStepManager.dataCache);
+                    // console.log('Cache guardado:', window.mobileStepManager.dataCache);
 
                     // Poblar Vista 2 con los datos recibidos
-                    console.log('Poblando Vista 2...');
+                    // console.log('Poblando Vista 2...');
                     poblarVista2ConDatos(data.resultados[0]);
 
                     // Avanzar a Vista 2 (forzar avance para permitir pasar de maxStep)
-                    console.log('Avanzando a Vista 2...');
+                    // console.log('Avanzando a Vista 2...');
                     window.mobileStepManager.next(true);
 
-                    console.log('Current step:', window.mobileStepManager.currentStep);
+                    // console.log('Current step:', window.mobileStepManager.currentStep);
                 } else {
                     console.error('Error en respuesta:', data);
                     alert('Error al procesar el albarán. Por favor, intenta de nuevo.');
@@ -2651,6 +2665,10 @@
         function poblarVista2ConDatos(resultado) {
             const parsed = resultado.parsed || {};
             const sim = resultado.simulacion || {};
+            console.log('mobile resultado', {
+                parsed,
+                sim
+            });
 
             // Preview de imagen
             const previewContainer = document.getElementById('mobile-preview-container');
@@ -2668,11 +2686,36 @@
 
             setTextContent('mobile-albaran', parsed.albaran);
             setTextContent('mobile-fecha', parsed.fecha);
-            setTextContent('mobile-pedido-cliente', parsed.pedido_cliente);
-            setTextContent('mobile-pedido-codigo', parsed.pedido_codigo);
             setTextContent('mobile-peso-total',
                 parsed.peso_total ? parseFloat(parsed.peso_total).toLocaleString('es-ES') + ' kg' : '—');
             setTextContent('mobile-bultos-total', parsed.bultos_total);
+            setTextContent('mobile-tipo-compra', parsed.tipo_compra ? parsed.tipo_compra : '—');
+            setTextContent('mobile-proveedor', parsed.proveedor_texto ? parsed.proveedor_texto : parsed.proveedor || '—');
+            const linea = sim.linea_propuesta || {};
+
+            let barras = false;
+            let encarretado = false;
+            let descripcion;
+
+            // detectar si hay barras, encarretado o ambos
+            parsed.productos.forEach(prod => {
+                let textoTratado = prod.descripcion.trim().toUpperCase();
+                if (textoTratado.includes('BARRA')) {
+                    barras = true;
+                    descripcion = 'Barras';
+                } else if (textoTratado.includes('ENCARRETADO')) {
+                    encarretado = true;
+                    descripcion = 'Encarretado';
+                }
+                if (encarretado == true && barras == true) {
+                    descripcion = 'Barras y encarretado';
+                }
+            });
+
+            setTextContent('mobile-descripcion', descripcion);
+            setTextContent('mobile-diametro', linea.diametro ? `Ø${linea.diametro}` : '—');
+            setTextContent('mobile-longitud', linea.longitud ? `${linea.longitud} m` : '—');
+            setTextContent('mobile-pedido-cliente-combo', parsed.pedido_cliente || '—');
 
             // Guardar en cache para siguientes vistas
             window.mobileStepManager.dataCache.parsed = parsed;
@@ -2744,11 +2787,11 @@
                             <span class="font-medium text-gray-900">${lineaPropuesta.cantidad_pendiente || 0} kg</span>
                         </div>
                         ${lineaPropuesta.score ? `
-                                                                                                                            <div class="mt-2 pt-2 border-t border-gray-200">
-                                                                                                                                <span class="text-gray-500">Score:</span>
-                                                                                                                                <span class="font-bold text-indigo-600">${Math.round(lineaPropuesta.score)}</span>
-                                                                                                                            </div>
-                                                                                                                            ` : ''}
+                                                                                                                                                                                                                                                                            <div class="mt-2 pt-2 border-t border-gray-200">
+                                                                                                                                                                                                                                                                                <span class="text-gray-500">Score:</span>
+                                                                                                                                                                                                                                                                                <span class="font-bold text-indigo-600">${Math.round(lineaPropuesta.score)}</span>
+                                                                                                                                                                                                                                                                            </div>
+                                                                                                                                                                                                                                                                            ` : ''}
                     </div>
                 </div>
             `;
@@ -2765,6 +2808,7 @@
             if (!container) return;
 
             const bultos = simulacion.bultos_simulados || [];
+            console.log(simulacion)
 
             if (bultos.length === 0) {
                 container.innerHTML = '<p class="p-4 text-gray-500 text-center">No hay coladas disponibles</p>';
@@ -2861,6 +2905,42 @@
                 previewList.innerHTML += `<p class="text-xs text-gray-400">+ ${bultos.length - 3} coladas más</p>`;
             }
         }
+
+        const renderMobileProductColadas = (productos = []) => {
+            const container = document.getElementById('mobile-product-groups');
+            if (!container) return;
+            if (!productos.length) {
+                container.innerHTML = '<p class="text-xs text-gray-500">Respuesta AJAX: sin productos detectados.</p>';
+                return;
+            }
+
+            container.innerHTML = productos.map((producto) => {
+                const lineItems = producto.line_items || [];
+                const listItems = lineItems.map((colada) => `
+                    <li class="flex justify-between text-[0.75rem] text-gray-700">
+                        <span>${colada.colada || '—'}</span>
+                        <span>${colada.bultos || 0} bultos</span>
+                        <span class="text-gray-500">${colada.peso_kg ? Number(colada.peso_kg).toLocaleString('es-ES') + ' kg' : 'kg ?'}</span>
+                    </li>
+                `).join('');
+
+                return `
+                    <div class="bg-white border border-gray-100 rounded-lg p-3 space-y-2 text-[0.8rem]">
+                        <div class="flex items-center justify-between">
+                            <span class="font-semibold uppercase">${producto.descripcion || producto.producto || 'Producto'}</span>
+                            <span class="text-gray-400">${producto.calidad || ''}</span>
+                        </div>
+                        <div class="flex gap-4 text-gray-500">
+                            <span>Ø${producto.diametro || '—'}</span>
+                            <span>${producto.longitud ? `${producto.longitud} m` : 'Longitud —'}</span>
+                        </div>
+                        <ul class="space-y-1 pt-2 border-t border-gray-100">
+                            ${listItems}
+                        </ul>
+                    </div>
+                `;
+            }).join('');
+        };
 
         /**
          * Poblar Vista 5 con resumen final
@@ -3022,13 +3102,13 @@
                     <div class="bg-white border-2 ${isSelected ? 'border-indigo-600' : 'border-gray-200'} rounded-lg p-4 cursor-pointer hover:border-indigo-400 transition"
                          onclick="seleccionarPedidoMobile(${index})">
                         ${isSelected ? `
-                                                                                                                                <div class="flex items-center gap-2 mb-2">
-                                                                                                                                    <svg class="w-5 h-5 text-indigo-600" fill="currentColor" viewBox="0 0 20 20">
-                                                                                                                                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
-                                                                                                                                    </svg>
-                                                                                                                                    <span class="text-xs font-bold text-indigo-600 uppercase">Seleccionado</span>
-                                                                                                                                </div>
-                                                                                                                            ` : ''}
+                                                                                                                                                                                                                                                                                <div class="flex items-center gap-2 mb-2">
+                                                                                                                                                                                                                                                                                    <svg class="w-5 h-5 text-indigo-600" fill="currentColor" viewBox="0 0 20 20">
+                                                                                                                                                                                                                                                                                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+                                                                                                                                                                                                                                                                                    </svg>
+                                                                                                                                                                                                                                                                                    <span class="text-xs font-bold text-indigo-600 uppercase">Seleccionado</span>
+                                                                                                                                                                                                                                                                                </div>
+                                                                                                                                                                                                                                                                            ` : ''}
 
                         <div class="space-y-2 text-sm">
                             <div>
@@ -3044,25 +3124,25 @@
                                 <span class="ml-2 text-gray-900">${linea.producto || '—'}</span>
                             </div>
                             ${linea.obra ? `
-                                                                                                                                    <div>
-                                                                                                                                        <span class="text-gray-500">Obra:</span>
-                                                                                                                                        <span class="ml-2 text-gray-900">${linea.obra}</span>
-                                                                                                                                    </div>
-                                                                                                                                ` : ''}
+                                                                                                                                                                                                                                                                                    <div>
+                                                                                                                                                                                                                                                                                        <span class="text-gray-500">Obra:</span>
+                                                                                                                                                                                                                                                                                        <span class="ml-2 text-gray-900">${linea.obra}</span>
+                                                                                                                                                                                                                                                                                    </div>
+                                                                                                                                                                                                                                                                                ` : ''}
                             <div class="flex items-center justify-between pt-2 border-t border-gray-100">
                                 <div>
                                     <span class="text-gray-500">Pendiente:</span>
                                     <span class="ml-2 font-bold text-gray-900">${linea.cantidad_pendiente || 0} kg</span>
                                 </div>
                                 ${linea.score ? `
-                                                                                                                                        <div class="text-xs px-2 py-1 rounded-full ${
-                                                                                                                                            linea.score >= 0.9 ? 'bg-green-100 text-green-700' :
-                                                                                                                                            linea.score >= 0.7 ? 'bg-yellow-100 text-yellow-700' :
-                                                                                                                                            'bg-blue-100 text-blue-700'
-                                                                                                                                        }">
-                                                                                                                                            Score: ${(linea.score * 100).toFixed(0)}%
-                                                                                                                                        </div>
-                                                                                                                                    ` : ''}
+                                                                                                                                                                                                                                                                                        <div class="text-xs px-2 py-1 rounded-full ${
+                                                                                                                                                                                                                                                                                            linea.score >= 0.9 ? 'bg-green-100 text-green-700' :
+                                                                                                                                                                                                                                                                                            linea.score >= 0.7 ? 'bg-yellow-100 text-yellow-700' :
+                                                                                                                                                                                                                                                                                            'bg-blue-100 text-blue-700'
+                                                                                                                                                                                                                                                                                        }">
+                                                                                                                                                                                                                                                                                            Score: ${(linea.score * 100).toFixed(0)}%
+                                                                                                                                                                                                                                                                                        </div>
+                                                                                                                                                                                                                                                                                    ` : ''}
                             </div>
                         </div>
                     </div>
@@ -3131,20 +3211,20 @@
                             <span class="ml-2 text-gray-900">${linea.producto || '—'}</span>
                         </div>
                         ${linea.obra ? `
-                                                                                                                                <div>
-                                                                                                                                    <span class="text-gray-500">Obra:</span>
-                                                                                                                                    <span class="ml-2 text-gray-900">${linea.obra}</span>
-                                                                                                                                </div>
-                                                                                                                            ` : ''}
+                                                                                                                                                                                                                                                                                <div>
+                                                                                                                                                                                                                                                                                    <span class="text-gray-500">Obra:</span>
+                                                                                                                                                                                                                                                                                    <span class="ml-2 text-gray-900">${linea.obra}</span>
+                                                                                                                                                                                                                                                                                </div>
+                                                                                                                                                                                                                                                                            ` : ''}
                         <div class="pt-2 border-t border-gray-100">
                             <span class="text-gray-500">Cantidad Pendiente:</span>
                             <span class="ml-2 font-bold text-gray-900">${linea.cantidad_pendiente || 0} kg</span>
                         </div>
                         ${linea.score ? `
-                                                                                                                                <div class="text-xs text-gray-500">
-                                                                                                                                    Score de coincidencia: ${(linea.score * 100).toFixed(1)}%
-                                                                                                                                </div>
-                                                                                                                            ` : ''}
+                                                                                                                                                                                                                                                                                <div class="text-xs text-gray-500">
+                                                                                                                                                                                                                                                                                    Score de coincidencia: ${(linea.score * 100).toFixed(1)}%
+                                                                                                                                                                                                                                                                                </div>
+                                                                                                                                                                                                                                                                            ` : ''}
                     </div>
                 </div>
             `;
