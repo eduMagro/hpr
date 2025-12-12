@@ -1315,16 +1315,34 @@ class AsignacionTurnoController extends Controller
         foreach ($request->user_ids as $userId) {
             $fecha = $fechaInicio->copy();
             while ($fecha->lte($fechaFin)) {
-                AsignacionTurno::updateOrCreate(
-                    [
-                        'user_id' => $userId,
-                        'fecha' => $fecha->toDateString(),
-                    ],
-                    [
+                $fechaStr = $fecha->toDateString();
+
+                // Buscar asignación existente (incluyendo soft-deleted)
+                $asignacion = AsignacionTurno::withTrashed()
+                    ->where('user_id', $userId)
+                    ->whereDate('fecha', $fechaStr)
+                    ->first();
+
+                if ($asignacion) {
+                    // Si está soft-deleted, restaurarla
+                    if ($asignacion->trashed()) {
+                        $asignacion->restore();
+                    }
+                    // Actualizar
+                    $asignacion->update([
                         'obra_id' => $request->obra_id,
                         'turno_id' => $turnoMontajeId,
-                    ]
-                );
+                    ]);
+                } else {
+                    // Crear nueva
+                    AsignacionTurno::create([
+                        'user_id' => $userId,
+                        'fecha' => $fechaStr,
+                        'obra_id' => $request->obra_id,
+                        'turno_id' => $turnoMontajeId,
+                    ]);
+                }
+
                 $fecha->addDay();
             }
         }
@@ -1502,6 +1520,49 @@ class AsignacionTurnoController extends Controller
         return response()->json([
             'success' => true,
             'message' => "Se copiaron {$total} asignaciones ({$copiadas} normales, {$copiadasFicticias} ficticias)."
+        ]);
+    }
+
+    /**
+     * Limpia las asignaciones de obra de una semana
+     * Puede limpiar todas las obras o solo una específica
+     */
+    public function limpiarSemana(Request $request)
+    {
+        $request->validate([
+            'fecha_actual' => 'required|date',
+            'obra_id' => 'nullable|exists:obras,id',
+        ]);
+
+        $inicioSemana = Carbon::parse($request->fecha_actual)->startOfWeek();
+        $finSemana = $inicioSemana->copy()->endOfWeek();
+
+        // Query base para asignaciones normales
+        $queryAsignaciones = AsignacionTurno::whereBetween('fecha', [$inicioSemana, $finSemana])
+            ->whereNotNull('obra_id');
+
+        // Query base para eventos ficticios
+        $queryFicticios = \App\Models\EventoFicticioObra::whereBetween('fecha', [$inicioSemana, $finSemana]);
+
+        // Filtrar por obra si se especifica
+        if ($request->obra_id) {
+            $queryAsignaciones->where('obra_id', $request->obra_id);
+            $queryFicticios->where('obra_id', $request->obra_id);
+        }
+
+        // Eliminar asignaciones (soft delete)
+        $eliminadasNormales = $queryAsignaciones->count();
+        $queryAsignaciones->delete();
+
+        // Eliminar eventos ficticios
+        $eliminadasFicticias = $queryFicticios->count();
+        $queryFicticios->delete();
+
+        $total = $eliminadasNormales + $eliminadasFicticias;
+
+        return response()->json([
+            'success' => true,
+            'message' => "Se eliminaron {$total} asignaciones ({$eliminadasNormales} normales, {$eliminadasFicticias} ficticias)."
         ]);
     }
 
@@ -1711,6 +1772,224 @@ class AsignacionTurnoController extends Controller
             'success' => true,
             'message' => "Se copiaron {$copiadas} asignaciones correctamente.",
             'copiadas' => $copiadas,
+            'eventos' => $eventosCreados,
+        ]);
+    }
+
+    /**
+     * Propaga las asignaciones de un día a múltiples días siguientes
+     * Salta fines de semana y festivos automáticamente
+     */
+    public function propagarDia(Request $request)
+    {
+        $request->validate([
+            'fecha_origen' => 'required|date',
+            'alcance' => 'required|in:semana_actual,dos_semanas',
+            'maquina_id' => 'nullable',
+        ]);
+
+        $fechaOrigen = Carbon::parse($request->fecha_origen);
+        $maquinaId = $request->maquina_id;
+        $alcance = $request->alcance;
+
+        // Calcular fecha fin según alcance
+        // dayOfWeek: 0=domingo, 1=lunes, ..., 5=viernes, 6=sábado
+        $diaSemana = $fechaOrigen->dayOfWeek;
+
+        // Calcular días hasta el viernes de esta semana
+        // Si es domingo (0), el viernes es en 5 días
+        // Si es lunes (1), el viernes es en 4 días
+        // Si es viernes (5), es hoy mismo
+        // Si es sábado (6), el viernes pasó, ir al siguiente
+        $diasHastaViernes = $diaSemana === 0 ? 5 : (5 - $diaSemana);
+        if ($diasHastaViernes <= 0) {
+            $diasHastaViernes += 7; // Ir al viernes de la siguiente semana
+        }
+
+        if ($alcance === 'semana_actual') {
+            $fechaFin = $fechaOrigen->copy()->addDays($diasHastaViernes);
+        } else {
+            // Dos semanas: viernes de la semana siguiente
+            $fechaFin = $fechaOrigen->copy()->addDays($diasHastaViernes + 7);
+        }
+
+        Log::info('[propagarDia] Parámetros:', [
+            'fecha_origen' => $fechaOrigen->toDateString(),
+            'fecha_fin' => $fechaFin->toDateString(),
+            'alcance' => $alcance,
+            'maquina_id' => $maquinaId,
+        ]);
+
+        // Si la fecha origen es posterior o igual a la fecha fin, error
+        if ($fechaOrigen->greaterThanOrEqualTo($fechaFin)) {
+            return response()->json([
+                'success' => false,
+                'message' => "La fecha de origen ({$fechaOrigen->toDateString()}) debe ser anterior al viernes ({$fechaFin->toDateString()}).",
+            ]);
+        }
+
+        // Obtener asignaciones del día origen (TODAS, sin filtro de máquina obligatorio)
+        $query = AsignacionTurno::with(['user.categoria', 'turno', 'obra'])
+            ->whereDate('fecha', $fechaOrigen->toDateString());
+
+        // Solo filtrar por máquina si se especifica una válida
+        if ($maquinaId && is_numeric($maquinaId)) {
+            $query->where('maquina_id', $maquinaId);
+        }
+
+        $asignaciones = $query->get();
+
+        Log::info('[propagarDia] Asignaciones encontradas:', [
+            'count' => $asignaciones->count(),
+            'ids' => $asignaciones->pluck('id')->toArray(),
+        ]);
+
+        if ($asignaciones->isEmpty()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'No hay asignaciones en el día origen para propagar.',
+            ]);
+        }
+
+        // Obtener festivos en el rango
+        $festivos = Festivo::whereBetween('fecha', [
+            $fechaOrigen->toDateString(),
+            $fechaFin->toDateString()
+        ])->pluck('fecha')->map(fn($f) => Carbon::parse($f)->toDateString())->toArray();
+
+        // Obtener vacaciones de los usuarios involucrados
+        $userIds = $asignaciones->pluck('user_id')->unique()->toArray();
+        $vacaciones = VacacionesSolicitud::whereIn('user_id', $userIds)
+            ->where('estado', 'aprobada')
+            ->where(function ($q) use ($fechaOrigen, $fechaFin) {
+                $q->whereBetween('fecha_inicio', [$fechaOrigen, $fechaFin])
+                  ->orWhereBetween('fecha_fin', [$fechaOrigen, $fechaFin])
+                  ->orWhere(function ($q2) use ($fechaOrigen, $fechaFin) {
+                      $q2->where('fecha_inicio', '<=', $fechaOrigen)
+                         ->where('fecha_fin', '>=', $fechaFin);
+                  });
+            })
+            ->get();
+
+        // Crear mapa de vacaciones por usuario y fecha
+        $vacacionesPorUsuario = [];
+        foreach ($vacaciones as $v) {
+            $periodo = CarbonPeriod::create($v->fecha_inicio, $v->fecha_fin);
+            foreach ($periodo as $dia) {
+                $vacacionesPorUsuario[$v->user_id][$dia->toDateString()] = true;
+            }
+        }
+
+        // Colores por obra
+        $coloresEventos = [
+            1 => ['bg' => '#93C5FD', 'border' => '#60A5FA'],
+            2 => ['bg' => '#6EE7B7', 'border' => '#34D399'],
+            3 => ['bg' => '#FDBA74', 'border' => '#F59E0B'],
+        ];
+
+        $copiadas = 0;
+        $eventosCreados = [];
+        $diasProcesados = 0;
+
+        // Iterar desde el día siguiente al origen hasta el fin
+        $fechaActual = $fechaOrigen->copy()->addDay();
+
+        while ($fechaActual->lessThanOrEqualTo($fechaFin)) {
+            $fechaStr = $fechaActual->toDateString();
+
+            // Saltar fines de semana
+            if ($fechaActual->isWeekend()) {
+                $fechaActual->addDay();
+                continue;
+            }
+
+            // Saltar festivos
+            if (in_array($fechaStr, $festivos)) {
+                $fechaActual->addDay();
+                continue;
+            }
+
+            $diasProcesados++;
+
+            foreach ($asignaciones as $asignacion) {
+                // Verificar si el usuario tiene vacaciones este día
+                if (isset($vacacionesPorUsuario[$asignacion->user_id][$fechaStr])) {
+                    continue;
+                }
+
+                // Buscar asignación existente (incluyendo soft-deleted)
+                $asignacionExistente = AsignacionTurno::withTrashed()
+                    ->where('user_id', $asignacion->user_id)
+                    ->whereDate('fecha', $fechaStr)
+                    ->first();
+
+                if ($asignacionExistente) {
+                    // Si está soft-deleted, restaurarla
+                    if ($asignacionExistente->trashed()) {
+                        $asignacionExistente->restore();
+                    }
+                    // Actualizar con los datos del día origen
+                    $asignacionExistente->update([
+                        'turno_id' => $asignacion->turno_id,
+                        'maquina_id' => $asignacion->maquina_id,
+                        'obra_id' => $asignacion->obra_id,
+                        'estado' => 'activo',
+                    ]);
+                    $nuevaAsignacion = $asignacionExistente;
+                } else {
+                    // Crear nueva asignación
+                    $nuevaAsignacion = AsignacionTurno::create([
+                        'user_id' => $asignacion->user_id,
+                        'fecha' => $fechaStr,
+                        'turno_id' => $asignacion->turno_id,
+                        'maquina_id' => $asignacion->maquina_id,
+                        'obra_id' => $asignacion->obra_id,
+                        'estado' => 'activo',
+                    ]);
+                }
+
+                $copiadas++;
+
+                // Construir evento para el frontend
+                $turnoModel = $asignacion->turno;
+                $slot = TurnoMapper::getSlotParaTurnoModel($turnoModel, $fechaStr);
+                $slotStart = $slot['start'];
+                $slotEnd = $slot['end'];
+
+                $obraId = $asignacion->obra_id;
+                $colorEvento = $coloresEventos[$obraId] ?? ['bg' => '#d1d5db', 'border' => '#9ca3af'];
+
+                $eventosCreados[] = [
+                    'id' => 'turno-' . $nuevaAsignacion->id,
+                    'title' => $asignacion->user->nombre_completo ?? $asignacion->user->name,
+                    'start' => $slotStart,
+                    'end' => $slotEnd,
+                    'resourceId' => $asignacion->maquina_id,
+                    'backgroundColor' => $colorEvento['bg'],
+                    'borderColor' => $colorEvento['border'],
+                    'textColor' => '#000000',
+                    'extendedProps' => [
+                        'user_id' => $asignacion->user_id,
+                        'turno' => $turnoModel->nombre ?? null,
+                        'categoria_nombre' => $asignacion->user->categoria->nombre ?? null,
+                        'entrada' => null,
+                        'salida' => null,
+                        'foto' => $asignacion->user->ruta_imagen ?? null,
+                        'es_festivo' => false,
+                    ],
+                ];
+            }
+
+            $fechaActual->addDay();
+        }
+
+        $alcanceTexto = $alcance === 'semana_actual' ? 'esta semana' : 'las próximas 2 semanas';
+
+        return response()->json([
+            'success' => true,
+            'message' => "Se propagaron {$copiadas} asignaciones a {$diasProcesados} días ({$alcanceTexto}).",
+            'copiadas' => $copiadas,
+            'dias_procesados' => $diasProcesados,
             'eventos' => $eventosCreados,
         ]);
     }

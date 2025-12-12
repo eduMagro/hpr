@@ -890,6 +890,66 @@
             };
         }
 
+        // === CATEGORIAS CRUD ===
+        function categoriasData() {
+            return {
+                items: @js($categorias),
+                editandoId: null,
+                editando: {},
+                nuevo: { nombre: '' },
+                enviando: false,
+
+                iniciarEdicion(item) { this.editandoId = item.id; this.editando = { ...item }; },
+                cancelarEdicion() { this.editandoId = null; this.editando = {}; },
+                guardar(item) {
+                    if (!this.editando.nombre?.trim()) { Swal.fire({ icon: 'warning', text: 'El nombre es obligatorio.' }); return; }
+                    fetch("{{ route('categorias.updateField') }}", {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content },
+                        body: JSON.stringify({ id: item.id, field: 'nombre', value: this.editando.nombre.trim() })
+                    }).then(r => r.json()).then(data => {
+                        if (data.success) {
+                            item.nombre = this.editando.nombre.trim();
+                            this.cancelarEdicion();
+                            Swal.fire({ icon: 'success', text: 'Categoría actualizada', toast: true, position: 'top-end', timer: 2000, showConfirmButton: false });
+                        } else Swal.fire({ icon: 'error', text: data.message });
+                    }).catch(() => Swal.fire({ icon: 'error', text: 'Error al actualizar' }));
+                },
+                crear() {
+                    if (!this.nuevo.nombre?.trim() || this.enviando) return;
+                    this.enviando = true;
+                    fetch("{{ route('categorias.store') }}", {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content },
+                        body: JSON.stringify({ nombre: this.nuevo.nombre.trim() })
+                    }).then(r => r.json()).then(data => {
+                        if (data.success) {
+                            this.items.push(data.categoria);
+                            this.nuevo = { nombre: '' };
+                            Swal.fire({ icon: 'success', text: 'Categoría creada', toast: true, position: 'top-end', timer: 2000, showConfirmButton: false });
+                        } else Swal.fire({ icon: 'error', text: data.message });
+                        this.enviando = false;
+                    }).catch(() => { Swal.fire({ icon: 'error', text: 'Error al crear' }); this.enviando = false; });
+                },
+                eliminar(item) {
+                    Swal.fire({ title: '¿Eliminar categoría?', text: `Se eliminará "${item.nombre}"`, icon: 'warning', showCancelButton: true, confirmButtonColor: '#d33', confirmButtonText: 'Sí, eliminar', cancelButtonText: 'Cancelar' }).then(result => {
+                        if (result.isConfirmed) {
+                            fetch("{{ route('categorias.destroy') }}", {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content },
+                                body: JSON.stringify({ id: item.id })
+                            }).then(r => r.json()).then(data => {
+                                if (data.success) {
+                                    this.items = this.items.filter(i => i.id !== item.id);
+                                    Swal.fire({ icon: 'success', text: 'Categoría eliminada', toast: true, position: 'top-end', timer: 2000, showConfirmButton: false });
+                                } else Swal.fire({ icon: 'error', text: data.message });
+                            });
+                        }
+                    });
+                }
+            };
+        }
+
         // === EMPRESAS CRUD ===
         function empresasData() {
             return {
@@ -1003,171 +1063,6 @@
             };
         }
 
-        // === CATEGORIAS CRUD ===
-        window.guardarCategoria = function(categoria, callback) {
-            if (!categoria.nombre || !categoria.nombre.trim()) {
-                Swal.fire({
-                    icon: 'warning',
-                    title: 'Campo requerido',
-                    text: 'El nombre no puede estar vacío.',
-                    confirmButtonText: 'OK'
-                });
-                return;
-            }
-
-            fetch("{{ route('categorias.updateField') }}", {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Accept': 'application/json',
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
-                },
-                body: JSON.stringify({
-                    id: categoria.id,
-                    field: 'nombre',
-                    value: categoria.nombre.trim()
-                })
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    // Actualizar el original para que coincida con el editado
-                    if (callback) callback();
-                    // Toast de éxito
-                    Swal.fire({
-                        icon: 'success',
-                        text: 'Categoría actualizada',
-                        toast: true,
-                        position: 'top-end',
-                        timer: 2000,
-                        showConfirmButton: false
-                    });
-                } else {
-                    Swal.fire({
-                        icon: 'error',
-                        title: 'Error al actualizar',
-                        text: data.message || 'Ha ocurrido un error inesperado.',
-                        confirmButtonText: 'OK'
-                    });
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Error de conexión',
-                    text: 'No se pudo actualizar la categoría. Inténtalo nuevamente.',
-                    confirmButtonText: 'OK'
-                });
-            });
-        }
-
-        window.crearCategoria = function(nombre, callback) {
-            if (!nombre || !nombre.trim()) {
-                Swal.fire({
-                    icon: 'warning',
-                    title: 'Campo requerido',
-                    text: 'El nombre no puede estar vacío.',
-                    confirmButtonText: 'OK'
-                });
-                return;
-            }
-
-            fetch("{{ route('categorias.store') }}", {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Accept': 'application/json',
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
-                },
-                body: JSON.stringify({ nombre: nombre.trim() })
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    if (callback) callback(data.categoria);
-                    Swal.fire({
-                        icon: 'success',
-                        text: 'Categoría creada',
-                        toast: true,
-                        position: 'top-end',
-                        timer: 2000,
-                        showConfirmButton: false
-                    });
-                } else {
-                    Swal.fire({
-                        icon: 'error',
-                        title: 'Error al crear',
-                        text: data.message || 'Ha ocurrido un error inesperado.',
-                        confirmButtonText: 'OK'
-                    });
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Error de conexión',
-                    text: 'No se pudo crear la categoría. Inténtalo nuevamente.',
-                    confirmButtonText: 'OK'
-                });
-            });
-        }
-
-        window.eliminarCategoria = function(id, nombre, callback) {
-            Swal.fire({
-                title: '¿Eliminar categoría?',
-                text: `Se eliminará la categoría "${nombre}"`,
-                icon: 'warning',
-                showCancelButton: true,
-                confirmButtonColor: '#d33',
-                cancelButtonColor: '#3085d6',
-                confirmButtonText: 'Sí, eliminar',
-                cancelButtonText: 'Cancelar'
-            }).then((result) => {
-                if (result.isConfirmed) {
-                    fetch("{{ route('categorias.destroy') }}", {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'Accept': 'application/json',
-                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
-                        },
-                        body: JSON.stringify({ id })
-                    })
-                    .then(response => response.json())
-                    .then(data => {
-                        if (data.success) {
-                            if (callback) callback();
-                            Swal.fire({
-                                icon: 'success',
-                                text: 'Categoría eliminada',
-                                toast: true,
-                                position: 'top-end',
-                                timer: 2000,
-                                showConfirmButton: false
-                            });
-                        } else {
-                            Swal.fire({
-                                icon: 'error',
-                                title: 'Error',
-                                text: data.message,
-                                confirmButtonText: 'OK'
-                            });
-                        }
-                    })
-                    .catch(error => {
-                        console.error('Error:', error);
-                        Swal.fire({
-                            icon: 'error',
-                            title: 'Error de conexión',
-                            text: 'No se pudo eliminar la categoría.',
-                            confirmButtonText: 'OK'
-                        });
-                    });
-                }
-            });
-        }
     </script>
 
 </x-app-layout>

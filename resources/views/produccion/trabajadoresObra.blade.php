@@ -145,6 +145,15 @@
                         class="bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-2 px-4 rounded">
                         🔁 Repetir todas las obras
                     </button>
+
+                    {{-- Separador --}}
+                    <div class="h-8 w-px bg-gray-300"></div>
+
+                    {{-- Limpiar semana --}}
+                    <button id="btnLimpiarSemana"
+                        class="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded">
+                        🗑️ Limpiar semana
+                    </button>
                 </div>
             </div>
             <div id="calendario-obras" class="w-full"></div>
@@ -1603,6 +1612,97 @@
                                 console.error(error);
                                 Swal.fire('❌ Error', 'No se pudo completar la solicitud.', 'error');
                             });
+                    }
+                });
+            });
+        }
+
+        // Botón limpiar semana
+        const btnLimpiarSemana = document.getElementById('btnLimpiarSemana');
+        if (btnLimpiarSemana) {
+            btnLimpiarSemana.addEventListener('click', function() {
+                const fechaInicio = document.getElementById('btnRepetirSemana').dataset.fecha;
+
+                Swal.fire({
+                    title: '¿Limpiar semana actual?',
+                    html: `
+                        <p class="text-sm text-gray-600 mb-4">Se eliminarán todas las asignaciones de obra de esta semana.</p>
+                        <div class="text-left">
+                            <label class="flex items-center gap-2 mb-2">
+                                <input type="checkbox" id="limpiarTodas" checked class="rounded">
+                                <span class="text-sm">Todas las obras</span>
+                            </label>
+                            <div id="selectObraLimpiarContainer" class="hidden">
+                                <select id="selectObraLimpiar" class="w-full border border-gray-300 rounded px-3 py-2 text-sm mt-2">
+                                    <option value="">-- Seleccionar obra --</option>
+                                </select>
+                            </div>
+                        </div>
+                    `,
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#d33',
+                    cancelButtonColor: '#6b7280',
+                    confirmButtonText: 'Sí, limpiar',
+                    cancelButtonText: 'Cancelar',
+                    didOpen: () => {
+                        // Poblar select de obras
+                        const selectObra = document.getElementById('selectObraLimpiar');
+                        window.obrasResources.forEach(resource => {
+                            if (resource.id !== 'sin-obra') {
+                                const option = document.createElement('option');
+                                option.value = resource.id;
+                                option.textContent = resource.codigo ? `${resource.codigo} - ${resource.title}` : resource.title;
+                                selectObra.appendChild(option);
+                            }
+                        });
+
+                        // Toggle para mostrar/ocultar select
+                        document.getElementById('limpiarTodas').addEventListener('change', function() {
+                            const container = document.getElementById('selectObraLimpiarContainer');
+                            container.classList.toggle('hidden', this.checked);
+                        });
+                    },
+                    preConfirm: () => {
+                        const limpiarTodas = document.getElementById('limpiarTodas').checked;
+                        const obraId = document.getElementById('selectObraLimpiar').value;
+                        return { limpiarTodas, obraId };
+                    }
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        const { limpiarTodas, obraId } = result.value;
+
+                        fetch('{{ route('asignaciones-turnos.limpiarSemana') }}', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                            },
+                            body: JSON.stringify({
+                                fecha_actual: fechaInicio,
+                                obra_id: limpiarTodas ? null : obraId
+                            })
+                        })
+                        .then(res => res.json())
+                        .then(data => {
+                            if (data.success) {
+                                Swal.fire({
+                                    icon: 'success',
+                                    title: 'Semana limpiada',
+                                    text: data.message,
+                                    timer: 2000,
+                                    showConfirmButton: false
+                                });
+                                window.calendarioObras.refetchEvents();
+                                setTimeout(() => actualizarEstadoFichasTrabajadores(), 200);
+                            } else {
+                                Swal.fire('❌ Error', data.message, 'error');
+                            }
+                        })
+                        .catch(error => {
+                            console.error(error);
+                            Swal.fire('❌ Error', 'No se pudo completar la solicitud.', 'error');
+                        });
                     }
                 });
             });
