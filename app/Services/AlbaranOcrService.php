@@ -15,10 +15,31 @@ use Illuminate\Support\Str;
 
 class AlbaranOcrService
 {
+    protected array $lastStatusMessages = [];
+
+    public function getLastStatusMessages(): array
+    {
+        return $this->lastStatusMessages;
+    }
+
     /**
      * Procesa un albarán (imagen o PDF), ejecuta OCR vía OpenAI y persiste un log.
      */
     public function parseAndLog(UploadedFile $file, ?int $userId = null, ?string $proveedor = null): EntradaImportLog
+    {
+        // Nuevo flujo con consenso OpenAI + Gemini (feature flag OCR_CONSENSO_ENABLED)
+        if (env('OCR_CONSENSO_ENABLED', true)) {
+            return $this->parseAndLogWithConsensus($file, $userId, $proveedor);
+        }
+
+        // Flujo clásico (solo OpenAI)
+        return $this->parseAndLogSingle($file, $userId, $proveedor);
+    }
+
+    /**
+     * Flujo clásico: solo OpenAI (compatibilidad).
+     */
+    protected function parseAndLogSingle(UploadedFile $file, ?int $userId = null, ?string $proveedor = null): EntradaImportLog
     {
         $storedPath = $file->storeAs(
             'albaranes_entrada/ocr',
@@ -37,6 +58,117 @@ class AlbaranOcrService
             'file_path' => $storedPath,
             'raw_text' => $rawText,
             'parsed_payload' => $parsed,
+            'status' => 'parsed',
+        ]);
+    }
+
+    /**
+     * Flujo con consenso OpenAI + Gemini.
+     */
+    protected function parseAndLogWithConsensus(UploadedFile $file, ?int $userId = null, ?string $proveedor = null): EntradaImportLog
+    {
+        $storedPath = $file->storeAs(
+            'albaranes_entrada/ocr',
+            'ocr_' . now()->format('Ymd_His') . '_' . Str::random(6) . '.' . $file->getClientOriginalExtension(),
+            'private'
+        );
+
+        $absolute = Storage::disk('private')->path($storedPath);
+
+        [$base64, $mime, $extension] = $this->encodeFileForVision($absolute, strtolower($file->getClientOriginalExtension()));
+        $prompt = $this->promptSegunProveedor($proveedor);
+
+        $status = [];
+        $status[] = 'Recibido el albarán. Preparando análisis…';
+
+        // Paso 1: inferencia paralela (secuencial en código, paralelizable en futuro)
+        $status[] = 'Ambas IA analizando la imagen…';
+        [$openaiRaw, $openaiParsed] = $this->callOpenAiVision($base64, $mime, $prompt);
+
+        $geminiRaw = null;
+        $geminiParsed = null;
+        $geminiError = null;
+        try {
+            [$geminiRaw, $geminiParsed] = $this->callGeminiVision($base64, $mime, $prompt);
+        } catch (\Throwable $e) {
+            $geminiError = $e->getMessage();
+            \Illuminate\Support\Facades\Log::error('Gemini Vision Error: ' . $geminiError);
+            $status[] = 'Gemini no disponible: ' . $geminiError;
+        }
+
+        // Normalizar
+        $openaiNormalized = $this->normalizeParsedPayload($openaiParsed);
+        $geminiNormalized = $this->normalizeParsedPayload($geminiParsed ?? []);
+
+        // Si Gemini falló, devolvemos solo OpenAI para no dejar al usuario sin resultado
+        if ($geminiError) {
+            $status[] = 'Resultado generado solo con OpenAI (Gemini omitido).';
+            $finalParsed = $openaiNormalized;
+            if ($proveedor) {
+                $finalParsed['proveedor'] = $proveedor;
+            }
+            $finalParsed['_ai_meta'] = [
+                'consensus' => false,
+                'rounds' => 0,
+                'chosen' => 'openai_only',
+                'openai_model' => env('OPENAI_MODEL', 'gpt-4.1'),
+                'gemini_model' => env('GEMINI_MODEL', 'gemini-flash-latest'),
+                'gemini_error' => $geminiError,
+            ];
+            $finalParsed['_ai_status'] = $status;
+
+            $this->lastStatusMessages = $status;
+
+            $rawBundle = json_encode([
+                'openai' => $openaiRaw,
+                'gemini' => null,
+                'review' => null,
+                'gemini_error' => $geminiError,
+            ], JSON_UNESCAPED_UNICODE);
+
+            return EntradaImportLog::create([
+                'user_id' => $userId,
+                'file_path' => $storedPath,
+                'raw_text' => $rawBundle,
+                'parsed_payload' => $finalParsed,
+                'status' => 'parsed',
+            ]);
+        }
+
+        // Paso 2: comparación
+        $status[] = 'Comparando resultados entre IA…';
+        $consensusResult = $this->buildConsensus($openaiNormalized, $geminiNormalized, $base64, $mime, $prompt);
+        $status = array_merge($status, $consensusResult['status_messages'] ?? []);
+
+        $finalParsed = $consensusResult['final'];
+        if ($proveedor) {
+            $finalParsed['proveedor'] = $proveedor;
+        }
+
+        // Adjuntar metadatos internos
+        $finalParsed['_ai_meta'] = [
+            'consensus' => $consensusResult['consensus'],
+            'rounds' => $consensusResult['rounds'],
+            'chosen' => $consensusResult['chosen'],
+            'openai_model' => env('OPENAI_MODEL', 'gpt-4.1'),
+            'gemini_model' => env('GEMINI_MODEL', 'gemini-1.5-flash'),
+            'gemini_error' => $geminiError ?? null,
+        ];
+        $finalParsed['_ai_status'] = $status;
+
+        $this->lastStatusMessages = $status;
+
+        $rawBundle = json_encode([
+            'openai' => $openaiRaw,
+            'gemini' => $geminiRaw,
+            'review' => $consensusResult['review_raw'] ?? null,
+        ], JSON_UNESCAPED_UNICODE);
+
+        return EntradaImportLog::create([
+            'user_id' => $userId,
+            'file_path' => $storedPath,
+            'raw_text' => $rawBundle,
+            'parsed_payload' => $finalParsed,
             'status' => 'parsed',
         ]);
     }
@@ -79,25 +211,25 @@ class AlbaranOcrService
             'Authorization' => 'Bearer ' . $apiKey,
             'Content-Type' => 'application/json',
         ])->timeout(120)->post('https://api.openai.com/v1/chat/completions', [
-                    'model' => $model,
-                    'messages' => [
+            'model' => $model,
+            'messages' => [
+                [
+                    'role' => 'user',
+                    'content' => [
+                        ['type' => 'text', 'text' => $prompt],
                         [
-                            'role' => 'user',
-                            'content' => [
-                                ['type' => 'text', 'text' => $prompt],
-                                [
-                                    'type' => 'image_url',
-                                    'image_url' => [
-                                        'url' => "data:{$mimeType};base64,{$base64}",
-                                        'detail' => 'high',
-                                    ],
-                                ],
+                            'type' => 'image_url',
+                            'image_url' => [
+                                'url' => "data:{$mimeType};base64,{$base64}",
+                                'detail' => 'high',
                             ],
                         ],
                     ],
-                    // 'max_tokens' => 1200,
-                    'temperature' => 0,
-                ]);
+                ],
+            ],
+            // 'max_tokens' => 1200,
+            'temperature' => 0,
+        ]);
 
         if (!$response->successful()) {
             $msg = $response->json('error.message') ?? 'OpenAI devolvió un error';
@@ -110,6 +242,304 @@ class AlbaranOcrService
         $parsed = is_array($decoded) ? $decoded : $this->parseText($rawText, $proveedor);
 
         return [$rawText, $parsed];
+    }
+
+    /**
+     * Codifica un archivo (incluido PDF) para visión.
+     */
+    protected function encodeFileForVision(string $path, string $extension): array
+    {
+        $pathForVision = $path;
+        $mimeType = mime_content_type($path);
+
+        if ($extension === 'pdf') {
+            if (!extension_loaded('imagick')) {
+                throw new \RuntimeException('Para PDFs se necesita Imagick habilitado en PHP.');
+            }
+            $imagick = new \Imagick();
+            $imagick->setResolution(300, 300);
+            $imagick->readImage($path . '[0]');
+            $imagick->setImageFormat('jpg');
+            $tempPath = sys_get_temp_dir() . '/albaran_ocr_' . uniqid() . '.jpg';
+            $imagick->writeImage($tempPath);
+            $imagick->clear();
+            $imagick->destroy();
+            $pathForVision = $tempPath;
+            $mimeType = 'image/jpeg';
+        }
+
+        $base64 = base64_encode(file_get_contents($pathForVision));
+
+        return [$base64, $mimeType, $extension];
+    }
+
+    /**
+     * Llamada OpenAI Vision (nueva firma reutilizable).
+     */
+    protected function callOpenAiVision(string $base64, string $mimeType, string $prompt): array
+    {
+        $apiKey = env('OPENAI_API_KEY');
+        if (!$apiKey) {
+            throw new \RuntimeException('Falta OPENAI_API_KEY en el .env');
+        }
+
+        $model = env('OPENAI_MODEL', 'gpt-4.1');
+
+        $response = Http::withHeaders([
+            'Authorization' => 'Bearer ' . $apiKey,
+            'Content-Type' => 'application/json',
+        ])->timeout(120)->post('https://api.openai.com/v1/chat/completions', [
+            'model' => $model,
+            'messages' => [
+                [
+                    'role' => 'user',
+                    'content' => [
+                        ['type' => 'text', 'text' => $prompt],
+                        [
+                            'type' => 'image_url',
+                            'image_url' => [
+                                'url' => "data:{$mimeType};base64,{$base64}",
+                                'detail' => 'high',
+                            ],
+                        ],
+                    ],
+                ],
+            ],
+            'temperature' => 0,
+        ]);
+
+        if (!$response->successful()) {
+            $msg = $response->json('error.message') ?? 'OpenAI devolvió un error';
+            throw new \RuntimeException($msg);
+        }
+
+        $rawText = $response->json('choices.0.message.content') ?? '';
+        $decoded = json_decode($rawText, true);
+        $parsed = is_array($decoded) ? $decoded : $this->parseText($rawText, null);
+
+        return [$rawText, $parsed];
+    }
+
+    /**
+     * Llamada Gemini Vision (REST v1beta).
+     */
+    protected function callGeminiVision(string $base64, string $mimeType, string $prompt): array
+    {
+        $apiKey = env('GEMINI_API_KEY');
+        if (!$apiKey) {
+            throw new \RuntimeException('Falta GEMINI_API_KEY en el .env');
+        }
+
+        $apiVersion = env('GEMINI_API_VERSION', 'v1beta'); // v1 por defecto; v1beta si usas el key antiguo
+        $modelEnv = env('GEMINI_MODEL', 'gemini-flash-latest');
+        $model = Str::startsWith($modelEnv, 'models/') ? $modelEnv : "models/{$modelEnv}";
+        $endpoint = "https://generativelanguage.googleapis.com/{$apiVersion}/{$model}:generateContent?key={$apiKey}";
+
+        $response = Http::timeout(120)->post($endpoint, [
+            'contents' => [
+                [
+                    'parts' => [
+                        ['text' => $prompt],
+                        [
+                            'inline_data' => [
+                                'mime_type' => $mimeType,
+                                'data' => $base64,
+                            ],
+                        ],
+                    ],
+                ],
+            ],
+            'generationConfig' => [
+                'temperature' => 0,
+            ],
+        ]);
+
+        if (!$response->successful()) {
+            $msg = $response->json('error.message') ?? 'Gemini devolvió un error';
+            throw new \RuntimeException($msg);
+        }
+
+        $rawText = $response->json('candidates.0.content.parts.0.text') ?? '';
+        $decoded = json_decode($rawText, true);
+        $parsed = is_array($decoded) ? $decoded : $this->parseText($rawText, null);
+
+        return [$rawText, $parsed];
+    }
+
+    /**
+     * Revisión cuando hay discrepancias: se les muestra la foto y el JSON del otro modelo.
+     */
+    protected function reviewWithModel(string $provider, string $base64, string $mimeType, string $prompt, array $ownPayload, array $peerPayload): array
+    {
+        $reviewPrompt = $prompt . "\n\nHay discrepancias entre dos modelos. Relee la imagen y devuelve un ÚNICO JSON final (sin texto extra) siguiendo exactamente el esquema. Tienes tu JSON y el del otro modelo:\n\nTU JSON:\n" . json_encode($ownPayload, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE) . "\n\nJSON DEL OTRO MODELO:\n" . json_encode($peerPayload, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE) . "\n\nElige los valores que mejor encajen con la imagen. No inventes campos nuevos.";
+
+        if ($provider === 'openai') {
+            return $this->callOpenAiVision($base64, $mimeType, $reviewPrompt);
+        }
+
+        return $this->callGeminiVision($base64, $mimeType, $reviewPrompt);
+    }
+
+    /**
+     * Construye consenso entre OpenAI y Gemini.
+     */
+    protected function buildConsensus(array $openaiPayload, array $geminiPayload, string $base64, string $mimeType, string $prompt): array
+    {
+        $status = [];
+        $rounds = 0;
+        $reviewRaw = [];
+
+        // Coincidencia inicial
+        if ($this->payloadsCoincide($openaiPayload, $geminiPayload)) {
+            $status[] = 'Resultado coincidente. No se necesita debate.';
+            return [
+                'final' => $openaiPayload,
+                'consensus' => true,
+                'chosen' => 'match',
+                'rounds' => $rounds,
+                'status_messages' => $status,
+            ];
+        }
+
+        // Revisión/segunda pasada
+        $status[] = 'Revisando discrepancias, cada IA vuelve a mirar la imagen…';
+        $rounds++;
+        [$reviewOpenaiRaw, $reviewOpenai] = $this->reviewWithModel('openai', $base64, $mimeType, $prompt, $openaiPayload, $geminiPayload);
+        [$reviewGeminiRaw, $reviewGemini] = $this->reviewWithModel('gemini', $base64, $mimeType, $prompt, $geminiPayload, $openaiPayload);
+
+        $reviewRaw = [
+            'openai' => $reviewOpenaiRaw,
+            'gemini' => $reviewGeminiRaw,
+        ];
+
+        $reviewOpenai = $this->normalizeParsedPayload($reviewOpenai);
+        $reviewGemini = $this->normalizeParsedPayload($reviewGemini);
+
+        // Si tras revisión coinciden, listo
+        if ($this->payloadsCoincide($reviewOpenai, $reviewGemini)) {
+            $status[] = 'Ambas IA tomando decisión final…';
+            return [
+                'final' => $reviewOpenai,
+                'consensus' => true,
+                'chosen' => 'reviewed_match',
+                'rounds' => $rounds,
+                'status_messages' => $status,
+                'review_raw' => $reviewRaw,
+            ];
+        }
+
+        // Desempate: elegir el payload con mayor completitud
+        $status[] = 'Aplicando desempate por completitud de datos…';
+        $candidates = [
+            'review_openai' => $reviewOpenai,
+            'review_gemini' => $reviewGemini,
+            'openai' => $openaiPayload,
+            'gemini' => $geminiPayload,
+        ];
+
+        $bestKey = null;
+        $bestScore = -1;
+        foreach ($candidates as $key => $payload) {
+            $score = $this->payloadScore($payload);
+            if ($score > $bestScore) {
+                $bestScore = $score;
+                $bestKey = $key;
+            }
+        }
+
+        $final = $candidates[$bestKey] ?? $openaiPayload;
+
+        return [
+            'final' => $final,
+            'consensus' => false,
+            'chosen' => $bestKey ?? 'openai',
+            'rounds' => $rounds,
+            'status_messages' => $status,
+            'review_raw' => $reviewRaw,
+        ];
+    }
+
+    /**
+     * Normaliza payload para comparaciones (tipos numéricos y claves vacías).
+     */
+    protected function normalizeParsedPayload(array $payload): array
+    {
+        $payload['albaran'] = $payload['albaran'] ?? null;
+        $payload['pedido_codigo'] = $payload['pedido_codigo'] ?? null;
+        $payload['pedido_cliente'] = $payload['pedido_cliente'] ?? null;
+        $payload['fecha'] = $payload['fecha'] ?? null;
+        $payload['peso_total'] = isset($payload['peso_total']) ? (float) $payload['peso_total'] : null;
+        $payload['bultos_total'] = isset($payload['bultos_total']) ? (int) $payload['bultos_total'] : null;
+        $payload['tipo_compra'] = $payload['tipo_compra'] ?? null;
+        $payload['proveedor_texto'] = $payload['proveedor_texto'] ?? null;
+
+        $productos = $payload['productos'] ?? [];
+        $productosNormalizados = [];
+        foreach ($productos as $producto) {
+            $lineItems = $producto['line_items'] ?? [];
+            $lineItemsNormalizados = [];
+            foreach ($lineItems as $item) {
+                $lineItemsNormalizados[] = [
+                    'colada' => $item['colada'] ?? null,
+                    'bultos' => isset($item['bultos']) ? (int) $item['bultos'] : null,
+                    'peso_kg' => isset($item['peso_kg']) ? (float) $item['peso_kg'] : (isset($item['peso']) ? (float) $item['peso'] : null),
+                ];
+            }
+
+            $productosNormalizados[] = [
+                'descripcion' => isset($producto['descripcion']) ? Str::upper($producto['descripcion']) : null,
+                'diametro' => isset($producto['diametro']) ? (float) $producto['diametro'] : null,
+                'longitud' => isset($producto['longitud']) ? (float) $producto['longitud'] : null,
+                'calidad' => $producto['calidad'] ?? null,
+                'line_items' => $lineItemsNormalizados,
+            ];
+        }
+
+        $payload['productos'] = $productosNormalizados;
+
+        return $payload;
+    }
+
+    protected function payloadsCoincide(array $a, array $b): bool
+    {
+        return $this->sortForComparison($a) === $this->sortForComparison($b);
+    }
+
+    protected function sortForComparison($value)
+    {
+        if (is_array($value)) {
+            foreach ($value as $k => $v) {
+                $value[$k] = $this->sortForComparison($v);
+            }
+            ksort($value);
+        }
+        return $value;
+    }
+
+    protected function payloadScore(array $payload): int
+    {
+        $score = 0;
+        $keys = ['albaran', 'fecha', 'pedido_codigo', 'peso_total', 'bultos_total', 'tipo_compra', 'proveedor_texto'];
+        foreach ($keys as $k) {
+            if (!empty($payload[$k])) {
+                $score += 5;
+            }
+        }
+
+        $productos = $payload['productos'] ?? [];
+        foreach ($productos as $producto) {
+            $score += 3; // por producto detectado
+            $score += !empty($producto['diametro']) ? 2 : 0;
+            $score += !empty($producto['calidad']) ? 1 : 0;
+            $lineItems = $producto['line_items'] ?? [];
+            foreach ($lineItems as $item) {
+                $score += !empty($item['colada']) ? 2 : 0;
+                $score += isset($item['bultos']) ? 1 : 0;
+                $score += isset($item['peso_kg']) ? 1 : 0;
+            }
+        }
+
+        return $score;
     }
 
     /**
@@ -486,7 +916,7 @@ REGLAS CRÍTICAS:
 PROMPT;
 
         $mapa = [
-            'siderurgica' => $basePrompt . "\nNotas CRÍTICAS para Siderúrgica Sevillana (SISE):\n\n1. IDENTIFICACIÓN:\n   - El albarán es el 'N.º documento'\n   - Pedido cliente: código después de 'Pedido cliente' (NO la fecha)\n\n2. ESTRUCTURA DE PRODUCTOS:\n   - Cada sección numerada (001, 002, etc.) es un PRODUCTO DIFERENTE\n   - Cada producto tiene: descripción, diámetro, longitud (L. barra), calidad\n   - Crea una entrada en 'productos' por cada sección numerada\n   - Siempre devuelve ENCARRETADO o BARRA (may?sculas) en 'descripcion' seg?n el tipo detectado\n\n3. BULTOS - MUY IMPORTANTE:\n   - En la tabla derecha, mira la columna 'Bultos' de cada fila\n   - Cada fila de la tabla representa UNA COLADA con SU número de bultos\n   - Ejemplo: si ves '25/41324' con 'Bultos: 3', esa colada tiene 3 bultos\n   - NO cuentes el número de coladas como bultos\n   - El 'bultos_total' es la SUMA de todos los bultos de todas las coladas\n\n4. LINE_ITEMS (coladas):\n   - Cada fila de la tabla es un line_item\n   - colada: número de colada (ej: '25/41324')\n   - bultos: número de bultos de ESA fila (mira columna 'Bultos')\n   - peso_kg: peso neto de esa fila en kg (columna 'Net KG')\n\n5. PESOS:\n   - Si dice '25.120' en peso neto TOTAL, son 25120 kg (multiplica por 1000)\n   - Cada line_item tiene su peso_kg individual de la columna 'Net KG'\n\n6. VALIDACIÓN:\n   - Suma todos los bultos de line_items, debe coincidir con el resumen superior\n   - Si no coincide, revisa la columna 'Bultos' nuevamente\n\nEjemplo correcto:\nSi ves:\n  Producto 001: Descripción A, Ø12, Calidad B500\n  Tabla:\n    Colada 25/41324 | Bultos: 3 | Net KG: 9340\n    Colada 25/41612 | Bultos: 1 | Net KG: 3113\n    Colada 25/41613 | Bultos: 1 | Net KG: 3113\n\nDebes devolver:\n{\n  \"bultos_total\": 5,\n  \"productos\": [\n    {\n      \"descripcion\": \"Descripción A\",\n      \"diametro\": 12,\n      \"calidad\": \"B500\",\n      \"line_items\": [\n        {\"colada\": \"25/41324\", \"bultos\": 3, \"peso_kg\": 9340},\n        {\"colada\": \"25/41612\", \"bultos\": 1, \"peso_kg\": 3113},\n        {\"colada\": \"25/41613\", \"bultos\": 1, \"peso_kg\": 3113}\n      ]\n    }\n  ]\n} \n
+            'siderurgica' => $basePrompt . "\nNotas CRÍTICAS para Siderúrgica Sevillana (SISE):\n\n1. IDENTIFICACIÓN:\n   - El albarán es el 'N.º documento'\n   - Pedido cliente: código después de 'Pedido cliente' (NO la fecha)\n\n2. ESTRUCTURA DE PRODUCTOS:\n   - Cada sección numerada (001, 002, etc.) es un PRODUCTO DIFERENTE\n   - Cada producto tiene: descripción, diámetro, longitud (L. barra), calidad\n   - Crea una entrada en 'productos' por cada sección numerada\n   - Siempre devuelve ENCARRETADO o BARRA (may?sculas) en 'descripcion' seg?n el tipo detectado\n\n3. BULTOS - MUY IMPORTANTE:\n   - En la tabla derecha, mira la columna 'Bultos' de cada fila\n   - Lee con EXTREMO CUIDADO los números en esta columna. Es común confundir '1' con '4' o '7'.\n   - Si ves un palo vertical simple, ES UN '1'.\n   - Cada fila de la tabla representa UNA COLADA con SU número de bultos\n   - Ejemplo: si ves '25/41324' con 'Bultos: 3', esa colada tiene 3 bultos\n   - NO cuentes el número de coladas como bultos\n   - El 'bultos_total' es la SUMA de todos los bultos de todas las coladas\n\n4. LINE_ITEMS (coladas):\n   - Cada fila de la tabla es un line_item\n   - colada: número de colada (ej: '25/41324')\n   - bultos: número de bultos de ESA fila (mira columna 'Bultos')\n   - peso_kg: peso neto de esa fila en kg (columna 'Net KG')\n\n5. PESOS:\n   - Si dice '25.120' en peso neto TOTAL, son 25120 kg (multiplica por 1000)\n   - Cada line_item tiene su peso_kg individual de la columna 'Net KG'\n\n6. VALIDACIÓN:\n   - Suma todos los bultos de line_items, debe coincidir con el resumen superior\n   - Si no coincide, revisa la columna 'Bultos' nuevamente\n\nEjemplo correcto:\nSi ves:\n  Producto 001: Descripción A, Ø12, Calidad B500\n  Tabla:\n    Colada 25/41324 | Bultos: 3 | Net KG: 9340\n    Colada 25/41612 | Bultos: 1 | Net KG: 3113\n    Colada 25/41613 | Bultos: 1 | Net KG: 3113\n\nDebes devolver:\n{\n  \"bultos_total\": 5,\n  \"productos\": [\n    {\n      \"descripcion\": \"Descripción A\",\n      \"diametro\": 12,\n      \"calidad\": \"B500\",\n      \"line_items\": [\n        {\"colada\": \"25/41324\", \"bultos\": 3, \"peso_kg\": 9340},\n        {\"colada\": \"25/41612\", \"bultos\": 1, \"peso_kg\": 3113},\n        {\"colada\": \"25/41613\", \"bultos\": 1, \"peso_kg\": 3113}\n      ]\n    }\n  ]\n} \n
             en cuanto al tipo de compra se especifica en la parte superior del documento, justo debajo de ENTREGA A: solo es directa cuando justo debajo pone HIERROS PACO REYES, si no lo pone hay que declararlo como distribuidor
             a continuación te presento 3 enlaces de ejemplo de estos albaranes con su respuesta correcta:
             https://res.cloudinary.com/dkhxza94o/image/upload/v1765443351/al2_s4xmgy.jpg

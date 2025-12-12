@@ -48,6 +48,9 @@ class OpenAIController extends Controller
                 try {
                     $log = $service->parseAndLog($imagen, auth()->id(), $proveedor);
                     $parsed = $log->parsed_payload ?? [];
+                    $statusMessages = $parsed['_ai_status'] ?? [];
+                    $aiMeta = $parsed['_ai_meta'] ?? [];
+                    unset($parsed['_ai_status'], $parsed['_ai_meta']);
 
                     // Generar preview base64 para mostrar al usuario
                     $previewData = null;
@@ -76,6 +79,8 @@ class OpenAIController extends Controller
                         'parsed' => $parsed,
                         'raw' => $log->raw_text,
                         'simulacion' => $simulacion,
+                        'status_messages' => $statusMessages,
+                        'ai_meta' => $aiMeta,
                         'error' => null,
                     ];
 
@@ -126,6 +131,9 @@ class OpenAIController extends Controller
                 try {
                     $log = $service->parseAndLog($imagen, auth()->id(), $proveedor);
                     $parsed = $log->parsed_payload ?? [];
+                    $statusMessages = $parsed['_ai_status'] ?? [];
+                    $aiMeta = $parsed['_ai_meta'] ?? [];
+                    unset($parsed['_ai_status'], $parsed['_ai_meta']);
 
                     // Generar preview base64 para mostrar al usuario
                     $previewData = null;
@@ -154,6 +162,8 @@ class OpenAIController extends Controller
                         'parsed' => $parsed,
                         'raw' => $log->raw_text,
                         'simulacion' => $simulacion,
+                        'status_messages' => $statusMessages,
+                        'ai_meta' => $aiMeta,
                         'error' => null,
                     ];
 

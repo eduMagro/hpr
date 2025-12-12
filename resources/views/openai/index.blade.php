@@ -1381,6 +1381,17 @@
                         <p class="text-md text-white">Toca para ver la imagen</p>
                     </div>
 
+                    <!-- Estado de las IA -->
+                    <div id="mobile-status-banner"
+                        class="hidden items-center gap-2 rounded-lg bg-indigo-50 border border-indigo-200 px-3 py-2 text-sm text-indigo-900">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-indigo-500" fill="none"
+                            viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M13 16h-1v-4h-1m1-4h.01M12 18a9 9 0 110-18 9 9 0 010 18z" />
+                        </svg>
+                        <span id="mobile-status-text" class="font-medium"></span>
+                    </div>
+
                     <!-- Formulario de Edición (Integrado) -->
                     <form id="mobile-step2-form" class="space-y-4">
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -2635,6 +2646,19 @@
             }
         };
 
+        const renderMobileStatus = (messages = []) => {
+            const banner = document.getElementById('mobile-status-banner');
+            const text = document.getElementById('mobile-status-text');
+            if (!banner || !text) return;
+            if (!messages || messages.length === 0) {
+                banner.classList.add('hidden');
+                text.textContent = '';
+                return;
+            }
+            banner.classList.remove('hidden');
+            text.textContent = messages[messages.length - 1];
+        };
+
         /**
          * Procesar albarán via AJAX (móvil)
          */
@@ -2672,6 +2696,7 @@
                 });
 
                 const data = await response.json();
+                console.log('AJAX /pruebasScanAlbaran/procesar-ajax response:', data);
 
                 // console.log('Respuesta AJAX:', data);
 
@@ -2679,10 +2704,19 @@
                     // console.log('Datos recibidos correctamente');
 
                     // Guardar datos en cache
+                    const resultado = data.resultados[0];
+                    if (resultado.error || !resultado.parsed) {
+                        alert(resultado.error || 'No se pudo extraer datos del albarán.');
+                        renderMobileStatus(resultado.status_messages || []);
+                        return;
+                    }
+
                     window.mobileStepManager.dataCache = {
-                        resultado: data.resultados[0], // Primer resultado
+                        resultado, // Primer resultado
                         distribuidores: data.distribuidores
                     };
+
+                    renderMobileStatus(data.resultados[0]?.status_messages || []);
 
                     // console.log('Cache guardado:', window.mobileStepManager.dataCache);
 
@@ -2714,6 +2748,7 @@
         function poblarVista2ConDatos(resultado) {
             const parsed = resultado.parsed || {};
             const sim = resultado.simulacion || {};
+            renderMobileStatus(resultado.status_messages || parsed._ai_status || []);
 
             // Preview de imagen
             const previewContainer = document.getElementById('mobile-preview-container');
