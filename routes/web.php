@@ -533,9 +533,28 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
 
     // === NOMINAS Y FISCALIDAD ===
     Route::resource('empresas', EmpresaController::class)->names('empresas');
+    Route::post('/empresas/store-json', [EmpresaController::class, 'storeJson'])->name('empresas.storeJson');
+    Route::post('/empresas/update-field', [EmpresaController::class, 'updateField'])->name('empresas.updateField');
+    Route::post('/empresas/destroy-json', [EmpresaController::class, 'destroyJson'])->name('empresas.destroyJson');
     Route::post('/categorias/update-field', [EmpresaController::class, 'updateCategoriaField'])->name('categorias.updateField');
     Route::post('/categorias/store', [EmpresaController::class, 'storeCategoria'])->name('categorias.store');
     Route::post('/categorias/destroy', [EmpresaController::class, 'destroyCategoria'])->name('categorias.destroy');
+    // Turnos CRUD
+    Route::post('/turnos/store-json', [EmpresaController::class, 'storeTurno'])->name('turnos.storeJson');
+    Route::post('/turnos/update-field', [EmpresaController::class, 'updateTurnoField'])->name('turnos.updateField');
+    Route::post('/turnos/destroy-json', [EmpresaController::class, 'destroyTurno'])->name('turnos.destroyJson');
+    // Porcentajes SS CRUD
+    Route::post('/porcentajes-ss/store-json', [EmpresaController::class, 'storePorcentajeSS'])->name('porcentajesSS.storeJson');
+    Route::post('/porcentajes-ss/update-field', [EmpresaController::class, 'updatePorcentajeSSField'])->name('porcentajesSS.updateField');
+    Route::post('/porcentajes-ss/destroy-json', [EmpresaController::class, 'destroyPorcentajeSS'])->name('porcentajesSS.destroyJson');
+    // Tramos IRPF CRUD
+    Route::post('/tramos-irpf/store-json', [EmpresaController::class, 'storeTramoIrpf'])->name('tramosIrpf.storeJson');
+    Route::post('/tramos-irpf/update-field', [EmpresaController::class, 'updateTramoIrpfField'])->name('tramosIrpf.updateField');
+    Route::post('/tramos-irpf/destroy-json', [EmpresaController::class, 'destroyTramoIrpf'])->name('tramosIrpf.destroyJson');
+    // Convenios CRUD
+    Route::post('/convenios/store-json', [EmpresaController::class, 'storeConvenio'])->name('convenios.storeJson');
+    Route::post('/convenios/update-field', [EmpresaController::class, 'updateConvenioField'])->name('convenios.updateField');
+    Route::post('/convenios/destroy-json', [EmpresaController::class, 'destroyConvenio'])->name('convenios.destroyJson');
     Route::resource('nominas', NominaController::class)->except(['destroy']);
     Route::post('/generar-nominas', [NominaController::class, 'generarNominasMensuales'])->name('generar.nominas');
     Route::delete('/nominas/borrar-todas', [NominaController::class, 'borrarTodas'])->name('nominas.borrarTodas');
@@ -715,33 +734,33 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
     Route::resource('incorporaciones', \App\Http\Controllers\IncorporacionController::class)
         ->parameters(['incorporaciones' => 'incorporacion']);
     Route::post('/incorporaciones/{incorporacion}/subir-documento', [\App\Http\Controllers\IncorporacionController::class, 'subirDocumento'])
-        ->name('incorporaciones.subir-documento');
+        ->name('incorporaciones.crearSubirDocumento');
     Route::delete('/incorporaciones/{incorporacion}/documento/{tipo}', [\App\Http\Controllers\IncorporacionController::class, 'eliminarDocumento'])
-        ->name('incorporaciones.eliminar-documento');
+        ->name('incorporaciones.eliminarDocumento');
     Route::post('/incorporaciones/{incorporacion}/cambiar-estado', [\App\Http\Controllers\IncorporacionController::class, 'cambiarEstado'])
-        ->name('incorporaciones.cambiar-estado');
+        ->name('incorporaciones.editarCambiarEstado');
     Route::post('/incorporaciones/{incorporacion}/marcar-enviado', [\App\Http\Controllers\IncorporacionController::class, 'marcarEnlaceEnviado'])
-        ->name('incorporaciones.marcar-enviado');
+        ->name('incorporaciones.editarMarcarEnviado');
     Route::get('/incorporaciones/{incorporacion}/archivo/{archivo}', [\App\Http\Controllers\IncorporacionController::class, 'verArchivo'])
-        ->name('incorporaciones.ver-archivo');
+        ->name('incorporaciones.verArchivo');
     Route::get('/incorporaciones/{incorporacion}/descargar/{archivo}', [\App\Http\Controllers\IncorporacionController::class, 'descargarArchivo'])
-        ->name('incorporaciones.descargar-archivo');
+        ->name('incorporaciones.verDescargarArchivo');
     Route::get('/incorporaciones/{incorporacion}/descargar-zip', [\App\Http\Controllers\IncorporacionController::class, 'descargarZip'])
-        ->name('incorporaciones.descargar-zip');
+        ->name('incorporaciones.verDescargarZip');
     Route::post('/incorporaciones/{incorporacion}/aprobar-rrhh', [\App\Http\Controllers\IncorporacionController::class, 'aprobarRrhh'])
-        ->name('incorporaciones.aprobar-rrhh');
+        ->name('incorporaciones.editarAprobarRrhh');
     Route::post('/incorporaciones/{incorporacion}/revocar-rrhh', [\App\Http\Controllers\IncorporacionController::class, 'revocarRrhh'])
-        ->name('incorporaciones.revocar-rrhh');
+        ->name('incorporaciones.editarRevocarRrhh');
     Route::post('/incorporaciones/{incorporacion}/aprobar-ceo', [\App\Http\Controllers\IncorporacionController::class, 'aprobarCeo'])
-        ->name('incorporaciones.aprobar-ceo');
+        ->name('incorporaciones.editarAprobarCeo');
     Route::post('/incorporaciones/{incorporacion}/revocar-ceo', [\App\Http\Controllers\IncorporacionController::class, 'revocarCeo'])
-        ->name('incorporaciones.revocar-ceo');
+        ->name('incorporaciones.editarRevocarCeo');
     Route::delete('/incorporaciones/{incorporacion}/eliminar-archivo', [\App\Http\Controllers\IncorporacionController::class, 'eliminarArchivo'])
-        ->name('incorporaciones.eliminar-archivo');
+        ->name('incorporaciones.eliminarArchivo');
     Route::post('/incorporaciones/{incorporacion}/resubir-archivo', [\App\Http\Controllers\IncorporacionController::class, 'resubirArchivo'])
-        ->name('incorporaciones.resubir-archivo');
+        ->name('incorporaciones.editarResubirArchivo');
     Route::post('/incorporaciones/{incorporacion}/actualizar-campo', [\App\Http\Controllers\IncorporacionController::class, 'actualizarCampo'])
-        ->name('incorporaciones.actualizar-campo');
+        ->name('incorporaciones.editarActualizarCampo');
 });
 
 // === RUTAS PÚBLICAS - FORMULARIO INCORPORACIÓN (sin autenticación) ===

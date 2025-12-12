@@ -230,6 +230,72 @@ class User extends Authenticatable
         return $this->rol === 'oficina' || $this->rol === 'admin';
     }
 
+    /* ============================================
+       SCOPES PARA CONSULTAS DE OPERARIOS
+       ============================================ */
+
+    /**
+     * Scope: Filtra solo operarios activos.
+     * Uso: User::operarios()->get()
+     */
+    public function scopeOperarios($query)
+    {
+        return $query->where('rol', 'operario');
+    }
+
+    /**
+     * Scope: Filtra por empresa.
+     * Uso: User::operarios()->deEmpresa(1)->get()
+     */
+    public function scopeDeEmpresa($query, $empresaId)
+    {
+        if ($empresaId === null) {
+            return $query->whereNull('empresa_id');
+        }
+        return $query->where('empresa_id', $empresaId);
+    }
+
+    /**
+     * Scope: Filtra operarios de una máquina específica.
+     * Uso: User::operarios()->deMaquina(5)->get()
+     */
+    public function scopeDeMaquina($query, $maquinaId)
+    {
+        return $query->where('maquina_id', $maquinaId);
+    }
+
+    /**
+     * Scope: Filtra operarios que trabajan en máquinas de ciertos tipos.
+     * Uso: User::operarios()->enTiposMaquina(['estribadora', 'cortadora_dobladora'])->get()
+     */
+    public function scopeEnTiposMaquina($query, array $tipos)
+    {
+        return $query->whereHas('maquina', function ($q) use ($tipos) {
+            $q->whereIn('tipo', $tipos);
+        });
+    }
+
+    /**
+     * Scope: Filtra operarios maquinistas (estribadora, cortadora_dobladora, grua).
+     */
+    public function scopeMaquinistas($query)
+    {
+        return $query->whereHas('maquina', function ($q) {
+            $q->whereIn('tipo', ['estribadora', 'cortadora_dobladora', 'grua']);
+        });
+    }
+
+    /**
+     * Scope: Filtra operarios ferrallas (sin máquina o ensambladora).
+     */
+    public function scopeFerrallas($query)
+    {
+        return $query->where(function ($q) {
+            $q->whereNull('maquina_id')
+              ->orWhereHas('maquina', fn($mq) => $mq->where('tipo', 'ensambladora'));
+        });
+    }
+
     public function departamentos()
     {
         return $this->belongsToMany(Departamento::class)

@@ -1079,6 +1079,7 @@ class AsignacionTurnoController extends Controller
                 'salida' => 'nullable|date_format:H:i',
                 'maquina_id' => 'nullable|exists:maquinas,id',
                 'obra_id' => 'nullable|exists:obras,id',
+                'estado' => 'nullable|string|in:activo,vacaciones,baja,permiso,ausente',
             ]);
 
             $asignacion->update($validated);
@@ -1403,7 +1404,7 @@ class AsignacionTurnoController extends Controller
                     'user_id' => $asignacion->user_id,
                     'obra_id' => $asignacion->obra_id,
                     'fecha' => $nuevaFecha,
-                    'estado' => $asignacion->estado,
+                    'estado' => 'activo', // Solo copiamos la obra, no el estado (vacaciones, baja, etc.)
                     'turno_id' => $asignacion->turno_id,
                     'maquina_id' => $asignacion->maquina_id,
                 ]);
@@ -1466,7 +1467,7 @@ class AsignacionTurnoController extends Controller
                     'user_id' => $asignacion->user_id,
                     'obra_id' => $asignacion->obra_id,
                     'fecha' => $nuevaFecha,
-                    'estado' => $asignacion->estado,
+                    'estado' => 'activo', // Solo copiamos la obra, no el estado (vacaciones, baja, etc.)
                     'turno_id' => $asignacion->turno_id,
                     'maquina_id' => $asignacion->maquina_id,
                 ]);
