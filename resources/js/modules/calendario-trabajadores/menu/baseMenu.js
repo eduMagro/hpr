@@ -75,6 +75,7 @@ export function openMenuAt(x, y, html) {
 
 /**
  * Builder genérico: pásale items [{label, icon, danger, onClick}] y opcional headerHtml
+ * Soporta items de tipo 'separator' para añadir líneas divisoras
  */
 export function openActionsMenu(x, y, { headerHtml = "", items = [] }) {
     const html = `
@@ -82,7 +83,12 @@ export function openActionsMenu(x, y, { headerHtml = "", items = [] }) {
       ${headerHtml ? `<div class="ctx-menu-header">${headerHtml}</div>` : ""}
       ${items
           .map(
-              (it, i) => `
+              (it, i) => {
+                  // Si es separador, renderizar una línea divisora
+                  if (it.type === 'separator') {
+                      return `<div class="ctx-menu-separator" style="height:1px; background:#e5e7eb; margin:4px 0;"></div>`;
+                  }
+                  return `
         <button class="ctx-menu-item${
             it.danger ? " ctx-menu-danger" : ""
         }${
@@ -91,7 +97,8 @@ export function openActionsMenu(x, y, { headerHtml = "", items = [] }) {
           ${it.icon ? `<span class="ctx-menu-icon">${it.icon}</span>` : ""}
           <span class="ctx-menu-label">${it.label}</span>
         </button>
-      `
+      `;
+              }
           )
           .join("")}
     </div>

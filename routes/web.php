@@ -292,7 +292,9 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
     Route::post('/asignaciones-turno/repetir-semana', [AsignacionTurnoController::class, 'repetirSemana'])->name('asignaciones-turnos.repetirSemana');
     Route::post('/asignaciones-turno/repetir-semana-obra', [AsignacionTurnoController::class, 'repetirSemanaObra'])->name('asignaciones-turnos.repetirSemanaObra');
     Route::post('/asignaciones-turno/repetir-semana-maquina', [AsignacionTurnoController::class, 'repetirSemanaMaquina'])->name('asignaciones-turnos.repetirSemanaMaquina');
+    Route::post('/asignaciones-turno/limpiar-semana', [AsignacionTurnoController::class, 'limpiarSemana'])->name('asignaciones-turnos.limpiarSemana');
     Route::post('/asignaciones-turno/copiar-dia', [AsignacionTurnoController::class, 'copiarDia'])->name('asignaciones-turnos.copiarDia');
+    Route::post('/asignaciones-turno/propagar-dia', [AsignacionTurnoController::class, 'propagarDia'])->name('asignaciones-turnos.propagarDia');
     Route::post('/asignaciones-turno/mover-eventos', [AsignacionTurnoController::class, 'moverEventosAObra'])->name('asignaciones-turnos.moverEventos');
     Route::post('/asignaciones-turno/{id}/actualizar-horas', [AsignacionTurnoController::class, 'actualizarHoras'])->name('asignaciones-turnos.actualizar-horas');
     Route::get('/asignaciones-turno/exportar', [AsignacionTurnoController::class, 'export'])->name('asignaciones-turnos.verExportar');

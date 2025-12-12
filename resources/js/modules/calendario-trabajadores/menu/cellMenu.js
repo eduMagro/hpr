@@ -74,6 +74,90 @@ async function copiarRegistrosDia({ fromISO, toISO, calendar, maquinaId = null }
 }
 
 /**
+ * Propaga las asignaciones de un día al resto de la semana o dos semanas
+ * @param {string} fechaISO - Fecha origen
+ * @param {string} alcance - 'semana_actual' o 'dos_semanas'
+ * @param {string|null} maquinaId - ID de la máquina (opcional, null para todas)
+ * @param {object} calendar - Instancia del calendario
+ */
+async function propagarDia({ fechaISO, alcance, maquinaId, calendar }) {
+    const alcanceTexto = alcance === 'semana_actual'
+        ? 'el resto de esta semana'
+        : 'esta semana y la siguiente';
+
+    const ok = await Swal.fire({
+        icon: "question",
+        title: "Propagar asignaciones",
+        html: `¿Propagar las asignaciones del <b>${fechaISO}</b> a ${alcanceTexto}?<br>
+               <small class="text-gray-500">Se saltarán fines de semana, festivos y vacaciones.</small>`,
+        showCancelButton: true,
+        confirmButtonText: "Propagar",
+        cancelButtonText: "Cancelar",
+        confirmButtonColor: "#10b981",
+    }).then((r) => r.isConfirmed);
+
+    if (!ok) return;
+
+    try {
+        const response = await fetch("/asignaciones-turno/propagar-dia", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "X-CSRF-TOKEN": CSRF(),
+                Accept: "application/json",
+            },
+            body: JSON.stringify({
+                fecha_origen: fechaISO,
+                alcance: alcance,
+                maquina_id: maquinaId,
+            }),
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            throw new Error(data.message || `Error HTTP ${response.status}`);
+        }
+
+        // Agregar los nuevos eventos al calendario
+        if (data.eventos && data.eventos.length > 0) {
+            data.eventos.forEach((evento) => {
+                const existente = calendar.getEventById(evento.id);
+                if (!existente) {
+                    calendar.addEvent({
+                        id: evento.id,
+                        title: evento.title,
+                        start: evento.start,
+                        end: evento.end,
+                        resourceId: evento.resourceId,
+                        backgroundColor: evento.backgroundColor,
+                        borderColor: evento.borderColor,
+                        textColor: evento.textColor || "#000000",
+                        extendedProps: evento.extendedProps || {},
+                    });
+                }
+            });
+        }
+
+        await Swal.fire({
+            icon: "success",
+            title: "Asignaciones propagadas",
+            html: `Se propagaron <b>${data.copiadas || 0}</b> asignaciones a <b>${data.dias_procesados || 0}</b> días.`,
+            timer: 2500,
+            showConfirmButton: false,
+        });
+    } catch (error) {
+        console.error("Error al propagar día:", error);
+        await Swal.fire({
+            icon: "error",
+            title: "Error",
+            text: error.message || "No se pudieron propagar las asignaciones",
+            confirmButtonText: "Aceptar",
+        });
+    }
+}
+
+/**
  * Copia los turnos de la semana anterior para una máquina específica
  * @param {string} maquinaId - ID de la máquina
  * @param {string} maquinaNombre - Nombre de la máquina
@@ -270,6 +354,56 @@ export function openCellMenu(x, y, { fechaISO, resourceId, horaISO }, calendar, 
                         calendar,
                     }),
             },
+            { type: 'separator' },
+            {
+                icon: "📤",
+                label: resourceId
+                    ? `Propagar ${fechaISO} → semana (${maquinaNombre})`
+                    : `Propagar ${fechaISO} → semana`,
+                onClick: () =>
+                    propagarDia({
+                        fechaISO,
+                        alcance: 'semana_actual',
+                        maquinaId: resourceId || null,
+                        calendar,
+                    }),
+            },
+            {
+                icon: "📤📤",
+                label: resourceId
+                    ? `Propagar ${fechaISO} → 2 semanas (${maquinaNombre})`
+                    : `Propagar ${fechaISO} → 2 semanas`,
+                onClick: () =>
+                    propagarDia({
+                        fechaISO,
+                        alcance: 'dos_semanas',
+                        maquinaId: resourceId || null,
+                        calendar,
+                    }),
+            },
+            {
+                icon: "🔄",
+                label: `Propagar ${fechaISO} → semana (TODAS las máquinas)`,
+                onClick: () =>
+                    propagarDia({
+                        fechaISO,
+                        alcance: 'semana_actual',
+                        maquinaId: null,
+                        calendar,
+                    }),
+            },
+            {
+                icon: "🔄🔄",
+                label: `Propagar ${fechaISO} → 2 semanas (TODAS las máquinas)`,
+                onClick: () =>
+                    propagarDia({
+                        fechaISO,
+                        alcance: 'dos_semanas',
+                        maquinaId: null,
+                        calendar,
+                    }),
+            },
+            { type: 'separator' },
             {
                 icon: "🔧",
                 label: resourceId
