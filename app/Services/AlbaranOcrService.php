@@ -144,6 +144,7 @@ class AlbaranOcrService
             ],
             'ubicacion_texto' => $this->firstMatch('/LUGAR DE ENTREGA\\s*([A-Z0-9 ,\\.\\-]+)/i', $clean),
             'line_items' => $this->parseLineItems($text, $proveedor),
+            'tipo_compra' => 'distribuidor', // Fallback por defecto si falla OpenAI
         ];
 
         // Intentar cruzar con base de datos
@@ -472,8 +473,8 @@ CAMPOS IMPORTANTES:
     - colada: Número de colada (ej: "25/41324")
     - bultos: Número de bultos de ESA colada específica
     - peso_kg: Peso en kg de esa colada
-- tipo_compra: Tipo de compra debe ser "directo" o "proveedor"
-- proveedor_texto: Texto o fragmento del documento que identificaste como el distribuidor (solo se completa cuando tipo_compra es "proveedor", deja null en caso contrario)
+- tipo_compra: Tipo de compra debe ser "directo" o "distribuidor"
+- proveedor_texto: Texto o fragmento del documento que identificaste como el distribuidor (solo se completa cuando tipo_compra es "distribuidor", deja null en caso contrario)
 
 REGLAS CRÍTICAS:
 - Usa números (no strings) para bultos/peso/diámetro
@@ -486,7 +487,7 @@ PROMPT;
 
         $mapa = [
             'siderurgica' => $basePrompt . "\nNotas CRÍTICAS para Siderúrgica Sevillana (SISE):\n\n1. IDENTIFICACIÓN:\n   - El albarán es el 'N.º documento'\n   - Pedido cliente: código después de 'Pedido cliente' (NO la fecha)\n\n2. ESTRUCTURA DE PRODUCTOS:\n   - Cada sección numerada (001, 002, etc.) es un PRODUCTO DIFERENTE\n   - Cada producto tiene: descripción, diámetro, longitud (L. barra), calidad\n   - Crea una entrada en 'productos' por cada sección numerada\n   - Siempre devuelve ENCARRETADO o BARRA (may?sculas) en 'descripcion' seg?n el tipo detectado\n\n3. BULTOS - MUY IMPORTANTE:\n   - En la tabla derecha, mira la columna 'Bultos' de cada fila\n   - Cada fila de la tabla representa UNA COLADA con SU número de bultos\n   - Ejemplo: si ves '25/41324' con 'Bultos: 3', esa colada tiene 3 bultos\n   - NO cuentes el número de coladas como bultos\n   - El 'bultos_total' es la SUMA de todos los bultos de todas las coladas\n\n4. LINE_ITEMS (coladas):\n   - Cada fila de la tabla es un line_item\n   - colada: número de colada (ej: '25/41324')\n   - bultos: número de bultos de ESA fila (mira columna 'Bultos')\n   - peso_kg: peso neto de esa fila en kg (columna 'Net KG')\n\n5. PESOS:\n   - Si dice '25.120' en peso neto TOTAL, son 25120 kg (multiplica por 1000)\n   - Cada line_item tiene su peso_kg individual de la columna 'Net KG'\n\n6. VALIDACIÓN:\n   - Suma todos los bultos de line_items, debe coincidir con el resumen superior\n   - Si no coincide, revisa la columna 'Bultos' nuevamente\n\nEjemplo correcto:\nSi ves:\n  Producto 001: Descripción A, Ø12, Calidad B500\n  Tabla:\n    Colada 25/41324 | Bultos: 3 | Net KG: 9340\n    Colada 25/41612 | Bultos: 1 | Net KG: 3113\n    Colada 25/41613 | Bultos: 1 | Net KG: 3113\n\nDebes devolver:\n{\n  \"bultos_total\": 5,\n  \"productos\": [\n    {\n      \"descripcion\": \"Descripción A\",\n      \"diametro\": 12,\n      \"calidad\": \"B500\",\n      \"line_items\": [\n        {\"colada\": \"25/41324\", \"bultos\": 3, \"peso_kg\": 9340},\n        {\"colada\": \"25/41612\", \"bultos\": 1, \"peso_kg\": 3113},\n        {\"colada\": \"25/41613\", \"bultos\": 1, \"peso_kg\": 3113}\n      ]\n    }\n  ]\n} \n
-            en cuanto al tipo de compra se especifica en la parte superior del documento, justo debajo de ENTREGA A: solo es directa cuando justo debajo pone HIERROS PACO REYES, si no lo pone hay que declararlo como proveedor
+            en cuanto al tipo de compra se especifica en la parte superior del documento, justo debajo de ENTREGA A: solo es directa cuando justo debajo pone HIERROS PACO REYES, si no lo pone hay que declararlo como distribuidor
             a continuación te presento 3 enlaces de ejemplo de estos albaranes con su respuesta correcta:
             https://res.cloudinary.com/dkhxza94o/image/upload/v1765443351/al2_s4xmgy.jpg
             {
@@ -631,7 +632,7 @@ Notas proveedor Megasa (MUY IMPORTANTE):
 - Si es barra recta / estándar, pon \"descripcion\": \"BARRA\".
 - Usa siempre mayúsculas y SOLO esos dos valores.
 
-en cuanto al tipo de compra se especifica en la parte superior del documento, justo debajo de Cliente, será directa cuando diga HIERROS PACO REYES, si no lo pone hay que declararlo como proveedor
+en cuanto al tipo de compra se especifica en la parte superior del documento, justo debajo de Cliente, será directa cuando diga HIERROS PACO REYES, si no lo pone hay que declararlo como distribuidor
 
 a continuación te presento 4 enlaces de ejemplo de estos albaranes con su respuesta correcta:
 https://res.cloudinary.com/dkhxza94o/image/upload/v1765445776/me1_br6x9z.jpg

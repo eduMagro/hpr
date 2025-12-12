@@ -236,7 +236,7 @@ class OpenAIController extends Controller
             })
             ->whereNotIn('estado', ['completado', 'cancelado', 'facturado'])
             ->get()
-            ->filter(fn ($linea) => $this->esLineaPermitida($linea, $fabricanteId, $diametrosEscaneados));
+            ->filter(fn($linea) => $this->esLineaPermitida($linea, $fabricanteId, $diametrosEscaneados));
 
         // Preparar información y scoring de líneas pendientes
         $hoy = now();
@@ -371,7 +371,7 @@ class OpenAIController extends Controller
                 $q->whereNotIn('estado', ['completado', 'cancelado', 'facturado']);
             })
             ->get()
-            ->filter(fn ($linea) => $this->esLineaPermitida($linea, $fabricanteId, $diametrosEscaneados));
+            ->filter(fn($linea) => $this->esLineaPermitida($linea, $fabricanteId, $diametrosEscaneados));
 
         // Encontrar el pedido más antiguo de TODAS las líneas para calcular puntuación
         $pedidoMasAntiguoTodas = $todasLasLineasQuery->min(function ($linea) {
@@ -566,7 +566,7 @@ class OpenAIController extends Controller
     protected function determinarDistribuidorRecomendado(?string $tipoCompra, ?string $texto, array $distribuidores): ?string
     {
         if ($tipoCompra === 'directo') {
-            return 'Hierros Paco Reyes';
+            return null;
         }
 
         $textoNormalizado = trim(Str::lower($texto ?? ''));
