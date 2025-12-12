@@ -967,43 +967,218 @@
                     info.el.addEventListener('contextmenu', function(e) {
                         e.preventDefault(); // Evita el menú del navegador
 
-                        Swal.fire({
-                            title: '¿Eliminar asignación de obra?',
-                            text: "Esto quitará la obra del trabajador en ese turno.",
-                            icon: 'warning',
-                            showCancelButton: true,
-                            confirmButtonColor: '#3085d6',
-                            cancelButtonColor: '#d33',
-                            confirmButtonText: 'Sí, eliminar'
-                        }).then((result) => {
-                            if (result.isConfirmed) {
-                                const asignacionId = info.event.id.replace('turno-', '');
+                        const props = info.event.extendedProps;
+                        const userId = props.user_id;
+                        const asignacionId = info.event.id.replace('turno-', '');
+                        const estadoActual = props.estado || 'activo';
 
-                                fetch(`/asignaciones-turno/${asignacionId}/quitar-obra`, {
-                                        method: 'PUT',
-                                        headers: {
-                                            'Content-Type': 'application/json',
-                                            'X-CSRF-TOKEN': '{{ csrf_token() }}'
-                                        }
-                                    })
-                                    .then(res => res.json())
-                                    .then(data => {
-                                        if (data.success) {
-                                            info.event.remove();
+                        // Detectar si hay eventos seleccionados
+                        const numSeleccionados = window.eventosSeleccionados?.size || 0;
+                        const haySeleccionados = numSeleccionados > 0;
 
-                                            // Actualizar estado de fichas
-                                            setTimeout(() => actualizarEstadoFichasTrabajadores(), 100);
-                                        } else {
-                                            Swal.fire('❌ Error', data.message, 'error');
-                                        }
-                                    })
-                                    .catch(err => {
-                                        console.error(err);
-                                        Swal.fire('❌ Error', 'No se pudo quitar la obra.',
-                                            'error');
-                                    });
+                        // Obtener IDs de los seleccionados (solo turnos normales, no ficticios)
+                        const idsSeleccionados = haySeleccionados
+                            ? Array.from(window.eventosSeleccionados.keys())
+                                .filter(id => id.startsWith('turno-'))
+                                .map(id => id.replace('turno-', ''))
+                            : [asignacionId];
+
+                        // Cerrar menú contextual anterior si existe
+                        const menuAnterior = document.getElementById('menuContextualObra');
+                        if (menuAnterior) menuAnterior.remove();
+
+                        // Crear menú contextual
+                        const menu = document.createElement('div');
+                        menu.id = 'menuContextualObra';
+                        menu.className = 'fixed bg-white rounded-lg shadow-xl border border-gray-200 py-2 z-[9999] min-w-[220px]';
+                        menu.style.left = e.pageX + 'px';
+                        menu.style.top = e.pageY + 'px';
+
+                        // Cabecera diferente si hay selección múltiple
+                        const cabecera = haySeleccionados
+                            ? `<div class="px-3 py-2 border-b border-gray-100 text-xs font-medium bg-blue-50 text-blue-700">
+                                   <span class="inline-flex items-center gap-1">
+                                       <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                                       ${numSeleccionados} eventos seleccionados
+                                   </span>
+                               </div>`
+                            : `<div class="px-3 py-2 border-b border-gray-100 text-xs text-gray-500 font-medium">${info.event.title}</div>`;
+
+                        menu.innerHTML = `
+                            ${cabecera}
+                            ${!haySeleccionados ? `
+                            <button class="w-full text-left px-4 py-2 hover:bg-blue-50 flex items-center gap-2 text-sm text-gray-700" data-action="perfil">
+                                <svg class="w-4 h-4 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
+                                </svg>
+                                Ir a su perfil
+                            </button>` : ''}
+                            <button class="w-full text-left px-4 py-2 hover:bg-yellow-50 flex items-center gap-2 text-sm text-gray-700" data-action="estado">
+                                <svg class="w-4 h-4 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"></path>
+                                </svg>
+                                Cambiar estado ${haySeleccionados ? `(${idsSeleccionados.length})` : ''}
+                            </button>
+                            <div class="border-t border-gray-100 mt-1 pt-1">
+                                <button class="w-full text-left px-4 py-2 hover:bg-red-50 flex items-center gap-2 text-sm text-red-600" data-action="eliminar">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                                    </svg>
+                                    Eliminar ${haySeleccionados ? `(${idsSeleccionados.length})` : 'asignación'}
+                                </button>
+                            </div>
+                        `;
+
+                        document.body.appendChild(menu);
+
+                        // Ajustar posición si se sale de la pantalla
+                        const rect = menu.getBoundingClientRect();
+                        if (rect.right > window.innerWidth) {
+                            menu.style.left = (window.innerWidth - rect.width - 10) + 'px';
+                        }
+                        if (rect.bottom > window.innerHeight) {
+                            menu.style.top = (e.pageY - rect.height) + 'px';
+                        }
+
+                        // Manejar clics en las opciones
+                        menu.addEventListener('click', function(ev) {
+                            const action = ev.target.closest('button')?.dataset.action;
+                            if (!action) return;
+
+                            menu.remove();
+
+                            if (action === 'perfil') {
+                                // Ir al perfil del usuario
+                                if (userId) {
+                                    window.open(`/usuarios/${userId}`, '_blank');
+                                } else {
+                                    Swal.fire('Info', 'No se encontró el perfil del trabajador', 'info');
+                                }
+                            } else if (action === 'estado') {
+                                // Mostrar modal para cambiar estado
+                                const textoInfo = haySeleccionados
+                                    ? `Se cambiará el estado de <strong>${idsSeleccionados.length} asignaciones</strong>`
+                                    : `Trabajador: <strong>${info.event.title}</strong>`;
+
+                                Swal.fire({
+                                    title: 'Cambiar estado de asignación',
+                                    html: `
+                                        <p class="text-sm text-gray-600 mb-4">${textoInfo}</p>
+                                        <select id="swal-estado" class="w-full border border-gray-300 rounded px-3 py-2">
+                                            <option value="activo" ${estadoActual === 'activo' ? 'selected' : ''}>Activo</option>
+                                            <option value="vacaciones" ${estadoActual === 'vacaciones' ? 'selected' : ''}>Vacaciones</option>
+                                            <option value="baja" ${estadoActual === 'baja' ? 'selected' : ''}>Baja</option>
+                                            <option value="permiso" ${estadoActual === 'permiso' ? 'selected' : ''}>Permiso</option>
+                                            <option value="ausente" ${estadoActual === 'ausente' ? 'selected' : ''}>Ausente</option>
+                                        </select>
+                                    `,
+                                    showCancelButton: true,
+                                    confirmButtonText: 'Guardar',
+                                    cancelButtonText: 'Cancelar',
+                                    preConfirm: () => {
+                                        return document.getElementById('swal-estado').value;
+                                    }
+                                }).then((result) => {
+                                    if (result.isConfirmed) {
+                                        const nuevoEstado = result.value;
+
+                                        // Actualizar todas las asignaciones seleccionadas
+                                        const promesas = idsSeleccionados.map(id =>
+                                            fetch(`/asignaciones-turnos/${id}`, {
+                                                method: 'PUT',
+                                                headers: {
+                                                    'Content-Type': 'application/json',
+                                                    'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                                                },
+                                                body: JSON.stringify({ estado: nuevoEstado })
+                                            }).then(res => res.json())
+                                        );
+
+                                        Promise.all(promesas)
+                                        .then(results => {
+                                            const exitosos = results.filter(r => r.success).length;
+                                            if (exitosos > 0) {
+                                                Swal.fire({
+                                                    icon: 'success',
+                                                    title: 'Estado actualizado',
+                                                    text: `Se actualizaron ${exitosos} asignaciones`,
+                                                    timer: 1500,
+                                                    showConfirmButton: false
+                                                });
+                                                // Limpiar selección y recargar
+                                                deseleccionarTodosEventos();
+                                                window.calendarioObras.refetchEvents();
+                                            } else {
+                                                Swal.fire('Error', 'No se pudo actualizar ninguna asignación', 'error');
+                                            }
+                                        })
+                                        .catch(err => {
+                                            console.error(err);
+                                            Swal.fire('Error', 'No se pudo actualizar el estado', 'error');
+                                        });
+                                    }
+                                });
+                            } else if (action === 'eliminar') {
+                                const textoEliminar = haySeleccionados
+                                    ? `Se eliminarán ${idsSeleccionados.length} asignaciones`
+                                    : 'Esto quitará la obra del trabajador en ese turno.';
+
+                                Swal.fire({
+                                    title: haySeleccionados ? '¿Eliminar asignaciones?' : '¿Eliminar asignación?',
+                                    text: textoEliminar,
+                                    icon: 'warning',
+                                    showCancelButton: true,
+                                    confirmButtonColor: '#d33',
+                                    cancelButtonColor: '#6b7280',
+                                    confirmButtonText: 'Sí, eliminar',
+                                    cancelButtonText: 'Cancelar'
+                                }).then((result) => {
+                                    if (result.isConfirmed) {
+                                        const promesas = idsSeleccionados.map(id =>
+                                            fetch(`/asignaciones-turno/${id}/quitar-obra`, {
+                                                method: 'PUT',
+                                                headers: {
+                                                    'Content-Type': 'application/json',
+                                                    'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                                                }
+                                            }).then(res => res.json())
+                                        );
+
+                                        Promise.all(promesas)
+                                        .then(results => {
+                                            const exitosos = results.filter(r => r.success).length;
+                                            if (exitosos > 0) {
+                                                Swal.fire({
+                                                    icon: 'success',
+                                                    title: 'Eliminadas',
+                                                    text: `Se eliminaron ${exitosos} asignaciones`,
+                                                    timer: 1500,
+                                                    showConfirmButton: false
+                                                });
+                                                deseleccionarTodosEventos();
+                                                window.calendarioObras.refetchEvents();
+                                                setTimeout(() => actualizarEstadoFichasTrabajadores(), 100);
+                                            } else {
+                                                Swal.fire('Error', 'No se pudo eliminar ninguna asignación', 'error');
+                                            }
+                                        })
+                                        .catch(err => {
+                                            console.error(err);
+                                            Swal.fire('Error', 'No se pudo eliminar', 'error');
+                                        });
+                                    }
+                                });
                             }
                         });
+
+                        // Cerrar menú al hacer clic fuera
+                        const cerrarMenu = (ev) => {
+                            if (!menu.contains(ev.target)) {
+                                menu.remove();
+                                document.removeEventListener('click', cerrarMenu);
+                            }
+                        };
+                        setTimeout(() => document.addEventListener('click', cerrarMenu), 10);
                     });
                 },
                 eventContent(arg) {

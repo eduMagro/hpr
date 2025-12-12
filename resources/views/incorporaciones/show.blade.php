@@ -33,7 +33,7 @@
             <!-- Acciones -->
             <div class="flex gap-2">
                 @if($incorporacion->datos_completados_at)
-                <a href="{{ route('incorporaciones.descargar-zip', $incorporacion) }}"
+                <a href="{{ route('incorporaciones.verDescargarZip', $incorporacion) }}"
                     class="inline-flex items-center px-4 py-2 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg transition">
                     <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -162,7 +162,7 @@
                                 <div class="flex gap-3 mt-2 flex-wrap">
                                     @if($incorporacion->dni_frontal)
                                         <div class="flex items-center gap-1">
-                                            <a href="{{ route('incorporaciones.ver-archivo', [$incorporacion, $incorporacion->dni_frontal]) }}"
+                                            <a href="{{ route('incorporaciones.verArchivo', [$incorporacion, $incorporacion->dni_frontal]) }}"
                                                 target="_blank" class="text-blue-600 hover:underline text-sm flex items-center">
                                                 <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
@@ -191,7 +191,7 @@
                                     @endif
                                     @if($incorporacion->dni_trasero)
                                         <div class="flex items-center gap-1">
-                                            <a href="{{ route('incorporaciones.ver-archivo', [$incorporacion, $incorporacion->dni_trasero]) }}"
+                                            <a href="{{ route('incorporaciones.verArchivo', [$incorporacion, $incorporacion->dni_trasero]) }}"
                                                 target="_blank" class="text-blue-600 hover:underline text-sm flex items-center">
                                                 <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
@@ -243,7 +243,7 @@
                                 <label class="text-sm text-gray-500">Certificado bancario</label>
                                 @if($incorporacion->certificado_bancario)
                                     <div class="flex items-center gap-2">
-                                        <a href="{{ route('incorporaciones.ver-archivo', [$incorporacion, $incorporacion->certificado_bancario]) }}"
+                                        <a href="{{ route('incorporaciones.verArchivo', [$incorporacion, $incorporacion->certificado_bancario]) }}"
                                             target="_blank" class="text-blue-600 hover:underline flex items-center">
                                             <svg class="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -319,7 +319,7 @@
                                 <div class="flex items-center gap-2">
                                     @if($item['documento'])
                                         {{-- Documento subido desde post-incorporación --}}
-                                        <a href="{{ route('incorporaciones.ver-archivo', [$incorporacion, $item['documento']->archivo]) }}"
+                                        <a href="{{ route('incorporaciones.verArchivo', [$incorporacion, $item['documento']->archivo]) }}"
                                             target="_blank" class="text-blue-600 hover:text-blue-800" title="Ver documento">
                                             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
@@ -334,7 +334,7 @@
                                     @elseif($item['formacion'] ?? false)
                                         {{-- Documento subido por el candidato desde formulario público --}}
                                         <span class="text-xs text-gray-500 mr-2">Por candidato</span>
-                                        <a href="{{ route('incorporaciones.ver-archivo', [$incorporacion, $item['formacion']->archivo]) }}"
+                                        <a href="{{ route('incorporaciones.verArchivo', [$incorporacion, $item['formacion']->archivo]) }}"
                                             target="_blank" class="text-blue-600 hover:text-blue-800" title="Ver documento">
                                             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
@@ -516,7 +516,7 @@
         }
 
         function marcarEnviado() {
-            fetch('{{ route('incorporaciones.marcar-enviado', $incorporacion) }}', {
+            fetch('{{ route('incorporaciones.editarMarcarEnviado', $incorporacion) }}', {
                 method: 'POST',
                 headers: {
                     'X-CSRF-TOKEN': '{{ csrf_token() }}',
@@ -546,7 +546,7 @@
             e.preventDefault();
             const formData = new FormData(this);
 
-            fetch('{{ route('incorporaciones.subir-documento', $incorporacion) }}', {
+            fetch('{{ route('incorporaciones.crearSubirDocumento', $incorporacion) }}', {
                 method: 'POST',
                 body: formData,
                 headers: {
@@ -641,7 +641,7 @@
                 }
             }).then((result) => {
                 if (result.isConfirmed) {
-                    fetch('{{ route('incorporaciones.cambiar-estado', $incorporacion) }}', {
+                    fetch('{{ route('incorporaciones.editarCambiarEstado', $incorporacion) }}', {
                         method: 'POST',
                         headers: {
                             'X-CSRF-TOKEN': '{{ csrf_token() }}',
@@ -706,7 +706,7 @@
             e.preventDefault();
             const formData = new FormData(this);
 
-            fetch('{{ route('incorporaciones.resubir-archivo', $incorporacion) }}', {
+            fetch('{{ route('incorporaciones.editarResubirArchivo', $incorporacion) }}', {
                 method: 'POST',
                 body: formData,
                 headers: {
@@ -767,7 +767,7 @@
                 }
             }).then((result) => {
                 if (result.isConfirmed) {
-                    fetch('{{ route('incorporaciones.actualizar-campo', $incorporacion) }}', {
+                    fetch('{{ route('incorporaciones.editarActualizarCampo', $incorporacion) }}', {
                         method: 'POST',
                         headers: {
                             'X-CSRF-TOKEN': '{{ csrf_token() }}',
@@ -818,8 +818,8 @@
             }).then((result) => {
                 if (result.isConfirmed) {
                     const url = tipo === 'rrhh'
-                        ? '{{ route('incorporaciones.aprobar-rrhh', $incorporacion) }}'
-                        : '{{ route('incorporaciones.aprobar-ceo', $incorporacion) }}';
+                        ? '{{ route('incorporaciones.editarAprobarRrhh', $incorporacion) }}'
+                        : '{{ route('incorporaciones.editarAprobarCeo', $incorporacion) }}';
 
                     fetch(url, {
                         method: 'POST',
@@ -864,8 +864,8 @@
             }).then((result) => {
                 if (result.isConfirmed) {
                     const url = tipo === 'rrhh'
-                        ? '{{ route('incorporaciones.revocar-rrhh', $incorporacion) }}'
-                        : '{{ route('incorporaciones.revocar-ceo', $incorporacion) }}';
+                        ? '{{ route('incorporaciones.editarRevocarRrhh', $incorporacion) }}'
+                        : '{{ route('incorporaciones.editarRevocarCeo', $incorporacion) }}';
 
                     fetch(url, {
                         method: 'POST',
@@ -908,7 +908,7 @@
                 cancelButtonText: 'Cancelar'
             }).then((result) => {
                 if (result.isConfirmed) {
-                    fetch('{{ route('incorporaciones.eliminar-archivo', $incorporacion) }}', {
+                    fetch('{{ route('incorporaciones.eliminarArchivo', $incorporacion) }}', {
                         method: 'DELETE',
                         headers: {
                             'X-CSRF-TOKEN': '{{ csrf_token() }}',
@@ -951,7 +951,7 @@
                 cancelButtonText: 'Cancelar'
             }).then((result) => {
                 if (result.isConfirmed) {
-                    fetch('{{ route('incorporaciones.eliminar-archivo', $incorporacion) }}', {
+                    fetch('{{ route('incorporaciones.eliminarArchivo', $incorporacion) }}', {
                         method: 'DELETE',
                         headers: {
                             'X-CSRF-TOKEN': '{{ csrf_token() }}',

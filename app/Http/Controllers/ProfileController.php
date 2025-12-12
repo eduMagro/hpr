@@ -35,6 +35,7 @@ use Illuminate\Support\Facades\Storage;
 use Intervention\Image\ImageManager;
 use Intervention\Image\Drivers\Gd\Driver as GdDriver;
 use App\Servicios\Turnos\TurnoMapper;
+use App\Services\OperarioService;
 
 class ProfileController extends Controller
 {
@@ -1225,49 +1226,26 @@ class ProfileController extends Controller
         return response()->json($this->getResumenAsistencia($user));
     }
 
-    public function getOperarios()
+    public function getOperarios(OperarioService $operarioService)
     {
-        $operarios = User::where('rol', 'operario')
-            ->where('estado', 'activo')
-            ->select('id', 'name', 'primer_apellido', 'segundo_apellido', 'turno')
-            ->orderBy('name')
-            ->get();
+        $operarios = $operarioService->getTodosOperarios();
 
         return response()->json($operarios);
     }
 
-    public function getOperariosAgrupados(Request $request)
+    /**
+     * Obtiene operarios agrupados por empresa para el diálogo de generar turnos.
+     * Respuesta dinámica: se adapta automáticamente cuando se añaden nuevas empresas.
+     */
+    public function getOperariosAgrupados(Request $request, OperarioService $operarioService)
     {
         $fecha = $request->input('fecha');
         $maquinaId = $request->input('maquina_id');
 
-        // Todos los operarios activos
-        $todosOperarios = User::where('rol', 'operario')
-            ->where('estado', 'activo')
-            ->select('id', 'name', 'primer_apellido', 'segundo_apellido', 'turno', 'maquina_id')
-            ->orderBy('name')
-            ->get();
+        // El servicio devuelve todos los datos necesarios en una sola llamada optimizada
+        $datos = $operarioService->getDatosParaGenerarTurnos($fecha, (int) $maquinaId);
 
-        // IDs de operarios que ya tienen turno asignado ese día
-        $operariosConTurno = AsignacionTurno::whereDate('fecha', $fecha)
-            ->pluck('user_id')
-            ->toArray();
-
-        // Filtrar operarios sin turno ese día
-        $operariosSinTurno = $todosOperarios->filter(function($operario) use ($operariosConTurno) {
-            return !in_array($operario->id, $operariosConTurno);
-        })->values();
-
-        // Filtrar operarios de la máquina específica
-        $operariosMaquina = $todosOperarios->filter(function($operario) use ($maquinaId) {
-            return $operario->maquina_id == $maquinaId;
-        })->values();
-
-        return response()->json([
-            'sin_turno' => $operariosSinTurno,
-            'de_maquina' => $operariosMaquina,
-            'todos' => $todosOperarios,
-        ]);
+        return response()->json($datos);
     }
 
     public function generarTurnosCalendario(Request $request)
