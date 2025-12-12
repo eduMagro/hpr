@@ -62,6 +62,24 @@
             }
         }
 
+        .processing-overlay {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.75rem;
+            background: linear-gradient(90deg, rgba(14, 165, 233, 0.9), rgba(59, 130, 246, 0.9));
+            color: white;
+            font-size: 0.85rem;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+        }
+
+        .processing-overlay.hidden {
+            display: none !important;
+        }
+
         .preview-zoom {
             position: relative;
             overflow: hidden;
@@ -1212,7 +1230,7 @@
     <!-- ========================================== -->
     <!-- VISTA MÓVIL PASO A PASO (<768px) -->
     <!-- ========================================== -->
-    <div id="mobileStepContainer" class="block md:hidden relative overflow-hidden h-calc(100vh - 56px) bg-gray-50">
+    <div id="mobileStepContainer" class="block md:hidden relative overflow-hidden h-calc(100vh - 56px) bg-gray-100">
         <!-- Header fijo superior -->
         <div class="sticky top-0 z-30 bg-white border-b border-gray-200 shadow-sm">
             <div class="flex items-center justify-between px-4 py-3">
@@ -1278,11 +1296,10 @@
 
                         <!-- Botón procesar -->
                         <button type="button" id="processBtn-mobile" onclick="procesarAlbaranMobile()"
-                            class="w-full px-4 py-3 bg-gray-300 text-gray-500 rounded-lg font-semibold text-lg shadow-lg disabled:opacity-60 disabled:cursor-not-allowed transition flex items-center justify-center gap-3"
+                            class="relative w-full px-4 py-3 bg-gray-300 text-gray-500 rounded-lg font-semibold text-lg shadow-lg disabled:opacity-60 disabled:cursor-not-allowed transition overflow-hidden flex items-center justify-center"
                             disabled>
                             <span id="processBtnLabel-mobile">Procesar albarán</span>
-                            <span id="processing-mobile"
-                                class="hidden flex items-center gap-3 text-sm font-semibold text-white">
+                            <span id="processing-mobile" class="processing-overlay hidden">
                                 <span class="processing-circle"></span>
                                 <span>Procesando albarán</span>
                             </span>
@@ -1298,9 +1315,13 @@
                     <p class="text-sm text-gray-600">Revisa los datos extraídos del albarán</p>
 
                     <!-- Preview de imagen -->
-                    <div id="mobile-preview-container" class="hidden">
-                        <img id="mobile-preview-img" src="" alt="Preview"
-                            class="w-full h-48 object-contain rounded-lg border border-gray-200 bg-white">
+                    <div id="mobile-preview-container"
+                        class="flex hidden items-center justify-start gap-4 max-h-20 bg-gray-200 border-2 border-gray-200 rounded-lg p-4 cursor-pointer">
+                        <div class="overflow-hidden w-24 h-16 rounded-lg border border-gray-200 bg-white">
+                            <img id="mobile-preview-img" src="" alt="Preview"
+                                class="w-full h-full object-cover">
+                        </div>
+                        <p class="text-xs text-gray-600">Toca para ver la imagen.</p>
                     </div>
 
                     <!-- Datos extraídos -->
@@ -1333,14 +1354,23 @@
                         </div>
                     </div>
 
+                    <div id="mobile-coladas-preview"
+                        class="hidden bg-white rounded-lg p-4 space-y-2 border border-dashed border-gray-200">
+                        <div class="flex items-center justify-between">
+                            <h4 class="text-sm font-semibold text-gray-900">Coladas detectadas</h4>
+                            <span class="text-xs text-gray-500 tracking-widest uppercase">bultos</span>
+                        </div>
+                        <div id="mobile-coladas-preview-list" class="space-y-2 text-sm text-gray-700"></div>
+                    </div>
+
                     <!-- Botones de acción -->
                     <div class="flex gap-3">
                         <button type="button" onclick="abrirModalEdicionMobile()"
-                            class="flex-1 px-4 py-3 bg-gray-200 text-gray-800 rounded-lg font-medium">
+                            class="flex-1 px-4 py-3 bg-gray-200 text-gray-800 rounded-lg text-sm">
                             Editar
                         </button>
                         <button type="button" data-mobile-next
-                            class="flex-1 px-4 py-3 bg-indigo-600 text-white rounded-lg font-medium">
+                            class="flex-1 px-4 py-3 bg-indigo-600 text-white rounded-lg text-sm">
                             Marcar como revisado
                         </button>
                     </div>
@@ -1377,23 +1407,6 @@
                 <div class="max-w-md mx-auto space-y-6">
                     <h3 class="text-xl font-semibold text-gray-900">Coladas a Recepcionar</h3>
                     <p class="text-sm text-gray-600">Selecciona las coladas que deseas recepcionar</p>
-
-                    <!-- Resumen de coladas totales -->
-                    <div class="bg-indigo-50 rounded-lg p-4">
-                        <div class="flex items-center justify-between">
-                            <div>
-                                <div class="text-2xl font-bold text-indigo-900">
-                                    <span id="mobile-total-coladas">0</span> coladas
-                                </div>
-                                <div class="text-sm text-indigo-700 mt-1">
-                                    <span id="mobile-total-bultos-disponibles">0</span> bultos en total
-                                </div>
-                            </div>
-                            <div class="text-right">
-                                <div class="text-xs text-indigo-600 uppercase font-semibold">Disponibles</div>
-                            </div>
-                        </div>
-                    </div>
 
                     <!-- Lista de coladas -->
                     <div id="mobile-coladas-container" class="bg-white rounded-lg divide-y">
@@ -2280,8 +2293,8 @@
         })();
     </script>
     <div id="previewModal"
-        class="fixed inset-0 z-50 items-center justify-center bg-black/70 p-4 opacity-0 pointer-events-none transition-opacity duration-200">
-        <div class="preview-modal-content relative w-full max-w-3xl bg-white rounded-2xl shadow-2xl overflow-hidden">
+        class="fixed inset-0 z-50 items-center justify-center bg-black/70 opacity-0 pointer-events-none transition-opacity duration-200">
+        <div class="preview-modal-content relative w-full max-w-3xl bg-black rounded-2xl shadow-2xl overflow-hidden">
             <button id="previewModalClose"
                 class="absolute top-3 right-3 z-20 text-white bg-black/40 hover:bg-black/60 rounded-full p-1">
                 <span class="sr-only">Cerrar vista previa</span>
@@ -2324,6 +2337,16 @@
                     openPreview(el.dataset.preview);
                 });
             });
+
+            const mobilePreviewContainer = document.getElementById('mobile-preview-container');
+            mobilePreviewContainer?.addEventListener('click', () => {
+                const previewImg = document.getElementById('mobile-preview-img');
+                if (previewImg && previewImg.src) {
+                    openPreview(previewImg.src);
+                }
+            });
+
+            window.openPreviewModal = openPreview;
         });
 
         // ========================================
@@ -2542,11 +2565,11 @@
                 mobileProcessBtn.classList.add('bg-blue-800', 'hover:bg-blue-900', 'ring-2', 'ring-blue-400/70');
                 mobileProcessBtn.disabled = true;
                 processingIndicator?.classList.remove('hidden');
-                processLabel?.classList.add('hidden');
+                // processLabel?.classList.add('hidden');
             } else {
                 mobileProcessBtn.classList.remove('bg-blue-800', 'hover:bg-blue-900', 'ring-2', 'ring-blue-400/70');
                 processingIndicator?.classList.add('hidden');
-                processLabel?.classList.remove('hidden');
+                // processLabel?.classList.remove('hidden');
                 refreshMobileButton();
             }
         };
@@ -2721,11 +2744,11 @@
                             <span class="font-medium text-gray-900">${lineaPropuesta.cantidad_pendiente || 0} kg</span>
                         </div>
                         ${lineaPropuesta.score ? `
-                                                                                <div class="mt-2 pt-2 border-t border-gray-200">
-                                                                                    <span class="text-gray-500">Score:</span>
-                                                                                    <span class="font-bold text-indigo-600">${Math.round(lineaPropuesta.score)}</span>
-                                                                                </div>
-                                                                                ` : ''}
+                                                                                                                            <div class="mt-2 pt-2 border-t border-gray-200">
+                                                                                                                                <span class="text-gray-500">Score:</span>
+                                                                                                                                <span class="font-bold text-indigo-600">${Math.round(lineaPropuesta.score)}</span>
+                                                                                                                            </div>
+                                                                                                                            ` : ''}
                     </div>
                 </div>
             `;
@@ -2745,37 +2768,27 @@
 
             if (bultos.length === 0) {
                 container.innerHTML = '<p class="p-4 text-gray-500 text-center">No hay coladas disponibles</p>';
-                // Actualizar resumen con ceros
-                const totalColadasEl = document.getElementById('mobile-total-coladas');
-                const totalBultosEl = document.getElementById('mobile-total-bultos-disponibles');
-                if (totalColadasEl) totalColadasEl.textContent = '0';
-                if (totalBultosEl) totalBultosEl.textContent = '0';
+                renderMobileColadasPreview([]);
                 return;
             }
 
-            // Actualizar resumen de totales disponibles
-            const totalBultosDisponibles = bultos.reduce((sum, bulto) => sum + (parseInt(bulto.bultos) || 0), 0);
-            const totalColadasEl = document.getElementById('mobile-total-coladas');
-            const totalBultosEl = document.getElementById('mobile-total-bultos-disponibles');
-            if (totalColadasEl) totalColadasEl.textContent = bultos.length;
-            if (totalBultosEl) totalBultosEl.textContent = totalBultosDisponibles;
-
             // Crear lista de coladas con checkboxes
             container.innerHTML = bultos.map((bulto, index) => `
-                <label class="flex items-center p-3 hover:bg-gray-50 cursor-pointer">
+                <label class="flex items-center gap-3 p-3 hover:bg-gray-50 cursor-pointer">
                     <input type="checkbox" class="mobile-colada-checkbox w-5 h-5 text-indigo-600 rounded"
                            data-colada="${bulto.colada || '—'}"
                            data-bultos="${bulto.bultos || 0}"
                            data-peso="${bulto.peso_kg || 0}"
                            onchange="actualizarTotalesColadas()"
                            checked>
-                    <div class="ml-3 flex-1">
+                    <div class="flex-1 space-y-1">
                         <div class="flex items-center justify-between">
-                            <span class="font-medium text-gray-900">Colada: ${bulto.colada || '—'}</span>
-                            <span class="text-sm text-gray-500">${bulto.bultos || 0} bultos</span>
+                            <span class="font-medium text-gray-900">Colada ${bulto.colada || '-'}</span>
+                            <span class="text-indigo-600 font-semibold text-lg">${bulto.bultos || 0} bultos</span>
                         </div>
-                        <div class="text-sm text-gray-600 mt-1">
-                            ${bulto.peso_kg ? (bulto.peso_kg).toLocaleString('es-ES') + ' kg' : '—'}
+                        <div class="flex items-center justify-between text-sm text-gray-600">
+                            <span>${bulto.peso_kg ? Number(bulto.peso_kg).toLocaleString('es-ES') + ' kg' : 'Peso no disponible'}</span>
+                            <span class="text-xs uppercase tracking-wide text-gray-400">Disponible</span>
                         </div>
                     </div>
                 </label>
@@ -2783,6 +2796,8 @@
 
             // Actualizar totales iniciales (todas marcadas)
             actualizarTotalesColadas();
+
+            renderMobileColadasPreview(bultos);
         }
 
         /**
@@ -2824,6 +2839,27 @@
 
             // Poblar Vista 5 con resumen
             poblarVista5ConResumen();
+        }
+
+        function renderMobileColadasPreview(bultos) {
+            const preview = document.getElementById('mobile-coladas-preview');
+            const previewList = document.getElementById('mobile-coladas-preview-list');
+            if (!preview || !previewList) return;
+            if (!bultos.length) {
+                previewList.innerHTML = '<p class="text-gray-500 text-xs">No se detectaron coladas.</p>';
+                preview.classList.add('hidden');
+                return;
+            }
+            preview.classList.remove('hidden');
+            previewList.innerHTML = bultos.slice(0, 3).map((bulto) => `
+                <div class="flex items-center justify-between">
+                    <span class="text-gray-900 font-medium text-sm">Colada ${bulto.colada || '—'}</span>
+                    <span class="text-indigo-600 font-semibold">${bulto.bultos || 0}</span>
+                </div>
+            `).join('');
+            if (bultos.length > 3) {
+                previewList.innerHTML += `<p class="text-xs text-gray-400">+ ${bultos.length - 3} coladas más</p>`;
+            }
         }
 
         /**
@@ -2986,13 +3022,13 @@
                     <div class="bg-white border-2 ${isSelected ? 'border-indigo-600' : 'border-gray-200'} rounded-lg p-4 cursor-pointer hover:border-indigo-400 transition"
                          onclick="seleccionarPedidoMobile(${index})">
                         ${isSelected ? `
-                                                                                    <div class="flex items-center gap-2 mb-2">
-                                                                                        <svg class="w-5 h-5 text-indigo-600" fill="currentColor" viewBox="0 0 20 20">
-                                                                                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
-                                                                                        </svg>
-                                                                                        <span class="text-xs font-bold text-indigo-600 uppercase">Seleccionado</span>
-                                                                                    </div>
-                                                                                ` : ''}
+                                                                                                                                <div class="flex items-center gap-2 mb-2">
+                                                                                                                                    <svg class="w-5 h-5 text-indigo-600" fill="currentColor" viewBox="0 0 20 20">
+                                                                                                                                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+                                                                                                                                    </svg>
+                                                                                                                                    <span class="text-xs font-bold text-indigo-600 uppercase">Seleccionado</span>
+                                                                                                                                </div>
+                                                                                                                            ` : ''}
 
                         <div class="space-y-2 text-sm">
                             <div>
@@ -3008,25 +3044,25 @@
                                 <span class="ml-2 text-gray-900">${linea.producto || '—'}</span>
                             </div>
                             ${linea.obra ? `
-                                                                                        <div>
-                                                                                            <span class="text-gray-500">Obra:</span>
-                                                                                            <span class="ml-2 text-gray-900">${linea.obra}</span>
-                                                                                        </div>
-                                                                                    ` : ''}
+                                                                                                                                    <div>
+                                                                                                                                        <span class="text-gray-500">Obra:</span>
+                                                                                                                                        <span class="ml-2 text-gray-900">${linea.obra}</span>
+                                                                                                                                    </div>
+                                                                                                                                ` : ''}
                             <div class="flex items-center justify-between pt-2 border-t border-gray-100">
                                 <div>
                                     <span class="text-gray-500">Pendiente:</span>
                                     <span class="ml-2 font-bold text-gray-900">${linea.cantidad_pendiente || 0} kg</span>
                                 </div>
                                 ${linea.score ? `
-                                                                                            <div class="text-xs px-2 py-1 rounded-full ${
-                                                                                                linea.score >= 0.9 ? 'bg-green-100 text-green-700' :
-                                                                                                linea.score >= 0.7 ? 'bg-yellow-100 text-yellow-700' :
-                                                                                                'bg-blue-100 text-blue-700'
-                                                                                            }">
-                                                                                                Score: ${(linea.score * 100).toFixed(0)}%
-                                                                                            </div>
-                                                                                        ` : ''}
+                                                                                                                                        <div class="text-xs px-2 py-1 rounded-full ${
+                                                                                                                                            linea.score >= 0.9 ? 'bg-green-100 text-green-700' :
+                                                                                                                                            linea.score >= 0.7 ? 'bg-yellow-100 text-yellow-700' :
+                                                                                                                                            'bg-blue-100 text-blue-700'
+                                                                                                                                        }">
+                                                                                                                                            Score: ${(linea.score * 100).toFixed(0)}%
+                                                                                                                                        </div>
+                                                                                                                                    ` : ''}
                             </div>
                         </div>
                     </div>
@@ -3095,20 +3131,20 @@
                             <span class="ml-2 text-gray-900">${linea.producto || '—'}</span>
                         </div>
                         ${linea.obra ? `
-                                                                                    <div>
-                                                                                        <span class="text-gray-500">Obra:</span>
-                                                                                        <span class="ml-2 text-gray-900">${linea.obra}</span>
-                                                                                    </div>
-                                                                                ` : ''}
+                                                                                                                                <div>
+                                                                                                                                    <span class="text-gray-500">Obra:</span>
+                                                                                                                                    <span class="ml-2 text-gray-900">${linea.obra}</span>
+                                                                                                                                </div>
+                                                                                                                            ` : ''}
                         <div class="pt-2 border-t border-gray-100">
                             <span class="text-gray-500">Cantidad Pendiente:</span>
                             <span class="ml-2 font-bold text-gray-900">${linea.cantidad_pendiente || 0} kg</span>
                         </div>
                         ${linea.score ? `
-                                                                                    <div class="text-xs text-gray-500">
-                                                                                        Score de coincidencia: ${(linea.score * 100).toFixed(1)}%
-                                                                                    </div>
-                                                                                ` : ''}
+                                                                                                                                <div class="text-xs text-gray-500">
+                                                                                                                                    Score de coincidencia: ${(linea.score * 100).toFixed(1)}%
+                                                                                                                                </div>
+                                                                                                                            ` : ''}
                     </div>
                 </div>
             `;
