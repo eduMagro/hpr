@@ -1079,7 +1079,7 @@ class AsignacionTurnoController extends Controller
                 'salida' => 'nullable|date_format:H:i',
                 'maquina_id' => 'nullable|exists:maquinas,id',
                 'obra_id' => 'nullable|exists:obras,id',
-                'estado' => 'nullable|string|in:activo,vacaciones,baja,permiso,ausente',
+                'estado' => 'nullable|string|in:activo,curso,vacaciones,baja,justificada,injustificada',
             ]);
 
             $asignacion->update($validated);
@@ -1524,7 +1524,8 @@ class AsignacionTurnoController extends Controller
     }
 
     /**
-     * Limpia las asignaciones de obra de una semana
+     * Limpia el obra_id de las asignaciones de una semana
+     * Excluye las obras de Hierros Paco Reyes (naves propias)
      * Puede limpiar todas las obras o solo una específica
      */
     public function limpiarSemana(Request $request)
@@ -1537,32 +1538,44 @@ class AsignacionTurnoController extends Controller
         $inicioSemana = Carbon::parse($request->fecha_actual)->startOfWeek();
         $finSemana = $inicioSemana->copy()->endOfWeek();
 
-        // Query base para asignaciones normales
-        $queryAsignaciones = AsignacionTurno::whereBetween('fecha', [$inicioSemana, $finSemana])
-            ->whereNotNull('obra_id');
+        // Obtener IDs de obras de Hierros Paco Reyes (no se deben limpiar)
+        $obrasPacoReyes = Obra::getNavesPacoReyes()->pluck('id')->toArray();
 
-        // Query base para eventos ficticios
-        $queryFicticios = \App\Models\EventoFicticioObra::whereBetween('fecha', [$inicioSemana, $finSemana]);
+        // Query base para asignaciones normales (excluyendo obras de Paco Reyes)
+        $queryAsignaciones = AsignacionTurno::whereBetween('fecha', [$inicioSemana, $finSemana])
+            ->whereNotNull('obra_id')
+            ->whereNotIn('obra_id', $obrasPacoReyes);
+
+        // Query base para eventos ficticios (excluyendo obras de Paco Reyes)
+        $queryFicticios = \App\Models\EventoFicticioObra::whereBetween('fecha', [$inicioSemana, $finSemana])
+            ->whereNotIn('obra_id', $obrasPacoReyes);
 
         // Filtrar por obra si se especifica
         if ($request->obra_id) {
+            // Verificar que la obra especificada no sea de Paco Reyes
+            if (in_array($request->obra_id, $obrasPacoReyes)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No se pueden limpiar obras de Hierros Paco Reyes.'
+                ]);
+            }
             $queryAsignaciones->where('obra_id', $request->obra_id);
             $queryFicticios->where('obra_id', $request->obra_id);
         }
 
-        // Eliminar asignaciones (soft delete)
-        $eliminadasNormales = $queryAsignaciones->count();
-        $queryAsignaciones->delete();
+        // Quitar obra_id de las asignaciones (no eliminar el registro)
+        $limpiadasNormales = $queryAsignaciones->count();
+        $queryAsignaciones->update(['obra_id' => null]);
 
-        // Eliminar eventos ficticios
+        // Eliminar eventos ficticios (estos sí se eliminan porque no tienen sentido sin obra)
         $eliminadasFicticias = $queryFicticios->count();
         $queryFicticios->delete();
 
-        $total = $eliminadasNormales + $eliminadasFicticias;
+        $total = $limpiadasNormales + $eliminadasFicticias;
 
         return response()->json([
             'success' => true,
-            'message' => "Se eliminaron {$total} asignaciones ({$eliminadasNormales} normales, {$eliminadasFicticias} ficticias)."
+            'message' => "Se limpiaron {$total} asignaciones ({$limpiadasNormales} normales, {$eliminadasFicticias} ficticias)."
         ]);
     }
 
@@ -1828,9 +1841,17 @@ class AsignacionTurnoController extends Controller
             ]);
         }
 
-        // Obtener asignaciones del día origen (TODAS, sin filtro de máquina obligatorio)
+        // Obtener IDs de obras de "Hierros Paco Reyes"
+        $obrasPacoReyes = Obra::whereHas('cliente', function ($q) {
+            $q->whereRaw('LOWER(empresa) LIKE ?', ['%hierros paco reyes%']);
+        })->pluck('id')->toArray();
+
+        Log::info('[propagarDia] Obras de Paco Reyes:', ['ids' => $obrasPacoReyes]);
+
+        // Obtener asignaciones del día origen (solo de obras de Paco Reyes)
         $query = AsignacionTurno::with(['user.categoria', 'turno', 'obra'])
-            ->whereDate('fecha', $fechaOrigen->toDateString());
+            ->whereDate('fecha', $fechaOrigen->toDateString())
+            ->whereIn('obra_id', $obrasPacoReyes);
 
         // Solo filtrar por máquina si se especifica una válida
         if ($maquinaId && is_numeric($maquinaId)) {
@@ -1888,8 +1909,13 @@ class AsignacionTurnoController extends Controller
         ];
 
         $copiadas = 0;
+        $eliminadas = 0;
         $eventosCreados = [];
+        $eventosEliminados = [];
         $diasProcesados = 0;
+
+        // IDs de usuarios que tienen asignación en el día origen (para modo espejo)
+        $userIdsEnOrigen = $asignaciones->pluck('user_id')->unique()->toArray();
 
         // Iterar desde el día siguiente al origen hasta el fin
         $fechaActual = $fechaOrigen->copy()->addDay();
@@ -1911,6 +1937,30 @@ class AsignacionTurnoController extends Controller
 
             $diasProcesados++;
 
+            // === MODO ESPEJO: Quitar maquina_id a usuarios que NO están en el día origen ===
+            $queryEspejo = AsignacionTurno::whereDate('fecha', $fechaStr)
+                ->whereNotIn('user_id', $userIdsEnOrigen);
+
+            // Si filtramos por máquina, solo afectar asignaciones de esa máquina
+            if ($maquinaId && is_numeric($maquinaId)) {
+                $queryEspejo->where('maquina_id', $maquinaId);
+            } else {
+                // Si es "todas las máquinas", solo afectar las que tienen maquina_id
+                $queryEspejo->whereNotNull('maquina_id');
+            }
+
+            $asignacionesAQuitar = $queryEspejo->get();
+
+            foreach ($asignacionesAQuitar as $asignacionQuitar) {
+                // Guardar ID para notificar al frontend
+                $eventosEliminados[] = 'turno-' . $asignacionQuitar->id;
+
+                // Quitar el maquina_id (el trabajador ya no está asignado a esa máquina)
+                $asignacionQuitar->update(['maquina_id' => null]);
+                $eliminadas++;
+            }
+
+            // === Propagar asignaciones del día origen ===
             foreach ($asignaciones as $asignacion) {
                 // Verificar si el usuario tiene vacaciones este día
                 if (isset($vacacionesPorUsuario[$asignacion->user_id][$fechaStr])) {
@@ -1987,10 +2037,12 @@ class AsignacionTurnoController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => "Se propagaron {$copiadas} asignaciones a {$diasProcesados} días ({$alcanceTexto}).",
+            'message' => "Se propagaron {$copiadas} asignaciones y se quitaron {$eliminadas} de máquinas ({$alcanceTexto}).",
             'copiadas' => $copiadas,
+            'eliminadas' => $eliminadas,
             'dias_procesados' => $diasProcesados,
             'eventos' => $eventosCreados,
+            'eventos_eliminados' => $eventosEliminados,
         ]);
     }
 

@@ -608,6 +608,73 @@
             });
         }
 
+        /**
+         * Verifica qué trabajadores están ocupados en el calendario de producción (naves Paco Reyes)
+         * y marca sus fichas como no disponibles
+         */
+        async function verificarOcupacionCruzada() {
+            const cal = window.calendarioObras;
+            if (!cal) return;
+
+            const currentView = cal.view;
+            const start = currentView.currentStart.toISOString().split('T')[0];
+            const end = currentView.currentEnd.toISOString().split('T')[0];
+
+            try {
+                const response = await fetch(`{{ route('asignaciones-turnos.ocupacionCruzada') }}?start=${start}&end=${end}&calendario=obras`);
+                const data = await response.json();
+
+                if (!data.success) return;
+
+                const ocupados = data.ocupados;
+
+                // Actualizar todas las fichas
+                document.querySelectorAll('#external-events-servicios .fc-event, #external-events-hpr .fc-event').forEach(ficha => {
+                    const userId = ficha.dataset.id;
+
+                    // Remover clases anteriores
+                    ficha.classList.remove('ocupado-taller');
+                    const badgeAnterior = ficha.querySelector('.badge-taller');
+                    if (badgeAnterior) badgeAnterior.remove();
+
+                    if (ocupados[userId]) {
+                        const diasOcupado = ocupados[userId].total_dias;
+                        const diasRaw = ocupados[userId].dias || [];
+                        // Convertir a array si es objeto
+                        const diasLista = Array.isArray(diasRaw) ? diasRaw : Object.values(diasRaw);
+
+                        // Formatear los días para mostrar
+                        const diasFormateados = diasLista.map(fecha => {
+                            // Asegurar formato correcto YYYY-MM-DD
+                            const partes = fecha.split('-');
+                            if (partes.length === 3) {
+                                const d = new Date(partes[0], partes[1] - 1, partes[2]);
+                                return d.toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric' });
+                            }
+                            return fecha;
+                        }).join(', ');
+
+                        // Marcar como ocupado en taller
+                        ficha.classList.add('ocupado-taller');
+
+                        // Añadir badge indicador en esquina inferior izquierda
+                        const badge = document.createElement('span');
+                        badge.className = 'badge-taller absolute -bottom-1 -left-1 bg-orange-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full shadow z-10';
+                        badge.title = `En taller: ${diasFormateados}`;
+                        badge.textContent = `🏭${diasOcupado}`;
+                        ficha.style.position = 'relative';
+                        ficha.appendChild(badge);
+
+                        // Actualizar tooltip con días específicos
+                        const tooltipActual = ficha.title || '';
+                        ficha.title = `${tooltipActual} | Taller: ${diasFormateados}`;
+                    }
+                });
+            } catch (error) {
+                console.error('Error verificando ocupación cruzada:', error);
+            }
+        }
+
         function inicializarCalendarioObras() {
             if (window.calendarioObras) {
                 window.calendarioObras.destroy();
@@ -658,7 +725,10 @@
                     }
 
                     // Actualizar estado de fichas cuando cambie la fecha/vista
-                    setTimeout(() => actualizarEstadoFichasTrabajadores(), 100);
+                    setTimeout(() => {
+                        actualizarEstadoFichasTrabajadores();
+                        verificarOcupacionCruzada();
+                    }, 100);
                 },
                 selectable: true,
                 selectMirror: true,
@@ -1059,7 +1129,7 @@
                             if (action === 'perfil') {
                                 // Ir al perfil del usuario
                                 if (userId) {
-                                    window.open(`/usuarios/${userId}`, '_blank');
+                                    window.open(`/users/${userId}`, '_blank');
                                 } else {
                                     Swal.fire('Info', 'No se encontró el perfil del trabajador', 'info');
                                 }
@@ -1074,11 +1144,12 @@
                                     html: `
                                         <p class="text-sm text-gray-600 mb-4">${textoInfo}</p>
                                         <select id="swal-estado" class="w-full border border-gray-300 rounded px-3 py-2">
-                                            <option value="activo" ${estadoActual === 'activo' ? 'selected' : ''}>Activo</option>
-                                            <option value="vacaciones" ${estadoActual === 'vacaciones' ? 'selected' : ''}>Vacaciones</option>
-                                            <option value="baja" ${estadoActual === 'baja' ? 'selected' : ''}>Baja</option>
-                                            <option value="permiso" ${estadoActual === 'permiso' ? 'selected' : ''}>Permiso</option>
-                                            <option value="ausente" ${estadoActual === 'ausente' ? 'selected' : ''}>Ausente</option>
+                                            <option value="activo" ${estadoActual === 'activo' ? 'selected' : ''}>⏱️ Activo</option>
+                                            <option value="curso" ${estadoActual === 'curso' ? 'selected' : ''}>🎓 Cursos</option>
+                                            <option value="vacaciones" ${estadoActual === 'vacaciones' ? 'selected' : ''}>🏖️ Vacaciones</option>
+                                            <option value="baja" ${estadoActual === 'baja' ? 'selected' : ''}>🤒 Baja</option>
+                                            <option value="justificada" ${estadoActual === 'justificada' ? 'selected' : ''}>✅ Justificada</option>
+                                            <option value="injustificada" ${estadoActual === 'injustificada' ? 'selected' : ''}>❌ Injustificada</option>
                                         </select>
                                     `,
                                     showCancelButton: true,
@@ -1428,6 +1499,7 @@
             // Actualizar fichas después de renderizar el calendario
             setTimeout(() => {
                 actualizarEstadoFichasTrabajadores();
+                verificarOcupacionCruzada();
             }, 500);
         }
 
@@ -1449,12 +1521,41 @@
             inicializarCalendarioObras();
         }
 
-        // Inicializar inmediatamente (el script se ejecuta cuando el DOM ya existe en navegación SPA)
-        initCalendario();
+        // Función para inicializar todo
+        function inicializarTodo() {
+            // Verificar que FullCalendar esté disponible
+            if (typeof FullCalendar === 'undefined') {
+                console.warn('FullCalendar no disponible, reintentando...');
+                setTimeout(inicializarTodo, 100);
+                return;
+            }
+
+            const calendarioEl = document.getElementById('calendario-obras');
+            if (!calendarioEl) {
+                console.warn('Elemento calendario-obras no encontrado');
+                return;
+            }
+
+            initCalendario();
+        }
+
+        // Inicializar según el contexto
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', inicializarTodo);
+        } else {
+            // DOM ya está listo (navegación SPA)
+            inicializarTodo();
+        }
 
         // Configurar listeners de Livewire solo una vez
         if (!window._calendarioObrasListenersConfigured) {
             window._calendarioObrasListenersConfigured = true;
+
+            // Re-inicializar al navegar a esta página
+            document.addEventListener('livewire:navigated', function() {
+                // Pequeño delay para asegurar que el DOM esté listo
+                setTimeout(inicializarTodo, 50);
+            });
 
             // Limpiar al salir de la página
             document.addEventListener('livewire:navigating', function() {
@@ -2046,6 +2147,23 @@
         #external-events-servicios .fc-event.ficha-completa,
         #external-events-hpr .fc-event.ficha-completa {
             opacity: 0.7 !important;
+        }
+
+        /* Fichas ocupadas en taller - borde naranja */
+        #external-events-servicios .fc-event.ocupado-taller,
+        #external-events-hpr .fc-event.ocupado-taller {
+            border: 2px solid #f97316 !important;
+            box-shadow: 0 0 0 2px rgba(249, 115, 22, 0.3) !important;
+        }
+
+        /* Badge de taller */
+        .badge-taller {
+            animation: pulse-badge 2s infinite;
+        }
+
+        @keyframes pulse-badge {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
         }
 
         .btn-eliminar {

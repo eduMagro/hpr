@@ -188,6 +188,41 @@ function getVistaValida(claveLocalStorage, vistasPermitidas, vistaDefault) {
     return vistasPermitidas.includes(vista) ? vista : vistaDefault;
 }
 
+// Variable global para almacenar trabajadores ocupados en obras externas
+let trabajadoresEnObrasExternas = {};
+
+/**
+ * Verifica qué trabajadores tienen asignación en obras externas (no Paco Reyes)
+ * y almacena la información para mostrar indicadores visuales
+ */
+async function verificarOcupacionEnObrasExternas(start, end) {
+    try {
+        const response = await fetch(`/asignaciones-turno/ocupacion-cruzada?start=${start}&end=${end}&calendario=produccion`);
+        const data = await response.json();
+
+        if (data.success) {
+            trabajadoresEnObrasExternas = data.ocupados || {};
+            console.log('[cal] Trabajadores en obras externas:', trabajadoresEnObrasExternas);
+        }
+    } catch (error) {
+        console.error('[cal] Error verificando ocupación en obras:', error);
+    }
+}
+
+/**
+ * Verifica si un trabajador está ocupado en obras externas
+ */
+function estaEnObraExterna(userId) {
+    return trabajadoresEnObrasExternas[userId] !== undefined;
+}
+
+/**
+ * Obtiene los días que un trabajador está en obra externa
+ */
+function diasEnObraExterna(userId) {
+    return trabajadoresEnObrasExternas[userId]?.total_dias || 0;
+}
+
 export function initCalendar(domEl) {
     const { maquinas, eventos, cargaTrabajo, turnos } = DATA();
 
@@ -217,7 +252,7 @@ export function initCalendar(domEl) {
         initialDate: localStorage.getItem(FECHA_KEY) || undefined,
         selectable: true,
         unselectAuto: true,
-        datesSet(info) {
+        async datesSet(info) {
             // Guardar vista y fecha válidas en localStorage
             localStorage.setItem("vistaObras", info.view.type);
             localStorage.setItem("fechaObras", info.startStr);
@@ -247,6 +282,11 @@ export function initCalendar(domEl) {
                     btn.classList.add("hidden");
                 }
             }
+
+            // Verificar trabajadores ocupados en obras externas
+            const start = info.startStr.slice(0, 10);
+            const end = info.endStr.slice(0, 10);
+            await verificarOcupacionEnObrasExternas(start, end);
         },
         displayEventEnd: true,
         eventMinHeight: 30,
@@ -571,11 +611,20 @@ export function initCalendar(domEl) {
                     ? `${p.entrada} / ${p.salida}`
                     : p.entrada || p.salida || "-- / --";
             const turnoNombre = p.turno_nombre ? p.turno_nombre.charAt(0).toUpperCase() + p.turno_nombre.slice(1) : '';
+
+            // Verificar si el trabajador está en obra externa
+            const userId = p.user_id;
+            const enObraExterna = estaEnObraExterna(userId);
+            const diasObra = diasEnObraExterna(userId);
+            const badgeObra = enObraExterna
+                ? `<span class="ml-1 px-1 py-0.5 bg-green-500 text-white text-[8px] rounded font-bold" title="${diasObra} día(s) en obra">🏗️${diasObra}</span>`
+                : '';
+
             return {
                 html: `
-          <div class="px-2 py-1 text-xs font-semibold flex items-center">
+          <div class="px-2 py-1 text-xs font-semibold flex items-center ${enObraExterna ? 'tiene-obra-externa' : ''}">
             <div class="flex flex-col">
-              <span>${arg.event.title} <span class="text-[10px] font-medium opacity-70">[${turnoNombre}]</span></span>
+              <span>${arg.event.title} <span class="text-[10px] font-medium opacity-70">[${turnoNombre}]</span>${badgeObra}</span>
               <span class="text-[10px] font-normal opacity-80">(${
                   p.categoria_nombre ?? ""
               } 🛠 ${p.especialidad_nombre ?? "Sin especialidad"})</span>

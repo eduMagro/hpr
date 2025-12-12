@@ -302,27 +302,34 @@
         modal.classList.remove('hidden');
         modal.classList.add('flex');
 
-        const eventoEnter = new KeyboardEvent("keydown", {
-            key: "Enter",
-            code: "Enter",
-            keyCode: 13,
-            which: 13,
-            bubbles: true,
-        });
-
         const inputQR = document.getElementById("codigo_general_general");
 
-        setTimeout(() => {
-            if (!inputQR) return;
-
-            if (codigo) {
-                const code = String(codigo).trim().toUpperCase();
-                inputQR.value = code;
-                inputQR.dispatchEvent(eventoEnter);
-            }
-
-            inputQR.focus();
-        }, 100);
+        if (codigo) {
+            const code = String(codigo).trim().toUpperCase();
+            // Reintentar hasta que la función esté disponible (máximo 2 segundos)
+            let intentos = 0;
+            const maxIntentos = 20;
+            const intervalo = setInterval(() => {
+                intentos++;
+                if (typeof window.agregarQRMovimientoLibre === 'function') {
+                    clearInterval(intervalo);
+                    window.agregarQRMovimientoLibre(code);
+                    if (inputQR) inputQR.focus();
+                } else if (intentos >= maxIntentos) {
+                    clearInterval(intervalo);
+                    console.warn('[abrirModalMovimientoLibre] Función agregarQRMovimientoLibre no disponible después de', maxIntentos * 100, 'ms');
+                    // Fallback: poner el valor en el input para que el usuario presione Enter
+                    if (inputQR) {
+                        inputQR.value = code;
+                        inputQR.focus();
+                    }
+                }
+            }, 100);
+        } else {
+            setTimeout(() => {
+                if (inputQR) inputQR.focus();
+            }, 100);
+        }
     }
 
     function cerrarModalMovimientoLibre() {
@@ -334,20 +341,20 @@
     // Mostrar/ocultar campos según tipo
     document.addEventListener('DOMContentLoaded', function() {
         const tipoSelect = document.getElementById('tipo');
-        const productoSection = document.getElementById(
-            'producto-section');
-        const paqueteSection = document.getElementById(
-            'paquete-section');
+        const productoSection = document.getElementById('producto-section');
+        const paqueteSection = document.getElementById('paquete-section');
 
-        tipoSelect.addEventListener('change', function() {
-            if (this.value === 'producto') {
-                productoSection.classList.remove('hidden');
-                paqueteSection.classList.add('hidden');
-            } else if (this.value === 'paquete') {
-                productoSection.classList.add('hidden');
-                paqueteSection.classList.remove('hidden');
-            }
-        });
+        if (tipoSelect && productoSection && paqueteSection) {
+            tipoSelect.addEventListener('change', function() {
+                if (this.value === 'producto') {
+                    productoSection.classList.remove('hidden');
+                    paqueteSection.classList.add('hidden');
+                } else if (this.value === 'paquete') {
+                    productoSection.classList.add('hidden');
+                    paqueteSection.classList.remove('hidden');
+                }
+            });
+        }
     });
 
     let paqueteEsperadoId = null;
@@ -521,7 +528,7 @@
     }
 </style>
 
-<script src="{{ asset('js/movimientos/movimientosgrua.js') }}"></script>
+<script src="{{ asset('js/movimientos/movimientosgrua.js') }}?v={{ time() }}"></script>
 
 {{-- 📦 MODAL MOVER PAQUETE (3 pasos: escanear, validar, ubicar en mapa) --}}
 <div id="modal-mover-paquete"
