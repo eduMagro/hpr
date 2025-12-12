@@ -42,22 +42,49 @@ window.resumirEtiquetas = async function(planillaId, maquinaId) {
             });
         }
 
-        // 2. Construir HTML del preview
-        const gruposHtml = preview.grupos.map(g => `
-            <div class="flex justify-between items-center py-2 border-b border-gray-200 last:border-0">
-                <div class="flex-1">
-                    <span class="font-bold text-teal-700">Ø${g.diametro}</span>
-                    <span class="text-gray-500 text-sm ml-2">${g.dimensiones || 'barra'}</span>
+        // 2. Construir HTML del preview con detalles de etiquetas y elementos
+        const gruposHtml = preview.grupos.map((g, idx) => {
+            // Detalle de cada etiqueta del grupo
+            const etiquetasHtml = g.etiquetas.map(et => {
+                const elementosHtml = et.elementos_detalle.map(el =>
+                    `<span class="inline-block bg-gray-100 text-gray-600 px-1 rounded text-xs mr-1">${el.codigo || el.marca}</span>`
+                ).join('');
+
+                return `
+                    <div class="pl-4 py-1 text-xs border-l-2 border-teal-200 ml-2 mb-1">
+                        <div class="flex justify-between items-center">
+                            <span class="font-medium text-gray-700">${et.etiqueta_sub_id}</span>
+                            <span class="text-gray-400">${et.planilla_codigo}</span>
+                        </div>
+                        <div class="mt-1">${elementosHtml}</div>
+                    </div>
+                `;
+            }).join('');
+
+            return `
+                <div class="py-2 border-b border-gray-200 last:border-0">
+                    <div class="flex justify-between items-center cursor-pointer" onclick="document.getElementById('grupo-detalle-${idx}').classList.toggle('hidden')">
+                        <div class="flex-1">
+                            <span class="font-bold text-teal-700">Ø${g.diametro}</span>
+                            <span class="text-gray-500 text-sm ml-2">${g.dimensiones || 'barra'}</span>
+                        </div>
+                        <div class="text-right flex items-center gap-3">
+                            <span class="bg-teal-100 text-teal-800 px-2 py-1 rounded text-sm font-medium">
+                                ${g.total_etiquetas} etiquetas
+                            </span>
+                            <span class="text-gray-500 text-sm">${g.total_elementos} elem</span>
+                            <span class="text-gray-400 text-sm">${g.peso_total} kg</span>
+                            <svg class="w-4 h-4 text-gray-400 transform transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                            </svg>
+                        </div>
+                    </div>
+                    <div id="grupo-detalle-${idx}" class="hidden mt-2">
+                        ${etiquetasHtml}
+                    </div>
                 </div>
-                <div class="text-right flex items-center gap-3">
-                    <span class="bg-teal-100 text-teal-800 px-2 py-1 rounded text-sm font-medium">
-                        ${g.total_etiquetas} etiquetas
-                    </span>
-                    <span class="text-gray-500 text-sm">${g.total_elementos} elem</span>
-                    <span class="text-gray-400 text-sm">${g.peso_total} kg</span>
-                </div>
-            </div>
-        `).join('');
+            `;
+        }).join('');
 
         // 3. Mostrar preview y confirmar
         const result = await Swal.fire({
@@ -86,7 +113,7 @@ window.resumirEtiquetas = async function(planillaId, maquinaId) {
             cancelButtonColor: '#6b7280',
             confirmButtonText: 'Resumir',
             cancelButtonText: 'Cancelar',
-            width: '550px',
+            width: '650px',
         });
 
         if (!result.isConfirmed) return;

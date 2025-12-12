@@ -659,9 +659,10 @@
 
                         // Añadir badge indicador en esquina inferior izquierda
                         const badge = document.createElement('span');
-                        badge.className = 'badge-taller absolute -bottom-1 -left-1 bg-orange-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full shadow z-10';
+                        badge.className = 'badge-taller';
                         badge.title = `En taller: ${diasFormateados}`;
                         badge.textContent = `🏭${diasOcupado}`;
+                        badge.style.cssText = 'position:absolute; bottom:-4px; left:-4px; background:#f97316; color:white; font-size:9px; font-weight:bold; padding:2px 6px; border-radius:9999px; box-shadow:0 1px 3px rgba(0,0,0,0.3); z-index:10;';
                         ficha.style.position = 'relative';
                         ficha.appendChild(badge);
 
