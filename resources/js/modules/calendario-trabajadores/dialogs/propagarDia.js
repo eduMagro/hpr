@@ -1,4 +1,5 @@
 import { CSRF } from "../config.js";
+import { verificarConflictosObraTaller } from "../utils/verificarConflictos.js";
 
 /**
  * Diálogo unificado para propagar asignaciones de un día

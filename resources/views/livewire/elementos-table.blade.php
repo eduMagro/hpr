@@ -587,8 +587,25 @@
                         if (data.ok) {
                             console.log('✅ Campo actualizado correctamente');
                             input.dataset.originalValue = valor;
-                            // Recargar la página para ver los cambios
-                            window.location.reload();
+
+                            // Feedback visual sin recargar
+                            input.classList.add('bg-green-100', 'border-green-500');
+                            setTimeout(() => {
+                                input.classList.remove('bg-green-100', 'border-green-500');
+                            }, 1500);
+
+                            // Mostrar notificación si SweetAlert está disponible
+                            if (typeof Swal !== 'undefined') {
+                                Swal.fire({
+                                    toast: true,
+                                    position: 'top-end',
+                                    icon: 'success',
+                                    title: 'Máquina actualizada',
+                                    showConfirmButton: false,
+                                    timer: 1500,
+                                    timerProgressBar: true,
+                                });
+                            }
                         } else if (data.swal) {
                             // Mostrar error con SweetAlert si está disponible
                             if (typeof Swal !== 'undefined') {

@@ -33,6 +33,7 @@ use App\Services\ProgressBVBSService;
 use App\Services\AsignarMaquinaService;
 use App\Services\PlanillaColaService;
 use App\Services\ActionLoggerService;
+use App\Models\GrupoResumen;
 
 class MaquinaController extends Controller
 {
@@ -269,8 +270,13 @@ class MaquinaController extends Controller
             return $subId . '-0000000000';
         };
 
+        // Obtener etiqueta_sub_ids que están en grupos de resumen (resumidas)
+        $etiquetasResumidas = Etiqueta::whereNotNull('grupo_resumen_id')
+            ->pluck('etiqueta_sub_id')
+            ->toArray();
+
         $etiquetasData = $elementosFiltrados
-            ->filter(fn($e) => !empty($e->etiqueta_sub_id))
+            ->filter(fn($e) => !empty($e->etiqueta_sub_id) && !in_array($e->etiqueta_sub_id, $etiquetasResumidas))
             ->groupBy('etiqueta_sub_id')
             ->sortBy($ordenSub)
             ->map(fn($grupo, $subId) => [
@@ -384,7 +390,86 @@ class MaquinaController extends Controller
             })
             ->toArray();
 
-        // 11) Devolver vista
+        // 11) Grupos de resumen activos para esta máquina
+        $planillaIds = collect($planillasActivas)->pluck('id')->toArray();
+        $gruposResumen = GrupoResumen::where('activo', true)
+            ->where('maquina_id', $maquina->id)
+            ->whereIn('planilla_id', $planillaIds)
+            ->with(['etiquetas', 'planilla'])
+            ->get();
+
+        // Preparar datos de grupos para la vista (con elementos de cada etiqueta)
+        $gruposResumenData = $gruposResumen->map(function ($grupo) use ($elementosFiltrados) {
+            // Obtener los etiqueta_sub_id del grupo
+            $subIds = $grupo->etiquetas->pluck('etiqueta_sub_id')->toArray();
+
+            // Filtrar elementos que pertenecen a este grupo
+            $elementosGrupo = $elementosFiltrados->filter(
+                fn($e) => in_array($e->etiqueta_sub_id, $subIds)
+            );
+
+            return [
+                'id' => $grupo->id,
+                'codigo' => $grupo->codigo,
+                'diametro' => (int) $grupo->diametro,
+                'dimensiones' => $grupo->dimensiones,
+                'total_elementos' => $grupo->total_elementos,
+                'peso_total' => round($grupo->peso_total, 2),
+                'total_etiquetas' => $grupo->total_etiquetas,
+                'planilla_id' => $grupo->planilla_id,
+                'planilla_codigo' => $grupo->planilla->codigo ?? '',
+                'estado' => $grupo->estado_predominante,
+                'etiquetas' => $grupo->etiquetas->map(fn($et) => [
+                    'id' => $et->id,
+                    'etiqueta_sub_id' => $et->etiqueta_sub_id,
+                    'estado' => $et->estado,
+                ])->values()->toArray(),
+                'elementos' => $elementosGrupo->map(fn($e) => [
+                    'id' => $e->id,
+                    'codigo' => $e->codigo,
+                    'dimensiones' => $e->dimensiones,
+                    'estado' => $e->estado,
+                    'peso' => $e->peso_kg,
+                    'diametro' => $e->diametro_mm,
+                    'longitud' => $e->longitud_cm,
+                    'barras' => $e->barras,
+                    'figura' => $e->figura,
+                    'etiqueta_sub_id' => $e->etiqueta_sub_id,
+                ])->values()->toArray(),
+            ];
+        })->values();
+
+        // Obtener etiqueta_sub_ids que están en grupos (para excluirlos de la vista individual)
+        $etiquetasEnGrupos = $gruposResumen->flatMap(fn($g) => $g->etiquetas->pluck('etiqueta_sub_id'))->toArray();
+
+        // Filtrar elementosAgrupados para excluir etiquetas que están en grupos
+        $elementosAgrupadosSinGrupos = $elementosAgrupados->filter(
+            fn($grupo, $subId) => !in_array($subId, $etiquetasEnGrupos)
+        );
+
+        // Actualizar elementosAgrupadosScript sin grupos
+        $elementosAgrupadosScriptSinGrupos = $elementosAgrupadosSinGrupos->map(fn($grupo) => [
+            'etiqueta'  => $grupo->first()->etiquetaRelacion,
+            'planilla'  => $grupo->first()->planilla,
+            'elementos' => $grupo->map(fn($e) => [
+                'id'          => $e->id,
+                'codigo'      => $e->codigo,
+                'dimensiones' => $e->dimensiones,
+                'estado'      => $e->estado,
+                'peso'        => $e->peso_kg,
+                'diametro'    => $e->diametro_mm,
+                'longitud'    => $e->longitud_cm,
+                'barras'      => $e->barras,
+                'figura'      => $e->figura,
+                'coladas'     => [
+                    'colada1' => $e->producto ? $e->producto->n_colada : null,
+                    'colada2' => $e->producto2 ? $e->producto2->n_colada : null,
+                    'colada3' => $e->producto3 ? $e->producto3->n_colada : null,
+                ],
+            ])->values(),
+        ])->values();
+
+        // 12) Devolver vista
         return view('maquinas.show', array_merge($base, [
             // base
             'maquina' => $maquina,
@@ -402,9 +487,13 @@ class MaquinaController extends Controller
             'pesosElementos'           => $pesosElementos,
             'etiquetasData'            => $etiquetasData,
             'elementosReempaquetados'  => $elementosReempaquetados,
-            'elementosAgrupados'       => $elementosAgrupados,
-            'elementosAgrupadosScript' => $elementosAgrupadosScript,
+            'elementosAgrupados'       => $elementosAgrupadosSinGrupos,
+            'elementosAgrupadosScript' => $elementosAgrupadosScriptSinGrupos,
             'sugerenciasPorElemento'   => $sugerenciasPorElemento,
+
+            // grupos de resumen
+            'gruposResumen'         => $gruposResumenData,
+            'etiquetasEnGrupos'     => $etiquetasEnGrupos,
 
             // extra contexto
             'turnoHoy'                             => $turnoHoy,
@@ -1174,8 +1263,13 @@ class MaquinaController extends Controller
             return $subId . '-0000000000';
         };
 
+        // Obtener etiqueta_sub_ids que están en grupos de resumen (resumidas)
+        $etiquetasResumidas = Etiqueta::whereNotNull('grupo_resumen_id')
+            ->pluck('etiqueta_sub_id')
+            ->toArray();
+
         $etiquetasData = $elementosFiltrados
-            ->filter(fn($e) => !empty($e->etiqueta_sub_id))
+            ->filter(fn($e) => !empty($e->etiqueta_sub_id) && !in_array($e->etiqueta_sub_id, $etiquetasResumidas))
             ->groupBy('etiqueta_sub_id')
             ->sortBy($ordenSub)
             ->map(fn($grupo, $subId) => [

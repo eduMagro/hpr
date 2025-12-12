@@ -669,8 +669,8 @@ class PaqueteController extends Controller
             return response()->json(['error' => 'Etiqueta no asociada a ningún paquete.'], 404);
         }
 
-        // 4) Cargar paquete con todas sus etiquetas y elementos
-        $paquete = Paquete::with(['etiquetas.elementos'])->find($etiqueta->paquete_id);
+        // 4) Cargar paquete con todas sus etiquetas, elementos y localización
+        $paquete = Paquete::with(['etiquetas.elementos', 'localizacionPaquete'])->find($etiqueta->paquete_id);
         if (!$paquete) {
             return response()->json(['error' => 'Paquete no encontrado.'], 404);
         }
@@ -685,16 +685,32 @@ class PaqueteController extends Controller
         $celdaM = 0.5;
         $celdasLargo = max(1, (int) ceil(($tamano['longitud'] ?? 0) / $celdaM));
 
-        // 7) Respuesta JSON
+        // 7) Datos de localización en el mapa
+        $loc = $paquete->localizacionPaquete;
+        $tieneLocalizacion = $loc !== null;
+        $localizacionData = null;
+        if ($tieneLocalizacion) {
+            $localizacionData = [
+                'x1' => $loc->x1,
+                'y1' => $loc->y1,
+                'x2' => $loc->x2,
+                'y2' => $loc->y2,
+            ];
+        }
+
+        // 8) Respuesta JSON
         return response()->json([
-            'codigo'          => $paquete->codigo,
-            'paquete_id'      => $paquete->id,
-            'ancho'           => (float) $tamano['ancho'],
-            'longitud'        => (float) $tamano['longitud'],
-            'celdas_largo'    => $celdasLargo,
-            'etiqueta_sub_id' => $codigo,
-            'etiquetas_count' => $etiquetasCount,
-            'elementos_count' => $elementosCount,
+            'codigo'             => $paquete->codigo,
+            'paquete_id'         => $paquete->id,
+            'ancho'              => (float) $tamano['ancho'],
+            'longitud'           => (float) $tamano['longitud'],
+            'celdas_largo'       => $celdasLargo,
+            'etiqueta_sub_id'    => $codigo,
+            'etiquetas_count'    => $etiquetasCount,
+            'elementos_count'    => $elementosCount,
+            'nave_id'            => $paquete->nave_id,
+            'tiene_localizacion' => $tieneLocalizacion,
+            'localizacion'       => $localizacionData,
         ]);
     }
 

@@ -4,9 +4,11 @@ namespace App\Services;
 
 use App\Models\User;
 use App\Models\Empresa;
+use App\Models\Obra;
 use App\Models\AsignacionTurno;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
+use Carbon\Carbon;
 
 /**
  * Servicio centralizado para consultas de operarios.
@@ -152,9 +154,32 @@ class OperarioService
      */
     public function getDatosParaGenerarTurnos(string $fecha, int $maquinaId): array
     {
+        // Calcular rango de la semana (lunes a domingo)
+        $fechaCarbon = Carbon::parse($fecha);
+        $inicioSemana = $fechaCarbon->copy()->startOfWeek();
+        $finSemana = $fechaCarbon->copy()->endOfWeek();
+
         // IDs de operarios con turno ese día
         $idsConTurno = AsignacionTurno::whereDate('fecha', $fecha)
             ->pluck('user_id')
+            ->toArray();
+
+        // Obtener IDs de obras de Hierros Paco Reyes (producción/taller)
+        $obrasPacoReyes = Obra::getNavesPacoReyes()->pluck('id')->toArray();
+
+        // Obtener días en obra externa por operario en la semana
+        $diasEnObra = AsignacionTurno::whereBetween('fecha', [$inicioSemana->toDateString(), $finSemana->toDateString()])
+            ->whereNotNull('obra_id')
+            ->whereNotIn('obra_id', $obrasPacoReyes)
+            ->get()
+            ->groupBy('user_id')
+            ->map(function ($asignaciones) {
+                $dias = $asignaciones->pluck('fecha')->map(fn($f) => Carbon::parse($f)->format('Y-m-d'))->unique()->values()->toArray();
+                return [
+                    'total' => count($dias),
+                    'dias' => $dias,
+                ];
+            })
             ->toArray();
 
         // Una sola consulta para todos los operarios
@@ -173,20 +198,20 @@ class OperarioService
 
         return [
             'empresas' => $empresas->map(fn($e) => ['id' => $e->id, 'nombre' => $e->nombre])->values()->toArray(),
-            'sin_turno_por_empresa' => $this->agruparPorEmpresa($sinTurno),
-            'de_maquina_por_empresa' => $this->agruparPorEmpresa($deMaquina),
-            'todos_por_empresa' => $this->agruparPorEmpresa($todosOperarios),
+            'sin_turno_por_empresa' => $this->agruparPorEmpresa($sinTurno, $diasEnObra),
+            'de_maquina_por_empresa' => $this->agruparPorEmpresa($deMaquina, $diasEnObra),
+            'todos_por_empresa' => $this->agruparPorEmpresa($todosOperarios, $diasEnObra),
             // Mantener compatibilidad con código existente
-            'sin_turno' => $sinTurno->map(fn($op) => $this->formatearOperario($op))->values()->toArray(),
-            'de_maquina' => $deMaquina->map(fn($op) => $this->formatearOperario($op))->values()->toArray(),
-            'todos' => $todosOperarios->map(fn($op) => $this->formatearOperario($op))->values()->toArray(),
+            'sin_turno' => $sinTurno->map(fn($op) => $this->formatearOperario($op, $diasEnObra))->values()->toArray(),
+            'de_maquina' => $deMaquina->map(fn($op) => $this->formatearOperario($op, $diasEnObra))->values()->toArray(),
+            'todos' => $todosOperarios->map(fn($op) => $this->formatearOperario($op, $diasEnObra))->values()->toArray(),
         ];
     }
 
     /**
      * Agrupa una colección de operarios por empresa.
      */
-    private function agruparPorEmpresa(Collection $operarios): array
+    private function agruparPorEmpresa(Collection $operarios, array $diasEnObra = []): array
     {
         $grupos = [];
 
@@ -202,7 +227,7 @@ class OperarioService
                 ];
             }
 
-            $grupos[$empresaId]['operarios'][] = $this->formatearOperario($operario);
+            $grupos[$empresaId]['operarios'][] = $this->formatearOperario($operario, $diasEnObra);
         }
 
         // Ordenar por nombre de empresa
@@ -214,8 +239,10 @@ class OperarioService
     /**
      * Formatea un operario para respuesta JSON.
      */
-    private function formatearOperario(User $operario): array
+    private function formatearOperario(User $operario, array $diasEnObra = []): array
     {
+        $obraInfo = $diasEnObra[$operario->id] ?? null;
+
         return [
             'id' => $operario->id,
             'name' => $operario->name,
@@ -226,6 +253,8 @@ class OperarioService
             'maquina_id' => $operario->maquina_id,
             'empresa_id' => $operario->empresa_id,
             'empresa_nombre' => $operario->empresa?->nombre ?? null,
+            'dias_en_obra' => $obraInfo ? $obraInfo['total'] : 0,
+            'dias_en_obra_lista' => $obraInfo ? $obraInfo['dias'] : [],
         ];
     }
 

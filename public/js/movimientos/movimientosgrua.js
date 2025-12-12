@@ -1,5 +1,3 @@
-console.log('[movimientosgrua] Script cargado');
-
 // Estado global para el módulo de movimientos grúa
 window._movimientosGruaState = window._movimientosGruaState || {
     yaEscaneados: [],
@@ -106,28 +104,21 @@ window.agregarQRMovimientoLibre = function(valor) {
 };
 
 function initMovimientosGrua() {
-    console.log('[movimientosgrua] initMovimientosGrua() llamado');
-
     const QRINPUT = document.getElementById("codigo_general_general");
     const LISTAQRS = document.getElementById("mostrar_qrs");
     const INPUT_OCULTO = document.getElementById("lista_qrs");
     const FORM = document.getElementById("form-movimiento-general");
     const CANCELAR_BTN = document.getElementById("cancelar_btn");
 
-    console.log('[movimientosgrua] Elementos:', { QRINPUT: !!QRINPUT, LISTAQRS: !!LISTAQRS, INPUT_OCULTO: !!INPUT_OCULTO, FORM: !!FORM });
-
     if (!QRINPUT || !LISTAQRS || !INPUT_OCULTO || !FORM) {
-        console.warn('[movimientosgrua] Elementos del modal no encontrados, saltando inicialización de listeners');
         return;
     }
 
     // Evitar inicialización múltiple
     if (QRINPUT.dataset.initialized === 'true') {
-        console.log('[movimientosgrua] Ya inicializado, saltando');
         return;
     }
     QRINPUT.dataset.initialized = 'true';
-    console.log('[movimientosgrua] Inicializando listeners...');
 
     const state = window._movimientosGruaState;
     state.initialized = true;
@@ -214,13 +205,9 @@ function initMovimientosGrua() {
 }
 
 // Inicialización: detectar si DOM ya está listo
-console.log('[movimientosgrua] readyState:', document.readyState);
 if (document.readyState === "loading") {
-    console.log('[movimientosgrua] DOM cargando, esperando DOMContentLoaded');
     document.addEventListener("DOMContentLoaded", initMovimientosGrua);
 } else {
-    // DOM ya está listo, inicializar inmediatamente
-    console.log('[movimientosgrua] DOM listo, inicializando inmediatamente');
     initMovimientosGrua();
 }
 

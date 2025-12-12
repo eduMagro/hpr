@@ -10,6 +10,11 @@
     <link rel="stylesheet" href="{{ asset('css/localizaciones/styleLocIndex.css') }}">
 @endonce
 
+{{-- JS Ghost compartido (inline para garantizar disponibilidad) --}}
+@if($modoEdicion)
+    <x-localizaciones.ghost-paquete-js />
+@endif
+
 <div {{ $attributes->merge(['class' => 'mapa-simple-wrapper h-full overflow-hidden']) }} data-mapa-simple="{{ $mapId }}">
     {{-- Mensaje de carga --}}
     <div id="{{ $mapId }}-loading" class="flex items-center justify-center p-8 bg-gray-50 rounded-lg h-full">
@@ -324,8 +329,11 @@
         };
 
         escenario.addEventListener('mousedown', (e) => {
-            if (isDraggingPaquete) return;
-            if (e.target.closest('.loc-existente') || e.target.closest('button')) return;
+            if (isDraggingPaquete || window.__ghostDragging__) return;
+            // Ignorar clicks en elementos interactivos o en el ghost
+            if (e.target.closest('.loc-existente') || e.target.closest('button') ||
+                e.target.closest('#paquete-ghost') || e.target.closest('.ghost-paquete-mover') ||
+                e.target.closest('#ghost-actions') || e.target.closest('.ghost-actions')) return;
             isPanning = true;
             panStartX = e.clientX;
             panStartY = e.clientY;
@@ -336,7 +344,7 @@
         });
 
         escenario.addEventListener('mousemove', (e) => {
-            if (isDraggingPaquete || !isPanning) return;
+            if (isDraggingPaquete || window.__ghostDragging__ || !isPanning) return;
             const deltaX = e.clientX - panStartX;
             const deltaY = e.clientY - panStartY;
             escenario.scrollLeft = panStartScrollLeft - deltaX;
@@ -344,13 +352,13 @@
         });
 
         escenario.addEventListener('mouseup', () => {
-            if (isDraggingPaquete) return;
+            if (isDraggingPaquete || window.__ghostDragging__) return;
             isPanning = false;
             escenario.style.cursor = '';
         });
 
         escenario.addEventListener('mouseleave', () => {
-            if (isDraggingPaquete) return;
+            if (isDraggingPaquete || window.__ghostDragging__) return;
             isPanning = false;
             escenario.style.cursor = '';
         });
@@ -360,8 +368,11 @@
         let touchStartScrollLeft = 0, touchStartScrollTop = 0;
 
         escenario.addEventListener('touchstart', (e) => {
-            if (isDraggingPaquete) return;
-            if (e.target.closest('.loc-existente') || e.target.closest('button')) return;
+            if (isDraggingPaquete || window.__ghostDragging__) return;
+            // Ignorar touches en elementos interactivos o en el ghost
+            if (e.target.closest('.loc-existente') || e.target.closest('button') ||
+                e.target.closest('#paquete-ghost') || e.target.closest('.ghost-paquete-mover') ||
+                e.target.closest('#ghost-actions') || e.target.closest('.ghost-actions')) return;
             if (e.touches.length === 1) {
                 touchStartX = e.touches[0].clientX;
                 touchStartY = e.touches[0].clientY;
@@ -371,7 +382,7 @@
         }, { passive: true });
 
         escenario.addEventListener('touchmove', (e) => {
-            if (isDraggingPaquete) return;
+            if (isDraggingPaquete || window.__ghostDragging__) return;
             if (e.touches.length === 1) {
                 const deltaX = e.touches[0].clientX - touchStartX;
                 const deltaY = e.touches[0].clientY - touchStartY;
@@ -384,6 +395,40 @@
         renderizarElementos();
         updateMap();
         initPaqueteInteracciones();
+
+        // ================================
+        //  SISTEMA GHOST (usa clase compartida GhostPaquete)
+        // ================================
+        let ghostInstance = null;
+
+        if (modoEdicion && typeof window.GhostPaquete === 'function') {
+            ghostInstance = new window.GhostPaquete({
+                grid: grid,
+                viewCols: viewCols,
+                viewRows: viewRows,
+                W: W,
+                H: H,
+                isVertical: isVertical,
+                naveId: naveId,
+                rutaGuardar: '/localizaciones/paquete',
+                getCeldaPx: function() { return cellSize; },
+                confirmBeforeSave: false, // Sin confirm en modal, más fluido
+                onSuccess: function() {
+                    // Recargar el mapa para mostrar el paquete en su nueva ubicación
+                    if (mapaContainer && mapaContainer.recargarMapa) {
+                        mapaContainer.recargarMapa();
+                    }
+                },
+                onCancel: function() {
+                    // Nada especial al cancelar
+                }
+            });
+            console.log('GhostPaquete inicializado correctamente');
+        }
+
+        // Exponer funciones del ghost en mapaContainer (se asignan más abajo cuando mapaContainer existe)
+        window.__ghostInstance__ = window.__ghostInstance__ || {};
+        window.__ghostInstance__[mapId] = ghostInstance;
 
         // Resize
         let resizePending = false;
@@ -929,7 +974,9 @@
                     // Tras centrar el scroll, simular clic y pulsar el lápiz de edición
                     setTimeout(() => mapaContainer.autoclickEditarPaquete(codigo), 300);
                 }
+                return true;
             }
+            return false; // Paquete no encontrado en el mapa
         };
 
         mapaContainer.ocultarPaquete = function(codigo) {
@@ -967,12 +1014,12 @@
         };
 
         mapaContainer.moverMapaAPaquete = function(codigo) {
-            const grid = document.getElementById(`${mapId}-cuadricula`);
-            const escenario = document.getElementById(`${mapId}-escenario`);
-            const paquete = grid.querySelector(`.loc-paquete[data-codigo="${codigo}"]`);
+            const gridEl = document.getElementById(`${mapId}-cuadricula`);
+            const escenarioEl = document.getElementById(`${mapId}-escenario`);
+            const paquete = gridEl.querySelector(`.loc-paquete[data-codigo="${codigo}"]`);
             if (!paquete) return;
 
-            const escenarioRect = escenario.getBoundingClientRect();
+            const escenarioRect = escenarioEl.getBoundingClientRect();
             // Si aún no hay tamaño (p.ej., contenedor estaba oculto), reintentar en el siguiente frame
             if (!escenarioRect.width || !escenarioRect.height) {
                 requestAnimationFrame(() => mapaContainer.moverMapaAPaquete(codigo));
@@ -987,7 +1034,7 @@
 
             // Buscar el contenedor realmente scrollable (puede ser el escenario o un contenedor padre si el modal tiene overflow)
             const contenedorScroll = (() => {
-                let el = escenario;
+                let el = escenarioEl;
                 while (el && el !== document.body) {
                     const style = getComputedStyle(el);
                     const overflow = `${style.overflow}${style.overflowX}${style.overflowY}`;
@@ -995,7 +1042,7 @@
                     if (tieneScroll && /auto|scroll/i.test(overflow)) return el;
                     el = el.parentElement;
                 }
-                return escenario;
+                return escenarioEl;
             })();
 
             const contRect = contenedorScroll.getBoundingClientRect();
@@ -1013,9 +1060,44 @@
                 top: centerY,
                 behavior: 'smooth'
             });
-            
+
             // Restaurar visibilidad si estaba oculto (aunque moverMapaAPaquete suele llamarse para mostrarlo)
             if (wasHidden) paquete.style.display = 'none';
+        };
+
+        // Exponer función para crear ghost de paquete sin localización
+        // Nota: Esta función se asigna DESPUÉS de inicializarMapa en el flujo,
+        // pero como está fuera del callback del fetch, necesitamos acceder al ghost vía window
+        mapaContainer.crearGhostPaquete = function(paqueteData) {
+            if (!modoEdicion) {
+                console.warn('[crearGhostPaquete] El modo edición no está habilitado');
+                return false;
+            }
+
+            const ghostInstance = window.__ghostInstance__ ? window.__ghostInstance__[mapId] : null;
+
+            if (!ghostInstance) {
+                console.warn('[crearGhostPaquete] GhostPaquete no está disponible para mapId:', mapId,
+                    '- window.__ghostInstance__:', window.__ghostInstance__);
+                return false;
+            }
+
+            console.log('[crearGhostPaquete] Creando ghost para paquete:', paqueteData);
+            ghostInstance.crear(paqueteData);
+            return true;
+        };
+
+        // Exponer función para verificar si el ghost está listo
+        mapaContainer.isGhostReady = function() {
+            return !!(window.__ghostInstance__ && window.__ghostInstance__[mapId]);
+        };
+
+        // Exponer función para cancelar ghost desde fuera
+        mapaContainer.cancelarGhost = function() {
+            const ghostInstance = window.__ghostInstance__ ? window.__ghostInstance__[mapId] : null;
+            if (ghostInstance) {
+                ghostInstance.cancelar();
+            }
         };
     }
 })();

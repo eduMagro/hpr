@@ -36,6 +36,21 @@ function initTrabajoEtiqueta() {
             return;
         }
 
+        // ═══════════════════════════════════════════════════════════════════
+        // DETECTAR SI ES UN GRUPO DE ETIQUETAS RESUMIDAS
+        // ═══════════════════════════════════════════════════════════════════
+        const grupoId = btn.dataset.grupoId;
+        if (grupoId) {
+            const prevDisabled = btn.disabled;
+            btn.disabled = true;
+            try {
+                await actualizarGrupo(grupoId, maquinaId);
+            } finally {
+                btn.disabled = prevDisabled;
+            }
+            return;
+        }
+
         const etiquetaId = String(btn.dataset.etiquetaId || "").trim();
         const safeId = etiquetaId.replace(/\./g, "-");
         const elementoEtiqueta = document.querySelector(`#etiqueta-${safeId}`);
@@ -253,6 +268,79 @@ function initTrabajoEtiqueta() {
             }
 
             actualizarDOMEtiqueta(id, data);
+        } catch (err) {
+            showErrorAlert(err);
+        }
+    }
+
+    // ============================================================================
+    // ACTUALIZAR GRUPO DE ETIQUETAS RESUMIDAS
+    // ============================================================================
+
+    async function actualizarGrupo(grupoId, maquinaId) {
+        const csrfToken = document
+            .querySelector('meta[name="csrf-token"]')
+            ?.getAttribute("content");
+
+        // Obtener estado actual del grupo
+        const grupoCard = document.querySelector(`[data-grupo-id="${grupoId}"] .etiqueta-card`);
+        const estadoActual = (grupoCard?.dataset?.estado || "pendiente").toLowerCase();
+
+        // Si ya está completada, no hacer nada
+        if (["completada", "en-paquete", "empaquetada"].includes(estadoActual)) {
+            await Swal.fire({
+                icon: "info",
+                title: "Grupo ya completado",
+                text: `El grupo ya está en estado ${estadoActual}.`,
+                timer: 2500,
+                showConfirmButton: false,
+            });
+            return;
+        }
+
+        // Llamar al endpoint del grupo
+        try {
+            const res = await fetch(`/api/etiquetas/resumir/${grupoId}/estado`, {
+                method: "PUT",
+                headers: {
+                    "Content-Type": "application/json",
+                    Accept: "application/json",
+                    "X-CSRF-TOKEN": csrfToken,
+                },
+                body: JSON.stringify({ maquina_id: maquinaId }),
+            });
+
+            const data = await res.json();
+
+            if (!res.ok || !data.success) {
+                throw new Error(data.message || "Error al actualizar grupo");
+            }
+
+            // Mostrar resultado según el nuevo estado
+            const nuevoEstado = data.nuevo_estado || "actualizado";
+
+            if (nuevoEstado === "fabricando") {
+                showAlert("info", "Fabricando", `Grupo iniciado (${data.etiquetas_actualizadas || 0} etiquetas)`);
+            } else if (nuevoEstado === "completada") {
+                showAlert("success", "¡Completado!", `Grupo completado (${data.etiquetas_actualizadas || 0} etiquetas)`);
+            } else {
+                showAlert("success", "Actualizado", data.message);
+            }
+
+            // Actualizar clase visual del grupo
+            if (grupoCard) {
+                ["pendiente", "fabricando", "fabricada", "completada", "en-paquete"].forEach((est) => {
+                    grupoCard.classList.remove(`estado-${est}`);
+                });
+                grupoCard.classList.add(`estado-${nuevoEstado}`);
+                grupoCard.dataset.estado = nuevoEstado;
+            }
+
+            // Refrescar vista
+            if (typeof window.refrescarEtiquetasMaquina === "function") {
+                await window.refrescarEtiquetasMaquina();
+            }
+
         } catch (err) {
             showErrorAlert(err);
         }

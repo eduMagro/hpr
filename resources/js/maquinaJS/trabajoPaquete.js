@@ -591,6 +591,90 @@
                     });
                 }
             }
+
+            // ═══════════════════════════════════════════════════════════════════
+            // BOTÓN AGREGAR GRUPO AL CARRO (todas las etiquetas del grupo)
+            // ═══════════════════════════════════════════════════════════════════
+            if (
+                e.target.classList.contains("btn-agregar-carro-grupo") ||
+                e.target.closest(".btn-agregar-carro-grupo")
+            ) {
+                const btn = e.target.classList.contains("btn-agregar-carro-grupo")
+                    ? e.target
+                    : e.target.closest(".btn-agregar-carro-grupo");
+
+                const grupoId = btn.dataset.grupoId;
+                let etiquetas = [];
+
+                try {
+                    etiquetas = JSON.parse(btn.dataset.etiquetas || "[]");
+                } catch (err) {
+                    console.error("Error parseando etiquetas del grupo:", err);
+                    return;
+                }
+
+                if (!etiquetas.length) {
+                    await Swal.fire({
+                        icon: "info",
+                        title: "Grupo vacío",
+                        text: "No hay etiquetas en este grupo",
+                    });
+                    return;
+                }
+
+                console.log(`🛒 Añadiendo ${etiquetas.length} etiquetas del grupo ${grupoId} al carro`);
+
+                let agregadas = 0;
+                let duplicadas = 0;
+                let errores = 0;
+
+                for (const et of etiquetas) {
+                    try {
+                        const data = await validarEtiqueta(et.id);
+
+                        if (!data.valida) {
+                            errores++;
+                            continue;
+                        }
+
+                        const ok = agregarItemEtiqueta(et.id, data);
+                        if (ok) {
+                            agregadas++;
+                        } else {
+                            duplicadas++;
+                        }
+                    } catch (err) {
+                        errores++;
+                    }
+                }
+
+                // Mostrar resumen
+                if (agregadas > 0) {
+                    await Swal.fire({
+                        icon: "success",
+                        title: "Etiquetas añadidas",
+                        html: `
+                            <p>Se añadieron <strong>${agregadas}</strong> etiquetas al carro.</p>
+                            ${duplicadas > 0 ? `<p class="text-gray-500">${duplicadas} ya estaban en el carro.</p>` : ""}
+                            ${errores > 0 ? `<p class="text-red-500">${errores} no pudieron añadirse.</p>` : ""}
+                        `,
+                        timer: 2500,
+                        showConfirmButton: false,
+                    });
+                } else if (duplicadas > 0) {
+                    await Swal.fire({
+                        icon: "info",
+                        title: "Etiquetas duplicadas",
+                        text: `Todas las etiquetas del grupo ya están en el carro.`,
+                    });
+                } else {
+                    await Swal.fire({
+                        icon: "warning",
+                        title: "No se añadieron etiquetas",
+                        text: "Las etiquetas del grupo no son válidas para añadir al carro.",
+                    });
+                }
+            }
         });
 
         // console.log("✅ TrabajoPaquete inicializado");

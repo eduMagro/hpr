@@ -43,27 +43,44 @@ window.resumirEtiquetas = async function(planillaId, maquinaId) {
         }
 
         // 2. Construir HTML del preview con detalles de etiquetas y elementos
+        // Guardamos los datos de elementos para dibujar después
+        window._elementosParaDibujar = [];
+
         const gruposHtml = preview.grupos.map((g, idx) => {
             // Detalle de cada etiqueta del grupo
-            const etiquetasHtml = g.etiquetas.map(et => {
-                const elementosHtml = et.elementos_detalle.map(el =>
-                    `<span class="inline-block bg-gray-100 text-gray-600 px-1 rounded text-xs mr-1">${el.codigo || el.marca}</span>`
-                ).join('');
+            const etiquetasHtml = g.etiquetas.map((et, etIdx) => {
+                const elementosHtml = et.elementos_detalle.map((el, elIdx) => {
+                    const canvasId = `mini-fig-${idx}-${etIdx}-${elIdx}`;
+                    // Guardar datos para dibujar después
+                    window._elementosParaDibujar.push({
+                        canvasId,
+                        dimensiones: el.dimensiones || '',
+                        peso: el.peso,
+                        diametro: el.diametro
+                    });
+
+                    return `
+                        <div class="inline-block bg-white border border-gray-200 rounded p-1 mr-1 mb-1 text-center" style="min-width: 80px;">
+                            <div class="text-xs text-gray-500 font-mono">${el.codigo || el.marca}</div>
+                            <canvas id="${canvasId}" class="w-full" style="height: 50px; display: block;"></canvas>
+                        </div>
+                    `;
+                }).join('');
 
                 return `
-                    <div class="pl-4 py-1 text-xs border-l-2 border-teal-200 ml-2 mb-1">
-                        <div class="flex justify-between items-center">
+                    <div class="pl-4 py-2 text-xs border-l-2 border-teal-200 ml-2 mb-1 bg-gray-50 rounded-r">
+                        <div class="flex justify-between items-center mb-2">
                             <span class="font-medium text-gray-700">${et.etiqueta_sub_id}</span>
-                            <span class="text-gray-400">${et.planilla_codigo}</span>
+                            <span class="text-gray-400 bg-white px-2 py-0.5 rounded">${et.planilla_codigo}</span>
                         </div>
-                        <div class="mt-1">${elementosHtml}</div>
+                        <div class="flex flex-wrap">${elementosHtml}</div>
                     </div>
                 `;
             }).join('');
 
             return `
                 <div class="py-2 border-b border-gray-200 last:border-0">
-                    <div class="flex justify-between items-center cursor-pointer" onclick="document.getElementById('grupo-detalle-${idx}').classList.toggle('hidden')">
+                    <div class="flex justify-between items-center cursor-pointer" onclick="document.getElementById('grupo-detalle-${idx}').classList.toggle('hidden'); this.querySelector('svg').classList.toggle('rotate-180');">
                         <div class="flex-1">
                             <span class="font-bold text-teal-700">Ø${g.diametro}</span>
                             <span class="text-gray-500 text-sm ml-2">${g.dimensiones || 'barra'}</span>
@@ -113,7 +130,22 @@ window.resumirEtiquetas = async function(planillaId, maquinaId) {
             cancelButtonColor: '#6b7280',
             confirmButtonText: 'Resumir',
             cancelButtonText: 'Cancelar',
-            width: '650px',
+            width: '700px',
+            didOpen: () => {
+                // Dibujar las mini figuras después de que el modal esté abierto
+                if (typeof window.dibujarFiguraElemento === 'function' && window._elementosParaDibujar) {
+                    setTimeout(() => {
+                        window._elementosParaDibujar.forEach(el => {
+                            const canvas = document.getElementById(el.canvasId);
+                            if (canvas) {
+                                canvas.width = canvas.clientWidth || 80;
+                                canvas.height = canvas.clientHeight || 50;
+                                window.dibujarFiguraElemento(el.canvasId, el.dimensiones, null, el.diametro);
+                            }
+                        });
+                    }, 100);
+                }
+            }
         });
 
         if (!result.isConfirmed) return;
@@ -261,7 +293,7 @@ window.desagruparGrupo = async function(grupoId) {
 };
 
 /**
- * Imprime todas las etiquetas de un grupo
+ * Imprime todas las etiquetas originales de un grupo (una detrás de otra)
  * @param {number} grupoId - ID del grupo
  */
 window.imprimirTodasEtiquetasGrupo = async function(grupoId) {
@@ -278,17 +310,21 @@ window.imprimirTodasEtiquetasGrupo = async function(grupoId) {
         if (data.success && data.etiquetas) {
             Swal.close();
 
-            // Usar el sistema de impresión QR existente si está disponible
-            if (typeof window.imprimirQRsEnCadena === 'function') {
-                const etiquetasParaImprimir = data.etiquetas.map(e => e.etiqueta_sub_id);
-                window.imprimirQRsEnCadena(etiquetasParaImprimir);
-            } else if (typeof window.imprimirQR === 'function') {
-                // Imprimir una por una
-                for (const etiqueta of data.etiquetas) {
-                    await window.imprimirQR(etiqueta.etiqueta_sub_id);
-                }
+            // Obtener los etiqueta_sub_id para imprimir
+            const etiquetasSubIds = data.etiquetas.map(e => e.etiqueta_sub_id);
+
+            // Usar la función imprimirEtiquetas que imprime la etiqueta completa con SVG
+            if (typeof window.imprimirEtiquetas === 'function') {
+                // Obtener el modo de impresión seleccionado
+                const selectModo = document.getElementById(`modo-impresion-grupo-${grupoId}`);
+                const modo = selectModo ? selectModo.value : 'a6';
+
+                window.imprimirEtiquetas(etiquetasSubIds, modo);
+            } else if (typeof window.imprimirQRsEnCadena === 'function') {
+                // Fallback a impresión de QRs
+                window.imprimirQRsEnCadena(etiquetasSubIds);
             } else {
-                // Fallback: mostrar lista de etiquetas para impresión manual
+                // Fallback: mostrar lista de etiquetas
                 const listaHtml = data.etiquetas.map(e =>
                     `<li class="py-1">${e.etiqueta_sub_id} - ${e.nombre || ''}</li>`
                 ).join('');

@@ -1,4 +1,5 @@
 import { R, DATA } from "../config.js";
+import { verificarConflictosObraTaller } from "../utils/verificarConflictos.js";
 
 /**
  * Detecta el turno según la hora usando la configuración del backend
@@ -54,6 +55,22 @@ const COLORES_EMPRESA = [
 ];
 
 /**
+ * Formatea los días de obra para mostrar en tooltip
+ */
+function formatearDiasObra(diasLista) {
+    if (!diasLista || diasLista.length === 0) return '';
+
+    return diasLista.map(fecha => {
+        const partes = fecha.split('-');
+        if (partes.length === 3) {
+            const d = new Date(partes[0], partes[1] - 1, partes[2]);
+            return d.toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric' });
+        }
+        return fecha;
+    }).join(', ');
+}
+
+/**
  * Genera el HTML de un select de operarios para una empresa
  */
 function generarSelectEmpresa(grupo, index, tipo, colorIndex) {
@@ -63,9 +80,15 @@ function generarSelectEmpresa(grupo, index, tipo, colorIndex) {
 
     if (count === 0) return '';
 
-    const opciones = grupo.operarios.map(op =>
-        `<option value="${op.id}">${op.name} ${op.primer_apellido || ''} ${op.segundo_apellido || ''}</option>`
-    ).join('');
+    const opciones = grupo.operarios.map(op => {
+        const diasObra = op.dias_en_obra || 0;
+        const diasObraLista = op.dias_en_obra_lista || [];
+        const diasFormateados = formatearDiasObra(diasObraLista);
+        const indicadorObra = diasObra > 0 ? ` 🏗️${diasObra}` : '';
+        const tooltipObra = diasObra > 0 ? ` (En obra: ${diasFormateados})` : '';
+
+        return `<option value="${op.id}" title="${op.name} ${op.primer_apellido || ''} ${op.segundo_apellido || ''}${tooltipObra}">${op.name} ${op.primer_apellido || ''} ${op.segundo_apellido || ''}${indicadorObra}</option>`;
+    }).join('');
 
     return `
         <div class="mb-3 ${color.bg} ${color.border} border rounded-lg p-2">
@@ -284,8 +307,13 @@ export async function generarTurnosDialog(fechaISO, maquinaId, maquinaNombre, ho
                 // Buscar trabajador para mostrar nombre y verificar si es diurno
                 const trabajador = todosParaBusqueda.find(t => t.id === parseInt(trabajadorId));
                 if (trabajador) {
-                    // Mostrar nombre seleccionado
-                    nombreSeleccionado.textContent = `${trabajador.name} ${trabajador.primer_apellido || ''} ${trabajador.segundo_apellido || ''} (${trabajador.empresa_nombre || 'Sin empresa'})`;
+                    // Mostrar nombre seleccionado con indicador de días en obra
+                    const diasObra = trabajador.dias_en_obra || 0;
+                    const diasObraLista = trabajador.dias_en_obra_lista || [];
+                    const diasFormateados = formatearDiasObra(diasObraLista);
+                    const indicadorObra = diasObra > 0 ? ` 🏗️ ${diasObra} día(s) en obra: ${diasFormateados}` : '';
+
+                    nombreSeleccionado.innerHTML = `${trabajador.name} ${trabajador.primer_apellido || ''} ${trabajador.segundo_apellido || ''} (${trabajador.empresa_nombre || 'Sin empresa'})${indicadorObra ? `<br><span class="text-orange-600 text-xs">${indicadorObra}</span>` : ''}`;
                     trabajadorSeleccionadoDiv.classList.remove('hidden');
 
                     // Mostrar/ocultar selector de turno según tipo
@@ -348,6 +376,31 @@ export async function generarTurnosDialog(fechaISO, maquinaId, maquinaNombre, ho
     });
 
     if (!formValues) return null;
+
+    // Calcular fecha fin según el alcance
+    let fechaFin = fechaISO;
+    if (formValues.alcance === 'dos_semanas') {
+        const fechaInicio = new Date(fechaISO);
+        // Ir al viernes de la semana siguiente
+        const diasHastaViernes = (5 - fechaInicio.getDay() + 7) % 7 + 7;
+        fechaInicio.setDate(fechaInicio.getDate() + diasHastaViernes);
+        fechaFin = fechaInicio.toISOString().slice(0, 10);
+    } else if (formValues.alcance === 'resto_año') {
+        fechaFin = `${new Date(fechaISO).getFullYear()}-12-31`;
+    }
+
+    // Verificar conflictos obra/taller antes de continuar
+    // En produccion/trabajadores siempre vamos hacia "taller"
+    const continuar = await verificarConflictosObraTaller(
+        formValues.trabajador_id,
+        fechaISO,
+        fechaFin,
+        'taller'
+    );
+
+    if (!continuar) {
+        return null; // Usuario canceló
+    }
 
     // Llamar al backend para generar turnos
     try {

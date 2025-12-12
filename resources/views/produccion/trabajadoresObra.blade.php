@@ -2,6 +2,12 @@
     <x-slot name="title">Planificación por Obra</x-slot>
 
     <div id="lista-trabajadores" class="p-4 bg-white border rounded shadow w-full mt-4">
+        {{-- Filtro de búsqueda --}}
+        <div class="mb-4">
+            <input type="text" id="filtro-trabajadores"
+                   placeholder="Buscar trabajador..."
+                   class="w-full md:w-64 border border-gray-300 rounded px-3 py-2 text-sm focus:ring focus:ring-blue-300 focus:border-blue-500">
+        </div>
         {{-- hpr servicios --}}
         <details class="mb-4" open>
             <summary class="cursor-pointer font-bold text-gray-800 mb-2">Trabajadores de HPR Servicios</summary>
@@ -155,6 +161,12 @@
                         🗑️ Limpiar semana
                     </button>
                 </div>
+            </div>
+            {{-- Filtro de búsqueda de eventos --}}
+            <div class="mb-2 mt-2">
+                <input type="text" id="filtro-eventos"
+                       placeholder="Buscar trabajador en calendario..."
+                       class="w-full md:w-64 border border-gray-300 rounded px-3 py-2 text-sm focus:ring focus:ring-blue-300 focus:border-blue-500">
             </div>
             <div id="calendario-obras" class="w-full"></div>
         </div>
@@ -676,6 +688,72 @@
             }
         }
 
+        // Función auxiliar para crear asignación en obra
+        async function crearAsignacionObra(userId, obraId, fecha, nombreTrabajador) {
+            // Evento provisional
+            const eventoTemporal = window.calendarioObras.addEvent({
+                id: 'temp-' + Date.now() + '-' + userId,
+                title: nombreTrabajador,
+                start: fecha + 'T06:00:00',
+                end: fecha + 'T14:00:00',
+                resourceId: obraId ?? 'sin-obra',
+                extendedProps: {
+                    user_id: userId,
+                    provisional: true
+                }
+            });
+
+            try {
+                const response = await fetch('{{ route('asignaciones-turnos.asignarObra') }}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        user_id: userId,
+                        obra_id: obraId,
+                        fecha: fecha
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    window.calendarioObras.getEvents().forEach(ev => {
+                        if (ev.extendedProps.user_id == data.user.id && ev.startStr.startsWith(data.fecha)) {
+                            ev.remove();
+                        }
+                    });
+
+                    window.calendarioObras.addEvent({
+                        id: 'turno-' + data.asignacion.id,
+                        title: data.user.nombre_completo,
+                        start: data.fecha + 'T06:00:00',
+                        end: data.fecha + 'T14:00:00',
+                        resourceId: data.obra_id ?? 'sin-obra',
+                        extendedProps: {
+                            user_id: data.user.id,
+                            categoria_nombre: data.user.categoria?.nombre,
+                            especialidad_nombre: data.user.maquina?.nombre,
+                            estado: data.asignacion.estado ?? null
+                        }
+                    });
+
+                    eventoTemporal.remove();
+                    setTimeout(() => actualizarEstadoFichasTrabajadores(), 100);
+                } else {
+                    Swal.fire({ icon: 'error', title: 'Error', text: data.message });
+                    eventoTemporal.remove();
+                }
+            } catch (error) {
+                console.error('❌ Error en la solicitud:', error);
+                Swal.fire({ icon: 'error', title: 'Error de red', text: 'No se pudo completar la solicitud.' });
+                eventoTemporal.remove();
+            }
+        }
+
         function inicializarCalendarioObras() {
             if (window.calendarioObras) {
                 window.calendarioObras.destroy();
@@ -949,79 +1027,64 @@
 
                     // Trabajador normal
                     const userId = dataId;
+                    const nombreTrabajador = info.draggedEl.dataset.title;
 
-                    // Evento provisional
-                    const eventoTemporal = window.calendarioObras.addEvent({
-                        id: 'temp-' + Date.now() + '-' + userId,
-                        title: info.draggedEl.dataset.title,
-                        start: fecha + 'T06:00:00',
-                        end: fecha + 'T14:00:00',
-                        resourceId: obraId ?? 'sin-obra',
-                        extendedProps: {
-                            user_id: userId,
-                            provisional: true
-                        }
-                    });
-
-                    fetch('{{ route('asignaciones-turnos.asignarObra') }}', {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                                'X-CSRF-TOKEN': '{{ csrf_token() }}',
-                                'Accept': 'application/json'
-                            },
-                            body: JSON.stringify({
-                                user_id: userId,
-                                obra_id: obraId,
-                                fecha: fecha
-                            })
-                        })
-                        .then(res => res.json())
-                        .then(data => {
-                            if (data.success) {
-                                window.calendarioObras.getEvents().forEach(ev => {
-                                    if (ev.extendedProps.user_id == data.user.id && ev.startStr
-                                        .startsWith(data.fecha)) {
-                                        ev.remove();
-                                    }
-                                });
-
-                                window.calendarioObras.addEvent({
-                                    id: 'turno-' + data.asignacion.id,
-                                    title: data.user.nombre_completo,
-                                    start: data.fecha + 'T06:00:00',
-                                    end: data.fecha + 'T14:00:00',
-                                    resourceId: data.obra_id ?? 'sin-obra',
-                                    extendedProps: {
-                                        user_id: data.user.id,
-                                        categoria_nombre: data.user.categoria?.nombre,
-                                        especialidad_nombre: data.user.maquina?.nombre,
-                                        estado: data.asignacion.estado ?? null
-                                    }
-                                });
-
-                                eventoTemporal.remove();
-
-                                // Actualizar estado de fichas
-                                setTimeout(() => actualizarEstadoFichasTrabajadores(), 100);
-                            } else {
-                                Swal.fire({
-                                    icon: 'error',
-                                    title: 'Error',
-                                    text: data.message
-                                });
-                                eventoTemporal.remove();
-                            }
-                        })
-                        .catch(error => {
-                            console.error('❌ Error en la solicitud:', error);
-                            Swal.fire({
-                                icon: 'error',
-                                title: 'Error de red',
-                                text: 'No se pudo completar la solicitud.'
+                    // Verificar conflictos con taller antes de asignar
+                    (async () => {
+                        try {
+                            const conflictosResp = await fetch('/asignaciones-turno/verificar-conflictos', {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                                    'Accept': 'application/json'
+                                },
+                                body: JSON.stringify({
+                                    user_id: userId,
+                                    fecha_inicio: fecha,
+                                    fecha_fin: fecha,
+                                    destino: 'obra' // Va hacia obra externa
+                                })
                             });
-                            eventoTemporal.remove();
-                        });
+
+                            const conflictos = await conflictosResp.json();
+
+                            // Si hay conflictos, preguntar al usuario
+                            if (conflictos.tiene_conflictos && conflictos.dias_en_taller.length > 0) {
+                                const diasTexto = conflictos.dias_en_taller.join(', ');
+                                const result = await Swal.fire({
+                                    icon: 'warning',
+                                    title: '⚠️ Este trabajador tiene días en taller',
+                                    html: `
+                                        <div class="text-left">
+                                            <p class="mb-3"><strong>${nombreTrabajador}</strong> ya tiene asignaciones en <strong>taller/producción</strong> esta semana:</p>
+                                            <div class="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-3">
+                                                <p class="font-semibold text-amber-800">🏭 ${diasTexto}</p>
+                                            </div>
+                                            <p class="text-sm text-gray-600">¿Deseas continuar con la asignación de todos modos?</p>
+                                        </div>
+                                    `,
+                                    showCancelButton: true,
+                                    confirmButtonText: 'Sí, continuar',
+                                    cancelButtonText: 'Cancelar',
+                                    confirmButtonColor: '#f59e0b',
+                                    cancelButtonColor: '#6b7280',
+                                });
+
+                                if (!result.isConfirmed) {
+                                    return; // Usuario canceló
+                                }
+                            }
+
+                            // Continuar con la asignación usando la función auxiliar
+                            crearAsignacionObra(userId, obraId, fecha, nombreTrabajador);
+
+                        } catch (error) {
+                            console.error('Error verificando conflictos:', error);
+                            // En caso de error, continuar con la asignación
+                            crearAsignacionObra(userId, obraId, fecha, nombreTrabajador);
+                        }
+                    })();
                 },
 
                 eventDidMount(info) {
@@ -1538,6 +1601,57 @@
             }
 
             initCalendario();
+
+            // Inicializar filtro de búsqueda de trabajadores
+            const filtroInput = document.getElementById('filtro-trabajadores');
+            if (filtroInput) {
+                filtroInput.addEventListener('input', function() {
+                    const texto = this.value.toLowerCase().trim();
+                    const contenedores = [
+                        document.getElementById('external-events-servicios'),
+                        document.getElementById('external-events-hpr'),
+                        document.getElementById('external-events-ficticios')
+                    ];
+
+                    contenedores.forEach(contenedor => {
+                        if (!contenedor) return;
+                        const trabajadores = contenedor.querySelectorAll('.fc-event');
+                        trabajadores.forEach(t => {
+                            const nombre = (t.dataset.title || t.textContent || '').toLowerCase();
+                            const categoria = (t.dataset.categoria || '').toLowerCase();
+                            const especialidad = (t.dataset.especialidad || '').toLowerCase();
+                            const coincide = nombre.includes(texto) || categoria.includes(texto) || especialidad.includes(texto);
+                            t.style.display = coincide ? '' : 'none';
+                        });
+                    });
+                });
+            }
+
+            // Inicializar filtro de búsqueda de eventos del calendario
+            const filtroEventosInput = document.getElementById('filtro-eventos');
+            if (filtroEventosInput && window.calendarioObras) {
+                filtroEventosInput.addEventListener('input', function() {
+                    const texto = this.value.toLowerCase().trim();
+                    const todosEventos = window.calendarioObras.getEvents();
+
+                    todosEventos.forEach(evento => {
+                        const props = evento.extendedProps || {};
+                        // Ignorar festivos
+                        if (props.es_festivo) return;
+
+                        const titulo = (evento.title || '').toLowerCase();
+                        const categoria = (props.categoria_nombre || '').toLowerCase();
+                        const especialidad = (props.especialidad_nombre || '').toLowerCase();
+
+                        const coincide = !texto ||
+                            titulo.includes(texto) ||
+                            categoria.includes(texto) ||
+                            especialidad.includes(texto);
+
+                        evento.setProp('display', coincide ? 'auto' : 'none');
+                    });
+                });
+            }
         }
 
         // Inicializar según el contexto
