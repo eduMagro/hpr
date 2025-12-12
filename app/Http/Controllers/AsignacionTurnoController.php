@@ -784,6 +784,16 @@ class AsignacionTurnoController extends Controller
     public function store(Request $request)
     {
         try {
+            Log::channel('planificacion_trabajadores_taller')->info('[store] Creando asignación', [
+                'user_id' => $request->user_id,
+                'fecha_inicio' => $request->fecha_inicio,
+                'fecha_fin' => $request->fecha_fin,
+                'tipo' => $request->tipo,
+                'maquina_id' => $request->maquina_id,
+                'obra_id' => $request->obra_id,
+                'ejecutado_por' => auth()->id(),
+            ]);
+
             $request->validate([
                 'user_id'      => 'required|exists:users,id',
                 'fecha_inicio' => 'required|date',
@@ -1070,6 +1080,12 @@ class AsignacionTurnoController extends Controller
     public function update(Request $request, $id)
     {
         try {
+            Log::channel('planificacion_trabajadores_taller')->info('[update] Actualizando asignación', [
+                'asignacion_id' => $id,
+                'cambios' => $request->all(),
+                'ejecutado_por' => auth()->id(),
+            ]);
+
             $asignacion = AsignacionTurno::findOrFail($id);
 
             // Validar los campos que puedes editar en línea
@@ -1101,6 +1117,13 @@ class AsignacionTurnoController extends Controller
     public function actualizarHoras(Request $request, $id)
     {
         try {
+            Log::channel('planificacion_trabajadores_taller')->info('[actualizarHoras] Actualizando horas', [
+                'asignacion_id' => $id,
+                'entrada' => $request->entrada,
+                'salida' => $request->salida,
+                'ejecutado_por' => auth()->id(),
+            ]);
+
             $request->validate(
                 [
                     'entrada' => 'nullable|date_format:H:i',
@@ -1141,7 +1164,13 @@ class AsignacionTurnoController extends Controller
 
     public function destroy(Request $request)
     {
-        Log::debug('AsignacionTurno destroy - Request completo', $request->all());
+        Log::channel('planificacion_trabajadores_taller')->info('[destroy] Eliminando asignación', [
+            'user_id' => $request->user_id,
+            'fecha_inicio' => $request->fecha_inicio,
+            'fecha_fin' => $request->fecha_fin,
+            'tipo' => $request->tipo,
+            'ejecutado_por' => auth()->id(),
+        ]);
 
         try {
             // Normalizar fechas (FullCalendar puede enviar datetime con T)
@@ -1238,7 +1267,13 @@ class AsignacionTurnoController extends Controller
 
     public function asignarObra(Request $request)
     {
-        Log::debug('🪵 asignarObra payload:', $request->all()); // 👈 Log de entrada
+        Log::channel('planificacion_trabajadores_taller')->info('[asignarObra] Asignando obra a trabajador', [
+            'user_id' => $request->user_id,
+            'fecha' => $request->fecha,
+            'obra_id' => $request->obra_id,
+            'ejecutado_por' => auth()->id(),
+        ]);
+
         // 👇 Forzar null si viene cadena vacía
         if ($request->obra_id === '') {
             $request->merge(['obra_id' => null]);
@@ -1291,7 +1326,14 @@ class AsignacionTurnoController extends Controller
 
     public function asignarObraMultiple(Request $request)
     {
-        Log::debug('🪵 asignarObra multiple payload:', $request->all()); // 👈 Log de entrada
+        Log::channel('planificacion_trabajadores_taller')->info('[asignarObraMultiple] Asignando obra a múltiples trabajadores', [
+            'user_ids' => $request->user_ids,
+            'obra_id' => $request->obra_id,
+            'fecha_inicio' => $request->fecha_inicio,
+            'fecha_fin' => $request->fecha_fin,
+            'ejecutado_por' => auth()->id(),
+        ]);
+
         // 👇 Forzar null si viene cadena vacía o "sin-obra"
         if (in_array($request->obra_id, ['', 'sin-obra', null], true)) {
             $request->merge(['obra_id' => null]);
@@ -1353,8 +1395,13 @@ class AsignacionTurnoController extends Controller
 
     public function updateObra(Request $request, $id)
     {
-        Log::debug('🪵 Actualizar obra
-         :', $request->all()); // 👈 Log de entrada
+        Log::channel('planificacion_trabajadores_taller')->info('[updateObra] Actualizando obra de asignación', [
+            'asignacion_id' => $id,
+            'obra_id' => $request->obra_id,
+            'fecha' => $request->fecha,
+            'ejecutado_por' => auth()->id(),
+        ]);
+
         // 🛠️ Corregimos obra_id si llega como string vacío
         if (in_array($request->obra_id, ['', 'sin-obra', 'null', null], true)) {
             $request->merge(['obra_id' => null]);
@@ -1396,6 +1443,11 @@ class AsignacionTurnoController extends Controller
 
     public function repetirSemana(Request $request)
     {
+        Log::channel('planificacion_trabajadores_taller')->info('[repetirSemana] Repitiendo semana anterior', [
+            'fecha_actual' => $request->fecha_actual,
+            'ejecutado_por' => auth()->id(),
+        ]);
+
         $request->validate([
             'fecha_actual' => 'required|date',
         ]);
@@ -1453,6 +1505,12 @@ class AsignacionTurnoController extends Controller
 
     public function repetirSemanaObra(Request $request)
     {
+        Log::channel('planificacion_trabajadores_taller')->info('[repetirSemanaObra] Repitiendo semana por obra', [
+            'fecha_actual' => $request->fecha_actual,
+            'obra_id' => $request->obra_id,
+            'ejecutado_por' => auth()->id(),
+        ]);
+
         $request->validate([
             'fecha_actual' => 'required|date',
             'obra_id' => 'required|exists:obras,id',
@@ -1530,6 +1588,12 @@ class AsignacionTurnoController extends Controller
      */
     public function limpiarSemana(Request $request)
     {
+        Log::channel('planificacion_trabajadores_taller')->info('[limpiarSemana] Limpiando asignaciones de semana', [
+            'fecha_actual' => $request->fecha_actual,
+            'obra_id' => $request->obra_id,
+            'ejecutado_por' => auth()->id(),
+        ]);
+
         $request->validate([
             'fecha_actual' => 'required|date',
             'obra_id' => 'nullable|exists:obras,id',
@@ -1585,6 +1649,13 @@ class AsignacionTurnoController extends Controller
      */
     public function repetirSemanaMaquina(Request $request)
     {
+        Log::channel('planificacion_trabajadores_taller')->info('[repetirSemanaMaquina] Repitiendo semana por máquina', [
+            'maquina_id' => $request->maquina_id,
+            'semana_inicio' => $request->semana_inicio,
+            'duracion_semanas' => $request->duracion_semanas,
+            'ejecutado_por' => auth()->id(),
+        ]);
+
         $request->validate([
             'maquina_id' => 'required|exists:maquinas,id',
             'semana_inicio' => 'required|date',
@@ -1687,6 +1758,13 @@ class AsignacionTurnoController extends Controller
      */
     public function copiarDia(Request $request)
     {
+        Log::channel('planificacion_trabajadores_taller')->info('[copiarDia] Copiando asignaciones de un día a otro', [
+            'fecha_origen' => $request->fecha_origen,
+            'fecha_destino' => $request->fecha_destino,
+            'maquina_id' => $request->maquina_id,
+            'ejecutado_por' => auth()->id(),
+        ]);
+
         $request->validate([
             'fecha_origen' => 'required|date',
             'fecha_destino' => 'required|date',
@@ -1826,7 +1904,7 @@ class AsignacionTurnoController extends Controller
             $fechaFin = $fechaOrigen->copy()->addDays($diasHastaViernes + 7);
         }
 
-        Log::info('[propagarDia] Parámetros:', [
+        Log::channel('planificacion_trabajadores_taller')->info('[propagarDia] Parámetros:', [
             'fecha_origen' => $fechaOrigen->toDateString(),
             'fecha_fin' => $fechaFin->toDateString(),
             'alcance' => $alcance,
@@ -1846,7 +1924,7 @@ class AsignacionTurnoController extends Controller
             $q->whereRaw('LOWER(empresa) LIKE ?', ['%hierros paco reyes%']);
         })->pluck('id')->toArray();
 
-        Log::info('[propagarDia] Obras de Paco Reyes:', ['ids' => $obrasPacoReyes]);
+        Log::channel('planificacion_trabajadores_taller')->info('[propagarDia] Obras de Paco Reyes:', ['ids' => $obrasPacoReyes]);
 
         // Obtener asignaciones del día origen (solo de obras de Paco Reyes)
         $query = AsignacionTurno::with(['user.categoria', 'turno', 'obra'])
@@ -1860,7 +1938,7 @@ class AsignacionTurnoController extends Controller
 
         $asignaciones = $query->get();
 
-        Log::info('[propagarDia] Asignaciones encontradas:', [
+        Log::channel('planificacion_trabajadores_taller')->info('[propagarDia] Asignaciones encontradas:', [
             'count' => $asignaciones->count(),
             'ids' => $asignaciones->pluck('id')->toArray(),
         ]);
@@ -2048,6 +2126,11 @@ class AsignacionTurnoController extends Controller
 
     public function quitarObra($id)
     {
+        Log::channel('planificacion_trabajadores_taller')->info('[quitarObra] Quitando obra de asignación', [
+            'asignacion_id' => $id,
+            'ejecutado_por' => auth()->id(),
+        ]);
+
         $asignacion = AsignacionTurno::find($id);
 
         if (!$asignacion) {
@@ -2070,6 +2153,12 @@ class AsignacionTurnoController extends Controller
      */
     public function moverEventosAObra(Request $request)
     {
+        Log::channel('planificacion_trabajadores_taller')->info('[moverEventosAObra] Moviendo eventos a otra obra', [
+            'asignacion_ids' => $request->asignacion_ids,
+            'obra_id' => $request->obra_id,
+            'ejecutado_por' => auth()->id(),
+        ]);
+
         try {
             // Procesar IDs primero (quitar prefijo 'turno-')
             $ids = collect($request->asignacion_ids)->map(function ($id) {

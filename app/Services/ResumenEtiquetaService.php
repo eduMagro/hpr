@@ -175,7 +175,7 @@ class ResumenEtiquetaService
             });
         }
 
-        $etiquetas = $query->with('elementos')->get();
+        $etiquetas = $query->with(['elementos', 'planilla'])->get();
 
         // Agrupar
         $agrupaciones = [];
@@ -219,7 +219,13 @@ class ResumenEtiquetaService
                 'id' => $etiqueta->id,
                 'etiqueta_sub_id' => $etiqueta->etiqueta_sub_id,
                 'nombre' => $etiqueta->nombre,
+                'planilla_codigo' => $etiqueta->planilla->codigo_limpio ?? $etiqueta->planilla->codigo ?? 'N/A',
                 'elementos' => $cantidadElementos,
+                'elementos_detalle' => $elementos->map(fn($e) => [
+                    'codigo' => $e->codigo,
+                    'marca' => $e->marca,
+                    'peso' => round($e->peso, 2),
+                ])->values()->toArray(),
                 'peso' => round($pesoElementos, 2),
             ];
             $agrupaciones[$key]['total_elementos'] += $cantidadElementos;

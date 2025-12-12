@@ -145,6 +145,21 @@ return [
             'tap' => [App\Logging\CustomizeOrdenamiento::class],
         ],
 
+        'planificacion_trabajadores_taller' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/planificacion_trabajadores_taller/planificacion.log'),
+            'level' => env('LOG_LEVEL', 'debug'),
+            'days' => env('LOG_DAILY_DAYS', 14),
+            'replace_placeholders' => true,
+        ],
+
+        'planificacion_trabajadores_obra' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/planificacion_trabajadores_obra/planificacion.log'),
+            'level' => env('LOG_LEVEL', 'debug'),
+            'days' => env('LOG_DAILY_DAYS', 14),
+            'replace_placeholders' => true,
+        ],
 
     ],
 

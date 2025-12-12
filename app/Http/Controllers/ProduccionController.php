@@ -328,6 +328,13 @@ class ProduccionController extends Controller
 
     public function actualizarPuesto(Request $request, $id)
     {
+        Log::channel('planificacion_trabajadores_taller')->info('[actualizarPuesto] Actualizando puesto de trabajador', [
+            'asignacion_id' => $id,
+            'maquina_id' => $request->maquina_id,
+            'turno_id' => $request->turno_id,
+            'ejecutado_por' => auth()->id(),
+        ]);
+
         // Validar datos
         $request->validate([
             'maquina_id' => 'required|exists:maquinas,id',
@@ -414,15 +421,6 @@ class ProduccionController extends Controller
                 if ($fechaEntrega && $finProgramado) {
                     $tieneRetraso = $finProgramado->gt($fechaEntrega);
                 }
-
-                Log::info('📊 POLLING: Calculando actualización', [
-                    'planilla_id' => $planilla->id,
-                    'maquina_id' => $maquinaId,
-                    'revisada' => $planilla->revisada,
-                    'fecha_entrega' => $fechaEntrega ? $fechaEntrega->format('d/m/Y H:i') : null,
-                    'fin_programado' => $finProgramado ? $finProgramado->format('d/m/Y H:i') : null,
-                    'tiene_retraso' => $tieneRetraso,
-                ]);
 
                 $actualizaciones[] = [
                     'planilla_id' => $planilla->id,
@@ -2391,9 +2389,12 @@ class ProduccionController extends Controller
             }
         }
 
-        // Contar días únicos por trabajador
+        // Contar días únicos por trabajador y formatear fechas
         foreach ($ocupados as $userId => &$data) {
-            $data['dias'] = array_unique($data['dias']);
+            // Convertir fechas a string formato Y-m-d
+            $data['dias'] = array_values(array_unique(array_map(function($fecha) {
+                return $fecha instanceof \Carbon\Carbon ? $fecha->format('Y-m-d') : (string)$fecha;
+            }, $data['dias'])));
             $data['total_dias'] = count($data['dias']);
         }
 
@@ -2520,6 +2521,11 @@ class ProduccionController extends Controller
      */
     public function storeTrabajadorFicticio(Request $request)
     {
+        Log::channel('planificacion_trabajadores_obra')->info('[storeTrabajadorFicticio] Creando trabajador ficticio', [
+            'nombre' => $request->nombre,
+            'ejecutado_por' => auth()->id(),
+        ]);
+
         $validated = $request->validate([
             'nombre' => 'required|string|max:255',
         ]);
@@ -2538,6 +2544,11 @@ class ProduccionController extends Controller
      */
     public function destroyTrabajadorFicticio($id)
     {
+        Log::channel('planificacion_trabajadores_obra')->info('[destroyTrabajadorFicticio] Eliminando trabajador ficticio', [
+            'trabajador_ficticio_id' => $id,
+            'ejecutado_por' => auth()->id(),
+        ]);
+
         $trabajador = TrabajadorFicticio::findOrFail($id);
 
         // Eliminar eventos asociados
@@ -2556,6 +2567,16 @@ class ProduccionController extends Controller
      */
     public function storeEventoFicticio(Request $request)
     {
+        Log::channel('planificacion_trabajadores_obra')->info('[storeEventoFicticio] Creando evento ficticio', [
+            'trabajador_ficticio_id' => $request->trabajador_ficticio_id,
+            'trabajador_ficticio_ids' => $request->trabajador_ficticio_ids,
+            'fecha' => $request->fecha,
+            'fecha_inicio' => $request->fecha_inicio,
+            'fecha_fin' => $request->fecha_fin,
+            'obra_id' => $request->obra_id,
+            'ejecutado_por' => auth()->id(),
+        ]);
+
         // Asignación múltiple (selección + rango de fechas)
         if ($request->has('trabajador_ficticio_ids')) {
             $request->validate([
@@ -2641,6 +2662,13 @@ class ProduccionController extends Controller
      */
     public function updateEventoFicticio(Request $request, $id)
     {
+        Log::channel('planificacion_trabajadores_obra')->info('[updateEventoFicticio] Actualizando evento ficticio', [
+            'evento_ficticio_id' => $id,
+            'fecha' => $request->fecha,
+            'obra_id' => $request->obra_id,
+            'ejecutado_por' => auth()->id(),
+        ]);
+
         $request->validate([
             'fecha'   => 'required|date',
             'obra_id' => 'nullable',
@@ -2671,6 +2699,11 @@ class ProduccionController extends Controller
      */
     public function destroyEventoFicticio($id)
     {
+        Log::channel('planificacion_trabajadores_obra')->info('[destroyEventoFicticio] Eliminando evento ficticio', [
+            'evento_ficticio_id' => $id,
+            'ejecutado_por' => auth()->id(),
+        ]);
+
         $evento = EventoFicticioObra::findOrFail($id);
         $evento->delete();
 
@@ -2685,6 +2718,12 @@ class ProduccionController extends Controller
      */
     public function moverEventosFicticios(Request $request)
     {
+        Log::channel('planificacion_trabajadores_obra')->info('[moverEventosFicticios] Moviendo eventos ficticios a otra obra', [
+            'evento_ids' => $request->evento_ids,
+            'obra_id' => $request->obra_id,
+            'ejecutado_por' => auth()->id(),
+        ]);
+
         $request->validate([
             'evento_ids'   => 'required|array',
             'evento_ids.*' => 'integer',
