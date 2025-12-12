@@ -95,7 +95,7 @@ class AlbaranOcrService
                             ],
                         ],
                     ],
-                    'max_tokens' => 1200,
+                    // 'max_tokens' => 1200,
                     'temperature' => 0,
                 ]);
 
