@@ -122,19 +122,18 @@ class ProduccionController extends Controller
                 'obra_id' => null,
             ]
         ]);
-        log::info('maquinas', $maquinas->toArray());
+        // Obtener ID de empresa "Hierros Paco Reyes"
+        $empresaHPRId = Empresa::whereRaw("LOWER(nombre) LIKE ?", ['%hierros paco reyes%'])->value('id');
+
         $trabajadores = User::with([
             'asignacionesTurnos.turno:id,hora_inicio,hora_fin',
             'asignacionesTurnos.obra.cliente',
             'categoria',
-            'maquina'
+            'maquina',
+            'empresa:id,nombre'
         ])
             ->where('rol', 'operario')
-            ->whereHas('asignacionesTurnos', function ($q) {
-                $q->whereHas('obra.cliente', function ($q) {
-                    $q->whereRaw('LOWER(empresa) LIKE ?', ['%hierros paco reyes%']);
-                });
-            })
+            ->where('empresa_id', $empresaHPRId)
             ->get();
 
 
@@ -2338,6 +2337,71 @@ class ProduccionController extends Controller
         ]);
     }
 
+
+    /**
+     * Devuelve los trabajadores que están ocupados en el otro calendario
+     * Para trabajadores-obra: verifica si tienen asignación en producción (obra de Paco Reyes)
+     * Para trabajadores: verifica si tienen asignación en obras externas (no Paco Reyes)
+     */
+    public function verificarOcupacionCruzada(Request $request)
+    {
+        $inicio = $request->query('start');
+        $fin = $request->query('end');
+        $calendario = $request->query('calendario'); // 'obras' o 'produccion'
+
+        if (!$inicio || !$fin || !$calendario) {
+            return response()->json(['error' => 'Faltan parámetros'], 400);
+        }
+
+        // Obtener IDs de obras de Hierros Paco Reyes
+        $obrasPacoReyes = Obra::getNavesPacoReyes()->pluck('id')->toArray();
+
+        // Obtener todas las asignaciones en el rango
+        $asignaciones = AsignacionTurno::whereBetween('fecha', [$inicio, $fin])
+            ->whereNotNull('obra_id')
+            ->get();
+
+        $ocupados = [];
+
+        if ($calendario === 'obras') {
+            // Para el calendario de obras: buscar trabajadores con asignación en producción (obras de Paco Reyes)
+            foreach ($asignaciones as $asig) {
+                if (in_array($asig->obra_id, $obrasPacoReyes)) {
+                    if (!isset($ocupados[$asig->user_id])) {
+                        $ocupados[$asig->user_id] = [
+                            'dias' => [],
+                            'tipo' => 'produccion'
+                        ];
+                    }
+                    $ocupados[$asig->user_id]['dias'][] = $asig->fecha;
+                }
+            }
+        } else {
+            // Para el calendario de producción: buscar trabajadores con asignación en obras externas
+            foreach ($asignaciones as $asig) {
+                if (!in_array($asig->obra_id, $obrasPacoReyes)) {
+                    if (!isset($ocupados[$asig->user_id])) {
+                        $ocupados[$asig->user_id] = [
+                            'dias' => [],
+                            'tipo' => 'obra_externa'
+                        ];
+                    }
+                    $ocupados[$asig->user_id]['dias'][] = $asig->fecha;
+                }
+            }
+        }
+
+        // Contar días únicos por trabajador
+        foreach ($ocupados as $userId => &$data) {
+            $data['dias'] = array_unique($data['dias']);
+            $data['total_dias'] = count($data['dias']);
+        }
+
+        return response()->json([
+            'success' => true,
+            'ocupados' => $ocupados
+        ]);
+    }
 
     //---------------------------------------------------------- EVENTOS OBRA
     public function eventosObra(Request $request)

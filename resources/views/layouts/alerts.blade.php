@@ -1,3 +1,13 @@
+<!-- DEBUG: Verificar sesión -->
+<script>
+    console.log('🔍 Session check:', {
+        error: @json(session('error')),
+        success: @json(session('success')),
+        warning: @json(session('warning')),
+        info: @json(session('info'))
+    });
+</script>
+
 @if (session('abort'))
     <script>
         Swal.fire({
@@ -39,29 +49,46 @@
 
 @if (session('error'))
     <script>
-        document.addEventListener("DOMContentLoaded", function() {
+        (function() {
             const nombreArchivo = @json(session('nombre_archivo', null));
-            let errorMensaje = {!! json_encode(session('error')) !!};
+            let errorMensaje = @json(session('error'));
 
             // ✅ Si hay nombre de archivo y no está en el mensaje, añadirlo
             if (nombreArchivo && !errorMensaje.includes(nombreArchivo)) {
                 errorMensaje = `📄 Archivo: ${nombreArchivo}\n\n${errorMensaje}`;
             }
 
-            Swal.fire({
-                icon: 'error',
-                title: 'Error',
-                html: '<div style="text-align: left; white-space: pre-wrap;">' + errorMensaje.replace(/\n/g,
-                    '<br>') + '</div>',
-                confirmButtonColor: '#d33',
-                showCancelButton: true,
-                cancelButtonText: "Reportar Error"
-            }).then((result) => {
-                if (result.dismiss === Swal.DismissReason.cancel) {
-                    notificarProgramador(errorMensaje, 'Error en procesamiento de archivo');
+            function mostrarError() {
+                console.log('🔴 Mostrando error:', errorMensaje);
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Acceso denegado',
+                    text: errorMensaje,
+                    confirmButtonColor: '#d33'
+                }).then((result) => {
+                    if (result.dismiss === Swal.DismissReason.cancel) {
+                        notificarProgramador(errorMensaje, 'Error reportado');
+                    }
+                });
+            }
+
+            // Esperar a que Swal esté disponible
+            function esperarSwal(intentos) {
+                if (typeof Swal !== 'undefined') {
+                    mostrarError();
+                } else if (intentos < 50) {
+                    setTimeout(function() { esperarSwal(intentos + 1); }, 100);
+                } else {
+                    alert(errorMensaje);
                 }
-            });
-        });
+            }
+
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', function() { esperarSwal(0); });
+            } else {
+                esperarSwal(0);
+            }
+        })();
     </script>
 @endif
 

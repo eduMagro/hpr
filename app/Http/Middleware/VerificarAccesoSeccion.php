@@ -14,11 +14,32 @@ use App\Models\Empresa;
 
 class VerificarAccesoSeccion
 {
+    /**
+     * Deniega el acceso con redirect o JSON según el tipo de petición
+     */
+    private function denegarAcceso(Request $request, string $mensaje)
+    {
+        Log::debug('🚫 Acceso denegado', [
+            'mensaje' => $mensaje,
+            'url' => $request->fullUrl(),
+            'ajax' => $request->ajax(),
+            'expectsJson' => $request->expectsJson(),
+        ]);
+
+        // Si es petición AJAX o espera JSON
+        if ($request->expectsJson() || $request->ajax()) {
+            return response()->json(['error' => $mensaje, 'message' => $mensaje], 403);
+        }
+
+        // Redirect al dashboard con mensaje de error
+        return redirect()->route('dashboard')->with('error', $mensaje);
+    }
+
     public function handle(Request $request, Closure $next): mixed
     {
         $usuarioAutenticado = Auth::user();
         if (!$usuarioAutenticado) {
-            abort(403, 'No autenticado.');
+            return $this->denegarAcceso($request, 'No autenticado.');
         }
 
         $correoUsuario = strtolower(trim($usuarioAutenticado->email));
@@ -66,7 +87,7 @@ class VerificarAccesoSeccion
                     'usuario' => $usuarioAutenticado->email,
                     'ruta' => $nombreRutaActual,
                 ]);
-                abort(403, 'Operario sin acceso.');
+                return $this->denegarAcceso($request, 'No tienes permiso para acceder.');
             }
             return $next($request);
         }
@@ -82,7 +103,7 @@ class VerificarAccesoSeccion
                     'usuario' => $usuarioAutenticado->email,
                     'ruta' => $nombreRutaActual,
                 ]);
-                abort(403, 'Transportista sin acceso.');
+                return $this->denegarAcceso($request, 'No tienes permiso para acceder.');
             }
             return $next($request);
         }
@@ -99,7 +120,7 @@ class VerificarAccesoSeccion
             $seccion = Seccion::whereRaw('LOWER(ruta) LIKE ?', [strtolower($seccionBase) . '.%'])->first();
             if (!$seccion) {
                 Log::warning('❌ Ruta sin sección registrada', ['ruta' => $nombreRutaActual]);
-                abort(403, 'Sección no registrada.');
+                return $this->denegarAcceso($request, "La sección '{$seccionBase}' no está registrada en el sistema.");
             }
 
             $permisos = PermisoAcceso::where('user_id', $usuarioAutenticado->id)
@@ -112,7 +133,7 @@ class VerificarAccesoSeccion
                     'seccion' => $seccion->ruta,
                     'ruta' => $nombreRutaActual,
                 ]);
-                abort(403, 'No tienes permisos asignados para esta sección.');
+                return $this->denegarAcceso($request, "No tienes permisos asignados para la sección '{$seccion->nombre}'.");
             }
 
             $autorizado = false;
@@ -146,7 +167,7 @@ class VerificarAccesoSeccion
                     'accion' => $accionRuta,
                     'seccion' => $seccionBase,
                 ]);
-                abort(403, 'No tienes permisos suficientes para esta acción.');
+                return $this->denegarAcceso($request, 'No tienes permisos suficientes para realizar esta acción.');
             }
 
             return $next($request);
@@ -159,6 +180,6 @@ class VerificarAccesoSeccion
             'ruta' => $nombreRutaActual,
             'rol' => $rolUsuario,
         ]);
-        abort(403, 'Acceso denegado por configuración.');
+        return $this->denegarAcceso($request, 'No tienes permiso para acceder.');
     }
 }
