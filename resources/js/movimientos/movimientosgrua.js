@@ -111,7 +111,6 @@ function initMovimientosGrua() {
     const CANCELAR_BTN = document.getElementById("cancelar_btn");
 
     if (!QRINPUT || !LISTAQRS || !INPUT_OCULTO || !FORM) {
-        console.warn('[movimientosgrua] Elementos del modal no encontrados, saltando inicialización de listeners');
         return;
     }
 

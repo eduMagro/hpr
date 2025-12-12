@@ -1047,7 +1047,7 @@ class ProfileController extends Controller
     public function eventosTurnos(User $user)
     {
         $colores = $this->getColoresTurnosYEstado();
-        $user->load('asignacionesTurnos.turno');
+        $user->load('asignacionesTurnos.turno', 'asignacionesTurnos.obra');
 
         $eventos = collect();
 
@@ -1073,7 +1073,9 @@ class ProfileController extends Controller
                         'fecha'         => $fechaStr,
                         'entrada'       => $asig->entrada,
                         'salida'        => $asig->salida,
-                        'es_turno'      => false
+                        'es_turno'      => false,
+                        'obra_id'       => $asig->obra_id,
+                        'obra_nombre'   => $asig->obra?->obra,
                     ],
                 ]);
             }
@@ -1101,7 +1103,9 @@ class ProfileController extends Controller
                         'fecha'         => $fechaStr,
                         'entrada'       => $asig->entrada,
                         'salida'        => $asig->salida,
-                        'es_turno'      => true
+                        'es_turno'      => true,
+                        'obra_id'       => $asig->obra_id,
+                        'obra_nombre'   => $asig->obra?->obra,
                     ],
                 ]);
             }

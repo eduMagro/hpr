@@ -238,7 +238,8 @@
     border-radius: 3px;
 }
 
-#ghost-actions {
+#ghost-actions,
+.ghost-actions {
     position: absolute;
     transform: translateY(-100%);
     display: none;

@@ -525,6 +525,7 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
     Route::post('/obras/actualizar-tipo', [ObraController::class, 'updateTipo'])->name('obras.updateTipo');
     Route::get('/asignaciones-turno/eventos-obra', [ProduccionController::class, 'eventosObra'])->name('asignaciones-turnos.verEventosObra');
     Route::get('/asignaciones-turno/ocupacion-cruzada', [ProduccionController::class, 'verificarOcupacionCruzada'])->name('asignaciones-turnos.ocupacionCruzada');
+    Route::post('/asignaciones-turno/verificar-conflictos', [AsignacionTurnoController::class, 'verificarConflictosObraTaller'])->name('asignaciones-turnos.verificarConflictos');
 
     // === TRABAJADORES Y EVENTOS FICTICIOS OBRA ===
     Route::post('/trabajadores-ficticios', [ProduccionController::class, 'storeTrabajadorFicticio'])->name('trabajadores-ficticios.store');

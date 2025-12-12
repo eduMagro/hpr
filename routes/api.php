@@ -68,4 +68,8 @@ Route::prefix('etiquetas/resumir')->group(function () {
     // Obtener etiquetas de un grupo para imprimir
     Route::get('/{grupo}/imprimir', [ResumenEtiquetaController::class, 'etiquetasParaImprimir'])
         ->name('api.etiquetas.resumir.imprimir');
+
+    // Cambiar estado de todas las etiquetas del grupo (fabricando/completada)
+    Route::put('/{grupo}/estado', [ResumenEtiquetaController::class, 'cambiarEstado'])
+        ->name('api.etiquetas.resumir.estado');
 });

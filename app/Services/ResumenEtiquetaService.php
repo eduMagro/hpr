@@ -222,9 +222,12 @@ class ResumenEtiquetaService
                 'planilla_codigo' => $etiqueta->planilla->codigo_limpio ?? $etiqueta->planilla->codigo ?? 'N/A',
                 'elementos' => $cantidadElementos,
                 'elementos_detalle' => $elementos->map(fn($e) => [
+                    'id' => $e->id,
                     'codigo' => $e->codigo,
                     'marca' => $e->marca,
                     'peso' => round($e->peso, 2),
+                    'diametro' => $e->diametro,
+                    'dimensiones' => $e->dimensiones,
                 ])->values()->toArray(),
                 'peso' => round($pesoElementos, 2),
             ];
@@ -380,6 +383,124 @@ class ResumenEtiquetaService
             ],
             'etiquetas' => $etiquetas->toArray(),
         ];
+    }
+
+    /**
+     * Cambia el estado de todas las etiquetas de un grupo.
+     * Los tiempos de fabricación se reparten entre todas las etiquetas.
+     *
+     * @param int $grupoId ID del grupo
+     * @param int $maquinaId ID de la máquina
+     * @param int $longitudSeleccionada Longitud seleccionada (para máquinas de barra)
+     * @param int|null $usuarioId ID del usuario que realiza la acción
+     * @return array Resultado de la operación
+     */
+    public function cambiarEstadoGrupo(
+        int $grupoId,
+        int $maquinaId,
+        int $longitudSeleccionada = 0,
+        ?int $usuarioId = null
+    ): array {
+        $grupo = GrupoResumen::with('etiquetas')->find($grupoId);
+
+        if (!$grupo || !$grupo->activo) {
+            return ['success' => false, 'message' => 'Grupo no encontrado o inactivo'];
+        }
+
+        $etiquetas = $grupo->etiquetas;
+        if ($etiquetas->isEmpty()) {
+            return ['success' => false, 'message' => 'El grupo no tiene etiquetas'];
+        }
+
+        // Determinar estado actual (tomar el de la primera etiqueta)
+        $estadoActual = strtolower($etiquetas->first()->estado ?? 'pendiente');
+
+        // Determinar siguiente estado
+        $siguienteEstado = match ($estadoActual) {
+            'pendiente' => 'fabricando',
+            'fabricando' => 'completada',
+            default => null,
+        };
+
+        if (!$siguienteEstado) {
+            return [
+                'success' => false,
+                'message' => "Las etiquetas ya están en estado '{$estadoActual}'"
+            ];
+        }
+
+        $ahora = now();
+        $totalEtiquetas = $etiquetas->count();
+
+        return DB::transaction(function () use (
+            $etiquetas, $siguienteEstado, $ahora, $totalEtiquetas, $usuarioId, $grupo
+        ) {
+            $etiquetasActualizadas = [];
+
+            foreach ($etiquetas as $index => $etiqueta) {
+                $estadoAnterior = $etiqueta->estado;
+
+                if ($siguienteEstado === 'fabricando') {
+                    // Inicio de fabricación
+                    $etiqueta->estado = 'fabricando';
+                    $etiqueta->fecha_inicio = $ahora;
+                    $etiqueta->operario1_id = $usuarioId;
+                } elseif ($siguienteEstado === 'completada') {
+                    // Completar fabricación - repartir tiempo
+                    $etiqueta->estado = 'completada';
+                    $etiqueta->fecha_finalizacion = $ahora;
+
+                    // Calcular tiempo total y repartir
+                    if ($etiqueta->fecha_inicio) {
+                        $tiempoTotalSegundos = $etiqueta->fecha_inicio->diffInSeconds($ahora);
+                        $tiempoPorEtiqueta = (int) round($tiempoTotalSegundos / $totalEtiquetas);
+
+                        // Ajustar fecha_inicio para que el tiempo sea proporcional
+                        $etiqueta->fecha_inicio = $ahora->copy()->subSeconds($tiempoPorEtiqueta);
+                    }
+                }
+
+                $etiqueta->save();
+
+                // Actualizar estado de los elementos
+                // Los elementos usan género masculino: fabricado, completado, etc.
+                $estadoElemento = match ($siguienteEstado) {
+                    'fabricando' => 'fabricando',
+                    'completada' => 'completado',
+                    'fabricada' => 'fabricado',
+                    'ensamblada' => 'ensamblado',
+                    'soldada' => 'soldado',
+                    default => $siguienteEstado,
+                };
+                Elemento::where('etiqueta_sub_id', $etiqueta->etiqueta_sub_id)
+                    ->update(['estado' => $estadoElemento]);
+
+                $etiquetasActualizadas[] = [
+                    'id' => $etiqueta->id,
+                    'etiqueta_sub_id' => $etiqueta->etiqueta_sub_id,
+                    'estado_anterior' => $estadoAnterior,
+                    'estado_nuevo' => $siguienteEstado,
+                ];
+
+                Log::info('Estado de etiqueta actualizado via grupo', [
+                    'grupo_id' => $grupo->id,
+                    'etiqueta_id' => $etiqueta->id,
+                    'etiqueta_sub_id' => $etiqueta->etiqueta_sub_id,
+                    'estado_anterior' => $estadoAnterior,
+                    'estado_nuevo' => $siguienteEstado,
+                ]);
+            }
+
+            return [
+                'success' => true,
+                'message' => "Grupo actualizado a '{$siguienteEstado}'",
+                'estado' => $siguienteEstado,
+                'nuevo_estado' => $siguienteEstado,
+                'grupo_id' => $grupo->id,
+                'etiquetas_actualizadas' => count($etiquetasActualizadas),
+                'etiquetas' => $etiquetasActualizadas,
+            ];
+        });
     }
 
     /**

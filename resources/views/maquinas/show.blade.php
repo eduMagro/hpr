@@ -575,7 +575,7 @@
                     <x-maquinas.tipo.tipo-normal :maquina="$maquina" :maquinas="$maquinas" :elementos-agrupados="$elementosAgrupados" :productos-base-compatibles="$productosBaseCompatibles"
                         :producto-base-solicitados="$productoBaseSolicitados" :planillas-activas="$planillasActivas" :elementos-por-planilla="$elementosPorPlanilla" :es-barra="$esBarra" :longitudes-por-diametro="$longitudesPorDiametro"
                         :diametro-por-etiqueta="$diametroPorEtiqueta" :elementos-agrupados-script="$elementosAgrupadosScript" :posiciones-disponibles="$posicionesDisponibles" :posicion1="$posicion1"
-                        :posicion2="$posicion2" />
+                        :posicion2="$posicion2" :grupos-resumen="$gruposResumen ?? collect()" :etiquetas-en-grupos="$etiquetasEnGrupos ?? []" />
 
                     @include('components.maquinas.modales.normal.modales-normal')
 
@@ -594,7 +594,10 @@
         <script>
             window.SUGERENCIAS = @json($sugerenciasPorElemento ?? []);
             window.elementosAgrupadosScript = @json($elementosAgrupadosScript ?? null);
+            window.gruposResumenData = @json($gruposResumen ?? []);
+            window.etiquetasEnGrupos = @json($etiquetasEnGrupos ?? []);
             window.rutaDividirElemento = "{{ route('elementos.dividir') }}";
+
             window.etiquetasData = @json($etiquetasData);
             window.pesosElementos = @json($pesosElementos);
             window.maquinaId = @json($maquina->id);
@@ -602,16 +605,6 @@
             window.MAQUINA_CODIGO = @json($maquina->codigo);
             window.MAQUINA_TIPO_NOMBRE = @json($maquina->tipo);
             window.ubicacionId = @json(optional($ubicacion)->id);
-            console.log('etiquetasData', window.etiquetasData);
-
-            // DEBUG: Productos base desde show.blade.php
-            console.log('🔍 DEBUG desde show.blade.php:', {
-                maquina_tipo: @json($maquina->tipo),
-                es_grua: @json($maquina->tipo === 'grua'),
-                modoFabricacionGrua: @json($modoFabricacionGrua ?? false),
-                productosBaseCompatibles_count: @json($productosBaseCompatibles->count()),
-                productosBaseCompatibles: @json($productosBaseCompatibles->map(fn($p) => ['id' => $p->id, 'diametro' => $p->diametro, 'tipo' => $p->tipo]))
-            });
 
             /**
              * Función para refrescar las etiquetas sin recargar la página completa
@@ -1179,6 +1172,9 @@
                 });
             }
         </script>
+
+        {{-- Script para dibujar figuras de elementos --}}
+        <script src="{{ asset('js/elementosJs/figuraElemento.js') }}"></script>
 
         {{-- Script del sistema de resumen de etiquetas --}}
         <script src="{{ asset('js/resumir-etiquetas.js') }}"></script>

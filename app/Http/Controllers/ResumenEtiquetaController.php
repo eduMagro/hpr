@@ -127,4 +127,25 @@ class ResumenEtiquetaController extends Controller
             'total' => $grupos->count(),
         ]);
     }
+
+    /**
+     * Cambia el estado de todas las etiquetas de un grupo.
+     * PUT /api/etiquetas/resumir/{grupo}/estado
+     */
+    public function cambiarEstado(Request $request, int $grupoId): JsonResponse
+    {
+        $request->validate([
+            'maquina_id' => 'required|integer|exists:maquinas,id',
+            'longitud_seleccionada' => 'nullable|integer|min:0',
+        ]);
+
+        $resultado = $this->resumenService->cambiarEstadoGrupo(
+            $grupoId,
+            $request->integer('maquina_id'),
+            $request->integer('longitud_seleccionada', 0),
+            auth()->id()
+        );
+
+        return response()->json($resultado);
+    }
 }

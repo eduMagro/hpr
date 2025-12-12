@@ -5,6 +5,8 @@
 
 @php
     $mapaData = $mapaData ?? [];
+    // Obtener el nave_id (obra_id) de la máquina si está disponible
+    $naveIdMapa = $maquina->obra_id ?? 1;
 @endphp
 
 {{-- 🔄 MODAL MOVIMIENTO GENERAL --}}
@@ -601,6 +603,11 @@
                                 class="font-bold text-gray-800"></p>
                         </div>
                     </div>
+                    {{-- Mensaje de advertencia si no tiene localización --}}
+                    <div id="warning-sin-localizacion" class="hidden mt-3 p-3 bg-blue-50 border border-blue-300 rounded-lg">
+                        <p class="text-blue-800 text-sm font-medium">📍 Este paquete no tiene ubicación asignada en el mapa.</p>
+                        <p class="text-blue-700 text-xs mt-1">Se mostrará un ghost para que puedas arrastrarlo a la ubicación deseada.</p>
+                    </div>
                     <button onclick="mostrarPasoMapa()"
                         class="mt-4 w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-3 px-4 rounded-lg shadow">
                         Seleccionar Ubicación en Mapa
@@ -624,7 +631,7 @@
 
                 {{-- Componente de mapa simplificado --}}
                 <div class="bg-white p-4 rounded-lg border h-[550px] overflow-hidden relative">
-                    <x-mapa-simple :nave-id="1" :modo-edicion="true" class="h-full w-full" />
+                    <x-mapa-simple :nave-id="$naveIdMapa" :modo-edicion="true" class="h-full w-full" />
                 </div>
             </div>
         </div>
@@ -693,6 +700,16 @@
         document.getElementById('paso-escanear-paquete')?.classList.remove('hidden');
         document.getElementById('error-paquete-mover')?.classList.add('hidden');
         document.getElementById('loading-paquete-mover')?.classList.add('hidden');
+        document.getElementById('warning-sin-localizacion')?.classList.add('hidden');
+
+        // Cancelar ghost si existe
+        const modal = document.getElementById('modal-mover-paquete');
+        if (modal) {
+            const mapa = modal.querySelector('[data-mapa-simple]');
+            if (mapa && typeof mapa.cancelarGhost === 'function') {
+                mapa.cancelarGhost();
+            }
+        }
 
         paqueteMoverData = null;
     }
@@ -702,9 +719,13 @@
         document.getElementById('paso-mapa-paquete').classList.remove('hidden');
         const codigoPak = (paqueteMoverData?.codigo || '').toString().trim();
         document.getElementById('paquete-codigo-mapa').textContent = codigoPak;
-        if (codigoPak) {
-            // Usar la función mostrarPaquete expuesta por el mapa-simple del modal
+
+        if (codigoPak && paqueteMoverData?.tiene_localizacion) {
+            // Paquete con localización: mostrar en el mapa
             mostrarPaqueteEnMapaModal('modal-mover-paquete', codigoPak);
+        } else if (codigoPak && !paqueteMoverData?.tiene_localizacion) {
+            // Paquete SIN localización: crear ghost para asignar ubicación
+            crearGhostEnMapaModal('modal-mover-paquete', paqueteMoverData);
         }
     }
 
@@ -740,6 +761,8 @@
             'hidden');
         document.getElementById('info-paquete-validado').classList.add(
             'hidden');
+        document.getElementById('warning-sin-localizacion')?.classList.add(
+            'hidden');
 
         try {
             const response = await fetch('/paquetes/tamaño', {
@@ -770,6 +793,16 @@
             document.getElementById('paquete-peso-info').textContent =
                 `${data.etiquetas_count || 0} etq / ${data.elementos_count || 0} elem`;
 
+            // Mostrar/ocultar advertencia según tenga localización
+            const warningSinLoc = document.getElementById('warning-sin-localizacion');
+            if (warningSinLoc) {
+                if (data.tiene_localizacion) {
+                    warningSinLoc.classList.add('hidden');
+                } else {
+                    warningSinLoc.classList.remove('hidden');
+                }
+            }
+
             document.getElementById('info-paquete-validado').classList
                 .remove('hidden');
 
@@ -795,29 +828,124 @@
     // Mostrar paquete en el mapa-simple que está dentro de un modal concreto
     function mostrarPaqueteEnMapaModal(modalId, codigoPaquete) {
         const modal = document.getElementById(modalId);
-        if (!modal) return;
+        if (!modal) {
+            console.warn('Modal no encontrado:', modalId);
+            return;
+        }
         const mapa = modal.querySelector('[data-mapa-simple]');
-        if (!mapa) return;
+        if (!mapa) {
+            console.warn('Componente mapa-simple no encontrado en modal:', modalId);
+            return;
+        }
 
         let intentos = 0;
+        const maxIntentos = 40;
         const intentar = () => {
             intentos += 1;
             const fnMostrar = mapa.mostrarPaquete;
             const fnAutoclick = mapa.autoclickEditarPaquete;
             if (typeof fnMostrar === 'function') {
                 try {
-                    fnMostrar(codigoPaquete);
-                    if (typeof fnAutoclick === 'function') {
-                        // Asegurar flujo de clic tras mostrar y centrar
-                        setTimeout(() => fnAutoclick(codigoPaquete), 200);
+                    const resultado = fnMostrar(codigoPaquete);
+                    if (resultado === false) {
+                        // El paquete no existe en el DOM del mapa
+                        console.warn('Paquete no encontrado en el mapa:', codigoPaquete);
+                        mostrarMensajeEnMapa(modal, 'El paquete no tiene ubicación registrada en este mapa. Puedes asignarle una nueva ubicación.', 'warning');
+                    } else {
+                        if (typeof fnAutoclick === 'function') {
+                            // Asegurar flujo de clic tras mostrar y centrar
+                            setTimeout(() => fnAutoclick(codigoPaquete), 200);
+                        }
                     }
                 } catch (e) {
                     console.warn('No se pudo mostrar paquete en el mapa:', e);
                 }
                 return;
             }
-            if (intentos < 40) {
+            if (intentos < maxIntentos) {
                 setTimeout(intentar, 200);
+            } else {
+                console.warn('Timeout esperando funciones del mapa');
+            }
+        };
+        intentar();
+    }
+
+    // Mostrar mensaje flotante en el área del mapa
+    function mostrarMensajeEnMapa(modal, mensaje, tipo = 'info') {
+        const contenedorMapa = modal.querySelector('#paso-mapa-paquete .bg-white');
+        if (!contenedorMapa) return;
+
+        // Remover mensaje anterior si existe
+        const msgAnterior = contenedorMapa.querySelector('.mensaje-mapa-flotante');
+        if (msgAnterior) msgAnterior.remove();
+
+        const colores = {
+            'info': 'bg-blue-100 text-blue-800 border-blue-300',
+            'warning': 'bg-yellow-100 text-yellow-800 border-yellow-300',
+            'error': 'bg-red-100 text-red-800 border-red-300',
+            'success': 'bg-green-100 text-green-800 border-green-300'
+        };
+
+        const div = document.createElement('div');
+        div.className = `mensaje-mapa-flotante absolute top-2 left-2 right-2 z-50 p-3 rounded-lg border text-sm ${colores[tipo] || colores.info}`;
+        div.innerHTML = `<p>${mensaje}</p>`;
+        contenedorMapa.appendChild(div);
+
+        // Auto-ocultar después de 5 segundos
+        setTimeout(() => {
+            if (div.parentNode) div.remove();
+        }, 5000);
+    }
+
+    // Crear ghost en el mapa-simple para paquetes sin localización
+    function crearGhostEnMapaModal(modalId, paqueteData) {
+        const modal = document.getElementById(modalId);
+        if (!modal) {
+            console.warn('[crearGhostEnMapaModal] Modal no encontrado:', modalId);
+            return;
+        }
+        const mapa = modal.querySelector('[data-mapa-simple]');
+        if (!mapa) {
+            console.warn('[crearGhostEnMapaModal] Componente mapa-simple no encontrado en modal:', modalId);
+            return;
+        }
+
+        console.log('[crearGhostEnMapaModal] Intentando crear ghost para paquete:', paqueteData.codigo);
+
+        let intentos = 0;
+        const maxIntentos = 50; // 50 * 200ms = 10 segundos máximo
+        const intentar = () => {
+            intentos += 1;
+
+            // Verificar si el ghost está listo (el mapa terminó de cargar)
+            const isGhostReady = typeof mapa.isGhostReady === 'function' && mapa.isGhostReady();
+            const fnCrearGhost = mapa.crearGhostPaquete;
+
+            if (isGhostReady && typeof fnCrearGhost === 'function') {
+                console.log('[crearGhostEnMapaModal] Ghost listo, creando... (intento', intentos, ')');
+                try {
+                    const resultado = fnCrearGhost(paqueteData);
+                    if (resultado) {
+                        console.log('[crearGhostEnMapaModal] Ghost creado exitosamente');
+                    } else {
+                        console.warn('[crearGhostEnMapaModal] No se pudo crear el ghost (resultado false)');
+                    }
+                } catch (e) {
+                    console.error('[crearGhostEnMapaModal] Error al crear ghost:', e);
+                }
+                return;
+            }
+
+            if (intentos < maxIntentos) {
+                if (intentos % 10 === 0) {
+                    console.log('[crearGhostEnMapaModal] Esperando ghost... intento', intentos,
+                        '- isGhostReady:', isGhostReady,
+                        '- fnCrearGhost:', typeof fnCrearGhost);
+                }
+                setTimeout(intentar, 200);
+            } else {
+                console.warn('[crearGhostEnMapaModal] Timeout esperando ghost después de', maxIntentos, 'intentos');
             }
         };
         intentar();

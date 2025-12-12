@@ -265,6 +265,9 @@
     </script>
 
 
+    {{-- JS Ghost compartido (mismo código que en mapa-simple) --}}
+    <x-localizaciones.ghost-paquete-js />
+
     <script>
         (() => {
             const escenario = document.getElementById('escenario-cuadricula');
@@ -273,314 +276,45 @@
 
             const ctx = window.__LOC_CTX__;
             const isVertical = !!ctx.estaGirado;
-            const W = ctx.columnasReales; // ancho real (celdas)
-            const H = ctx.filasReales; // alto real (celdas)
-
-            // Vista (como se pinta)
+            const W = ctx.columnasReales;
+            const H = ctx.filasReales;
             const viewCols = isVertical ? W : H;
             const viewRows = isVertical ? H : W;
 
             function getCeldaPx() {
-                const v = getComputedStyle(grid).getPropertyValue('--tam-celda')
-                    .trim();
+                const v = getComputedStyle(grid).getPropertyValue('--tam-celda').trim();
                 const n = parseInt(v, 10);
                 return Number.isFinite(n) && n > 0 ? n : 8;
             }
 
-            // Mapas entre coordenadas reales y de vista
-            function mapPointToView(x, y) {
-                if (isVertical) return {
-                    x,
-                    y: (H - y + 1)
-                };
-                return {
-                    x: y,
-                    y: x
-                };
-            }
-
-            function mapViewToReal(xv, yv) {
-                if (isVertical) return {
-                    x: xv,
-                    y: (H - yv + 1)
-                };
-                return {
-                    x: yv,
-                    y: xv
-                };
-            }
-
-            // Estado del ghost
-            let ghost = null;
-            let ghostActions = null;
-            let celdaPx = getCeldaPx();
-            let gWidthCells = 1; // ancho en celdas (vista)
-            let gHeightCells = 2; // alto en celdas (vista)
-            let gX = 1; // posición (vista) 1-based
-            let gY = 1;
-            let paqueteMeta = null; // {codigo, paquete_id, longitud, ancho}
-
-            function ensureGhost() {
-                if (ghost) return;
-
-                ghost = document.createElement('div');
-                ghost.id = 'paquete-ghost';
-                ghost.innerHTML = `<div class="ghost-label"></div>`;
-                grid.appendChild(ghost);
-
-                ghostActions = document.createElement('div');
-                ghostActions.id = 'ghost-actions';
-                ghostActions.innerHTML = `
-      <button class="ghost-btn cancel" id="btn-cancel-ghost" title="Cancelar (Esc)" aria-label="Cancelar">
-        <svg class="icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-          <path d="M6 6l12 12M18 6L6 18" stroke="#ef4444" stroke-width="2" stroke-linecap="round"/>
-        </svg>
-      </button>
-
-      <button class="ghost-btn rotate" id="btn-rotate-ghost" title="Voltear (R)" aria-label="Voltear">
-        <svg class="icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-          <path d="M12 4v4l3-2-3-2zM4 12a8 8 0 1 1 8 8" stroke="#3b82f6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-        </svg>
-      </button>
-
-      <button class="ghost-btn confirm" id="btn-place-ghost" title="Asignar aquí (Enter)" aria-label="Asignar">
-        <svg class="icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-          <circle cx="12" cy="12" r="9" stroke="#22c55e" stroke-width="2"/>
-          <path d="M8 12l3 3 5-6" stroke="#22c55e" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-        </svg>
-      </button>
-    `;
-                grid.appendChild(ghostActions);
-
-                // Listeners de la botonera
-                document.getElementById('btn-cancel-ghost').addEventListener(
-                    'click', () => {
-                        ghost.remove();
-                        ghost = null;
-                        ghostActions.remove();
-                        ghostActions = null;
-                        paqueteMeta = null;
-                    });
-                document.getElementById('btn-place-ghost').addEventListener(
-                    'click', onPlaceGhost);
-                document.getElementById('btn-rotate-ghost').addEventListener(
-                    'click', rotateGhostKeepCenter);
-
-                // Drag
-                enableDrag();
-            }
-
-            function layoutGhost() {
-                if (!ghost) return;
-                celdaPx = getCeldaPx();
-
-                // Mantener dentro de vista
-                gX = Math.max(1, Math.min(viewCols - gWidthCells + 1, gX));
-                gY = Math.max(1, Math.min(viewRows - gHeightCells + 1, gY));
-
-                ghost.style.left = ((gX - 1) * celdaPx) + 'px';
-                ghost.style.top = ((gY - 1) * celdaPx) + 'px';
-                ghost.style.width = (gWidthCells * celdaPx) + 'px';
-                ghost.style.height = (gHeightCells * celdaPx) + 'px';
-
-                const label = ghost.querySelector('.ghost-label');
-                if (label && paqueteMeta) {
-                    label.textContent =
-                        `${paqueteMeta.codigo} · ${paqueteMeta.longitud.toFixed(2)} m · ${gWidthCells}×${gHeightCells} celdas`;
-                }
-
-                if (ghostActions) {
-                    ghostActions.style.left = ghost.style.left;
-                    ghostActions.style.top = ghost.style.top;
-                    ghostActions.style.display = 'flex';
-                }
-            }
-
-            function centerGhost() {
-                gX = Math.floor((viewCols - gWidthCells) / 2) + 1;
-                gY = Math.floor((viewRows - gHeightCells) / 2) + 1;
-                layoutGhost();
-            }
-
-            function setGhostSizeFromPaquete(tamano) {
-                // tamano = { ancho: m, longitud: m } ; celda = 0.5 m
-                const CELDA_M = 0.5;
-                const anchoCells = Math.max(1, Math.round((tamano.ancho ?? 1) /
-                    CELDA_M));
-                const largoCells = Math.max(1, Math.ceil((tamano.longitud ??
-                    0) / CELDA_M));
-                // En vista, largo → horizontal (x), ancho → vertical (y)
-                gWidthCells = largoCells;
-                gHeightCells = anchoCells;
-            }
-
-            // Drag & drop con snap a celda
-            function enableDrag() {
-                if (!ghost) return;
-                let dragging = false;
-                let startMouseX = 0,
-                    startMouseY = 0;
-                let startGX = 0,
-                    startGY = 0;
-
-                function onDown(e) {
-                    dragging = true;
-                    ghost.classList.add('dragging');
-                    startMouseX = (e.touches ? e.touches[0].clientX : e
-                    .clientX);
-                    startMouseY = (e.touches ? e.touches[0].clientY : e
-                    .clientY);
-                    startGX = gX;
-                    startGY = gY;
-                    e.preventDefault();
-                }
-
-                function onMove(e) {
-                    if (!dragging) return;
-                    const mx = (e.touches ? e.touches[0].clientX : e.clientX);
-                    const my = (e.touches ? e.touches[0].clientY : e.clientY);
-                    const dx = mx - startMouseX;
-                    const dy = my - startMouseY;
-                    const dCol = Math.round(dx / celdaPx);
-                    const dRow = Math.round(dy / celdaPx);
-                    gX = startGX + dCol;
-                    gY = startGY + dRow;
-                    layoutGhost();
-                    e.preventDefault();
-                }
-
-                function onUp() {
-                    dragging = false;
-                    ghost.classList.remove('dragging');
-                }
-
-                ghost.addEventListener('mousedown', onDown);
-                ghost.addEventListener('touchstart', onDown, {
-                    passive: false
-                });
-                window.addEventListener('mousemove', onMove, {
-                    passive: false
-                });
-                window.addEventListener('touchmove', onMove, {
-                    passive: false
-                });
-                window.addEventListener('mouseup', onUp, {
-                    passive: true
-                });
-                window.addEventListener('touchend', onUp, {
-                    passive: true
-                });
-            }
-
-            // Rotación manteniendo el centro y respetando límites
-            function rotateGhostKeepCenter() {
-                if (!ghost) return;
-                const cx = gX + (gWidthCells - 1) / 2;
-                const cy = gY + (gHeightCells - 1) / 2;
-
-                const newW = gHeightCells;
-                const newH = gWidthCells;
-
-                let newGX = Math.round(cx - (newW - 1) / 2);
-                let newGY = Math.round(cy - (newH - 1) / 2);
-
-                newGX = Math.max(1, Math.min(viewCols - newW + 1, newGX));
-                newGY = Math.max(1, Math.min(viewRows - newH + 1, newGY));
-
-                gWidthCells = newW;
-                gHeightCells = newH;
-                gX = newGX;
-                gY = newGY;
-
-                layoutGhost();
-            }
-
-            async function onPlaceGhost() {
-                if (!paqueteMeta) return;
-
-                // Coordenadas vista → reales
-                const x1v = gX,
-                    y1v = gY;
-                const x2v = gX + gWidthCells - 1;
-                const y2v = gY + gHeightCells - 1;
-
-                const p1 = mapViewToReal(x1v, y1v);
-                const p2 = mapViewToReal(x2v, y2v);
-
-                const x1r = Math.min(p1.x, p2.x);
-                const y1r = Math.min(p1.y, p2.y);
-                const x2r = Math.max(p1.x, p2.x);
-                const y2r = Math.max(p1.y, p2.y);
-
-                // Límites reales
-                if (x1r < 1 || y1r < 1 || x2r > W || y2r > H) {
-                    alert('Fuera de los límites de la nave.');
-                    return;
-                }
-
-                if (!confirm(
-                        `Asignar paquete ${paqueteMeta.codigo} en (${x1r},${y1r})–(${x2r},${y2r})?`
-                        )) return;
-
-                const naveId = escenario.dataset.naveId || null;
-                const urlGuardar = escenario.dataset.rutaGuardar;
-                try {
-                    const resp = await fetch(urlGuardar, {
-                        method: 'POST',
-                        headers: {
-                            'Accept': 'application/json',
-                            'Content-Type': 'application/json',
-                            'X-CSRF-TOKEN': document.querySelector(
-                                    'meta[name="csrf-token"]')
-                                ?.getAttribute(
-                                    'content') || ''
-                        },
-                        body: JSON.stringify({
-                            nave_id: naveId,
-                            tipo: 'paquete',
-                            nombre: paqueteMeta.codigo,
-                            paquete_id: paqueteMeta
-                                .paquete_id,
-                            x1: x1r,
-                            y1: y1r,
-                            x2: x2r,
-                            y2: y2r,
-                        })
-                    });
-                    if (!resp.ok) {
-                        const t = await resp.text();
-                        throw new Error(t || `HTTP ${resp.status}`);
-                    }
-                    // éxito
-                    ghost.remove();
-                    ghost = null;
-                    ghostActions.remove();
-                    ghostActions = null;
-                    paqueteMeta = null;
+            // Crear instancia del Ghost usando la clase compartida
+            const ghostPaquete = new window.GhostPaquete({
+                grid: grid,
+                viewCols: viewCols,
+                viewRows: viewRows,
+                W: W,
+                H: H,
+                isVertical: isVertical,
+                naveId: escenario.dataset.naveId || null,
+                rutaGuardar: escenario.dataset.rutaGuardar,
+                getCeldaPx: getCeldaPx,
+                confirmBeforeSave: true,
+                onSuccess: function() {
                     location.reload();
-                } catch (err) {
-                    console.error(err);
-                    alert(
-                    'No se pudo guardar la localización del paquete.');
                 }
-            }
+            });
 
-            // Buscar paquete por etiqueta_sub_id y crear ghost centrado
+            // Buscar paquete por etiqueta_sub_id
             async function fetchPaqueteBySubId(subId) {
                 const url = escenario.dataset.rutaPaquete;
                 const resp = await fetch(url, {
                     method: 'POST',
                     headers: {
                         'Accept': 'application/json',
-                        'X-CSRF-TOKEN': document.querySelector(
-                                'meta[name="csrf-token"]')
-                            ?.getAttribute(
-                                'content') || '',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
                         'Content-Type': 'application/json'
                     },
-                    body: JSON.stringify({
-                        codigo: subId
-                    })
+                    body: JSON.stringify({ codigo: subId })
                 });
                 if (!resp.ok) {
                     const t = await resp.text();
@@ -598,49 +332,18 @@
 
                 try {
                     const data = await fetchPaqueteBySubId(raw);
-                    // data => { codigo, paquete_id, ancho, longitud, ... }
-                    paqueteMeta = {
+                    ghostPaquete.crear({
                         codigo: data.codigo,
                         paquete_id: data.paquete_id,
                         longitud: Number(data.longitud || 0),
-                        ancho: Number(data.ancho || 1),
-                    };
-                    ensureGhost();
-                    setGhostSizeFromPaquete({
-                        ancho: paqueteMeta.ancho,
-                        longitud: paqueteMeta.longitud
+                        ancho: Number(data.ancho || 1)
                     });
-                    centerGhost();
                     input.select();
                 } catch (err) {
                     console.error(err);
-                    alert(
-                        'No se encontró el paquete para ese código.');
+                    alert('No se encontró el paquete para ese código.');
                 }
             });
-
-            // Atajos de teclado
-            window.addEventListener('keydown', (e) => {
-                if (!ghost) return;
-                if (e.key === 'Escape') {
-                    document.getElementById('btn-cancel-ghost')
-                ?.click();
-                } else if (e.key.toLowerCase() === 'r') {
-                    document.getElementById('btn-rotate-ghost')
-                ?.click();
-                } else if (e.key === 'Enter') {
-                    document.getElementById('btn-place-ghost')?.click();
-                }
-            });
-
-            // Recolocar ghost si cambia el tamaño de celda
-            window.addEventListener('resize', () => {
-                if (!ghost) return;
-                requestAnimationFrame(layoutGhost);
-            }, {
-                passive: true
-            });
-
         })();
     </script>
 

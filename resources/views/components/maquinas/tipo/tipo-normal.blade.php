@@ -223,16 +223,46 @@
                         @forelse($planillasActivas as $planilla)
                             @php
                                 $grupoPlanilla = $elementosPorPlanilla->get($planilla->id, collect());
-                                $elementosAgrupados = $grupoPlanilla->groupBy('etiqueta_sub_id')->sortBy(function ($grupo, $subId) {
+                                $elementosAgrupadosLocal = $grupoPlanilla->groupBy('etiqueta_sub_id')->sortBy(function ($grupo, $subId) {
                                     if (preg_match('/^(.*?)[\.\-](\d+)$/', $subId, $m)) {
                                         return sprintf('%s-%010d', $m[1], (int) $m[2]);
                                     }
                                     return $subId . '-0000000000';
                                 });
+
+                                // Filtrar etiquetas que están en grupos resumidos
+                                $etiquetasEnGruposArray = $etiquetasEnGrupos ?? [];
+                                $elementosAgrupados = $elementosAgrupadosLocal->filter(
+                                    fn($grupo, $subId) => !in_array($subId, $etiquetasEnGruposArray)
+                                );
                             @endphp
 
                             <section class="bg-gradient-to-br from-gray-50 to-white rounded-lg border-2 border-gray-200 shadow-md overflow-hidden">
                                 <div class="space-y-2 overflow-y-auto flex flex-col items-center justify-start pt-4" style="max-height: calc(100vh - 70px);">
+
+                                    {{-- GRUPOS DE RESUMEN de esta planilla --}}
+                                    @php
+                                        $gruposDePlanilla = collect($gruposResumen ?? [])->where('planilla_id', $planilla->id);
+                                    @endphp
+
+                                    @foreach ($gruposDePlanilla as $grupo)
+                                        <x-etiqueta.grupo-resumen :grupo="$grupo" :maquina="$maquina" />
+                                    @endforeach
+
+                                    {{-- Etiquetas originales de grupos (OCULTAS para impresión) --}}
+                                    <div style="position:absolute;left:-9999px;top:0;opacity:0;pointer-events:none;" aria-hidden="true">
+                                        @foreach ($gruposDePlanilla as $grupo)
+                                            @foreach ($grupo['etiquetas'] ?? [] as $etData)
+                                                @php
+                                                    $etOculta = \App\Models\Etiqueta::with(['planilla', 'elementos'])->find($etData['id']);
+                                                @endphp
+                                                @if ($etOculta)
+                                                    <x-etiqueta.etiqueta :etiqueta="$etOculta" :planilla="$etOculta->planilla" :maquina-tipo="$maquina->tipo" />
+                                                @endif
+                                            @endforeach
+                                        @endforeach
+                                    </div>
+
                                     @forelse ($elementosAgrupados as $etiquetaSubId => $elementos)
                                         @php
                                             $firstElement = $elementos->first();

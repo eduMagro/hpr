@@ -2,6 +2,7 @@ import { DATA, R } from "./config.js";
 import { openCellMenu } from "./menu/cellMenu.js";
 import { openFestivoMenu } from "./menu/festivoMenu.js";
 import { openWorkerMenu } from "./menu/workerMenu.js";
+import { verificarConflictosObraTaller } from "./utils/verificarConflictos.js";
 
 /**
  * Genera eventos de carga de trabajo por turno para mostrar en vista de día
@@ -221,6 +222,23 @@ function estaEnObraExterna(userId) {
  */
 function diasEnObraExterna(userId) {
     return trabajadoresEnObrasExternas[userId]?.total_dias || 0;
+}
+
+/**
+ * Obtiene los días formateados que un trabajador está en obra externa
+ */
+function diasEnObraExternaFormateados(userId) {
+    const diasRaw = trabajadoresEnObrasExternas[userId]?.dias || [];
+    const diasLista = Array.isArray(diasRaw) ? diasRaw : Object.values(diasRaw);
+
+    return diasLista.map(fecha => {
+        const partes = fecha.split('-');
+        if (partes.length === 3) {
+            const d = new Date(partes[0], partes[1] - 1, partes[2]);
+            return d.toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric' });
+        }
+        return fecha;
+    }).join(', ');
 }
 
 export function initCalendar(domEl) {
@@ -616,8 +634,9 @@ export function initCalendar(domEl) {
             const userId = p.user_id;
             const enObraExterna = estaEnObraExterna(userId);
             const diasObra = diasEnObraExterna(userId);
+            const diasObraFormateados = diasEnObraExternaFormateados(userId);
             const badgeObra = enObraExterna
-                ? `<span class="ml-1 px-1 py-0.5 bg-green-500 text-white text-[8px] rounded font-bold" title="${diasObra} día(s) en obra">🏗️${diasObra}</span>`
+                ? `<span class="ml-1 px-1 py-0.5 bg-green-500 text-white text-[8px] rounded font-bold" title="En obra: ${diasObraFormateados}">🏗️${diasObra}</span>`
                 : '';
 
             return {
@@ -638,6 +657,41 @@ export function initCalendar(domEl) {
     });
 
     calendar.render();
+
+    // Filtro de búsqueda de trabajadores (eventos)
+    const filtroEventosInput = document.getElementById('filtro-eventos');
+    if (filtroEventosInput) {
+        filtroEventosInput.addEventListener('input', function() {
+            const texto = this.value.toLowerCase().trim();
+
+            // Obtener todos los eventos del calendario
+            const todosEventos = calendar.getEvents();
+
+            todosEventos.forEach(evento => {
+                const props = evento.extendedProps || {};
+                // Ignorar eventos de carga y festivos
+                if (props.es_carga || props.es_festivo) return;
+
+                const titulo = (evento.title || '').toLowerCase();
+                const categoria = (props.categoria_nombre || '').toLowerCase();
+                const especialidad = (props.especialidad_nombre || '').toLowerCase();
+
+                const coincide = !texto ||
+                    titulo.includes(texto) ||
+                    categoria.includes(texto) ||
+                    especialidad.includes(texto);
+
+                // Mostrar/ocultar usando display del elemento DOM
+                const eventEl = document.querySelector(`[data-event-id="${evento.id}"]`);
+                if (eventEl) {
+                    eventEl.style.display = coincide ? '' : 'none';
+                }
+
+                // Alternativa: usar setProp para cambiar visibilidad
+                evento.setProp('display', coincide ? 'auto' : 'none');
+            });
+        });
+    }
 
     console.log("[cal] Configurando event listener para contextmenu...");
 

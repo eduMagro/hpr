@@ -1868,6 +1868,76 @@ class AsignacionTurnoController extends Controller
     }
 
     /**
+     * Verifica si hay conflictos entre obra externa y taller (Paco Reyes)
+     * para un trabajador en un rango de fechas
+     */
+    public function verificarConflictosObraTaller(Request $request)
+    {
+        $request->validate([
+            'user_id' => 'required|exists:users,id',
+            'fecha_inicio' => 'required|date',
+            'fecha_fin' => 'nullable|date',
+            'destino' => 'required|in:taller,obra', // hacia dónde va la asignación
+        ]);
+
+        $userId = $request->user_id;
+        $fechaInicio = Carbon::parse($request->fecha_inicio);
+        $fechaFin = $request->fecha_fin ? Carbon::parse($request->fecha_fin) : $fechaInicio;
+        $destino = $request->destino;
+
+        // Obtener IDs de obras de Hierros Paco Reyes (taller)
+        $obrasPacoReyes = Obra::getNavesPacoReyes()->pluck('id')->toArray();
+
+        // Buscar asignaciones del trabajador en el rango de fechas
+        $asignaciones = AsignacionTurno::where('user_id', $userId)
+            ->whereBetween('fecha', [$fechaInicio->toDateString(), $fechaFin->toDateString()])
+            ->whereNotNull('obra_id')
+            ->with('obra:id,nombre')
+            ->get();
+
+        $conflictos = [];
+
+        foreach ($asignaciones as $asig) {
+            $esEnTaller = in_array($asig->obra_id, $obrasPacoReyes);
+
+            // Si va hacia taller y tiene asignaciones en obra externa
+            if ($destino === 'taller' && !$esEnTaller) {
+                $conflictos[] = [
+                    'fecha' => Carbon::parse($asig->fecha)->format('Y-m-d'),
+                    'fecha_formateada' => Carbon::parse($asig->fecha)->locale('es')->isoFormat('ddd D MMM'),
+                    'obra' => $asig->obra?->nombre ?? 'Obra externa',
+                    'tipo' => 'obra_externa',
+                ];
+            }
+
+            // Si va hacia obra y tiene asignaciones en taller
+            if ($destino === 'obra' && $esEnTaller) {
+                $conflictos[] = [
+                    'fecha' => Carbon::parse($asig->fecha)->format('Y-m-d'),
+                    'fecha_formateada' => Carbon::parse($asig->fecha)->locale('es')->isoFormat('ddd D MMM'),
+                    'obra' => $asig->obra?->nombre ?? 'Taller',
+                    'tipo' => 'taller',
+                ];
+            }
+        }
+
+        // Agrupar por tipo para mejor presentación
+        $diasEnObra = collect($conflictos)->where('tipo', 'obra_externa')->pluck('fecha_formateada')->unique()->values()->toArray();
+        $diasEnTaller = collect($conflictos)->where('tipo', 'taller')->pluck('fecha_formateada')->unique()->values()->toArray();
+
+        return response()->json([
+            'tiene_conflictos' => count($conflictos) > 0,
+            'conflictos' => $conflictos,
+            'dias_en_obra' => $diasEnObra,
+            'dias_en_taller' => $diasEnTaller,
+            'resumen' => [
+                'total_obra' => count($diasEnObra),
+                'total_taller' => count($diasEnTaller),
+            ],
+        ]);
+    }
+
+    /**
      * Propaga las asignaciones de un día a múltiples días siguientes
      * Salta fines de semana y festivos automáticamente
      */

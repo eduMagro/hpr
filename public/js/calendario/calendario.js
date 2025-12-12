@@ -694,6 +694,96 @@
                     calendar.view.type
                 );
             },
+
+            // Click en evento para mostrar tooltip con detalles
+            eventClick: function (info) {
+                const event = info.event;
+                const props = event.extendedProps || {};
+
+                // Ignorar eventos de fondo (selección de rango)
+                if (event.display === 'background' || props.__tempHover) return;
+
+                // Ignorar festivos y vacaciones pendientes
+                if (event.id?.startsWith('festivo-') || event.id?.startsWith('vac-')) return;
+
+                // Eliminar tooltip existente
+                const existente = document.getElementById('evento-tooltip');
+                if (existente) existente.remove();
+
+                const obraNombre = props.obra_nombre || null;
+                const entrada = props.entrada ? props.entrada.substring(0, 5) : null;
+                const salida = props.salida ? props.salida.substring(0, 5) : null;
+
+                // Si no hay datos que mostrar, no hacer nada
+                if (!obraNombre && !entrada && !salida) return;
+
+                // Crear tooltip
+                const tooltip = document.createElement('div');
+                tooltip.id = 'evento-tooltip';
+                tooltip.style.cssText = `
+                    position: fixed;
+                    z-index: 9999;
+                    background: #1f2937;
+                    color: white;
+                    padding: 8px 12px;
+                    border-radius: 6px;
+                    font-size: 12px;
+                    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+                    max-width: 250px;
+                    pointer-events: none;
+                `;
+
+                let html = '';
+                if (obraNombre) {
+                    html += `<div style="margin-bottom: 4px;"><strong>📍 Obra:</strong> ${obraNombre}</div>`;
+                }
+                if (entrada || salida) {
+                    html += `<div><strong>🕐 Horario:</strong> `;
+                    if (entrada) html += entrada;
+                    if (entrada && salida) html += ' - ';
+                    if (salida) html += salida;
+                    html += `</div>`;
+                }
+                tooltip.innerHTML = html;
+
+                document.body.appendChild(tooltip);
+
+                // Posicionar cerca del evento
+                const rect = info.el.getBoundingClientRect();
+                const tooltipRect = tooltip.getBoundingClientRect();
+
+                let top = rect.bottom + 5;
+                let left = rect.left + (rect.width / 2) - (tooltipRect.width / 2);
+
+                // Ajustar si se sale de pantalla
+                if (left < 10) left = 10;
+                if (left + tooltipRect.width > window.innerWidth - 10) {
+                    left = window.innerWidth - tooltipRect.width - 10;
+                }
+                if (top + tooltipRect.height > window.innerHeight - 10) {
+                    top = rect.top - tooltipRect.height - 5;
+                }
+
+                tooltip.style.top = top + 'px';
+                tooltip.style.left = left + 'px';
+
+                // Cerrar al hacer clic en cualquier lugar
+                const cerrarTooltip = (e) => {
+                    if (!tooltip.contains(e.target)) {
+                        tooltip.remove();
+                        document.removeEventListener('click', cerrarTooltip);
+                    }
+                };
+                setTimeout(() => document.addEventListener('click', cerrarTooltip), 10);
+
+                // Auto-cerrar después de 3 segundos
+                setTimeout(() => {
+                    if (document.getElementById('evento-tooltip')) {
+                        tooltip.remove();
+                        document.removeEventListener('click', cerrarTooltip);
+                    }
+                }, 3000);
+            },
         });
 
         // Cancelar rango con ESC
