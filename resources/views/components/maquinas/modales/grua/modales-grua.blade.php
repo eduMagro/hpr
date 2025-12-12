@@ -773,6 +773,9 @@
             document.getElementById('info-paquete-validado').classList
                 .remove('hidden');
 
+            // Mostrar automáticamente el mapa con el paquete (como en localizaciones.index)
+            setTimeout(() => mostrarPasoMapa(), 300);
+
         } catch (error) {
             console.error('Error al buscar paquete:', error);
             mostrarErrorPaquete(error.message ||
