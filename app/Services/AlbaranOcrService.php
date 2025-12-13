@@ -38,6 +38,15 @@ class AlbaranOcrService
     }
 
     /**
+     * Flujo con consenso: por ahora reutiliza el flujo Docupipe clásico.
+     * Se deja preparado para incorporar OpenAI+Gemini sin romper el endpoint actual.
+     */
+    protected function parseAndLogWithConsensus(UploadedFile $file, ?int $userId = null, ?string $proveedor = null): EntradaImportLog
+    {
+        return $this->parseAndLogSingle($file, $userId, $proveedor);
+    }
+
+    /**
      * Flujo clásico: solo OpenAI (compatibilidad).
      */
     protected function parseAndLogSingle(UploadedFile $file, ?int $userId = null, ?string $proveedor = null): EntradaImportLog

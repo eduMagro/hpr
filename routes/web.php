@@ -61,6 +61,8 @@ Route::get('/', [PageController::class, 'index'])->middleware(['auth', 'verified
 Route::get('/pruebasScanAlbaran', [OpenAIController::class, 'index'])->name('openai.index');
 Route::post('/pruebasScanAlbaran/procesar', [OpenAIController::class, 'procesar'])->name('openai.procesar');
 Route::post('/pruebasScanAlbaran/procesar-ajax', [OpenAIController::class, 'procesarAjax'])->name('openai.procesar.ajax');
+Route::post('/pruebasScanAlbaran/buscar-pedido', [OpenAIController::class, 'buscarPedido'])->name('openai.pedido.lookup');
+Route::post('/pruebasScanAlbaran/simular', [OpenAIController::class, 'simular'])->name('openai.simular');
 
 // Rutas de secciones principales
 Route::get('/produccion', [PageController::class, 'produccion'])->middleware(['auth', 'verified'])->name('secciones.produccion');

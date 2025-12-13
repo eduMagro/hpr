@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Distribuidor;
+use App\Models\PedidoProducto;
 use App\Services\AlbaranOcrService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -189,19 +190,193 @@ class OpenAIController extends Controller
     }
 
     /**
+     * Busca líneas (pedido_productos) cuyo pedido padre contenga el código proporcionado
+     * (ignora espacios y mayúsculas/minúsculas).
+     */
+    public function buscarPedido(Request $request)
+    {
+        $request->validate([
+            'codigo' => 'nullable|string|max:255',
+            'diametros' => 'nullable|array',
+            'diametros.*' => 'nullable|numeric',
+        ]);
+
+        $codigo = (string) $request->input('codigo', '');
+        $normalized = preg_replace('/\s+/', '', mb_strtolower($codigo));
+        $diametros = collect($request->input('diametros', []))
+            ->filter(fn($v) => $v !== null && $v !== '')
+            ->map(fn($v) => (float) $v)
+            ->unique()
+            ->values()
+            ->all();
+
+        if ($normalized === '') {
+            return response()->json([
+                'exists' => false,
+                'reason' => 'empty',
+                'searched' => $codigo,
+            ]);
+        }
+
+        // Normaliza código de pedido padre en BD eliminando espacios y pasando a minúsculas.
+        $pedidoExpr = "LOWER(REPLACE(codigo, ' ', ''))";
+
+        $baseWith = ['pedido.fabricante', 'pedido.distribuidor', 'productoBase', 'obra'];
+
+        $exactQuery = PedidoProducto::query()
+            ->with($baseWith)
+            ->whereHas('pedido', fn($q) => $q->whereRaw("{$pedidoExpr} = ?", [$normalized]));
+        $exactCount = (clone $exactQuery)->count();
+        $lineas = (clone $exactQuery)->orderByDesc('created_at')->limit(50)->get();
+
+        $matchType = $lineas->isNotEmpty() ? 'exact' : 'contains';
+        $containsCount = null;
+
+        if ($lineas->isEmpty()) {
+            $containsQuery = PedidoProducto::query()
+                ->with($baseWith)
+                ->whereHas('pedido', fn($q) => $q->whereRaw("{$pedidoExpr} LIKE ?", ['%' . $normalized . '%']));
+            $containsCount = (clone $containsQuery)->count();
+            $lineas = (clone $containsQuery)->orderByDesc('created_at')->limit(50)->get();
+        }
+
+        if ($lineas->isEmpty()) {
+            return response()->json([
+                'exists' => false,
+                'reason' => 'not_found',
+                'searched' => $codigo,
+                'normalized_search' => $normalized,
+                'match_type' => $matchType,
+                'exact_count' => $exactCount,
+                'contains_count' => $containsCount,
+            ]);
+        }
+
+        $estadoRank = function (?string $estado): int {
+            $e = mb_strtolower(trim((string) $estado));
+            // Menor es mejor (más "usable" para recepcionar)
+            return match ($e) {
+                'pendiente' => 0,
+                'parcial' => 1,
+                '' => 2,
+                'completado', 'completada' => 10,
+                'facturado', 'facturada' => 11,
+                'cancelado', 'cancelada' => 12,
+                default => 5,
+            };
+        };
+
+        $bestLinea = $lineas
+            ->sortBy(function (PedidoProducto $linea) use ($diametros, $estadoRank) {
+                $rank = $estadoRank($linea->estado);
+                $diam = (float) ($linea->productoBase?->diametro ?? 0);
+                $diamMatch = (!empty($diametros) && $diam > 0 && in_array($diam, $diametros, true)) ? 0 : 1;
+                // Orden: estado "bueno" primero, luego match de diámetro, luego más reciente
+                return [$rank, $diamMatch, -$linea->created_at?->timestamp];
+            })
+            ->first();
+
+        $lineasPayload = $lineas
+            ->take(10)
+            ->map(function (PedidoProducto $linea) {
+                $pedido = $linea->pedido;
+                $fabricante = $pedido?->fabricante?->nombre;
+                $distribuidor = $pedido?->distribuidor?->nombre;
+                $diametro = $linea->productoBase?->diametro;
+                $producto = $linea->productoBase?->nombre;
+
+                return [
+                    'id' => $linea->id,
+                    'codigo_linea' => $linea->codigo,
+                    'estado' => $linea->estado,
+                    'cantidad' => $linea->cantidad,
+                    'cantidad_recepcionada' => $linea->cantidad_recepcionada,
+                    'pedido' => [
+                        'id' => $pedido?->id,
+                        'codigo' => $pedido?->codigo,
+                        'estado' => $pedido?->estado,
+                        'peso_total' => $pedido?->peso_total,
+                        'fabricante' => $fabricante,
+                        'distribuidor' => $distribuidor,
+                    ],
+                    'producto' => [
+                        'diametro' => $diametro,
+                        'nombre' => $producto,
+                    ],
+                ];
+            })
+            ->values()
+            ->all();
+
+        return response()->json([
+            'exists' => true,
+            'searched' => $codigo,
+            'normalized_search' => $normalized,
+            'match_type' => $matchType,
+            'exact_count' => $exactCount,
+            'contains_count' => $containsCount,
+            'diametros' => $diametros,
+            'best_linea_id' => $bestLinea?->id,
+            'lineas' => $lineasPayload,
+        ]);
+    }
+
+    /**
+     * Recalcula la simulación de selección de línea de pedido usando los datos editados.
+     */
+    public function simular(Request $request)
+    {
+        $request->validate([
+            'parsed' => 'required|array',
+            'proveedor' => 'nullable|string|in:siderurgica,megasa,balboa,otro',
+        ]);
+
+        $parsed = (array) $request->input('parsed', []);
+        $proveedor = $request->input('proveedor') ?? ($parsed['proveedor'] ?? null);
+        if ($proveedor) {
+            $parsed['proveedor'] = $proveedor;
+        }
+
+        $simulacion = $this->generarSimulacion($parsed);
+
+        return response()->json([
+            'success' => true,
+            'simulacion' => $simulacion,
+        ]);
+    }
+
+    /**
      * Genera una simulación sugiriendo qué línea de pedido de COMPRA activar
      */
     protected function generarSimulacion(array $parsed): array
     {
-        $productos = $parsed['productos'] ?? [];
+        // Docupipe puede devolver el payload dentro de "data"; la UI lo normaliza, pero aquí necesitamos soportarlo.
+        $source = (isset($parsed['data']) && is_array($parsed['data'])) ? $parsed['data'] : $parsed;
+
+        $productos = $source['productos'] ?? ($source['products'] ?? []);
         $proveedor = $parsed['proveedor'] ?? null;
-        $pedidoCodigo = $parsed['pedido_codigo'] ?? null;
+        // En algunos OCR el código viene en "pedido_cliente"
+        $pedidoCodigo = $source['pedido_cliente'] ?? ($source['pedido_codigo'] ?? null);
+
+        $normalizeCode = static function (?string $value): string {
+            $value = (string) ($value ?? '');
+            $value = preg_replace('/\s+/', '', $value);
+            return mb_strtolower($value);
+        };
+
+        $normalizedPedidoCodigo = $normalizeCode($pedidoCodigo);
 
         // Recopilar todos los line_items de todos los productos
         $allLineItems = [];
-        foreach ($productos as $producto) {
+        foreach ((array) $productos as $producto) {
+            if (!is_array($producto)) {
+                continue;
+            }
             $lineItems = $producto['line_items'] ?? [];
-            foreach ($lineItems as $item) {
+            foreach ((array) $lineItems as $item) {
+                if (!is_array($item)) {
+                    continue;
+                }
                 $allLineItems[] = array_merge($item, [
                     'producto_descripcion' => $producto['descripcion'] ?? null,
                     'producto_diametro' => $producto['diametro'] ?? null,
@@ -210,10 +385,59 @@ class OpenAIController extends Controller
             }
         }
 
-        // Extraer diámetros de los productos escaneados
-        $diametrosEscaneados = collect($productos)->pluck('diametro')->filter()->unique()->values()->toArray();
+        $extractNumber = static function ($value): ?float {
+            if ($value === null) {
+                return null;
+            }
+            if (is_int($value) || is_float($value)) {
+                return (float) $value;
+            }
+            $text = trim((string) $value);
+            if ($text === '') {
+                return null;
+            }
+            if (is_numeric($text)) {
+                return (float) $text;
+            }
+            if (preg_match('/(\\d+(?:[\\.,]\\d+)?)/', $text, $m)) {
+                $num = str_replace(',', '.', $m[1]);
+                return is_numeric($num) ? (float) $num : null;
+            }
+            return null;
+        };
+
+        $extractDiameterFromText = static function ($value) use ($extractNumber): ?float {
+            if ($value === null) {
+                return null;
+            }
+            $text = trim((string) $value);
+            if ($text === '') {
+                return null;
+            }
+            $lower = mb_strtolower($text);
+            // Heurística: solo intentar extraer diámetros si el texto sugiere Ø/mm/diámetro
+            if (!str_contains($lower, 'ø') && !str_contains($lower, 'mm') && !str_contains($lower, 'diam')) {
+                return null;
+            }
+            return $extractNumber($text);
+        };
+
+        // Extraer diámetros escaneados con tolerancia a diferentes formatos (ej: "Ø16", "16mm", 16).
+        $diametrosEscaneados = collect()
+            ->merge(collect($productos)->pluck('diametro'))
+            ->merge(collect($allLineItems)->pluck('producto_diametro'))
+            ->merge([data_get($source, 'producto.diametro')])
+            ->merge(collect($productos)->pluck('descripcion')->map(fn($t) => $extractDiameterFromText($t)))
+            ->merge(collect($allLineItems)->pluck('producto_descripcion')->map(fn($t) => $extractDiameterFromText($t)))
+            ->map(fn($d) => $extractNumber($d))
+            ->filter(fn($d) => $d !== null)
+            ->map(fn($d) => (int) round((float) $d))
+            ->filter(fn($d) => $d > 0)
+            ->unique()
+            ->values()
+            ->toArray();
         $lineItemsWeight = collect($allLineItems)->sum('peso_kg');
-        $pesoTotal = $lineItemsWeight > 0 ? $lineItemsWeight : (float) ($parsed['peso_total'] ?? 0);
+        $pesoTotal = $lineItemsWeight > 0 ? $lineItemsWeight : (float) ($source['peso_total'] ?? 0);
 
         // Buscar FABRICANTE según proveedor (todos los pedidos tienen fabricante)
         $fabricanteId = null;
@@ -238,12 +462,6 @@ class OpenAIController extends Controller
         // Buscar líneas de pedidos de COMPRA pendientes (filtrar solo por FABRICANTE)
         $lineasPendientes = \App\Models\PedidoProducto::query()
             ->with(['pedido.fabricante', 'productoBase', 'obra'])
-            ->whereHas('pedido', function ($q) use ($fabricanteId, $pedidoCodigo) {
-                // Si hay código de pedido, intentar coincidir
-                if ($pedidoCodigo) {
-                    $q->where('codigo', 'LIKE', "%{$pedidoCodigo}%");
-                }
-            })
             ->whereNotIn('estado', ['completado', 'cancelado', 'facturado'])
             ->get()
             ->filter(fn($linea) => $this->esLineaPermitida($linea, $fabricanteId, $diametrosEscaneados));
@@ -258,7 +476,7 @@ class OpenAIController extends Controller
         $diasMaximos = $pedidoMasAntiguo ? $pedidoMasAntiguo->diffInDays($hoy) : 0;
         $puntajeAntiguedadMaximo = 10; // Puntos máximos por antigüedad
 
-        $lineasConScoring = $lineasPendientes->map(function ($linea) use ($diametrosEscaneados, $pesoTotal, $pedidoCodigo, $fabricanteId, $hoy, $diasMaximos, $puntajeAntiguedadMaximo) {
+        $lineasConScoring = $lineasPendientes->map(function ($linea) use ($diametrosEscaneados, $pesoTotal, $pedidoCodigo, $normalizedPedidoCodigo, $normalizeCode, $fabricanteId, $hoy, $diasMaximos, $puntajeAntiguedadMaximo) {
             $score = 0;
             $razones = [];
             $incompatibilidades = [];
@@ -288,20 +506,23 @@ class OpenAIController extends Controller
 
             // Obtener diámetro del producto base
             $diametroLinea = $linea->productoBase->diametro ?? null;
+            $diametroLineaInt = $diametroLinea !== null ? (int) round((float) $diametroLinea) : null;
 
             // SCORING 1: Coincidencia de diámetro (crítico)
-            if ($diametroLinea && in_array($diametroLinea, $diametrosEscaneados)) {
+            if ($diametroLineaInt && in_array($diametroLineaInt, $diametrosEscaneados, true)) {
                 $score += 50;
-                $razones[] = "✓ Diámetro Ø{$diametroLinea} coincide";
-            } else {
-                $incompatibilidades[] = "✗ Diámetro Ø{$diametroLinea} no coincide con escaneado: Ø" . implode(', Ø', $diametrosEscaneados);
+                $razones[] = "✓ Diámetro Ø{$diametroLineaInt} coincide";
+            } elseif (!empty($diametrosEscaneados)) {
+                $incompatibilidades[] = "✗ Diámetro Ø{$diametroLineaInt} no coincide con escaneado: Ø" . implode(', Ø', $diametrosEscaneados);
             }
 
             // SCORING 2: Coincidencia de código de pedido
-            if ($pedidoCodigo && $linea->pedido->codigo === $pedidoCodigo) {
+            $lineaCodigo = (string) ($linea->pedido->codigo ?? '');
+            $normalizedLineaCodigo = $normalizeCode($lineaCodigo);
+            if ($normalizedPedidoCodigo !== '' && $normalizedLineaCodigo === $normalizedPedidoCodigo) {
                 $score += 30;
                 $razones[] = "✓ Código de pedido coincide exactamente";
-            } elseif ($pedidoCodigo && stripos($linea->pedido->codigo, $pedidoCodigo) !== false) {
+            } elseif ($normalizedPedidoCodigo !== '' && str_contains($normalizedLineaCodigo, $normalizedPedidoCodigo)) {
                 $score += 15;
                 $razones[] = "≈ Código de pedido similar";
             }
@@ -347,19 +568,20 @@ class OpenAIController extends Controller
 
             // Construir descripción del producto
             $productoDescripcion = $linea->productoBase->nombre ?? null;
-            if (!$productoDescripcion && $diametroLinea) {
-                $productoDescripcion = "Ø{$diametroLinea}mm";
+            if (!$productoDescripcion && $diametroLineaInt) {
+                $productoDescripcion = "Ø{$diametroLineaInt}mm";
             } elseif (!$productoDescripcion) {
                 $productoDescripcion = "ProductoBase #{$linea->producto_base_id} (no encontrado)";
             }
 
             return [
                 'id' => $linea->id,
+                'pedido_id' => $linea->pedido_id,
                 'pedido_codigo' => $linea->pedido->codigo ?? '(sin código)',
                 'fabricante' => $fabricante,
                 'obra' => $linea->obra->obra ?? $linea->obra_manual ?? '(sin obra)',
                 'producto' => $productoDescripcion,
-                'diametro' => $diametroLinea,
+                'diametro' => $diametroLineaInt,
                 'cantidad' => $linea->cantidad ?? 0,
                 'cantidad_recepcionada' => $linea->cantidad_recepcionada ?? 0,
                 'cantidad_pendiente' => $cantidadPendienteKg,
@@ -389,11 +611,12 @@ class OpenAIController extends Controller
         });
         $diasMaximosTodas = $pedidoMasAntiguoTodas ? $pedidoMasAntiguoTodas->diffInDays(now()) : 0;
 
-        $todasLasLineas = $todasLasLineasQuery->map(function ($linea) use ($diametrosEscaneados, $pesoTotal, $pedidoCodigo, $fabricanteId, $diasMaximosTodas, $puntajeAntiguedadMaximo) {
+        $todasLasLineas = $todasLasLineasQuery->map(function ($linea) use ($diametrosEscaneados, $pesoTotal, $pedidoCodigo, $normalizedPedidoCodigo, $normalizeCode, $fabricanteId, $diasMaximosTodas, $puntajeAntiguedadMaximo) {
             // Calcular scoring para cada línea (mismo algoritmo que arriba)
             $score = 0;
             $cantidadPendiente = ($linea->cantidad ?? 0) - ($linea->cantidad_recepcionada ?? 0);
             $diametroLinea = $linea->productoBase->diametro ?? null;
+            $diametroLineaInt = $diametroLinea !== null ? (int) round((float) $diametroLinea) : null;
             $fabricante = $linea->pedido->fabricante->nombre ?? '(sin fabricante)';
 
             // SCORING 0: Fabricante
@@ -408,14 +631,16 @@ class OpenAIController extends Controller
             }
 
             // SCORING 1: Diámetro
-            if ($diametroLinea && in_array($diametroLinea, $diametrosEscaneados)) {
+            if ($diametroLineaInt && in_array($diametroLineaInt, $diametrosEscaneados, true)) {
                 $score += 50;
             }
 
             // SCORING 2: Código de pedido
-            if ($pedidoCodigo && $linea->pedido->codigo === $pedidoCodigo) {
+            $lineaCodigo = (string) ($linea->pedido->codigo ?? '');
+            $normalizedLineaCodigo = $normalizeCode($lineaCodigo);
+            if ($normalizedPedidoCodigo !== '' && $normalizedLineaCodigo === $normalizedPedidoCodigo) {
                 $score += 30;
-            } elseif ($pedidoCodigo && stripos($linea->pedido->codigo, $pedidoCodigo) !== false) {
+            } elseif ($normalizedPedidoCodigo !== '' && str_contains($normalizedLineaCodigo, $normalizedPedidoCodigo)) {
                 $score += 15;
             }
 
@@ -432,22 +657,23 @@ class OpenAIController extends Controller
             }
 
             $productoDescripcion = $linea->productoBase->nombre ?? null;
-            if (!$productoDescripcion && $diametroLinea) {
-                $productoDescripcion = "Ø{$diametroLinea}mm";
+            if (!$productoDescripcion && $diametroLineaInt) {
+                $productoDescripcion = "Ø{$diametroLineaInt}mm";
             } elseif (!$productoDescripcion) {
                 $productoDescripcion = "ProductoBase #{$linea->producto_base_id} (no encontrado)";
             }
 
             // Indicar si coincide con diámetros escaneados
-            $coincideDiametro = $diametroLinea && in_array($diametroLinea, $diametrosEscaneados);
+            $coincideDiametro = $diametroLineaInt && in_array($diametroLineaInt, $diametrosEscaneados, true);
 
             return [
                 'id' => $linea->id,
+                'pedido_id' => $linea->pedido_id,
                 'pedido_codigo' => $linea->pedido->codigo ?? '(sin código)',
                 'fabricante' => $fabricante,
                 'obra' => $linea->obra->obra ?? $linea->obra_manual ?? '(sin obra)',
                 'producto' => $productoDescripcion,
-                'diametro' => $diametroLinea,
+                'diametro' => $diametroLineaInt,
                 'cantidad' => $linea->cantidad ?? 0,
                 'cantidad_recepcionada' => $linea->cantidad_recepcionada ?? 0,
                 'cantidad_pendiente' => $cantidadPendiente,
@@ -461,16 +687,29 @@ class OpenAIController extends Controller
             ->values()
             ->toArray();
 
-        // Línea propuesta (siempre seleccionar una)
-        // Primero intentar con las que coinciden con código de pedido
+        // Línea propuesta (siempre seleccionar una): priorizar coincidencia de código (si existe alguna línea abierta)
         $lineaPropuesta = $lineasConScoring[0] ?? null;
         $tipoRecomendacion = null;
 
         if ($lineaPropuesta) {
-            // Verificar si la recomendación es por coincidencia exacta de código
-            if ($pedidoCodigo && $lineaPropuesta['pedido_codigo'] === $pedidoCodigo) {
+            if ($normalizedPedidoCodigo !== '') {
+                $coincidentes = collect($lineasConScoring)
+                    ->filter(function ($l) use ($normalizeCode, $normalizedPedidoCodigo) {
+                        $codigoLinea = $normalizeCode($l['pedido_codigo'] ?? '');
+                        return $codigoLinea !== '' && str_contains($codigoLinea, $normalizedPedidoCodigo);
+                    })
+                    ->values()
+                    ->all();
+
+                if (!empty($coincidentes)) {
+                    $lineaPropuesta = $coincidentes[0]; // ya vienen ordenadas por score
+                }
+            }
+
+            $propuestaNorm = $normalizeCode($lineaPropuesta['pedido_codigo'] ?? '');
+            if ($normalizedPedidoCodigo !== '' && $propuestaNorm === $normalizedPedidoCodigo) {
                 $tipoRecomendacion = 'exacta';
-            } elseif ($pedidoCodigo && stripos($lineaPropuesta['pedido_codigo'], $pedidoCodigo) !== false) {
+            } elseif ($normalizedPedidoCodigo !== '' && str_contains($propuestaNorm, $normalizedPedidoCodigo)) {
                 $tipoRecomendacion = 'parcial';
             } else {
                 $tipoRecomendacion = 'por_score';
@@ -565,7 +804,8 @@ class OpenAIController extends Controller
             if (!$diametroLinea) {
                 return false;
             }
-            if (!in_array($diametroLinea, $diametrosEscaneados)) {
+            $diametroLineaInt = (int) round((float) $diametroLinea);
+            if (!in_array($diametroLineaInt, $diametrosEscaneados, true)) {
                 return false;
             }
         }

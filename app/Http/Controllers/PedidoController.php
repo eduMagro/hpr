@@ -26,6 +26,7 @@ use Illuminate\Validation\ValidationException;
 use Illuminate\Support\Facades\Log;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 use App\Services\StockService;
 use App\Models\AsignacionTurno;
@@ -981,12 +982,16 @@ class PedidoController extends Controller
                         continue;
                     }
 
-                    \App\Models\PedidoProductoColada::create([
+                    $attributes = [
                         'pedido_producto_id' => $linea->id,
                         'colada' => $colada,
                         'bulto' => $bulto,
-                        'user_id' => auth()->id(), // Usuario que activa la línea
-                    ]);
+                    ];
+                    // Compatibilidad: algunas BDs aún no tienen la columna user_id.
+                    if (Schema::hasColumn('pedido_producto_coladas', 'user_id')) {
+                        $attributes['user_id'] = auth()->id();
+                    }
+                    \App\Models\PedidoProductoColada::create($attributes);
                 }
             }
 

@@ -1475,9 +1475,12 @@
 
                         <!-- Botón de acción -->
                         <div class="pt-4">
-                            <button type="button" onclick="guardarYContinuarStep2()"
+                            <button type="button" id="mobile-step2-confirm-btn" onclick="guardarYContinuarStep2()"
                                 class="w-full px-4 py-3 bg-gradient-to-tr from-indigo-600 to-indigo-700 text-white rounded-lg font-bold text-lg shadow-md hover:shadow-lg transition">
-                                Confirmar y Continuar
+                                <span id="mobile-step2-confirm-label">Confirmar y Continuar</span>
+                                <span id="mobile-step2-confirm-loading" class="hidden ml-2 align-middle">
+                                    <span class="ia-spinner inline-block align-middle"></span>
+                                </span>
                             </button>
                         </div>
                     </form>
@@ -1488,6 +1491,7 @@
             <div id="step-3" class="w-full flex-shrink-0 px-4 py-6">
                 <div class="max-w-md mx-auto space-y-3">
                     <h3 class="text-xl font-semibold text-gray-900">Pedido Seleccionado</h3>
+                    <div id="mobile-pedido-db-banner" class="hidden rounded-lg border px-3 py-2 text-sm"></div>
                     <p class="text-sm text-gray-600">Verifica el pedido propuesto o selecciona otro</p>
 
                     <!-- Card del pedido será añadido dinámicamente -->
@@ -1525,15 +1529,15 @@
                         <h4 class="font-semibold text-gray-900">Estado Final</h4>
                         <div class="grid grid-cols-3 gap-3 text-sm text-gray-600">
                             <div class="text-center">
-                                <span class="text-gray-600 text-[9px] uppercase tracking-wide">Kg seleccionados</span>
+                                <span class="text-gray-600 text-[7px] uppercase tracking-wide">Kg seleccionados</span>
                                 <p id="mobile-peso-seleccionado" class="font-bold text-gray-900 text-lg">0 kg</p>
                             </div>
                             <div class="text-center">
-                                <span class="text-gray-600 text-[9px] uppercase tracking-wide">Kg restantes</span>
+                                <span class="text-gray-600 text-[7px] uppercase tracking-wide">Kg restantes</span>
                                 <p id="mobile-kg-restantes" class="font-bold text-gray-900 text-lg">0 kg</p>
                             </div>
                             <div class="text-center">
-                                <span class="text-gray-600 text-[9px] uppercase tracking-wide">Estado pedido</span>
+                                <span class="text-gray-600 text-[7px] uppercase tracking-wide">Estado pedido</span>
                                 <p id="mobile-estado-pedido" class="font-bold text-gray-900 text-lg">Parcial</p>
                             </div>
                         </div>
@@ -1602,7 +1606,10 @@
                     <!-- Botón de activación -->
                     <button type="button" id="mobile-btn-activar"
                         class="w-full px-4 py-3 bg-emerald-600 text-white rounded-lg font-bold text-lg">
-                        Confirmar y Activar
+                        <span id="mobile-activar-label">Confirmar y Activar</span>
+                        <span id="mobile-activar-loading" class="hidden ml-2 align-middle">
+                            <span class="ia-spinner inline-block align-middle"></span>
+                        </span>
                     </button>
                 </div>
             </div>
@@ -1620,7 +1627,7 @@
     <!-- ========================================== -->
     <div id="mobilePedidosModal" class="mobile-edit-modal">
         <div class="mobile-modal-overlay" onclick="cerrarModalPedidosMobile()"></div>
-        <div class="mobile-edit-modal-content">
+        <div class="mobile-edit-modal-content border-t border-gray-200">
             <!-- Header -->
             <div class="sticky top-0 bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between">
                 <h3 class="text-lg font-semibold text-gray-900">Seleccionar Pedido</h3>
@@ -2467,6 +2474,14 @@
                     if (mobileContainer) {
                         mobileContainer.scrollTop = 0;
                     }
+                    // Asegura que cualquier scroll previo no se herede al siguiente paso
+                    wrapper.scrollTop = 0;
+                    document.documentElement.scrollTop = 0;
+                    document.body.scrollTop = 0;
+                    window.scrollTo({
+                        top: 0,
+                        behavior: 'auto'
+                    });
                 });
                 this.currentStep = stepNumber;
 
@@ -2577,31 +2592,85 @@
         function confirmarActivacionMobile() {
             const cache = window.mobileStepManager.dataCache;
             const coladas = cache.coladasSeleccionadas || [];
+            const linea = cache.lineaSeleccionada || {};
+            setMobileActionLoading('mobile-btn-activar', 'mobile-activar-loading', true);
 
             if (coladas.length === 0) {
-                alert('Por favor selecciona al menos una colada para recepcionar');
+                toastMobile('warning', 'Selecciona al menos una colada');
+                setMobileActionLoading('mobile-btn-activar', 'mobile-activar-loading', false);
                 return;
             }
 
-            // Aquí iría la lógica de activación real
-            // Por ahora solo mostramos confirmación
-            if (confirm('¿Confirmar la activación de este albarán?')) {
-                alert('✅ Activación completada con éxito!\n\n' +
-                    'En producción, aquí se ejecutaría la lógica de activación del pedido.\n\n' +
-                    `- ${coladas.length} coladas procesadas\n` +
-                    `- ${cache.totalesColadas?.bultos || 0} bultos\n` +
-                    `- ${(cache.totalesColadas?.peso || 0).toLocaleString('es-ES')} kg`);
-
-                // Resetear y volver a Vista 1
-                window.mobileStepManager.dataCache = {};
-                window.mobileStepManager.currentStep = 1;
-                window.mobileStepManager.maxStep = 1;
-                window.mobileStepManager.goToStep(1);
-
-                // Limpiar formulario
-                const form = document.getElementById('ocrForm-mobile');
-                if (form) form.reset();
+            if (!linea.id || !linea.pedido_id) {
+                toastMobile('error', 'No se pudo determinar la línea/pedido');
+                setMobileActionLoading('mobile-btn-activar', 'mobile-activar-loading', false);
+                return;
             }
+
+            const urlTemplate =
+                "{{ route('pedidos.lineas.activarConColadas', ['pedido' => '___PEDIDO___', 'linea' => '___LINEA___']) }}";
+            const url = urlTemplate
+                .replace('___PEDIDO___', encodeURIComponent(String(linea.pedido_id)))
+                .replace('___LINEA___', encodeURIComponent(String(linea.id)));
+
+            const payload = {
+                coladas: coladas
+                    .map((c) => ({
+                        colada: c.colada || null,
+                        bulto: Number(c.bultos ?? 0),
+                    }))
+                    .filter((c) => c.colada !== null || (c.bulto !== null && c.bulto !== 0)),
+            };
+
+            fetch(url, {
+                method: 'POST',
+                headers: {
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(payload),
+            })
+                .then(async (res) => {
+                    const data = await res.json().catch(() => ({}));
+                    if (!res.ok || !data?.success) {
+                        const message = data?.message || 'No se pudo activar la línea.';
+                        throw new Error(message);
+                    }
+
+                    if (window.Swal?.fire) {
+                        toastMobile('success', 'Activado correctamente');
+                    }
+
+                    // Resetear y volver a Vista 1
+                    window.mobileStepManager.dataCache = {};
+                    window.mobileStepManager.currentStep = 1;
+                    window.mobileStepManager.maxStep = 1;
+                    window.mobileStepManager.goToStep(1, true);
+
+                    // Limpiar inputs del paso 1
+                    if (window.clearMobileSelection) {
+                        window.clearMobileSelection();
+                    } else {
+                        const form = document.getElementById('ocrForm-mobile');
+                        if (form) form.reset();
+                    }
+
+                    const proveedorMobile = document.getElementById('proveedor-mobile');
+                    if (proveedorMobile) {
+                        proveedorMobile.value = '';
+                    }
+
+                    document.getElementById('mobile-preview-container')?.classList.add('hidden');
+                    document.getElementById('mobile-status-banner')?.classList.add('hidden');
+                    document.getElementById('mobile-pedido-db-banner')?.classList.add('hidden');
+
+                    setMobileActionLoading('mobile-btn-activar', 'mobile-activar-loading', false);
+                })
+                .catch((err) => {
+                    toastMobile('error', err?.message || 'Error al activar');
+                    setMobileActionLoading('mobile-btn-activar', 'mobile-activar-loading', false);
+                });
         }
 
         // ========================================
@@ -2939,6 +3008,7 @@
             if (!container) return;
 
             const lineaPropuesta = simulacion.linea_propuesta;
+            window.mobileStepManager.dataCache.recommendedId = lineaPropuesta?.id || null;
 
             if (!lineaPropuesta) {
                 container.innerHTML = `
@@ -2989,12 +3059,7 @@
                             <span class="text-gray-500">Cantidad pendiente:</span>
                             <span class="font-medium text-gray-900">${lineaPropuesta.cantidad_pendiente || 0} kg</span>
                         </div>
-                        ${lineaPropuesta.score ? `
-                                                                                                                                                                                                                                                                                                                                                                    <div class="mt-2 pt-2 border-t border-gray-200">
-                                                                                                                                                                                                                                                                                                                                                                        <span class="text-gray-500">Score:</span>
-                                                                                                                                                                                                                                                                                                                                                                        <span class="font-bold text-indigo-600">${Math.round(lineaPropuesta.score)}</span>
-                                                                                                                                                                                                                                                                                                                                                                    </div>
-                                                                                                                                                                                                                                                                                                                                                                    ` : ''}
+                        ${renderScoreRow(lineaPropuesta.score)}
                     </div>
                 </div>
             `;
@@ -3317,43 +3382,276 @@
         /**
          * Guardar datos de Step 2 y Continuar
          */
-        function guardarYContinuarStep2() {
+        async function guardarYContinuarStep2() {
             const cache = window.mobileStepManager.dataCache;
+            setMobileActionLoading('mobile-step2-confirm-btn', 'mobile-step2-confirm-loading', true);
 
-            // Actualizar cache con valores de inputs generales
-            if (!cache.parsed) cache.parsed = {};
+            try {
+                // Actualizar cache con valores de inputs generales
+                if (!cache.parsed) cache.parsed = {};
 
-            cache.parsed.tipo_compra = document.getElementById('edit-tipo-compra').value || null;
-            cache.parsed.proveedor_texto = document.getElementById('edit-proveedor').value || null;
+                cache.parsed.tipo_compra = document.getElementById('edit-tipo-compra').value || null;
+                cache.parsed.proveedor_texto = document.getElementById('edit-proveedor').value || null;
 
-            // Determinar cuál distribuidor tomar
-            const tipo = cache.parsed.tipo_compra;
-            if (tipo === 'distribuidor') {
-                cache.parsed.distribuidor_recomendado = document.getElementById('edit-distribuidor-select').value || null;
-            } else if (tipo === 'directo') {
-                cache.parsed.distribuidor_recomendado = null; // Desaparece
-            } else {
-                // Fallback o caso no contemplado, limpiamos
-                cache.parsed.distribuidor_recomendado = null;
+                // Determinar cuál distribuidor tomar
+                const tipo = cache.parsed.tipo_compra;
+                if (tipo === 'distribuidor') {
+                    cache.parsed.distribuidor_recomendado = document.getElementById('edit-distribuidor-select')
+                        .value || null;
+                } else if (tipo === 'directo') {
+                    cache.parsed.distribuidor_recomendado = null; // Desaparece
+                } else {
+                    // Fallback o caso no contemplado, limpiamos
+                    cache.parsed.distribuidor_recomendado = null;
+                }
+
+                cache.parsed.albaran = document.getElementById('edit-albaran').value;
+                cache.parsed.fecha = document.getElementById('edit-fecha').value;
+                cache.parsed.pedido_cliente = document.getElementById('edit-pedido-cliente').value;
+                cache.parsed.pedido_codigo = document.getElementById('edit-pedido-codigo').value;
+                cache.parsed.peso_total = document.getElementById('edit-peso-total').value;
+                cache.parsed.bultos_total = document.getElementById('edit-bultos-total').value;
+
+                // Sincronizar productos
+                syncMobileProductsFromDOMToCache();
+
+                // Actualizar resultado con los cambios
+                if (cache.resultado) {
+                    cache.resultado.parsed = cache.parsed;
+                }
+
+                // La búsqueda en BD se hace usando el valor de "Pedido cliente" (input edit-pedido-cliente)
+                await verificarPedidoCodigoEnBdMobile(cache.parsed.pedido_cliente);
+
+                // Recalcular recomendación y lista con los datos editados antes de entrar a Step 3
+                await recalcularSimulacionMobile();
+                if (cache.simulacion) {
+                    poblarVista3ConPedido(cache.simulacion);
+                    poblarVista4ConColadas(cache.simulacion);
+                }
+
+                // Recalcular cosas si fuera necesario, o simplemente avanzar
+                window.mobileStepManager.next();
+            } finally {
+                setMobileActionLoading('mobile-step2-confirm-btn', 'mobile-step2-confirm-loading', false);
+            }
+        }
+
+        function normalizarCodigoPedidoMobile(value) {
+            return (value || '').toString().toLowerCase().replace(/\s+/g, '');
+        }
+
+        function formatearKg(value) {
+            const numberValue = Number(value);
+            if (!Number.isFinite(numberValue)) return '—';
+            return `${numberValue.toLocaleString('es-ES', { maximumFractionDigits: 2 })} kg`;
+        }
+
+        function formatScorePoints(score) {
+            const n = Number(score);
+            if (!Number.isFinite(n)) return '—';
+            return Math.round(n).toLocaleString('es-ES');
+        }
+
+        function renderScoreRow(score) {
+            if (!score) return '';
+            return `
+                <div class="mt-2 pt-2 border-t border-gray-200 flex items-center justify-between">
+                    <span class="text-gray-500">Score:</span>
+                    <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-indigo-100 text-indigo-700">
+                        ${formatScorePoints(score)} pts.
+                    </span>
+                </div>
+            `;
+        }
+
+        function setMobileActionLoading(buttonId, loadingId, isLoading) {
+            const btn = document.getElementById(buttonId);
+            const loading = document.getElementById(loadingId);
+            if (!btn) return;
+            btn.disabled = !!isLoading;
+            if (loading) loading.classList.toggle('hidden', !isLoading);
+            btn.classList.toggle('opacity-80', !!isLoading);
+            btn.classList.toggle('cursor-not-allowed', !!isLoading);
+        }
+
+        function toastMobile(type, title) {
+            if (window.Swal?.fire) {
+                Swal.fire({
+                    toast: true,
+                    position: 'top',
+                    icon: type,
+                    title,
+                    showConfirmButton: false,
+                    timer: type === 'success' ? 2600 : 3200,
+                    timerProgressBar: true,
+                });
+                return;
+            }
+            alert(title);
+        }
+
+        function renderPedidoDbBannerMobile(payload, originalInput) {
+            const banner = document.getElementById('mobile-pedido-db-banner');
+            if (!banner) return;
+
+            const inputTrim = (originalInput || '').toString().trim();
+
+            const setBanner = ({
+                bg,
+                border,
+                text,
+                html
+            }) => {
+                banner.className = `rounded-lg border px-3 py-2 text-sm ${bg} ${border} ${text}`;
+                banner.innerHTML = html;
+                banner.classList.remove('hidden');
+            };
+
+            if (!inputTrim) {
+                setBanner({
+                    bg: 'bg-red-50',
+                    border: 'border-red-200',
+                    text: 'text-red-900',
+                    html: `<div class="flex items-center justify-between gap-2">
+                        <span class="font-semibold">Pedido no verificable</span>
+                        <span class="inline-flex px-2 py-0.5 rounded-full text-xs font-bold bg-red-100 text-red-700">Sin código</span>
+                    </div>`,
+                });
+                return;
             }
 
-            cache.parsed.albaran = document.getElementById('edit-albaran').value;
-            cache.parsed.fecha = document.getElementById('edit-fecha').value;
-            cache.parsed.pedido_cliente = document.getElementById('edit-pedido-cliente').value;
-            cache.parsed.pedido_codigo = document.getElementById('edit-pedido-codigo').value;
-            cache.parsed.peso_total = document.getElementById('edit-peso-total').value;
-            cache.parsed.bultos_total = document.getElementById('edit-bultos-total').value;
-
-            // Sincronizar productos
-            syncMobileProductsFromDOMToCache();
-
-            // Actualizar resultado con los cambios
-            if (cache.resultado) {
-                cache.resultado.parsed = cache.parsed;
+            if (!payload || payload.exists !== true) {
+                setBanner({
+                    bg: 'bg-red-50',
+                    border: 'border-red-200',
+                    text: 'text-red-900',
+                    html: `<div class="flex items-center justify-between gap-2">
+                        <span class="font-semibold">No hay líneas en BD</span>
+                        <span class="inline-flex px-2 py-0.5 rounded-full text-xs font-bold bg-red-100 text-red-700">No existe</span>
+                    </div>
+                    <div class="mt-1 text-xs text-red-700">Búsqueda: <span class="font-mono">${inputTrim}</span></div>`,
+                });
+                return;
             }
 
-            // Recalcular cosas si fuera necesario, o simplemente avanzar
-            window.mobileStepManager.next();
+            const lineas = payload.lineas || [];
+            const cache = window.mobileStepManager.dataCache || {};
+            const selectedLineId = cache.lineaSeleccionada?.id;
+            const bestLineId = payload.best_linea_id;
+            const linea =
+                (selectedLineId ? lineas.find(l => l.id === selectedLineId) : null) ||
+                (bestLineId ? lineas.find(l => l.id === bestLineId) : null) ||
+                lineas[0] || {};
+
+            const estadoLinea = (linea.estado || '').toString().toLowerCase();
+            const isCompleted = ['completado', 'completada', 'facturado', 'facturada', 'cancelado', 'cancelada'].includes(
+                estadoLinea);
+
+            const bg = isCompleted ? 'bg-yellow-50' : 'bg-green-50';
+            const border = isCompleted ? 'border-yellow-200' : 'border-green-200';
+            const text = isCompleted ? 'text-yellow-900' : 'text-green-900';
+            const pillBg = isCompleted ? 'bg-yellow-100 text-yellow-700' : 'bg-green-100 text-green-700';
+            const pillText = linea.estado || 'OK';
+
+            const pedido = linea.pedido || {};
+            const producto = linea.producto || {};
+            const cantidad = linea.cantidad;
+            const recep = linea.cantidad_recepcionada;
+            const diam = producto.diametro;
+            const empresa = pedido.fabricante || pedido.distribuidor || '—';
+
+            setBanner({
+                bg,
+                border,
+                text,
+                html: `<div class="flex items-center justify-between gap-2">
+                    <span class="font-semibold">Línea encontrada en BD</span>
+                    <span class="inline-flex px-2 py-0.5 rounded-full text-xs font-bold ${pillBg}">${pillText}</span>
+                </div>
+                <div class="mt-1 text-xs opacity-90">
+                    Pedido: <span class="font-mono">${pedido.codigo || inputTrim}</span> · Línea: <span class="font-mono">${linea.codigo_linea || '—'}</span> · Ø${diam || '—'} · ${empresa}
+                </div>
+                <div class="mt-1 text-xs opacity-90">
+                    Cant. línea: ${formatearKg(cantidad)} · Recep.: ${formatearKg(recep)} · Total pedido: ${formatearKg(pedido.peso_total)}
+                </div>`,
+            });
+        }
+
+        async function verificarPedidoCodigoEnBdMobile(pedidoCodigo) {
+            const cache = window.mobileStepManager.dataCache;
+            const codigo = (pedidoCodigo || '').toString();
+            cache.lastPedidoLookupCodigo = codigo;
+
+            const normalized = normalizarCodigoPedidoMobile(codigo);
+            if (!normalized) {
+                cache.pedidoDbInfo = null;
+                renderPedidoDbBannerMobile(null, codigo);
+                return;
+            }
+
+            try {
+                const response = await fetch("{{ route('openai.pedido.lookup') }}", {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute(
+                            'content'),
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        codigo,
+                        diametros: (cache.parsed?.productos || []).map(p => p?.diametro).filter(
+                            Boolean),
+                    }),
+                });
+
+                const data = await response.json();
+                cache.pedidoDbInfo = data;
+                const best = (data?.lineas || []).find(l => l.id === data?.best_linea_id) || data?.lineas?.[0];
+                console.log('Línea BD (estado real):', best?.estado ?? '(no encontrado)', best, data);
+                renderPedidoDbBannerMobile(data, codigo);
+            } catch (error) {
+                cache.pedidoDbInfo = null;
+                console.log('Línea BD (estado real): (error/no encontrado)', error);
+                renderPedidoDbBannerMobile(null, codigo);
+            }
+        }
+
+        async function recalcularSimulacionMobile() {
+            const cache = window.mobileStepManager.dataCache;
+            if (!cache?.parsed) return null;
+
+            const proveedorStep1 = document.getElementById('proveedor-mobile') || document.getElementById('proveedor');
+            const proveedor = proveedorStep1?.value || cache.parsed?.proveedor || null;
+
+            try {
+                const response = await fetch("{{ route('openai.simular') }}", {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute(
+                            'content'),
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        proveedor,
+                        parsed: cache.parsed,
+                    }),
+                });
+                const data = await response.json();
+                if (data?.success && data?.simulacion) {
+                    cache.simulacion = data.simulacion;
+                    if (cache.resultado) {
+                        cache.resultado.simulacion = data.simulacion;
+                    }
+                    return data.simulacion;
+                }
+            } catch (e) {
+                // no-op: mantenemos la simulación anterior
+            }
+
+            return null;
         }
 
         function attachColadaInputListener(container) {
@@ -3580,6 +3878,7 @@
             if (!container) return;
 
             const cache = window.mobileStepManager.dataCache;
+            const recommendedId = cache.recommendedId || cache.simulacion?.linea_propuesta?.id || null;
             const simulacion = cache.simulacion || {};
             const lineasPendientes = simulacion.lineas_pendientes || [];
             const diametrosObjetivo = obtenerDiametrosObjetivo();
@@ -3607,18 +3906,31 @@
             // Crear cards de pedidos
             container.innerHTML = lineasParaMostrar.map((linea, index) => {
                 const isSelected = cache.lineaSeleccionada && cache.lineaSeleccionada.id === linea.id;
+                const isRecommended = recommendedId && linea.id === recommendedId;
+
+                const badges = [];
+                if (isSelected) {
+                    badges.push(`
+                        <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-indigo-100 text-indigo-700">
+                            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+                            </svg>
+                            Seleccionado
+                        </span>
+                    `);
+                }
+                if (isRecommended) {
+                    badges.push(`
+                        <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-green-100 text-green-700">
+                            Recomendado
+                        </span>
+                    `);
+                }
 
                 return `
                     <div class="bg-white border-2 ${isSelected ? 'border-indigo-600' : 'border-gray-200'} rounded-lg p-4 cursor-pointer hover:border-indigo-400 transition"
                          onclick="seleccionarPedidoMobile(${index})">
-                        ${isSelected ? `
-                                                                                                                                                                                                                                                                                                                                                                        <div class="flex items-center gap-2 mb-2">
-                                                                                                                                                                                                                                                                                                                                                                            <svg class="w-5 h-5 text-indigo-600" fill="currentColor" viewBox="0 0 20 20">
-                                                                                                                                                                                                                                                                                                                                                                                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
-                                                                                                                                                                                                                                                                                                                                                                            </svg>
-                                                                                                                                                                                                                                                                                                                                                                            <span class="text-xs font-bold text-indigo-600 uppercase">Seleccionado</span>
-                                                                                                                                                                                                                                                                                                                                                                        </div>
-                                                                                                                                                                                                                                                                                                                                                                    ` : ''}
+                        ${badges.length ? `<div class="flex items-center gap-2 mb-2">${badges.join('')}</div>` : ''}
 
                         <div class="space-y-2 text-sm">
                             <div>
@@ -3634,25 +3946,21 @@
                                 <span class="ml-2 text-gray-900">${linea.producto || '—'}</span>
                             </div>
                             ${linea.obra ? `
-                                                                                                                                                                                                                                                                                                                                                                            <div>
-                                                                                                                                                                                                                                                                                                                                                                                <span class="text-gray-500">Obra:</span>
-                                                                                                                                                                                                                                                                                                                                                                                <span class="ml-2 text-gray-900">${linea.obra}</span>
-                                                                                                                                                                                                                                                                                                                                                                            </div>
-                                                                                                                                                                                                                                                                                                                                                                        ` : ''}
+                                                                                                                                                                                                                                                                                                                                                                                    <div>
+                                                                                                                                                                                                                                                                                                                                                                                        <span class="text-gray-500">Obra:</span>
+                                                                                                                                                                                                                                                                                                                                                                                        <span class="ml-2 text-gray-900">${linea.obra}</span>
+                                                                                                                                                                                                                                                                                                                                                                                    </div>
+                                                                                                                                                                                                                                                                                                                                                                                ` : ''}
                             <div class="flex items-center justify-between pt-2 border-t border-gray-100">
                                 <div>
                                         <span class="text-gray-500">Pendiente:</span>
                                         <span class="ml-2 font-bold text-gray-900">${linea.cantidad_pendiente || 0} kg</span>
                                     </div>
                                     ${linea.score ? `
-                                                                                                                                                                                                                                                                                                                                                                                <div class="text-xs px-2 py-1 rounded-full ${
-                                                                                                                                                                                                                                                                                                                                                                                    linea.score >= 0.9 ? 'bg-green-100 text-green-700' :
-                                                                                                                                                                                                                                                                                                                                                                                    linea.score >= 0.7 ? 'bg-yellow-100 text-yellow-700' :
-                                                                                                                                                                                                                                                                                                                                                                                    'bg-blue-100 text-blue-700'
-                                                                                                                                                                                                                                                                                                                                                                                }">
-                                                                                                                                                                                                                                                                                                                                                                                    Score: ${(linea.score * 100).toFixed(0)} pts.
-                                                                                                                                                                                                                                                                                                                                                                                </div>
-                                                                                                                                                                                                                                                                                                                                                                            ` : ''}
+                                                                                                                                                                                                                                                                                                                                                                                        <div class="text-xs px-2 py-1 rounded-full bg-indigo-100 text-indigo-700 font-bold">
+                                                                                                                                                                                                                                                                                                                                                                                            Score: ${formatScorePoints(linea.score)} pts.
+                                                                                                                                                                                                                                                                                                                                                                                        </div>
+                                                                                                                                                                                                                                                                                                                                                                                   ` : ''}
                             </div>
                         </div>
                     </div>
@@ -3677,6 +3985,11 @@
 
             // Actualizar Vista 3 con la nueva línea
             actualizarVista3ConLineaSeleccionada(lineaSeleccionada);
+            // Refrescar banner de BD con la línea seleccionada (si existe lookup previo)
+            if (cache.pedidoDbInfo) {
+                renderPedidoDbBannerMobile(cache.pedidoDbInfo, cache.lastPedidoLookupCodigo || cache.parsed
+                    ?.pedido_cliente || '');
+            }
 
             // Cerrar modal
             cerrarModalPedidosMobile();
@@ -3689,16 +4002,25 @@
             const container = document.getElementById('mobile-pedido-card');
             if (!container) return;
 
-            // Tipo de recomendación
-            let badgeClass = 'bg-blue-100 text-blue-700';
-            let badgeText = 'RECOMENDADO';
+            const cache = window.mobileStepManager.dataCache || {};
+            const recommendedId = cache.recommendedId || cache.simulacion?.linea_propuesta?.id;
+            const isRecommended = recommendedId && linea.id === recommendedId;
 
-            if (linea.tipo_recomendacion === 'exacta') {
-                badgeClass = 'bg-green-100 text-green-700';
-                badgeText = 'COINCIDENCIA EXACTA';
-            } else if (linea.tipo_recomendacion === 'parcial') {
-                badgeClass = 'bg-yellow-100 text-yellow-700';
-                badgeText = 'COINCIDENCIA PARCIAL';
+            // Etiqueta según si es recomendado o elección del usuario
+            let badgeClass = 'bg-gray-100 text-gray-700';
+            let badgeText = 'SELECCIÓN DEL USUARIO';
+
+            if (isRecommended) {
+                badgeClass = 'bg-blue-100 text-blue-700';
+                badgeText = 'RECOMENDADO';
+
+                if (linea.tipo_recomendacion === 'exacta') {
+                    badgeClass = 'bg-green-100 text-green-700';
+                    badgeText = 'COINCIDENCIA EXACTA';
+                } else if (linea.tipo_recomendacion === 'parcial') {
+                    badgeClass = 'bg-yellow-100 text-yellow-700';
+                    badgeText = 'COINCIDENCIA PARCIAL';
+                }
             }
 
             container.innerHTML = `
@@ -3721,20 +4043,16 @@
                             <span class="ml-2 text-gray-900">${linea.producto || '—'}</span>
                         </div>
                         ${linea.obra ? `
-                                                                                                                                                                                                                                                                                                                                                                        <div>
-                                                                                                                                                                                                                                                                                                                                                                            <span class="text-gray-500">Obra:</span>
-                                                                                                                                                                                                                                                                                                                                                                            <span class="ml-2 text-gray-900">${linea.obra}</span>
-                                                                                                                                                                                                                                                                                                                                                                        </div>
-                                                                                                                                                                                                                                                                                                                                                                    ` : ''}
+                                                                                                                                                                                                                                                                                                                                                                                <div>
+                                                                                                                                                                                                                                                                                                                                                                                    <span class="text-gray-500">Obra:</span>
+                                                                                                                                                                                                                                                                                                                                                                                    <span class="ml-2 text-gray-900">${linea.obra}</span>
+                                                                                                                                                                                                                                                                                                                                                                                </div>
+                                                                                                                                                                                                                                                                                                                                                                            ` : ''}
                         <div class="pt-2 border-t border-gray-100">
                             <span class="text-gray-500">Cantidad Pendiente:</span>
                             <span class="ml-2 font-bold text-gray-900">${linea.cantidad_pendiente || 0} kg</span>
                         </div>
-                        ${linea.score ? `
-                                                                                                                                                                                                                                                                                                                                                                        <div class="text-xs text-gray-500">
-                                                                                                                                                                                                                                                                                                                                                                            Score de coincidencia: ${(linea.score * 100).toFixed(1)} pts.
-                                                                                                                                                                                                                                                                                                                                                                        </div>
-                                                                                                                                                                                                                                                                                                                                                                    ` : ''}
+                        ${renderScoreRow(linea.score)}
                     </div>
                 </div>
             `;
