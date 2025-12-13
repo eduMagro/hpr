@@ -42,24 +42,9 @@
         }
 
         .processing-circle {
-            width: 0.75rem;
-            height: 0.75rem;
-            border-radius: 9999px;
-            background: rgba(255, 255, 255, 0.9);
-            filter: blur(2px);
-            animation: blurPulse 1.6s ease-in-out infinite;
-        }
-
-        @keyframes blurPulse {
-
-            0%,
-            100% {
-                filter: blur(2px);
-            }
-
-            50% {
-                filter: blur(0);
-            }
+            width: 60px;
+            height: 60px;
+            display: inline-flex;
         }
 
         .processing-overlay {
@@ -1355,11 +1340,26 @@
 
                         <!-- Botón procesar -->
                         <button type="button" id="processBtn-mobile" onclick="procesarAlbaranMobile()"
-                            class="relative w-full px-4 py-3 bg-gray-300 text-gray-500 rounded-lg font-semibold text-lg shadow-lg disabled:opacity-60 disabled:cursor-not-allowed transition overflow-hidden flex items-center justify-center"
+                            class="relative w-full px-4 py-3 bg-gray-300 text-gray-500 rounded-lg font-semibold text-lg shadow-lg disabled:cursor-not-allowed transition overflow-hidden flex items-center justify-center"
                             disabled>
                             <span id="processBtnLabel-mobile">Procesar albarán</span>
                             <span id="processing-mobile" class="processing-overlay hidden">
-                                <span class="processing-circle"></span>
+                                <svg class="processing-circle" width="60" height="60" viewBox="0 0 50 50">
+                                    <g fill="none" stroke="#ffffff" stroke-width="2">
+                                        <path d="M15 10h15l5 5v20H15V10">
+                                            <animate attributeName="stroke-dasharray" values="0,100;100,0"
+                                                dur="2s" repeatCount="indefinite"></animate>
+                                        </path>
+                                        <path d="M30 10v5h5">
+                                            <animate attributeName="opacity" values="0;1;0" dur="2s"
+                                                repeatCount="indefinite"></animate>
+                                        </path>
+                                        <path d="M20 20h10M20 25h10M20 30h10">
+                                            <animate attributeName="stroke-dasharray" values="0,60;60,0"
+                                                dur="2s" repeatCount="indefinite"></animate>
+                                        </path>
+                                    </g>
+                                </svg>
                                 <span>Procesando albarán</span>
                             </span>
                         </button>
@@ -1445,7 +1445,8 @@
                                 <label class="block">
                                     <span class="text-sm font-medium text-gray-700">Bultos</span>
                                     <input type="number" id="edit-bultos-total"
-                                        class="mt-1 w-full rounded-lg border-gray-300">
+                                        class="mt-1 w-full rounded-lg border-gray-300 bg-gray-50 cursor-not-allowed"
+                                        readonly>
                                 </label>
                             </div>
                         </div>
@@ -1509,16 +1510,30 @@
                     </div>
 
                     <!-- Estado final simulado -->
-                    <div id="mobile-estado-final" class="bg-blue-50 rounded-lg p-4 space-y-2">
+                    <div id="mobile-estado-final" class="bg-blue-50 rounded-lg p-4 space-y-3">
                         <h4 class="font-semibold text-gray-900">Estado Final</h4>
-                        <div class="grid grid-cols-2 gap-2 text-sm">
-                            <div>
+                        <div class="grid grid-cols-3 gap-3 text-sm text-gray-600">
+                            <div class="text-center">
+                                <span class="text-gray-600 text-[9px] uppercase tracking-wide">Kg seleccionados</span>
+                                <p id="mobile-peso-seleccionado" class="font-bold text-gray-900 text-lg">0 kg</p>
+                            </div>
+                            <div class="text-center">
+                                <span class="text-gray-600 text-[9px] uppercase tracking-wide">Kg restantes</span>
+                                <p id="mobile-kg-restantes" class="font-bold text-gray-900 text-lg">0 kg</p>
+                            </div>
+                            <div class="text-center">
+                                <span class="text-gray-600 text-[9px] uppercase tracking-wide">Estado pedido</span>
+                                <p id="mobile-estado-pedido" class="font-bold text-gray-900 text-lg">Parcial</p>
+                            </div>
+                        </div>
+                        <div class="flex gap-2 text-sm text-gray-600">
+                            <div class="w-full flex flex-col items-center">
                                 <span class="text-gray-600">Bultos seleccionados:</span>
                                 <span id="mobile-bultos-seleccionados" class="block font-bold text-gray-900">0</span>
                             </div>
-                            <div>
-                                <span class="text-gray-600">Peso seleccionado:</span>
-                                <span id="mobile-peso-seleccionado" class="block font-bold text-gray-900">0 kg</span>
+                            <div class="w-full flex flex-col items-center">
+                                <span class="text-gray-600">Peso pendiente:</span>
+                                <span id="mobile-peso-pendiente" class="block font-bold text-gray-900">0 kg</span>
                             </div>
                         </div>
                     </div>
@@ -1551,6 +1566,25 @@
                         <div>
                             <h4 class="font-semibold text-gray-900 mb-2">Coladas Seleccionadas</h4>
                             <p id="mobile-resumen-coladas" class="text-sm text-gray-600">—</p>
+                        </div>
+                        <div>
+                            <div class="grid grid-cols-3 gap-3 text-sm text-gray-600">
+                                <div class="text-center">
+                                    <span class="text-xs uppercase tracking-wide text-gray-500">Kg seleccionados</span>
+                                    <p id="mobile-resumen-kg-seleccionados" class="font-bold text-gray-900 text-lg">0
+                                        kg</p>
+                                </div>
+                                <div class="text-center">
+                                    <span class="text-xs uppercase tracking-wide text-gray-500">Kg restantes</span>
+                                    <p id="mobile-resumen-kg-restantes" class="font-bold text-gray-900 text-lg">0 kg
+                                    </p>
+                                </div>
+                                <div class="text-center">
+                                    <span class="text-xs uppercase tracking-wide text-gray-500">Estado pedido</span>
+                                    <p id="mobile-resumen-estado" class="font-bold text-gray-900 text-lg">Pendiente
+                                    </p>
+                                </div>
+                            </div>
                         </div>
                     </div>
 
@@ -2417,6 +2451,12 @@
                 const translatePercentage = -(stepNumber - 1) * 20; // -0%, -20%, -40%, -60%, -80%
 
                 wrapper.style.transform = `translateX(${translatePercentage}%)`;
+                window.requestAnimationFrame(() => {
+                    const mobileContainer = document.getElementById('mobileStepContainer');
+                    if (mobileContainer) {
+                        mobileContainer.scrollTop = 0;
+                    }
+                });
                 this.currentStep = stepNumber;
 
                 // Actualizar maxStep si avanzamos
@@ -2676,12 +2716,23 @@
 
                 console.log('Respuesta AJAX Completa:', data);
 
-                if (data.success && data.resultados && data.resultados.length > 0) {
-                    console.log('Datos recibidos correctamente. AI Response:', data.resultados[0].parsed);
+                if (data.success) {
+                    const rawResultado = data.resultados?.[0] ?? data.data ?? data;
+                    const parsedPayload =
+                        rawResultado.parsed ||
+                        rawResultado.data?.data ||
+                        rawResultado.data ||
+                        rawResultado || {};
+                    const resultadoParaVista = {
+                        ...rawResultado,
+                        parsed: parsedPayload,
+                    };
+
+                    console.log('Datos recibidos correctamente. AI Response:', parsedPayload);
 
                     // Guardar datos en cache
                     window.mobileStepManager.dataCache = {
-                        resultado: data.resultados[0], // Primer resultado
+                        resultado: resultadoParaVista,
                         distribuidores: data.distribuidores
                     };
 
@@ -2689,16 +2740,19 @@
 
                     // Poblar Vista 2 con los datos recibidos
                     // console.log('Poblando Vista 2...');
-                    poblarVista2ConDatos(data.resultados[0]);
+                    poblarVista2ConDatos(resultadoParaVista);
 
                     // Avanzar a Vista 2 (forzar avance para permitir pasar de maxStep)
                     // console.log('Avanzando a Vista 2...');
                     window.mobileStepManager.next(true);
 
                     // console.log('Current step:', window.mobileStepManager.currentStep);
-                } else {
+                } else if (!data.success) {
                     console.error('Error en respuesta:', data);
-                    alert('Error al procesar el albarán. Por favor, intenta de nuevo.');
+                    alert('Error al procesar el albar【n. Por favor, intenta de nuevo.');
+                } else {
+                    console.warn('Respuesta sin resultados detectados:', data);
+                    alert('No se detectaron datos en el albar【n. Reintenta con otra imagen.');
                 }
 
             } catch (error) {
@@ -2713,7 +2767,7 @@
          * Poblar Vista 2 con datos recibidos (Modo Edición Directa)
          */
         function poblarVista2ConDatos(resultado) {
-            const parsed = resultado.parsed || {};
+            const parsed = resultado.parsed || resultado.data || resultado || {};
             const sim = resultado.simulacion || {};
 
             // Preview de imagen
@@ -2730,19 +2784,48 @@
                 if (el) el.value = val || '';
             };
 
-            setVal('edit-tipo-compra', parsed.tipo_compra);
-            setVal('edit-proveedor', parsed.proveedor_texto || parsed.proveedor);
+            const source = parsed.data ?? parsed;
+            const productosDetectados = source.productos ?? source.products ?? [];
+            if (productosDetectados.length) {
+                parsed.productos = productosDetectados.map(prod => ({
+                    descripcion: prod.descripcion ?? '',
+                    diametro: prod.diametro ?? '',
+                    longitud: prod.longitud ?? '',
+                    calidad: prod.calidad ?? '',
+                    line_items: Array.isArray(prod.line_items) ? prod.line_items.map(item => ({
+                        colada: item.colada ?? '',
+                        bultos: item.bultos ?? '',
+                        peso_kg: item.peso_kg ?? '',
+                    })) : [],
+                }));
+            }
+
+            actualizarBultosTotalesMobile();
+
+            console.log('Datos para poblar vista 2:', source);
+            console.log('rellenando tipo de compra:', source.tipo_compra);
+            console.log('rellenando Albarán:', source.albaran);
+            console.log('rellenando fecha:', source.fecha);
+            console.log('rellenando pedido cliente:', source.pedido_cliente);
+            console.log('rellenando pedido código:', source.pedido_codigo);
+            console.log('rellenando peso total:', source.peso_total);
+            console.log('rellenando bultos total:', source.bultos_total);
+
+            const sourceValue = (prop) => source[prop] ?? parsed[prop] ?? '';
+
+            setVal('edit-tipo-compra', sourceValue('tipo_compra'));
+            setVal('edit-proveedor', sourceValue('proveedor_texto') || sourceValue('proveedor'));
 
             // Setear ambos por si acaso
-            setVal('edit-distribuidor-input', parsed.distribuidor_recomendado);
-            setVal('edit-distribuidor-select', parsed.distribuidor_recomendado);
+            setVal('edit-distribuidor-input', sourceValue('distribuidor_recomendado'));
+            setVal('edit-distribuidor-select', sourceValue('distribuidor_recomendado'));
 
-            setVal('edit-albaran', parsed.albaran);
-            setVal('edit-fecha', parsed.fecha);
-            setVal('edit-pedido-cliente', parsed.pedido_cliente);
-            setVal('edit-pedido-codigo', parsed.pedido_codigo);
-            setVal('edit-peso-total', parsed.peso_total);
-            setVal('edit-bultos-total', parsed.bultos_total);
+            setVal('edit-albaran', sourceValue('albaran'));
+            setVal('edit-fecha', sourceValue('fecha'));
+            setVal('edit-pedido-cliente', sourceValue('pedido_cliente'));
+            setVal('edit-pedido-codigo', sourceValue('pedido_codigo'));
+            setVal('edit-peso-total', sourceValue('peso_total'));
+            setVal('edit-bultos-total', sourceValue('bultos_total'));
 
             // -------------------------------------------------------------
             // Lógica de visualización dinámica según Tipo de Compra
@@ -2873,17 +2956,57 @@
                             <span class="font-medium text-gray-900">${lineaPropuesta.cantidad_pendiente || 0} kg</span>
                         </div>
                         ${lineaPropuesta.score ? `
-                                                                                                                                                                                                                                                                                                                                                            <div class="mt-2 pt-2 border-t border-gray-200">
-                                                                                                                                                                                                                                                                                                                                                                <span class="text-gray-500">Score:</span>
-                                                                                                                                                                                                                                                                                                                                                                <span class="font-bold text-indigo-600">${Math.round(lineaPropuesta.score)}</span>
-                                                                                                                                                                                                                                                                                                                                                            </div>
-                                                                                                                                                                                                                                                                                                                                                            ` : ''}
+                                                                                                                                                                                                                                                                                                                                                                <div class="mt-2 pt-2 border-t border-gray-200">
+                                                                                                                                                                                                                                                                                                                                                                    <span class="text-gray-500">Score:</span>
+                                                                                                                                                                                                                                                                                                                                                                    <span class="font-bold text-indigo-600">${Math.round(lineaPropuesta.score)}</span>
+                                                                                                                                                                                                                                                                                                                                                                </div>
+                                                                                                                                                                                                                                                                                                                                                                ` : ''}
                     </div>
                 </div>
             `;
 
             // Guardar línea seleccionada en cache
             window.mobileStepManager.dataCache.lineaSeleccionada = lineaPropuesta;
+        }
+
+        function obtenerColadasValidadas() {
+            const cache = window.mobileStepManager.dataCache;
+            const productos = cache.parsed?.productos || [];
+            const normalizadas = [];
+
+            productos.forEach(producto => {
+                (producto.line_items || []).forEach(item => {
+                    if (!item) return;
+                    const codigo = (item.colada || item.codigo || '').toString().trim();
+                    if (!codigo) return;
+                    const bultos = Number(item.bultos ?? item.cantidad ?? 0);
+                    const peso = Number(item.peso_kg ?? item.peso ?? 0);
+                    normalizadas.push({
+                        colada: codigo,
+                        bultos: Number.isNaN(bultos) ? 0 : bultos,
+                        peso_kg: Number.isNaN(peso) ? 0 : peso
+                    });
+                });
+            });
+
+            if (normalizadas.length) {
+                return normalizadas;
+            }
+
+            const parsedLineItems = cache.parsed?.line_items || [];
+            if (parsedLineItems.length) {
+                return parsedLineItems.map(item => {
+                    const bultos = Number(item.bultos ?? 0);
+                    const peso = Number(item.peso_kg ?? item.peso ?? 0);
+                    return {
+                        colada: item.colada || '',
+                        bultos: Number.isNaN(bultos) ? 0 : bultos,
+                        peso_kg: Number.isNaN(peso) ? 0 : peso
+                    };
+                }).filter(entry => entry.colada);
+            }
+
+            return [];
         }
 
         /**
@@ -2893,41 +3016,58 @@
             const container = document.getElementById('mobile-coladas-container');
             if (!container) return;
 
-            const bultos = simulacion.bultos_simulados || [];
-            console.log(simulacion)
+            const cache = window.mobileStepManager.dataCache;
+            const validadas = obtenerColadasValidadas();
+            const simulatedRaw = simulacion?.bultos_simulados || [];
+            const simulated = simulatedRaw.map(item => {
+                const bultos = Number(item.bultos ?? 0);
+                const peso = Number(item.peso_kg ?? item.peso ?? 0);
+                return {
+                    colada: item.colada || '',
+                    bultos: Number.isNaN(bultos) ? 0 : bultos,
+                    peso_kg: Number.isNaN(peso) ? 0 : peso
+                };
+            });
+            const coladasDisponibles = validadas.length ? validadas : simulated;
 
-            if (bultos.length === 0) {
-                container.innerHTML = '<p class="p-4 text-gray-500 text-center">No hay coladas disponibles</p>';
+            if (coladasDisponibles.length === 0) {
+                container.innerHTML = '<p class="p-4 text-gray-500 text-center">No hay coladas validadas para recibir</p>';
                 return;
             }
 
-            // Crear lista de coladas con checkboxes
-            container.innerHTML = bultos.map((bulto, index) => `
-                <label class="flex items-center gap-3 p-3 hover:bg-gray-50 cursor-pointer">
-                    <input type="checkbox" class="mobile-colada-checkbox w-5 h-5 text-indigo-600 rounded"
-                           data-colada="${bulto.colada || '—'}"
-                           data-bultos="${bulto.bultos || 0}"
-                           data-peso="${bulto.peso_kg || 0}"
-                           onchange="actualizarTotalesColadas()"
-                           checked>
-                    <div class="flex-1 space-y-1">
-                        <div class="flex items-center justify-between">
-                            <span class="font-medium text-gray-900">Colada ${bulto.colada || '-'}</span>
-                            <span class="text-indigo-600 font-semibold text-lg">${bulto.bultos || 0} bultos</span>
+            const seleccionadasPrevias = cache.coladasSeleccionadas || [];
+
+            container.innerHTML = coladasDisponibles.map((bulto, index) => {
+                const pesoDisponibilidad = bulto.peso_kg ? `${bulto.peso_kg.toLocaleString('es-ES')} kg` :
+                    'Peso no disponible';
+                const isChecked = seleccionadasPrevias.length === 0 || seleccionadasPrevias.some(sel => sel
+                    .colada === bulto.colada);
+                return `
+                    <label class="flex items-center gap-3 p-3 hover:bg-gray-50 cursor-pointer">
+                        <input type="checkbox" class="mobile-colada-checkbox w-5 h-5 text-indigo-600 rounded"
+                               data-colada="${bulto.colada || 'ƒ?"'}"
+                               data-bultos="${bulto.bultos || 0}"
+                               data-peso="${bulto.peso_kg || 0}"
+                               onchange="actualizarTotalesColadas()"
+                               ${isChecked ? 'checked' : ''}>
+                        <div class="flex-1 space-y-1">
+                            <div class="flex items-center justify-between">
+                                <span class="font-medium text-gray-900">Colada ${bulto.colada || '-'}</span>
+                                <span class="text-indigo-600 font-semibold text-lg">${bulto.bultos || 0} bultos</span>
+                            </div>
+                            <div class="flex items-center justify-between text-sm text-gray-600">
+                                <span>${pesoDisponibilidad}</span>
+                                <span class="text-xs uppercase tracking-wide text-gray-400">Disponible</span>
+                            </div>
                         </div>
-                        <div class="flex items-center justify-between text-sm text-gray-600">
-                            <span>${bulto.peso_kg ? Number(bulto.peso_kg).toLocaleString('es-ES') + ' kg' : 'Peso no disponible'}</span>
-                            <span class="text-xs uppercase tracking-wide text-gray-400">Disponible</span>
-                        </div>
-                    </div>
-                </label>
-            `).join('');
+                    </label>
+                `;
+            }).join('');
 
             // Actualizar totales iniciales (todas marcadas)
             actualizarTotalesColadas();
 
         }
-
         /**
          * Actualizar totales de coladas seleccionadas
          */
@@ -2966,7 +3106,36 @@
             };
 
             // Poblar Vista 5 con resumen
+            actualizarIndicadoresColadas(totalPeso);
             poblarVista5ConResumen();
+        }
+
+        function actualizarIndicadoresColadas(totalPeso = 0) {
+            const cache = window.mobileStepManager.dataCache;
+            const linea = cache.lineaSeleccionada || {};
+            const cantidadPendiente = Number(linea.cantidad_pendiente || 0);
+            const kilosSeleccionados = totalPeso;
+            const kilosRestantes = Math.max(cantidadPendiente - kilosSeleccionados, 0);
+            const estado = cantidadPendiente > 0 ?
+                (kilosSeleccionados >= cantidadPendiente ? 'Completo' : 'Parcial') :
+                'Pendiente';
+
+            const kgRestantesEl = document.getElementById('mobile-kg-restantes');
+            const estadoEl = document.getElementById('mobile-estado-pedido');
+            const pesoPendienteEl = document.getElementById('mobile-peso-pendiente');
+            const textoKg = `${kilosRestantes.toLocaleString('es-ES')} kg`;
+            const textoPendiente = `${cantidadPendiente.toLocaleString('es-ES')} kg`;
+
+            if (kgRestantesEl) kgRestantesEl.textContent = textoKg;
+            if (estadoEl) estadoEl.textContent = estado;
+            if (pesoPendienteEl) pesoPendienteEl.textContent = textoPendiente;
+
+            const resumenKgEl = document.getElementById('mobile-resumen-kg-seleccionados');
+            const resumenKgRestantesEl = document.getElementById('mobile-resumen-kg-restantes');
+            const resumenEstadoEl = document.getElementById('mobile-resumen-estado');
+            if (resumenKgEl) resumenKgEl.textContent = `${kilosSeleccionados.toLocaleString('es-ES')} kg`;
+            if (resumenKgRestantesEl) resumenKgRestantesEl.textContent = textoKg;
+            if (resumenEstadoEl) resumenEstadoEl.textContent = estado;
         }
 
         const renderMobileProductColadas = (productos = []) => {
@@ -3085,7 +3254,31 @@
             });
 
             cache.parsed.productos = productos;
+
+            actualizarBultosTotalesMobile();
         }
+
+        function calcularBultosTotalesMobile() {
+            const inputs = document.querySelectorAll('[data-colada-field=\"bultos\"]');
+            let total = 0;
+            inputs.forEach((input) => {
+                total += parseInt(input.value || '0', 10) || 0;
+            });
+            return total;
+        }
+
+        function actualizarBultosTotalesMobile() {
+            const total = calcularBultosTotalesMobile();
+            const input = document.getElementById('edit-bultos-total');
+            if (input) {
+                input.value = total;
+            }
+            const cache = window.mobileStepManager.dataCache;
+            if (cache.parsed) {
+                cache.parsed.bultos_total = total;
+            }
+        }
+
 
         /**
          * Guardar datos de Step 2 y Continuar
@@ -3129,6 +3322,17 @@
             window.mobileStepManager.next();
         }
 
+        function attachColadaInputListener(container) {
+            if (!container) return;
+            if (container._coladaListenerAttached) return;
+            container._coladaListenerAttached = true;
+            container.addEventListener('input', (event) => {
+                if (event.target.matches('[data-colada-field="bultos"]')) {
+                    actualizarBultosTotalesMobile();
+                }
+            });
+        }
+
         function renderMobileEditProducts() {
             const container = document.getElementById('mobile-edit-products');
             const cache = window.mobileStepManager.dataCache;
@@ -3167,10 +3371,10 @@
                             <span class="text-xs text-gray-500">Colada</span>
                             <input type="text" class="mt-1 w-full rounded-lg border-gray-300" data-colada-field="colada" value="${colada.colada || ''}">
                         </div>
-                        <div class="col-span-3">
-                            <span class="text-xs text-gray-500">Bultos</span>
-                            <input type="number" class="mt-1 w-full rounded-lg border-gray-300" data-colada-field="bultos" value="${colada.bultos || ''}">
-                        </div>
+                <div class="col-span-3">
+                    <span class="text-xs text-gray-500">Bultos</span>
+                    <input type="number" min="0" step="1" class="mt-1 w-full rounded-lg border-gray-300" data-colada-field="bultos" value="${colada.bultos || ''}">
+                </div>
                         <div class="col-span-3">
                             <span class="text-xs text-gray-500">Peso (kg)</span>
                             <input type="number" step="0.01" class="mt-1 w-full rounded-lg border-gray-300" data-colada-field="peso" value="${colada.peso_kg || ''}">
@@ -3213,6 +3417,9 @@
                     </div>
                 </div>
             `).join('');
+
+            actualizarBultosTotalesMobile(productos);
+            attachColadaInputListener(container);
         }
 
         function agregarProductoMobile() {
@@ -3296,6 +3503,44 @@
         /**
          * Poblar lista de pedidos con líneas pendientes
          */
+        function normalizarDiametro(valor) {
+            if (valor === undefined || valor === null) return null;
+            const limpio = valor.toString().replace(/[^\d,.-]/g, '').replace(',', '.');
+            const num = parseFloat(limpio);
+            return Number.isFinite(num) ? num : null;
+        }
+
+        function obtenerDiametrosObjetivo() {
+            const cache = window.mobileStepManager.dataCache;
+            const parsed = cache.parsed || {};
+            const set = new Set();
+
+            const agregar = (valor) => {
+                const diam = normalizarDiametro(valor);
+                if (diam !== null) {
+                    set.add(diam);
+                }
+            };
+
+            (parsed.productos || []).forEach(producto => agregar(producto.diametro));
+            agregar(parsed.diametro);
+            if (parsed.producto && parsed.producto.diametro) {
+                agregar(parsed.producto.diametro);
+            }
+
+            return set;
+        }
+
+        function filtrarLineasPorDiametro(lineas = [], diamSet) {
+            if (!diamSet || diamSet.size === 0) {
+                return lineas;
+            }
+            return lineas.filter(linea => {
+                const diam = normalizarDiametro(linea.diametro);
+                return diam !== null && diamSet.has(diam);
+            });
+        }
+
         function poblarListaPedidosMobile() {
             const container = document.getElementById('mobile-lista-pedidos');
             if (!container) return;
@@ -3303,8 +3548,15 @@
             const cache = window.mobileStepManager.dataCache;
             const simulacion = cache.simulacion || {};
             const lineasPendientes = simulacion.lineas_pendientes || [];
+            const diametrosObjetivo = obtenerDiametrosObjetivo();
+            const lineasFiltradas = diametrosObjetivo.size
+                ? filtrarLineasPorDiametro(lineasPendientes, diametrosObjetivo)
+                : lineasPendientes;
+            const lineasParaMostrar = lineasFiltradas;
+            cache.lineasFiltradas = lineasParaMostrar;
+            const hayFiltroActivo = diametrosObjetivo.size > 0;
 
-            if (lineasPendientes.length === 0) {
+            if (lineasParaMostrar.length === 0) {
                 container.innerHTML = `
                     <div class="text-center py-8">
                         <svg class="w-16 h-16 mx-auto text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -3312,27 +3564,27 @@
                                   d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
                         </svg>
                         <p class="mt-4 text-gray-500 font-medium">No hay pedidos disponibles</p>
-                        <p class="text-sm text-gray-400 mt-1">No se encontraron líneas de pedido pendientes</p>
+                        <p class="text-sm text-gray-400 mt-1">${hayFiltroActivo ? 'Ningún pedido coincide con el diámetro detectado' : 'No se encontraron líneas de pedido pendientes'}</p>
                     </div>
                 `;
                 return;
             }
 
             // Crear cards de pedidos
-            container.innerHTML = lineasPendientes.map((linea, index) => {
+            container.innerHTML = lineasParaMostrar.map((linea, index) => {
                 const isSelected = cache.lineaSeleccionada && cache.lineaSeleccionada.id === linea.id;
 
                 return `
                     <div class="bg-white border-2 ${isSelected ? 'border-indigo-600' : 'border-gray-200'} rounded-lg p-4 cursor-pointer hover:border-indigo-400 transition"
                          onclick="seleccionarPedidoMobile(${index})">
                         ${isSelected ? `
-                                                                                                                                                                                                                                                                                                                                                                <div class="flex items-center gap-2 mb-2">
-                                                                                                                                                                                                                                                                                                                                                                    <svg class="w-5 h-5 text-indigo-600" fill="currentColor" viewBox="0 0 20 20">
-                                                                                                                                                                                                                                                                                                                                                                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
-                                                                                                                                                                                                                                                                                                                                                                    </svg>
-                                                                                                                                                                                                                                                                                                                                                                    <span class="text-xs font-bold text-indigo-600 uppercase">Seleccionado</span>
-                                                                                                                                                                                                                                                                                                                                                                </div>
-                                                                                                                                                                                                                                                                                                                                                            ` : ''}
+                                                                                                                                                                                                                                                                                                                                                                    <div class="flex items-center gap-2 mb-2">
+                                                                                                                                                                                                                                                                                                                                                                        <svg class="w-5 h-5 text-indigo-600" fill="currentColor" viewBox="0 0 20 20">
+                                                                                                                                                                                                                                                                                                                                                                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+                                                                                                                                                                                                                                                                                                                                                                        </svg>
+                                                                                                                                                                                                                                                                                                                                                                        <span class="text-xs font-bold text-indigo-600 uppercase">Seleccionado</span>
+                                                                                                                                                                                                                                                                                                                                                                    </div>
+                                                                                                                                                                                                                                                                                                                                                                ` : ''}
 
                         <div class="space-y-2 text-sm">
                             <div>
@@ -3348,25 +3600,25 @@
                                 <span class="ml-2 text-gray-900">${linea.producto || '—'}</span>
                             </div>
                             ${linea.obra ? `
-                                                                                                                                                                                                                                                                                                                                                                    <div>
-                                                                                                                                                                                                                                                                                                                                                                        <span class="text-gray-500">Obra:</span>
-                                                                                                                                                                                                                                                                                                                                                                        <span class="ml-2 text-gray-900">${linea.obra}</span>
-                                                                                                                                                                                                                                                                                                                                                                    </div>
-                                                                                                                                                                                                                                                                                                                                                                ` : ''}
-                            <div class="flex items-center justify-between pt-2 border-t border-gray-100">
-                                <div>
-                                    <span class="text-gray-500">Pendiente:</span>
-                                    <span class="ml-2 font-bold text-gray-900">${linea.cantidad_pendiente || 0} kg</span>
-                                </div>
-                                ${linea.score ? `
-                                                                                                                                                                                                                                                                                                                                                                        <div class="text-xs px-2 py-1 rounded-full ${
-                                                                                                                                                                                                                                                                                                                                                                            linea.score >= 0.9 ? 'bg-green-100 text-green-700' :
-                                                                                                                                                                                                                                                                                                                                                                            linea.score >= 0.7 ? 'bg-yellow-100 text-yellow-700' :
-                                                                                                                                                                                                                                                                                                                                                                            'bg-blue-100 text-blue-700'
-                                                                                                                                                                                                                                                                                                                                                                        }">
-                                                                                                                                                                                                                                                                                                                                                                            Score: ${(linea.score * 100).toFixed(0)}%
+                                                                                                                                                                                                                                                                                                                                                                        <div>
+                                                                                                                                                                                                                                                                                                                                                                            <span class="text-gray-500">Obra:</span>
+                                                                                                                                                                                                                                                                                                                                                                            <span class="ml-2 text-gray-900">${linea.obra}</span>
                                                                                                                                                                                                                                                                                                                                                                         </div>
                                                                                                                                                                                                                                                                                                                                                                     ` : ''}
+                            <div class="flex items-center justify-between pt-2 border-t border-gray-100">
+                                <div>
+                                        <span class="text-gray-500">Pendiente:</span>
+                                        <span class="ml-2 font-bold text-gray-900">${linea.cantidad_pendiente || 0} kg</span>
+                                    </div>
+                                    ${linea.score ? `
+                                                                                                                                                                                                                                                                                                                                                                            <div class="text-xs px-2 py-1 rounded-full ${
+                                                                                                                                                                                                                                                                                                                                                                                linea.score >= 0.9 ? 'bg-green-100 text-green-700' :
+                                                                                                                                                                                                                                                                                                                                                                                linea.score >= 0.7 ? 'bg-yellow-100 text-yellow-700' :
+                                                                                                                                                                                                                                                                                                                                                                                'bg-blue-100 text-blue-700'
+                                                                                                                                                                                                                                                                                                                                                                            }">
+                                                                                                                                                                                                                                                                                                                                                                                Score: ${(linea.score * 100).toFixed(0)} pts.
+                                                                                                                                                                                                                                                                                                                                                                            </div>
+                                                                                                                                                                                                                                                                                                                                                                        ` : ''}
                             </div>
                         </div>
                     </div>
@@ -3380,7 +3632,7 @@
         function seleccionarPedidoMobile(index) {
             const cache = window.mobileStepManager.dataCache;
             const simulacion = cache.simulacion || {};
-            const lineasPendientes = simulacion.lineas_pendientes || [];
+            const lineasPendientes = cache.lineasFiltradas || simulacion.lineas_pendientes || [];
 
             if (index < 0 || index >= lineasPendientes.length) return;
 
@@ -3435,20 +3687,20 @@
                             <span class="ml-2 text-gray-900">${linea.producto || '—'}</span>
                         </div>
                         ${linea.obra ? `
-                                                                                                                                                                                                                                                                                                                                                                <div>
-                                                                                                                                                                                                                                                                                                                                                                    <span class="text-gray-500">Obra:</span>
-                                                                                                                                                                                                                                                                                                                                                                    <span class="ml-2 text-gray-900">${linea.obra}</span>
-                                                                                                                                                                                                                                                                                                                                                                </div>
-                                                                                                                                                                                                                                                                                                                                                            ` : ''}
+                                                                                                                                                                                                                                                                                                                                                                    <div>
+                                                                                                                                                                                                                                                                                                                                                                        <span class="text-gray-500">Obra:</span>
+                                                                                                                                                                                                                                                                                                                                                                        <span class="ml-2 text-gray-900">${linea.obra}</span>
+                                                                                                                                                                                                                                                                                                                                                                    </div>
+                                                                                                                                                                                                                                                                                                                                                                ` : ''}
                         <div class="pt-2 border-t border-gray-100">
                             <span class="text-gray-500">Cantidad Pendiente:</span>
                             <span class="ml-2 font-bold text-gray-900">${linea.cantidad_pendiente || 0} kg</span>
                         </div>
                         ${linea.score ? `
-                                                                                                                                                                                                                                                                                                                                                                <div class="text-xs text-gray-500">
-                                                                                                                                                                                                                                                                                                                                                                    Score de coincidencia: ${(linea.score * 100).toFixed(1)}%
-                                                                                                                                                                                                                                                                                                                                                                </div>
-                                                                                                                                                                                                                                                                                                                                                            ` : ''}
+                                                                                                                                                                                                                                                                                                                                                                    <div class="text-xs text-gray-500">
+                                                                                                                                                                                                                                                                                                                                                                        Score de coincidencia: ${(linea.score * 100).toFixed(1)} pts.
+                                                                                                                                                                                                                                                                                                                                                                    </div>
+                                                                                                                                                                                                                                                                                                                                                                ` : ''}
                     </div>
                 </div>
             `;
