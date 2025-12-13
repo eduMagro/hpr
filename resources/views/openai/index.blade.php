@@ -1233,7 +1233,8 @@
     <!-- ========================================== -->
     <!-- VISTA MÓVIL PASO A PASO (<768px) -->
     <!-- ========================================== -->
-    <div id="mobileStepContainer" class="block md:hidden relative overflow-hidden h-calc(100vh - 56px) bg-gray-100">
+    <div id="mobileStepContainer"
+        class="block md:hidden relative overflow-hidden h-calc(100vh - 56px) pb-4 bg-gray-100">
         <!-- Header fijo superior -->
         <div class="sticky top-0 z-30 bg-white border-b border-gray-200 shadow-sm">
             <div class="flex items-center justify-between px-4 py-3">
@@ -2673,10 +2674,10 @@
 
                 const data = await response.json();
 
-                // console.log('Respuesta AJAX:', data);
+                console.log('Respuesta AJAX Completa:', data);
 
                 if (data.success && data.resultados && data.resultados.length > 0) {
-                    // console.log('Datos recibidos correctamente');
+                    console.log('Datos recibidos correctamente. AI Response:', data.resultados[0].parsed);
 
                     // Guardar datos en cache
                     window.mobileStepManager.dataCache = {
@@ -2872,11 +2873,11 @@
                             <span class="font-medium text-gray-900">${lineaPropuesta.cantidad_pendiente || 0} kg</span>
                         </div>
                         ${lineaPropuesta.score ? `
-                                                                                                                                                                                                                                                                                                                                                <div class="mt-2 pt-2 border-t border-gray-200">
-                                                                                                                                                                                                                                                                                                                                                    <span class="text-gray-500">Score:</span>
-                                                                                                                                                                                                                                                                                                                                                    <span class="font-bold text-indigo-600">${Math.round(lineaPropuesta.score)}</span>
-                                                                                                                                                                                                                                                                                                                                                </div>
-                                                                                                                                                                                                                                                                                                                                                ` : ''}
+                                                                                                                                                                                                                                                                                                                                                            <div class="mt-2 pt-2 border-t border-gray-200">
+                                                                                                                                                                                                                                                                                                                                                                <span class="text-gray-500">Score:</span>
+                                                                                                                                                                                                                                                                                                                                                                <span class="font-bold text-indigo-600">${Math.round(lineaPropuesta.score)}</span>
+                                                                                                                                                                                                                                                                                                                                                            </div>
+                                                                                                                                                                                                                                                                                                                                                            ` : ''}
                     </div>
                 </div>
             `;
@@ -3131,7 +3132,23 @@
         function renderMobileEditProducts() {
             const container = document.getElementById('mobile-edit-products');
             const cache = window.mobileStepManager.dataCache;
-            const productos = cache.parsed?.productos || [];
+            let productos = cache.parsed?.productos || [];
+
+            // BACKWARD COMPATIBILITY: Si no viene "productos" pero sí "line_items" sueltos
+            if (productos.length === 0 && cache.parsed && cache.parsed.line_items && cache.parsed.line_items.length > 0) {
+                // Crear un producto ficticio con los datos generales
+                const productoUnico = {
+                    descripcion: cache.parsed.producto?.descripcion || '',
+                    diametro: cache.parsed.producto?.diametro || '',
+                    longitud: cache.parsed.producto?.longitud || '',
+                    calidad: cache.parsed.producto?.calidad || '',
+                    line_items: cache.parsed.line_items
+                };
+                productos = [productoUnico];
+                // Actualizar cache para que las siguientes funciones trabajen bien
+                cache.parsed.productos = productos;
+            }
+
             if (!container) return;
 
             if (!productos.length) {
@@ -3309,13 +3326,13 @@
                     <div class="bg-white border-2 ${isSelected ? 'border-indigo-600' : 'border-gray-200'} rounded-lg p-4 cursor-pointer hover:border-indigo-400 transition"
                          onclick="seleccionarPedidoMobile(${index})">
                         ${isSelected ? `
-                                                                                                                                                                                                                                                                                                                                                    <div class="flex items-center gap-2 mb-2">
-                                                                                                                                                                                                                                                                                                                                                        <svg class="w-5 h-5 text-indigo-600" fill="currentColor" viewBox="0 0 20 20">
-                                                                                                                                                                                                                                                                                                                                                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
-                                                                                                                                                                                                                                                                                                                                                        </svg>
-                                                                                                                                                                                                                                                                                                                                                        <span class="text-xs font-bold text-indigo-600 uppercase">Seleccionado</span>
-                                                                                                                                                                                                                                                                                                                                                    </div>
-                                                                                                                                                                                                                                                                                                                                                ` : ''}
+                                                                                                                                                                                                                                                                                                                                                                <div class="flex items-center gap-2 mb-2">
+                                                                                                                                                                                                                                                                                                                                                                    <svg class="w-5 h-5 text-indigo-600" fill="currentColor" viewBox="0 0 20 20">
+                                                                                                                                                                                                                                                                                                                                                                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+                                                                                                                                                                                                                                                                                                                                                                    </svg>
+                                                                                                                                                                                                                                                                                                                                                                    <span class="text-xs font-bold text-indigo-600 uppercase">Seleccionado</span>
+                                                                                                                                                                                                                                                                                                                                                                </div>
+                                                                                                                                                                                                                                                                                                                                                            ` : ''}
 
                         <div class="space-y-2 text-sm">
                             <div>
@@ -3331,25 +3348,25 @@
                                 <span class="ml-2 text-gray-900">${linea.producto || '—'}</span>
                             </div>
                             ${linea.obra ? `
-                                                                                                                                                                                                                                                                                                                                                        <div>
-                                                                                                                                                                                                                                                                                                                                                            <span class="text-gray-500">Obra:</span>
-                                                                                                                                                                                                                                                                                                                                                            <span class="ml-2 text-gray-900">${linea.obra}</span>
-                                                                                                                                                                                                                                                                                                                                                        </div>
-                                                                                                                                                                                                                                                                                                                                                    ` : ''}
+                                                                                                                                                                                                                                                                                                                                                                    <div>
+                                                                                                                                                                                                                                                                                                                                                                        <span class="text-gray-500">Obra:</span>
+                                                                                                                                                                                                                                                                                                                                                                        <span class="ml-2 text-gray-900">${linea.obra}</span>
+                                                                                                                                                                                                                                                                                                                                                                    </div>
+                                                                                                                                                                                                                                                                                                                                                                ` : ''}
                             <div class="flex items-center justify-between pt-2 border-t border-gray-100">
                                 <div>
                                     <span class="text-gray-500">Pendiente:</span>
                                     <span class="ml-2 font-bold text-gray-900">${linea.cantidad_pendiente || 0} kg</span>
                                 </div>
                                 ${linea.score ? `
-                                                                                                                                                                                                                                                                                                                                                            <div class="text-xs px-2 py-1 rounded-full ${
-                                                                                                                                                                                                                                                                                                                                                                linea.score >= 0.9 ? 'bg-green-100 text-green-700' :
-                                                                                                                                                                                                                                                                                                                                                                linea.score >= 0.7 ? 'bg-yellow-100 text-yellow-700' :
-                                                                                                                                                                                                                                                                                                                                                                'bg-blue-100 text-blue-700'
-                                                                                                                                                                                                                                                                                                                                                            }">
-                                                                                                                                                                                                                                                                                                                                                                Score: ${(linea.score * 100).toFixed(0)}%
-                                                                                                                                                                                                                                                                                                                                                            </div>
-                                                                                                                                                                                                                                                                                                                                                        ` : ''}
+                                                                                                                                                                                                                                                                                                                                                                        <div class="text-xs px-2 py-1 rounded-full ${
+                                                                                                                                                                                                                                                                                                                                                                            linea.score >= 0.9 ? 'bg-green-100 text-green-700' :
+                                                                                                                                                                                                                                                                                                                                                                            linea.score >= 0.7 ? 'bg-yellow-100 text-yellow-700' :
+                                                                                                                                                                                                                                                                                                                                                                            'bg-blue-100 text-blue-700'
+                                                                                                                                                                                                                                                                                                                                                                        }">
+                                                                                                                                                                                                                                                                                                                                                                            Score: ${(linea.score * 100).toFixed(0)}%
+                                                                                                                                                                                                                                                                                                                                                                        </div>
+                                                                                                                                                                                                                                                                                                                                                                    ` : ''}
                             </div>
                         </div>
                     </div>
@@ -3418,20 +3435,20 @@
                             <span class="ml-2 text-gray-900">${linea.producto || '—'}</span>
                         </div>
                         ${linea.obra ? `
-                                                                                                                                                                                                                                                                                                                                                    <div>
-                                                                                                                                                                                                                                                                                                                                                        <span class="text-gray-500">Obra:</span>
-                                                                                                                                                                                                                                                                                                                                                        <span class="ml-2 text-gray-900">${linea.obra}</span>
-                                                                                                                                                                                                                                                                                                                                                    </div>
-                                                                                                                                                                                                                                                                                                                                                ` : ''}
+                                                                                                                                                                                                                                                                                                                                                                <div>
+                                                                                                                                                                                                                                                                                                                                                                    <span class="text-gray-500">Obra:</span>
+                                                                                                                                                                                                                                                                                                                                                                    <span class="ml-2 text-gray-900">${linea.obra}</span>
+                                                                                                                                                                                                                                                                                                                                                                </div>
+                                                                                                                                                                                                                                                                                                                                                            ` : ''}
                         <div class="pt-2 border-t border-gray-100">
                             <span class="text-gray-500">Cantidad Pendiente:</span>
                             <span class="ml-2 font-bold text-gray-900">${linea.cantidad_pendiente || 0} kg</span>
                         </div>
                         ${linea.score ? `
-                                                                                                                                                                                                                                                                                                                                                    <div class="text-xs text-gray-500">
-                                                                                                                                                                                                                                                                                                                                                        Score de coincidencia: ${(linea.score * 100).toFixed(1)}%
-                                                                                                                                                                                                                                                                                                                                                    </div>
-                                                                                                                                                                                                                                                                                                                                                ` : ''}
+                                                                                                                                                                                                                                                                                                                                                                <div class="text-xs text-gray-500">
+                                                                                                                                                                                                                                                                                                                                                                    Score de coincidencia: ${(linea.score * 100).toFixed(1)}%
+                                                                                                                                                                                                                                                                                                                                                                </div>
+                                                                                                                                                                                                                                                                                                                                                            ` : ''}
                     </div>
                 </div>
             `;
