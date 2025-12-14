@@ -75,6 +75,13 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/epis/api/users', [EpisController::class, 'apiUsers'])->name('epis.api.users');
     Route::get('/epis/api/epis', [EpisController::class, 'apiEpis'])->name('epis.api.epis');
     Route::get('/epis/api/users/{user}/asignaciones', [EpisController::class, 'apiUserAsignaciones'])->name('epis.api.users.asignaciones');
+    Route::get('/epis/api/users/{user}/movimientos', [EpisController::class, 'apiUserMovimientos'])->name('epis.api.users.movimientos');
+    Route::get('/epis/api/compras', [EpisController::class, 'apiCompras'])->name('epis.api.compras');
+    Route::post('/epis/api/compras', [EpisController::class, 'apiCrearCompra'])->name('epis.api.compras.store');
+    Route::get('/epis/api/compras/{compra}', [EpisController::class, 'apiCompra'])->name('epis.api.compras.show');
+    Route::post('/epis/api/compras/{compra}', [EpisController::class, 'apiActualizarCompra'])->name('epis.api.compras.update'); // _method PATCH
+    Route::get('/epis/compra/{compra}/ticket', [EpisController::class, 'ticketCompra'])->name('epis.compras.ticket');
+    Route::get('/epis/imagen/{epi}', [EpisController::class, 'imagen'])->name('epis.imagen');
 
     Route::post('/epis/catalogo', [EpisController::class, 'storeEpi'])->name('epis.catalogo.store');
     Route::put('/epis/catalogo/{epi}', [EpisController::class, 'updateEpi'])->name('epis.catalogo.update');

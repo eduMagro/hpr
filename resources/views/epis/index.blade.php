@@ -6,17 +6,15 @@
             <div class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
                 <div>
                     <h1 class="text-2xl font-semibold text-gray-900">EPIs por trabajador</h1>
-                    <p class="text-sm text-gray-600 mt-1">Agenda de usuarios con EPIs en posesión (sin detallar en la lista).</p>
+                    <p class="text-sm text-gray-600 mt-1">Agenda de usuarios con EPIs en posesión (sin detallar en la
+                        lista).</p>
                 </div>
 
                 <div class="flex gap-2 items-end">
-                    <div class="relative w-full sm:w-96">
+                    <div class="relative w-full sm:w-96" data-user-suggest>
                         <label class="block text-xs font-medium text-gray-700 mb-1">Buscar trabajador</label>
-                        <input type="text"
-                            x-model="query"
-                            @input="onQueryChange()"
-                            @keydown.escape="closeSuggestions()"
-                            @focus="openSuggestions()"
+                        <input type="text" x-model="query" @input="onQueryChange()"
+                            @keydown.escape="closeSuggestions()" @focus="openSuggestions()"
                             placeholder="Nombre, apellidos, DNI, móvil…"
                             class="w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500" />
 
@@ -28,25 +26,31 @@
                                     <div class="p-4 text-sm text-gray-600">Sin coincidencias.</div>
                                 </template>
                                 <template x-for="u in suggestions" :key="u.id">
-                                    <button type="button" class="w-full text-left px-4 py-3 hover:bg-gray-50 flex items-center gap-3"
+                                    <button type="button"
+                                        class="w-full text-left px-4 py-3 hover:bg-gray-50 flex items-center gap-3"
                                         @click="selectUser(u)">
-                                        <div class="w-9 h-9 rounded-full overflow-hidden bg-gray-100 flex items-center justify-center flex-shrink-0">
+                                        <div
+                                            class="w-9 h-9 rounded-full overflow-hidden bg-gray-100 flex items-center justify-center flex-shrink-0">
                                             <template x-if="u.ruta_imagen">
-                                                <img :src="u.ruta_imagen" :alt="`Foto de ${u.nombre_completo}`" class="w-full h-full object-cover" />
+                                                <img :src="u.ruta_imagen" :alt="`Foto de ${u.nombre_completo}`"
+                                                    class="w-full h-full object-cover" />
                                             </template>
                                             <template x-if="!u.ruta_imagen">
-                                                <span class="text-gray-600 font-semibold" x-text="u.nombre_completo?.slice(0,1)?.toUpperCase()"></span>
+                                                <span class="text-gray-600 font-semibold"
+                                                    x-text="u.nombre_completo?.slice(0,1)?.toUpperCase()"></span>
                                             </template>
                                         </div>
                                         <div class="min-w-0 flex-1">
-                                            <p class="text-sm font-semibold text-gray-900 truncate" x-text="u.nombre_completo"></p>
+                                            <p class="text-sm font-semibold text-gray-900 truncate"
+                                                x-text="u.nombre_completo"></p>
                                             <p class="text-xs text-gray-600 truncate">
                                                 <span x-text="u.dni || 'DNI N/D'"></span>
                                                 <span class="mx-1">·</span>
                                                 <span x-text="u.movil_personal || 'Móvil N/D'"></span>
                                             </p>
                                         </div>
-                                        <span class="text-xs font-medium text-blue-700 bg-blue-50 rounded-full px-2 py-0.5"
+                                        <span
+                                            class="text-xs font-medium text-blue-700 bg-blue-50 rounded-full px-2 py-0.5"
                                             x-text="`${u.epis_en_posesion} EPIs`"></span>
                                     </button>
                                 </template>
@@ -65,15 +69,10 @@
                 </div>
             </div>
 
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div class="bg-white rounded-xl border border-gray-200 p-4">
                     <p class="text-xs uppercase tracking-wide text-gray-500">Usuarios con EPIs</p>
                     <p class="text-2xl font-semibold text-gray-900 mt-1" x-text="stats.usuariosConEpis"></p>
-                </div>
-                <div class="bg-white rounded-xl border border-gray-200 p-4">
-                    <p class="text-xs uppercase tracking-wide text-gray-500">Más EPIs en posesión</p>
-                    <p class="text-lg font-semibold text-gray-900 mt-1 truncate" x-text="stats.topNombre || '—'"></p>
-                    <p class="text-sm text-gray-600" x-text="stats.topCantidad ? `${stats.topCantidad} EPIs` : ''"></p>
                 </div>
                 <div class="bg-white rounded-xl border border-gray-200 p-4">
                     <p class="text-xs uppercase tracking-wide text-gray-500">Catálogo</p>
@@ -99,19 +98,24 @@
                         <template x-for="u in agendaUsers" :key="u.id">
                             <div class="p-4 sm:p-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                                 <div class="flex items-center gap-4 min-w-0">
-                                    <div class="w-12 h-12 rounded-full overflow-hidden bg-gray-100 flex items-center justify-center flex-shrink-0">
+                                    <div
+                                        class="w-12 h-12 rounded-full overflow-hidden bg-gray-100 flex items-center justify-center flex-shrink-0">
                                         <template x-if="u.ruta_imagen">
-                                            <img :src="u.ruta_imagen" :alt="`Foto de ${u.nombre_completo}`" class="w-full h-full object-cover" />
+                                            <img :src="u.ruta_imagen" :alt="`Foto de ${u.nombre_completo}`"
+                                                class="w-full h-full object-cover" />
                                         </template>
                                         <template x-if="!u.ruta_imagen">
-                                            <span class="text-gray-600 font-semibold" x-text="u.nombre_completo?.slice(0,1)?.toUpperCase()"></span>
+                                            <span class="text-gray-600 font-semibold"
+                                                x-text="u.nombre_completo?.slice(0,1)?.toUpperCase()"></span>
                                         </template>
                                     </div>
 
                                     <div class="min-w-0">
                                         <div class="flex items-center gap-2 min-w-0">
-                                            <p class="font-semibold text-gray-900 truncate" x-text="u.nombre_completo"></p>
-                                            <span class="inline-flex items-center rounded-full bg-blue-50 text-blue-700 px-2 py-0.5 text-xs font-medium"
+                                            <p class="font-semibold text-gray-900 truncate" x-text="u.nombre_completo">
+                                            </p>
+                                            <span
+                                                class="inline-flex items-center rounded-full bg-blue-50 text-blue-700 px-2 py-0.5 text-xs font-medium"
                                                 x-text="`${u.epis_en_posesion} EPIs`"></span>
                                         </div>
                                         <div class="text-sm text-gray-600 flex flex-col sm:flex-row sm:gap-4 mt-1">
@@ -122,11 +126,18 @@
                                     </div>
                                 </div>
 
-                                <button type="button"
-                                    class="inline-flex items-center justify-center px-4 py-2 rounded-lg bg-gray-900 text-white hover:bg-gray-800"
-                                    @click="openUser(u)">
-                                    EPIs
-                                </button>
+                                <div class="flex gap-2">
+                                    <button type="button"
+                                        class="inline-flex items-center justify-center px-4 py-2 rounded-lg bg-gray-900 text-white hover:bg-gray-800"
+                                        @click="openUser(u)">
+                                        EPIs
+                                    </button>
+                                    <button type="button"
+                                        class="inline-flex items-center justify-center px-4 py-2 rounded-lg bg-gray-100 text-gray-900 hover:bg-gray-200"
+                                        @click="openRecentModalForUser(u)">
+                                        Últimos
+                                    </button>
+                                </div>
                             </div>
                         </template>
                     </div>
@@ -139,31 +150,31 @@
             class="fixed inset-0 z-[9999] flex items-end sm:items-center justify-center">
             <div class="absolute inset-0 bg-black/50" @click="closeModal()"></div>
 
-            <div class="relative w-full sm:max-w-5xl bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl overflow-hidden max-h-[92vh] sm:max-h-[85vh] flex flex-col">
+            <div
+                class="relative w-full sm:max-w-5xl bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl overflow-hidden max-h-[92vh] sm:max-h-[85vh] flex flex-col">
                 <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
                     <div class="min-w-0">
                         <p class="text-xs uppercase tracking-wide text-gray-500">EPIs</p>
                         <p class="font-semibold text-gray-900 truncate" x-text="modalTitle"></p>
                     </div>
 
-                    <button type="button" class="p-2 rounded-lg hover:bg-gray-100" @click="closeModal()" aria-label="Cerrar">
+                    <button type="button" class="p-2 rounded-lg hover:bg-gray-100" @click="closeModal()"
+                        aria-label="Cerrar">
                         <svg class="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M6 18L18 6M6 6l12 12" />
                         </svg>
                     </button>
                 </div>
 
                 <div class="px-6 pt-4">
-                    <div class="flex gap-2 border-b border-gray-100">
-                        <button type="button"
-                            class="px-4 py-2 text-sm font-medium rounded-t-lg"
+                    <div class="flex gap-2 border-b border-gray-200">
+                        <button type="button" class="px-4 py-2 text-sm font-medium rounded-t-lg"
                             :class="modalTab === 'usuario' ? 'bg-gray-900 text-white' : 'text-gray-700 hover:bg-gray-100'"
-                            @click="switchModalTab('usuario')"
-                            :disabled="!selectedUser">
+                            @click="switchModalTab('usuario')" :disabled="!selectedUser">
                             Usuario
                         </button>
-                        <button type="button"
-                            class="px-4 py-2 text-sm font-medium rounded-t-lg"
+                        <button type="button" class="px-4 py-2 text-sm font-medium rounded-t-lg"
                             :class="modalTab === 'catalogo' ? 'bg-gray-900 text-white' : 'text-gray-700 hover:bg-gray-100'"
                             @click="switchModalTab('catalogo')">
                             Catálogo
@@ -176,7 +187,8 @@
                     <template x-if="modalTab === 'usuario'">
                         <div>
                             <template x-if="!selectedUser">
-                                <div class="rounded-lg border border-dashed border-gray-300 bg-gray-50 p-6 text-gray-700">
+                                <div
+                                    class="rounded-lg border border-dashed border-gray-300 bg-gray-50 p-6 text-gray-700">
                                     Selecciona un usuario para ver/gestionar sus EPIs.
                                 </div>
                             </template>
@@ -188,23 +200,80 @@
                                             <p class="text-xs uppercase tracking-wide text-gray-500">Asignar EPI</p>
                                             <div class="mt-3 grid grid-cols-1 sm:grid-cols-4 gap-3">
                                                 <div class="sm:col-span-2">
-                                                    <label class="block text-xs font-medium text-gray-700 mb-1">EPI</label>
-                                                    <select x-model.number="assignForm.epi_id"
-                                                        class="w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500">
-                                                        <option value="" disabled>Selecciona un EPI…</option>
-                                                        <template x-for="e in epis.filter(x => x.activo)" :key="e.id">
-                                                            <option :value="e.id" x-text="e.codigo ? `${e.nombre} (${e.codigo})` : e.nombre"></option>
+                                                    <label
+                                                        class="block text-xs font-medium text-gray-700 mb-1">EPI</label>
+                                                    <div class="relative" data-epi-suggest>
+                                                        <input type="text" x-model="epiAssignQuery"
+                                                            @input="onEpiAssignQueryChange()"
+                                                            @keydown.escape="closeEpiAssignSuggestions()"
+                                                            @focus="openEpiAssignSuggestions()"
+                                                            placeholder="Buscar EPI (nombre, código, categoría)…"
+                                                            class="w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500" />
+
+                                                        <div x-cloak x-show="epiAssignSuggestionsOpen"
+                                                            class="absolute z-50 mt-2 w-full bg-white border border-gray-200 rounded-xl shadow-xl overflow-hidden">
+                                                            <div class="max-h-80 overflow-y-auto">
+                                                                <template x-if="epiAssignSuggestions.length === 0">
+                                                                    <div class="p-4 text-sm text-gray-600">Sin
+                                                                        coincidencias.</div>
+                                                                </template>
+                                                                <template x-for="e in epiAssignSuggestions"
+                                                                    :key="e.id">
+                                                                    <button type="button"
+                                                                        class="w-full text-left px-4 py-3 hover:bg-gray-50 flex items-center gap-3"
+                                                                        @click="selectEpiToAssign(e)">
+                                                                        <div
+                                                                            class="w-9 h-9 rounded-lg overflow-hidden bg-gray-100 flex items-center justify-center flex-shrink-0">
+                                                                            <template x-if="e.imagen_url">
+                                                                                <img :src="e.imagen_url"
+                                                                                    :alt="`Imagen de ${e.nombre}`"
+                                                                                    class="w-full h-full object-cover" />
+                                                                            </template>
+                                                                            <template x-if="!e.imagen_url">
+                                                                                <span class="text-gray-500 text-xs">Sin
+                                                                                    img</span>
+                                                                            </template>
+                                                                        </div>
+                                                                        <div class="min-w-0 flex-1">
+                                                                            <p class="text-sm font-semibold text-gray-900 truncate"
+                                                                                x-text="e.nombre"></p>
+                                                                            <p class="text-xs text-gray-600 truncate">
+                                                                                <span
+                                                                                    x-text="e.codigo ? `Código: ${e.codigo}` : 'Sin código'"></span>
+                                                                                <span class="mx-1">·</span>
+                                                                                <span
+                                                                                    x-text="e.categoria ? `Categoría: ${e.categoria}` : 'Sin categoría'"></span>
+                                                                            </p>
+                                                                        </div>
+                                                                        <template x-if="!e.activo">
+                                                                            <span
+                                                                                class="text-xs font-medium text-gray-700 bg-gray-100 rounded-full px-2 py-0.5">Inactivo</span>
+                                                                        </template>
+                                                                    </button>
+                                                                </template>
+                                                            </div>
+                                                        </div>
+
+                                                        <template x-if="assignForm.epi_id">
+                                                            <p class="text-xs text-gray-600 mt-2">
+                                                                Seleccionado: <span class="font-medium"
+                                                                    x-text="selectedEpiLabel"></span>
+                                                            </p>
                                                         </template>
-                                                    </select>
+                                                    </div>
                                                 </div>
                                                 <div>
-                                                    <label class="block text-xs font-medium text-gray-700 mb-1">Cantidad</label>
-                                                    <input type="number" min="1" x-model.number="assignForm.cantidad"
+                                                    <label
+                                                        class="block text-xs font-medium text-gray-700 mb-1">Cantidad</label>
+                                                    <input type="number" min="1"
+                                                        x-model.number="assignForm.cantidad"
                                                         class="w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500" />
                                                 </div>
                                                 <div>
-                                                    <label class="block text-xs font-medium text-gray-700 mb-1">Notas</label>
-                                                    <input type="text" x-model="assignForm.notas" placeholder="Opcional"
+                                                    <label
+                                                        class="block text-xs font-medium text-gray-700 mb-1">Notas</label>
+                                                    <input type="text" x-model="assignForm.notas"
+                                                        placeholder="Opcional"
                                                         class="w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500" />
                                                 </div>
                                                 <div class="sm:col-span-4 flex justify-end">
@@ -220,19 +289,52 @@
 
                                         <div class="bg-white border border-gray-200 rounded-xl p-4">
                                             <p class="text-xs uppercase tracking-wide text-gray-500">Resumen</p>
-                                            <p class="text-lg font-semibold text-gray-900 mt-1" x-text="selectedUser.nombre_completo"></p>
-                                            <p class="text-sm text-gray-600 mt-1" x-text="`DNI: ${selectedUser.dni || 'N/D'}`"></p>
-                                            <p class="text-sm text-gray-600" x-text="`Email: ${selectedUser.email || 'N/D'}`"></p>
-                                            <p class="text-sm text-gray-600" x-text="`Móvil: ${selectedUser.movil_personal || 'N/D'}`"></p>
+                                            <div class="mt-2 flex items-center gap-3">
+                                                <div
+                                                    class="w-12 h-12 rounded-full overflow-hidden bg-gray-100 flex items-center justify-center flex-shrink-0">
+                                                    <template x-if="selectedUser.ruta_imagen">
+                                                        <img :src="selectedUser.ruta_imagen"
+                                                            :alt="`Foto de ${selectedUser.nombre_completo}`"
+                                                            class="w-full h-full object-cover" />
+                                                    </template>
+                                                    <template x-if="!selectedUser.ruta_imagen">
+                                                        <span class="text-gray-600 font-semibold"
+                                                            x-text="selectedUser.nombre_completo?.slice(0,1)?.toUpperCase()"></span>
+                                                    </template>
+                                                </div>
+                                                <div class="min-w-0">
+                                                    <p class="text-lg font-semibold text-gray-900 truncate"
+                                                        x-text="selectedUser.nombre_completo"></p>
+                                                    <p class="text-sm text-gray-600 mt-0.5"
+                                                        x-text="`DNI: ${selectedUser.dni || 'N/D'}`"></p>
+                                                </div>
+                                            </div>
+                                            <p class="text-sm text-gray-600 mt-2"
+                                                x-text="`Email: ${selectedUser.email || 'N/D'}`"></p>
+                                            <p class="text-sm text-gray-600"
+                                                x-text="`Móvil: ${selectedUser.movil_personal || 'N/D'}`"></p>
                                             <p class="text-sm text-gray-600 mt-3">
-                                                En posesión: <span class="font-semibold" x-text="userTotalEnPosesion"></span>
+                                                En posesión: <span class="font-semibold"
+                                                    x-text="userTotalEnPosesion"></span>
                                             </p>
+                                            <div class="mt-4">
+                                                <button type="button"
+                                                    class="w-full px-4 py-2 rounded-lg bg-gray-900 text-white hover:bg-gray-800"
+                                                    @click="openRecentModal()">
+                                                    Últimos asignados
+                                                </button>
+                                            </div>
                                         </div>
                                     </div>
 
                                     <div class="bg-white border border-gray-200 rounded-xl overflow-hidden">
                                         <div class="px-6 py-4 border-b border-gray-100">
-                                            <h3 class="font-semibold text-gray-900">EPIs en posesión</h3>
+                                            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                                                <h3 class="font-semibold text-gray-900">EPIs en posesión</h3>
+                                                <input type="text" x-model="userEpiFilterQuery"
+                                                    placeholder="Filtrar por producto…"
+                                                    class="w-full sm:w-72 rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500" />
+                                            </div>
                                         </div>
 
                                         <template x-if="loadingAsignaciones">
@@ -240,44 +342,116 @@
                                         </template>
 
                                         <template x-if="!loadingAsignaciones && asignacionesEnPosesion.length === 0">
-                                            <div class="p-6 text-gray-700">Este usuario no tiene EPIs en posesión.</div>
+                                            <div class="p-6 text-gray-700">Este usuario no tiene EPIs en posesión.
+                                            </div>
                                         </template>
 
-                                        <template x-if="!loadingAsignaciones && asignacionesEnPosesion.length > 0">
+                                        <template x-if="!loadingAsignaciones && userEpiGroupsFiltered.length > 0">
                                             <div class="divide-y divide-gray-100">
-                                                <template x-for="a in asignacionesEnPosesion" :key="a.id">
-                                                    <div class="p-4 sm:p-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                                                        <div class="flex items-center gap-4 min-w-0">
-                                                            <div class="w-12 h-12 rounded-lg overflow-hidden bg-gray-100 flex items-center justify-center flex-shrink-0">
-                                                                <template x-if="a.epi?.imagen_url">
-                                                                    <img :src="a.epi.imagen_url" :alt="`Imagen de ${a.epi.nombre}`" class="w-full h-full object-cover" />
-                                                                </template>
-                                                                <template x-if="!a.epi?.imagen_url">
-                                                                    <span class="text-gray-500 text-xs">Sin img</span>
-                                                                </template>
-                                                            </div>
-                                                            <div class="min-w-0">
-                                                                <p class="font-semibold text-gray-900 truncate">
-                                                                    <span x-text="a.epi?.nombre || 'EPI'"></span>
-                                                                    <template x-if="a.epi?.codigo">
-                                                                        <span class="text-sm text-gray-600" x-text="` (${a.epi.codigo})`"></span>
+                                                <template x-for="g in userEpiGroupsFiltered" :key="g.epi.id">
+                                                    <div>
+                                                        <div class="p-4 sm:p-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 cursor-pointer"
+                                                            @click="toggleEpiGroup(g.epi.id)"
+                                                            :class="expandedEpiId === Number(g.epi.id) ? 'bg-gray-50' : ''">
+                                                            <div class="flex items-center gap-4 min-w-0">
+                                                                <div
+                                                                    class="w-12 h-12 rounded-lg overflow-hidden bg-gray-100 flex items-center justify-center flex-shrink-0">
+                                                                    <template x-if="g.epi.imagen_url">
+                                                                        <img :src="g.epi.imagen_url"
+                                                                            :alt="`Imagen de ${g.epi.nombre}`"
+                                                                            class="w-full h-full object-cover" />
                                                                     </template>
-                                                                </p>
-                                                                <p class="text-sm text-gray-600">
-                                                                    Cantidad: <span class="font-semibold" x-text="a.cantidad"></span>
-                                                                </p>
-                                                                <template x-if="a.notas">
-                                                                    <p class="text-sm text-gray-600 truncate" x-text="`Notas: ${a.notas}`"></p>
-                                                                </template>
+                                                                    <template x-if="!g.epi.imagen_url">
+                                                                        <span class="text-gray-500 text-xs">Sin
+                                                                            img</span>
+                                                                    </template>
+                                                                </div>
+                                                                <div class="min-w-0">
+                                                                    <p class="font-semibold text-gray-900 truncate">
+                                                                        <span x-text="g.epi.nombre"></span>
+                                                                        <template x-if="g.epi.codigo">
+                                                                            <span class="text-sm text-gray-600"
+                                                                                x-text="` (${g.epi.codigo})`"></span>
+                                                                        </template>
+                                                                    </p>
+                                                                    <p class="text-sm text-gray-600">
+                                                                        Cantidad: <span class="font-semibold"
+                                                                            x-text="g.total_en_posesion"></span>
+                                                                    </p>
+                                                                    <p class="text-xs text-gray-500 mt-1">Click para
+                                                                        ver historial</p>
+                                                                </div>
                                                             </div>
+
+                                                            <button type="button"
+                                                                class="text-sm font-medium px-3 py-2 rounded-lg bg-gradient-to-tr from-blue-600 to-blue-700 text-white hover:from-blue-700 hover:to-blue-800"
+                                                                @click.stop="toggleEpiGroup(g.epi.id)">
+                                                                <span
+                                                                    x-text="expandedEpiId === Number(g.epi.id) ? 'Ocultar' : 'Ver'"></span>
+                                                            </button>
                                                         </div>
 
-                                                        <button type="button"
-                                                            class="px-4 py-2 rounded-lg bg-gray-900 text-white hover:bg-gray-800 disabled:opacity-50"
-                                                            :disabled="saving"
-                                                            @click="markReturned(a)">
-                                                            Marcar devuelto
-                                                        </button>
+                                                        <div :id="`epi-details-${g.epi.id}`"
+                                                            x-show="expandedEpiId === Number(g.epi.id)" x-transition
+                                                            class="px-4 sm:px-6 pb-6 mt-2 border-t border-gray-100 bg-gray-50">
+                                                            <div
+                                                                class="bg-white border border-gray-200 rounded-xl overflow-hidden">
+                                                                <div
+                                                                    class="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
+                                                                    <p class="text-sm font-semibold text-gray-900">
+                                                                        Historial de asignaciones</p>
+                                                                    <p class="text-xs text-gray-600">
+                                                                        Devueltos: <span class="font-semibold"
+                                                                            x-text="g.total_devueltos"></span>
+                                                                    </p>
+                                                                </div>
+
+                                                                <div class="divide-y divide-gray-100">
+                                                                    <template x-for="a in g.asignaciones"
+                                                                        :key="a.id">
+                                                                        <div
+                                                                            class="p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                                                                            <div class="min-w-0">
+                                                                                <p
+                                                                                    class="text-sm font-medium text-gray-900">
+                                                                                    <span
+                                                                                        x-text="formatDate(a.fecha_asignacion)"></span>
+                                                                                    <span
+                                                                                        class="mx-2 text-gray-300">|</span>
+                                                                                    <span
+                                                                                        x-text="`Cantidad: ${a.cantidad}`"></span>
+                                                                                </p>
+                                                                                <p class="text-xs text-gray-600 mt-1">
+                                                                                    <template x-if="a.devuelto_en">
+                                                                                        <span
+                                                                                            x-text="`Devuelto: ${formatDate(a.devuelto_en)}`"></span>
+                                                                                    </template>
+                                                                                    <template x-if="!a.devuelto_en">
+                                                                                        <span
+                                                                                            class="text-green-700 font-medium">En
+                                                                                            posesión</span>
+                                                                                    </template>
+                                                                                    <template x-if="a.notas">
+                                                                                        <span class="mx-1">·</span>
+                                                                                        <span class="truncate"
+                                                                                            x-text="`Notas: ${a.notas}`"></span>
+                                                                                    </template>
+                                                                                </p>
+                                                                            </div>
+
+                                                                            <template x-if="!a.devuelto_en">
+                                                                                <button type="button"
+                                                                                    class="px-4 py-2 rounded-lg bg-gray-900 text-white hover:bg-gray-800 disabled:opacity-50"
+                                                                                    :disabled="saving"
+                                                                                    @click.stop="markReturned(a)">
+                                                                                    Marcar devuelto
+                                                                                </button>
+                                                                            </template>
+                                                                        </div>
+                                                                    </template>
+                                                                </div>
+                                                            </div>
+                                                        </div>
                                                     </div>
                                                 </template>
                                             </div>
@@ -312,7 +486,8 @@
                                     <div>
                                         <label class="block text-xs font-medium text-gray-700 mb-1">Activo</label>
                                         <label class="inline-flex items-center gap-2 mt-2">
-                                            <input type="checkbox" x-model="epiCreate.activo" class="rounded border-gray-300" />
+                                            <input type="checkbox" x-model="epiCreate.activo"
+                                                class="rounded border-gray-300" />
                                             <span class="text-sm text-gray-700">Sí</span>
                                         </label>
                                     </div>
@@ -323,14 +498,16 @@
                                     </div>
                                     <div class="sm:col-span-2">
                                         <label class="block text-xs font-medium text-gray-700 mb-1">Imagen</label>
-                                        <input type="file" accept="image/*" @change="epiCreateFile = $event.target.files?.[0] || null" class="w-full text-sm" />
-                                        <p class="text-xs text-gray-500 mt-1">Se guarda en `storage/app/public/epis`.</p>
+                                        <input type="file" accept="image/*"
+                                            @change="epiCreateFile = $event.target.files?.[0] || null"
+                                            class="w-full text-sm" />
+                                        <p class="text-xs text-gray-500 mt-1">Se guarda en `storage/app/public/epis`.
+                                        </p>
                                     </div>
                                     <div class="sm:col-span-6 flex justify-end">
                                         <button type="button"
                                             class="px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50"
-                                            :disabled="!epiCreate.nombre || saving"
-                                            @click="createEpi()">
+                                            :disabled="!epiCreate.nombre || saving" @click="createEpi()">
                                             Crear
                                         </button>
                                     </div>
@@ -339,7 +516,27 @@
 
                             <div class="bg-white border border-gray-200 rounded-xl overflow-hidden">
                                 <div class="px-6 py-4 border-b border-gray-100">
-                                    <h3 class="font-semibold text-gray-900">EPIs en base de datos</h3>
+                                    <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                                        <h3 class="font-semibold text-gray-900">EPIs en base de datos</h3>
+                                        <div class="flex gap-2">
+                                            <button type="button"
+                                                class="px-4 py-2 rounded-lg bg-gray-100 text-gray-900 hover:bg-gray-200"
+                                                @click="openCompras()">
+                                                Compras
+                                            </button>
+                                            <button type="button"
+                                                class="px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700"
+                                                @click="openCompraCreate()">
+                                                Hacer compra
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div class="mt-3 flex items-center gap-2">
+                                        <input id="epis-show-inactive" type="checkbox" x-model="showInactiveEpis"
+                                            class="rounded border-gray-300" />
+                                        <label for="epis-show-inactive" class="text-sm text-gray-700">Mostrar
+                                            inactivos</label>
+                                    </div>
                                 </div>
 
                                 <template x-if="loadingEpis">
@@ -350,15 +547,19 @@
                                     <div class="p-6 text-gray-700">No hay EPIs creados.</div>
                                 </template>
 
-                                <template x-if="!loadingEpis && epis.length > 0">
+                                <template x-if="!loadingEpis && catalogEpis.length > 0">
                                     <div class="divide-y divide-gray-100">
-                                        <template x-for="e in epis" :key="e.id">
+                                        <template x-for="e in catalogEpis" :key="e.id">
                                             <div class="p-4 sm:p-6" x-data="{ editOpen: false, form: { ...e } }">
-                                                <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                                                <div
+                                                    class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                                                     <div class="flex items-center gap-4 min-w-0">
-                                                        <div class="w-12 h-12 rounded-lg overflow-hidden bg-gray-100 flex items-center justify-center flex-shrink-0">
+                                                        <div
+                                                            class="w-12 h-12 rounded-lg overflow-hidden bg-gray-100 flex items-center justify-center flex-shrink-0">
                                                             <template x-if="e.imagen_url">
-                                                                <img :src="e.imagen_url" :alt="`Imagen de ${e.nombre}`" class="w-full h-full object-cover" />
+                                                                <img :src="e.imagen_url"
+                                                                    :alt="`Imagen de ${e.nombre}`"
+                                                                    class="w-full h-full object-cover" />
                                                             </template>
                                                             <template x-if="!e.imagen_url">
                                                                 <span class="text-gray-500 text-xs">Sin img</span>
@@ -368,16 +569,21 @@
                                                             <p class="font-semibold text-gray-900 truncate">
                                                                 <span x-text="e.nombre"></span>
                                                                 <template x-if="!e.activo">
-                                                                    <span class="ml-2 text-xs font-medium text-gray-600">(inactivo)</span>
+                                                                    <span
+                                                                        class="ml-2 text-xs font-medium text-gray-600">(inactivo)</span>
                                                                 </template>
                                                             </p>
                                                             <p class="text-sm text-gray-600">
-                                                                <template x-if="e.codigo"><span x-text="`Código: ${e.codigo}`"></span></template>
-                                                                <template x-if="e.codigo && e.categoria"><span> · </span></template>
-                                                                <template x-if="e.categoria"><span x-text="`Categoría: ${e.categoria}`"></span></template>
+                                                                <template x-if="e.codigo"><span
+                                                                        x-text="`Código: ${e.codigo}`"></span></template>
+                                                                <template x-if="e.codigo && e.categoria"><span> ·
+                                                                    </span></template>
+                                                                <template x-if="e.categoria"><span
+                                                                        x-text="`Categoría: ${e.categoria}`"></span></template>
                                                             </p>
                                                             <template x-if="e.descripcion">
-                                                                <p class="text-sm text-gray-600 mt-1" x-text="e.descripcion"></p>
+                                                                <p class="text-sm text-gray-600 mt-1"
+                                                                    x-text="e.descripcion"></p>
                                                             </template>
                                                         </div>
                                                     </div>
@@ -390,51 +596,61 @@
                                                         </button>
                                                         <button type="button"
                                                             class="px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700 text-sm font-medium disabled:opacity-50"
-                                                            :disabled="saving"
-                                                            @click="$root.deleteEpi(e)">
+                                                            :disabled="saving" @click="deleteEpi(e)">
                                                             Eliminar
                                                         </button>
                                                     </div>
                                                 </div>
 
-                                                <div x-cloak x-show="editOpen" class="mt-4 bg-gray-50 border border-gray-200 rounded-xl p-4">
+                                                <div x-cloak x-show="editOpen"
+                                                    class="mt-4 bg-gray-50 border border-gray-200 rounded-xl p-4">
                                                     <div class="grid grid-cols-1 sm:grid-cols-6 gap-3">
                                                         <div class="sm:col-span-2">
-                                                            <label class="block text-xs font-medium text-gray-700 mb-1">Nombre</label>
+                                                            <label
+                                                                class="block text-xs font-medium text-gray-700 mb-1">Nombre</label>
                                                             <input type="text" x-model="form.nombre"
                                                                 class="w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500" />
                                                         </div>
                                                         <div>
-                                                            <label class="block text-xs font-medium text-gray-700 mb-1">Código</label>
+                                                            <label
+                                                                class="block text-xs font-medium text-gray-700 mb-1">Código</label>
                                                             <input type="text" x-model="form.codigo"
                                                                 class="w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500" />
                                                         </div>
                                                         <div class="sm:col-span-2">
-                                                            <label class="block text-xs font-medium text-gray-700 mb-1">Categoría</label>
+                                                            <label
+                                                                class="block text-xs font-medium text-gray-700 mb-1">Categoría</label>
                                                             <input type="text" x-model="form.categoria"
                                                                 class="w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500" />
                                                         </div>
                                                         <div>
-                                                            <label class="block text-xs font-medium text-gray-700 mb-1">Activo</label>
+                                                            <label
+                                                                class="block text-xs font-medium text-gray-700 mb-1">Activo</label>
                                                             <label class="inline-flex items-center gap-2 mt-2">
-                                                                <input type="checkbox" x-model="form.activo" class="rounded border-gray-300" />
+                                                                <input type="checkbox" x-model="form.activo"
+                                                                    class="rounded border-gray-300" />
                                                                 <span class="text-sm text-gray-700">Sí</span>
                                                             </label>
                                                         </div>
                                                         <div class="sm:col-span-4">
-                                                            <label class="block text-xs font-medium text-gray-700 mb-1">Descripción</label>
+                                                            <label
+                                                                class="block text-xs font-medium text-gray-700 mb-1">Descripción</label>
                                                             <input type="text" x-model="form.descripcion"
                                                                 class="w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500" />
                                                         </div>
                                                         <div class="sm:col-span-2">
-                                                            <label class="block text-xs font-medium text-gray-700 mb-1">Nueva imagen</label>
-                                                            <input type="file" accept="image/*" @change="form._file = $event.target.files?.[0] || null" class="w-full text-sm" />
+                                                            <label
+                                                                class="block text-xs font-medium text-gray-700 mb-1">Nueva
+                                                                imagen</label>
+                                                            <input type="file" accept="image/*"
+                                                                @change="form._file = $event.target.files?.[0] || null"
+                                                                class="w-full text-sm" />
                                                         </div>
                                                         <div class="sm:col-span-6 flex justify-end">
                                                             <button type="button"
                                                                 class="px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50"
                                                                 :disabled="!form.nombre || saving"
-                                                                @click="$root.updateEpi(e.id, form)">
+                                                                @click="updateEpi(e.id, form)">
                                                                 Guardar
                                                             </button>
                                                         </div>
@@ -447,6 +663,422 @@
                             </div>
                         </div>
                     </template>
+                </div>
+            </div>
+        </div>
+        <!-- Modal: últimos asignados -->
+        <div x-cloak x-show="recentModalOpen" x-transition.opacity
+            class="fixed inset-0 z-[20000] flex items-end sm:items-center justify-center">
+            <div class="absolute inset-0 bg-black/50" @click="closeRecentModal()"></div>
+
+            <div
+                class="relative w-full sm:max-w-3xl bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl overflow-hidden max-h-[92vh] sm:max-h-[85vh] flex flex-col">
+                <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+                    <div class="min-w-0">
+                        <p class="text-xs uppercase tracking-wide text-gray-500">Historial de EPIs</p>
+                        <p class="font-semibold text-gray-900 truncate"
+                            x-text="recentModalUser?.nombre_completo || 'Usuario'"></p>
+                    </div>
+
+                    <button type="button" class="p-2 rounded-lg hover:bg-gray-100" @click="closeRecentModal()"
+                        aria-label="Cerrar">
+                        <svg class="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                </div>
+
+                <div class="px-6 py-3 border-b border-gray-100 flex items-center justify-between">
+                    <p class="text-sm text-gray-700" x-text="recentModalSummary"></p>
+                    <div class="flex items-center gap-2">
+                        <button type="button"
+                            class="px-3 py-1.5 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-900 text-sm disabled:opacity-50"
+                            :disabled="recentModalLoading || recentModalPage <= 1"
+                            @click="loadRecentModalPage(recentModalPage - 1)">
+                            Anterior
+                        </button>
+                        <button type="button"
+                            class="px-3 py-1.5 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-900 text-sm disabled:opacity-50"
+                            :disabled="recentModalLoading || recentModalPage >= recentModalLastPage"
+                            @click="loadRecentModalPage(recentModalPage + 1)">
+                            Siguiente
+                        </button>
+                    </div>
+                </div>
+
+                <div class="p-6 overflow-y-auto">
+                    <template x-if="recentModalLoading">
+                        <div class="p-6 text-gray-700">Cargando…</div>
+                    </template>
+
+                    <template x-if="!recentModalLoading && recentModalItems.length === 0">
+                        <div class="p-6 text-gray-700">Sin movimientos.</div>
+                    </template>
+
+                    <div class="space-y-3" x-show="!recentModalLoading && recentModalItems.length > 0">
+                        <template x-for="a in recentModalItems" :key="a.id">
+                            <div class="p-4 border border-gray-200 rounded-xl flex items-center gap-4">
+                                <div
+                                    class="w-12 h-12 rounded-lg overflow-hidden bg-gray-100 flex items-center justify-center flex-shrink-0">
+                                    <template x-if="a.epi?.imagen_url">
+                                        <img :src="a.epi.imagen_url" :alt="`Imagen de ${a.epi.nombre}`"
+                                            class="w-full h-full object-cover" />
+                                    </template>
+                                    <template x-if="!a.epi?.imagen_url">
+                                        <span class="text-gray-500 text-xs">Sin img</span>
+                                    </template>
+                                </div>
+
+                                <div class="min-w-0 flex-1">
+                                    <p class="text-sm font-semibold text-gray-900 truncate"
+                                        x-text="a.epi?.nombre || 'EPI'"></p>
+                                    <template x-if="a.notas">
+                                        <p class="text-xs text-gray-600 truncate mt-0.5" x-text="`Nota: ${a.notas}`">
+                                        </p>
+                                    </template>
+                                    <p class="text-xs text-gray-600 mt-1">
+                                        <span x-text="`Entregado: ${formatDate(a.fecha_asignacion)}`"></span>
+                                        <span class="mx-1">·</span>
+                                        <span x-text="`Cantidad: ${a.cantidad}`"></span>
+                                    </p>
+                                    <template x-if="a.devuelto_en">
+                                        <p class="text-xs text-gray-600">
+                                            <span x-text="`Devuelto: ${formatDate(a.devuelto_en)}`"></span>
+                                        </p>
+                                    </template>
+                                    <template x-if="!a.devuelto_en">
+                                        <p class="text-xs text-green-700 font-medium">En posesión</p>
+                                    </template>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal: compras -->
+        <div x-cloak x-show="comprasOpen" x-transition.opacity
+            class="fixed inset-0 z-[21000] flex items-end sm:items-center justify-center">
+            <div class="absolute inset-0 bg-black/50" @click="closeCompras()"></div>
+
+            <div
+                class="relative w-full sm:max-w-4xl bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl overflow-hidden max-h-[92vh] sm:max-h-[85vh] flex flex-col">
+                <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+                    <div>
+                        <p class="text-xs uppercase tracking-wide text-gray-500">Compras</p>
+                        <p class="font-semibold text-gray-900">Compras de EPIs</p>
+                    </div>
+                    <button type="button" class="p-2 rounded-lg hover:bg-gray-100" @click="closeCompras()"
+                        aria-label="Cerrar">
+                        <svg class="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                </div>
+
+                <div class="px-6 py-3 border-b border-gray-100 flex items-center justify-between">
+                    <p class="text-sm text-gray-700"
+                        x-text="comprasLoading ? 'Cargando…' : `${compras.length} compras`"></p>
+                    <button type="button" class="px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700"
+                        @click="openCompraCreate()">
+                        Hacer compra
+                    </button>
+                </div>
+
+                <div class="px-6 py-4 border-b border-gray-100">
+                    <div class="grid grid-cols-1 sm:grid-cols-6 gap-3">
+                        <div class="sm:col-span-2">
+                            <label class="block text-xs font-medium text-gray-700 mb-1">Fecha (día)</label>
+                            <input type="date" x-model="comprasFilterDate" @change="refreshCompras()"
+                                class="w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500" />
+                        </div>
+                        <div class="sm:col-span-4">
+                            <label class="block text-xs font-medium text-gray-700 mb-1">Buscar por producto</label>
+                            <div class="relative" data-compras-filter-epi-suggest>
+                                <input type="text"
+                                    x-model="comprasFilterEpiQuery"
+                                    @input="onComprasFilterEpiQueryChange()"
+                                    @keydown.escape="closeComprasFilterEpiSuggestions()"
+                                    @focus="openComprasFilterEpiSuggestions()"
+                                    placeholder="Nombre, código o categoría…"
+                                    class="w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500" />
+
+                                <div x-show="comprasFilterEpiSuggestionsOpen"
+                                    class="absolute z-50 mt-2 w-full bg-white border border-gray-200 rounded-xl shadow-xl overflow-hidden">
+                                    <div class="max-h-80 overflow-y-auto">
+                                        <template x-if="comprasFilterEpiSuggestions.length === 0">
+                                            <div class="p-4 text-sm text-gray-600">Sin coincidencias.</div>
+                                        </template>
+                                        <template x-for="e in comprasFilterEpiSuggestions" :key="e.id">
+                                            <button type="button"
+                                                class="w-full text-left px-4 py-3 hover:bg-gray-50 flex items-center gap-3"
+                                                @click="selectComprasFilterEpi(e)">
+                                                <div class="w-9 h-9 rounded-lg overflow-hidden bg-gray-100 flex items-center justify-center flex-shrink-0">
+                                                    <template x-if="e.imagen_url">
+                                                        <img :src="e.imagen_url" :alt="`Imagen de ${e.nombre}`" class="w-full h-full object-cover" />
+                                                    </template>
+                                                    <template x-if="!e.imagen_url">
+                                                        <span class="text-gray-500 text-xs">Sin img</span>
+                                                    </template>
+                                                </div>
+                                                <div class="min-w-0 flex-1">
+                                                    <p class="text-sm font-semibold text-gray-900 truncate" x-text="e.nombre"></p>
+                                                    <p class="text-xs text-gray-600 truncate">
+                                                        <span x-text="e.codigo ? `Código: ${e.codigo}` : 'Sin código'"></span>
+                                                        <span class="mx-1">·</span>
+                                                        <span x-text="e.categoria ? `Categoría: ${e.categoria}` : 'Sin categoría'"></span>
+                                                    </p>
+                                                </div>
+                                            </button>
+                                        </template>
+                                    </div>
+                                </div>
+
+                                <template x-if="comprasFilterEpiId">
+                                    <div class="mt-2 flex items-center justify-between gap-2">
+                                        <p class="text-xs text-gray-600 truncate">
+                                            Filtrando por: <span class="font-medium" x-text="comprasFilterEpiLabel"></span>
+                                        </p>
+                                        <button type="button"
+                                            class="text-xs px-3 py-1.5 rounded-lg bg-gray-100 hover:bg-gray-200"
+                                            @click="clearComprasFilterEpi()">
+                                            Quitar filtro
+                                        </button>
+                                    </div>
+                                </template>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="p-6 overflow-y-auto">
+                    <template x-if="comprasLoading">
+                        <div class="p-6 text-gray-700">Cargando…</div>
+                    </template>
+
+                    <template x-if="!comprasLoading && compras.length === 0">
+                        <div class="p-6 text-gray-700">No hay compras registradas.</div>
+                    </template>
+
+                    <div class="space-y-3" x-show="!comprasLoading && compras.length > 0">
+                        <template x-for="c in compras" :key="c.id">
+                            <div class="p-4 border rounded-xl"
+                                :class="c.items?.some(it => it.precio_unitario === null || it.precio_unitario === undefined || it.precio_unitario === '') ? 'border-yellow-400' : 'border-gray-200'">
+                                <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+                                    <div class="min-w-0">
+                                        <p class="text-sm font-semibold text-gray-900 truncate"
+                                            x-text="`Compra del ${formatDateTime(c.created_at)}`"></p>
+                                        <p class="text-xs text-gray-600 mt-1">
+                                            <span x-text="`Productos: ${c.productos ?? 0}`"></span>
+                                            <span class="mx-1">·</span>
+                                            <span x-text="`EPIs: ${c.unidades ?? 0}`"></span>
+                                            <span class="mx-1">·</span>
+                                            <span x-text="`Total: ${formatMoney(c.total ?? 0)}`"></span>
+                                            <span class="mx-1">·</span>
+                                            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium"
+                                                :class="c.estado === 'comprada' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'">
+                                                <span x-text="c.estado === 'comprada' ? 'comprada' : 'pendiente'"></span>
+                                            </span>
+                                        </p>
+                                        <template x-if="c.items?.some(it => it.precio_unitario === null || it.precio_unitario === undefined || it.precio_unitario === '')">
+                                            <p class="text-xs text-yellow-800 mt-2">Faltan precios en algunos productos.</p>
+                                        </template>
+                                    </div>
+
+                                    <div class="flex gap-2">
+                                        <button type="button"
+                                            class="px-4 py-2 rounded-lg bg-gray-100 text-gray-900 hover:bg-gray-200"
+                                            @click="openCompraEdit(c.id)">
+                                            Editar
+                                        </button>
+                                        <button type="button"
+                                            class="px-4 py-2 rounded-lg bg-gray-900 text-white hover:bg-gray-800"
+                                            @click="toggleCompraEstado(c)">
+                                            <span
+                                                x-text="c.estado === 'comprada' ? 'Marcar pendiente' : 'Marcar comprada'"></span>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal: crear/editar compra -->
+        <div x-cloak x-show="compraModalOpen" x-transition.opacity
+            class="fixed inset-0 z-[22000] flex items-end sm:items-center justify-center">
+            <div class="absolute inset-0 bg-black/50" @click="closeCompraModal()"></div>
+
+            <div
+                class="relative w-full sm:max-w-5xl bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl overflow-hidden max-h-[92vh] sm:max-h-[85vh] flex flex-col">
+                <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+                    <div class="min-w-0">
+                        <p class="text-xs uppercase tracking-wide text-gray-500"
+                            x-text="compraMode === 'create' ? 'Nueva compra' : 'Editar compra'"></p>
+                        <p class="font-semibold text-gray-900 truncate"
+                            x-text="compraMode === 'create' ? 'Hacer compra' : `Compra #${compraId}`"></p>
+                    </div>
+                    <button type="button" class="p-2 rounded-lg hover:bg-gray-100" @click="closeCompraModal()"
+                        aria-label="Cerrar">
+                        <svg class="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                </div>
+
+                <div class="p-6 overflow-y-auto space-y-6">
+                    <div class="bg-gray-50 border border-gray-200 rounded-xl p-4">
+                        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                            <p class="text-sm font-semibold text-gray-900">Añadir EPIs a la compra</p>
+                            <label class="inline-flex items-center gap-2">
+                                <input type="checkbox" x-model="compraEstadoComprada"
+                                    class="rounded border-gray-300" />
+                                <span class="text-sm text-gray-700">Marcar como comprada</span>
+                            </label>
+                        </div>
+
+                        <div class="mt-4 grid grid-cols-1 sm:grid-cols-6 gap-3">
+                            <div class="sm:col-span-4">
+                                <label class="block text-xs font-medium text-gray-700 mb-1">EPI</label>
+                                <div class="relative" data-compra-epi-suggest>
+                                    <input type="text" x-model="compraEpiQuery" @input="onCompraEpiQueryChange()"
+                                        @keydown.escape="closeCompraEpiSuggestions()"
+                                        @focus="openCompraEpiSuggestions()"
+                                        placeholder="Buscar EPI (nombre, código, categoría)…"
+                                        class="w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500" />
+
+                                    <div x-show="compraEpiSuggestionsOpen"
+                                        class="absolute z-50 mt-2 w-full bg-white border border-gray-200 rounded-xl shadow-xl overflow-hidden">
+                                        <div class="max-h-80 overflow-y-auto">
+                                            <template x-if="compraEpiSuggestions.length === 0">
+                                                <div class="p-4 text-sm text-gray-600">Sin coincidencias.</div>
+                                            </template>
+                                            <template x-for="e in compraEpiSuggestions" :key="e.id">
+                                                <button type="button"
+                                                    class="w-full text-left px-4 py-3 hover:bg-gray-50 flex items-center gap-3"
+                                                    @click="addCompraItem(e)">
+                                                    <div
+                                                        class="w-9 h-9 rounded-lg overflow-hidden bg-gray-100 flex items-center justify-center flex-shrink-0">
+                                                        <template x-if="e.imagen_url">
+                                                            <img :src="e.imagen_url" :alt="`Imagen de ${e.nombre}`"
+                                                                class="w-full h-full object-cover" />
+                                                        </template>
+                                                        <template x-if="!e.imagen_url">
+                                                            <span class="text-gray-500 text-xs">Sin img</span>
+                                                        </template>
+                                                    </div>
+                                                    <div class="min-w-0 flex-1">
+                                                        <p class="text-sm font-semibold text-gray-900 truncate"
+                                                            x-text="e.nombre"></p>
+                                                        <p class="text-xs text-gray-600 truncate">
+                                                            <span
+                                                                x-text="e.codigo ? `Código: ${e.codigo}` : 'Sin código'"></span>
+                                                            <span class="mx-1">·</span>
+                                                            <span
+                                                                x-text="e.categoria ? `Categoría: ${e.categoria}` : 'Sin categoría'"></span>
+                                                        </p>
+                                                    </div>
+                                                </button>
+                                            </template>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="sm:col-span-2">
+                                <label class="block text-xs font-medium text-gray-700 mb-1">Ticket (opcional)</label>
+                                <input type="file" accept="image/*,application/pdf"
+                                    @change="compraTicketFile = $event.target.files?.[0] || null"
+                                    class="w-full text-sm" />
+                                <template x-if="compraTicketUrl">
+                                    <a class="text-xs text-blue-700 hover:underline mt-1 inline-block" target="_blank"
+                                        :href="compraTicketUrl">Ver ticket actual</a>
+                                </template>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-white border border-gray-200 rounded-xl overflow-hidden">
+                        <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+                            <div>
+                                <h3 class="font-semibold text-gray-900">Items</h3>
+                                <p class="text-xs text-gray-600 mt-1">
+                                    <span x-text="`Productos: ${compraTotalProductos}`"></span>
+                                    <span class="mx-1">·</span>
+                                    <span x-text="`EPIs: ${compraTotalUnidades}`"></span>
+                                    <span class="mx-1">·</span>
+                                    <span x-text="`Total: ${formatMoney(compraTotalPrecio)}`"></span>
+                                </p>
+                            </div>
+                            <button type="button"
+                                class="px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50"
+                                :disabled="compraSaving || compraItems.length === 0" @click="saveCompra()">
+                                Guardar
+                            </button>
+                        </div>
+
+                        <template x-if="compraItems.length === 0">
+                            <div class="p-6 text-gray-700">Añade EPIs para crear la compra.</div>
+                        </template>
+
+                        <div class="divide-y divide-gray-100" x-show="compraItems.length > 0">
+                            <template x-for="(it, idx) in compraItems" :key="it.epi_id">
+                                <div
+                                    class="p-4 sm:p-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                                    <div class="flex items-center gap-4 min-w-0">
+                                        <div
+                                            class="w-12 h-12 rounded-lg overflow-hidden bg-gray-100 flex items-center justify-center flex-shrink-0">
+                                            <template x-if="it.epi?.imagen_url">
+                                                <img :src="it.epi.imagen_url" :alt="`Imagen de ${it.epi.nombre}`"
+                                                    class="w-full h-full object-cover" />
+                                            </template>
+                                            <template x-if="!it.epi?.imagen_url">
+                                                <span class="text-gray-500 text-xs">Sin img</span>
+                                            </template>
+                                        </div>
+                                        <div class="min-w-0">
+                                            <p class="font-semibold text-gray-900 truncate"
+                                                x-text="it.epi?.nombre || 'EPI'"></p>
+                                            <p class="text-xs text-gray-600 truncate">
+                                                <span
+                                                    x-text="it.epi?.codigo ? `Código: ${it.epi.codigo}` : 'Sin código'"></span>
+                                                <span class="mx-1">·</span>
+                                                <span
+                                                    x-text="it.epi?.categoria ? `Categoría: ${it.epi.categoria}` : 'Sin categoría'"></span>
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    <div class="flex flex-col sm:flex-row items-stretch sm:items-end gap-3">
+                                        <div>
+                                            <label
+                                                class="block text-xs font-medium text-gray-700 mb-1">Cantidad</label>
+                                            <input type="number" min="1" x-model.number="it.cantidad"
+                                                class="w-28 rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500" />
+                                        </div>
+                                        <div>
+                                            <label
+                                                class="block text-xs font-medium text-gray-700 mb-1">Precio/epi</label>
+                                            <input type="number" min="0" step="0.01"
+                                                x-model.number="it.precio_unitario" placeholder="Opcional"
+                                                class="w-36 rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500" />
+                                        </div>
+                                        <button type="button"
+                                            class="px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700"
+                                            @click="removeCompraItem(idx)">
+                                            Quitar
+                                        </button>
+                                    </div>
+                                </div>
+                            </template>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -466,23 +1098,71 @@
                 modalTab: 'usuario', // usuario | catalogo
                 selectedUser: null,
                 asignacionesEnPosesion: [],
+                asignacionesAll: [],
+                historialAsignaciones: [],
+                recentAssignments: [],
                 userTotalEnPosesion: 0,
                 loadingAsignaciones: false,
+                expandedEpiId: null,
 
                 epis: [],
                 loadingEpis: false,
                 catalogoCount: 0,
+                showInactiveEpis: false,
 
                 saving: false,
 
+                recentModalOpen: false,
+                recentModalUser: null,
+                recentModalItems: [],
+                recentModalLoading: false,
+                recentModalPage: 1,
+                recentModalLastPage: 1,
+                recentModalTotal: 0,
+                recentModalPer: 10,
+
+                comprasOpen: false,
+                comprasLoading: false,
+                compras: [],
+                comprasFilterDate: '',
+                comprasFilterEpiId: null,
+                comprasFilterEpiQuery: '',
+                comprasFilterEpiSuggestionsOpen: false,
+                comprasFilterEpiSuggestions: [],
+
+                compraModalOpen: false,
+                compraMode: 'create', // create | edit
+                compraId: null,
+                compraSaving: false,
+                compraEstadoComprada: false,
+                compraTicketFile: null,
+                compraTicketUrl: null,
+                compraItems: [],
+                compraEpiQuery: '',
+                compraEpiSuggestionsOpen: false,
+                compraEpiSuggestions: [],
+
+                userEpiFilterQuery: '',
+
                 stats: {
                     usuariosConEpis: 0,
-                    topNombre: null,
-                    topCantidad: null,
                 },
 
-                assignForm: { epi_id: '', cantidad: 1, notas: '' },
-                epiCreate: { nombre: '', codigo: '', categoria: '', descripcion: '', activo: true },
+                assignForm: {
+                    epi_id: '',
+                    cantidad: 1,
+                    notas: ''
+                },
+                epiAssignQuery: '',
+                epiAssignSuggestionsOpen: false,
+                epiAssignSuggestions: [],
+                epiCreate: {
+                    nombre: '',
+                    codigo: '',
+                    categoria: '',
+                    descripcion: '',
+                    activo: true
+                },
                 epiCreateFile: null,
 
                 get modalTitle() {
@@ -490,9 +1170,76 @@
                     return this.selectedUser ? this.selectedUser.nombre_completo : 'Usuario';
                 },
 
+                get selectedEpiLabel() {
+                    const e = this.epis.find(x => x.id === this.assignForm.epi_id);
+                    if (!e) return '';
+                    const code = e.codigo ? ` (${e.codigo})` : '';
+                    const cat = e.categoria ? ` · ${e.categoria}` : '';
+                    return `${e.nombre}${code}${cat}`;
+                },
+
+                get recentModalSummary() {
+                    if (!this.recentModalUser) return '';
+                    const total = this.recentModalTotal || 0;
+                    if (total === 0) return 'Sin movimientos.';
+                    const page = this.recentModalPage || 1;
+                    const per = this.recentModalPer || 10;
+                    const start = (page - 1) * per + 1;
+                    const end = Math.min(start + (this.recentModalItems?.length || 0) - 1, total);
+                    return `Mostrando ${start}-${end} de ${total} · Página ${page}/${this.recentModalLastPage}`;
+                },
+
+                get catalogEpis() {
+                    const list = (this.epis || []).slice();
+                    const showInactive = !!this.showInactiveEpis;
+                    const filtered = showInactive ? list : list.filter(e => e.activo);
+                    filtered.sort((a, b) => {
+                        const aInact = a.activo ? 0 : 1;
+                        const bInact = b.activo ? 0 : 1;
+                        if (aInact !== bInact) return bInact - aInact; // inactivos primero
+                        return (a.nombre || '').localeCompare(b.nombre || '');
+                    });
+                    return filtered;
+                },
+
+                get comprasFilterEpiLabel() {
+                    const e = this.epis.find(x => x.id === this.comprasFilterEpiId);
+                    if (!e) return '';
+                    const code = e.codigo ? ` (${e.codigo})` : '';
+                    const cat = e.categoria ? ` · ${e.categoria}` : '';
+                    return `${e.nombre}${code}${cat}`;
+                },
+
                 async init() {
                     await this.refreshUsers();
                     await this.refreshEpis();
+
+                    document.addEventListener('click', (ev) => {
+                        const el = ev.target;
+                        if (!el) return;
+
+                        if (this.suggestionsOpen) {
+                            const userBox = el.closest('[data-user-suggest]');
+                            if (!userBox) this.closeSuggestions();
+                        }
+
+                        if (this.epiAssignSuggestionsOpen) {
+                            const epiBox = el.closest('[data-epi-suggest]');
+                            if (!epiBox) this.closeEpiAssignSuggestions();
+                        }
+
+                        if (this.compraEpiSuggestionsOpen) {
+                            const compraBox = el.closest('[data-compra-epi-suggest]');
+                            if (!compraBox) this.closeCompraEpiSuggestions();
+                        }
+
+                        if (this.comprasFilterEpiSuggestionsOpen) {
+                            const compraFilterBox = el.closest('[data-compras-filter-epi-suggest]');
+                            if (!compraFilterBox) this.closeComprasFilterEpiSuggestions();
+                        }
+                    }, {
+                        capture: true
+                    });
                 },
 
                 csrf() {
@@ -500,10 +1247,16 @@
                 },
 
                 async api(url, options = {}) {
-                    const headers = options.headers ? { ...options.headers } : {};
+                    const headers = options.headers ? {
+                        ...options.headers
+                    } : {};
                     if (!headers['X-CSRF-TOKEN']) headers['X-CSRF-TOKEN'] = this.csrf();
                     if (!headers['Accept']) headers['Accept'] = 'application/json';
-                    return fetch(url, { credentials: 'same-origin', ...options, headers });
+                    return fetch(url, {
+                        credentials: 'same-origin',
+                        ...options,
+                        headers
+                    });
                 },
 
                 normalize(str) {
@@ -521,7 +1274,8 @@
                 },
 
                 buildHaystack(u) {
-                    const fullName = `${u.name || ''} ${u.primer_apellido || ''} ${u.segundo_apellido || ''}`.replace(/\s+/g, ' ').trim();
+                    const fullName = `${u.name || ''} ${u.primer_apellido || ''} ${u.segundo_apellido || ''}`.replace(
+                        /\s+/g, ' ').trim();
                     u._full_name = fullName;
                     const parts = [
                         fullName,
@@ -532,6 +1286,16 @@
                     ].join(' | ');
                     u._hay = this.normalize(parts);
                     u._hay_digits = this.digits(parts);
+                },
+
+                buildEpiHaystack(e) {
+                    const parts = [
+                        e.nombre || '',
+                        e.codigo || '',
+                        e.categoria || '',
+                        e.descripcion || '',
+                    ].join(' | ');
+                    e._hay = this.normalize(parts);
                 },
 
                 matches(u, q) {
@@ -550,6 +1314,14 @@
                     return false;
                 },
 
+                epiMatches(e, q) {
+                    const query = this.normalize(q);
+                    if (!query) return true;
+                    if (!e?._hay) this.buildEpiHaystack(e);
+                    const tokens = query.split(' ').filter(Boolean);
+                    return tokens.every(t => (e._hay || '').includes(t));
+                },
+
                 async refreshUsers() {
                     this.loadingUsers = true;
                     try {
@@ -561,8 +1333,6 @@
                         this.agendaUsers = users.filter(u => u.tiene_epis);
 
                         this.stats.usuariosConEpis = (data.stats?.usuarios_con_epis) ?? this.agendaUsers.length;
-                        this.stats.topNombre = data.stats?.top?.user?.nombre_completo || null;
-                        this.stats.topCantidad = data.stats?.top?.cantidad || null;
                     } finally {
                         this.loadingUsers = false;
                         this.updateSuggestions();
@@ -574,7 +1344,8 @@
                     try {
                         const res = await this.api(@js(route('epis.api.epis')));
                         const data = await res.json();
-                        this.epis = data.epis || [];
+                        this.epis = (data.epis || []);
+                        this.epis.forEach(e => this.buildEpiHaystack(e));
                         this.catalogoCount = this.epis.length;
                     } finally {
                         this.loadingEpis = false;
@@ -611,13 +1382,22 @@
                     this.selectedUser = u;
                     this.modalOpen = true;
                     this.modalTab = 'usuario';
-                    this.assignForm = { epi_id: '', cantidad: 1, notas: '' };
+                    this.assignForm = {
+                        epi_id: '',
+                        cantidad: 1,
+                        notas: ''
+                    };
+                    this.epiAssignQuery = '';
+                    this.epiAssignSuggestionsOpen = false;
+                    this.expandedEpiId = null;
+                    this.closeRecentModal();
                     await this.refreshAsignaciones();
                 },
 
                 async openCatalog() {
                     this.modalOpen = true;
                     this.modalTab = 'catalogo';
+                    this.showInactiveEpis = false;
                     await this.refreshEpis();
                 },
 
@@ -639,20 +1419,406 @@
                         const res = await this.api(url);
                         const data = await res.json();
                         this.asignacionesEnPosesion = data.en_posesion || [];
+                        this.asignacionesAll = data.asignaciones || [];
+                        this.historialAsignaciones = data.historial || [];
+                        this.recentAssignments = data.recent || [];
                         this.userTotalEnPosesion = data.total_en_posesion || 0;
                     } finally {
                         this.loadingAsignaciones = false;
                     }
                 },
 
+                formatDate(iso) {
+                    if (!iso) return '—';
+                    const d = new Date(iso);
+                    if (Number.isNaN(d.getTime())) return '—';
+                    return d.toLocaleDateString('es-ES');
+                },
+
+                formatDateTime(iso) {
+                    if (!iso) return '—';
+                    const d = new Date(iso);
+                    if (Number.isNaN(d.getTime())) return '—';
+                    return d.toLocaleString('es-ES');
+                },
+
+                formatMoney(value) {
+                    const n = Number(value || 0);
+                    return n.toLocaleString('es-ES', {
+                        style: 'currency',
+                        currency: 'EUR'
+                    });
+                },
+
+                toggleEpiGroup(epiId) {
+                    const id = parseInt(epiId, 10);
+                    if (!Number.isFinite(id)) return;
+                    const isOpening = this.expandedEpiId !== id;
+                    this.expandedEpiId = isOpening ? id : null;
+
+                    if (isOpening) {
+                        this.$nextTick?.(() => {
+                            const el = document.getElementById(`epi-details-${id}`);
+                            el?.scrollIntoView({
+                                behavior: 'smooth',
+                                block: 'start'
+                            });
+                        });
+                    }
+                },
+
+                openRecentModal() {
+                    if (!this.selectedUser) return;
+                    this.recentModalUser = this.selectedUser;
+                    this.recentModalOpen = true;
+                    this.loadRecentModalPage(1);
+                },
+
+                closeRecentModal() {
+                    this.recentModalOpen = false;
+                    this.recentModalUser = null;
+                    this.recentModalItems = [];
+                    this.recentModalLoading = false;
+                    this.recentModalPage = 1;
+                    this.recentModalLastPage = 1;
+                    this.recentModalTotal = 0;
+                },
+
+                async openRecentModalForUser(u) {
+                    if (!u?.id) return;
+                    this.recentModalUser = u;
+                    this.recentModalItems = [];
+                    this.recentModalOpen = true;
+                    await this.loadRecentModalPage(1);
+                },
+
+                async loadRecentModalPage(page) {
+                    if (!this.recentModalUser?.id) return;
+                    const target = Math.max(1, Number(page) || 1);
+                    this.recentModalLoading = true;
+                    try {
+                        const url = @js(url('/epis/api/users/__ID__/movimientos'))
+                            .replace('__ID__', this.recentModalUser.id) +
+                            `?page=${target}&per=${this.recentModalPer}`;
+
+                        const res = await this.api(url);
+                        const data = await res.json();
+                        this.recentModalItems = data.items || [];
+                        this.recentModalPage = data.meta?.current_page || target;
+                        this.recentModalLastPage = data.meta?.last_page || 1;
+                        this.recentModalTotal = data.meta?.total || 0;
+                    } finally {
+                        this.recentModalLoading = false;
+                    }
+                },
+
+                async openCompras() {
+                    this.comprasOpen = true;
+                    await this.refreshCompras();
+                },
+
+                closeCompras() {
+                    this.comprasOpen = false;
+                },
+
+                async refreshCompras() {
+                    this.comprasLoading = true;
+                    try {
+                        const url = new URL(@js(route('epis.api.compras')), window.location.origin);
+                        if (this.comprasFilterDate) url.searchParams.set('date', this.comprasFilterDate);
+                        if (this.comprasFilterEpiId) url.searchParams.set('epi_id', this.comprasFilterEpiId);
+
+                        const res = await this.api(url.toString());
+                        const data = await res.json();
+                        this.compras = data.compras || [];
+                    } finally {
+                        this.comprasLoading = false;
+                    }
+                },
+
+                openComprasFilterEpiSuggestions() {
+                    this.comprasFilterEpiSuggestionsOpen = true;
+                    this.updateComprasFilterEpiSuggestions();
+                },
+
+                closeComprasFilterEpiSuggestions() {
+                    this.comprasFilterEpiSuggestionsOpen = false;
+                },
+
+                onComprasFilterEpiQueryChange() {
+                    this.openComprasFilterEpiSuggestions();
+                    this.updateComprasFilterEpiSuggestions();
+                },
+
+                updateComprasFilterEpiSuggestions() {
+                    const q = this.comprasFilterEpiQuery;
+                    const filtered = this.epis
+                        .filter(e => this.epiMatches(e, q))
+                        .slice(0, 10);
+                    this.comprasFilterEpiSuggestions = filtered;
+                },
+
+                async selectComprasFilterEpi(e) {
+                    this.comprasFilterEpiId = e.id;
+                    this.comprasFilterEpiQuery = e.codigo ? `${e.nombre} (${e.codigo})` : e.nombre;
+                    this.closeComprasFilterEpiSuggestions();
+                    await this.refreshCompras();
+                },
+
+                async clearComprasFilterEpi() {
+                    this.comprasFilterEpiId = null;
+                    this.comprasFilterEpiQuery = '';
+                    this.closeComprasFilterEpiSuggestions();
+                    await this.refreshCompras();
+                },
+
+                openCompraCreate() {
+                    this.compraMode = 'create';
+                    this.compraId = null;
+                    this.compraItems = [];
+                    this.compraEstadoComprada = false;
+                    this.compraTicketFile = null;
+                    this.compraTicketUrl = null;
+                    this.compraEpiQuery = '';
+                    this.compraEpiSuggestionsOpen = false;
+                    this.compraEpiSuggestions = [];
+                    this.compraModalOpen = true;
+                },
+
+                async openCompraEdit(id) {
+                    this.compraMode = 'edit';
+                    this.compraId = id;
+                    this.compraItems = [];
+                    this.compraEstadoComprada = false;
+                    this.compraTicketFile = null;
+                    this.compraTicketUrl = null;
+                    this.compraEpiQuery = '';
+                    this.compraEpiSuggestionsOpen = false;
+                    this.compraEpiSuggestions = [];
+                    this.compraModalOpen = true;
+
+                    const res = await this.api(@js(url('/epis/api/compras/__ID__')).replace('__ID__', id));
+                    const data = await res.json();
+                    const compra = data.compra;
+                    this.compraEstadoComprada = compra?.estado === 'comprada';
+                    this.compraTicketUrl = compra?.ticket_url || null;
+                    this.compraItems = (compra?.items || []).map(it => ({
+                        epi_id: it.epi_id,
+                        cantidad: it.cantidad || 1,
+                        precio_unitario: it.precio_unitario,
+                        epi: it.epi,
+                    }));
+                },
+
+                closeCompraModal() {
+                    this.compraModalOpen = false;
+                    this.compraTicketFile = null;
+                    this.compraEpiSuggestionsOpen = false;
+                },
+
+                async toggleCompraEstado(c) {
+                    const next = c.estado === 'comprada' ? 'pendiente' : 'comprada';
+                    const url = @js(url('/epis/api/compras/__ID__')).replace('__ID__', c.id);
+                    await this.api(url, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            estado: next
+                        }),
+                    });
+                    await this.refreshCompras();
+                },
+
+                get compraTotalProductos() {
+                    return this.compraItems.length;
+                },
+
+                get compraTotalUnidades() {
+                    return this.compraItems.reduce((acc, it) => acc + (Number(it.cantidad) || 0), 0);
+                },
+
+                get compraTotalPrecio() {
+                    return this.compraItems.reduce((acc, it) => {
+                        const qty = Number(it.cantidad) || 0;
+                        const price = Number(it.precio_unitario) || 0;
+                        return acc + qty * price;
+                    }, 0);
+                },
+
+                openCompraEpiSuggestions() {
+                    this.compraEpiSuggestionsOpen = true;
+                    this.updateCompraEpiSuggestions();
+                },
+
+                closeCompraEpiSuggestions() {
+                    this.compraEpiSuggestionsOpen = false;
+                },
+
+                onCompraEpiQueryChange() {
+                    this.openCompraEpiSuggestions();
+                    this.updateCompraEpiSuggestions();
+                },
+
+                updateCompraEpiSuggestions() {
+                    const q = this.compraEpiQuery;
+                    const filtered = this.epis
+                        .filter(e => e.activo)
+                        .filter(e => this.epiMatches(e, q))
+                        .slice(0, 10);
+                    this.compraEpiSuggestions = filtered;
+                },
+
+                get userEpiGroupsFiltered() {
+                    const q = (this.userEpiFilterQuery || '').trim();
+                    if (!q) return this.userEpiGroups;
+                    const query = this.normalize(q);
+                    const tokens = query.split(' ').filter(Boolean);
+                    return this.userEpiGroups.filter(g => {
+                        const name = this.normalize(g?.epi?.nombre || '');
+                        return tokens.every(t => name.includes(t));
+                    });
+                },
+
+                addCompraItem(e) {
+                    const existing = this.compraItems.find(it => it.epi_id === e.id);
+                    if (existing) {
+                        existing.cantidad = (Number(existing.cantidad) || 0) + 1;
+                    } else {
+                        this.compraItems.push({
+                            epi_id: e.id,
+                            cantidad: 1,
+                            precio_unitario: null,
+                            epi: e,
+                        });
+                    }
+                    this.compraEpiQuery = '';
+                    this.closeCompraEpiSuggestions();
+                },
+
+                removeCompraItem(idx) {
+                    this.compraItems.splice(idx, 1);
+                },
+
+                async saveCompra() {
+                    if (this.compraItems.length === 0) return;
+                    this.compraSaving = true;
+                    try {
+                        const fd = new FormData();
+                        fd.append('estado', this.compraEstadoComprada ? 'comprada' : 'pendiente');
+                        fd.append('items', JSON.stringify(this.compraItems.map(it => ({
+                            epi_id: it.epi_id,
+                            cantidad: Number(it.cantidad) || 1,
+                            precio_unitario: (it.precio_unitario === null || it.precio_unitario ===
+                                    '' || Number.isNaN(Number(it.precio_unitario))) ?
+                                null : Number(it.precio_unitario),
+                        }))));
+                        if (this.compraTicketFile) fd.append('ticket', this.compraTicketFile);
+
+                        if (this.compraMode === 'create') {
+                            const res = await this.api(@js(route('epis.api.compras.store')), {
+                                method: 'POST',
+                                body: fd
+                            });
+                            if (!res.ok) throw new Error('No se pudo crear la compra.');
+                        } else {
+                            const url = @js(url('/epis/api/compras/__ID__')).replace('__ID__', this.compraId);
+                            const res = await this.api(url, {
+                                method: 'POST',
+                                body: fd
+                            });
+                            if (!res.ok) throw new Error('No se pudo actualizar la compra.');
+                        }
+
+                        await this.refreshCompras();
+                        this.closeCompraModal();
+                        this.comprasOpen = true;
+                    } finally {
+                        this.compraSaving = false;
+                    }
+                },
+
+                get userEpiGroups() {
+                    if (!this.asignacionesAll || this.asignacionesAll.length === 0) return [];
+                    const map = new Map();
+                    for (const a of this.asignacionesAll) {
+                        if (!a.epi) continue;
+                        const key = a.epi.id;
+                        if (!map.has(key)) {
+                            map.set(key, {
+                                epi: a.epi,
+                                asignaciones: [],
+                                total_en_posesion: 0,
+                                total_devueltos: 0
+                            });
+                        }
+                        const g = map.get(key);
+                        g.asignaciones.push(a);
+                        if (a.devuelto_en) g.total_devueltos += a.cantidad || 0;
+                        else g.total_en_posesion += a.cantidad || 0;
+                    }
+                    const groups = Array.from(map.values())
+                        .filter(g => g.total_en_posesion > 0)
+                        .map(g => {
+                            g.asignaciones.sort((x, y) => {
+                                const xPosesion = x.devuelto_en ? 1 : 0;
+                                const yPosesion = y.devuelto_en ? 1 : 0;
+                                if (xPosesion !== yPosesion) return xPosesion - yPosesion; // en posesión primero
+                                return (y.fecha_asignacion || '').localeCompare(x.fecha_asignacion || '');
+                            });
+                            return g;
+                        });
+                    groups.sort((a, b) => (b.total_en_posesion - a.total_en_posesion) || (a.epi.nombre || '')
+                        .localeCompare(b.epi.nombre || ''));
+                    return groups;
+                },
+
+                openEpiAssignSuggestions() {
+                    this.epiAssignSuggestionsOpen = true;
+                    this.updateEpiAssignSuggestions();
+                },
+
+                closeEpiAssignSuggestions() {
+                    this.epiAssignSuggestionsOpen = false;
+                },
+
+                onEpiAssignQueryChange() {
+                    this.openEpiAssignSuggestions();
+                    this.updateEpiAssignSuggestions();
+                },
+
+                updateEpiAssignSuggestions() {
+                    const q = this.epiAssignQuery;
+                    const filtered = this.epis
+                        .filter(e => e.activo)
+                        .filter(e => this.epiMatches(e, q))
+                        .slice(0, 10);
+                    this.epiAssignSuggestions = filtered;
+                },
+
+                selectEpiToAssign(e) {
+                    this.assignForm.epi_id = e.id;
+                    this.epiAssignQuery = e.codigo ? `${e.nombre} (${e.codigo})` : e.nombre;
+                    this.closeEpiAssignSuggestions();
+                },
+
                 async assignEpi() {
                     if (!this.selectedUser) return;
                     this.saving = true;
                     try {
+                        const selected = this.epis.find(e => e.id === this.assignForm.epi_id);
+                        if (!selected || !selected.activo) {
+                            alert('No puedes asignar un EPI inactivo.');
+                            return;
+                        }
+
                         const url = @js(url('/epis/usuarios/__ID__/asignaciones')).replace('__ID__', this.selectedUser.id);
                         const res = await this.api(url, {
                             method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
                             body: JSON.stringify({
                                 epi_id: this.assignForm.epi_id,
                                 cantidad: this.assignForm.cantidad,
@@ -660,7 +1826,13 @@
                             }),
                         });
                         if (!res.ok) throw new Error('No se pudo asignar.');
-                        this.assignForm = { epi_id: '', cantidad: 1, notas: '' };
+                        this.assignForm = {
+                            epi_id: '',
+                            cantidad: 1,
+                            notas: ''
+                        };
+                        this.epiAssignQuery = '';
+                        this.closeEpiAssignSuggestions();
                         await this.refreshAsignaciones();
                         await this.refreshUsers();
                     } finally {
@@ -672,10 +1844,30 @@
                     if (!this.selectedUser) return;
                     this.saving = true;
                     try {
+                        let cantidad = 1;
+                        if ((a.cantidad || 0) > 1) {
+                            const raw = prompt(`¿Cuántos quieres devolver? (1-${a.cantidad})`, '1');
+                            if (raw === null) return;
+                            const n = parseInt(raw, 10);
+                            if (!Number.isFinite(n) || n < 1 || n > a.cantidad) {
+                                alert('Cantidad inválida.');
+                                return;
+                            }
+                            cantidad = n;
+                        }
+
                         const url = @js(url('/epis/usuarios/__UID__/asignaciones/__AID__/devolver'))
                             .replace('__UID__', this.selectedUser.id)
                             .replace('__AID__', a.id);
-                        const res = await this.api(url, { method: 'PATCH' });
+                        const res = await this.api(url, {
+                            method: 'PATCH',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({
+                                cantidad
+                            }),
+                        });
                         if (!res.ok) throw new Error('No se pudo devolver.');
                         await this.refreshAsignaciones();
                         await this.refreshUsers();
@@ -695,9 +1887,18 @@
                         fd.append('activo', this.epiCreate.activo ? '1' : '0');
                         if (this.epiCreateFile) fd.append('imagen', this.epiCreateFile);
 
-                        const res = await this.api(@js(route('epis.catalogo.store')), { method: 'POST', body: fd });
+                        const res = await this.api(@js(route('epis.catalogo.store')), {
+                            method: 'POST',
+                            body: fd
+                        });
                         if (!res.ok) throw new Error('No se pudo crear.');
-                        this.epiCreate = { nombre: '', codigo: '', categoria: '', descripcion: '', activo: true };
+                        this.epiCreate = {
+                            nombre: '',
+                            codigo: '',
+                            categoria: '',
+                            descripcion: '',
+                            activo: true
+                        };
                         this.epiCreateFile = null;
                         await this.refreshEpis();
                     } finally {
@@ -718,7 +1919,10 @@
                         if (form._file) fd.append('imagen', form._file);
 
                         const url = @js(url('/epis/catalogo/__ID__')).replace('__ID__', id);
-                        const res = await this.api(url, { method: 'POST', body: fd });
+                        const res = await this.api(url, {
+                            method: 'POST',
+                            body: fd
+                        });
                         if (!res.ok) throw new Error('No se pudo actualizar.');
                         await this.refreshEpis();
                     } finally {
@@ -734,7 +1938,10 @@
                         const url = @js(url('/epis/catalogo/__ID__')).replace('__ID__', e.id);
                         const fd = new FormData();
                         fd.append('_method', 'DELETE');
-                        const res = await this.api(url, { method: 'POST', body: fd });
+                        const res = await this.api(url, {
+                            method: 'POST',
+                            body: fd
+                        });
                         if (!res.ok) throw new Error('No se pudo eliminar.');
                         await this.refreshEpis();
                     } finally {
