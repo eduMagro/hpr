@@ -51,6 +51,7 @@ use App\Http\Controllers\PedidoAlmacenVentaController;
 use App\Http\Controllers\ClienteAlmacenController;
 use App\Http\Controllers\FabricacionLogController;
 use App\Http\Controllers\AtajosController;
+use App\Http\Controllers\EpisController;
 use App\Http\Controllers\FcmTokenController;
 use App\Services\PlanillaService;
 use Illuminate\Support\Facades\Log;
@@ -67,6 +68,21 @@ Route::get('/sistema', [PageController::class, 'sistema'])->middleware(['auth', 
 
 // Atajos de teclado
 Route::get('/atajos', [AtajosController::class, 'index'])->middleware(['auth', 'verified'])->name('atajos.index');
+
+// EPIs (Equipos de Protección Individual) por trabajador
+Route::middleware(['auth', 'verified'])->group(function () {
+    Route::get('/epis', [EpisController::class, 'index'])->name('epis.index');
+    Route::get('/epis/api/users', [EpisController::class, 'apiUsers'])->name('epis.api.users');
+    Route::get('/epis/api/epis', [EpisController::class, 'apiEpis'])->name('epis.api.epis');
+    Route::get('/epis/api/users/{user}/asignaciones', [EpisController::class, 'apiUserAsignaciones'])->name('epis.api.users.asignaciones');
+
+    Route::post('/epis/catalogo', [EpisController::class, 'storeEpi'])->name('epis.catalogo.store');
+    Route::put('/epis/catalogo/{epi}', [EpisController::class, 'updateEpi'])->name('epis.catalogo.update');
+    Route::delete('/epis/catalogo/{epi}', [EpisController::class, 'destroyEpi'])->name('epis.catalogo.destroy');
+
+    Route::post('/epis/usuarios/{user}/asignaciones', [EpisController::class, 'asignarAUsuario'])->name('epis.usuarios.asignaciones.store');
+    Route::patch('/epis/usuarios/{user}/asignaciones/{asignacion}/devolver', [EpisController::class, 'devolverAsignacion'])->name('epis.usuarios.asignaciones.devolver');
+});
 
 // Rutas antiguas redirigidas (compatibilidad)
 Route::get('/inventario', function () {
