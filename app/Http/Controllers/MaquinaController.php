@@ -435,6 +435,11 @@ class MaquinaController extends Controller
                     'barras' => $e->barras,
                     'figura' => $e->figura,
                     'etiqueta_sub_id' => $e->etiqueta_sub_id,
+                    'coladas' => [
+                        'colada1' => $e->producto ? $e->producto->n_colada : null,
+                        'colada2' => $e->producto2 ? $e->producto2->n_colada : null,
+                        'colada3' => $e->producto3 ? $e->producto3->n_colada : null,
+                    ],
                 ])->values()->toArray(),
             ];
         })->values();

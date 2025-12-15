@@ -135,7 +135,20 @@
             elementos: @json($grupo['elementos'] ?? [])
         };
 
+        console.log('🔍 DEBUG Grupo SVG:', {
+            grupoId: {{ $grupo['id'] }},
+            contenedorSvgId: {{ $contenedorSvgId }},
+            elementosCount: grupoData.elementos.length,
+            elementos: grupoData.elementos
+        });
+
         function renderizarGrupo() {
+            const contenedor = document.getElementById("contenedor-svg-{{ $contenedorSvgId }}");
+            console.log('🎨 Renderizando grupo SVG:', {
+                contenedorExists: !!contenedor,
+                funcionExists: typeof window.renderizarGrupoSVG === 'function'
+            });
+
             if (typeof window.renderizarGrupoSVG === 'function') {
                 window.renderizarGrupoSVG(grupoData, {{ $grupo['id'] }});
             }

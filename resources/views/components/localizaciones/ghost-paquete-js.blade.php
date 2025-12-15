@@ -330,6 +330,18 @@ window.GhostPaquete = (function() {
             btnConfirm.innerHTML = '<svg class="icon" style="animation:spin 1s linear infinite" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none" opacity="0.25"/><path d="M12 2a10 10 0 0 1 10 10" stroke="currentColor" stroke-width="4" fill="none"/></svg>';
         }
 
+        var payload = {
+            nave_id: this.naveId,
+            paquete_id: this.paqueteMeta.paquete_id,
+            x1: x1r,
+            y1: y1r,
+            x2: x2r,
+            y2: y2r
+        };
+
+        console.log('[GhostPaquete] Guardando ubicación:', payload);
+        console.log('[GhostPaquete] Ruta:', this.rutaGuardar);
+
         try {
             var resp = await fetch(this.rutaGuardar, {
                 method: 'POST',
@@ -338,21 +350,14 @@ window.GhostPaquete = (function() {
                     'Content-Type': 'application/json',
                     'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || ''
                 },
-                body: JSON.stringify({
-                    nave_id: this.naveId,
-                    tipo: 'paquete',
-                    nombre: this.paqueteMeta.codigo,
-                    paquete_id: this.paqueteMeta.paquete_id,
-                    x1: x1r,
-                    y1: y1r,
-                    x2: x2r,
-                    y2: y2r
-                })
+                body: JSON.stringify(payload)
             });
 
+            var responseText = await resp.text();
+            console.log('[GhostPaquete] Respuesta HTTP', resp.status, ':', responseText);
+
             if (!resp.ok) {
-                var t = await resp.text();
-                throw new Error(t || 'HTTP ' + resp.status);
+                throw new Error(responseText || 'HTTP ' + resp.status);
             }
 
             // Éxito
@@ -373,8 +378,25 @@ window.GhostPaquete = (function() {
             self.onSuccess();
 
         } catch (err) {
-            console.error('Error al guardar ubicación:', err);
-            alert('No se pudo guardar la localización del paquete.');
+            console.error('[GhostPaquete] Error al guardar ubicación:', err);
+            console.error('[GhostPaquete] Payload enviado:', payload);
+
+            var errorMsg = 'No se pudo guardar la localización del paquete.';
+            if (err.message) {
+                // Intentar parsear si es JSON
+                try {
+                    var errJson = JSON.parse(err.message);
+                    if (errJson.message) errorMsg += '\n' + errJson.message;
+                    if (errJson.errors) {
+                        Object.keys(errJson.errors).forEach(function(key) {
+                            errorMsg += '\n- ' + key + ': ' + errJson.errors[key].join(', ');
+                        });
+                    }
+                } catch(e) {
+                    errorMsg += '\n' + err.message;
+                }
+            }
+            alert(errorMsg);
 
             if (btnConfirm) {
                 btnConfirm.disabled = false;
