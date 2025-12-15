@@ -630,7 +630,7 @@ class EntradaController extends Controller
         return redirect()->back()->with('success', 'PDF del albarán subido correctamente.');
     }
 
-    public function descargarPdf($id)
+    public function descargarPdf(Request $request, $id)
     {
         $entrada = Entrada::findOrFail($id);
         $ruta = "albaranes_entrada/{$entrada->pdf_albaran}";
@@ -639,9 +639,11 @@ class EntradaController extends Controller
             abort(404, 'PDF no encontrado.');
         }
 
+        $forzarDescarga = $request->boolean('download');
+        $disposition = $forzarDescarga ? 'attachment' : 'inline';
         return response()->file(Storage::disk('private')->path($ruta), [
             'Content-Type' => 'application/pdf',
-            'Content-Disposition' => 'inline; filename="Albaran_' . $entrada->id . '.pdf"',
+            'Content-Disposition' => $disposition . '; filename="Albaran_' . $entrada->id . '.pdf"',
         ]);
     }
     public function cerrar(Request $request, $id)

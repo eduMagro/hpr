@@ -177,10 +177,16 @@
                         {{-- PDF adjunto --}}
                         <td class="px-3 py-2">
                             @if ($entrada->pdf_albaran)
-                                <a href="{{ route('entradas.crearDescargarPdf', $entrada->id) }}" wire:navigate target="_blank"
-                                    class="text-green-600 font-semibold hover:underline">
-                                    {{ $entrada->pdf_albaran }}
-                                </a>
+                                <div class="flex justify-center gap-1">
+                                    <a href="{{ route('entradas.crearDescargarPdf', $entrada->id) }}" target="_blank" rel="noopener noreferrer"
+                                        class="text-white bg-blue-600 hover:bg-blue-700 px-2 py-1 rounded text-[10px] font-semibold transition">
+                                        Ver
+                                    </a>
+                                    <a href="{{ route('entradas.crearDescargarPdf', $entrada->id) }}?download=1" download
+                                        class="text-blue-700 bg-blue-100 hover:bg-blue-200 px-2 py-1 rounded text-[10px] font-semibold transition">
+                                        Descargar
+                                    </a>
+                                </div>
                             @else
                                 <span class="text-red-500">No</span>
                             @endif
