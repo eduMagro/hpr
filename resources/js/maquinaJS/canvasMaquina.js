@@ -1035,20 +1035,61 @@ window.renderizarGrupoSVG = function renderizarGrupoSVG(grupo, gidx) {
         window.__angleBoxesGroup = [];
         window.__legendBoxesGroup = [];
 
-        // ===== leyenda: preparar entradas primero, dibujarla YA para reservar espacio =====
-        const legendEntries = (grupo.elementos || []).map((elemento, idx) => {
-            const barras = elemento.barras != null ? elemento.barras : 0;
-            let diametro = "N/A";
+        // ===== AGRUPAR elementos con mismo diámetro+dimensiones, sumando barras =====
+        const elementosAgrupados = [];
+        const gruposMap = new Map(); // key: "diametro|dimensiones" -> índice en elementosAgrupados
+
+        (grupo.elementos || []).forEach((elemento) => {
+            // Normalizar diámetro
+            let diametroNorm = "0";
             if (elemento.diametro != null && elemento.diametro !== "") {
                 const dstr = String(elemento.diametro).replace(",", ".");
                 const mtch = dstr.match(/-?\d+(?:\.\d+)?/);
                 if (mtch) {
                     const dn = parseFloat(mtch[0]);
-                    if (isFinite(dn)) diametro = String(Math.round(dn));
+                    if (isFinite(dn)) diametroNorm = String(Math.round(dn));
                 }
             }
 
-            // Construir texto de coladas: primero de la etiqueta (primer/segundo clic), luego de elementos
+            // Normalizar dimensiones (trim, lowercase)
+            const dimensionesNorm = (elemento.dimensiones || "barra").trim().toLowerCase();
+            const key = `${diametroNorm}|${dimensionesNorm}`;
+
+            if (gruposMap.has(key)) {
+                // Ya existe, sumar barras
+                const idx = gruposMap.get(key);
+                elementosAgrupados[idx].barrasTotal += (elemento.barras || 0);
+                // Acumular coladas únicas
+                if (elemento.coladas?.colada1 && !elementosAgrupados[idx].coladasSet.has(elemento.coladas.colada1)) {
+                    elementosAgrupados[idx].coladasSet.add(elemento.coladas.colada1);
+                }
+                if (elemento.coladas?.colada2 && !elementosAgrupados[idx].coladasSet.has(elemento.coladas.colada2)) {
+                    elementosAgrupados[idx].coladasSet.add(elemento.coladas.colada2);
+                }
+                if (elemento.coladas?.colada3 && !elementosAgrupados[idx].coladasSet.has(elemento.coladas.colada3)) {
+                    elementosAgrupados[idx].coladasSet.add(elemento.coladas.colada3);
+                }
+            } else {
+                // Nuevo grupo
+                const coladasSet = new Set();
+                if (elemento.coladas?.colada1) coladasSet.add(elemento.coladas.colada1);
+                if (elemento.coladas?.colada2) coladasSet.add(elemento.coladas.colada2);
+                if (elemento.coladas?.colada3) coladasSet.add(elemento.coladas.colada3);
+
+                elementosAgrupados.push({
+                    elemento: elemento, // Elemento representativo para dibujar
+                    diametro: diametroNorm,
+                    dimensiones: elemento.dimensiones,
+                    barrasTotal: elemento.barras || 0,
+                    coladasSet: coladasSet,
+                });
+                gruposMap.set(key, elementosAgrupados.length - 1);
+            }
+        });
+
+        // ===== leyenda: usar elementos agrupados (únicos) con suma de barras =====
+        const legendEntries = elementosAgrupados.map((grp, idx) => {
+            // Construir texto de coladas: primero de la etiqueta, luego del grupo
             const coladas = [];
 
             // Colada de la etiqueta (asignada en primer clic)
@@ -1060,28 +1101,23 @@ window.renderizarGrupoSVG = function renderizarGrupoSVG(grupo, gidx) {
                 coladas.push(grupo.colada_etiqueta_2);
             }
 
-            // Si no hay coladas de etiqueta, usar las de elementos (sistema original)
-            if (coladas.length === 0) {
-                if (elemento.coladas?.colada1)
-                    coladas.push(elemento.coladas.colada1);
-                if (elemento.coladas?.colada2)
-                    coladas.push(elemento.coladas.colada2);
-                if (elemento.coladas?.colada3)
-                    coladas.push(elemento.coladas.colada3);
+            // Si no hay coladas de etiqueta, usar las del grupo de elementos
+            if (coladas.length === 0 && grp.coladasSet.size > 0) {
+                coladas.push(...grp.coladasSet);
             }
 
-            const textColadas =
-                coladas.length > 0 ? ` (${coladas.join(", ")})` : "";
+            const textColadas = coladas.length > 0 ? ` (${coladas.join(", ")})` : "";
 
             return {
                 letter: indexToLetters(idx),
-                text: `Ø${diametro} x${barras}${textColadas}`,
+                text: `Ø${grp.diametro} x${grp.barrasTotal}${textColadas}`,
             };
         });
         drawLegendBottomLeft(svg, legendEntries, ancho, alto); // ← primero, para evitar solapes con todo lo demás
 
-        // ====== medir piezas y decidir escala por elemento ======
-        const preproc = grupo.elementos.map((el) => {
+        // ====== medir piezas usando elementos únicos (agrupados) ======
+        const preproc = elementosAgrupados.map((grp) => {
+            const el = grp.elemento;
             const dimsRaw = extraerDimensiones(el.dimensiones || "");
             const dimsNoZero = combinarRectasConCeros(dimsRaw);
             let maxLinear = 0;
@@ -1113,8 +1149,9 @@ window.renderizarGrupoSVG = function renderizarGrupoSVG(grupo, gidx) {
             );
         }
 
-        // ====== bucle de pintado ======
-        grupo.elementos.forEach(function (elemento, idx) {
+        // ====== bucle de pintado (solo elementos únicos) ======
+        elementosAgrupados.forEach(function (grp, idx) {
+            const elemento = grp.elemento;
             const { dimsNoZero, dimsScaled, medida: m } = preproc[idx];
 
             const loc = indexInCol.get(idx);

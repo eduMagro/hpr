@@ -12,6 +12,17 @@ function initTrabajoEtiqueta() {
     if (window.__trabajoEtiquetaInit) return;
     window.__trabajoEtiquetaInit = true;
 
+    // Restaurar decisiones de corte desde localStorage (por si hubo reload)
+    try {
+        const saved = localStorage.getItem("decisionCortePorEtiqueta");
+        if (saved) {
+            window._decisionCortePorEtiqueta = JSON.parse(saved);
+            console.log("📦 Decisiones de corte restauradas desde localStorage");
+        }
+    } catch (e) {
+        console.warn("No se pudieron restaurar decisiones de corte:", e);
+    }
+
     // console.log("🚀 Inicializando módulo trabajoEtiqueta.js");
 
     // ============================================================================
@@ -135,14 +146,51 @@ function initTrabajoEtiqueta() {
         //  A) MÁQUINAS DE BARRA (SL28 O CORTADORA MANUAL) → VÍA PATRONES (SYNTAX LINE)
         // ────────────────────────────────────────────────
         if ((esMaquinaBarra && esSL28) || esCortadoraManual) {
-            if (esFabricando && window._decisionCortePorEtiqueta?.[id]) {
-                await Cortes.enviarAFabricacionOptimizada({
-                    ...window._decisionCortePorEtiqueta[id],
-                    csrfToken,
-                    etiquetaId: id,
-                    onUpdate: actualizarDOMEtiqueta,
-                });
-                return;
+            // Si ya está fabricando (segundo clic), NO pedir desperdicio
+            if (esFabricando) {
+                // Intentar usar decisión guardada
+                if (window._decisionCortePorEtiqueta?.[id]) {
+                    await Cortes.enviarAFabricacionOptimizada({
+                        ...window._decisionCortePorEtiqueta[id],
+                        csrfToken,
+                        etiquetaId: id,
+                        onUpdate: actualizarDOMEtiqueta,
+                        pedirDesperdicio: false,  // Segundo clic: no pedir desperdicio
+                    });
+                    // Limpiar la decisión después de usar
+                    delete window._decisionCortePorEtiqueta[id];
+                    localStorage.setItem("decisionCortePorEtiqueta", JSON.stringify(window._decisionCortePorEtiqueta));
+                    return;
+                } else {
+                    // No hay decisión guardada, obtener longitud del producto asignado
+                    try {
+                        const res = await fetch(`/api/etiquetas/${id}/longitud-asignada`, {
+                            headers: {
+                                'Accept': 'application/json',
+                                'X-CSRF-TOKEN': csrfToken,
+                            }
+                        });
+
+                        if (res.ok) {
+                            const data = await res.json();
+                            if (data.longitud_barra_cm) {
+                                // Tenemos la longitud, ir directamente a fabricar sin pedir desperdicio
+                                await Cortes.enviarAFabricacionOptimizada({
+                                    longitudBarraCm: data.longitud_barra_cm,
+                                    etiquetas: [{ etiqueta_sub_id: id, elementos: [] }],
+                                    csrfToken,
+                                    etiquetaId: id,
+                                    onUpdate: actualizarDOMEtiqueta,
+                                    pedirDesperdicio: false,  // Segundo clic: no pedir desperdicio
+                                });
+                                return;
+                            }
+                        }
+                    } catch (err) {
+                        console.warn("No se pudo obtener longitud asignada:", err);
+                    }
+                    // Si falló, continúa para mostrar patrones
+                }
             }
 
             while (true) {
@@ -175,24 +223,33 @@ function initTrabajoEtiqueta() {
                     }
 
                     if (outcome?.accion === "fabricar") {
+                        // Obtener desperdicio estimado del patrón optimizado
+                        const desperdicioEstimadoCm = outcome.patronInfo?.desperdicio_cm || outcome.patron?.desperdicio_cm || 0;
+
                         window._decisionCortePorEtiqueta =
                             window._decisionCortePorEtiqueta || {};
 
                         window._decisionCortePorEtiqueta[id] = {
                             longitudBarraCm: outcome.longitudBarraCm,
                             etiquetas: outcome.etiquetas,
+                            desperdicioEstimadoCm,
                         };
                         localStorage.setItem(
                             "decisionCortePorEtiqueta",
                             JSON.stringify(window._decisionCortePorEtiqueta)
                         );
 
-                        await Cortes.enviarAFabricacionOptimizada({
+                        const resultado = await Cortes.enviarAFabricacionOptimizada({
                             ...window._decisionCortePorEtiqueta[id],
                             csrfToken,
                             etiquetaId: id,
                             onUpdate: actualizarDOMEtiqueta,
                         });
+
+                        // Si el usuario canceló el modal de desperdicio, volver al inicio
+                        if (resultado?.cancelled) {
+                            continue;
+                        }
                         return;
                     } else if (outcome === "volver") {
                         continue;
@@ -210,23 +267,32 @@ function initTrabajoEtiqueta() {
                         return;
                     }
 
+                    // Obtener desperdicio estimado del patrón seleccionado
+                    const desperdicioEstimadoCm = decision.patronInfo?.desperdicio_cm || decision.patron?.sobra_cm || 0;
+
                     window._decisionCortePorEtiqueta =
                         window._decisionCortePorEtiqueta || {};
                     window._decisionCortePorEtiqueta[id] = {
                         longitudBarraCm,
                         etiquetas: [{ etiqueta_sub_id: id, elementos: [] }],
+                        desperdicioEstimadoCm,
                     };
                     localStorage.setItem(
                         "decisionCortePorEtiqueta",
                         JSON.stringify(window._decisionCortePorEtiqueta)
                     );
 
-                    await Cortes.enviarAFabricacionOptimizada({
+                    const resultado = await Cortes.enviarAFabricacionOptimizada({
                         ...window._decisionCortePorEtiqueta[id],
                         csrfToken,
                         etiquetaId: id,
                         onUpdate: actualizarDOMEtiqueta,
                     });
+
+                    // Si el usuario canceló el modal de desperdicio, volver al inicio
+                    if (resultado?.cancelled) {
+                        continue;
+                    }
                     return;
                 }
 
@@ -285,6 +351,7 @@ function initTrabajoEtiqueta() {
         // Obtener estado actual del grupo
         const grupoCard = document.querySelector(`[data-grupo-id="${grupoId}"] .etiqueta-card`);
         const estadoActual = (grupoCard?.dataset?.estado || "pendiente").toLowerCase();
+        const diametro = parseInt(grupoCard?.dataset?.diametro) || 0;
 
         // Si ya está completada, no hacer nada
         if (["completada", "en-paquete", "empaquetada"].includes(estadoActual)) {
@@ -298,7 +365,70 @@ function initTrabajoEtiqueta() {
             return;
         }
 
-        // Llamar al endpoint del grupo
+        // Detectar tipo de máquina
+        const esMaquinaBarra = (window.MAQUINA_TIPO || "").toLowerCase() === "barra";
+        const esSL28 = (window.MAQUINA_CODIGO || "").toUpperCase() === "SL28";
+        const esCortadoraManual = (window.MAQUINA_TIPO_NOMBRE || "").toLowerCase() === "cortadora_manual";
+        const necesitaAsignarProducto = (esMaquinaBarra && esSL28) || esCortadoraManual;
+
+        // Obtener IDs de etiquetas del grupo
+        let etiquetasSubIds = [];
+        try {
+            etiquetasSubIds = JSON.parse(grupoCard?.dataset?.etiquetasSubIds || "[]");
+        } catch (e) {
+            console.warn("Error parseando etiquetas del grupo:", e);
+        }
+
+        const primeraEtiquetaId = grupoCard?.dataset?.primeraEtiquetaId;
+        const planillaId = grupoCard?.dataset?.planillaId || window.PLANILLA_ID;
+
+        // ────────────────────────────────────────────────
+        // PRIMER CLIC (pendiente -> fabricando): Asignar producto si es SL28/cortadora
+        // ────────────────────────────────────────────────
+        if (estadoActual === "pendiente" && necesitaAsignarProducto && primeraEtiquetaId) {
+            try {
+                // Mostrar modal de selección de producto usando la primera etiqueta
+                const decision = await Cortes.mejorCorteSimple(primeraEtiquetaId, diametro, csrfToken);
+
+                if (!decision) {
+                    return; // Usuario canceló
+                }
+
+                // Enviar fabricación optimizada para TODAS las etiquetas del grupo
+                const etiquetasParaFabricar = etiquetasSubIds.map(id => ({
+                    etiqueta_sub_id: id,
+                    patron_letras: decision.patron?.patron_letras || ""
+                }));
+
+                const resultado = await Cortes.enviarAFabricacionOptimizada({
+                    longitudBarraCm: decision.longitudBarraCm,
+                    etiquetas: etiquetasParaFabricar,
+                    csrfToken,
+                    etiquetaId: primeraEtiquetaId, // Para el callback de actualización
+                    onUpdate: (id, data) => {
+                        // Actualizar estado visual del grupo
+                        actualizarEstadoVisualGrupo(grupoCard, "fabricando", grupoId);
+                    },
+                    pedirDesperdicio: true,
+                });
+
+                if (resultado?.cancelled) {
+                    return; // Usuario canceló en el desperdicio
+                }
+
+                // Actualizar estado visual del grupo sin reload
+                actualizarEstadoVisualGrupo(grupoCard, "fabricando", grupoId);
+                showAlert("info", "Fabricando", `Grupo iniciado (${etiquetasSubIds.length} etiquetas)`);
+
+            } catch (err) {
+                showErrorAlert(err);
+            }
+            return;
+        }
+
+        // ────────────────────────────────────────────────
+        // SEGUNDO CLIC (fabricando -> completada) o máquinas normales
+        // ────────────────────────────────────────────────
         try {
             const res = await fetch(`/api/etiquetas/resumir/${grupoId}/estado`, {
                 method: "PUT",
@@ -316,33 +446,127 @@ function initTrabajoEtiqueta() {
                 throw new Error(data.message || "Error al actualizar grupo");
             }
 
-            // Mostrar resultado según el nuevo estado
             const nuevoEstado = data.nuevo_estado || "actualizado";
+            const etiquetasParaImprimir = data.imprimir_etiquetas || [];
+
+            // Actualizar estado visual sin reload
+            actualizarEstadoVisualGrupo(grupoCard, nuevoEstado, grupoId);
 
             if (nuevoEstado === "fabricando") {
                 showAlert("info", "Fabricando", `Grupo iniciado (${data.etiquetas_actualizadas || 0} etiquetas)`);
             } else if (nuevoEstado === "completada") {
                 showAlert("success", "¡Completado!", `Grupo completado (${data.etiquetas_actualizadas || 0} etiquetas)`);
-            } else {
-                showAlert("success", "Actualizado", data.message);
             }
 
-            // Actualizar clase visual del grupo
-            if (grupoCard) {
-                ["pendiente", "fabricando", "fabricada", "completada", "en-paquete"].forEach((est) => {
-                    grupoCard.classList.remove(`estado-${est}`);
+            // Si se completó, preguntar si quiere imprimir
+            if (nuevoEstado === "completada" && etiquetasParaImprimir.length > 0) {
+                const etSubIds = etiquetasParaImprimir.map(e => e.etiqueta_sub_id);
+
+                await new Promise(resolve => setTimeout(resolve, 300));
+
+                const resultado = await Swal.fire({
+                    icon: "question",
+                    title: "Imprimir etiquetas",
+                    html: `Se han completado <strong>${etSubIds.length}</strong> etiquetas.<br>¿Deseas imprimirlas ahora?`,
+                    showCancelButton: true,
+                    confirmButtonText: "Imprimir A6",
+                    cancelButtonText: "No imprimir",
+                    showDenyButton: true,
+                    denyButtonText: "Imprimir A4",
+                    confirmButtonColor: "#3085d6",
+                    denyButtonColor: "#6c757d",
                 });
-                grupoCard.classList.add(`estado-${nuevoEstado}`);
-                grupoCard.dataset.estado = nuevoEstado;
-            }
 
-            // Refrescar vista
-            if (typeof window.refrescarEtiquetasMaquina === "function") {
-                await window.refrescarEtiquetasMaquina();
+                if (resultado.isConfirmed && typeof window.imprimirEtiquetas === "function") {
+                    window.imprimirEtiquetas(etSubIds, "a6");
+                } else if (resultado.isDenied && typeof window.imprimirEtiquetas === "function") {
+                    window.imprimirEtiquetas(etSubIds, "a4");
+                }
+
+                // Esperar después de imprimir
+                await new Promise(resolve => setTimeout(resolve, 1000));
+
+                // Reagrupar las etiquetas
+                const reagruparPlanillaId = data.planilla_id || planillaId;
+                const reagruparMaquinaId = data.maquina_id || maquinaId;
+
+                if (reagruparPlanillaId && reagruparMaquinaId) {
+                    try {
+                        await fetch('/api/etiquetas/resumir', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRF-TOKEN': csrfToken,
+                                'Accept': 'application/json',
+                            },
+                            body: JSON.stringify({
+                                planilla_id: reagruparPlanillaId,
+                                maquina_id: reagruparMaquinaId,
+                            }),
+                        });
+                        console.log('Etiquetas reagrupadas después de completar');
+                    } catch (e) {
+                        console.warn('No se pudieron reagrupar las etiquetas:', e);
+                    }
+                }
+
+                // Añadir etiquetas al carro
+                if (window.TrabajoPaquete && typeof window.TrabajoPaquete.validarEtiqueta === 'function') {
+                    let agregadas = 0;
+
+                    for (const etSubId of etSubIds) {
+                        try {
+                            const dataEt = await window.TrabajoPaquete.validarEtiqueta(etSubId);
+                            if (dataEt.valida) {
+                                const ok = window.TrabajoPaquete.agregarItemEtiqueta(etSubId, dataEt);
+                                if (ok) agregadas++;
+                            }
+                        } catch (e) {
+                            console.warn(`No se pudo añadir ${etSubId} al carro:`, e);
+                        }
+                    }
+
+                    if (agregadas > 0) {
+                        showAlert("success", "Añadidas al carro", `${agregadas} etiquetas añadidas al carro`);
+                    }
+                }
+
+                // Actualizar estado visual del grupo a completada (cambiar color de fondo)
+                actualizarEstadoVisualGrupo(grupoCard, "completada", grupoId);
             }
 
         } catch (err) {
             showErrorAlert(err);
+        }
+    }
+
+    // Función auxiliar para actualizar el estado visual del grupo sin reload
+    function actualizarEstadoVisualGrupo(grupoCard, nuevoEstado, grupoId) {
+        if (!grupoCard) return;
+
+        // Actualizar clases CSS
+        ["pendiente", "fabricando", "fabricada", "completada", "en-paquete"].forEach((est) => {
+            grupoCard.classList.remove(`estado-${est}`);
+        });
+        grupoCard.classList.add(`estado-${nuevoEstado}`);
+        grupoCard.dataset.estado = nuevoEstado;
+
+        // Re-renderizar SVG para actualizar el color de fondo
+        const contenedorSvgId = grupoCard.dataset.contenedorSvgId;
+        const elementosJson = grupoCard.dataset.elementos;
+
+        if (contenedorSvgId && elementosJson && typeof window.renderizarGrupoSVG === 'function') {
+            try {
+                const elementos = JSON.parse(elementosJson);
+                const grupoData = {
+                    id: parseInt(contenedorSvgId),
+                    etiqueta: { id: parseInt(contenedorSvgId) },
+                    elementos: elementos
+                };
+                window.renderizarGrupoSVG(grupoData, grupoId);
+            } catch (e) {
+                console.warn('No se pudo re-renderizar SVG del grupo:', e);
+            }
         }
     }
 

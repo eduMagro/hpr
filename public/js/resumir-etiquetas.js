@@ -293,67 +293,154 @@ window.desagruparGrupo = async function(grupoId) {
 };
 
 /**
- * Imprime todas las etiquetas originales de un grupo (una detrás de otra)
+ * Imprime todas las etiquetas originales de un grupo
+ * Flujo: Desagrupar → Refrescar → Imprimir → Volver a agrupar
  * @param {number} grupoId - ID del grupo
  */
 window.imprimirTodasEtiquetasGrupo = async function(grupoId) {
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+
+    console.log('🖨️ Iniciando impresión de grupo:', grupoId);
+
     Swal.fire({
         title: 'Preparando impresión...',
+        html: 'Obteniendo datos del grupo...',
         allowOutsideClick: false,
         didOpen: () => Swal.showLoading()
     });
 
     try {
-        const response = await fetch(`/api/etiquetas/resumir/${grupoId}/imprimir`);
-        const data = await response.json();
+        // 1. Obtener datos del grupo antes de desagrupar (para poder reagrupar después)
+        console.log('📋 Paso 1: Obteniendo datos del grupo...');
+        const dataResponse = await fetch(`/api/etiquetas/resumir/${grupoId}/imprimir`);
+        const dataInfo = await dataResponse.json();
+        console.log('📋 Datos obtenidos:', dataInfo);
 
-        if (data.success && data.etiquetas) {
-            Swal.close();
-
-            // Obtener los etiqueta_sub_id para imprimir
-            const etiquetasSubIds = data.etiquetas.map(e => e.etiqueta_sub_id);
-
-            // Usar la función imprimirEtiquetas que imprime la etiqueta completa con SVG
-            if (typeof window.imprimirEtiquetas === 'function') {
-                // Obtener el modo de impresión seleccionado
-                const selectModo = document.getElementById(`modo-impresion-grupo-${grupoId}`);
-                const modo = selectModo ? selectModo.value : 'a6';
-
-                window.imprimirEtiquetas(etiquetasSubIds, modo);
-            } else if (typeof window.imprimirQRsEnCadena === 'function') {
-                // Fallback a impresión de QRs
-                window.imprimirQRsEnCadena(etiquetasSubIds);
-            } else {
-                // Fallback: mostrar lista de etiquetas
-                const listaHtml = data.etiquetas.map(e =>
-                    `<li class="py-1">${e.etiqueta_sub_id} - ${e.nombre || ''}</li>`
-                ).join('');
-
-                Swal.fire({
-                    icon: 'info',
-                    title: 'Etiquetas para imprimir',
-                    html: `
-                        <p class="mb-3">Imprime las siguientes etiquetas:</p>
-                        <ul class="text-left text-sm max-h-60 overflow-y-auto border rounded p-3">
-                            ${listaHtml}
-                        </ul>
-                    `,
-                    confirmButtonColor: '#14b8a6',
-                });
-            }
-        } else {
-            Swal.fire({
-                icon: 'error',
-                title: 'Error',
-                text: data.message || 'No se pudieron obtener las etiquetas',
-            });
+        if (!dataInfo.success || !dataInfo.etiquetas || dataInfo.etiquetas.length === 0) {
+            Swal.fire({ icon: 'error', title: 'Error', text: 'No se pudieron obtener las etiquetas' });
+            return;
         }
+
+        const etiquetasSubIds = dataInfo.etiquetas.map(e => e.etiqueta_sub_id);
+        // Obtener planilla_id y maquina_id del grupo (devueltos por la API)
+        const planillaId = dataInfo.grupo?.planilla_id || null;
+        const maquinaId = dataInfo.grupo?.maquina_id || window.maquinaId || null;
+
+        console.log('📋 Etiquetas a imprimir:', etiquetasSubIds);
+        console.log('📋 planillaId:', planillaId, 'maquinaId:', maquinaId);
+
+        // Obtener el modo de impresión seleccionado
+        const selectModo = document.getElementById(`modo-impresion-grupo-${grupoId}`);
+        const modo = selectModo ? selectModo.value : 'a6';
+        console.log('📋 Modo de impresión:', modo);
+
+        // 2. Desagrupar
+        console.log('🔓 Paso 2: Desagrupando...');
+        Swal.update({ html: 'Desagrupando para renderizar figuras...' });
+        const desagruparResponse = await fetch(`/api/etiquetas/resumir/${grupoId}/desagrupar`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': csrfToken,
+                'Accept': 'application/json',
+            },
+        });
+
+        const desagruparResult = await desagruparResponse.json();
+        console.log('🔓 Resultado desagrupar:', desagruparResult);
+        if (!desagruparResult.success) {
+            Swal.fire({ icon: 'error', title: 'Error', text: 'No se pudo desagrupar: ' + (desagruparResult.message || '') });
+            return;
+        }
+
+        // 3. Refrescar la vista para que las etiquetas individuales se rendericen
+        console.log('🔄 Paso 3: Refrescando vista...');
+        Swal.update({ html: 'Renderizando etiquetas...' });
+        if (typeof window.refrescarEtiquetasMaquina === 'function') {
+            await window.refrescarEtiquetasMaquina();
+        }
+
+        // 4. Esperar a que los SVGs se rendericen completamente
+        console.log('⏳ Paso 4: Esperando renderizado de SVGs...');
+        await new Promise(resolve => setTimeout(resolve, 800));
+
+        // Verificar que los contenedores de etiquetas existen
+        const domSafe = window.domSafe || (v => String(v).replace(/[^A-Za-z0-9_-]/g, '-'));
+        let etiquetasEncontradas = 0;
+        for (const id of etiquetasSubIds) {
+            const safeId = domSafe(id);
+            const contenedor = document.getElementById(`etiqueta-${safeId}`) ||
+                               document.getElementById(`etiqueta-${id}`);
+            if (contenedor) {
+                etiquetasEncontradas++;
+                const svg = contenedor.querySelector('svg');
+                console.log(`✅ Etiqueta ${id}: encontrada, SVG: ${svg ? 'sí' : 'no'}`);
+            } else {
+                console.warn(`❌ Etiqueta ${id}: NO encontrada en el DOM`);
+            }
+        }
+        console.log(`📊 Etiquetas encontradas: ${etiquetasEncontradas}/${etiquetasSubIds.length}`);
+
+        // 5. Imprimir las etiquetas (ahora están desagrupadas y renderizadas)
+        console.log('🖨️ Paso 5: Imprimiendo...');
+        Swal.close();
+
+        if (typeof window.imprimirEtiquetas === 'function') {
+            await window.imprimirEtiquetas(etiquetasSubIds, modo);
+        } else {
+            console.error('❌ La función imprimirEtiquetas no está disponible');
+            Swal.fire({ icon: 'error', title: 'Error', text: 'Función de impresión no disponible' });
+            return;
+        }
+
+        // 6. Esperar un momento y volver a agrupar
+        console.log('⏳ Paso 6: Esperando antes de reagrupar...');
+        await new Promise(resolve => setTimeout(resolve, 1500));
+
+        // 7. Volver a resumir/agrupar las etiquetas
+        if (planillaId && maquinaId) {
+            console.log('🔒 Paso 7: Reagrupando...');
+            Swal.fire({
+                title: 'Reagrupando...',
+                allowOutsideClick: false,
+                didOpen: () => Swal.showLoading()
+            });
+
+            const resumirResponse = await fetch('/api/etiquetas/resumir', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': csrfToken,
+                    'Accept': 'application/json',
+                },
+                body: JSON.stringify({
+                    planilla_id: planillaId,
+                    maquina_id: maquinaId,
+                }),
+            });
+
+            const resumirResult = await resumirResponse.json();
+            console.log('🔒 Resultado reagrupar:', resumirResult);
+
+            // 8. Refrescar la vista final
+            console.log('🔄 Paso 8: Refrescando vista final...');
+            if (typeof window.refrescarEtiquetasMaquina === 'function') {
+                await window.refrescarEtiquetasMaquina();
+            }
+
+            Swal.close();
+        } else {
+            console.warn('⚠️ No se puede reagrupar: falta planillaId o maquinaId');
+        }
+
+        console.log('✅ Proceso de impresión completado');
+
     } catch (error) {
-        console.error('Error al obtener etiquetas para imprimir:', error);
+        console.error('❌ Error al imprimir etiquetas del grupo:', error);
         Swal.fire({
             icon: 'error',
-            title: 'Error de conexión',
-            text: 'No se pudo conectar con el servidor',
+            title: 'Error',
+            text: 'Ocurrió un error: ' + error.message,
         });
     }
 };

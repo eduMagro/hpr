@@ -1180,6 +1180,7 @@ class EtiquetaController extends Controller
             $data = $request->validate([
                 'producto_base.longitud_barra_cm' => ['required', 'numeric', 'min:1'],
                 'repeticiones' => ['required', 'integer', 'min:1'],
+                'desperdicio_manual_cm' => ['nullable', 'numeric', 'min:0'],
                 'etiquetas' => ['required', 'array', 'min:1'],
                 'etiquetas.*.etiqueta_sub_id' => ['required', 'string'],
                 'etiquetas.*.patron_letras' => ['nullable', 'string', 'max:100'],
@@ -1193,6 +1194,7 @@ class EtiquetaController extends Controller
         }
 
         $longitud = (int) $data['producto_base']['longitud_barra_cm'];
+        $desperdicioManualCm = $data['desperdicio_manual_cm'] ?? null;
         $userId = Auth::id();
         $compaId = auth()->user()->compañeroDeTurno()?->id;
         $resultados = [];
@@ -1216,7 +1218,11 @@ class EtiquetaController extends Controller
                     longitudSeleccionada: $longitud,
                     operario1Id: $userId,
                     operario2Id: $compaId,
-                    opciones: ['origen' => 'optimizada', 'patron_letras' => $patronLetras,]
+                    opciones: [
+                        'origen' => 'optimizada',
+                        'patron_letras' => $patronLetras,
+                        'desperdicio_manual_cm' => $desperdicioManualCm,
+                    ]
                 );
 
                 $resultado = $fabrica->porMaquina($maquina)->actualizar($dto);
@@ -1247,14 +1253,26 @@ class EtiquetaController extends Controller
                 ?? $resultado->etiqueta->elementos->sum('peso')
                 ?? 0;
 
+            // ✅ Obtener información de coladas para actualizar UI sin recargar
+            $etiqueta = $resultado->etiqueta;
+            $etiqueta->load('producto');
+            $productoNColada = $etiqueta->producto?->n_colada ?? null;
+            $producto2NColada = null;
+            if ($etiqueta->producto_id_2) {
+                $producto2 = Producto::find($etiqueta->producto_id_2);
+                $producto2NColada = $producto2?->n_colada;
+            }
+
             return response()->json([
                 'success' => true,
-                'estado' => $resultado->etiqueta->estado ?? null,
+                'estado' => $etiqueta->estado ?? null,
                 'peso_etiqueta' => $pesoTotalEtiqueta,
-                'fecha_inicio' => $resultado->etiqueta->fecha_inicio,
-                'fecha_finalizacion' => $resultado->etiqueta->fecha_finalizacion,
+                'fecha_inicio' => $etiqueta->fecha_inicio,
+                'fecha_finalizacion' => $etiqueta->fecha_finalizacion,
                 'productos_afectados' => $resultado->productosAfectados ?? [],
                 'warnings' => $resultado->warnings ?? [],
+                'producto_n_colada' => $productoNColada,
+                'producto2_n_colada' => $producto2NColada,
             ]);
         } catch (\Illuminate\Http\Exceptions\HttpResponseException $e) {
             DB::rollBack();
@@ -2874,6 +2892,41 @@ class EtiquetaController extends Controller
             'accion_a_deshacer' => $ultimoCambio
                 ? $ultimoCambio->accion
                 : ($puedeUndoLegacy ? 'iniciar_fabricacion (legacy)' : null),
+        ]);
+    }
+
+    /**
+     * Obtener la longitud de barra del producto asignado a una etiqueta.
+     * Se usa en el segundo clic de fabricación cuando la decisión de patrón no está en memoria.
+     */
+    public function longitudAsignada(string $etiquetaSubId): JsonResponse
+    {
+        $etiqueta = Etiqueta::where('etiqueta_sub_id', $etiquetaSubId)
+            ->with('producto.productoBase')
+            ->first();
+
+        if (!$etiqueta) {
+            return response()->json(['error' => 'Etiqueta no encontrada'], 404);
+        }
+
+        if (!$etiqueta->producto_id) {
+            return response()->json(['error' => 'No hay producto asignado'], 404);
+        }
+
+        $producto = $etiqueta->producto;
+        if (!$producto || !$producto->productoBase) {
+            return response()->json(['error' => 'Producto sin base'], 404);
+        }
+
+        $longitudM = $producto->productoBase->longitud; // en metros
+        $longitudCm = $longitudM ? (int) ($longitudM * 100) : null;
+
+        return response()->json([
+            'longitud_barra_m' => $longitudM,
+            'longitud_barra_cm' => $longitudCm,
+            'producto_id' => $producto->id,
+            'producto_codigo' => $producto->codigo,
+            'diametro' => $producto->productoBase->diametro,
         ]);
     }
 }

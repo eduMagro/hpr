@@ -98,17 +98,36 @@ class CortadoraDobladoraBarraEtiquetaServicio extends ServicioEtiquetaBase imple
                         throw new ServicioEtiquetaException('Todos los elementos ya están completados en esta máquina.');
                     }
 
-                    // Segundo clic: Actualizar producto_id_2 de la etiqueta si cambió
-                    if ($etiqueta->producto_id && $etiqueta->producto_id != $producto->id) {
+                    // Segundo clic: Verificar si el producto/colada cambió desde el primer clic
+                    // Igual que en CortadoraDobladoraEncarretadoEtiquetaServicio
+                    $productoActual = $producto; // El producto encontrado para este diámetro y longitud
+
+                    // Actualizar etiqueta si el producto cambió
+                    if ($etiqueta->producto_id && $etiqueta->producto_id != $productoActual->id) {
                         if (!$etiqueta->producto_id_2) {
-                            $etiqueta->producto_id_2 = $producto->id;
-                        } elseif ($etiqueta->producto_id_2 != $producto->id && !$etiqueta->producto_id_3) {
-                            $etiqueta->producto_id_3 = $producto->id;
+                            $etiqueta->producto_id_2 = $productoActual->id;
+                        } elseif ($etiqueta->producto_id_2 != $productoActual->id && !$etiqueta->producto_id_3) {
+                            $etiqueta->producto_id_3 = $productoActual->id;
                         }
                     } elseif (!$etiqueta->producto_id) {
-                        $etiqueta->producto_id = $producto->id;
+                        $etiqueta->producto_id = $productoActual->id;
                     }
                     $etiqueta->save();
+
+                    // Actualizar elementos si el producto cambió (igual que en encarretado)
+                    foreach ($elementosEnMaquina as $elemento) {
+                        if ($elemento->producto_id && $elemento->producto_id != $productoActual->id) {
+                            // El producto cambió desde el primer clic
+                            if (!$elemento->producto_id_2) {
+                                $elemento->producto_id_2 = $productoActual->id;
+                            } elseif ($elemento->producto_id_2 != $productoActual->id && !$elemento->producto_id_3) {
+                                $elemento->producto_id_3 = $productoActual->id;
+                            }
+                        } elseif (!$elemento->producto_id) {
+                            $elemento->producto_id = $productoActual->id;
+                        }
+                        $elemento->save();
+                    }
 
                     $this->consumirPorBarras(
                         $elementosEnMaquina,
@@ -117,7 +136,8 @@ class CortadoraDobladoraBarraEtiquetaServicio extends ServicioEtiquetaBase imple
                         $longitudBarraSeleccionada,
                         $diametroElemento,
                         $avisos,
-                        $productosAfectados
+                        $productosAfectados,
+                        $datos
                     );
 
                     // ✅ LÓGICA DE COMPLETADO (elementos, etiqueta y planilla)
@@ -169,8 +189,12 @@ class CortadoraDobladoraBarraEtiquetaServicio extends ServicioEtiquetaBase imple
         int $longitudBarraSeleccionada,   // metros (p.ej. 12)
         int $diametroSeleccionado,        // mm
         array &$avisos,
-        array &$productosAfectados
+        array &$productosAfectados,
+        ActualizarEtiquetaDatos $datos
     ): void {
+        // Obtener desperdicio manual desde las opciones (en cm, convertir a metros)
+        $desperdicioManualCm = $datos->opciones['desperdicio_manual_cm'] ?? null;
+        $desperdicioManualM = $desperdicioManualCm !== null ? (float) $desperdicioManualCm / 100 : null;
         $porDiametro = [];
         foreach ($elementos as $el) {
             $diam = (int) $el->diametro;
@@ -187,7 +211,25 @@ class CortadoraDobladoraBarraEtiquetaServicio extends ServicioEtiquetaBase imple
             // === Peso teórico por barra (kg) ===
             $area_m2 = (pi() * pow($diametroSeleccionado, 2)) / 4 / 1_000_000;
             $pesoPorMetro = $area_m2 * 7850; // kg/m
-            $pesoBarraEstimado = $pesoPorMetro * $longitudBarraSeleccionada; // kg/barra
+            $pesoBarraCompletoKg = $pesoPorMetro * $longitudBarraSeleccionada; // kg/barra completa
+
+            // Si hay desperdicio manual, calcular el peso real a consumir por barra
+            // El desperdicio manual representa la sobra real (en metros)
+            if ($desperdicioManualM !== null && $desperdicioManualM >= 0) {
+                // La longitud realmente usada = longitud barra - desperdicio
+                $longitudUsadaM = max(0, $longitudBarraSeleccionada - $desperdicioManualM);
+                $pesoBarraEstimado = $pesoPorMetro * $longitudUsadaM; // kg a consumir
+                Log::info('📏 Consumo con desperdicio manual', [
+                    'desperdicio_manual_cm' => $desperdicioManualM * 100,
+                    'longitud_barra_m' => $longitudBarraSeleccionada,
+                    'longitud_usada_m' => $longitudUsadaM,
+                    'peso_barra_completa_kg' => round($pesoBarraCompletoKg, 3),
+                    'peso_a_consumir_kg' => round($pesoBarraEstimado, 3),
+                ]);
+            } else {
+                // Sin desperdicio manual, usar peso de barra completa (comportamiento original)
+                $pesoBarraEstimado = $pesoBarraCompletoKg;
+            }
 
             // === Productos disponibles (mismo diámetro, misma longitud, tipo barra) ===
             $productos = $maquina->productos()
@@ -285,13 +327,9 @@ class CortadoraDobladoraBarraEtiquetaServicio extends ServicioEtiquetaBase imple
                         $avisos[] = "No se pudo completar una barra para el elemento {$elemento->id}. Faltan ~" . round($pendienteKg, 3) . " kg.";
                     }
 
-                    // Guardamos el producto usado para esta barra en la lista de asignados (máx. 3 distintos)
+                    // Guardamos el producto usado para esta barra (solo para el log)
                     if ($productoUsadoBar !== null && !in_array($productoUsadoBar, $productosAsignados, true)) {
                         $productosAsignados[] = $productoUsadoBar;
-                        if (count($productosAsignados) >= 3) {
-                            // ya tenemos los 3 campos que admite el elemento
-                            // seguimos consumiendo pero no añadimos más ids
-                        }
                     }
 
                     // Reducimos piezas pendientes
@@ -301,52 +339,31 @@ class CortadoraDobladoraBarraEtiquetaServicio extends ServicioEtiquetaBase imple
                     }
                 }
 
-                // === Asignación final de productos al elemento (hasta 3 ids distintos usados) ===
-                // Respetar producto_id del primer clic y añadir nuevos si cambiaron
-                $productoOriginal = $elemento->producto_id;
-
-                if ($productoOriginal) {
-                    // Ya tenía producto del primer clic
-                    $nuevosProductos = array_filter($productosAsignados, fn($id) => $id != $productoOriginal);
-
-                    if (!empty($nuevosProductos)) {
-                        // Hubo cambio de producto. Verificar si hay intermedio
-                        $productoIntermedio = Producto::where('producto_base_id', $elemento->productoBase?->id ?? Producto::find($productosAsignados[0] ?? 0)?->producto_base_id)
-                            ->where('id', '!=', $productoOriginal)
-                            ->whereNotIn('id', $nuevosProductos)
-                            ->where('estado', 'consumido')
-                            ->where('fecha_consumido', '>=', $elemento->etiqueta->fecha_inicio ?? now()->subDay())
-                            ->orderBy('fecha_consumido', 'asc')
-                            ->first();
-
-                        if ($productoIntermedio) {
-                            // original → intermedio → actual
-                            $elemento->producto_id_2 = $productoIntermedio->id;
-                            $elemento->producto_id_3 = $nuevosProductos[0] ?? null;
-                        } else {
-                            // original → actual
-                            $elemento->producto_id_2 = $nuevosProductos[0] ?? null;
-                            $elemento->producto_id_3 = $nuevosProductos[1] ?? null;
-                        }
-                    }
-                    // Si no hubo cambio, mantener producto_id original y no tocar _2 y _3
-                } else {
-                    // No tenía producto del primer clic (caso legacy)
-                    $elemento->producto_id   = $productosAsignados[0] ?? null;
-                    $elemento->producto_id_2 = $productosAsignados[1] ?? null;
-                    $elemento->producto_id_3 = $productosAsignados[2] ?? null;
-                }
-
+                // Marcar elemento como fabricado (las asignaciones de producto ya se hicieron antes)
                 $elemento->estado = 'fabricado';
                 $elemento->save();
                 // ============================
-                // === CALCULAR SOBRA TOTAL = longitud no utilizada en última barra
-                $sumaLongitudesPiezas = $cantidadPiezas * $longitudPiezaM;
-                $longitudTotalBarras = $barrasNecesarias * $longitudBarraSeleccionada;
-                $sobraTotalM = max(0, $longitudTotalBarras - $sumaLongitudesPiezas);
+                // === CALCULAR SOBRA TOTAL
+                // Si hay desperdicio manual, usarlo; si no, calcular teórico
+                if ($desperdicioManualCm !== null) {
+                    // Usar desperdicio manual (ya está en cm)
+                    $sobranteCm = (float) $desperdicioManualCm;
+                } else {
+                    // Calcular teórico: longitud no utilizada en última barra
+                    $sumaLongitudesPiezas = $cantidadPiezas * $longitudPiezaM;
+                    $longitudTotalBarras = $barrasNecesarias * $longitudBarraSeleccionada;
+                    $sobraTotalM = max(0, $longitudTotalBarras - $sumaLongitudesPiezas);
+                    $sobranteCm = round($sobraTotalM * 100, 2);
+                }
 
                 // === Recuperar patrón de letras si viene en opciones ===
                 $patronLetras = $datos->opciones['patron_letras'] ?? implode(' + ', array_fill(0, $piezasPorBarra, 'A'));
+
+                // Obtener códigos de los productos asignados al elemento
+                $codigoProducto1 = optional(Producto::find($elemento->producto_id))->codigo;
+                $codigoProducto2 = $elemento->producto_id_2 ? optional(Producto::find($elemento->producto_id_2))->codigo : null;
+                $codigoProducto3 = $elemento->producto_id_3 ? optional(Producto::find($elemento->producto_id_3))->codigo : null;
+                $materiaPrima = implode(', ', array_filter([$codigoProducto1, $codigoProducto2, $codigoProducto3]));
 
                 app(CorteBarraLogger::class)->registrar([
                     'timestamp'         => now()->toDateTimeString(),
@@ -355,15 +372,16 @@ class CortadoraDobladoraBarraEtiquetaServicio extends ServicioEtiquetaBase imple
                     'Cód. Etiqueta'     => $etiqueta->etiqueta_sub_id,
                     'Cód. Elemento'     => $elemento->codigo,
                     'Máquina'           => $maquina->nombre,
-                    'Materia prima' => optional(Producto::find($productosAsignados[0]))->codigo,
+                    'Materia prima'     => $materiaPrima ?: 'N/A',
                     'Diametro'          => $diametro,
                     'Longitud pieza (m)' => $longitudPiezaM,
                     'Longitud barra (m)' => $longitudBarraSeleccionada,
-                    'Piezas/barra'  => $piezasPorBarra,
+                    'Piezas/barra'      => $piezasPorBarra,
                     'Piezas fabricadas' => $cantidadPiezas,
                     'Barras usadas'     => $barrasNecesarias,
                     'Patrón'            => $patronLetras,
-                    'Sobrante'          => round($sobraTotalM * 100, 2),
+                    'Sobrante (cm)'     => $sobranteCm,
+                    'Tipo sobrante'     => $desperdicioManualCm !== null ? 'manual' : 'teórico',
                     'comentario'        => 'corte simple',
                 ]);
             }

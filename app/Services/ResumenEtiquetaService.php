@@ -359,7 +359,7 @@ class ResumenEtiquetaService
      */
     public function obtenerEtiquetasParaImprimir(int $grupoId): array
     {
-        $grupo = GrupoResumen::with(['etiquetas.elementos', 'etiquetas.planilla'])
+        $grupo = GrupoResumen::with(['etiquetas.elementos', 'etiquetas.planilla.obra', 'etiquetas.planilla.cliente'])
             ->findOrFail($grupoId);
 
         $etiquetas = $grupo->etiquetas->map(function ($etiqueta) {
@@ -369,8 +369,23 @@ class ResumenEtiquetaService
                 'codigo' => $etiqueta->codigo,
                 'nombre' => $etiqueta->nombre,
                 'planilla_codigo' => $etiqueta->planilla->codigo ?? '',
+                'planilla_codigo_limpio' => $etiqueta->planilla->codigo_limpio ?? $etiqueta->planilla->codigo ?? '',
+                'planilla_seccion' => $etiqueta->planilla->seccion ?? '',
+                'obra' => $etiqueta->planilla->obra->obra ?? 'N/A',
+                'cliente' => $etiqueta->planilla->cliente->empresa ?? 'N/A',
                 'peso' => round($etiqueta->elementos->sum('peso'), 2),
-                'elementos' => $etiqueta->elementos->count(),
+                'elementos_count' => $etiqueta->elementos->count(),
+                // Datos completos de elementos para renderizar SVG
+                'elementos' => $etiqueta->elementos->map(function ($el) {
+                    return [
+                        'id' => $el->id,
+                        'diametro' => $el->diametro,
+                        'dimensiones' => $el->dimensiones,
+                        'barras' => $el->barras,
+                        'peso' => $el->peso,
+                        'tipo' => $el->tipo,
+                    ];
+                })->toArray(),
             ];
         });
 
@@ -380,6 +395,8 @@ class ResumenEtiquetaService
                 'codigo' => $grupo->codigo,
                 'diametro' => $grupo->diametro,
                 'dimensiones' => $grupo->dimensiones,
+                'planilla_id' => $grupo->planilla_id,
+                'maquina_id' => $grupo->maquina_id,
             ],
             'etiquetas' => $etiquetas->toArray(),
         ];
@@ -436,6 +453,7 @@ class ResumenEtiquetaService
             $etiquetas, $siguienteEstado, $ahora, $totalEtiquetas, $usuarioId, $grupo
         ) {
             $etiquetasActualizadas = [];
+            $etiquetasParaImprimir = [];
 
             foreach ($etiquetas as $index => $etiqueta) {
                 $estadoAnterior = $etiqueta->estado;
@@ -457,6 +475,16 @@ class ResumenEtiquetaService
 
                         // Ajustar fecha_inicio para que el tiempo sea proporcional
                         $etiqueta->fecha_inicio = $ahora->copy()->subSeconds($tiempoPorEtiqueta);
+                    }
+
+                    // Recolectar etiquetas que NO se han impreso para impresión automática
+                    if (!$etiqueta->impresa) {
+                        $etiquetasParaImprimir[] = [
+                            'id' => $etiqueta->id,
+                            'etiqueta_sub_id' => $etiqueta->etiqueta_sub_id,
+                        ];
+                        // Marcar como impresa
+                        $etiqueta->impresa = true;
                     }
                 }
 
@@ -491,14 +519,36 @@ class ResumenEtiquetaService
                 ]);
             }
 
+            // Si se completó el grupo, desagrupar las etiquetas para trabajar individualmente
+            $desagrupado = false;
+            if ($siguienteEstado === 'completada') {
+                // Desagrupar: quitar grupo_resumen_id de las etiquetas y marcar grupo como inactivo
+                Etiqueta::where('grupo_resumen_id', $grupo->id)
+                    ->update(['grupo_resumen_id' => null]);
+
+                $grupo->activo = false;
+                $grupo->save();
+                $desagrupado = true;
+
+                Log::info('Grupo desagrupado automáticamente al completar', [
+                    'grupo_id' => $grupo->id,
+                    'codigo' => $grupo->codigo,
+                    'etiquetas_liberadas' => $totalEtiquetas,
+                ]);
+            }
+
             return [
                 'success' => true,
-                'message' => "Grupo actualizado a '{$siguienteEstado}'",
+                'message' => "Grupo actualizado a '{$siguienteEstado}'" . ($desagrupado ? ' y desagrupado' : ''),
                 'estado' => $siguienteEstado,
                 'nuevo_estado' => $siguienteEstado,
                 'grupo_id' => $grupo->id,
+                'planilla_id' => $grupo->planilla_id,
+                'maquina_id' => $grupo->maquina_id,
                 'etiquetas_actualizadas' => count($etiquetasActualizadas),
                 'etiquetas' => $etiquetasActualizadas,
+                'desagrupado' => $desagrupado,
+                'imprimir_etiquetas' => $etiquetasParaImprimir,
             ];
         });
     }

@@ -225,24 +225,98 @@
                 document.getElementById(`etiqueta-${rawId}`);
             if (!contenedor) continue;
 
-            // Buscar canvas
-            let canvas = document.getElementById(`canvas-imprimir-etiqueta-${safeId}`) ||
-                document.getElementById(`canvas-imprimir-etiqueta-${rawId}`) ||
-                contenedor.querySelector('canvas');
+            // Buscar SVG primero (sistema actual), luego canvas como fallback
+            let svgElement = contenedor.querySelector('svg');
+            let figuraImg = null;
 
-            // Renderizar a imagen
-            let canvasImg = null;
-            if (canvas && (canvas.width || canvas.height)) {
-                const scale = 2;
-                const tmp = document.createElement('canvas');
-                const w = canvas.width || canvas.getBoundingClientRect().width || 600;
-                const h = canvas.height || canvas.getBoundingClientRect().height || 200;
-                tmp.width = Math.max(1, Math.round(w * scale));
-                tmp.height = Math.max(1, Math.round(h * scale));
-                const ctx = tmp.getContext('2d');
-                ctx.scale(scale, scale);
-                ctx.drawImage(canvas, 0, 0);
-                canvasImg = tmp.toDataURL('image/png');
+            if (svgElement) {
+                // Convertir SVG a imagen
+                try {
+                    // Clonar SVG para no modificar el original
+                    const svgClone = svgElement.cloneNode(true);
+
+                    // Obtener dimensiones reales
+                    const bbox = svgElement.getBoundingClientRect();
+                    const width = bbox.width || svgElement.getAttribute('width') || 600;
+                    const height = bbox.height || svgElement.getAttribute('height') || 150;
+
+                    // Establecer dimensiones explícitas en el SVG clonado
+                    svgClone.setAttribute('width', width);
+                    svgClone.setAttribute('height', height);
+                    if (!svgClone.getAttribute('viewBox')) {
+                        svgClone.setAttribute('viewBox', `0 0 ${width} ${height}`);
+                    }
+
+                    // FORZAR fondo blanco: eliminar cualquier estilo de fondo existente
+                    svgClone.style.background = '#ffffff';
+                    svgClone.style.backgroundColor = '#ffffff';
+                    svgClone.removeAttribute('style');
+
+                    // Añadir rectángulo blanco al principio para cubrir cualquier fondo
+                    const bgRect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+                    bgRect.setAttribute('x', '0');
+                    bgRect.setAttribute('y', '0');
+                    bgRect.setAttribute('width', width);
+                    bgRect.setAttribute('height', height);
+                    bgRect.setAttribute('fill', '#ffffff');
+                    svgClone.insertBefore(bgRect, svgClone.firstChild);
+
+                    const svgData = new XMLSerializer().serializeToString(svgClone);
+                    const svgBlob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' });
+                    const svgUrl = URL.createObjectURL(svgBlob);
+
+                    // Crear imagen del SVG
+                    figuraImg = await new Promise((resolve) => {
+                        const img = new Image();
+                        img.onload = () => {
+                            // Renderizar a canvas para mejor calidad de impresión
+                            // Scale 4 para alta resolución en impresión
+                            const scale = 4;
+                            const canvas = document.createElement('canvas');
+                            canvas.width = width * scale;
+                            canvas.height = height * scale;
+                            const ctx = canvas.getContext('2d');
+                            // Mejorar calidad de renderizado
+                            ctx.imageSmoothingEnabled = true;
+                            ctx.imageSmoothingQuality = 'high';
+                            ctx.scale(scale, scale);
+                            ctx.fillStyle = '#ffffff';
+                            ctx.fillRect(0, 0, width, height);
+                            ctx.drawImage(img, 0, 0, width, height);
+                            URL.revokeObjectURL(svgUrl);
+                            resolve(canvas.toDataURL('image/png', 1.0));
+                        };
+                        img.onerror = () => {
+                            URL.revokeObjectURL(svgUrl);
+                            resolve(null);
+                        };
+                        img.src = svgUrl;
+                    });
+                } catch (e) {
+                    console.warn('Error al convertir SVG:', e);
+                }
+            }
+
+            // Fallback: buscar canvas
+            if (!figuraImg) {
+                let canvas = document.getElementById(`canvas-imprimir-etiqueta-${safeId}`) ||
+                    document.getElementById(`canvas-imprimir-etiqueta-${rawId}`) ||
+                    contenedor.querySelector('canvas');
+
+                if (canvas && (canvas.width || canvas.height)) {
+                    const scale = 4;
+                    const tmp = document.createElement('canvas');
+                    const w = canvas.width || canvas.getBoundingClientRect().width || 600;
+                    const h = canvas.height || canvas.getBoundingClientRect().height || 200;
+                    tmp.width = Math.max(1, Math.round(w * scale));
+                    tmp.height = Math.max(1, Math.round(h * scale));
+                    const ctx = tmp.getContext('2d');
+                    ctx.imageSmoothingEnabled = true;
+                    ctx.imageSmoothingQuality = 'high';
+                    ctx.scale(scale, scale);
+                    ctx.drawImage(canvas, 0, 0);
+                    figuraImg = tmp.toDataURL('image/png', 1.0);
+                }
             }
 
             // Clonar y limpiar
@@ -250,16 +324,26 @@
             clone.classList.add('etiqueta-print');
             clone.querySelectorAll('.no-print').forEach(el => el.remove());
 
-            // Reemplazar canvas
-            if (canvasImg) {
+            // Reemplazar SVG/canvas con imagen
+            if (figuraImg) {
+                // Remover SVG y canvas del clon
+                const targetSvg = clone.querySelector('svg');
                 const targetCanvas = clone.querySelector('canvas');
-                const host = targetCanvas ? targetCanvas.parentNode : clone;
+                const svgContainer = clone.querySelector('[id^="contenedor-svg-"]');
+
+                const host = svgContainer || (targetSvg ? targetSvg.parentNode : (targetCanvas ? targetCanvas.parentNode : clone));
+
+                if (targetSvg) targetSvg.remove();
+                if (targetCanvas) targetCanvas.remove();
+
+                // Añadir imagen
+                const img = new Image();
+                img.src = figuraImg;
+                img.style.width = '100%';
+                img.style.height = 'auto';
+                img.className = 'figura-print';
                 if (host) {
-                    if (targetCanvas) targetCanvas.remove();
-                    const img = new Image();
-                    img.src = canvasImg;
-                    img.style.width = '100%';
-                    img.style.height = 'auto';
+                    host.innerHTML = '';
                     host.appendChild(img);
                 }
             }
@@ -344,19 +428,16 @@
     margin: 0;
     padding: 0;
     background: #fff;
-    width: 148mm;
-    height: 105mm;
   }
 
-  body {
-    display: flex;
-    align-items: center;
-    justify-content: center;
+  .sheet-grid {
+    margin: 0;
+    padding: 0;
   }
 
   .etiqueta-print {
-    width: 140mm;
-    height: 100mm;
+    width: 148mm;
+    height: 105mm;
     padding: 4mm;
     box-sizing: border-box;
     border: 0.2mm solid #000;
@@ -364,6 +445,12 @@
     overflow: hidden;
     position: relative;
     page-break-after: always;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .etiqueta-print:first-child {
+    margin-top: 0;
   }
 
   .etiqueta-print h2 {
@@ -381,6 +468,8 @@
     width: 100%;
     height: auto;
     margin-top: 3mm;
+    flex: 1;
+    object-fit: contain;
   }
 
   .qr-box {
@@ -430,5 +519,8 @@
           </html>`);
         w.document.close();
     }
+
+    // Exponer la función globalmente para uso desde otros scripts
+    window.imprimirEtiquetas = imprimirEtiquetas;
 
 </script>

@@ -1120,4 +1120,181 @@ class ElementoController extends Controller
     {
         //
     }
+
+    /**
+     * Obtiene las máquinas disponibles para un elemento según su diámetro.
+     * GET /api/elementos/{id}/maquinas-disponibles
+     */
+    public function maquinasDisponibles($elementoId)
+    {
+        try {
+            $elemento = Elemento::findOrFail($elementoId);
+            $diametro = (int) $elemento->diametro;
+            $maquinaActualId = $elemento->maquina_id;
+
+            // Obtener todas las máquinas y filtrar por diámetro
+            // Una máquina soporta el diámetro si:
+            // - diametro_min es null O diametro >= diametro_min
+            // - diametro_max es null O diametro <= diametro_max
+            $maquinas = Maquina::orderBy('codigo')
+                ->get()
+                ->filter(function ($m) use ($diametro) {
+                    $minOk = is_null($m->diametro_min) || $diametro >= (int) $m->diametro_min;
+                    $maxOk = is_null($m->diametro_max) || $diametro <= (int) $m->diametro_max;
+                    return $minOk && $maxOk;
+                })
+                ->map(function ($m) use ($maquinaActualId) {
+                    return [
+                        'id' => $m->id,
+                        'codigo' => $m->codigo,
+                        'nombre' => $m->nombre ?? $m->codigo,
+                        'tipo' => $m->tipo,
+                        'diametro_min' => $m->diametro_min,
+                        'diametro_max' => $m->diametro_max,
+                        'es_actual' => $m->id === $maquinaActualId,
+                    ];
+                })
+                ->values();
+
+            return response()->json([
+                'success' => true,
+                'elemento' => [
+                    'id' => $elemento->id,
+                    'diametro' => $diametro,
+                    'maquina_actual_id' => $maquinaActualId,
+                ],
+                'maquinas' => $maquinas,
+            ]);
+        } catch (\Exception $e) {
+            Log::error("Error al obtener máquinas disponibles: {$e->getMessage()}");
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al obtener máquinas disponibles: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Cambia directamente la máquina de un elemento.
+     * Si el elemento pertenece a un grupo resumido, cambia todos los elementos similares del grupo.
+     * Valida diámetros y usa SubEtiquetaService para hermanos MSR20.
+     * POST /elementos/{id}/cambiar-maquina
+     */
+    public function cambiarMaquinaDirecto(Request $request, $elementoId)
+    {
+        $request->validate([
+            'maquina_id' => 'required|exists:maquinas,id',
+        ]);
+
+        try {
+            return DB::transaction(function () use ($request, $elementoId) {
+                $elementoOriginal = Elemento::with('etiquetaRelacion')->lockForUpdate()->findOrFail($elementoId);
+                $nuevaMaquina = Maquina::findOrFail($request->maquina_id);
+                $diametro = (int) $elementoOriginal->diametro;
+                $dimensiones = $elementoOriginal->dimensiones;
+
+                // Validar que la máquina soporte el diámetro
+                $minOk = is_null($nuevaMaquina->diametro_min) || $diametro >= (int) $nuevaMaquina->diametro_min;
+                $maxOk = is_null($nuevaMaquina->diametro_max) || $diametro <= (int) $nuevaMaquina->diametro_max;
+
+                if (!$minOk || !$maxOk) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => "La máquina {$nuevaMaquina->codigo} no soporta el diámetro Ø{$diametro} (rango permitido: {$nuevaMaquina->diametro_min}-{$nuevaMaquina->diametro_max})",
+                    ], 422);
+                }
+
+                $maquinaAnterior = $elementoOriginal->maquina ? $elementoOriginal->maquina->codigo : 'Sin asignar';
+
+                // Verificar si el elemento pertenece a un grupo resumido
+                $etiqueta = $elementoOriginal->etiquetaRelacion;
+                $grupoResumenId = $etiqueta ? $etiqueta->grupo_resumen_id : null;
+
+                // Colección de elementos a cambiar
+                $elementosACambiar = collect([$elementoOriginal]);
+
+                // Si está en un grupo resumido, buscar elementos similares (mismo diámetro y dimensiones)
+                if ($grupoResumenId) {
+                    // Obtener todas las etiquetas del grupo
+                    $etiquetasDelGrupo = Etiqueta::where('grupo_resumen_id', $grupoResumenId)
+                        ->pluck('etiqueta_sub_id')
+                        ->toArray();
+
+                    // Buscar elementos similares en el grupo (mismo diámetro y dimensiones)
+                    $elementosSimilares = Elemento::whereIn('etiqueta_sub_id', $etiquetasDelGrupo)
+                        ->where('diametro', $diametro)
+                        ->where('dimensiones', $dimensiones)
+                        ->where('id', '!=', $elementoOriginal->id)
+                        ->lockForUpdate()
+                        ->get();
+
+                    $elementosACambiar = $elementosACambiar->merge($elementosSimilares);
+
+                    Log::info("Cambio de máquina en grupo resumido", [
+                        'grupo_resumen_id' => $grupoResumenId,
+                        'elemento_original_id' => $elementoId,
+                        'elementos_similares' => $elementosSimilares->count(),
+                        'total_elementos' => $elementosACambiar->count(),
+                    ]);
+                }
+
+                // Verificar que al menos un elemento no esté ya en la máquina destino
+                $elementosYaEnDestino = $elementosACambiar->where('maquina_id', $nuevaMaquina->id)->count();
+                if ($elementosYaEnDestino === $elementosACambiar->count()) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Todos los elementos ya están asignados a esa máquina',
+                    ], 422);
+                }
+
+                /** @var SubEtiquetaService $svc */
+                $svc = app(SubEtiquetaService::class);
+                $elementosMovidos = 0;
+
+                // Cambiar máquina de cada elemento
+                foreach ($elementosACambiar as $elemento) {
+                    // Saltar si ya está en la máquina destino
+                    if ($elemento->maquina_id == $nuevaMaquina->id) {
+                        continue;
+                    }
+
+                    // Actualizar máquina del elemento
+                    $elemento->maquina_id = $nuevaMaquina->id;
+                    $elemento->save();
+
+                    // Usar SubEtiquetaService para reubicar subetiquetas correctamente
+                    $svc->reubicarParaProduccion($elemento, $nuevaMaquina->id);
+
+                    $elementosMovidos++;
+                }
+
+                $mensaje = $elementosMovidos === 1
+                    ? "Elemento movido a {$nuevaMaquina->codigo}"
+                    : "{$elementosMovidos} elementos movidos a {$nuevaMaquina->codigo}";
+
+                Log::info("Elementos movidos de {$maquinaAnterior} a {$nuevaMaquina->codigo}", [
+                    'elemento_original_id' => $elementoId,
+                    'elementos_movidos' => $elementosMovidos,
+                    'maquina_anterior' => $maquinaAnterior,
+                    'maquina_nueva' => $nuevaMaquina->codigo,
+                    'grupo_resumen_id' => $grupoResumenId,
+                    'usuario_id' => Auth::id(),
+                ]);
+
+                return response()->json([
+                    'success' => true,
+                    'message' => $mensaje,
+                    'elementos_movidos' => $elementosMovidos,
+                    'maquina_anterior' => $maquinaAnterior,
+                    'maquina_nueva' => $nuevaMaquina->codigo,
+                ]);
+            });
+        } catch (\Exception $e) {
+            Log::error("Error al cambiar máquina del elemento {$elementoId}: {$e->getMessage()}");
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al cambiar la máquina: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
 }
