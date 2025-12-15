@@ -659,6 +659,9 @@
                         if (content.includes('window.elementosAgrupadosScript') ||
                             content.includes('window.etiquetasData') ||
                             content.includes('window.pesosElementos') ||
+                            content.includes('window.gruposResumenData') ||
+                            content.includes('window.etiquetasEnGrupos') ||
+                            content.includes('window.DIAMETRO_POR_ETIQUETA') ||
                             content.includes('window.SUGERENCIAS')) {
                             try {
                                 eval(content);
@@ -676,13 +679,6 @@
                         });
                     }
 
-                    // Re-renderizar SVGs
-                    if (window.elementosAgrupadosScript && window.renderizarGrupoSVG) {
-                        window.elementosAgrupadosScript.forEach((grupo, gidx) => {
-                            window.renderizarGrupoSVG(grupo, gidx);
-                        });
-                    }
-
                     // Re-inicializar event listeners del botón crear paquete
                     const btnCrear = document.getElementById("crearPaqueteBtn");
                     if (btnCrear && window.TrabajoPaquete && window.TrabajoPaquete.crearPaquete) {
@@ -693,7 +689,7 @@
                         console.log('✅ Event listener del botón crear paquete re-inicializado');
                     }
 
-                    // Animación de entrada
+                    // Animación de entrada y re-renderizado de SVGs
                     requestAnimationFrame(() => {
                         gridActual.style.opacity = '1';
 
@@ -719,6 +715,42 @@
                             const showRight = JSON.parse(localStorage.getItem('showRight') ?? 'true');
                             window.updateGridClasses(showLeft, showRight);
                         }
+
+                        // Re-renderizar SVGs después de que el DOM esté listo
+                        setTimeout(() => {
+                            // Re-renderizar SVGs de etiquetas individuales
+                            if (window.elementosAgrupadosScript && window.renderizarGrupoSVG) {
+                                console.log('🎨 Re-renderizando', window.elementosAgrupadosScript.length, 'etiquetas individuales...');
+                                window.elementosAgrupadosScript.forEach((grupo, gidx) => {
+                                    window.renderizarGrupoSVG(grupo, gidx);
+                                });
+                            }
+
+                            // Re-renderizar SVGs de grupos de resumen (usando data attributes del DOM)
+                            const gruposResumenCards = document.querySelectorAll('.grupo-resumen-card');
+                            if (gruposResumenCards.length > 0 && window.renderizarGrupoSVG) {
+                                console.log('🎨 Re-renderizando', gruposResumenCards.length, 'grupos de resumen desde DOM...');
+                                gruposResumenCards.forEach((card) => {
+                                    const contenedorSvgId = card.dataset.contenedorSvgId;
+                                    const grupoId = card.dataset.grupoId;
+                                    let elementos = [];
+                                    try {
+                                        elementos = JSON.parse(card.dataset.elementos || '[]');
+                                    } catch (e) {
+                                        console.warn('Error parsing elementos:', e);
+                                    }
+
+                                    if (contenedorSvgId && elementos.length > 0) {
+                                        const grupoData = {
+                                            id: parseInt(contenedorSvgId),
+                                            etiqueta: { id: parseInt(contenedorSvgId) },
+                                            elementos: elementos
+                                        };
+                                        window.renderizarGrupoSVG(grupoData, parseInt(grupoId));
+                                    }
+                                });
+                            }
+                        }, 50); // Pequeño delay para asegurar que el DOM esté completamente actualizado
                     });
 
                     console.log('✅ Etiquetas refrescadas correctamente');

@@ -5233,8 +5233,10 @@
                     return;
                 }
 
-                // Límite fijo de 5000 toneladas (5.000.000 kg) para las barras
-                const maxPeso = 5000000;
+                // Calcular el peso máximo dinámicamente para que las barras sean proporcionales
+                const pesoMaximoReal = Math.max(...datos.map(m => m.peso_kg || 0));
+                // Añadir un 10% de margen para que la barra más grande no llegue al 100%
+                const maxPeso = pesoMaximoReal > 0 ? pesoMaximoReal * 1.1 : 1;
                 const esBalanceado = tipo === 'balanceado';
 
                 // Colores según tipo de gráfico
@@ -5255,8 +5257,7 @@
                     const longitud = maquina.longitud_m || 0;
                     const diametro = maquina.diametro_medio || 0;
                     const elementos = maquina.cantidad_elementos || 0;
-                    const porcentaje = Math.min((peso / maxPeso) * 100, 100);
-                    const superaMax = peso > maxPeso;
+                    const porcentaje = (peso / maxPeso) * 100;
 
                     grafico.innerHTML += `
                         <div class="grid py-2.5 px-3 hover:bg-slate-50 transition-colors border-b border-slate-100 last:border-b-0" style="grid-template-columns: 100px 1fr 130px; gap: 16px; align-items: center;">
@@ -5266,12 +5267,12 @@
                             </div>
                             <div class="h-6 rounded bg-slate-200 overflow-hidden shadow-inner">
                                 <div class="h-full rounded transition-all duration-500 ease-out flex items-center justify-end pr-3"
-                                     style="${colores.bar} width: ${Math.max(porcentaje, peso > 0 ? 10 : 2)}%; min-width: ${peso > 0 ? '50px' : '8px'};">
+                                     style="${colores.bar} width: ${Math.max(porcentaje, peso > 0 ? 5 : 1)}%; min-width: ${peso > 0 ? '30px' : '4px'};">
                                     <span class="text-xs font-bold text-white drop-shadow-sm whitespace-nowrap">${peso > 0 ? (peso >= 1000 ? Math.round(peso/1000) + 'T' : Math.round(peso) + 'kg') : ''}</span>
                                 </div>
                             </div>
                             <div class="text-right min-w-0">
-                                <div class="text-sm font-semibold ${colores.text}">${Math.round(peso).toLocaleString('es-ES')} kg${superaMax ? ' <span class="text-red-500">⚠</span>' : ''}</div>
+                                <div class="text-sm font-semibold ${colores.text}">${Math.round(peso).toLocaleString('es-ES')} kg</div>
                                 <div class="text-xs text-slate-400">${Number(longitud).toLocaleString('es-ES')}m · ⌀${diametro}mm</div>
                             </div>
                         </div>
@@ -5436,6 +5437,8 @@
                 try {
                     const incluirFabricando = document.getElementById('chkBalancearFabricando')?.checked || false;
 
+                    console.log('Enviando movimientos:', movimientos);
+
                     const response = await fetch('/api/produccion/balancear-carga-aplicar', {
                         method: 'POST',
                         headers: {
@@ -5445,8 +5448,12 @@
                         body: JSON.stringify({ movimientos, incluir_fabricando: incluirFabricando })
                     });
 
+                    console.log('Response status:', response.status);
+
                     if (!response.ok) {
-                        throw new Error('Error al aplicar balanceo');
+                        const errorText = await response.text();
+                        console.error('Error response:', errorText);
+                        throw new Error('Error al aplicar balanceo: ' + response.status);
                     }
 
                     const data = await response.json();

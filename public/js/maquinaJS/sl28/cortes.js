@@ -13,7 +13,7 @@
 window.Cortes = (function () {
     "use strict";
 
-    // console.log("🔧 Inicializando módulo Cortes v3.0 Final");
+    console.log("🔧 Inicializando módulo Cortes v3.0 Final");
 
     // ============================================================================
     // CONFIGURACIÓN
@@ -171,8 +171,94 @@ window.Cortes = (function () {
     // FUNCIÓN 3: ENVIAR A FABRICACIÓN
     // ============================================================================
 
+    // ============================================================================
+    // FUNCIÓN AUXILIAR: PEDIR DESPERDICIO MANUAL
+    // ============================================================================
+
+    async function pedirDesperdicioManual(longitudBarraM, desperdicioEstimadoCm = 0) {
+        const resultado = await Swal.fire({
+            title: 'Desperdicio Real',
+            width: 340,
+            html: `
+                <div style="text-align: center; padding: 0 8px;">
+                    <p style="color: #6b7280; font-size: 14px; margin-bottom: 12px;">
+                        Introduce el desperdicio real (cm)
+                    </p>
+                    <div style="background: #f3f4f6; padding: 10px; border-radius: 8px; margin-bottom: 16px;">
+                        <p style="margin: 0; font-size: 13px;">
+                            <strong>Barra:</strong> ${longitudBarraM}m
+                            ${desperdicioEstimadoCm > 0 ? ` · <strong>Est:</strong> ${desperdicioEstimadoCm} cm` : ''}
+                        </p>
+                    </div>
+                    <input type="number"
+                           id="swal-desperdicio-input"
+                           placeholder="cm"
+                           min="0"
+                           step="0.1"
+                           value="${desperdicioEstimadoCm}"
+                           style="width: 120px; font-size: 24px; text-align: center; padding: 12px; border: 2px solid #d1d5db; border-radius: 8px; outline: none;">
+                </div>
+            `,
+            showCancelButton: true,
+            confirmButtonText: 'Confirmar',
+            cancelButtonText: 'Cancelar',
+            confirmButtonColor: '#10b981',
+            focusConfirm: false,
+            didOpen: () => {
+                const input = document.getElementById('swal-desperdicio-input');
+                if (input) {
+                    input.focus();
+                    input.select();
+                }
+            },
+            preConfirm: () => {
+                const valor = document.getElementById('swal-desperdicio-input').value;
+                if (valor === '' || isNaN(parseFloat(valor))) {
+                    Swal.showValidationMessage('Introduce un valor válido');
+                    return false;
+                }
+                if (parseFloat(valor) < 0) {
+                    Swal.showValidationMessage('No puede ser negativo');
+                    return false;
+                }
+                return parseFloat(valor);
+            }
+        });
+
+        if (resultado.isConfirmed) {
+            return resultado.value;
+        }
+        return null;
+    }
+
+    // ============================================================================
+    // FUNCIÓN 3: ENVIAR A FABRICACIÓN
+    // ============================================================================
+
     async function enviarAFabricacionOptimizada(params) {
-        const { longitudBarraCm, etiquetas, csrfToken, onUpdate } = params;
+        const {
+            longitudBarraCm,
+            etiquetas,
+            csrfToken,
+            onUpdate,
+            desperdicioEstimadoCm = 0,
+            pedirDesperdicio = true  // Solo pedir en primer clic
+        } = params;
+
+        let desperdicioManualCm = null;
+
+        // Solo pedir desperdicio si se indica (primer clic)
+        if (pedirDesperdicio) {
+            desperdicioManualCm = await pedirDesperdicioManual(
+                (longitudBarraCm / 100).toFixed(2),
+                desperdicioEstimadoCm
+            );
+
+            // Si el usuario cancela, no continuar
+            if (desperdicioManualCm === null) {
+                return { success: false, cancelled: true };
+            }
+        }
 
         try {
             const payload = {
@@ -183,6 +269,11 @@ window.Cortes = (function () {
                     patron_letras: e.patron?.patron_letras || "",
                 })),
             };
+
+            // Solo incluir desperdicio si se pidió
+            if (desperdicioManualCm !== null) {
+                payload.desperdicio_manual_cm = desperdicioManualCm;
+            }
 
             const response = await fetch(
                 CONFIG.endpoints.fabricacionOptimizada,
@@ -367,10 +458,19 @@ window.Cortes = (function () {
         });
 
         if (resultado.isConfirmed && seleccionado) {
+            // Generar el patrón de letras para el corte simple (todas las piezas son iguales: A + A + A...)
+            const esquemaSimple = Array(seleccionado.por_barra).fill("A").join(" + ");
+
             return {
                 accion: "fabricar_patron_simple",
                 longitud_m: seleccionado.longitud_m,
                 patron: seleccionado,
+                patron_letras: esquemaSimple, // 🔧 Incluir el patrón de letras
+                patronInfo: {
+                    aprovechamiento: seleccionado.aprovechamiento,
+                    desperdicio_cm: seleccionado.sobra_cm || 0,
+                    esquema: esquemaSimple
+                }
             };
         } else if (resultado.isDenied) {
             return { accion: "optimizar" };
@@ -783,13 +883,29 @@ window.Cortes = (function () {
                 .getElementById("btn-fabricar")
                 .addEventListener("click", () => {
                     limpiarYRestaurar();
+
+                    // Generar el esquema de letras para incluirlo en cada etiqueta
+                    const { esquema } = generarEsquema(patronActual);
+
+                    console.log('🔧 Patrón generado:', esquema);
+                    console.log('📦 Etiquetas con patrón:', patronActual.etiquetas.map((id) => ({
+                        etiqueta_sub_id: id,
+                        patron_letras: esquema
+                    })));
+
                     resolve({
                         accion: "fabricar",
                         longitudBarraCm: patronActual.longitud_barra_cm,
                         etiquetas: patronActual.etiquetas.map((id) => ({
                             etiqueta_sub_id: id,
+                            patron_letras: esquema, // 🔧 Incluir el patrón de letras
                         })),
                         patron: patronActual,
+                        patronInfo: {
+                            aprovechamiento: patronActual.aprovechamiento,
+                            desperdicio_cm: patronActual.desperdicio_cm || 0,
+                            esquema: esquema
+                        }
                     });
                 });
 

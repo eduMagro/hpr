@@ -21,16 +21,24 @@
     $pesoTotal = $grupo['peso_total'] ?? 0;
     $diametro = $grupo['diametro'] ?? 0;
 
+    // Calcular suma total de barras de todos los elementos del grupo
+    $totalBarras = collect($grupo['elementos'] ?? [])->sum('barras');
+
     // Usar el ID de la primera etiqueta para el contenedor SVG
     $contenedorSvgId = $primeraEtiqueta->id;
 @endphp
 
 <div class="etiqueta-wrapper" data-grupo-id="{{ $grupo['id'] }}" data-es-grupo="true">
-    <div class="etiqueta-card proceso estado-{{ $estado }}" id="etiqueta-{{ $safeSubId }}"
+    <div class="etiqueta-card proceso estado-{{ $estado }} grupo-resumen-card" id="etiqueta-{{ $safeSubId }}"
         data-estado="{{ $estado }}"
         data-grupo-id="{{ $grupo['id'] }}"
         data-maquina-id="{{ $maquina->id }}"
-        data-diametro="{{ $diametro }}">
+        data-diametro="{{ $diametro }}"
+        data-contenedor-svg-id="{{ $contenedorSvgId }}"
+        data-elementos='@json($grupo['elementos'] ?? [])'
+        data-etiquetas-sub-ids='@json(collect($grupo["etiquetas"])->pluck("etiqueta_sub_id")->values())'
+        data-primera-etiqueta-id="{{ $primeraEtiqueta->etiqueta_sub_id }}"
+        data-planilla-id="{{ $planilla->id }}">
 
         <!-- Botones (igual que etiqueta normal) -->
         <div class="absolute top-2 right-2 flex items-center gap-2 no-print z-10">
@@ -115,7 +123,10 @@
                         @endif
                     </div>
                 </div>
-                <span class="text-teal-600">{{ $totalElementos }} elem.</span>
+                <div class="flex items-center gap-3">
+                    <span class="text-teal-600 font-semibold" title="Total de barras sumadas">{{ $totalBarras }} barras</span>
+                    <span class="text-teal-600">{{ $totalElementos }} elem.</span>
+                </div>
             </div>
         </div>
 

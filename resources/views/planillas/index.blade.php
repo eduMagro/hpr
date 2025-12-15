@@ -14,6 +14,11 @@
                 class="bg-gradient-to-tr from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-semibold py-2 px-4 rounded shadow-sm">
                 Completar planillas
             </button>
+
+            <button type="button" id="btn-resetear-planillas"
+                class="bg-gradient-to-tr from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white font-semibold py-2 px-4 rounded shadow-sm">
+                Resetear planillas
+            </button>
         </div>
 
         <div id="modal-import" class="fixed inset-0 z-[60] hidden">
@@ -91,6 +96,10 @@
                         <button id="btn-completar-planillas-mobile" data-url="{{ route('planillas.completarTodas') }}"
                             class="bg-white/15 text-white text-[10px] font-semibold px-2.5 py-1.5 rounded-lg shadow hover:bg-white/25 transition">
                             Completar
+                        </button>
+                        <button type="button" id="btn-resetear-planillas-mobile"
+                            class="bg-amber-500/80 text-white text-[10px] font-semibold px-2.5 py-1.5 rounded-lg shadow hover:bg-amber-500 transition">
+                            Resetear
                         </button>
                     </div>
                 </div>
@@ -318,6 +327,54 @@
                 </form>
             </div>
         </div>
+
+        <!-- Modal de resetear planilla -->
+        <div id="modal-resetear" class="hidden absolute inset-0 z-[99999]">
+            <!-- Overlay -->
+            <div class="absolute inset-0 bg-black/50" onclick="cerrarModalResetear()"></div>
+
+            <!-- Modal Centrado -->
+            <div
+                class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[90%] max-w-lg bg-white rounded-lg shadow-2xl p-6">
+                <h2 class="text-lg font-bold text-gray-800 mb-2">Resetear planilla</h2>
+                <p class="text-sm text-gray-600 mb-4">
+                    Esta acción reseteará todos los elementos y etiquetas de la planilla a estado <strong>pendiente</strong>,
+                    eliminará los paquetes y reasignará las máquinas.
+                </p>
+
+                <div class="space-y-4">
+                    <div>
+                        <label for="select-planilla-resetear" class="block text-sm font-medium text-gray-700 mb-1">
+                            Selecciona la planilla:
+                        </label>
+                        <select id="select-planilla-resetear"
+                            class="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:ring-amber-500 focus:border-amber-500">
+                            <option value="">-- Seleccionar planilla --</option>
+                            @php
+                                $planillasParaResetear = \App\Models\Planilla::whereIn('estado', ['pendiente', 'fabricando'])
+                                    ->orderBy('codigo', 'desc')
+                                    ->limit(100)
+                                    ->get();
+                            @endphp
+                            @foreach ($planillasParaResetear as $p)
+                                <option value="{{ $p->id }}">{{ $p->codigo }} - {{ $p->estado }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+
+                    <div class="flex justify-end gap-2 pt-2">
+                        <button type="button" onclick="cerrarModalResetear()"
+                            class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-semibold px-4 py-2 rounded">
+                            Cancelar
+                        </button>
+                        <button type="button" id="btn-confirmar-resetear"
+                            class="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white font-semibold rounded">
+                            Resetear
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
     @endpush
 
     <script>
@@ -472,6 +529,136 @@
             const modal = document.getElementById('modal-reimportar');
             if (modal) {
                 modal.classList.add('hidden');
+            }
+        }
+
+        // Modal resetear planilla
+        function abrirModalResetear() {
+            const modal = document.getElementById('modal-resetear');
+            if (modal) {
+                modal.classList.remove('hidden');
+            }
+        }
+
+        function cerrarModalResetear() {
+            const modal = document.getElementById('modal-resetear');
+            if (modal) {
+                modal.classList.add('hidden');
+            }
+        }
+
+        function initResetearPlanilla() {
+            const btnResetear = document.getElementById('btn-resetear-planillas');
+            const btnResetearMobile = document.getElementById('btn-resetear-planillas-mobile');
+            const btnConfirmar = document.getElementById('btn-confirmar-resetear');
+            const selectPlanilla = document.getElementById('select-planilla-resetear');
+            const csrf = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+
+            // Abrir modal desde botones
+            if (btnResetear) {
+                btnResetear.addEventListener('click', abrirModalResetear);
+            }
+            if (btnResetearMobile) {
+                btnResetearMobile.addEventListener('click', abrirModalResetear);
+            }
+
+            // Confirmar reseteo
+            if (btnConfirmar) {
+                btnConfirmar.addEventListener('click', async function() {
+                    const planillaId = selectPlanilla?.value;
+
+                    if (!planillaId) {
+                        if (typeof Swal !== 'undefined') {
+                            Swal.fire('Error', 'Selecciona una planilla', 'warning');
+                        } else {
+                            alert('Selecciona una planilla');
+                        }
+                        return;
+                    }
+
+                    // Confirmar acción
+                    let confirmado = true;
+                    if (typeof Swal !== 'undefined') {
+                        const result = await Swal.fire({
+                            title: '¿Resetear planilla?',
+                            text: 'Se resetearán todos los elementos, etiquetas y se eliminarán los paquetes.',
+                            icon: 'warning',
+                            showCancelButton: true,
+                            confirmButtonText: 'Sí, resetear',
+                            cancelButtonText: 'Cancelar',
+                            confirmButtonColor: '#f59e0b',
+                        });
+                        confirmado = result.isConfirmed;
+                    } else {
+                        confirmado = confirm('¿Resetear planilla? Se resetearán todos los elementos, etiquetas y se eliminarán los paquetes.');
+                    }
+
+                    if (!confirmado) return;
+
+                    // Mostrar loading
+                    if (typeof Swal !== 'undefined') {
+                        Swal.fire({
+                            title: 'Reseteando...',
+                            text: 'Por favor espera.',
+                            allowOutsideClick: false,
+                            didOpen: () => Swal.showLoading(),
+                        });
+                    }
+
+                    try {
+                        const response = await fetch(`/planillas/${planillaId}/resetear`, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Accept': 'application/json',
+                                'X-CSRF-TOKEN': csrf ?? '',
+                            },
+                        });
+
+                        const data = await response.json();
+
+                        if (typeof Swal !== 'undefined') {
+                            Swal.close();
+                        }
+
+                        if (data.success) {
+                            cerrarModalResetear();
+
+                            const detalles = data.detalles ?? {};
+                            const mensaje = `
+                                <p>Paquetes eliminados: <strong>${detalles.paquetes_eliminados ?? 0}</strong></p>
+                                <p>Etiquetas reseteadas: <strong>${detalles.etiquetas_reseteadas ?? 0}</strong></p>
+                                <p>Elementos reseteados: <strong>${detalles.elementos_reseteados ?? 0}</strong></p>
+                                <p>Máquinas asignadas: <strong>${detalles.maquinas_asignadas ?? 0}</strong></p>
+                            `;
+
+                            if (typeof Swal !== 'undefined') {
+                                await Swal.fire({
+                                    title: 'Planilla reseteada',
+                                    html: mensaje,
+                                    icon: 'success',
+                                    confirmButtonText: 'Recargar',
+                                });
+                            } else {
+                                alert(data.message);
+                            }
+
+                            window.location.reload();
+                        } else {
+                            if (typeof Swal !== 'undefined') {
+                                Swal.fire('Error', data.message ?? 'Error al resetear la planilla', 'error');
+                            } else {
+                                alert(data.message ?? 'Error al resetear la planilla');
+                            }
+                        }
+                    } catch (error) {
+                        if (typeof Swal !== 'undefined') {
+                            Swal.fire('Error', error.message ?? 'Error de conexión', 'error');
+                        } else {
+                            alert(error.message ?? 'Error de conexión');
+                        }
+                    }
+                });
             }
         }
 
@@ -647,6 +834,7 @@
         document.addEventListener('DOMContentLoaded', function() {
             initModal();
             initCompletarTodas();
+            initResetearPlanilla();
         });
 
         // Reinicializar después de actualizaciones de Livewire
@@ -656,6 +844,7 @@
             window.modalInitialized = false;
             initModal();
             initCompletarTodas();
+            initResetearPlanilla();
         });
 
         // Para Livewire v2 (si es el caso)
@@ -663,6 +852,7 @@
             console.log('Livewire cargado, inicializando...');
             initModal();
             initCompletarTodas();
+            initResetearPlanilla();
         });
     </script>
 </x-app-layout>

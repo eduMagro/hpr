@@ -764,29 +764,15 @@ class ProduccionController extends Controller
             ->filter(fn($data) => !is_null($data['maquina_id']));
 
         // 3. Calcular colas iniciales de cada máquina
+        // CORRECCIÓN: La cola debe empezar desde now() siempre, no desde fecha_inicio
+        // porque los eventos fabricando se expanden hasta now() y los pendientes
+        // deben empezar después del momento actual
         $colasMaquinas = [];
         foreach ($maquinas as $m) {
-            $ultimaPlanillaFabricando = Planilla::whereHas('elementos', fn($q) => $q->where('maquina_id', $m->id))
-                ->where('estado', 'fabricando')
-                ->orderByDesc('fecha_inicio')
-                ->first();
-
-            $fechaInicioCola = optional($ultimaPlanillaFabricando)->fecha_inicio
-                ? toCarbon($ultimaPlanillaFabricando->fecha_inicio)
-                : Carbon::now();
-
-            // Validar que la fecha no esté demasiado lejos en el futuro
-            $maxFecha = Carbon::now()->addYear();
-            if ($fechaInicioCola->gt($maxFecha)) {
-                Log::warning('COLA MAQUINA: fecha_inicio demasiado lejana, usando now()', [
-                    'maquina_id' => $m->id,
-                    'fecha_inicio' => $fechaInicioCola->toIso8601String(),
-                    'planilla_id' => optional($ultimaPlanillaFabricando)->id,
-                ]);
-                $fechaInicioCola = Carbon::now();
-            }
-
-            $colasMaquinas[$m->id] = $fechaInicioCola;
+            // La cola siempre empieza desde now()
+            // Los eventos fabricando usan su propia fecha_inicio y se expanden hasta now()
+            // Los eventos pendientes empiezan desde now() en adelante
+            $colasMaquinas[$m->id] = Carbon::now();
         }
 
         // 4. Obtener ordenes desde la tabla orden_planillas
@@ -1844,6 +1830,48 @@ class ProduccionController extends Controller
             $primeraOrden = $planillasOrdenadas[0] ?? null;
             $primeraId = is_array($primeraOrden) ? ($primeraOrden['planilla_id'] ?? null) : $primeraOrden;
 
+            // CORRECCIÓN: Ordenar para que las planillas FABRICANDO se procesen PRIMERO
+            // Esto asegura que la cola se ajuste correctamente antes de procesar las pendientes
+            // IMPORTANTE: Si hay múltiples fabricando, ordenar por fecha_inicio más antigua primero
+            usort($planillasOrdenadas, function($a, $b) use ($agrupadasIndex, $maquinaId) {
+                $planillaIdA = is_array($a) ? ($a['planilla_id'] ?? null) : $a;
+                $planillaIdB = is_array($b) ? ($b['planilla_id'] ?? null) : $b;
+
+                $claveA = "{$planillaIdA}-{$maquinaId}";
+                $claveB = "{$planillaIdB}-{$maquinaId}";
+
+                $dataA = $agrupadasIndex->get($claveA);
+                $dataB = $agrupadasIndex->get($claveB);
+
+                $planillaA = $dataA ? Arr::get($dataA, 'planilla') : null;
+                $planillaB = $dataB ? Arr::get($dataB, 'planilla') : null;
+
+                $estadoA = $planillaA->estado ?? 'pendiente';
+                $estadoB = $planillaB->estado ?? 'pendiente';
+
+                // Fabricando primero, luego pendiente
+                if ($estadoA === 'fabricando' && $estadoB !== 'fabricando') return -1;
+                if ($estadoB === 'fabricando' && $estadoA !== 'fabricando') return 1;
+
+                // Si ambas están fabricando, ordenar por fecha_inicio (la más antigua primero)
+                if ($estadoA === 'fabricando' && $estadoB === 'fabricando') {
+                    $fechaA = $planillaA->fecha_inicio ? strtotime($planillaA->fecha_inicio) : PHP_INT_MAX;
+                    $fechaB = $planillaB->fecha_inicio ? strtotime($planillaB->fecha_inicio) : PHP_INT_MAX;
+                    if ($fechaA !== $fechaB) {
+                        return $fechaA <=> $fechaB;
+                    }
+                }
+
+                // Mantener orden original para planillas con mismo estado
+                $posA = is_array($a) ? ($a['posicion'] ?? 999) : 999;
+                $posB = is_array($b) ? ($b['posicion'] ?? 999) : 999;
+                return $posA <=> $posB;
+            });
+
+            // Flag para trackear si ya procesamos la primera planilla fabricando
+            // Solo la primera puede usar su propia fecha_inicio, las demás usan la cola
+            $primeraFabricandoProcesada = false;
+
             foreach ($planillasOrdenadas as $ordenData) {
                 // Soporte para ambos formatos: array con datos o solo ID
                 $planillaId = is_array($ordenData) ? ($ordenData['planilla_id'] ?? null) : $ordenData;
@@ -1928,11 +1956,16 @@ class ProduccionController extends Controller
                         }
 
                         // Determinar fecha de inicio y duración
-                        if ($fechaInicioMasAntigua) {
-                            // Si hay algún elemento fabricando/completado, usar su fecha de inicio
-                            $fechaInicio = $fechaInicioMasAntigua;
+                        // CORRECCIÓN: Solo la PRIMERA planilla fabricando puede usar su propia fecha_inicio
+                        // Las demás (aunque estén fabricando) deben continuar en la cola
+                        $usarFechaInicioPropia = $fechaInicioMasAntigua && !$primeraFabricandoProcesada;
 
-                            // Duración = now() + tiempo de elementos pendientes + amarrado
+                        if ($usarFechaInicioPropia) {
+                            // Primera planilla fabricando: usar su fecha de inicio real
+                            $fechaInicio = $fechaInicioMasAntigua;
+                            $primeraFabricandoProcesada = true;
+
+                            // Duración de elementos pendientes (aún no fabricados)
                             $duracionPendientes = $elementosPendientes->sum(function($elemento) {
                                 $tiempoFabricacion = (float)($elemento->tiempo_fabricacion ?? 1200);
                                 $tiempoAmarrado = 1200;
@@ -1940,12 +1973,13 @@ class ProduccionController extends Controller
                             });
 
                             // El evento se alarga hasta now() + tiempo pendiente
+                            // Esto permite ver cuánto se está alargando realmente
                             $tiempoTranscurrido = $fechaInicio->diffInSeconds(Carbon::now());
                             $duracionSegundos = $tiempoTranscurrido + $duracionPendientes;
                             $duracionSegundos = max($duracionSegundos, 3600);
+
                         } else {
-                            // Para sub-grupos completamente pendientes: usar siempre inicioCola
-                            // Esto asegura continuidad entre eventos consecutivos
+                            // Demás planillas (pendientes O fabricando pero no la primera): usar cola
                             $fechaInicio = $inicioCola->copy();
                         }
 
@@ -3331,36 +3365,51 @@ class ProduccionController extends Controller
                 ]);
             }
 
-            // 2. Calcular carga actual de cada máquina (peso, longitud, diámetro medio)
+            // 2. Calcular carga actual de cada máquina
+            // - Carga TOTAL (incluyendo revisadas) para determinar balance
+            // - Elementos movibles (solo NO revisadas) para proponer movimientos
             $cargasMaquinas = [];
-            $elementosPorMaquina = [];
+            $elementosPorMaquina = []; // Solo elementos movibles (no revisadas)
 
             foreach ($maquinas as $maquina) {
-                // SOLO elementos PENDIENTES (no fabricando ni completados)
-                $elementos = Elemento::with(['planilla', 'maquina'])
-                    ->where('maquina_id', $maquina->id)
-                    ->whereHas('planilla', fn($q) => $q->whereIn('estado', ['pendiente', 'fabricando', 'programada']))
-                    ->where('estado', 'pendiente') // SOLO pendientes se pueden mover
+                // CARGA TOTAL: todos los elementos pendientes (para calcular balance)
+                $elementosTotales = Elemento::where('maquina_id', $maquina->id)
+                    ->whereHas('planilla', fn($q) => $q
+                        ->whereIn('estado', ['pendiente', 'fabricando', 'programada'])
+                    )
+                    ->where('estado', 'pendiente')
                     ->get();
 
-                // Calcular métricas como en planificacion/index
-                $pesoTotal = $elementos->sum('peso');
-                $longitudTotal = $elementos->sum(fn($e) => ($e->longitud ?? 0) * ($e->barras ?? 1));
-                $diametros = $elementos->pluck('diametro')->filter();
+                // ELEMENTOS MOVIBLES: solo de planillas NO revisadas
+                $elementosMovibles = Elemento::with(['planilla', 'maquina'])
+                    ->where('maquina_id', $maquina->id)
+                    ->whereHas('planilla', fn($q) => $q
+                        ->whereIn('estado', ['pendiente', 'fabricando', 'programada'])
+                        ->where('revisada', false) // Solo no revisadas se pueden mover
+                    )
+                    ->where('estado', 'pendiente')
+                    ->get();
+
+                // Métricas de carga TOTAL (para balance)
+                $tiempoTotal = $elementosTotales->sum('tiempo_fabricacion');
+                $pesoTotal = $elementosTotales->sum('peso');
+                $longitudTotal = $elementosTotales->sum(fn($e) => ($e->longitud ?? 0) * ($e->barras ?? 1));
+                $diametros = $elementosTotales->pluck('diametro')->filter();
                 $diametroMedio = $diametros->isNotEmpty() ? round($diametros->avg(), 2) : 0;
-                $tiempoTotal = $elementos->sum('tiempo_fabricacion'); // Mantener para balanceo interno
 
                 $cargasMaquinas[$maquina->id] = [
                     'maquina' => $maquina,
-                    'tiempo_segundos' => $tiempoTotal,
+                    'tiempo_segundos' => $tiempoTotal, // Carga TOTAL para balance
                     'tiempo_horas' => round($tiempoTotal / 3600, 2),
                     'peso_kg' => round($pesoTotal, 2),
                     'longitud_m' => round($longitudTotal, 2),
                     'diametro_medio' => $diametroMedio,
-                    'cantidad_elementos' => $elementos->count(),
+                    'cantidad_elementos' => $elementosTotales->count(),
+                    'elementos_movibles' => $elementosMovibles->count(), // Info adicional
                 ];
 
-                $elementosPorMaquina[$maquina->id] = $elementos;
+                // Solo guardar elementos movibles para proponer movimientos
+                $elementosPorMaquina[$maquina->id] = $elementosMovibles;
             }
 
             // 3. NUEVO: Agrupar máquinas por tipo para balanceo
@@ -3371,115 +3420,71 @@ class ProduccionController extends Controller
                     'tipos_compatibles' => ['cortadora_manual', 'cortadora manual'] // Pueden recibir de manuales
                 ],
                 'estribadora' => [
-                    'tipos_principales' => ['estribadora'],
+                    'tipos_principales' => ['estribadora', 'estribera'], // Ambas variantes del nombre
                     'tipos_compatibles' => []
                 ],
             ];
 
-            // 5. Sugerir movimientos para balancear
+            // 5. Sugerir movimientos para balancear (algoritmo optimizado)
             $elementosAMover = [];
-            $umbralDesbalance = 0.10; // 10% de tolerancia
 
             foreach ($gruposTipos as $nombreGrupo => $configuracion) {
                 $tiposPrincipales = $configuracion['tipos_principales'];
-                $tiposCompatibles = $configuracion['tipos_compatibles'];
-                $todosLosTipos = array_merge($tiposPrincipales, $tiposCompatibles);
+                $todosLosTipos = array_merge($tiposPrincipales, $configuracion['tipos_compatibles']);
 
-                // Filtrar máquinas de este grupo (principales + compatibles)
-                $maquinasGrupo = collect($cargasMaquinas)->filter(function($carga) use ($todosLosTipos) {
-                    return in_array($carga['maquina']->tipo, $todosLosTipos);
-                });
+                // Filtrar máquinas de este grupo
+                $maquinasGrupo = collect($cargasMaquinas)
+                    ->filter(fn($c) => in_array($c['maquina']->tipo, $todosLosTipos));
 
-                if ($maquinasGrupo->count() < 2) {
-                    continue;
-                }
+                if ($maquinasGrupo->count() < 2) continue;
 
-                // Calcular promedio SOLO de este grupo
+                $idsGrupo = $maquinasGrupo->keys()->toArray();
+
+                // Calcular carga objetivo
                 $tiempoTotalGrupo = $maquinasGrupo->sum('tiempo_segundos');
-                $tiempoPromedioGrupo = $tiempoTotalGrupo / $maquinasGrupo->count();
-                $umbralGrupo = $tiempoPromedioGrupo * $umbralDesbalance;
+                $cargaObjetivo = $tiempoTotalGrupo / count($idsGrupo);
 
-                // Identificar sobrecargadas y subcargadas EN ESTE GRUPO
-                $sobrecargadasGrupo = $maquinasGrupo
-                    ->filter(fn($carga) => $carga['tiempo_segundos'] > ($tiempoPromedioGrupo + $umbralGrupo))
-                    ->sortByDesc('tiempo_segundos');
+                // Identificar máquina sobrecargada y subcargada
+                $sobrecargadas = $maquinasGrupo->filter(fn($c) => $c['tiempo_segundos'] > $cargaObjetivo)->keys();
+                $subcargadas = $maquinasGrupo->filter(fn($c) => $c['tiempo_segundos'] < $cargaObjetivo)->keys();
 
-                $subcargadasGrupo = $maquinasGrupo
-                    ->filter(fn($carga) => $carga['tiempo_segundos'] < ($tiempoPromedioGrupo + $umbralGrupo))
-                    ->sortBy('tiempo_segundos');
+                if ($sobrecargadas->isEmpty() || $subcargadas->isEmpty()) continue;
 
-                // Procesar cada máquina sobrecargada DEL GRUPO
-                foreach ($sobrecargadasGrupo as $idSobrecargada => $cargaSobrecargada) {
-                    $cargaActualMaquina = $cargaSobrecargada['tiempo_segundos'];
+                // Para cada máquina sobrecargada, mover elementos a subcargadas
+                foreach ($sobrecargadas as $origenId) {
+                    if (!isset($elementosPorMaquina[$origenId])) continue;
 
-                    if ($cargaActualMaquina <= $tiempoPromedioGrupo) continue;
-
-                    $elementos = $elementosPorMaquina[$idSobrecargada]
-                        ->sortByDesc('tiempo_fabricacion'); // Empezar con los más grandes
+                    // Ordenar elementos por tiempo (menores primero)
+                    $elementos = $elementosPorMaquina[$origenId]->sortBy('tiempo_fabricacion');
 
                     foreach ($elementos as $elemento) {
-                        // Continuar hasta que la carga esté cerca del promedio del grupo (permitir hasta 20% más)
-                        if ($cargaActualMaquina <= ($tiempoPromedioGrupo * 1.2)) break;
+                        // ¿Aún está sobrecargada?
+                        if ($cargasMaquinas[$origenId]['tiempo_segundos'] <= $cargaObjetivo) break;
 
-                        // Buscar máquina compatible EN EL MISMO GRUPO
-                        // Si es cortadora manual, puede mover a cortadoras-dobladoras (principales)
-                        // Si es cortadora-dobladora, NO puede mover a manuales
-                        $tipoMaquinaOrigen = $cargaSobrecargada['maquina']->tipo;
-                        $esManual = in_array($tipoMaquinaOrigen, ['cortadora_manual', 'cortadora manual']);
+                        // Buscar destino subcargado con verificación rápida de diámetro
+                        $diametro = (int) $elemento->diametro;
+                        $mejorDestino = null;
 
-                        $maquinasDelGrupo = $maquinas->filter(function($maq) use ($todosLosTipos, $tiposPrincipales, $esManual) {
-                            // Si origen es manual, solo puede mover a principales (cortadoras-dobladoras)
-                            if ($esManual) {
-                                return in_array($maq->tipo, $tiposPrincipales);
-                            }
-                            // Si origen es principal, solo puede mover dentro de principales
-                            return in_array($maq->tipo, $todosLosTipos);
-                        });
+                        foreach ($subcargadas as $destinoId) {
+                            if ($cargasMaquinas[$destinoId]['tiempo_segundos'] >= $cargaObjetivo) continue;
 
-                        $maquinasCompatibles = $this->encontrarMaquinasCompatiblesParaBalanceo(
-                            $elemento,
-                            $maquinasDelGrupo,
-                            $idSobrecargada,
-                            $cargasMaquinas,
-                            $tiempoPromedioGrupo
-                        );
+                            $maquina = $cargasMaquinas[$destinoId]['maquina'];
 
-                        if (!empty($maquinasCompatibles)) {
-                            // Filtrar máquinas que no se sobrecargarían con este elemento
-                            $limiteMaximo = $tiempoPromedioGrupo * 2.0;
+                            // Verificación rápida de diámetro
+                            if ($maquina->diametro_min && $diametro < $maquina->diametro_min) continue;
+                            if ($maquina->diametro_max && $diametro > $maquina->diametro_max) continue;
 
-                            $maquinasCompatibles = array_filter($maquinasCompatibles, function($maq) use ($elemento, $limiteMaximo) {
-                                $nuevaCarga = $maq['carga_actual'] + $elemento->tiempo_fabricacion;
-                                return $nuevaCarga <= $limiteMaximo;
-                            });
+                            // Verificar que no sobrecargue
+                            $nuevaCarga = $cargasMaquinas[$destinoId]['tiempo_segundos'] + $elemento->tiempo_fabricacion;
+                            if ($nuevaCarga > $cargaObjetivo * 1.15) continue;
 
-                            if (empty($maquinasCompatibles)) {
-                                continue;
-                            }
+                            $mejorDestino = $destinoId;
+                            break; // Tomar el primero válido
+                        }
 
-                            // Ordenar por menor carga actual
-                            usort($maquinasCompatibles, function($a, $b) use ($elemento, $tiempoPromedioGrupo) {
-                                $desviacionA = abs(($a['carga_actual'] + $elemento->tiempo_fabricacion) - $tiempoPromedioGrupo);
-                                $desviacionB = abs(($b['carga_actual'] + $elemento->tiempo_fabricacion) - $tiempoPromedioGrupo);
-                                return $desviacionA <=> $desviacionB;
-                            });
+                        if (!$mejorDestino) continue;
 
-                            $mejorMaquina = $maquinasCompatibles[0];
-
-                            // Verificar que el movimiento mejora el balance
-                            $desviacionActual = abs($cargaSobrecargada['tiempo_segundos'] - $tiempoPromedioGrupo) +
-                                              abs($cargasMaquinas[$mejorMaquina['id']]['tiempo_segundos'] - $tiempoPromedioGrupo);
-
-                            $nuevaDesviacionOrigen = abs(($cargaSobrecargada['tiempo_segundos'] - $elemento->tiempo_fabricacion) - $tiempoPromedioGrupo);
-                            $nuevaDesviacionDestino = abs(($cargasMaquinas[$mejorMaquina['id']]['tiempo_segundos'] + $elemento->tiempo_fabricacion) - $tiempoPromedioGrupo);
-                            $nuevaDesviacion = $nuevaDesviacionOrigen + $nuevaDesviacionDestino;
-
-                            $reduceCargaSobrecargada = $cargaSobrecargada['tiempo_segundos'] > ($tiempoPromedioGrupo * 1.3);
-
-                            if ($nuevaDesviacion >= $desviacionActual && !$reduceCargaSobrecargada) {
-                                continue;
-                            }
-
+                        // Registrar movimiento
                         $elementosAMover[] = [
                             'elemento_id' => $elemento->id,
                             'codigo' => $elemento->codigo,
@@ -3493,24 +3498,16 @@ class ProduccionController extends Controller
                             'tiempo_horas' => round($elemento->tiempo_fabricacion / 3600, 2),
                             'planilla_id' => $elemento->planilla_id,
                             'planilla_codigo' => optional($elemento->planilla)->codigo_limpio,
-                            'maquina_actual_id' => $idSobrecargada,
-                            'maquina_actual_nombre' => $cargaSobrecargada['maquina']->nombre,
-                            'maquina_nueva_id' => $mejorMaquina['id'],
-                            'maquina_nueva_nombre' => $mejorMaquina['nombre'],
-                            'razon' => "Balancear: {$cargaSobrecargada['maquina']->nombre} → {$mejorMaquina['nombre']}",
+                            'maquina_actual_id' => $origenId,
+                            'maquina_actual_nombre' => $cargasMaquinas[$origenId]['maquina']->nombre,
+                            'maquina_nueva_id' => $mejorDestino,
+                            'maquina_nueva_nombre' => $cargasMaquinas[$mejorDestino]['maquina']->nombre,
+                            'razon' => "Balancear: {$cargasMaquinas[$origenId]['maquina']->nombre} → {$cargasMaquinas[$mejorDestino]['maquina']->nombre}",
                         ];
 
                         // Actualizar cargas simuladas
-                        $cargasMaquinas[$idSobrecargada]['tiempo_segundos'] -= $elemento->tiempo_fabricacion;
-                        $cargasMaquinas[$idSobrecargada]['tiempo_horas'] = round($cargasMaquinas[$idSobrecargada]['tiempo_segundos'] / 3600, 2);
-
-                        $cargasMaquinas[$mejorMaquina['id']]['tiempo_segundos'] += $elemento->tiempo_fabricacion;
-                        $cargasMaquinas[$mejorMaquina['id']]['tiempo_horas'] = round($cargasMaquinas[$mejorMaquina['id']]['tiempo_segundos'] / 3600, 2);
-
-                        // Actualizar la carga actual de la máquina sobrecargada para el próximo ciclo
-                        $cargaActualMaquina -= $elemento->tiempo_fabricacion;
-
-                        }
+                        $cargasMaquinas[$origenId]['tiempo_segundos'] -= $elemento->tiempo_fabricacion;
+                        $cargasMaquinas[$mejorDestino]['tiempo_segundos'] += $elemento->tiempo_fabricacion;
                     }
                 }
             } // Fin del foreach de grupos
@@ -3564,18 +3561,20 @@ class ProduccionController extends Controller
 
     /**
      * Encontrar máquinas compatibles para balanceo
+     * Usa AsignarMaquinaService::reasignarElemento() para validación completa
      */
     private function encontrarMaquinasCompatiblesParaBalanceo($elemento, $maquinas, $maquinaActualId, $cargasActuales, $tiempoPromedio)
     {
         $compatibles = [];
+        $asignarMaquinaService = app(\App\Services\AsignarMaquinaService::class);
 
         foreach ($maquinas as $maquina) {
             if ($maquina->id == $maquinaActualId) continue;
 
-            // Verificar compatibilidad básica
-            $esCompatible = $this->verificarCompatibilidadBasica($elemento, $maquina);
+            // Usar la misma validación que se usa al aplicar el balanceo
+            $validacion = $asignarMaquinaService->reasignarElemento($elemento, $maquina);
 
-            if ($esCompatible) {
+            if ($validacion['success']) {
                 $cargaActual = $cargasActuales[$maquina->id]['tiempo_segundos'];
                 $nuevaCarga = $cargaActual + $elemento->tiempo_fabricacion;
                 $diferenciaPromedio = abs($nuevaCarga - $tiempoPromedio);
@@ -3598,25 +3597,6 @@ class ProduccionController extends Controller
     }
 
     /**
-     * Verificar compatibilidad básica entre elemento y máquina
-     * (El tipo ya se verifica al filtrar por grupos)
-     */
-    private function verificarCompatibilidadBasica($elemento, $maquina)
-    {
-        // Verificar diámetro mínimo
-        if ($maquina->diametro_minimo && $elemento->diametro < $maquina->diametro_minimo) {
-            return false;
-        }
-
-        // Verificar diámetro máximo
-        if ($maquina->diametro_maximo && $elemento->diametro > $maquina->diametro_maximo) {
-            return false;
-        }
-
-        return true;
-    }
-
-    /**
      * Aplicar el balanceo de carga sugerido
      *
      * @param \Illuminate\Http\Request $request
@@ -3625,6 +3605,8 @@ class ProduccionController extends Controller
     public function aplicarBalanceoCarga(Request $request)
     {
         try {
+            Log::info('🔄 aplicarBalanceoCarga: Iniciando', ['movimientos_count' => count($request->input('movimientos', []))]);
+
             $movimientos = $request->input('movimientos', []);
             $incluirFabricando = $request->boolean('incluir_fabricando', false);
 
@@ -3637,8 +3619,12 @@ class ProduccionController extends Controller
 
             DB::beginTransaction();
 
-            // Crear snapshot antes de la operación
-            $this->crearSnapshotProduccion('balancear_carga');
+            // Crear snapshot antes de la operación (puede ser lento)
+            try {
+                $this->crearSnapshotProduccion('balancear_carga');
+            } catch (\Exception $e) {
+                Log::warning('⚠️ Error creando snapshot, continuando sin él: ' . $e->getMessage());
+            }
 
             // Si no incluir fabricando, obtener IDs de planillas en posición 1 y fabricando
             $planillasExcluidas = [];
@@ -3663,6 +3649,13 @@ class ProduccionController extends Controller
 
                     if (!$elemento) {
                         $errores[] = "Elemento {$mov['elemento_id']} no encontrado";
+                        continue;
+                    }
+
+                    // Saltar elementos de planillas revisadas
+                    $planilla = $elemento->planilla;
+                    if ($planilla && $planilla->revisada) {
+                        $omitidos++;
                         continue;
                     }
 

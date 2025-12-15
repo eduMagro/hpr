@@ -22,6 +22,7 @@ class Etiqueta extends Model
         'fecha_finalizacion_ensamblado' => 'datetime:Y-m-d H:i',
         'fecha_inicio_soldadura' => 'datetime:Y-m-d H:i',
         'fecha_finalizacion_soldadura' => 'datetime:Y-m-d H:i',
+        'impresa' => 'boolean',
     ];
 
     protected $fillable = [
@@ -49,6 +50,7 @@ class Etiqueta extends Model
         'fecha_finalizacion_soldadura',
         'estado',
         'subido',
+        'impresa',
     ];
 
     // ==================== RELACIONES ====================

@@ -43,6 +43,10 @@ Route::prefix('asistente')->group(function () {
     Route::get('/estadisticas', [AsistenteVirtualController::class, 'estadisticas'])->name('asistente.estadisticas');
 });
 
+// Obtener longitud del producto asignado a una etiqueta (para segundo clic en cortadora)
+Route::get('/etiquetas/{etiquetaSubId}/longitud-asignada', [App\Http\Controllers\EtiquetaController::class, 'longitudAsignada'])
+    ->name('api.etiquetas.longitud-asignada');
+
 // Rutas para el sistema de resumen de etiquetas
 Route::prefix('etiquetas/resumir')->group(function () {
     // Vista previa de grupos que se crearían

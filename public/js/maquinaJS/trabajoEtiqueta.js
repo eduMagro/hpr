@@ -8,9 +8,20 @@
  * ================================================================================
  */
 
-document.addEventListener("DOMContentLoaded", () => {
+function initTrabajoEtiqueta() {
     if (window.__trabajoEtiquetaInit) return;
     window.__trabajoEtiquetaInit = true;
+
+    // Restaurar decisiones de corte desde localStorage (por si hubo reload)
+    try {
+        const saved = localStorage.getItem("decisionCortePorEtiqueta");
+        if (saved) {
+            window._decisionCortePorEtiqueta = JSON.parse(saved);
+            console.log("📦 Decisiones de corte restauradas desde localStorage");
+        }
+    } catch (e) {
+        console.warn("No se pudieron restaurar decisiones de corte:", e);
+    }
 
     // console.log("🚀 Inicializando módulo trabajoEtiqueta.js");
 
@@ -33,6 +44,21 @@ document.addEventListener("DOMContentLoaded", () => {
                 title: "Falta la máquina",
                 text: "No se pudo determinar la máquina de trabajo.",
             });
+            return;
+        }
+
+        // ═══════════════════════════════════════════════════════════════════
+        // DETECTAR SI ES UN GRUPO DE ETIQUETAS RESUMIDAS
+        // ═══════════════════════════════════════════════════════════════════
+        const grupoId = btn.dataset.grupoId;
+        if (grupoId) {
+            const prevDisabled = btn.disabled;
+            btn.disabled = true;
+            try {
+                await actualizarGrupo(grupoId, maquinaId);
+            } finally {
+                btn.disabled = prevDisabled;
+            }
             return;
         }
 
@@ -111,19 +137,60 @@ document.addEventListener("DOMContentLoaded", () => {
             (estadoActual || "").toLowerCase() === "fabricando";
         const esMaquinaBarra =
             (window.MAQUINA_TIPO || "").toLowerCase() === "barra";
+        const esSL28 =
+            (window.MAQUINA_CODIGO || "").toUpperCase() === "SL28";
+        const esCortadoraManual =
+            (window.MAQUINA_TIPO_NOMBRE || "").toLowerCase() === "cortadora_manual";
 
         // ────────────────────────────────────────────────
-        //  A) MÁQUINAS DE BARRA → SIEMPRE VÍA PATRONES
+        //  A) MÁQUINAS DE BARRA (SL28 O CORTADORA MANUAL) → VÍA PATRONES (SYNTAX LINE)
         // ────────────────────────────────────────────────
-        if (esMaquinaBarra) {
-            if (esFabricando && window._decisionCortePorEtiqueta?.[id]) {
-                await Cortes.enviarAFabricacionOptimizada({
-                    ...window._decisionCortePorEtiqueta[id],
-                    csrfToken,
-                    etiquetaId: id,
-                    onUpdate: actualizarDOMEtiqueta,
-                });
-                return;
+        if ((esMaquinaBarra && esSL28) || esCortadoraManual) {
+            // Si ya está fabricando (segundo clic), NO pedir desperdicio
+            if (esFabricando) {
+                // Intentar usar decisión guardada
+                if (window._decisionCortePorEtiqueta?.[id]) {
+                    await Cortes.enviarAFabricacionOptimizada({
+                        ...window._decisionCortePorEtiqueta[id],
+                        csrfToken,
+                        etiquetaId: id,
+                        onUpdate: actualizarDOMEtiqueta,
+                        pedirDesperdicio: false,  // Segundo clic: no pedir desperdicio
+                    });
+                    // Limpiar la decisión después de usar
+                    delete window._decisionCortePorEtiqueta[id];
+                    localStorage.setItem("decisionCortePorEtiqueta", JSON.stringify(window._decisionCortePorEtiqueta));
+                    return;
+                } else {
+                    // No hay decisión guardada, obtener longitud del producto asignado
+                    try {
+                        const res = await fetch(`/api/etiquetas/${id}/longitud-asignada`, {
+                            headers: {
+                                'Accept': 'application/json',
+                                'X-CSRF-TOKEN': csrfToken,
+                            }
+                        });
+
+                        if (res.ok) {
+                            const data = await res.json();
+                            if (data.longitud_barra_cm) {
+                                // Tenemos la longitud, ir directamente a fabricar sin pedir desperdicio
+                                await Cortes.enviarAFabricacionOptimizada({
+                                    longitudBarraCm: data.longitud_barra_cm,
+                                    etiquetas: [{ etiqueta_sub_id: id, elementos: [] }],
+                                    csrfToken,
+                                    etiquetaId: id,
+                                    onUpdate: actualizarDOMEtiqueta,
+                                    pedirDesperdicio: false,  // Segundo clic: no pedir desperdicio
+                                });
+                                return;
+                            }
+                        }
+                    } catch (err) {
+                        console.warn("No se pudo obtener longitud asignada:", err);
+                    }
+                    // Si falló, continúa para mostrar patrones
+                }
             }
 
             while (true) {
@@ -156,24 +223,33 @@ document.addEventListener("DOMContentLoaded", () => {
                     }
 
                     if (outcome?.accion === "fabricar") {
+                        // Obtener desperdicio estimado del patrón optimizado
+                        const desperdicioEstimadoCm = outcome.patronInfo?.desperdicio_cm || outcome.patron?.desperdicio_cm || 0;
+
                         window._decisionCortePorEtiqueta =
                             window._decisionCortePorEtiqueta || {};
 
                         window._decisionCortePorEtiqueta[id] = {
                             longitudBarraCm: outcome.longitudBarraCm,
                             etiquetas: outcome.etiquetas,
+                            desperdicioEstimadoCm,
                         };
                         localStorage.setItem(
                             "decisionCortePorEtiqueta",
                             JSON.stringify(window._decisionCortePorEtiqueta)
                         );
 
-                        await Cortes.enviarAFabricacionOptimizada({
+                        const resultado = await Cortes.enviarAFabricacionOptimizada({
                             ...window._decisionCortePorEtiqueta[id],
                             csrfToken,
                             etiquetaId: id,
                             onUpdate: actualizarDOMEtiqueta,
                         });
+
+                        // Si el usuario canceló el modal de desperdicio, volver al inicio
+                        if (resultado?.cancelled) {
+                            continue;
+                        }
                         return;
                     } else if (outcome === "volver") {
                         continue;
@@ -191,23 +267,32 @@ document.addEventListener("DOMContentLoaded", () => {
                         return;
                     }
 
+                    // Obtener desperdicio estimado del patrón seleccionado
+                    const desperdicioEstimadoCm = decision.patronInfo?.desperdicio_cm || decision.patron?.sobra_cm || 0;
+
                     window._decisionCortePorEtiqueta =
                         window._decisionCortePorEtiqueta || {};
                     window._decisionCortePorEtiqueta[id] = {
                         longitudBarraCm,
                         etiquetas: [{ etiqueta_sub_id: id, elementos: [] }],
+                        desperdicioEstimadoCm,
                     };
                     localStorage.setItem(
                         "decisionCortePorEtiqueta",
                         JSON.stringify(window._decisionCortePorEtiqueta)
                     );
 
-                    await Cortes.enviarAFabricacionOptimizada({
+                    const resultado = await Cortes.enviarAFabricacionOptimizada({
                         ...window._decisionCortePorEtiqueta[id],
                         csrfToken,
                         etiquetaId: id,
                         onUpdate: actualizarDOMEtiqueta,
                     });
+
+                    // Si el usuario canceló el modal de desperdicio, volver al inicio
+                    if (resultado?.cancelled) {
+                        continue;
+                    }
                     return;
                 }
 
@@ -216,7 +301,21 @@ document.addEventListener("DOMContentLoaded", () => {
         }
 
         // ────────────────────────────────────────────────
-        //  B) MÁQUINAS NORMALES → LLAMADA DIRECTA
+        //  B) GRÚA → PEDIR ESCANEO DE QR DEL PRODUCTO
+        // ────────────────────────────────────────────────
+        const esGrua = (window.MAQUINA_TIPO_NOMBRE || "").toLowerCase() === "grua";
+
+        if (esGrua) {
+            try {
+                await fabricarConGrua(id, maquinaId, csrfToken);
+            } catch (err) {
+                showErrorAlert(err);
+            }
+            return;
+        }
+
+        // ────────────────────────────────────────────────
+        //  C) MÁQUINAS NORMALES → LLAMADA DIRECTA
         // ────────────────────────────────────────────────
         try {
             const res = await fetch(url, {
@@ -241,26 +340,444 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     // ============================================================================
+    // ACTUALIZAR GRUPO DE ETIQUETAS RESUMIDAS
+    // ============================================================================
+
+    async function actualizarGrupo(grupoId, maquinaId) {
+        const csrfToken = document
+            .querySelector('meta[name="csrf-token"]')
+            ?.getAttribute("content");
+
+        // Obtener estado actual del grupo
+        const grupoCard = document.querySelector(`[data-grupo-id="${grupoId}"] .etiqueta-card`);
+        const estadoActual = (grupoCard?.dataset?.estado || "pendiente").toLowerCase();
+
+        // Si ya está completada, no hacer nada
+        if (["completada", "en-paquete", "empaquetada"].includes(estadoActual)) {
+            await Swal.fire({
+                icon: "info",
+                title: "Grupo ya completado",
+                text: `El grupo ya está en estado ${estadoActual}.`,
+                timer: 2500,
+                showConfirmButton: false,
+            });
+            return;
+        }
+
+        // Llamar al endpoint del grupo
+        try {
+            const res = await fetch(`/api/etiquetas/resumir/${grupoId}/estado`, {
+                method: "PUT",
+                headers: {
+                    "Content-Type": "application/json",
+                    Accept: "application/json",
+                    "X-CSRF-TOKEN": csrfToken,
+                },
+                body: JSON.stringify({ maquina_id: maquinaId }),
+            });
+
+            const data = await res.json();
+
+            if (!res.ok || !data.success) {
+                throw new Error(data.message || "Error al actualizar grupo");
+            }
+
+            // Mostrar resultado según el nuevo estado
+            const nuevoEstado = data.nuevo_estado || "actualizado";
+            const etiquetasParaImprimir = data.imprimir_etiquetas || [];
+
+            if (nuevoEstado === "fabricando") {
+                showAlert("info", "Fabricando", `Grupo iniciado (${data.etiquetas_actualizadas || 0} etiquetas)`);
+            } else if (nuevoEstado === "completada") {
+                const desagrupado = data.desagrupado ? " y desagrupado" : "";
+                showAlert("success", "¡Completado!", `Grupo completado${desagrupado} (${data.etiquetas_actualizadas || 0} etiquetas)`);
+            } else {
+                showAlert("success", "Actualizado", data.message);
+            }
+
+            // Actualizar clase visual del grupo
+            if (grupoCard) {
+                ["pendiente", "fabricando", "fabricada", "completada", "en-paquete"].forEach((est) => {
+                    grupoCard.classList.remove(`estado-${est}`);
+                });
+                grupoCard.classList.add(`estado-${nuevoEstado}`);
+                grupoCard.dataset.estado = nuevoEstado;
+
+                // Re-renderizar SVG inmediatamente para actualizar el color de fondo
+                // El data-elementos está en el propio grupoCard
+                const contenedorSvgId = grupoCard.dataset.contenedorSvgId;
+                const elementosJson = grupoCard.dataset.elementos;
+
+                if (contenedorSvgId && elementosJson && typeof window.renderizarGrupoSVG === 'function') {
+                    try {
+                        const elementos = JSON.parse(elementosJson);
+                        const grupoData = {
+                            id: parseInt(contenedorSvgId),
+                            etiqueta: { id: parseInt(contenedorSvgId) },
+                            elementos: elementos
+                        };
+                        window.renderizarGrupoSVG(grupoData, grupoId);
+                    } catch (e) {
+                        console.warn('No se pudo re-renderizar SVG del grupo:', e);
+                    }
+                }
+            }
+
+            // Solo refrescar vista si se completó (para que las etiquetas desagrupadas se rendericen)
+            // NO refrescar cuando solo cambia a "fabricando" para evitar reload innecesario
+            if (nuevoEstado === "completada" && typeof window.refrescarEtiquetasMaquina === "function") {
+                await window.refrescarEtiquetasMaquina();
+            }
+
+            // DESPUÉS de refrescar, preguntar si quiere imprimir (solo si hay etiquetas para imprimir)
+            if (nuevoEstado === "completada" && etiquetasParaImprimir.length > 0) {
+                const etiquetasSubIds = etiquetasParaImprimir.map(e => e.etiqueta_sub_id);
+
+                // Pequeño delay para asegurar que los SVGs estén renderizados
+                await new Promise(resolve => setTimeout(resolve, 300));
+
+                // Preguntar al usuario si quiere imprimir
+                const resultado = await Swal.fire({
+                    icon: "question",
+                    title: "Imprimir etiquetas",
+                    html: `Se han completado <strong>${etiquetasSubIds.length}</strong> etiquetas.<br>¿Deseas imprimirlas ahora?`,
+                    showCancelButton: true,
+                    confirmButtonText: "Imprimir A6",
+                    cancelButtonText: "No imprimir",
+                    showDenyButton: true,
+                    denyButtonText: "Imprimir A4",
+                    confirmButtonColor: "#3085d6",
+                    denyButtonColor: "#6c757d",
+                });
+
+                if (resultado.isConfirmed) {
+                    // Imprimir en A6
+                    if (typeof window.imprimirEtiquetas === "function") {
+                        window.imprimirEtiquetas(etiquetasSubIds, "a6");
+                    }
+                } else if (resultado.isDenied) {
+                    // Imprimir en A4
+                    if (typeof window.imprimirEtiquetas === "function") {
+                        window.imprimirEtiquetas(etiquetasSubIds, "a4");
+                    }
+                }
+            }
+
+        } catch (err) {
+            showErrorAlert(err);
+        }
+    }
+
+    // ============================================================================
+    // FABRICAR CON GRÚA - FLUJO ESPECIAL
+    // ============================================================================
+
+    async function fabricarConGrua(etiquetaId, maquinaId, csrfToken) {
+        // Obtener diámetro y longitud de la etiqueta para buscar sugerencias
+        const diametroEtiqueta = Number(window.DIAMETRO_POR_ETIQUETA?.[etiquetaId] ?? 0);
+        const longitudEtiquetaCm = Number(window.LONGITUD_POR_ETIQUETA?.[etiquetaId] ?? 0);
+        const longitudEtiquetaM = longitudEtiquetaCm / 100;
+
+        // Cargar sugerencias de productos
+        let htmlSugerencias = '';
+        try {
+            const resSug = await fetch(`/api/productos/sugerencias?diametro=${diametroEtiqueta}&longitud=${longitudEtiquetaM}`, {
+                headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': csrfToken }
+            });
+            if (resSug.ok) {
+                const dataSug = await resSug.json();
+                if (dataSug.productos && dataSug.productos.length > 0) {
+                    htmlSugerencias = `
+                        <div class="mt-3 mb-2 text-left">
+                            <p class="font-semibold text-gray-700 mb-2">📋 Productos disponibles (Ø${diametroEtiqueta}mm x ${longitudEtiquetaM.toFixed(1)}m):</p>
+                            <div class="max-h-40 overflow-y-auto border rounded">
+                                <table class="w-full text-xs">
+                                    <thead class="bg-gray-100 sticky top-0">
+                                        <tr>
+                                            <th class="px-2 py-1 text-left">Código</th>
+                                            <th class="px-2 py-1 text-left">Stock</th>
+                                            <th class="px-2 py-1 text-left">Ubicación</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        ${dataSug.productos.map(p => `
+                                            <tr class="border-t hover:bg-blue-50 cursor-pointer" onclick="document.getElementById('swal-input-producto').value='${p.codigo}'">
+                                                <td class="px-2 py-1 font-mono text-blue-600">${p.codigo}</td>
+                                                <td class="px-2 py-1">${p.peso_stock} kg</td>
+                                                <td class="px-2 py-1 ${p.ubicacion === 'Sin ubicación' ? 'text-gray-400 italic' : 'text-green-700 font-medium'}">${p.ubicacion}</td>
+                                            </tr>
+                                        `).join('')}
+                                    </tbody>
+                                </table>
+                            </div>
+                            <p class="text-xs text-gray-500 mt-1">Haz clic en una fila para seleccionar el producto</p>
+                        </div>
+                    `;
+                } else {
+                    htmlSugerencias = `<p class="text-orange-600 text-sm mt-2">⚠️ No hay productos disponibles con Ø${diametroEtiqueta}mm x ${longitudEtiquetaM.toFixed(1)}m</p>`;
+                }
+            }
+        } catch (e) {
+            console.warn('No se pudieron cargar sugerencias:', e);
+        }
+
+        // Paso 1: Pedir escaneo del QR del producto
+        const { value: codigoProducto, isConfirmed } = await Swal.fire({
+            title: '📦 Escanear producto',
+            html: `
+                <p class="mb-3">Escanea el QR del paquete de material a usar</p>
+                ${htmlSugerencias}
+                <input type="text" id="swal-input-producto" class="swal2-input" placeholder="Código del producto..." autofocus>
+            `,
+            showCancelButton: true,
+            confirmButtonText: 'Siguiente',
+            cancelButtonText: 'Cancelar',
+            confirmButtonColor: '#F97316',
+            focusConfirm: false,
+            preConfirm: () => {
+                const val = document.getElementById('swal-input-producto').value;
+                if (!val || !val.trim()) {
+                    Swal.showValidationMessage('Debes escanear o introducir el código del producto');
+                    return false;
+                }
+                return val.trim();
+            }
+        });
+
+        if (!isConfirmed || !codigoProducto) return;
+
+        // Paso 2: Buscar el producto por código
+        let producto;
+        try {
+            const res = await fetch(`/api/productos/buscar-por-codigo?codigo=${encodeURIComponent(codigoProducto.trim())}`, {
+                headers: {
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN': csrfToken,
+                }
+            });
+
+            if (!res.ok) {
+                const err = await res.json();
+                throw new Error(err.message || 'Producto no encontrado');
+            }
+
+            producto = await res.json();
+        } catch (err) {
+            await Swal.fire({
+                icon: 'error',
+                title: 'Producto no encontrado',
+                text: err.message || `No se encontró ningún producto con código: ${codigoProducto}`,
+            });
+            return;
+        }
+
+        // Validar tipo, diámetro y longitud ANTES de mostrar el modal de selección
+        const tipoProducto = (producto.tipo || '').toLowerCase();
+        const diametroProducto = Number(producto.diametro ?? 0);
+        const longitudProducto = Number(producto.longitud ?? 0);
+
+        // Validar que sea tipo barra
+        if (tipoProducto && tipoProducto !== 'barra') {
+            await Swal.fire({
+                icon: 'error',
+                title: 'Tipo de producto incorrecto',
+                html: `
+                    <p>El producto debe ser de tipo <strong>barra</strong>.</p>
+                    <div class="mt-3 p-3 bg-red-50 rounded text-left">
+                        <p><strong>Producto:</strong> ${producto.codigo}</p>
+                        <p><strong>Tipo:</strong> ${producto.tipo || 'N/A'}</p>
+                    </div>
+                `,
+            });
+            return;
+        }
+
+        // Validar diámetro (debe ser igual)
+        if (diametroProducto > 0 && diametroEtiqueta > 0 && Math.abs(diametroProducto - diametroEtiqueta) > 0.1) {
+            await Swal.fire({
+                icon: 'error',
+                title: 'Diámetro incorrecto',
+                html: `
+                    <p>El diámetro del producto no coincide con el de la etiqueta.</p>
+                    <div class="mt-3 p-3 bg-red-50 rounded text-left">
+                        <p><strong>Producto:</strong> Ø${diametroProducto} mm</p>
+                        <p><strong>Etiqueta requiere:</strong> Ø${diametroEtiqueta} mm</p>
+                    </div>
+                `,
+            });
+            return;
+        }
+
+        // Validar longitud (debe ser igual, tolerancia de 0.1m)
+        if (longitudProducto > 0 && longitudEtiquetaM > 0 && Math.abs(longitudProducto - longitudEtiquetaM) > 0.1) {
+            await Swal.fire({
+                icon: 'error',
+                title: 'Longitud incorrecta',
+                html: `
+                    <p>La longitud del producto no coincide con la de la etiqueta.</p>
+                    <div class="mt-3 p-3 bg-red-50 rounded text-left">
+                        <p><strong>Producto:</strong> ${longitudProducto.toFixed(2)} m</p>
+                        <p><strong>Etiqueta requiere:</strong> ${longitudEtiquetaM.toFixed(2)} m</p>
+                    </div>
+                `,
+            });
+            return;
+        }
+
+        // Mostrar info del producto y preguntar uso
+        const longitudTexto = producto.longitud ? `${producto.longitud} m` : 'N/A';
+        const { value: paqueteCompleto, isConfirmed: confirmado } = await Swal.fire({
+            title: '¿Cómo usar el paquete?',
+            html: `
+                <div class="text-left p-4 bg-gray-100 rounded mb-4">
+                    <p><strong>Producto:</strong> ${producto.codigo}</p>
+                    <p><strong>Diámetro:</strong> Ø${producto.diametro} mm</p>
+                    <p><strong>Longitud:</strong> ${longitudTexto}</p>
+                    <p><strong>Stock actual:</strong> ${producto.peso_stock?.toFixed(2) || 0} kg</p>
+                    <p><strong>Colada:</strong> ${producto.n_colada || 'N/A'}</p>
+                </div>
+            `,
+            input: 'radio',
+            inputOptions: {
+                'completo': '📦 Usar paquete completo (consumir todo)',
+                'parcial': '✂️ Quitar barras (restar peso de la etiqueta)'
+            },
+            inputValue: 'completo',
+            showCancelButton: true,
+            confirmButtonText: 'Fabricar',
+            cancelButtonText: 'Cancelar',
+            confirmButtonColor: '#10B981',
+        });
+
+        if (!confirmado) return;
+
+        const usarPaqueteCompleto = paqueteCompleto === 'completo';
+
+        // Paso 3: Enviar a fabricación
+        const url = `/actualizar-etiqueta/${etiquetaId}/maquina/${maquinaId}`;
+
+        const res = await fetch(url, {
+            method: "PUT",
+            headers: {
+                "Content-Type": "application/json",
+                Accept: "application/json",
+                "X-CSRF-TOKEN": csrfToken,
+            },
+            body: JSON.stringify({
+                producto_id: producto.id,
+                paquete_completo: usarPaqueteCompleto,
+            }),
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) {
+            throw new Error(data.message || "Error al fabricar");
+        }
+
+        // Mostrar resultado brevemente
+        const pesoConsumido = data.metricas?.peso_consumido || 0;
+        const paqueteCodigo = data.metricas?.paquete_codigo || null;
+
+        await Swal.fire({
+            icon: 'success',
+            title: '¡Fabricación completada!',
+            html: `
+                <p>Etiqueta fabricada correctamente.</p>
+                <p><strong>Producto usado:</strong> ${producto.codigo}</p>
+                <p><strong>Peso consumido:</strong> ${pesoConsumido.toFixed(2)} kg</p>
+                ${paqueteCodigo ? `<p><strong>Paquete:</strong> ${paqueteCodigo}</p>` : ''}
+                ${usarPaqueteCompleto ? '<p class="text-orange-600">El producto ha sido marcado como consumido.</p>' : ''}
+                <p class="mt-2 text-blue-600 font-semibold">Ahora selecciona dónde ubicar el paquete...</p>
+            `,
+            timer: 2000,
+            showConfirmButton: false,
+        });
+
+        actualizarDOMEtiqueta(etiquetaId, data);
+
+        // Abrir modal para ubicar el paquete fabricado directamente en el mapa
+        if (paqueteCodigo && typeof abrirModalMoverPaquete === 'function') {
+            abrirModalMoverPaquete();
+
+            // Pre-rellenar el código del paquete, buscarlo y saltar directamente al mapa
+            setTimeout(async () => {
+                const inputCodigo = document.getElementById('codigo_paquete_mover');
+                if (inputCodigo) {
+                    inputCodigo.value = paqueteCodigo;
+
+                    // Buscar el paquete y mostrar directamente el mapa
+                    if (typeof buscarPaqueteParaMover === 'function') {
+                        await buscarPaqueteParaMover();
+
+                        // Saltar directamente al paso del mapa
+                        setTimeout(() => {
+                            if (typeof mostrarPasoMapa === 'function') {
+                                mostrarPasoMapa();
+                            }
+                        }, 300);
+                    }
+                }
+            }, 100);
+        }
+    }
+
+    // ============================================================================
     // ACTUALIZAR DOM DE ETIQUETA (USANDO SISTEMA CENTRALIZADO)
     // ============================================================================
 
     function actualizarDOMEtiqueta(id, data) {
         const safeId = id.replace(/\./g, "-");
 
+        // 🔍 DEBUG: Ver qué campos vienen en data
+        console.log('🔍 DEBUG actualizarDOMEtiqueta - Datos recibidos:', {
+            id,
+            estado: data.estado,
+            peso_etiqueta: data.peso_etiqueta,
+            nombre: data.nombre,
+            producto_n_colada: data.producto_n_colada,
+            producto2_n_colada: data.producto2_n_colada,
+            data_completa: data
+        });
+
         // ✅ USAR SISTEMA CENTRALIZADO
         if (typeof window.SistemaDOM !== "undefined") {
             window.SistemaDOM.actualizarEstadoEtiqueta(id, data.estado, {
-                peso: data.peso_etiqueta || data.peso_etiqueta_kg,
-                nombre: data.nombre,
+                peso: data.peso_etiqueta,
+                nombre: data.nombre || id,
             });
         } else {
             // Fallback: actualización legacy
             aplicarEstadoAProceso(id, data.estado);
         }
 
-        // ✅ Actualizar SVG con coladas si están disponibles
+        // ✅ Actualizar colada de la etiqueta en la leyenda del SVG
+        if (data.producto_n_colada && window.elementosAgrupadosScript) {
+            const grupoIndex = window.elementosAgrupadosScript.findIndex(g =>
+                g.etiqueta && String(g.etiqueta.etiqueta_sub_id) === String(id)
+            );
+
+            if (grupoIndex !== -1) {
+                const grupo = window.elementosAgrupadosScript[grupoIndex];
+                grupo.colada_etiqueta = data.producto_n_colada;
+                grupo.colada_etiqueta_2 = data.producto2_n_colada || null;
+
+                // Regenerar el SVG para mostrar la colada en la leyenda
+                if (typeof window.renderizarGrupoSVG === "function") {
+                    window.renderizarGrupoSVG(grupo, grupoIndex);
+                    console.log(`✅ SVG regenerado con colada de etiqueta: ${data.producto_n_colada}`);
+                }
+            }
+        }
+
+        // ✅ Actualizar SVG con coladas de elementos si están disponibles
         if (data.coladas_por_elemento && typeof window.actualizarSVGConColadas === "function") {
             window.actualizarSVGConColadas(id, data.coladas_por_elemento);
+        }
+
+        // ✅ Habilitar botón deshacer (se creó un nuevo registro en el historial)
+        if (typeof window.HistorialEtiquetas !== "undefined") {
+            window.HistorialEtiquetas.actualizarBoton(id, true);
         }
 
         // Procesar según el estado
@@ -302,9 +819,9 @@ document.addEventListener("DOMContentLoaded", () => {
                 if (typeof window.TrabajoPaquete !== "undefined") {
                     window.TrabajoPaquete.agregarItemEtiqueta(id, {
                         id: id,
-                        peso: data.peso_etiqueta || data.peso_etiqueta_kg || 0,
+                        peso_etiqueta: data.peso_etiqueta || 0,
                         estado: "fabricada",
-                        nombre: data.nombre || "Sin nombre",
+                        nombre: data.nombre || id,
                     });
                 }
                 // 🔥 VALIDACIÓN MEJORADA: Actualizar coladas en el SVG
@@ -362,9 +879,9 @@ document.addEventListener("DOMContentLoaded", () => {
                 if (typeof window.TrabajoPaquete !== "undefined") {
                     window.TrabajoPaquete.agregarItemEtiqueta(id, {
                         id: id,
-                        peso: data.peso_etiqueta || data.peso_etiqueta_kg || 0,
+                        peso_etiqueta: data.peso_etiqueta || 0,
                         estado: "completada",
-                        nombre: data.nombre || "Sin nombre",
+                        nombre: data.nombre || id,
                     });
                 }
                 // 🔥 VALIDACIÓN MEJORADA: Actualizar coladas en el SVG
@@ -765,4 +1282,12 @@ document.addEventListener("DOMContentLoaded", () => {
     window.actualizarDOMEtiqueta = actualizarDOMEtiqueta;
 
     // console.log("✅ Módulo trabajoEtiqueta.js inicializado correctamente");
-});
+}
+
+// Inicialización compatible con Livewire Navigate
+if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", initTrabajoEtiqueta);
+} else {
+    initTrabajoEtiqueta();
+}
+document.addEventListener("livewire:navigated", initTrabajoEtiqueta);
