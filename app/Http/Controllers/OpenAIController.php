@@ -75,6 +75,7 @@ class OpenAIController extends Controller
                     );
 
                     $resultados[] = [
+                        'ocr_log_id' => $log->id,
                         'nombre_archivo' => $imagen->getClientOriginalName(),
                         'preview' => $previewData,
                         'parsed' => $parsed,
@@ -92,6 +93,7 @@ class OpenAIController extends Controller
                         'preview' => null,
                         'parsed' => null,
                         'raw' => null,
+                        'ocr_log_id' => null,
                         'error' => 'Error al procesar: ' . $e->getMessage(),
                     ];
                 }
@@ -158,6 +160,7 @@ class OpenAIController extends Controller
                     );
 
                     $resultados[] = [
+                        'ocr_log_id' => $log->id,
                         'nombre_archivo' => $imagen->getClientOriginalName(),
                         'preview' => $previewData,
                         'parsed' => $parsed,
@@ -175,6 +178,7 @@ class OpenAIController extends Controller
                         'preview' => null,
                         'parsed' => null,
                         'raw' => null,
+                        'ocr_log_id' => null,
                         'error' => 'Error al procesar: ' . $e->getMessage(),
                     ];
                 }

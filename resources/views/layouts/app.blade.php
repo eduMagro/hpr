@@ -198,7 +198,8 @@
         </div>
     </div>
     <!-- Livewire Scripts -->
-    @livewireScripts(['navigate' => true])
+    {{-- Livewire ya trae Alpine, pero nuestro bundle de Vite lo incluye; evitamos doble carga --}}
+    @livewireScripts(['navigate' => true, 'alpine' => false])
 
     @stack('scripts')
 

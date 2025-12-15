@@ -15,6 +15,7 @@ use App\Models\Elemento;
 use App\Models\ProductoBase;
 use App\Models\Entrada;
 use App\Models\EntradaProducto;
+use App\Models\EntradaImportLog;
 use App\Models\Ubicacion;
 use App\Models\Movimiento;
 use App\Models\Maquina;
@@ -31,6 +32,7 @@ use Illuminate\Support\Str;
 use App\Services\StockService;
 use App\Models\AsignacionTurno;
 use App\Services\AlertaService;
+use Illuminate\Support\Facades\Storage;
 
 
 class PedidoController extends Controller
@@ -531,10 +533,24 @@ class PedidoController extends Controller
 
 
         $requiereFabricanteManual = $pedido->distribuidor_id !== null && $pedido->fabricante_id === null;
-        $ultimoFabricante = Producto::with(['entrada', 'productoBase'])
-            ->whereHas('entrada', fn($q) => $q->where('usuario_id', auth()->id()))
-            ->latest()
-            ->first()?->fabricante_id ?? null;
+
+        // Fabricante propuesto:
+        // 1) Pedido ya tiene fabricante
+        // 2) Proveedor seleccionado por el operario (query proveedor=siderurgica/megasa/balboa)
+        // 3) Último fabricante usado por el operario
+        $proveedorSeleccionado = $request->query('proveedor');
+        $fabricanteDesdeProveedor = null;
+        if ($proveedorSeleccionado && strtolower($proveedorSeleccionado) !== 'otro') {
+            $fabricanteDesdeProveedor = Fabricante::whereRaw('LOWER(nombre) LIKE ?', ['%' . strtolower($proveedorSeleccionado) . '%'])
+                ->value('id');
+        }
+
+        $ultimoFabricante = $pedido->fabricante_id
+            ?? $fabricanteDesdeProveedor
+            ?? Producto::with(['entrada', 'productoBase'])
+                ->whereHas('entrada', fn($q) => $q->where('usuario_id', auth()->id()))
+                ->latest()
+                ->first()?->fabricante_id;
 
         $fabricantes = $requiereFabricanteManual ? Fabricante::orderBy('nombre')->get() : collect();
 
@@ -664,6 +680,8 @@ class PedidoController extends Controller
                 $entrada->save();
             }
 
+            $this->adjuntarArchivoOcrAEntradaSiProcede($entrada, $movimiento->ocr_log_id ?? null);
+
             $fabricanteFinal = $pedido->fabricante_id ?? $request->fabricante_id;
 
             //COMPROBACION DE QUE NO NOS PASAMOS DE KG 
@@ -791,6 +809,60 @@ class PedidoController extends Controller
                 'file'  => $e->getFile(),
             ]);
             return back()->withInput()->with('error', 'Error: ' . $e->getMessage());
+        }
+    }
+
+    private function adjuntarArchivoOcrAEntradaSiProcede(Entrada $entrada, ?int $logId = null): void
+    {
+        if (!$logId) {
+            return;
+        }
+
+        if ($entrada->pdf_albaran) {
+            return;
+        }
+
+        $log = EntradaImportLog::find($logId);
+        if (!$log || !$log->file_path) {
+            return;
+        }
+
+        $disk = Storage::disk('private');
+        if (!$disk->exists($log->file_path)) {
+            Log::warning('Archivo OCR no encontrado para adjuntar al albaran (desde movimiento).', [
+                'log_id' => $log->id ?? null,
+                'file_path' => $log->file_path,
+                'entrada_id' => $entrada->id,
+            ]);
+            return;
+        }
+
+        $extension = pathinfo($log->file_path, PATHINFO_EXTENSION) ?: 'pdf';
+        $destino = 'albaranes_entrada/albaran_' . $entrada->id . '_' . time() . '.' . $extension;
+
+        try {
+            $disk->copy($log->file_path, $destino);
+
+            $entrada->pdf_albaran = basename($destino);
+            $entrada->save();
+
+            if (!$log->entrada_id) {
+                $log->entrada_id = $entrada->id;
+            }
+
+            $log->applied_payload = array_merge($log->applied_payload ?? [], [
+                'auto_attached' => true,
+                'attached_via' => 'movimiento',
+            ]);
+            $log->status = $log->status ?? 'applied';
+            $log->reviewed_at = $log->reviewed_at ?? now();
+            $log->save();
+        } catch (\Throwable $e) {
+            Log::warning('No se pudo copiar el archivo OCR al albaran (desde movimiento).', [
+                'log_id' => $log->id ?? null,
+                'destino' => $destino,
+                'error' => $e->getMessage(),
+            ]);
         }
     }
 
@@ -928,6 +1000,7 @@ class PedidoController extends Controller
             'coladas' => ['array'],
             'coladas.*.colada' => ['nullable', 'string', 'max:255'],
             'coladas.*.bulto' => ['nullable', 'numeric', 'min:0'],
+            'ocr_log_id' => ['nullable', 'integer', 'exists:entrada_import_logs,id'],
         ]);
 
         $productoBase = $linea->productoBase;
@@ -1009,6 +1082,7 @@ class PedidoController extends Controller
                 'pedido_id' => $pedidoId,
                 'producto_base_id' => $productoBase->id,
                 'pedido_producto_id' => $lineaId,
+                'ocr_log_id' => $data['ocr_log_id'] ?? null,
                 'prioridad' => 2,
                 'nave_id' => $linea->obra_id,
             ]);
